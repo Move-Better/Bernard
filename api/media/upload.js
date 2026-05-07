@@ -13,7 +13,9 @@ import { tagAndPersist } from '../_lib/tagAsset.js'
 //      onUploadCompleted writes the row to media_assets.
 //
 // Runs on Node (Fluid Compute) — @vercel/blob's server bits depend on undici
-// and Node built-ins, which the Edge runtime cannot bundle.
+// and Node built-ins, which the Edge runtime cannot bundle. The Node runtime
+// uses the (req, res) handler shape with req.body auto-parsed; do NOT switch
+// to (req) / Response — that's the Edge shape and it does not work here.
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -35,9 +37,6 @@ async function sb(path, init = {}) {
   })
 }
 
-const ok  = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-const err = (msg, status = 400)  => new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json' } })
-
 const ALLOWED_MIME = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
   'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v',
@@ -50,10 +49,12 @@ function kindFromMime(mime) {
   return null
 }
 
-export default async function handler(req) {
-  if (req.method !== 'POST') return err('Method not allowed', 405)
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
-  const body = await req.json()
+  const body = req.body
 
   try {
     const result = await handleUpload({
@@ -106,11 +107,11 @@ export default async function handler(req) {
           created_by: meta.createdBy || null,
         }
 
-        const res = await sb('media_assets', { method: 'POST', body: JSON.stringify(row) })
-        if (!res.ok) {
+        const ins = await sb('media_assets', { method: 'POST', body: JSON.stringify(row) })
+        if (!ins.ok) {
           // Blob is already uploaded — log but don't throw, otherwise the
           // browser sees a successful upload that didn't get recorded.
-          console.error('media_assets insert failed:', res.status, await res.text())
+          console.error('media_assets insert failed:', ins.status, await ins.text())
           return
         }
 
@@ -118,7 +119,7 @@ export default async function handler(req) {
         // tagging runs in the background; the Blob completion webhook still
         // returns immediately to the platform.
         try {
-          const inserted = await res.json()
+          const inserted = await ins.json()
           const newRow = inserted?.[0]
           if (newRow?.id) {
             waitUntil(tagAndPersist(newRow).catch((e) => console.error('Auto-tag failed:', e?.message)))
@@ -129,8 +130,8 @@ export default async function handler(req) {
       },
     })
 
-    return ok(result)
+    return res.status(200).json(result)
   } catch (e) {
-    return err(e.message || 'Upload handler failed', 400)
+    return res.status(400).json({ error: e.message || 'Upload handler failed' })
   }
 }
