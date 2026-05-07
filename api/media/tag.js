@@ -5,27 +5,24 @@ import { tagById } from '../_lib/tagAsset.js'
 // upload.js can call it directly via waitUntil without an HTTP roundtrip.
 //
 // Runs on Node (Fluid Compute) — same constraint as the rest of the media
-// routes.
+// routes. Uses the (req, res) handler shape; req.body is auto-parsed.
 
 export const config = { maxDuration: 120 }
 
-const ok  = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-const err = (msg, status = 400)  => new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json' } })
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
-export default async function handler(req) {
-  if (req.method !== 'POST') return err('Method not allowed', 405)
-
-  let body
-  try { body = await req.json() } catch { return err('Invalid JSON body') }
-  const id = body?.id
-  if (!id) return err('Missing id')
+  const id = req.body?.id
+  if (!id) return res.status(400).json({ error: 'Missing id' })
 
   try {
     const row = await tagById(id)
-    return ok(row)
+    return res.status(200).json(row)
   } catch (e) {
     const msg = e?.message || 'Tagging failed'
     const status = msg === 'Not found' ? 404 : 500
-    return err(msg, status)
+    return res.status(status).json({ error: msg })
   }
 }

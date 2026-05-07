@@ -1,5 +1,6 @@
 // Runs on Node (Fluid Compute) for consistency with the other media routes,
-// which need Node for @vercel/blob.
+// which need Node for @vercel/blob. Uses the (req, res) handler shape — on
+// Vercel's Node runtime req is an IncomingMessage, not a Web Request.
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -20,16 +21,14 @@ function sb(path, init = {}) {
   })
 }
 
-const ok  = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-const err = (msg, status = 400)  => new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json' } })
-
 const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,created_at,updated_at,created_by'
 
-export default async function handler(req) {
-  if (req.method !== 'GET') return err('Method not allowed', 405)
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
-  // On Vercel's Node runtime req.url is a relative path; supply a base so
-  // URL parsing works on both Node (relative) and Edge (absolute) shapes.
+  // req.url is a relative path on Node runtime; supply a base so URL parses.
   const { searchParams } = new URL(req.url, 'http://localhost')
   const kind     = searchParams.get('kind')      // 'video' | 'photo'
   const status   = searchParams.get('status')    // raw | tagged | rendered | approved | archived
@@ -52,7 +51,7 @@ export default async function handler(req) {
     qs += `&tags=cs.${encodeURIComponent(JSON.stringify([tag]))}`
   }
 
-  const res = await sb(qs)
-  if (!res.ok) return err('Database error', 500)
-  return ok(await res.json())
+  const r = await sb(qs)
+  if (!r.ok) return res.status(500).json({ error: 'Database error' })
+  return res.status(200).json(await r.json())
 }
