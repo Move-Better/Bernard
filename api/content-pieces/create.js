@@ -1,4 +1,4 @@
-// Manual content_piece creation. Used when an editor (Phillip or anyone)
+// Manual content_piece creation. Used when an editor (Philip or anyone)
 // wants to spin up a brief for a moment AI didn't surface — the
 // "always-have-a-backdoor" override path. Brand-scoped.
 

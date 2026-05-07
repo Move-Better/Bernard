@@ -6,7 +6,7 @@ import { brand } from '../../src/lib/brand.js'
 // Phase 2 already produced (and the visual narrative when available) and
 // surfaces 1–5 "edit briefs" — moments worth turning into a finished, branded
 // clip. Each brief becomes a content_pieces row that the in-house contractor
-// (Phillip, or whoever is on the Media page) reviews, accepts, takes to
+// (Philip, or whoever is on the Media page) reviews, accepts, takes to
 // CapCut Pro to edit, and uploads back. The edited media then lives in the
 // library and gets attached to posts in Content Hub.
 //

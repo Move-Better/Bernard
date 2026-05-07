@@ -216,7 +216,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-medium">Finished edit</div>
-                  <div className="text-[11px] text-muted-foreground">Upload the file Phillip exported from CapCut. It lands in the library tied back to the source.</div>
+                  <div className="text-[11px] text-muted-foreground">Upload the file Philip exported from CapCut. It lands in the library tied back to the source.</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <UploadIcon className="h-3.5 w-3.5 mr-1.5" />}
