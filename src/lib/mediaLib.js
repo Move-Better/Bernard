@@ -37,8 +37,33 @@ export function updateMediaAsset(id, patch) {
   })
 }
 
-export function deleteMediaAsset(id) {
+// Soft-delete (archive). Sets status='archived' + archived_at=now() server-side.
+// The asset is hidden from the default list view but remains in storage and is
+// restorable forever via restoreMediaAsset(). Hard delete is purgeMediaAsset()
+// — admin-only, ≥30-day cooldown.
+export function archiveMediaAsset(id) {
   return api(`/api/media/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// Move an archived asset back to active library. Server clears archived_at and
+// audits action='restore'.
+export function restoreMediaAsset(id, status = 'raw') {
+  return api(`/api/media/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+}
+
+// Permanently delete an archived asset — admin-only, requires the asset to
+// have been archived for at least 30 days. Caller must echo back the exact
+// filename in `confirmFilename` as a typed-confirm safeguard.
+export function purgeMediaAsset(id, confirmFilename) {
+  return api(`/api/media/${encodeURIComponent(id)}/purge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirmFilename }),
+  })
 }
 
 // Trigger AI auto-tagging for an asset (vision + transcription for video).

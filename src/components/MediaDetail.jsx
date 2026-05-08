@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react'
-import { X, Trash2, Loader2, Plus, Sparkles } from 'lucide-react'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { updateMediaAsset, deleteMediaAsset, tagMediaAsset } from '@/lib/mediaLib'
+import {
+  updateMediaAsset,
+  archiveMediaAsset,
+  restoreMediaAsset,
+  purgeMediaAsset,
+  tagMediaAsset,
+} from '@/lib/mediaLib'
 
 const STATUSES = ['raw', 'tagged', 'rendered', 'approved', 'archived']
+const PURGE_COOLDOWN_DAYS = 30
+
+function daysSince(iso) {
+  if (!iso) return null
+  return (Date.now() - new Date(iso).getTime()) / 86_400_000
+}
 
 // Detail/edit drawer for a single media asset.
 // `asset` is the row, `onClose` dismisses, `onChange` is called after save/delete.
@@ -20,9 +32,20 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [aiTags, setAiTags]     = useState(asset.ai_tags || [])
   const [transcription, setTranscription] = useState(asset.transcription || '')
   const [saving, setSaving]     = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [purging, setPurging]   = useState(false)
+  const [purgeConfirm, setPurgeConfirm] = useState('')
+  const [showPurge, setShowPurge] = useState(false)
   const [tagging, setTagging]   = useState(false)
   const [error, setError]       = useState('')
+
+  const isArchived  = asset.status === 'archived'
+  const archivedAge = daysSince(asset.archived_at)
+  const cooldownLeft = archivedAge != null
+    ? Math.max(0, Math.ceil(PURGE_COOLDOWN_DAYS - archivedAge))
+    : PURGE_COOLDOWN_DAYS
+  const purgeReady  = isArchived && asset.archived_at && cooldownLeft === 0
 
   // Sync local state if a different asset is loaded into the same drawer.
   useEffect(() => {
@@ -35,6 +58,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setTranscription(asset.transcription || '')
     setTagInput('')
     setError('')
+    setShowPurge(false)
+    setPurgeConfirm('')
   }, [asset.id])
 
   function addTag() {
@@ -77,16 +102,44 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     }
   }
 
-  async function handleDelete() {
-    if (!confirm(`Delete "${asset.filename}"? This removes the file from storage and cannot be undone.`)) return
-    setDeleting(true); setError('')
+  async function handleArchive() {
+    if (!confirm(`Move "${asset.filename}" to archive? It will be hidden from the library but kept in storage. You can restore it any time.`)) return
+    setArchiving(true); setError('')
     try {
-      await deleteMediaAsset(asset.id)
+      await archiveMediaAsset(asset.id)
       onChange?.()
       onClose?.()
     } catch (e) {
       setError(e.message)
-      setDeleting(false)
+      setArchiving(false)
+    }
+  }
+
+  async function handleRestore() {
+    setRestoring(true); setError('')
+    try {
+      await restoreMediaAsset(asset.id, asset.ai_tags?.length ? 'tagged' : 'raw')
+      onChange?.()
+      onClose?.()
+    } catch (e) {
+      setError(e.message)
+      setRestoring(false)
+    }
+  }
+
+  async function handlePurge() {
+    if (purgeConfirm !== asset.filename) {
+      setError('Filename does not match — type the exact filename to confirm.')
+      return
+    }
+    setPurging(true); setError('')
+    try {
+      await purgeMediaAsset(asset.id, purgeConfirm)
+      onChange?.()
+      onClose?.()
+    } catch (e) {
+      setError(e.message)
+      setPurging(false)
     }
   }
 
@@ -208,18 +261,75 @@ export default function MediaDetail({ asset, onClose, onChange }) {
           </div>
         </div>
 
+        {/* Archived banner with cooldown + purge controls */}
+        {isArchived && (
+          <div className="px-5 py-3 border-t bg-amber-50 text-amber-900 text-xs flex items-start gap-2 shrink-0">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-2">
+              <div>
+                Archived {asset.archived_at ? new Date(asset.archived_at).toLocaleDateString() : ''}.
+                {' '}
+                {purgeReady
+                  ? <>Cooldown complete — admins may permanently delete.</>
+                  : <>Permanent delete unlocks in <strong>{cooldownLeft} day{cooldownLeft === 1 ? '' : 's'}</strong> (admin only).</>}
+              </div>
+              {showPurge && purgeReady && (
+                <div className="space-y-1.5">
+                  <p className="text-amber-950">Type <code className="bg-amber-100 px-1 rounded">{asset.filename}</code> to permanently delete this file. The blob and database row will be erased and cannot be recovered.</p>
+                  <Input
+                    value={purgeConfirm}
+                    onChange={(e) => setPurgeConfirm(e.target.value)}
+                    placeholder={asset.filename}
+                    className="h-8 text-sm bg-white"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t shrink-0">
-          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={deleting} className="text-destructive hover:text-destructive">
-            {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
-            Delete
-          </Button>
+          <div className="flex gap-2">
+            {isArchived ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleRestore} disabled={restoring}>
+                  {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <ArchiveRestore className="h-3.5 w-3.5 mr-1.5" />}
+                  Restore
+                </Button>
+                {purgeReady && !showPurge && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowPurge(true)} className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Permanently delete
+                  </Button>
+                )}
+                {purgeReady && showPurge && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handlePurge}
+                    disabled={purging || purgeConfirm !== asset.filename}
+                  >
+                    {purging && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                    Confirm permanent delete
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={handleArchive} disabled={archiving} className="text-destructive hover:text-destructive">
+                {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Archive className="h-3.5 w-3.5 mr-1.5" />}
+                Move to archive
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={save} disabled={saving}>
-              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              Save
-            </Button>
+            {!isArchived && (
+              <Button size="sm" onClick={save} disabled={saving}>
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                Save
+              </Button>
+            )}
           </div>
         </div>
       </div>

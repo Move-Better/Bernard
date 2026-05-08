@@ -21,7 +21,7 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,created_at,updated_at,created_by'
+const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,archived_at,created_at,updated_at,created_by'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -40,7 +40,15 @@ export default async function handler(req, res) {
   // Always brand-scoped.
   let qs = `media_assets?select=${SELECT}&brand=eq.${brandId()}&order=created_at.desc&limit=${limit}&offset=${offset}`
   if (kind)   qs += `&kind=eq.${kind}`
-  if (status) qs += `&status=eq.${status}`
+  if (status) {
+    qs += `&status=eq.${status}`
+  } else {
+    // Default view excludes archived assets — they're recoverable from the
+    // explicit "Archived" filter, but should not surface in the main library
+    // grid where they'd just clutter and tempt accidental "is this still
+    // here?" double-action by users.
+    qs += `&status=neq.archived`
+  }
   if (search) {
     const term = encodeURIComponent(`%${search}%`)
     // PostgREST `or` syntax. Note: jsonb columns can't be ilike'd directly here.

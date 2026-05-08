@@ -1,9 +1,12 @@
-import { del as blobDel } from '@vercel/blob'
 import { recordAudit, snapshot } from '../_lib/audit.js'
 
 // Runs on Node (Fluid Compute) — @vercel/blob's server bits aren't edge-safe.
 // Uses the (req, res) handler shape; req is IncomingMessage with auto-parsed
 // req.body for JSON requests.
+//
+// DELETE here is a SOFT delete (Layer 1 of the safety hardening): it stamps
+// status='archived' + archived_at=now() and leaves Vercel Blob alone. Hard
+// purge lives at api/media/[id]/purge.js — admin-only, ≥30 day cooldown.
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -25,7 +28,7 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,created_at,updated_at,created_by'
+const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,archived_at,created_at,updated_at,created_by'
 
 async function fetchRow(where) {
   const r = await sb(`media_assets?${where}&select=${SELECT}`)
@@ -75,6 +78,14 @@ export default async function handler(req, res) {
     const before = await fetchRow(where)
     if (!before) return res.status(404).json({ error: 'Not found' })
 
+    // Detect restore: archived row whose status is being moved out of 'archived'.
+    // Also clear archived_at so re-archive timestamps a fresh cooldown window.
+    const isRestore =
+      before.status === 'archived' &&
+      typeof body.status === 'string' &&
+      body.status !== 'archived'
+    if (isRestore) body.archived_at = null
+
     const r = await sb(`media_assets?${where}`, { method: 'PATCH', body: JSON.stringify(body) })
     if (!r.ok) return res.status(500).json({ error: 'Update failed' })
     const data = await r.json()
@@ -82,7 +93,7 @@ export default async function handler(req, res) {
 
     await recordAudit({
       assetId: id,
-      action:  'edit',
+      action:  isRestore ? 'restore' : 'edit',
       before:  snapshot(before),
       after:   snapshot(after),
       req,
@@ -92,29 +103,34 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    // Look up first to get full row for the audit snapshot, then delete from
-    // Blob, then DB. NB: PR-3 will rewrite this to a soft-delete (status =
-    // 'archived') and move blob deletion behind an admin-only purge endpoint.
+    // Soft-delete: status='archived' + archived_at=now(). Leaves Blob alone so
+    // the asset is restorable forever via PATCH { status: 'raw'|'tagged' }.
+    // Hard purge is gated behind /api/media/[id]/purge — admin-only, ≥30 days
+    // after archived_at.
     const before = await fetchRow(where)
     if (!before) return res.status(404).json({ error: 'Not found' })
 
-    if (before.blob_url) {
-      try { await blobDel(before.blob_url) }
-      catch (e) { console.error('Blob delete failed:', e.message) }
+    if (before.status === 'archived') {
+      return res.status(200).json({ archived: true, alreadyArchived: true, asset: before })
     }
 
-    const r = await sb(`media_assets?${where}`, { method: 'DELETE' })
-    if (!r.ok) return res.status(500).json({ error: 'Delete failed' })
+    const r = await sb(`media_assets?${where}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'archived', archived_at: new Date().toISOString() }),
+    })
+    if (!r.ok) return res.status(500).json({ error: 'Archive failed' })
+    const data = await r.json()
+    const after = data[0] ?? null
 
     await recordAudit({
       assetId: id,
-      action:  'purge',
+      action:  'archive',
       before:  snapshot(before),
-      after:   null,
+      after:   snapshot(after),
       req,
     })
 
-    return res.status(200).json({ deleted: true })
+    return res.status(200).json({ archived: true, asset: after })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })

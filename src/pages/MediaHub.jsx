@@ -9,8 +9,10 @@ import MediaDetail from '@/components/MediaDetail'
 import { listMedia, getMediaAsset } from '@/lib/mediaLib'
 
 const KIND_FILTERS   = [{ id: '', label: 'All' }, { id: 'video', label: 'Video' }, { id: 'photo', label: 'Photo' }]
+// Default ('Any active') excludes archived rows server-side. The explicit
+// 'Archived' option opts in to viewing the trash bin.
 const STATUS_FILTERS = [
-  { id: '',         label: 'Any status' },
+  { id: '',         label: 'Any active' },
   { id: 'raw',      label: 'Raw' },
   { id: 'tagged',   label: 'Tagged' },
   { id: 'rendered', label: 'Rendered' },
