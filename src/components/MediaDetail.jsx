@@ -95,13 +95,20 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setTags([...tags, t])
     setTagInput('')
   }
-  function removeTag(t) { setTags(tags.filter((x) => x !== t)) }
+  function removeTag(t)   { setTags(tags.filter((x) => x !== t)) }
+  function removeAiTag(t) { setAiTags(aiTags.filter((x) => x !== t)) }
+  function promoteAiTag(t) {
+    // AI suggestion → committed user tag. Dedupe against existing user tags
+    // and drop from the AI suggestion list so it doesn't render twice.
+    if (!tags.includes(t)) setTags([...tags, t])
+    setAiTags(aiTags.filter((x) => x !== t))
+  }
 
   async function save() {
     setSaving(true); setError('')
     try {
       await updateMediaAsset(asset.id, {
-        tags, notes, patientPseudonym: patient, condition, status, speakerRole,
+        tags, aiTags, notes, patientPseudonym: patient, condition, status, speakerRole,
       })
       onChange?.()
       onClose?.()
@@ -290,10 +297,39 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   </Badge>
                 ))}
                 {aiTags.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground self-center">
-                    AI suggested: {aiTags.join(', ')}
+                  <span
+                    className="self-center inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-violet-700 dark:text-violet-300 ml-1 mr-0.5"
+                    title="AI-generated suggestions — click an existing tag chip to remove, or type below to add your own."
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    AI suggested
                   </span>
                 )}
+                {aiTags.map((t) => (
+                  <Badge
+                    key={`ai-${t}`}
+                    variant="outline"
+                    className="gap-1 border-dashed border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300"
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => promoteAiTag(t)}
+                      title="Add to your tags"
+                      className="-mr-0.5 rounded-full p-0.5 hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeAiTag(t)}
+                      title="Dismiss this suggestion"
+                      className="-mr-0.5 rounded-full p-0.5 hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
               </div>
               <div className="flex gap-2">
                 <Input
