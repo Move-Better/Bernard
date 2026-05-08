@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2 } from 'lucide-react'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -54,6 +54,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [error, setError]       = useState('')
   const [linkedBriefs, setLinkedBriefs] = useState([])
   const [openBrief, setOpenBrief] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
 
@@ -211,6 +213,40 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     }
   }
 
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(asset.blob_url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (e) {
+      setError('Could not copy link — try selecting the URL manually.')
+    }
+  }
+
+  // Cross-origin <a download> doesn't reliably trigger a save in browsers, so
+  // fetch the blob first and create an object URL. Vercel Blob public URLs are
+  // CORS-enabled, so this works without a proxy.
+  async function downloadAsset() {
+    setDownloading(true); setError('')
+    try {
+      const res = await fetch(asset.blob_url)
+      if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
+      const blob = await res.blob()
+      const objUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objUrl
+      a.download = asset.filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objUrl)
+    } catch (e) {
+      setError(e.message || 'Download failed.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const canSegment = asset.kind === 'video' && (transcription || visualNarrative)
 
   return (
@@ -228,7 +264,50 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             {asset.kind === 'video' ? (
               <video src={asset.blob_url} controls className="max-h-[60vh] max-w-full" />
             ) : (
-              <img src={asset.blob_url} alt={asset.filename} className="max-h-[60vh] max-w-full" />
+              <img
+                src={asset.blob_url}
+                alt={asset.filename}
+                className="max-h-[60vh] max-w-full cursor-grab active:cursor-grabbing"
+                draggable
+                title="Drag this image into another browser tab to upload it there, or use Copy / Download below."
+              />
+            )}
+          </div>
+
+          {/* Use elsewhere — copy link, download, or drag the preview to
+              another browser tab's upload widget. The whole point of Media
+              Hub is being the canonical home for media; this row is the
+              bridge to tools whose file pickers can't see Vercel Blob. */}
+          <div className="px-5 pt-4 -mb-1 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] text-muted-foreground mr-1">Use elsewhere:</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={copyLink}
+              className="h-7 gap-1.5 text-[11px]"
+              title="Copy the public Vercel Blob URL for this asset"
+            >
+              {copied
+                ? <><Check className="h-3.5 w-3.5 text-green-600" /> Copied</>
+                : <><Link2 className="h-3.5 w-3.5" /> Copy link</>}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={downloadAsset}
+              disabled={downloading}
+              className="h-7 gap-1.5 text-[11px]"
+              title="Download to your computer with the original filename"
+            >
+              {downloading
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Download className="h-3.5 w-3.5" />}
+              Download
+            </Button>
+            {asset.kind === 'photo' && (
+              <span className="text-[11px] text-muted-foreground">
+                · or drag the preview straight into another browser tab
+              </span>
             )}
           </div>
 

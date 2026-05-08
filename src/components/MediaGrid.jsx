@@ -34,6 +34,21 @@ function Thumb({ asset }) {
   )
 }
 
+// Drag-from-card to other browser tabs: putting the asset URL on the
+// dataTransfer's text/uri-list lets the user drop a thumbnail straight onto
+// any web upload widget that accepts URL drops. Photos also natively drag
+// as image data because of the inner <img> element.
+function handleDragStart(e, asset) {
+  if (!asset.blob_url) return
+  try {
+    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('text/uri-list', asset.blob_url)
+    e.dataTransfer.setData('text/plain', asset.blob_url)
+    const thumbImg = e.currentTarget.querySelector('img')
+    if (thumbImg) e.dataTransfer.setDragImage(thumbImg, 16, 16)
+  } catch {}
+}
+
 export default function MediaGrid({ assets, selectedId, onSelect, multiSelect = false, selectedIds = [] }) {
   if (!assets?.length) {
     return <div className="text-center py-16 text-sm text-muted-foreground">No media yet — upload some clips to get started.</div>
@@ -48,6 +63,9 @@ export default function MediaGrid({ assets, selectedId, onSelect, multiSelect = 
           <button
             key={a.id}
             onClick={() => onSelect?.(a)}
+            draggable
+            onDragStart={(e) => handleDragStart(e, a)}
+            title={`${a.filename} — click to open, or drag into another browser tab to upload it there`}
             className={`relative rounded-lg overflow-hidden border-2 aspect-square transition-all text-left ${
               isSelected ? 'border-primary' : 'border-transparent hover:border-muted-foreground/30'
             }`}
