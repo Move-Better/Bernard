@@ -306,11 +306,15 @@ async function streamFileToBlob(brand, file, kind, mime) {
   })
   // addRandomSuffix:false — keep the deterministic name; re-imports overwrite
   // the same blob rather than creating duplicates.
+  // multipart:true — required for files larger than ~100 MB. Without it the
+  // SDK fails with "Vercel Blob: Unknown error" on big videos. Safe to leave
+  // on for small files too; the SDK falls back to single-shot under 50 MB.
   const blob = await blobPut(pathname, fileBlob, {
     access: 'public',
     contentType: mime,
     token: BLOB_TOKEN,
     addRandomSuffix: false,
+    multipart: true,
   })
   return blob
 }
