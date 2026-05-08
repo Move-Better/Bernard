@@ -95,13 +95,14 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setTags([...tags, t])
     setTagInput('')
   }
-  function removeTag(t) { setTags(tags.filter((x) => x !== t)) }
+  function removeTag(t)   { setTags(tags.filter((x) => x !== t)) }
+  function removeAiTag(t) { setAiTags(aiTags.filter((x) => x !== t)) }
 
   async function save() {
     setSaving(true); setError('')
     try {
       await updateMediaAsset(asset.id, {
-        tags, notes, patientPseudonym: patient, condition, status, speakerRole,
+        tags, aiTags, notes, patientPseudonym: patient, condition, status, speakerRole,
       })
       onChange?.()
       onClose?.()
@@ -302,10 +303,11 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   <Badge
                     key={`ai-${t}`}
                     variant="outline"
-                    className="gap-1 border-dashed border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300"
-                    title="AI-suggested tag"
+                    className="gap-1 cursor-pointer border-dashed border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300"
+                    title="Click to remove this AI suggestion"
+                    onClick={() => removeAiTag(t)}
                   >
-                    {t}
+                    {t} <X className="h-3 w-3" />
                   </Badge>
                 ))}
               </div>
