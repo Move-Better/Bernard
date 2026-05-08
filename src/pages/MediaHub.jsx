@@ -95,6 +95,38 @@ export default function MediaHub() {
     }
   }, [loadingMore, loading, hasMore, kind, status, debouncedSearch, collectionId, assets.length])
 
+  // Walk every remaining page of the current filter, append the rows into the
+  // grid, then mark the entire result set as selected. Without this, "Select
+  // all" would only cover the visible pages and silently miss off-screen
+  // matches — a footgun on libraries that have grown past one page.
+  const selectAllMatching = useCallback(async () => {
+    let collected = assets.slice()
+    let offset = collected.length
+    let more = hasMore
+    try {
+      // Hard ceiling so a corrupted hasMore signal can't loop forever.
+      while (more && offset < 5000) {
+        const rows = await listMedia({
+          kind: kind || undefined,
+          status: status || undefined,
+          q: debouncedSearch || undefined,
+          collectionId: collectionId || undefined,
+          limit: PAGE_SIZE,
+          offset,
+        })
+        if (!rows.length) break
+        collected = collected.concat(rows)
+        setAssets(collected)
+        offset += rows.length
+        more = rows.length === PAGE_SIZE
+      }
+      setHasMore(false)
+      setSelectedIds(collected.map((a) => a.id))
+    } catch (e) {
+      setError(e.message)
+    }
+  }, [assets, hasMore, kind, status, debouncedSearch, collectionId])
+
   // IntersectionObserver-driven infinite scroll. The sentinel sits 400px below
   // the last grid row so the next page starts loading before the user reaches
   // the bottom — keeps the scroll feeling continuous on long libraries.
@@ -240,10 +272,11 @@ export default function MediaHub() {
         <BulkActionBar
           selectedIds={selectedIds}
           assets={assets}
+          hasMore={hasMore}
           currentStatus={status}
           currentCollectionId={collectionId}
           onClear={() => setSelectedIds([])}
-          onSelectAll={() => setSelectedIds(assets.map((a) => a.id))}
+          onSelectAll={selectAllMatching}
           onExit={exitMultiSelect}
           onChange={() => setCollectionRefreshKey((k) => k + 1)}
           onRefresh={() => {
