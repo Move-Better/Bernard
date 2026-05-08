@@ -97,6 +97,12 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   }
   function removeTag(t)   { setTags(tags.filter((x) => x !== t)) }
   function removeAiTag(t) { setAiTags(aiTags.filter((x) => x !== t)) }
+  function promoteAiTag(t) {
+    // AI suggestion → committed user tag. Dedupe against existing user tags
+    // and drop from the AI suggestion list so it doesn't render twice.
+    if (!tags.includes(t)) setTags([...tags, t])
+    setAiTags(aiTags.filter((x) => x !== t))
+  }
 
   async function save() {
     setSaving(true); setError('')
@@ -303,11 +309,25 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   <Badge
                     key={`ai-${t}`}
                     variant="outline"
-                    className="gap-1 cursor-pointer border-dashed border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300"
-                    title="Click to remove this AI suggestion"
-                    onClick={() => removeAiTag(t)}
+                    className="gap-1 border-dashed border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300"
                   >
-                    {t} <X className="h-3 w-3" />
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => promoteAiTag(t)}
+                      title="Add to your tags"
+                      className="-mr-0.5 rounded-full p-0.5 hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeAiTag(t)}
+                      title="Dismiss this suggestion"
+                      className="-mr-0.5 rounded-full p-0.5 hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 ))}
               </div>
