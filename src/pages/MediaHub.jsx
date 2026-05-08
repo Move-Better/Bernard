@@ -198,10 +198,17 @@ export default function MediaHub() {
         <BulkActionBar
           selectedIds={selectedIds}
           assets={assets}
+          currentStatus={status}
+          currentCollectionId={collectionId}
           onClear={() => setSelectedIds([])}
           onSelectAll={() => setSelectedIds(assets.map((a) => a.id))}
           onExit={exitMultiSelect}
           onChange={() => setCollectionRefreshKey((k) => k + 1)}
+          onRefresh={() => {
+            refresh()
+            setBriefRefreshKey((k) => k + 1)
+            setCollectionRefreshKey((k) => k + 1)
+          }}
         />
       )}
 
