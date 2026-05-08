@@ -1,8 +1,24 @@
-import { del as blobDel } from '@vercel/blob'
+import { recordAudit, snapshot } from '../_lib/audit.js'
+import { requireRole } from '../_lib/auth.js'
+
+// Per-method role requirements (HANDOFF.md → Locked decisions):
+//   GET    → any authenticated user
+//   PATCH  → admin or editor (metadata edits + restore)
+//   DELETE → admin or editor (soft-archive)
+//   purge  → admin only (lives in api/media/[id]/purge.js)
+const ROLE_REQUIREMENTS = {
+  GET:    null,
+  PATCH:  ['admin', 'editor'],
+  DELETE: ['admin', 'editor'],
+}
 
 // Runs on Node (Fluid Compute) — @vercel/blob's server bits aren't edge-safe.
 // Uses the (req, res) handler shape; req is IncomingMessage with auto-parsed
 // req.body for JSON requests.
+//
+// DELETE here is a SOFT delete (Layer 1 of the safety hardening): it stamps
+// status='archived' + archived_at=now() and leaves Vercel Blob alone. Hard
+// purge lives at api/media/[id]/purge.js — admin-only, ≥30 day cooldown.
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -24,9 +40,24 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,created_at,updated_at,created_by'
+const SELECT = 'id,brand,kind,status,source,blob_url,blob_pathname,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,notes,content_item_ids,archived_at,created_at,updated_at,created_by'
+
+async function fetchRow(where) {
+  const r = await sb(`media_assets?${where}&select=${SELECT}`)
+  if (!r.ok) return null
+  const rows = await r.json()
+  return rows[0] || null
+}
 
 export default async function handler(req, res) {
+  if (!(req.method in ROLE_REQUIREMENTS)) {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+  const auth = await requireRole(req, ROLE_REQUIREMENTS[req.method])
+  if (!auth.ok) {
+    return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  }
+
   // req.url is a relative path on Node runtime; the base lets URL parse it.
   const url = new URL(req.url, 'http://localhost')
   const id  = url.pathname.split('/').pop()
@@ -63,28 +94,63 @@ export default async function handler(req, res) {
     }
     const body = Object.fromEntries(Object.entries(allowed).filter(([, v]) => v !== undefined))
 
+    // Snapshot before so the audit trail captures what changed.
+    const before = await fetchRow(where)
+    if (!before) return res.status(404).json({ error: 'Not found' })
+
+    // Detect restore: archived row whose status is being moved out of 'archived'.
+    // Also clear archived_at so re-archive timestamps a fresh cooldown window.
+    const isRestore =
+      before.status === 'archived' &&
+      typeof body.status === 'string' &&
+      body.status !== 'archived'
+    if (isRestore) body.archived_at = null
+
     const r = await sb(`media_assets?${where}`, { method: 'PATCH', body: JSON.stringify(body) })
     if (!r.ok) return res.status(500).json({ error: 'Update failed' })
     const data = await r.json()
-    return res.status(200).json(data[0] ?? null)
+    const after = data[0] ?? null
+
+    await recordAudit({
+      assetId: id,
+      action:  isRestore ? 'restore' : 'edit',
+      before:  snapshot(before),
+      after:   snapshot(after),
+      req,
+    })
+
+    return res.status(200).json(after)
   }
 
   if (req.method === 'DELETE') {
-    // Look up first to get blob_pathname, then delete from Blob, then DB.
-    const lookup = await sb(`media_assets?${where}&select=blob_pathname,blob_url`)
-    if (!lookup.ok) return res.status(500).json({ error: 'Database error' })
-    const rows = await lookup.json()
-    const row  = rows[0]
-    if (!row) return res.status(404).json({ error: 'Not found' })
+    // Soft-delete: status='archived' + archived_at=now(). Leaves Blob alone so
+    // the asset is restorable forever via PATCH { status: 'raw'|'tagged' }.
+    // Hard purge is gated behind /api/media/[id]/purge — admin-only, ≥30 days
+    // after archived_at.
+    const before = await fetchRow(where)
+    if (!before) return res.status(404).json({ error: 'Not found' })
 
-    if (row.blob_url) {
-      try { await blobDel(row.blob_url) }
-      catch (e) { console.error('Blob delete failed:', e.message) }
+    if (before.status === 'archived') {
+      return res.status(200).json({ archived: true, alreadyArchived: true, asset: before })
     }
 
-    const r = await sb(`media_assets?${where}`, { method: 'DELETE' })
-    if (!r.ok) return res.status(500).json({ error: 'Delete failed' })
-    return res.status(200).json({ deleted: true })
+    const r = await sb(`media_assets?${where}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'archived', archived_at: new Date().toISOString() }),
+    })
+    if (!r.ok) return res.status(500).json({ error: 'Archive failed' })
+    const data = await r.json()
+    const after = data[0] ?? null
+
+    await recordAudit({
+      assetId: id,
+      action:  'archive',
+      before:  snapshot(before),
+      after:   snapshot(after),
+      req,
+    })
+
+    return res.status(200).json({ archived: true, asset: after })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })

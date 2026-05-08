@@ -7,10 +7,13 @@ import MediaUploader from '@/components/MediaUploader'
 import MediaGrid from '@/components/MediaGrid'
 import MediaDetail from '@/components/MediaDetail'
 import { listMedia, getMediaAsset } from '@/lib/mediaLib'
+import { useUserRole } from '@/lib/useUserRole'
 
 const KIND_FILTERS   = [{ id: '', label: 'All' }, { id: 'video', label: 'Video' }, { id: 'photo', label: 'Photo' }]
+// Default ('Any active') excludes archived rows server-side. The explicit
+// 'Archived' option opts in to viewing the trash bin.
 const STATUS_FILTERS = [
-  { id: '',         label: 'Any status' },
+  { id: '',         label: 'Any active' },
   { id: 'raw',      label: 'Raw' },
   { id: 'tagged',   label: 'Tagged' },
   { id: 'rendered', label: 'Rendered' },
@@ -20,6 +23,7 @@ const STATUS_FILTERS = [
 
 export default function MediaHub() {
   const { user } = useUser()
+  const { canUpload } = useUserRole()
   const [assets, setAssets]     = useState([])
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
@@ -68,8 +72,8 @@ export default function MediaHub() {
         </p>
       </div>
 
-      {/* Uploader */}
-      <MediaUploader createdBy={user?.id} onUploaded={refresh} />
+      {/* Uploader — surfaced to every role per HANDOFF role table */}
+      {canUpload && <MediaUploader createdBy={user?.id} onUploaded={refresh} />}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">

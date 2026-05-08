@@ -1,6 +1,18 @@
 import { handleUpload } from '@vercel/blob/client'
 import { waitUntil } from '@vercel/functions'
 import { tagAndPersist } from '../_lib/tagAsset.js'
+import { recordAudit, snapshot } from '../_lib/audit.js'
+import { requireRole } from '../_lib/auth.js'
+
+// Two-phase upload via @vercel/blob/client:
+//   Phase 1 — body.type='blob.generate-client-token' (browser handshake):
+//             check Clerk role here; an unauthenticated request must not be
+//             able to mint a Blob upload token.
+//   Phase 2 — body.type='blob.upload-completed' (Blob platform webhook):
+//             the request originates from Vercel Blob, not the browser, so
+//             there is no user Bearer token to verify. handleUpload() itself
+//             cryptographically verifies the payload via the issued token.
+const HANDSHAKE_ALLOWED_ROLES = ['admin', 'editor', 'clinician']
 
 // Client-direct upload to Vercel Blob using a token issued by this endpoint.
 //
@@ -55,6 +67,15 @@ export default async function handler(req, res) {
   }
 
   const body = req.body
+
+  // Only the browser handshake carries a user Bearer token. The completion
+  // webhook is platform-to-server; handleUpload verifies it via signature.
+  if (body?.type === 'blob.generate-client-token') {
+    const auth = await requireRole(req, HANDSHAKE_ALLOWED_ROLES)
+    if (!auth.ok) {
+      return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+    }
+  }
 
   try {
     const result = await handleUpload({
@@ -122,6 +143,18 @@ export default async function handler(req, res) {
           const inserted = await ins.json()
           const newRow = inserted?.[0]
           if (newRow?.id) {
+            // Record the upload in the audit log. actor comes from the token
+            // payload (created_by), since the Blob completion webhook doesn't
+            // carry the original user's session.
+            waitUntil(recordAudit({
+              assetId: newRow.id,
+              action:  'upload',
+              actor:   meta.createdBy || 'unknown',
+              before:  null,
+              after:   snapshot(newRow),
+              brand:   meta.brand || brandId(),
+            }).catch((e) => console.error('Audit record failed:', e?.message)))
+
             waitUntil(tagAndPersist(newRow).catch((e) => console.error('Auto-tag failed:', e?.message)))
           }
         } catch (e) {
