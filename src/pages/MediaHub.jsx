@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/clerk-react'
-import { Search, Loader2, Filter, X } from 'lucide-react'
+import { Search, Loader2, Filter, X, CheckSquare } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import MediaUploader from '@/components/MediaUploader'
@@ -8,6 +8,7 @@ import MediaGrid from '@/components/MediaGrid'
 import MediaDetail from '@/components/MediaDetail'
 import ContentBriefList from '@/components/ContentBriefList'
 import CollectionsBar from '@/components/CollectionsBar'
+import BulkActionBar from '@/components/BulkActionBar'
 import MediaHubHelp from '@/components/MediaHubHelp'
 import { listMedia, getMediaAsset } from '@/lib/mediaLib'
 import { useUserRole } from '@/lib/useUserRole'
@@ -26,7 +27,7 @@ const STATUS_FILTERS = [
 
 export default function MediaHub() {
   const { user } = useUser()
-  const { canUpload } = useUserRole()
+  const { canUpload, canEdit } = useUserRole()
   const [assets, setAssets]     = useState([])
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
@@ -38,6 +39,8 @@ export default function MediaHub() {
   const [collectionRefreshKey, setCollectionRefreshKey] = useState(0)
   const [selected, setSelected] = useState(null)  // full asset row
   const [briefRefreshKey, setBriefRefreshKey] = useState(0)
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
 
   // Debounce search input.
   useEffect(() => {
@@ -74,6 +77,36 @@ export default function MediaHub() {
       setSelected(asset)
     }
   }
+
+  function toggleSelected(asset) {
+    setSelectedIds((prev) =>
+      prev.includes(asset.id) ? prev.filter((id) => id !== asset.id) : [...prev, asset.id]
+    )
+  }
+
+  function exitMultiSelect() {
+    setMultiSelectMode(false)
+    setSelectedIds([])
+  }
+
+  // Drop ids that vanish from the visible list (e.g. filter narrows the
+  // result set) so the count stays honest.
+  useEffect(() => {
+    if (!multiSelectMode) return
+    setSelectedIds((prev) => {
+      const visible = new Set(assets.map((a) => a.id))
+      const next = prev.filter((id) => visible.has(id))
+      return next.length === prev.length ? prev : next
+    })
+  }, [assets, multiSelectMode])
+
+  // Esc exits selection mode.
+  useEffect(() => {
+    if (!multiSelectMode) return
+    function onKey(e) { if (e.key === 'Escape') exitMultiSelect() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [multiSelectMode])
 
   return (
     <div className="space-y-6">
@@ -143,7 +176,32 @@ export default function MediaHub() {
             ))}
           </select>
         </div>
+
+        {canEdit && (
+          <Button
+            size="sm"
+            variant={multiSelectMode ? 'default' : 'outline'}
+            onClick={() => {
+              if (multiSelectMode) exitMultiSelect()
+              else setMultiSelectMode(true)
+            }}
+            className="h-7 gap-1.5 text-[11px] rounded-full"
+            title="Select multiple media for bulk actions"
+          >
+            <CheckSquare className="h-3.5 w-3.5" />
+            {multiSelectMode ? 'Exit select' : 'Select'}
+          </Button>
+        )}
       </div>
+
+      {multiSelectMode && (
+        <BulkActionBar
+          selectedIds={selectedIds}
+          onClear={() => setSelectedIds([])}
+          onExit={exitMultiSelect}
+          onChange={() => setCollectionRefreshKey((k) => k + 1)}
+        />
+      )}
 
       {/* Results */}
       {error && (
@@ -154,7 +212,13 @@ export default function MediaHub() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <MediaGrid assets={assets} selectedId={selected?.id} onSelect={openDetail} />
+        <MediaGrid
+          assets={assets}
+          selectedId={selected?.id}
+          onSelect={multiSelectMode ? toggleSelected : openDetail}
+          multiSelect={multiSelectMode}
+          selectedIds={selectedIds}
+        />
       )}
 
       {selected && (
