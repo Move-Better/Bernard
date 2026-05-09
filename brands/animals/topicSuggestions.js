@@ -1,4 +1,4 @@
-// Curated topic database for Move Better Animal Chiropractic — built around
+// Curated topic database for Move Better Animals Chiropractic — built around
 // the conditions and questions Portland and Vancouver pet owners actually
 // search for. Tone is warm, accessible, education-forward; vocabulary is
 // "your dog" / "your cat" / "your pet," never "patient." Care is positioned

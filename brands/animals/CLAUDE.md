@@ -1,4 +1,4 @@
-# Move Better Animal Chiropractic — Project Notes
+# Move Better Animals Chiropractic — Project Notes
 
 ## Session Focus
 At the start of EVERY new conversation, before doing anything else, ask:
@@ -12,13 +12,13 @@ At the start of EVERY new conversation, before doing anything else, ask:
 If the work drifts into a second unrelated area mid-session, name it and suggest: "That's a good next session — want to note it and come back to it?"
 
 ## Brand
-This is the **small animal chiropractic** brand (Move Better Animal Chiropractic).
+This is the **small animal chiropractic** brand (Move Better Animals Chiropractic).
 - Species: Dogs, cats, and most small pets
 - Audience: Pet owners
 - Brand is new — website, social accounts, and visual identity are being built alongside this deployment
 - Positioned as complementary to veterinary care, never a replacement
 
-The underlying app is called **NarrateRx** — a multi-brand SaaS product. Move Better Animal Chiropractic, Move Better People, and Move Better Equine are all separate deployments of NarrateRx with their own brand configs, databases, and API keys. Do not mix brand-specific content, credentials, or data between deployments.
+The underlying app is called **NarrateRx** — a multi-brand SaaS product. Move Better Animals Chiropractic, Move Better People, and Move Better Equine are all separate deployments of NarrateRx with their own brand configs, databases, and API keys. Do not mix brand-specific content, credentials, or data between deployments.
 
 ### Brand config
 Brand-specific values (name, domain, location, social handles, prompt context, internal-link library, signature system, etc.) live in [src/lib/brand.js](src/lib/brand.js). The `ANIMALS` entry is populated. The deployment selects it via env vars on its Vercel project:

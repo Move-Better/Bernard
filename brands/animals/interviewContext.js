@@ -1,5 +1,5 @@
 /**
- * Move Better Animal Chiropractic interview context overlay.
+ * Move Better Animals Chiropractic interview context overlay.
  *
  * Stub — returns empty string until animals-specific interview context is
  * authored (working- vs. companion-dog scenarios, senior-pet stiffness
