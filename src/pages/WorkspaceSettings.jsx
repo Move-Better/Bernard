@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useUserRole } from '@/lib/useUserRole'
 
 function formFromWorkspace(ws) {
   return {
@@ -51,6 +53,7 @@ function formToPatch(form) {
 
 export default function WorkspaceSettings() {
   const { getToken } = useAuth()
+  const { role, isLoading: roleLoading } = useUserRole()
   const [ws, setWs]       = useState(undefined) // undefined=loading, null=no-context, object=loaded
   const [form, setForm]   = useState(null)
   const [saving, setSaving] = useState(false)
@@ -102,12 +105,16 @@ export default function WorkspaceSettings() {
     return v => setForm(f => ({ ...f, [key]: v }))
   }
 
-  if (ws === undefined) {
+  if (roleLoading || ws === undefined) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     )
+  }
+
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />
   }
 
   if (!ws) {
