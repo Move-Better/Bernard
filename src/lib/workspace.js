@@ -240,10 +240,10 @@ const ANIMALS = {
   id: 'animals',
 
   // Identity
-  name: 'Move Better Animal Chiropractic',
-  appName: 'Move Better Animal Chiropractic — NarrateRx',
+  name: 'Move Better Animals Chiropractic',
+  appName: 'Move Better Animals Chiropractic — NarrateRx',
   tagline: 'Chiropractic care for the pets you love',
-  signInBlurb: 'Move Better Animal Chiropractic · Sign in with your @movebetter.co account',
+  signInBlurb: 'Move Better Animals Chiropractic · Sign in with your @movebetter.co account',
 
   // Auth — Whitney signs in with her existing @movebetter.co Workspace email.
   // The animals brand has no email hosting on its own domain. Same auth pool
@@ -303,7 +303,7 @@ const ANIMALS = {
     // NOTE: Blog post URLs below assume the slugs we plan to use on movebetteranimal.co.
     // Verify and update once the site is live.
     internalLinksMarkdown: `CORE PAGES:
-- Move Better Animal (homepage): https://movebetteranimal.co/
+- Move Better Animals (homepage): https://movebetteranimal.co/
 - About Dr. Whitney Phillips: https://movebetteranimal.co/about
 - Services & pricing: https://movebetteranimal.co/services
 - Is my pet a candidate?: https://movebetteranimal.co/candidate
@@ -344,8 +344,8 @@ BLOG POSTS:
   // Newsletter — the animal variant of the TrustDrivenCare master template
   // hasn't been authored yet. Names mirror the PEOPLE/EQUINE convention; update
   // once the actual TDC template exists.
-  newsletterTemplateName: 'Move Better Animal Newsletter - Master',
-  newsletterCopyHeader: 'Copy into TrustDrivenCare — Move Better Animal Newsletter · Master',
+  newsletterTemplateName: 'Move Better Animals Newsletter - Master',
+  newsletterCopyHeader: 'Copy into TrustDrivenCare — Move Better Animals Newsletter · Master',
 
   capabilities: {
     websitePublish: true,

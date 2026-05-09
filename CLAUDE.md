@@ -12,7 +12,7 @@ At the start of EVERY new conversation, before doing anything else, ask:
 If the work drifts into a second unrelated area mid-session, name it and suggest: "That's a good next session — want to note it and come back to it?"
 
 ## Multi-brand
-NarrateRx is a multi-brand SaaS product. Move Better People, Move Better Equine, and Move Better Animal Chiropractic are separate deployments with their own brand configs, databases, and API keys. Do not mix brand-specific content, credentials, or data between deployments.
+NarrateRx is a multi-brand SaaS product. Move Better People, Move Better Equine, and Move Better Animals Chiropractic are separate deployments with their own brand configs, databases, and API keys. Do not mix brand-specific content, credentials, or data between deployments.
 
 **Brand-specific working notes live in `brands/$BRAND/CLAUDE.md`.** Set `VITE_BRAND` / `BRAND` locally to match the deployment you're working on, or just `cat brands/<people|equine|animals>/CLAUDE.md` directly. The brand-side file is the source of truth for paradigm-specific guidance (audience, vocabulary, conditions, mobile vs. clinic, etc.).
 
