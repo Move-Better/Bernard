@@ -5,7 +5,16 @@
 
 export const config = { runtime: 'edge' }
 
-export default async function handler() {
+export default async function handler(req) {
+  // Dump every header the request arrived with — exposes whether middleware
+  // injected x-workspace-id / x-workspace-slug as expected.
+  const incomingHeaders = {}
+  if (req?.headers && typeof req.headers.forEach === 'function') {
+    req.headers.forEach((v, k) => { incomingHeaders[k] = v })
+  } else if (req?.headers) {
+    Object.assign(incomingHeaders, req.headers)
+  }
+
   const present = (k) => {
     const v = process.env[k]
     return typeof v === 'string' && v.length > 0
@@ -48,6 +57,11 @@ export default async function handler() {
     MULTITENANT_DATABASE_URL: { present: present('MULTITENANT_DATABASE_URL'), length: lengthOf('MULTITENANT_DATABASE_URL') },
     deployment: process.env.VERCEL_URL || null,
     lookup,
+    incomingHeaders,
+    middleware_headers_seen: {
+      'x-workspace-id': incomingHeaders['x-workspace-id'] || null,
+      'x-workspace-slug': incomingHeaders['x-workspace-slug'] || null,
+    },
   }
   return new Response(JSON.stringify(body, null, 2), {
     status: 200,
