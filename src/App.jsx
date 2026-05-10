@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useState, useEffect, lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import {
   ClerkProvider,
   SignedIn,
@@ -10,6 +10,10 @@ import {
 } from '@clerk/clerk-react'
 import Layout from '@/components/Layout'
 import Dashboard from '@/pages/Dashboard'
+// Lazy-load Welcome — only fetched when an announcement is pending, which is
+// rare for repeat users.
+const Welcome = lazy(() => import('@/pages/Welcome'))
+import { getPendingAnnouncement } from '@/lib/announcements'
 import NewInterview from '@/pages/NewInterview'
 import InterviewSession from '@/pages/InterviewSession'
 import InterviewOutput from '@/pages/InterviewOutput'
@@ -106,25 +110,57 @@ function DomainGuard({ children }) {
   return children
 }
 
+// Versioned announcement gate. If the user has any unseen entry in
+// ANNOUNCEMENTS (defined in src/lib/announcements.js), redirect them to
+// /welcome before showing the rest of the app. The first entry is the new-user
+// intro; future entries become "what's new" notifications shown once on next
+// login. Per-user seen state lives in Clerk's unsafeMetadata.seenAnnouncements.
+function WelcomeGate({ children }) {
+  const { user, isLoaded } = useUser()
+  const location = useLocation()
+  if (!isLoaded) return null
+  const pending = getPendingAnnouncement(user)
+  if (pending && location.pathname !== '/welcome') {
+    return <Navigate to="/welcome" replace />
+  }
+  return children
+}
+
 // Routes shared between org-gated and domain-gated modes.
 function AppRoutes() {
+  const location = useLocation()
+  // /welcome renders standalone (no app chrome) so the intro feels like its
+  // own surface rather than another dashboard tab.
+  if (location.pathname === '/welcome') {
+    return (
+      <WelcomeGate>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/welcome" element={<Welcome />} />
+          </Routes>
+        </Suspense>
+      </WelcomeGate>
+    )
+  }
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/new" element={<NewInterview />} />
-        <Route path="/interview/:clinicianId/:interviewId" element={<InterviewSession />} />
-        <Route path="/output/:clinicianId/:interviewId" element={<InterviewOutput />} />
-        <Route path="/clinician/:clinicianId" element={<ClinicianProfile />} />
-        <Route path="/strategy" element={<Strategy />} />
-        <Route path="/hub" element={<ContentHub />} />
-        <Route path="/review/:itemId" element={<ReviewPost />} />
-        <Route path="/calendar" element={<ContentCalendar />} />
-        <Route path="/media" element={<MediaHub />} />
-        <Route path="/settings/integrations" element={<Integrations />} />
-        <Route path="/settings/workspace" element={<WorkspaceSettings />} />
-      </Routes>
-    </Layout>
+    <WelcomeGate>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/new" element={<NewInterview />} />
+          <Route path="/interview/:clinicianId/:interviewId" element={<InterviewSession />} />
+          <Route path="/output/:clinicianId/:interviewId" element={<InterviewOutput />} />
+          <Route path="/clinician/:clinicianId" element={<ClinicianProfile />} />
+          <Route path="/strategy" element={<Strategy />} />
+          <Route path="/hub" element={<ContentHub />} />
+          <Route path="/review/:itemId" element={<ReviewPost />} />
+          <Route path="/calendar" element={<ContentCalendar />} />
+          <Route path="/media" element={<MediaHub />} />
+          <Route path="/settings/integrations" element={<Integrations />} />
+          <Route path="/settings/workspace" element={<WorkspaceSettings />} />
+        </Routes>
+      </Layout>
+    </WelcomeGate>
   )
 }
 
