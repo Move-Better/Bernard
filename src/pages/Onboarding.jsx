@@ -259,7 +259,7 @@ function CapacityScreen({ capacity, onContinue }) {
       >
         <a
           className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 hover:underline"
-          href="mailto:drq@movebetter.co?subject=Waitlist%20%E2%80%94%20NarrateRx"
+          href="mailto:drq@narraterx.ai?subject=Waitlist%20%E2%80%94%20NarrateRx"
         >
           Email Dr. Q to join the waitlist <ArrowRight className="h-4 w-4" />
         </a>
