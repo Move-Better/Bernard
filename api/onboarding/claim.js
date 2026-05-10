@@ -17,6 +17,7 @@
 import { createClerkClient, verifyToken } from '@clerk/backend'
 import { validateSlug, FOUNDING_CAP, SEED_SLUGS } from '../_lib/onboardingValidation.js'
 import { addProjectDomain, removeProjectDomain, vercelDomainConfigured, VercelDomainError } from '../_lib/vercelDomains.js'
+import { sendAdminNotification } from '../_lib/notifyAdmin.js'
 import { OUTPUT_CHANNELS } from '../../src/lib/outputChannels.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
@@ -251,9 +252,10 @@ export default async function handler(req, res) {
 
   // 4. Promote the user to admin in Clerk publicMetadata. Best-effort.
   // Existing per-Clerk-app metadata is preserved; only `role` is overwritten.
+  let claimingUser = null
   try {
-    const user = await clerk().users.getUser(userId)
-    const existing = user.publicMetadata || {}
+    claimingUser = await clerk().users.getUser(userId)
+    const existing = claimingUser.publicMetadata || {}
     // If they already have a higher/equal role from another workspace, leave it.
     if (existing.role !== 'admin') {
       await clerk().users.updateUserMetadata(userId, {
@@ -262,6 +264,41 @@ export default async function handler(req, res) {
     }
   } catch (e) {
     console.error('[claim] updateUserMetadata failed (continuing):', e?.message)
+  }
+
+  // 5. Notify the founder that someone signed up. Best-effort, fire-and-forget.
+  try {
+    const email = claimingUser?.emailAddresses?.find(
+      e => e.id === claimingUser?.primaryEmailAddressId
+    )?.emailAddress
+      || claimingUser?.emailAddresses?.[0]?.emailAddress
+      || '(unknown)'
+    const fullName = [claimingUser?.firstName, claimingUser?.lastName].filter(Boolean).join(' ').trim()
+    const who = fullName ? `${fullName} <${email}>` : email
+    const lines = [
+      `New NarrateRx signup: ${display_name} (${slug})`,
+      '',
+      `User:        ${who}`,
+      `Workspace:   ${display_name}`,
+      `Slug:        ${slug}`,
+      `Subdomain:   https://${slug}.narraterx.ai`,
+      website  ? `Website:     ${website}`  : null,
+      location ? `Location:    ${location}` : null,
+      `Channels:    ${enabled_outputs.join(', ')}`,
+      `Founding:    yes`,
+      '',
+      audience_short ? `Audience: ${audience_short}` : null,
+      brand_voice    ? `Voice:    ${brand_voice}`    : null,
+      clinic_context ? `Context:  ${clinic_context}` : null,
+    ].filter(v => v !== null)
+    // Don't await — keeps response latency low. Vercel Fluid Compute keeps the
+    // function alive long enough for fire-and-forget tasks to complete.
+    sendAdminNotification({
+      subject: `[NarrateRx] New signup: ${display_name} (${slug})`,
+      text: lines.join('\n'),
+    }).catch(e => console.error('[claim] notifyAdmin error:', e?.message))
+  } catch (e) {
+    console.error('[claim] notifyAdmin setup failed (continuing):', e?.message)
   }
 
   return res.status(200).json({
