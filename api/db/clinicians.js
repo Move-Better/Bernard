@@ -69,7 +69,11 @@ export default async function handler(req) {
         created_by_email: createdByEmail,
       }),
     })
-    if (!createRes.ok) return err('Create failed', 500)
+    if (!createRes.ok) {
+      const body = await createRes.text().catch(() => '')
+      console.error('[clinicians.POST] supabase insert failed', createRes.status, body)
+      return err(`Create failed: ${createRes.status} ${body}`, 500)
+    }
     const data = await createRes.json()
     return ok(data[0], 201)
   }
