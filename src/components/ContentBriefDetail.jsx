@@ -25,6 +25,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
   const [platform, setPlatform]   = useState(brief.target_platform ?? brief.ai_suggested_platform ?? '')
   const [notes, setNotes]         = useState(brief.notes ?? '')
   const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError]         = useState('')
   const fileRef                   = useRef(null)
@@ -58,10 +59,12 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
   }, [brief.id])
 
   async function patch(body) {
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setSaved(false)
     try {
       await updateContentPiece(brief.id, body)
       onChange?.()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -259,8 +262,11 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
               <Button size="sm" variant="outline" onClick={archive} disabled={saving}>Archive</Button>
             )}
             <Button size="sm" onClick={saveDraft} disabled={saving}>
-              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              Save
+              {saving
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Save</>
+                : saved
+                  ? <><Check className="h-3.5 w-3.5 mr-1.5" />Saved</>
+                  : 'Save'}
             </Button>
           </div>
         </div>
