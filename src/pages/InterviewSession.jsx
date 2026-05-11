@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { fetchClinician, fetchInterview, fetchSimilarInterviews, updateInterview } from '@/lib/api'
+import { fetchSimilarInterviews, updateInterview } from '@/lib/api'
+import { useClinician, useInterview, queryKeys } from '@/lib/queries'
+import { useQueryClient } from '@tanstack/react-query'
 import { createContentItems } from '@/lib/publish'
 import { streamMessage } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi } from '@/lib/prompts'
@@ -53,9 +55,15 @@ export default function InterviewSession() {
   const VOICE_MODES = getVoiceModes(runtimeWorkspace)
   const PATIENT_PROTOTYPES_UI = getPatientPrototypesUi(runtimeWorkspace)
 
-  const [clinician, setClinician] = useState(null)
+  // Initial fetches go through the shared query cache. Cache hits when the
+  // user navigates here from the clinician profile (already warm) or
+  // returns to a previously-loaded interview within the gcTime window.
+  const qc = useQueryClient()
+  const { data: clinicianData } = useClinician(clinicianId)
+  const { data: interviewData, isLoading: interviewLoading } = useInterview(interviewId)
+  const clinician = clinicianData ?? null
   const [interview, setInterview] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const loading = interviewLoading || !clinician || !interview
   const [messages, setMessages] = useState([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
@@ -81,7 +89,13 @@ export default function InterviewSession() {
   function saveMessages(interviewId, patch, userId) {
     setSaveStatus('saving')
     updateInterview(interviewId, patch, userId)
-      .then(() => {
+      .then((updated) => {
+        // Cross-component invalidation: any view watching this interview
+        // (Dashboard's resume list, clinician profile's interview summary)
+        // re-fetches on next render rather than staying frozen.
+        if (updated?.id) qc.setQueryData(queryKeys.interviews.detail(updated.id), updated)
+        qc.invalidateQueries({ queryKey: queryKeys.interviews.all })
+        qc.invalidateQueries({ queryKey: queryKeys.clinicians.all })
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus(''), 2000)
       })
@@ -92,26 +106,23 @@ export default function InterviewSession() {
   useEffect(() => { transcriptRef.current = transcript }, [transcript])
   useEffect(() => { interviewRef.current = interview }, [interview])
 
+  // Seed local interview state (which we then mutate during conversation)
+  // from the cached row. Bounce back to dashboard on a hard 404 — the
+  // useInterview hook returns null in that case via the queryFn's contract.
   useEffect(() => {
-    Promise.all([fetchClinician(clinicianId), fetchInterview(interviewId)])
-      .then(([c, i]) => {
-        if (!c || !i) { navigate('/'); return }
-        setClinician(c)
-        setInterview(i)
-        setMessages(i.messages || [])
-        if ((i.messages || []).some((m) => m.content?.includes(COMPLETE_TOKEN))) {
-          setInterviewComplete(true)
-        }
-        if ((i.messages || []).length > 0) setShowInstructions(false)
+    if (interviewLoading) return
+    if (!interviewData) { navigate('/'); return }
+    setInterview(interviewData)
+    setMessages(interviewData.messages || [])
+    if ((interviewData.messages || []).some((m) => m.content?.includes(COMPLETE_TOKEN))) {
+      setInterviewComplete(true)
+    }
+    if ((interviewData.messages || []).length > 0) setShowInstructions(false)
 
-        // Fetch past completed interviews on the same topic for cross-interview context
-        fetchSimilarInterviews(i.topic, interviewId)
-          .then((past) => { pastInterviewsRef.current = past || [] })
-          .catch(() => {})
-      })
-      .catch(() => navigate('/'))
-      .finally(() => setLoading(false))
-  }, [clinicianId, interviewId, navigate])
+    fetchSimilarInterviews(interviewData.topic, interviewId)
+      .then((past) => { pastInterviewsRef.current = past || [] })
+      .catch(() => {})
+  }, [interviewLoading, interviewData, interviewId, navigate])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -373,6 +384,12 @@ export default function InterviewSession() {
 
       const outputs = { blogPost, generatedAt: new Date().toISOString() }
       await updateInterview(interviewId, { outputs, status: 'completed' }, user.id)
+      // Completed interview triggers a server-side cascade that creates
+      // content_items rows. Flush both caches so ContentHub / Calendar
+      // pick those up on next read.
+      qc.invalidateQueries({ queryKey: queryKeys.interviews.all })
+      qc.invalidateQueries({ queryKey: queryKeys.clinicians.all })
+      qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
       createContentItems({
         interviewId,
         clinicianId,

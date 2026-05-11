@@ -17,6 +17,8 @@ import { generateContent } from '@/lib/claude'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queries'
 import { getBlogPostSystemPrompt, getSocialBatchSystemPrompt, getVideoScriptBatchSystemPrompt, getMarketingBatchSystemPrompt } from '@/lib/prompts'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { applyLocationOverlay } from '@/lib/locationOverlay'
@@ -76,6 +78,16 @@ export default function ReviewPost() {
   const navigate     = useNavigate()
   const { user }     = useUser()
   const workspace    = useWorkspace()
+  const qc           = useQueryClient()
+
+  // Centralize the cache-invalidation hook so every updateContentItem
+  // call site in this component picks up the same cross-component
+  // refresh — ContentHub list, ContentCalendar month grid, and the
+  // detail cache all stay in sync after saves/edits/regenerates.
+  function invalidateContentCaches(updated) {
+    if (updated?.id) qc.setQueryData(queryKeys.contentItems.detail(updated.id), updated)
+    qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
+  }
 
   const [item, setItem]               = useState(null)
   const [content, setContent]         = useState('')
@@ -107,7 +119,8 @@ export default function ReviewPost() {
     setSaveStatus('saving')
     autoSaveTimer.current = setTimeout(async () => {
       try {
-        await updateContentItem(itemId, { content })
+        const updated = await updateContentItem(itemId, { content })
+        invalidateContentCaches(updated)
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus(''), 2000)
       } catch (e) {
@@ -132,7 +145,8 @@ export default function ReviewPost() {
     clearTimeout(autoSaveTimer.current)
     setSaveStatus('saving')
     try {
-      await updateContentItem(itemId, { content })
+      const updated = await updateContentItem(itemId, { content })
+      invalidateContentCaches(updated)
       setSaveStatus('saved')
       toast.success('Saved')
       setTimeout(() => setSaveStatus(''), 2000)
@@ -154,7 +168,7 @@ export default function ReviewPost() {
         setTimeout(() => { isFirstLoad.current = false }, 100)
         if (i?.status === 'draft') {
           updateContentItem(itemId, { status: 'in_review' })
-            .then((updated) => setItem(updated))
+            .then((updated) => { setItem(updated); invalidateContentCaches(updated) })
             .catch(() => {})
         }
         // GBP location picker is hydrated from workspace.locations in a
@@ -209,6 +223,7 @@ export default function ReviewPost() {
     try {
       const updated = await updateContentItem(itemId, { content, ...patch })
       setItem(updated)
+      invalidateContentCaches(updated)
       return updated
     } catch (e) {
       setError(e.message)
@@ -329,6 +344,7 @@ export default function ReviewPost() {
       const updated = await updateContentItem(itemId, { content: newContent, status: 'in_review', updatedAt: new Date().toISOString() })
       setItem(updated)
       setContent(newContent)
+      invalidateContentCaches(updated)
       setSuccess('Content regenerated!')
       setTimeout(() => setSuccess(''), 3000)
 
@@ -349,6 +365,7 @@ export default function ReviewPost() {
                 })
                 setItem(reverted)
                 setContent(prevContent)
+                invalidateContentCaches(reverted)
                 toast.success('Restored previous version')
               } catch (e) {
                 toast.error('Could not undo', { description: e.message })
@@ -375,6 +392,7 @@ export default function ReviewPost() {
     urls.splice(index, 1)
     const updated = await updateContentItem(itemId, { mediaUrls: urls })
     setItem(updated)
+    invalidateContentCaches(updated)
   }
 
   async function reorderMedia(fromIndex, toIndex) {
@@ -383,12 +401,14 @@ export default function ReviewPost() {
     urls.splice(toIndex, 0, moved)
     const updated = await updateContentItem(itemId, { mediaUrls: urls })
     setItem(updated)
+    invalidateContentCaches(updated)
   }
 
   async function addMedia(file) {
     const urls = [...(item.media_urls || []), file]
     const updated = await updateContentItem(itemId, { mediaUrls: urls })
     setItem(updated)
+    invalidateContentCaches(updated)
     setShowPicker(false)
   }
 
