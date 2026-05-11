@@ -730,12 +730,37 @@ function CredentialCard({ service, row, loading, onChange, getToken }) {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
   const [removeOpen, setRemoveOpen] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState(null)
+
+  const TESTABLE = new Set(['buffer', 'wordpress', 'astro_github', 'website'])
+  const configured = Boolean(row)
+  const canTest = configured && TESTABLE.has(service.id)
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const r = await fetch('/api/workspace/credentials/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await getToken({ skipCache: true })}`,
+        },
+        body: JSON.stringify({ service: service.id }),
+      })
+      const body = await r.json().catch(() => ({}))
+      setTestResult(body?.ok ? { ok: true, info: body.info } : { ok: false, error: body?.error || `Test failed (${r.status})` })
+    } catch (e) {
+      setTestResult({ ok: false, error: e?.message || 'Network error.' })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   useEffect(() => {
     setConfig(configFromRow(service, row))
   }, [service, row])
-
-  const configured = Boolean(row)
 
   async function handleSave() {
     setSaving(true)
@@ -873,6 +898,23 @@ function CredentialCard({ service, row, loading, onChange, getToken }) {
               <span className="text-xs text-destructive flex items-center gap-1">
                 <AlertCircle className="h-3.5 w-3.5" />{error}
               </span>
+            )}
+            {testResult?.ok && (
+              <span className="text-xs text-green-600 flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Verified{testResult.info?.account ? ` · ${testResult.info.account}` : ''}
+              </span>
+            )}
+            {testResult && !testResult.ok && (
+              <span className="text-xs text-destructive flex items-start gap-1 max-w-md">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{testResult.error}</span>
+              </span>
+            )}
+            {canTest && (
+              <Button size="sm" variant="ghost" onClick={handleTest} disabled={testing || saving}>
+                {testing ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Testing…</> : 'Test'}
+              </Button>
             )}
             {configured && (
               <Button size="sm" variant="ghost" onClick={handleRemove} disabled={saving}>
