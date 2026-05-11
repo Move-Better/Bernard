@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 
 const STEPS = ['capacity', 'auth', 'business', 'voice', 'subdomain', 'channels', 'review', 'launching']
 
@@ -46,6 +47,22 @@ export default function Onboarding() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [redirectUrl, setRedirectUrl] = useState(null)
+
+  // Warn before tab close / refresh once the user has typed anything into
+  // the wizard. Reasonable heuristic: any of the form fields has content,
+  // or they've moved past the auth step. Don't warn during the launching
+  // step (we *want* the browser to redirect at that point).
+  const hasFormProgress = !!(
+    form.display_name?.trim() ||
+    form.website?.trim() ||
+    form.clinic_context?.trim() ||
+    form.audience_short?.trim() ||
+    form.brand_voice?.trim() ||
+    form.slug?.trim() ||
+    form.enabled_outputs?.length > 0 ||
+    form.locations?.some(l => l.label?.trim() || l.city?.trim() || l.region?.trim())
+  )
+  useUnsavedChanges(hasFormProgress && step !== 'launching' && step !== 'capacity' && step !== 'auth')
 
   // 0. Capacity check
   useEffect(() => {

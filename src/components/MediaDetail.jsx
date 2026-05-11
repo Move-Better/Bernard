@@ -16,6 +16,7 @@ import { listContentPieces, createContentPiece, segmentMediaAsset } from '@/lib/
 import { useUserRole } from '@/lib/useUserRole'
 import { toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import ContentBriefDetail from './ContentBriefDetail'
 import CollectionPicker from './CollectionPicker'
 
@@ -49,6 +50,21 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [saving, setSaving]     = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+
+  // Catches catastrophic data loss only — tab close, refresh, back/forward.
+  // The drawer X / clicking outside / Esc are handled by ConfirmDialog or
+  // owner-driven close props on each surface (a future PR).
+  const isDirty = (
+    (notes || '') !== (asset.notes || '') ||
+    (altText || '') !== (asset.alt_text || '') ||
+    (patient || '') !== (asset.patient_pseudonym || '') ||
+    (condition || '') !== (asset.condition || '') ||
+    status !== (asset.status || 'raw') ||
+    speakerRole !== (asset.speaker_role || 'clinician') ||
+    JSON.stringify(tags) !== JSON.stringify(asset.tags || []) ||
+    JSON.stringify(aiTags) !== JSON.stringify(asset.ai_tags || [])
+  )
+  useUnsavedChanges(isDirty)
   const [restoring, setRestoring] = useState(false)
   const [purging, setPurging]   = useState(false)
   const [purgeConfirm, setPurgeConfirm] = useState('')

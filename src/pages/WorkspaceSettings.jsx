@@ -11,6 +11,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 
 function formFromWorkspace(ws) {
   return {
@@ -138,6 +139,7 @@ export default function WorkspaceSettings() {
   const { role, isLoading: roleLoading } = useUserRole()
   const [ws, setWs]       = useState(undefined) // undefined=loading, null=no-context, object=loaded
   const [form, setForm]   = useState(null)
+  const [pristineForm, setPristineForm] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState(null)
@@ -148,9 +150,20 @@ export default function WorkspaceSettings() {
       .catch(() => null)
       .then(data => {
         setWs(data)
-        if (data) setForm(formFromWorkspace(data))
+        if (data) {
+          const initial = formFromWorkspace(data)
+          setForm(initial)
+          setPristineForm(initial)
+        }
       })
   }, [])
+
+  // Warn before tab close / refresh / typed-URL when the page has unsaved
+  // edits. Cheap JSON compare — the form has ~80 fields, well under the
+  // threshold where stringify is a perf concern, and it runs only when
+  // either side changes.
+  const isDirty = !!form && !!pristineForm && JSON.stringify(form) !== JSON.stringify(pristineForm)
+  useUnsavedChanges(isDirty)
 
   async function handleSave() {
     setSaving(true)
@@ -184,7 +197,9 @@ export default function WorkspaceSettings() {
       } else {
         const updated = await r.json()
         setWs(updated)
-        setForm(formFromWorkspace(updated))
+        const refreshed = formFromWorkspace(updated)
+        setForm(refreshed)
+        setPristineForm(refreshed)
         setSaved(true)
         setTimeout(() => setSaved(false), 3000)
       }
@@ -299,7 +314,9 @@ export default function WorkspaceSettings() {
             .then(updated => {
               if (updated) {
                 setWs(updated)
-                setForm(formFromWorkspace(updated))
+                const refreshed = formFromWorkspace(updated)
+                setForm(refreshed)
+                setPristineForm(refreshed)
               }
             })
             .catch(() => {})

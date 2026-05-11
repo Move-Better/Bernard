@@ -8,6 +8,7 @@ import { updateContentPiece, deleteContentPiece } from '@/lib/contentLib'
 import { uploadMedia, getMediaAsset } from '@/lib/mediaLib'
 import { toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
@@ -37,6 +38,25 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
   const [rejectOpen, setRejectOpen]               = useState(false)
   const [rejectReason, setRejectReason]           = useState('')
   const fileRef                   = useRef(null)
+
+  // Warn before tab close / refresh if any of the edit fields diverge from
+  // the persisted brief. Re-evaluates as the user types — cheap because each
+  // field is a string compare.
+  const initialCaption  = brief.final_caption  ?? brief.ai_caption  ?? ''
+  const initialHashtags = joinTags(brief.final_hashtags ?? brief.ai_hashtags)
+  const initialCtaText  = brief.final_cta_text ?? brief.ai_cta_text ?? ''
+  const initialCtaUrl   = brief.final_cta_url  ?? ''
+  const initialPlatform = brief.target_platform ?? brief.ai_suggested_platform ?? ''
+  const initialNotes    = brief.notes ?? ''
+  const isDirty = (
+    caption  !== initialCaption  ||
+    hashtags !== initialHashtags ||
+    ctaText  !== initialCtaText  ||
+    ctaUrl   !== initialCtaUrl   ||
+    platform !== initialPlatform ||
+    notes    !== initialNotes
+  )
+  useUnsavedChanges(isDirty)
 
   useEffect(() => {
     setCaption(brief.final_caption ?? brief.ai_caption ?? '')
