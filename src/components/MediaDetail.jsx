@@ -15,6 +15,7 @@ import {
 import { listContentPieces, createContentPiece, segmentMediaAsset } from '@/lib/contentLib'
 import { useUserRole } from '@/lib/useUserRole'
 import { toast } from '@/lib/toast'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import ContentBriefDetail from './ContentBriefDetail'
 import CollectionPicker from './CollectionPicker'
 
@@ -47,6 +48,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [visualNarrative, setVisualNarrative] = useState(asset.visual_narrative || '')
   const [saving, setSaving]     = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [purging, setPurging]   = useState(false)
   const [purgeConfirm, setPurgeConfirm] = useState('')
@@ -191,15 +193,21 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     }
   }
 
-  async function handleArchive() {
-    if (!confirm(`Move "${asset.filename}" to archive? It will be hidden from the library but kept in storage. You can restore it any time.`)) return
+  function handleArchive() {
+    setArchiveConfirmOpen(true)
+  }
+
+  async function confirmArchive() {
+    setArchiveConfirmOpen(false)
     setArchiving(true); setError('')
     try {
       await archiveMediaAsset(asset.id)
+      toast.success('Moved to archive')
       onChange?.()
       onClose?.()
     } catch (e) {
       setError(e.message)
+      toast.error('Could not archive', { description: e.message })
       setArchiving(false)
     }
   }
@@ -673,6 +681,16 @@ export default function MediaDetail({ asset, onClose, onChange }) {
           onChange={() => { refreshBriefs(); onChange?.() }}
         />
       )}
+
+      <ConfirmDialog
+        open={archiveConfirmOpen}
+        onOpenChange={setArchiveConfirmOpen}
+        title={`Move "${asset.filename}" to archive?`}
+        description="The asset is hidden from the library but kept in storage. You can restore it any time from the Archived filter."
+        confirmLabel="Move to archive"
+        onConfirm={confirmArchive}
+        loading={archiving}
+      />
     </div>
   )
 }

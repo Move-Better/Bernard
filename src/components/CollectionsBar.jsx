@@ -9,6 +9,7 @@ import {
   updateCollection,
 } from '@/lib/collectionsLib'
 import { useUserRole } from '@/lib/useUserRole'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 const KIND_OPTIONS = [
   { id: 'campaign', label: 'Campaign' },
@@ -32,6 +33,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
   const [kind, setKind] = useState('campaign')
   const [editing, setEditing] = useState(null)
   const [editName, setEditName] = useState('')
+  const [archiveTarget, setArchiveTarget] = useState(null) // collection row pending archive confirmation
 
   const refresh = useCallback(async () => {
     setLoading(true); setError('')
@@ -79,13 +81,24 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
     }
   }
 
-  async function archiveCollection(c) {
-    if (!confirm(`Archive "${c.name}"? Members stay in the library; the collection is hidden until restored.`)) return
+  // Two-step archive: clicking the button stages the row in archiveTarget,
+  // which triggers <ConfirmDialog />. Actual mutation runs from
+  // confirmArchive() once the user confirms. Replaces the prior
+  // window.confirm() — ConfirmDialog gives us a proper focus trap, escape-
+  // to-cancel, and role="alertdialog" on screen readers.
+  function archiveCollection(c) {
+    setArchiveTarget(c)
+  }
+
+  async function confirmArchive() {
+    const c = archiveTarget
+    if (!c) return
     setSubmitting(true); setError('')
     try {
       await updateCollection(c.id, { status: 'archived' })
       setCollections((prev) => prev.filter((row) => row.id !== c.id))
       if (selectedId === c.id) onSelect?.(null)
+      setArchiveTarget(null)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -229,6 +242,16 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
       )}
 
       {error && <div className="text-xs text-destructive">{error}</div>}
+
+      <ConfirmDialog
+        open={!!archiveTarget}
+        onOpenChange={(o) => { if (!o) setArchiveTarget(null) }}
+        title={archiveTarget ? `Archive "${archiveTarget.name}"?` : 'Archive collection?'}
+        description="Members stay in the library; the collection is hidden until restored."
+        confirmLabel="Archive collection"
+        onConfirm={confirmArchive}
+        loading={submitting}
+      />
     </div>
   )
 }

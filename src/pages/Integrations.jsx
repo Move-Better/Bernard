@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 // Customer-facing publishing connect page. Per-workspace credentials are
 // stored encrypted via /api/workspace/credentials. Buffer is the recommended
@@ -312,6 +313,7 @@ function ConnectForm({ integration, row, disabled, getToken, onChange }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [disconnectOpen, setDisconnectOpen] = useState(false)
   const configured = Boolean(row)
 
   useEffect(() => {
@@ -355,9 +357,13 @@ function ConnectForm({ integration, row, disabled, getToken, onChange }) {
     }
   }
 
-  async function handleDisconnect() {
+  function handleDisconnect() {
     if (!configured) return
-    if (!confirm(`Disconnect ${integration.label} for this workspace?`)) return
+    setDisconnectOpen(true)
+  }
+
+  async function confirmDisconnect() {
+    setDisconnectOpen(false)
     setSaving(true)
     setError(null)
     try {
@@ -439,6 +445,16 @@ function ConnectForm({ integration, row, disabled, getToken, onChange }) {
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : configured ? 'Update' : 'Connect'}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={disconnectOpen}
+        onOpenChange={setDisconnectOpen}
+        title={`Disconnect ${integration.label}?`}
+        description="Posts to this destination will stop working until you reconnect. Your stored credential is permanently removed; you'll need to paste it again to reconnect."
+        confirmLabel="Disconnect"
+        onConfirm={confirmDisconnect}
+        loading={saving}
+      />
     </div>
   )
 }

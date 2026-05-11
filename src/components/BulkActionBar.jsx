@@ -21,6 +21,7 @@ import {
   tagMediaAsset,
 } from '@/lib/mediaLib'
 import { useUserRole } from '@/lib/useUserRole'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 const STATUS_OPTIONS = [
   { id: 'raw',      label: 'Raw' },
@@ -98,6 +99,8 @@ export default function BulkActionBar({
   const [message, setMessage]         = useState('')
   const [purgeOpen, setPurgeOpen]     = useState(false)
   const [purgeConfirm, setPurgeConfirm] = useState('')
+  const [removeCollectionOpen, setRemoveCollectionOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [selectingAll, setSelectingAll] = useState(false)
 
   const count = selectedIds.length
@@ -179,9 +182,13 @@ export default function BulkActionBar({
     }
   }
 
-  async function removeFromCurrentCollection() {
+  function removeFromCurrentCollection() {
     if (!count || !currentCollectionId) return
-    if (!confirm(`Remove ${count} item${count === 1 ? '' : 's'} from this collection? They stay in the library.`)) return
+    setRemoveCollectionOpen(true)
+  }
+
+  async function confirmRemoveFromCollection() {
+    setRemoveCollectionOpen(false)
     setBusy('remove-collection'); setError('')
     try {
       await removeAssetsFromCollection(currentCollectionId, selectedIds)
@@ -208,9 +215,13 @@ export default function BulkActionBar({
     onClear?.()
   }
 
-  async function archiveAll() {
+  function archiveAll() {
     if (!count) return
-    if (!confirm(`Archive ${count} item${count === 1 ? '' : 's'}? They’ll move to the trash bin and can be restored.`)) return
+    setArchiveOpen(true)
+  }
+
+  async function confirmArchiveAll() {
+    setArchiveOpen(false)
     setBusy('archive'); setError('')
     const results = await pMap(selectedIds, (id) => archiveMediaAsset(id), 8)
     setMessage(summarize(results, 'Archived'))
@@ -562,6 +573,27 @@ export default function BulkActionBar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={removeCollectionOpen}
+        onOpenChange={setRemoveCollectionOpen}
+        title={`Remove ${count} item${count === 1 ? '' : 's'} from this collection?`}
+        description="They stay in the library — only their membership in this collection is removed."
+        confirmLabel={`Remove ${count === 1 ? 'item' : 'items'}`}
+        destructive={false}
+        onConfirm={confirmRemoveFromCollection}
+        loading={busy === 'remove-collection'}
+      />
+
+      <ConfirmDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title={`Archive ${count} item${count === 1 ? '' : 's'}?`}
+        description="They'll move to the trash bin and can be restored at any time from the Archived filter."
+        confirmLabel={`Archive ${count === 1 ? 'item' : 'items'}`}
+        onConfirm={confirmArchiveAll}
+        loading={busy === 'archive'}
+      />
     </div>
   )
 }

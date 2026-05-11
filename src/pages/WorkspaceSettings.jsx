@@ -10,6 +10,7 @@ import { Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trash2, 
 import { useUserRole } from '@/lib/useUserRole'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 function formFromWorkspace(ws) {
   return {
@@ -665,6 +666,7 @@ function CredentialCard({ service, row, loading, onChange, getToken }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [removeOpen, setRemoveOpen] = useState(false)
 
   useEffect(() => {
     setConfig(configFromRow(service, row))
@@ -710,9 +712,13 @@ function CredentialCard({ service, row, loading, onChange, getToken }) {
     }
   }
 
-  async function handleRemove() {
+  function handleRemove() {
     if (!configured) return
-    if (!confirm(`Remove ${service.label} credentials for this workspace?`)) return
+    setRemoveOpen(true)
+  }
+
+  async function confirmRemove() {
+    setRemoveOpen(false)
     setSaving(true)
     setError(null)
     try {
@@ -817,6 +823,16 @@ function CredentialCard({ service, row, loading, onChange, getToken }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={removeOpen}
+        onOpenChange={setRemoveOpen}
+        title={`Remove ${service.label} credentials?`}
+        description="Posts that use this destination will stop working until you reconnect. The stored credential is permanently deleted; you'll need to paste it again to reconnect."
+        confirmLabel="Remove credentials"
+        onConfirm={confirmRemove}
+        loading={saving}
+      />
     </div>
   )
 }
@@ -957,6 +973,7 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError] = useState(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
 
   useEffect(() => {
     setDraft({
@@ -1023,9 +1040,13 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
     }
   }
 
-  async function handleArchive() {
+  function handleArchive() {
     if (location.is_primary) return
-    if (!confirm(`Archive "${location.label || location.city}"? This won't delete past content tagged to it.`)) return
+    setArchiveOpen(true)
+  }
+
+  async function confirmArchive() {
+    setArchiveOpen(false)
     setSaving(true)
     setError(null)
     try {
@@ -1098,6 +1119,16 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title={`Archive "${location.label || location.city}"?`}
+        description="This won't delete past content tagged to this location — they keep their tag and stay published. New posts won't be able to target this location until it's restored."
+        confirmLabel="Archive location"
+        onConfirm={confirmArchive}
+        loading={saving}
+      />
     </div>
   )
 }
