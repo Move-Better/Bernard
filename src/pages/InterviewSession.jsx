@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { fetchClinician, fetchInterview, fetchSimilarInterviews, updateInterview } from '@/lib/api'
 import { createContentItems } from '@/lib/publish'
-import { streamMessage, generateContent } from '@/lib/claude'
+import { streamMessage } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi } from '@/lib/prompts'
 import { getInitials } from '@/lib/utils'
 import { workspace } from '@/lib/workspace'
@@ -327,9 +327,18 @@ export default function InterviewSession() {
     leaveInterview()
   }
 
+  // Live token count surfaced in the "Writing blog post…" card so the user
+  // sees forward progress on a 60-120s generation instead of an opaque
+  // spinner. Stays in a ref between tokens, snapshotted into React state
+  // every flush so the count number updates smoothly without thrashing.
+  const blogStreamingTextRef = useRef('')
+  const [blogStreamingTokens, setBlogStreamingTokens] = useState(0)
+
   async function handleGenerateContent() {
     setIsGenerating(true)
     setError('')
+    blogStreamingTextRef.current = ''
+    setBlogStreamingTokens(0)
     window.speechSynthesis?.cancel()
     try {
       const apiMessages = messages.map((m) => ({ role: m.role, content: m.content }))
@@ -337,11 +346,31 @@ export default function InterviewSession() {
       const voiceMode = interview.voice_mode || 'practice'
       const interviewLocation = (runtimeWorkspace?.locations || []).find(l => l.id === interview.location_id)
       const overlaidWorkspace = applyLocationOverlay(runtimeWorkspace, interviewLocation)
-      const blogPost = await generateContent(
-        [...apiMessages, { role: 'user', content: 'Please write the blog post now based on our interview.' }],
-        getBlogPostSystemPrompt(overlaidWorkspace, clinician.name, interview.topic, tone, voiceMode, interview.prototype_id),
-        { model: 'claude-opus-4-7' }
+
+      // Stream the blog generation so the user gets live feedback. The
+      // server-side /api/stream endpoint already SSEs Anthropic-shaped
+      // deltas (see src/lib/claude.js#streamMessage), so we just consume
+      // them and accumulate. We update the token counter once every 5
+      // chunks to avoid a setState per delta.
+      const streamMessages = [
+        ...apiMessages,
+        { role: 'user', content: 'Please write the blog post now based on our interview.' },
+      ]
+      const systemPrompt = getBlogPostSystemPrompt(
+        overlaidWorkspace, clinician.name, interview.topic, tone, voiceMode, interview.prototype_id,
       )
+
+      let chunks = 0
+      for await (const delta of streamMessage(streamMessages, systemPrompt, { model: 'claude-opus-4-7' })) {
+        blogStreamingTextRef.current += delta
+        chunks += 1
+        if (chunks % 5 === 0) setBlogStreamingTokens(chunks)
+      }
+      setBlogStreamingTokens(chunks)
+
+      const blogPost = blogStreamingTextRef.current
+      if (!blogPost.trim()) throw new Error('No content returned from generation')
+
       const outputs = { blogPost, generatedAt: new Date().toISOString() }
       await updateInterview(interviewId, { outputs, status: 'completed' }, user.id)
       createContentItems({
@@ -534,8 +563,15 @@ export default function InterviewSession() {
         <div className="py-3 shrink-0">
           <div className="rounded-xl border bg-muted p-4 flex items-center gap-3">
             <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Writing blog post…</p>
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                Writing blog post…
+                {blogStreamingTokens > 0 && (
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    ({blogStreamingTokens} chunks)
+                  </span>
+                )}
+              </p>
               <p className="text-xs text-muted-foreground">
                 Turning your interview into a full blog post. Social, video, and marketing content will generate on demand.
               </p>
