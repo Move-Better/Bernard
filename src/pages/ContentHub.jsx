@@ -54,6 +54,7 @@ export default function ContentHub() {
   const [loading, setLoading]     = useState(true)
   const [activeStatus, setStatus] = useState('all')
   const [platform, setPlatform]   = useState('all')
+  const [topicFilter, setTopicFilter] = useState('all')
   const [error, setError]         = useState('')
 
   async function load() {
@@ -73,12 +74,40 @@ export default function ContentHub() {
 
   useEffect(() => { load() }, [activeStatus, platform])
 
-  const counts = items.reduce((acc, i) => {
+  // Derive the topic dropdown options from the fetched items. Topics are
+  // free-form strings on content_items.topic (mirrored from the source
+  // interview), so the dropdown surfaces whatever topics actually exist in
+  // the workspace's content. Case-insensitive dedupe + alpha sort.
+  const availableTopics = (() => {
+    const seen = new Map()
+    for (const it of items) {
+      const t = (it.topic || '').trim()
+      if (!t) continue
+      const k = t.toLowerCase()
+      if (!seen.has(k)) seen.set(k, t)
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b))
+  })()
+
+  // Reset topic filter when the selection no longer exists in the new result
+  // set (e.g. user switched platform/status and the topic vanished).
+  useEffect(() => {
+    if (topicFilter !== 'all' && !availableTopics.some(t => t.toLowerCase() === topicFilter.toLowerCase())) {
+      setTopicFilter('all')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableTopics.join('|')])
+
+  const filteredItems = topicFilter === 'all'
+    ? items
+    : items.filter((i) => (i.topic || '').toLowerCase() === topicFilter.toLowerCase())
+
+  const counts = filteredItems.reduce((acc, i) => {
     acc[i.status] = (acc[i.status] || 0) + 1
     return acc
   }, {})
 
-  const needsMedia = items.filter((i) =>
+  const needsMedia = filteredItems.filter((i) =>
     ['draft', 'in_review', 'approved'].includes(i.status) &&
     ['instagram', 'facebook', 'gbp'].includes(i.platform) &&
     (!i.media_urls || i.media_urls.length === 0)
@@ -160,6 +189,37 @@ export default function ContentHub() {
         ))}
       </div>
 
+      {/* Topic filter — derived from whatever topics show up in the fetched
+          items. Lets the user narrow to a single thread (e.g. only "Low back
+          pain" content) without re-running interviews. */}
+      {availableTopics.length > 0 && (
+        <div className="flex items-center gap-2 text-xs">
+          <label htmlFor="topic-filter" className="text-muted-foreground font-medium shrink-0">
+            Topic:
+          </label>
+          <select
+            id="topic-filter"
+            value={topicFilter}
+            onChange={(e) => setTopicFilter(e.target.value)}
+            className="rounded-md border bg-background px-2 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="all">All topics ({availableTopics.length})</option>
+            {availableTopics.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          {topicFilter !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setTopicFilter('all')}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Status tabs */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
         {STATUS_TABS.map((s) => (
@@ -183,11 +243,11 @@ export default function ContentHub() {
         </div>
       ) : error ? (
         <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-4">{error}</div>
-      ) : items.length === 0 ? (
-        <EmptyState status={activeStatus} />
+      ) : filteredItems.length === 0 ? (
+        <EmptyState status={activeStatus} topic={topicFilter} onClearTopic={() => setTopicFilter('all')} />
       ) : (
         <div className="space-y-2">
-          {items.map((item) => <ContentRow key={item.id} item={item} />)}
+          {filteredItems.map((item) => <ContentRow key={item.id} item={item} />)}
         </div>
       )}
     </div>
@@ -260,7 +320,25 @@ function StatChip({ label, value, color }) {
   )
 }
 
-function EmptyState({ status }) {
+function EmptyState({ status, topic, onClearTopic }) {
+  // Topic filter is narrowing the result down to zero — give the user a
+  // dedicated way out of that specific funnel before any other coaching.
+  if (topic && topic !== 'all') {
+    return (
+      <SharedEmptyState
+        icon={<FileText className="h-5 w-5" />}
+        title={`No content for "${topic}"`}
+        description="Nothing matches this topic with your current platform and status filters."
+        action={
+          onClearTopic ? (
+            <Button size="sm" variant="outline" onClick={onClearTopic}>
+              Clear topic filter
+            </Button>
+          ) : null
+        }
+      />
+    )
+  }
   if (status === 'all') {
     return (
       <SharedEmptyState
@@ -280,7 +358,6 @@ function EmptyState({ status }) {
       />
     )
   }
-  // Status filter is narrowing — coach toward clearing it.
   return (
     <SharedEmptyState
       icon={<FileText className="h-5 w-5" />}
