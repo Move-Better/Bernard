@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Loader2, AlertCircle, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
-import { fetchContentItems } from '@/lib/publish'
+import { useContentItems } from '@/lib/queries'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { PLATFORM_META } from './ContentHub'
 
@@ -24,29 +24,22 @@ export default function ContentCalendar() {
   useDocumentTitle('Calendar')
   const [today]                = useState(new Date())
   const [current, setCurrent]  = useState(new Date(today.getFullYear(), today.getMonth(), 1))
-  const [items, setItems]      = useState([])
-  const [loading, setLoading]  = useState(true)
-  const [mediaNeeded, setMediaNeeded] = useState([])
 
-  useEffect(() => {
-    const from = isoDate(startOfMonth(current))
-    const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0)
-    const to = isoDate(lastDay)
+  const from = isoDate(startOfMonth(current))
+  const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0)
+  const to = isoDate(lastDay)
 
-    setLoading(true)
-    // Fetch scheduled/approved items in this month range + all approved without media
-    Promise.all([
-      fetchContentItems({ from, to }),
-      fetchContentItems({ status: 'approved' }),
-    ]).then(([scheduled, approved]) => {
-      setItems(scheduled)
-      setMediaNeeded(approved.filter((i) =>
-        ['instagram', 'facebook', 'gbp'].includes(i.platform) &&
-        (!i.media_urls || i.media_urls.length === 0)
-      ))
-    }).catch(() => {})
-     .finally(() => setLoading(false))
-  }, [current])
+  // Two parallel queries keyed by (from, to) and ('approved') respectively.
+  // Cache hits across re-renders of the same month; switching months is a
+  // fresh fetch but the previous month's data stays in cache (gcTime: 5min)
+  // so navigating back is instant.
+  const { data: items = [], isLoading: loadingScheduled } = useContentItems({ from, to })
+  const { data: approved = [], isLoading: loadingApproved } = useContentItems({ status: 'approved' })
+  const loading = loadingScheduled || loadingApproved
+  const mediaNeeded = approved.filter((i) =>
+    ['instagram', 'facebook', 'gbp'].includes(i.platform) &&
+    (!i.media_urls || i.media_urls.length === 0),
+  )
 
   function prevMonth() { setCurrent(new Date(current.getFullYear(), current.getMonth() - 1, 1)) }
   function nextMonth() { setCurrent(new Date(current.getFullYear(), current.getMonth() + 1, 1)) }

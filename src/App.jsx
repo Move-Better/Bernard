@@ -34,6 +34,36 @@ import { WorkspaceProvider, useWorkspaceState } from '@/lib/WorkspaceContext'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Toaster } from '@/lib/toast'
 import BrandedLoader from '@/components/BrandedLoader'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+// Single shared QueryClient for the app. Defaults chosen to match the audit's
+// brief: cache server state, invalidate on mutation, avoid double-fetches
+// across components mounting the same query, and don't retry indefinitely on
+// real failures (so the UI can surface them).
+//   - staleTime 30s: aggressive enough to dedupe rapid remounts (e.g. modal
+//     open/close) without serving stale data on a real navigation.
+//   - retry once for query fetches; only on truly transient errors (network,
+//     5xx). Auth + 404 + 403 should fail fast.
+//   - refetchOnWindowFocus: false — too noisy for this app's surfaces.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: (failureCount, error) => {
+        // ApiError exposes status (see src/lib/api.js). Don't retry auth/
+        // forbidden/missing — those won't fix themselves.
+        const status = error?.status
+        if (status === 401 || status === 403 || status === 404) return false
+        return failureCount < 1
+      },
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+})
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -262,15 +292,17 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/onboard/*" element={<OnboardingShell />} />
-            <Route path="*" element={<ProtectedAppWithProvider />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster richColors position="top-right" closeButton />
-      </ClerkProvider>
+      <QueryClientProvider client={queryClient}>
+        <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/onboard/*" element={<OnboardingShell />} />
+              <Route path="*" element={<ProtectedAppWithProvider />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster richColors position="top-right" closeButton />
+        </ClerkProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   )
 }

@@ -13,6 +13,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queries'
 
 function formFromWorkspace(ws) {
   return {
@@ -137,6 +139,7 @@ function hasPublishCapability(ws) {
 export default function WorkspaceSettings() {
   useDocumentTitle('Workspace settings')
   const { getToken } = useAuth()
+  const qc = useQueryClient()
   const { role, isLoading: roleLoading } = useUserRole()
   const [ws, setWs]       = useState(undefined) // undefined=loading, null=no-context, object=loaded
   const [form, setForm]   = useState(null)
@@ -206,6 +209,10 @@ export default function WorkspaceSettings() {
         setPristineForm(refreshed)
         setSaved(true)
         setTimeout(() => setSaved(false), 3000)
+        // Invalidate the shared workspace query so the rest of the app
+        // (Layout chrome, NewInterview suggestions, ContentHub topic
+        // filter, etc.) picks up the new brand/voice/topics immediately.
+        qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
       }
     } catch {
       setError('network-error')
@@ -321,6 +328,7 @@ export default function WorkspaceSettings() {
                 const refreshed = formFromWorkspace(updated)
                 setForm(refreshed)
                 setPristineForm(refreshed)
+                qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
               }
             })
             .catch(() => {})

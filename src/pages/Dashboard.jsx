@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { fetchClinicians } from '@/lib/api'
+import { useClinicians } from '@/lib/queries'
 import { listMedia } from '@/lib/mediaLib'
 import { useUserRole } from '@/lib/useUserRole'
 import { getSuggestedTopics } from '@/lib/topicSuggestions'
@@ -44,11 +44,10 @@ export default function Dashboard() {
   const { getToken } = useAuth()
   const { role } = useUserRole()
   const runtimeWorkspace = useWorkspace()
-  const [clinicians, setClinicians] = useState([])
+  const { data: clinicians = [], isLoading: loading, error: cliniciansError } = useClinicians()
+  const error = cliniciansError?.message || ''
   const [hasMedia, setHasMedia] = useState(false)
   const [hasCredential, setHasCredential] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(searchParams.get('welcome') === '1')
 
@@ -60,13 +59,6 @@ export default function Dashboard() {
       setSearchParams(searchParams, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    fetchClinicians()
-      .then(setClinicians)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
   }, [])
 
   // Live signals for the Getting Started checklist. Cheap probes — listMedia

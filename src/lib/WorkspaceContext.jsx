@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { workspace as STATIC } from './workspace'
+import { queryKeys } from './queries'
 
 // Adapter: shape the static config like a DB row (snake_case, flat).
 // Used as fallback on legacy per-brand deployments where /api/workspace/me 404s.
@@ -55,37 +57,46 @@ function isSubdomainHost() {
   return false
 }
 
-export function WorkspaceProvider({ children }) {
-  const [state, setState] = useState({ workspace: STATIC_AS_ROW, isLoading: true, source: 'static', error: null })
+// fetchWorkspaceMe returns a discriminated result so the consumer can tell
+// "404 — apex/preview, fall back to STATIC silently" from "5xx — something is
+// actually wrong on a subdomain". TanStack treats throws as errors and resolves
+// as success; we resolve normally and let the consumer branch.
+async function fetchWorkspaceMe() {
+  const r = await fetch('/api/workspace/me')
+  if (r.ok) return { row: await r.json(), status: 200 }
+  return { row: null, status: r.status }
+}
 
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/workspace/me')
-      .then(async r => ({ ok: r.ok, status: r.status, body: r.ok ? await r.json() : null }))
-      .then(({ ok, status, body }) => {
-        if (cancelled) return
-        if (ok && body) {
-          setState({ workspace: body, isLoading: false, source: 'db', error: null })
-          return
-        }
-        // On a tenant subdomain, missing/failed workspace data is a real
-        // problem — surface it instead of pretending everything is fine.
-        const error = isSubdomainHost()
-          ? (status === 404 ? 'workspace-not-found' : 'workspace-fetch-failed')
-          : null
-        setState({ workspace: STATIC_AS_ROW, isLoading: false, source: 'static', error })
-      })
-      .catch(() => {
-        if (cancelled) return
-        setState({
-          workspace: STATIC_AS_ROW,
-          isLoading: false,
-          source: 'static',
-          error: isSubdomainHost() ? 'workspace-fetch-failed' : null,
-        })
-      })
-    return () => { cancelled = true }
-  }, [])
+export function WorkspaceProvider({ children }) {
+  // Single source of truth for /api/workspace/me. Other components can now
+  // invalidate this key (queryKeys.workspace.me) after a settings PATCH to
+  // get the new row without a full page reload.
+  const { data, isLoading, error: queryError } = useQuery({
+    queryKey: queryKeys.workspace.me,
+    queryFn: fetchWorkspaceMe,
+    // The workspace row changes infrequently — keep it warm across the
+    // session. Settings page invalidates on save when the user edits it.
+    staleTime: 5 * 60_000,
+  })
+
+  // Resolve workspace + error from the query result. Apex/www/preview hit
+  // 404 and silently fall back to STATIC (the build-time legacy shape).
+  // Subdomains that 404 or fail surface a banner instead of pretending.
+  let workspace = STATIC_AS_ROW
+  let source    = 'static'
+  let error     = null
+  if (data?.row) {
+    workspace = data.row
+    source    = 'db'
+  } else if (queryError) {
+    error = isSubdomainHost() ? 'workspace-fetch-failed' : null
+  } else if (data && !data.row) {
+    error = isSubdomainHost()
+      ? (data.status === 404 ? 'workspace-not-found' : 'workspace-fetch-failed')
+      : null
+  }
+
+  const state = { workspace, isLoading, source, error }
 
   return (
     <WorkspaceContext.Provider value={state}>
