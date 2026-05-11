@@ -953,6 +953,7 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
     visit_url: location.visit_url || '',
   })
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -970,6 +971,7 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
   async function handleSave() {
     setSaving(true)
     setError(null)
+    setSaved(false)
     try {
       const r = await fetch(`/api/workspace/locations?id=${encodeURIComponent(location.id)}`, {
         method: 'PATCH',
@@ -984,6 +986,8 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
         setError(e.error || 'save-failed')
       } else {
         onChange?.()
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
       }
     } catch {
       setError('network-error')
@@ -1083,8 +1087,11 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
               </Button>
             )}
             <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-              Save
+              {saving
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Save</>
+                : saved
+                  ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Saved</>
+                  : 'Save'}
             </Button>
           </div>
         </div>
