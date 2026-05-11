@@ -12,6 +12,8 @@ import CollectionsBar from '@/components/CollectionsBar'
 import BulkActionBar from '@/components/BulkActionBar'
 import MediaHubHelp from '@/components/MediaHubHelp'
 import { listMedia, getMediaAsset } from '@/lib/mediaLib'
+import { useMediaInfinite, queryKeys } from '@/lib/queries'
+import { useQueryClient } from '@tanstack/react-query'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
@@ -33,11 +35,7 @@ export default function MediaHub() {
   useDocumentTitle('Media')
   const { user } = useUser()
   const { canUpload, canEdit } = useUserRole()
-  const [assets, setAssets]     = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [hasMore, setHasMore]   = useState(false)
-  const [error, setError]       = useState('')
+  const qc = useQueryClient()
   const [kind, setKind]         = useState('')
   const [status, setStatus]     = useState('')
   const [search, setSearch]     = useState('')
@@ -55,80 +53,70 @@ export default function MediaHub() {
     return () => clearTimeout(t)
   }, [search])
 
-  const refresh = useCallback(async () => {
-    setLoading(true); setError('')
-    try {
-      const rows = await listMedia({
-        kind: kind || undefined,
-        status: status || undefined,
-        q: debouncedSearch || undefined,
-        collectionId: collectionId || undefined,
-        limit: PAGE_SIZE,
-        offset: 0,
-      })
-      setAssets(rows)
-      setHasMore(rows.length === PAGE_SIZE)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [kind, status, debouncedSearch, collectionId])
+  // Centralized filter object for the media query — every place that needs
+  // to read the same library page (here + SelectAll below) uses this so a
+  // filter change produces a single cache key per state.
+  const mediaFilters = {
+    kind:         kind || undefined,
+    status:       status || undefined,
+    q:            debouncedSearch || undefined,
+    collectionId: collectionId || undefined,
+  }
 
-  useEffect(() => { refresh() }, [refresh])
+  const {
+    data:           mediaData,
+    isLoading:      loading,
+    isFetchingNextPage: loadingMore,
+    hasNextPage:    hasMore,
+    fetchNextPage:  fetchNext,
+    error:          queryError,
+    refetch:        refetchMedia,
+  } = useMediaInfinite(mediaFilters, { pageSize: PAGE_SIZE })
+  const error = queryError?.message || ''
+  // Flatten pages → flat asset array for the existing grid/select code.
+  const assets = mediaData?.pages?.flat() ?? []
 
-  const loadMore = useCallback(async () => {
+  // Stable callback name so the existing IntersectionObserver effect keeps
+  // working without churn.
+  const loadMore = useCallback(() => {
     if (loadingMore || loading || !hasMore) return
-    setLoadingMore(true)
-    try {
-      const rows = await listMedia({
-        kind: kind || undefined,
-        status: status || undefined,
-        q: debouncedSearch || undefined,
-        collectionId: collectionId || undefined,
-        limit: PAGE_SIZE,
-        offset: assets.length,
-      })
-      setAssets((prev) => [...prev, ...rows])
-      setHasMore(rows.length === PAGE_SIZE)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoadingMore(false)
-    }
-  }, [loadingMore, loading, hasMore, kind, status, debouncedSearch, collectionId, assets.length])
+    fetchNext()
+  }, [loadingMore, loading, hasMore, fetchNext])
 
-  // Walk every remaining page of the current filter, append the rows into the
-  // grid, then mark the entire result set as selected. Without this, "Select
-  // all" would only cover the visible pages and silently miss off-screen
-  // matches — a footgun on libraries that have grown past one page.
+  // Existing call sites use refresh() after mutations to re-read the list.
+  // Map that to invalidating the whole media tree so any other view watching
+  // a different filter combo also picks up the change.
+  const refresh = useCallback(() => {
+    qc.invalidateQueries({ queryKey: queryKeys.media.all })
+    refetchMedia()
+  }, [qc, refetchMedia])
+
+  // Walk every remaining page of the current filter and mark the full
+  // result set as selected. Without this, "Select all" would only cover the
+  // visible pages and silently miss off-screen matches — a footgun on
+  // libraries past one page. Drives the infinite query forward until either
+  // the cursor exhausts or we hit the 5000-row ceiling.
   const selectAllMatching = useCallback(async () => {
-    let collected = assets.slice()
-    let offset = collected.length
-    let more = hasMore
     try {
-      // Hard ceiling so a corrupted hasMore signal can't loop forever.
-      while (more && offset < 5000) {
-        const rows = await listMedia({
-          kind: kind || undefined,
-          status: status || undefined,
-          q: debouncedSearch || undefined,
-          collectionId: collectionId || undefined,
-          limit: PAGE_SIZE,
-          offset,
-        })
-        if (!rows.length) break
-        collected = collected.concat(rows)
-        setAssets(collected)
-        offset += rows.length
-        more = rows.length === PAGE_SIZE
+      let safety = 50  // 50 × PAGE_SIZE = 6000-row ceiling
+      while (true) {
+        // Re-read the latest paged state each iteration since fetchNextPage
+        // updates the query cache directly.
+        const current = qc.getQueryData(queryKeys.media.list(mediaFilters))
+        const flat = current?.pages?.flat() ?? []
+        const canFetchMore = current?.pageParams && current.pages.at(-1)?.length === PAGE_SIZE
+        if (!canFetchMore || safety-- <= 0) {
+          setSelectedIds(flat.map((a) => a.id))
+          return
+        }
+        await fetchNext()
       }
-      setHasMore(false)
-      setSelectedIds(collected.map((a) => a.id))
     } catch (e) {
-      setError(e.message)
+      // Selection still includes whatever pages were already fetched; that's
+      // a better outcome than aborting silently.
+      console.error('[selectAllMatching] failed:', e)
     }
-  }, [assets, hasMore, kind, status, debouncedSearch, collectionId])
+  }, [qc, fetchNext, mediaFilters])
 
   // IntersectionObserver-driven infinite scroll. The sentinel sits 400px below
   // the last grid row so the next page starts loading before the user reaches
