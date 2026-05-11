@@ -41,8 +41,15 @@ export async function requireRole(req, allowedRoles = null, { orgId = null } = {
     return { ok: false, reason: 'server-misconfigured' }
   }
 
-  const header = req.headers?.authorization || req.headers?.Authorization || ''
-  const token  = header.startsWith('Bearer ') ? header.slice(7).trim() : null
+  // Headers come in two shapes depending on runtime: Node IncomingMessage
+  // exposes them as a lowercased plain object (req.headers.authorization);
+  // Edge / Web Request wraps them in a Headers instance (req.headers.get).
+  const rawHeader =
+    (typeof req.headers?.get === 'function' && req.headers.get('authorization')) ||
+    req.headers?.authorization ||
+    req.headers?.Authorization ||
+    ''
+  const token = rawHeader.startsWith('Bearer ') ? rawHeader.slice(7).trim() : null
   if (!token) return { ok: false, reason: 'no-token' }
 
   let payload

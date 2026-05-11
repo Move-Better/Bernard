@@ -1,4 +1,5 @@
 import { generateText } from 'ai'
+import { requireRole } from './_lib/auth.js'
 
 export const config = { maxDuration: 60 }
 
@@ -8,11 +9,21 @@ export const config = { maxDuration: 60 }
 // (src/lib/claude.js#generateContent and src/pages/ReviewPost.jsx) read
 // `data.content[0].text`, so we return `{ content: [{ type: 'text', text }] }`
 // to preserve that contract.
+//
+// Auth (Phase 1A lockdown 2026-05-11): requires a verified Clerk Bearer token.
+// Without this gate anyone with the URL could drain the AI Gateway budget.
+// Rate limiting is a follow-up — pending Upstash KV provisioning.
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json')
 
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
+    return
+  }
+
+  const auth = await requireRole(req)
+  if (!auth.ok) {
+    res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
     return
   }
 

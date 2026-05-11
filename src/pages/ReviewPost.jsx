@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { fetchContentItem, fetchContentItems, updateContentItem, publishAndTrack } from '@/lib/publish'
 import { fetchInterview } from '@/lib/api'
+import { generateContent } from '@/lib/claude'
 import { getBlogPostSystemPrompt, getSocialBatchSystemPrompt, getVideoScriptBatchSystemPrompt, getMarketingBatchSystemPrompt } from '@/lib/prompts'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { applyLocationOverlay } from '@/lib/locationOverlay'
@@ -282,22 +283,12 @@ export default function ReviewPost() {
         }
       }
 
-      const res = await fetch('/api/generate', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          messages: inputMessages,
-          systemPrompt,
-          ...(platform === 'blog' ? { model: 'claude-opus-4-7' } : {}),
-        }),
-      })
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        throw new Error(errBody.error || `Generation failed (${res.status})`)
-      }
-      const data = await res.json()
-      const generated = data.content?.[0]?.text || ''
-      if (!generated) throw new Error(data.error || 'No content returned from generation.')
+      const generated = await generateContent(
+        inputMessages,
+        systemPrompt,
+        platform === 'blog' ? { model: 'claude-opus-4-7' } : {},
+      )
+      if (!generated) throw new Error('No content returned from generation.')
 
       const [startMarker, endMarker] = PLATFORM_MARKERS[platform] || [null, null]
       const newContent = extractSection(generated, startMarker, endMarker)

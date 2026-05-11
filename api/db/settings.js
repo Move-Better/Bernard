@@ -1,4 +1,15 @@
-export const config = { runtime: 'edge' }
+// Campaign settings endpoint (clinic_settings table).
+//
+// Phase 1A security lockdown (2026-05-11):
+//   - requires verified Clerk JWT
+//   - queries by workspace_id (the table's actual PK) instead of the legacy
+//     `id=eq.default` filter, which was pre-multitenancy and silently returned
+//     the static DEFAULT for every workspace.
+//   - PATCH does a workspace-scoped UPSERT so a workspace without a row yet
+//     gets one on first save (was previously a silent no-op).
+
+import { requireRole } from '../_lib/auth.js'
+import { workspaceScope } from '../_lib/workspaceScope.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -16,37 +27,54 @@ function sb(path, init = {}) {
   })
 }
 
-const ok = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-const err = (msg, status = 400) =>
-  new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json' } })
-
 const DEFAULT = { mode: 'bookings', notes: '' }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+  const auth = await requireRole(req)
+  if (!auth.ok) {
+    return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  }
+
+  let scope
+  try {
+    scope = await workspaceScope(req)
+  } catch {
+    return res.status(404).json({ error: 'workspace-unresolved' })
+  }
+  const wsFilter = `${scope.column}=eq.${scope.id}`
+
   if (req.method === 'GET') {
-    const res = await sb('clinic_settings?id=eq.default&select=campaign_mode,campaign_notes')
-    if (!res.ok) return ok(DEFAULT)
-    const data = await res.json()
-    if (!data.length) return ok(DEFAULT)
-    return ok({ mode: data[0].campaign_mode || 'bookings', notes: data[0].campaign_notes || '' })
+    const r = await sb(`clinic_settings?${wsFilter}&select=campaign_mode,campaign_notes`)
+    if (!r.ok) return res.status(200).json(DEFAULT)
+    const data = await r.json()
+    if (!data.length) return res.status(200).json(DEFAULT)
+    return res.status(200).json({
+      mode:  data[0].campaign_mode  || 'bookings',
+      notes: data[0].campaign_notes || '',
+    })
   }
 
   if (req.method === 'PATCH') {
-    const body = await req.json().catch(() => ({}))
-    const update = { updated_at: new Date().toISOString() }
-    if (body.mode) update.campaign_mode = body.mode
-    if (body.notes !== undefined) update.campaign_notes = body.notes
-    const userId = req.headers.get('x-user-id')
-    if (userId) update.updated_by = userId
+    const body = req.body || {}
+    const row = {
+      [scope.column]: scope.id,
+      updated_at:     new Date().toISOString(),
+      updated_by:     auth.userId,
+    }
+    if (body.mode) row.campaign_mode = body.mode
+    if (body.notes !== undefined) row.campaign_notes = body.notes
 
-    const res = await sb('clinic_settings?id=eq.default', {
-      method: 'PATCH',
-      body: JSON.stringify(update),
+    // Upsert on the workspace_id PK. Prefer: resolution=merge-duplicates lets
+    // PostgREST do INSERT-or-UPDATE on conflict — clinic_settings.workspace_id
+    // is the primary key.
+    const r = await sb('clinic_settings', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(row),
     })
-    if (!res.ok) return err('Failed to save settings', 500)
-    return ok({ success: true })
+    if (!r.ok) return res.status(500).json({ error: 'Failed to save settings' })
+    return res.status(200).json({ success: true })
   }
 
-  return new Response('Method not allowed', { status: 405 })
+  return res.status(405).json({ error: 'Method not allowed' })
 }

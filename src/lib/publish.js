@@ -1,5 +1,17 @@
+async function getClerkToken() {
+  if (typeof window === 'undefined') return null
+  try {
+    return await window.Clerk?.session?.getToken?.()
+  } catch {
+    return null
+  }
+}
+
 async function apiFetch(path, init = {}) {
-  const res = await fetch(path, init)
+  const token   = await getClerkToken()
+  const headers = { ...(init.headers || {}) }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res  = await fetch(path, { ...init, headers })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || `Request failed: ${res.status}`)
   return json

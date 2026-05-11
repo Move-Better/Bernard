@@ -1,7 +1,27 @@
+// Both /api/generate and /api/stream require a Clerk Bearer token (Phase 1A
+// security lockdown 2026-05-11). window.Clerk is the runtime browser handle
+// exposed by @clerk/clerk-react.
+
+async function getClerkToken() {
+  if (typeof window === 'undefined') return null
+  try {
+    return await window.Clerk?.session?.getToken?.()
+  } catch {
+    return null
+  }
+}
+
+async function authHeaders() {
+  const token = await getClerkToken()
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
 export async function* streamMessage(messages, systemPrompt, { model } = {}) {
   const response = await fetch('/api/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ messages, systemPrompt, model }),
   })
 
@@ -39,7 +59,7 @@ export async function* streamMessage(messages, systemPrompt, { model } = {}) {
 export async function generateContent(messages, systemPrompt, { model } = {}) {
   const response = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ messages, systemPrompt, model }),
   })
 

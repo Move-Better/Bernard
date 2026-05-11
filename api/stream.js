@@ -1,4 +1,5 @@
 import { streamText } from 'ai'
+import { requireRole } from './_lib/auth.js'
 
 export const config = { runtime: 'edge' }
 
@@ -8,9 +9,24 @@ export const config = { runtime: 'edge' }
 // client parser in src/lib/claude.js#streamMessage keeps working without
 // changes. We emit one `data: { type: 'content_block_delta', delta: { text } }`
 // event per text chunk and finish with `data: [DONE]`.
+//
+// Auth (Phase 1A lockdown 2026-05-11): requires a verified Clerk Bearer token.
+// Rate limiting is a follow-up — pending Upstash KV provisioning.
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 export default async function handler(req) {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
+  }
+
+  const auth = await requireRole(req)
+  if (!auth.ok) {
+    return jsonResponse({ error: auth.reason }, auth.reason === 'forbidden' ? 403 : 401)
   }
 
   let body

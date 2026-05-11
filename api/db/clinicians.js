@@ -1,4 +1,11 @@
-export const config = { runtime: 'edge' }
+// Clinicians CRUD endpoint.
+//
+// Phase 1A security lockdown (2026-05-11): every request requires a verified
+// Clerk JWT and every Supabase query is filtered by workspace. The legacy
+// `x-user-id` header is no longer trusted — userId comes from the verified JWT.
+
+import { requireRole } from '../_lib/auth.js'
+import { workspaceScope } from '../_lib/workspaceScope.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -16,67 +23,76 @@ function sb(path, init = {}) {
   })
 }
 
-const ok = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-const err = (msg, status = 400) =>
-  new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json' } })
-
 const INTERVIEW_FIELDS = 'id,topic,status,created_at,updated_at,owner_id,owner_email'
+const SELECT = `id,name,created_by_id,created_by_email,created_at,interviews(${INTERVIEW_FIELDS})`
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url)
+export default async function handler(req, res) {
+  const auth = await requireRole(req)
+  if (!auth.ok) {
+    return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  }
+  const userId = auth.userId
+
+  let scope
+  try {
+    scope = await workspaceScope(req)
+  } catch {
+    return res.status(404).json({ error: 'workspace-unresolved' })
+  }
+  const wsFilter = `${scope.column}=eq.${scope.id}`
+
+  const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
-  const userId = req.headers.get('x-user-id')
 
   if (req.method === 'GET') {
     if (id) {
-      // Single clinician with full interview list
-      const res = await sb(`clinicians?id=eq.${id}&select=id,name,created_by_id,created_by_email,created_at,interviews(${INTERVIEW_FIELDS})`)
-      if (!res.ok) return err('Database error', 500)
-      const data = await res.json()
-      return ok(data[0] ?? null)
+      const r = await sb(`clinicians?id=eq.${id}&${wsFilter}&select=${SELECT}`)
+      if (!r.ok) return res.status(500).json({ error: 'Database error' })
+      const data = await r.json()
+      return res.status(200).json(data[0] ?? null)
     }
-    // All clinicians with interview summaries
-    const res = await sb(`clinicians?select=id,name,created_by_id,created_by_email,created_at,interviews(${INTERVIEW_FIELDS})&order=name.asc`)
-    if (!res.ok) return err('Database error', 500)
-    return ok(await res.json())
+    const r = await sb(`clinicians?${wsFilter}&select=${SELECT}&order=name.asc`)
+    if (!r.ok) return res.status(500).json({ error: 'Database error' })
+    return res.status(200).json(await r.json())
   }
 
   if (req.method === 'POST') {
-    const { name, createdById, createdByEmail } = await req.json()
-    if (!name?.trim()) return err('Name required')
-    if (!createdById) return err('Unauthorized', 401)
+    const { name, createdByEmail } = req.body || {}
+    if (!name?.trim()) return res.status(400).json({ error: 'Name required' })
 
-    // Find existing by name (case-insensitive)
-    const findRes = await sb(`clinicians?name=ilike.${encodeURIComponent(name.trim())}&select=id,name,created_by_id,created_by_email,created_at,interviews(${INTERVIEW_FIELDS})`)
-    if (!findRes.ok) return err('Database error', 500)
+    // Find existing by name within this workspace (case-insensitive).
+    const findRes = await sb(`clinicians?${wsFilter}&name=ilike.${encodeURIComponent(name.trim())}&select=${SELECT}`)
+    if (!findRes.ok) return res.status(500).json({ error: 'Database error' })
     const found = await findRes.json()
-    if (found.length > 0) return ok(found[0])
+    if (found.length > 0) return res.status(200).json(found[0])
 
-    // Create new
     const createRes = await sb('clinicians', {
       method: 'POST',
-      body: JSON.stringify({ name: name.trim(), created_by_id: createdById, created_by_email: createdByEmail }),
+      body: JSON.stringify({
+        [scope.column]:    scope.id,
+        name:              name.trim(),
+        created_by_id:     userId,
+        created_by_email:  createdByEmail || null,
+      }),
     })
-    if (!createRes.ok) return err('Create failed', 500)
+    if (!createRes.ok) return res.status(500).json({ error: 'Create failed' })
     const data = await createRes.json()
-    return ok(data[0], 201)
+    return res.status(201).json(data[0])
   }
 
   if (req.method === 'DELETE') {
-    if (!id) return err('Missing id')
-    if (!userId) return err('Unauthorized', 401)
+    if (!id) return res.status(400).json({ error: 'Missing id' })
 
-    const chk = await sb(`clinicians?id=eq.${id}&select=created_by_id`)
-    if (!chk.ok) return err('Database error', 500)
+    const chk = await sb(`clinicians?id=eq.${id}&${wsFilter}&select=created_by_id`)
+    if (!chk.ok) return res.status(500).json({ error: 'Database error' })
     const rows = await chk.json()
-    if (!rows.length) return err('Not found', 404)
-    if (rows[0].created_by_id !== userId) return err('Forbidden', 403)
+    if (!rows.length) return res.status(404).json({ error: 'Not found' })
+    if (rows[0].created_by_id !== userId) return res.status(403).json({ error: 'Forbidden' })
 
-    const res = await sb(`clinicians?id=eq.${id}`, { method: 'DELETE' })
-    if (!res.ok) return err('Delete failed', 500)
-    return ok({ ok: true })
+    const r = await sb(`clinicians?id=eq.${id}&${wsFilter}`, { method: 'DELETE' })
+    if (!r.ok) return res.status(500).json({ error: 'Delete failed' })
+    return res.status(200).json({ ok: true })
   }
 
-  return new Response('Method not allowed', { status: 405 })
+  return res.status(405).json({ error: 'Method not allowed' })
 }

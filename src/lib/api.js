@@ -1,5 +1,26 @@
+// Every request carries a short-lived Clerk JWT in the Authorization header.
+// requireRole() on the server-side endpoints verifies it and the matching
+// workspaceScope() filter on every query keeps tenants isolated. window.Clerk
+// is the official browser handle exposed by @clerk/clerk-react.
+//
+// Same pattern as src/lib/contentLib.js / mediaLib.js / collectionsLib.js — we
+// don't depend on Clerk's hooks here so this wrapper stays usable from non-
+// component code (e.g. background callers, tests).
+
+async function getClerkToken() {
+  if (typeof window === 'undefined') return null
+  try {
+    return await window.Clerk?.session?.getToken?.()
+  } catch {
+    return null
+  }
+}
+
 async function apiFetch(path, init = {}) {
-  const res = await fetch(path, init)
+  const token   = await getClerkToken()
+  const headers = { ...(init.headers || {}) }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(path, { ...init, headers })
   if (!res.ok) {
     const json = await res.json().catch(() => ({}))
     throw new Error(json.error || `Request failed: ${res.status}`)

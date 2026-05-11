@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { fetchClinician, fetchInterview, fetchSimilarInterviews, updateInterview } from '@/lib/api'
+import { createContentItems } from '@/lib/publish'
 import { streamMessage, generateContent } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi } from '@/lib/prompts'
 import { getInitials } from '@/lib/utils'
@@ -324,18 +325,14 @@ export default function InterviewSession() {
       )
       const outputs = { blogPost, generatedAt: new Date().toISOString() }
       await updateInterview(interviewId, { outputs, status: 'completed' }, user.id)
-      fetch('/api/db/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          interviewId,
-          clinicianId,
-          clinicianName: clinician.name,
-          topic: interview.topic,
-          platform: 'blog',
-          content: blogPost,
-          status: 'draft',
-        }),
+      createContentItems({
+        interviewId,
+        clinicianId,
+        clinicianName: clinician.name,
+        topic: interview.topic,
+        platform: 'blog',
+        content: blogPost,
+        status: 'draft',
       }).catch(() => {})
       navigate(`/output/${clinicianId}/${interviewId}`)
     } catch (err) {
