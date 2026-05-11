@@ -254,6 +254,10 @@ export default function ReviewPost() {
 
   async function regenerate() {
     if (!item) return
+    // Stash the pre-regenerate body so the toast can offer one-click undo.
+    // Skip stashing if the content is empty (nothing meaningful to restore)
+    // or hasn't changed from the last AI generation.
+    const prevContent = item.content || ''
     setRegenerating(true)
     setError('')
     setSuccess('')
@@ -307,6 +311,32 @@ export default function ReviewPost() {
       setContent(newContent)
       setSuccess('Content regenerated!')
       setTimeout(() => setSuccess(''), 3000)
+
+      // Offer one-click revert if the user didn't want the new version.
+      // The toast persists for 12s — long enough to read the new copy and
+      // decide. Restoring writes the stashed text back via the same
+      // updateContentItem path and refreshes local state.
+      if (prevContent && prevContent !== newContent) {
+        toast.success('Content regenerated', {
+          duration: 12_000,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              try {
+                const reverted = await updateContentItem(itemId, {
+                  content: prevContent,
+                  updatedAt: new Date().toISOString(),
+                })
+                setItem(reverted)
+                setContent(prevContent)
+                toast.success('Restored previous version')
+              } catch (e) {
+                toast.error('Could not undo', { description: e.message })
+              }
+            },
+          },
+        })
+      }
     } catch (e) {
       setError(`Regenerate failed: ${e.message}`)
     } finally {

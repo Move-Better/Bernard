@@ -15,6 +15,7 @@ import { workspace } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { applyLocationOverlay } from '@/lib/locationOverlay'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 
@@ -304,10 +305,26 @@ export default function InterviewSession() {
     sendToAI(updated)
   }, [isListening, interviewId, sendToAI])
 
-  function handlePause() {
+  // Pause = leave the interview mid-flight. Conversation auto-saves on every
+  // user turn, so leaving doesn't actually lose the captured Q&A — but it
+  // does drop the user out of an active mic/utterance/stream cycle. Confirm
+  // if any of those are live; otherwise leave immediately so the common case
+  // (paused for a moment, then leaving) stays one click.
+  const [pauseConfirmOpen, setPauseConfirmOpen] = useState(false)
+
+  function leaveInterview() {
     window.speechSynthesis?.cancel()
     recognitionRef.current?.abort()
     navigate(`/clinician/${clinicianId}`)
+  }
+
+  function handlePause() {
+    const inFlight = isListening || isSpeaking || isStreaming || transcriptRef.current?.trim()
+    if (inFlight) {
+      setPauseConfirmOpen(true)
+      return
+    }
+    leaveInterview()
   }
 
   async function handleGenerateContent() {
@@ -571,6 +588,22 @@ export default function InterviewSession() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pauseConfirmOpen}
+        onOpenChange={setPauseConfirmOpen}
+        title="Pause this interview?"
+        description={
+          isListening
+            ? "We're still capturing your answer. Pausing now will drop the in-progress utterance. You can resume from the clinician's page — past Q&A is saved."
+            : isSpeaking || isStreaming
+              ? "The AI is mid-response. Pausing now will cut it off. Past Q&A is saved — you can resume from the clinician's page."
+              : "Pausing now will drop your in-progress utterance. Past Q&A is saved and you can resume from the clinician's page."
+        }
+        confirmLabel="Pause anyway"
+        destructive={false}
+        onConfirm={leaveInterview}
+      />
     </div>
   )
 }
