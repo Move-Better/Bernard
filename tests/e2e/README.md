@@ -71,6 +71,7 @@ E2E_BASE_URL=https://narraterx-git-<branch>-movebetter.vercel.app npm run e2e
 | `CLERK_PUBLISHABLE_KEY` | GHA secret `E2E_CLERK_PUBLISHABLE_KEY` | Mildly sensitive | `@clerk/testing` setup |
 | `CLERK_SECRET_KEY` | GHA secret `E2E_CLERK_SECRET_KEY` | **Sensitive** | `@clerk/testing` setup |
 | `MULTITENANT_DATABASE_URL` | GHA secret | **Sensitive** | fixture seed |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | GHA secret | **Sensitive** | bypass Vercel Deployment Protection on preview URLs |
 
 All sensitive values live in 1Password ("NarrateRx — E2E") and are mirrored
 to the GitHub repo secrets of the same name.
@@ -102,9 +103,16 @@ The Playwright HTML report is uploaded as a GHA artifact on every failure
    secrets, and confirm the user is in the `movebetter-people` org.
 4. **"No access to this workspace" guard** → fixture user removed from the
    workspace's Clerk Org. Re-invite via the Clerk dashboard.
-5. **wait-for-vercel-preview timed out** → Vercel preview didn't finish
-   building or the GitHub deployment check is missing. Verify the Vercel
-   GitHub integration is still installed on the repo.
+5. **Timed out waiting for Vercel Preview** → either Vercel preview didn't
+   finish building, or the GitHub Deployments API isn't seeing it. Verify
+   the Vercel GitHub integration is still posting deployment statuses
+   (project Settings → Git → `deployment_status Events` enabled). When the
+   integration drifts, a full disconnect/reconnect cycle on that page is
+   the fix.
+6. **401 from preview URL** → the `VERCEL_AUTOMATION_BYPASS_SECRET` was
+   rotated in the Vercel dashboard without updating the GHA secret. Mint a
+   new one (Vercel project → Settings → Deployment Protection → Protection
+   Bypass for Automation) and update the repo secret + 1Password.
 
 ## What this test does NOT cover
 
