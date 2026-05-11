@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trash2, Plus, Star } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
@@ -275,251 +276,269 @@ export default function WorkspaceSettings() {
         </div>
       </div>
 
-      <Section title="Identity">
-        <Field label="Workspace name"
-          value={form.display_name} onChange={set('display_name')} />
-        <Field label="Tagline"
-          value={form.tagline} onChange={set('tagline')} />
-        <Field label="Sign-in blurb"
-          value={form.sign_in_blurb} onChange={set('sign_in_blurb')}
-          hint="Shown below the workspace name on the sign-in screen." />
-        <Field label="App name"
-          value={form.app_name} onChange={set('app_name')}
-          hint="App name in browser tab — e.g. 'Move Better — NarrateRx'" />
-      </Section>
+      {/* Tabs split a 1,100-line scroll into navigable sections. The top
+          Save button still saves every tab at once — per-card save lives in
+          the LocationsPanel and CredentialsSection rows (which manage their
+          own mutations independently and don't ride the top-level form
+          state). When we move to per-card save for the rest of the form,
+          this layout is already ready. */}
+      <Tabs defaultValue="general">
+        <TabsList className="grid grid-cols-5 w-full max-w-xl">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="brand">Brand</TabsTrigger>
+          <TabsTrigger value="voice">Voice</TabsTrigger>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
+        </TabsList>
 
-      <Separator />
+      <TabsContent value="general" className="space-y-6 mt-6">
+        <Section title="Identity">
+          <Field label="Workspace name"
+            value={form.display_name} onChange={set('display_name')} />
+          <Field label="Tagline"
+            value={form.tagline} onChange={set('tagline')} />
+          <Field label="Sign-in blurb"
+            value={form.sign_in_blurb} onChange={set('sign_in_blurb')}
+            hint="Shown below the workspace name on the sign-in screen." />
+          <Field label="App name"
+            value={form.app_name} onChange={set('app_name')}
+            hint="App name in browser tab — e.g. 'Move Better — NarrateRx'" />
+        </Section>
 
-      <Section title="Web presence">
-        <Field label="Website"
-          value={form.website} onChange={set('website')} placeholder="https://..." />
-        <Field label="Website hostname"
-          value={form.website_hostname} onChange={set('website_hostname')}
-          placeholder="movebetter.co"
-          hint="Hostname only — e.g. movebetter.co" />
-        <Field label="Location"
-          value={form.location} onChange={set('location')} placeholder="City, State" />
-        <Field label="Region"
-          value={form.region} onChange={set('region')} placeholder="Pacific Northwest" />
-        <Field label="Region (short)"
-          value={form.region_short} onChange={set('region_short')}
-          placeholder="PNW"
-          hint="Short region code — e.g. PNW" />
-        <Textarea2 label="Link preview blurb"
-          value={form.link_preview_blurb} onChange={set('link_preview_blurb')}
-          rows={2}
-          hint="OG / link-preview blurb — one sentence under 130 chars" />
-      </Section>
+        <Separator />
 
-      <Separator />
+        <Section title="Web presence">
+          <Field label="Website"
+            value={form.website} onChange={set('website')} placeholder="https://..." />
+          <Field label="Website hostname"
+            value={form.website_hostname} onChange={set('website_hostname')}
+            placeholder="movebetter.co"
+            hint="Hostname only — e.g. movebetter.co" />
+          <Field label="Location"
+            value={form.location} onChange={set('location')} placeholder="City, State" />
+          <Field label="Region"
+            value={form.region} onChange={set('region')} placeholder="Pacific Northwest" />
+          <Field label="Region (short)"
+            value={form.region_short} onChange={set('region_short')}
+            placeholder="PNW"
+            hint="Short region code — e.g. PNW" />
+          <Textarea2 label="Link preview blurb"
+            value={form.link_preview_blurb} onChange={set('link_preview_blurb')}
+            rows={2}
+            hint="OG / link-preview blurb — one sentence under 130 chars" />
+        </Section>
 
-      <Section
-        title="Locations"
-        description="Each physical site you operate. The primary location's city/state and hashtag are mirrored back to the umbrella fields above so existing prompts keep rendering. Per-post location targeting comes online in a follow-up."
-      >
-        <LocationsPanel getToken={getToken} onSyncWorkspace={() => {
-          // Reload workspace so umbrella fields (location/keyword/hashtag)
-          // reflect the latest primary.
-          fetch('/api/workspace/me')
-            .then(r => r.ok ? r.json() : null)
-            .then(updated => {
-              if (updated) {
-                setWs(updated)
-                const refreshed = formFromWorkspace(updated)
-                setForm(refreshed)
-                setPristineForm(refreshed)
-                qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
-              }
-            })
-            .catch(() => {})
-        }} />
-      </Section>
+        <Separator />
 
-      <Separator />
+        <Section title="Social handles">
+          <Field label="Instagram handle"
+            value={form.social_instagram} onChange={set('social_instagram')} placeholder="yourhandle" />
+          <Field label="Facebook handle"
+            value={form.social_facebook} onChange={set('social_facebook')} placeholder="yourpage" />
+        </Section>
+      </TabsContent>
 
-      <Section title="Social handles">
-        <Field label="Instagram handle"
-          value={form.social_instagram} onChange={set('social_instagram')} placeholder="yourhandle" />
-        <Field label="Facebook handle"
-          value={form.social_facebook} onChange={set('social_facebook')} placeholder="yourpage" />
-      </Section>
+      <TabsContent value="brand" className="space-y-6 mt-6">
+        <Section
+          title="Brand assets"
+          description="Logos, colors, and brandbook reference. Used for link previews, social avatars, and image generation. Paste hosted URLs (Vercel Blob, Drive share, etc.)."
+        >
+          <Field label="Logo URL (main)"
+            value={form.logo_main} onChange={set('logo_main')}
+            placeholder="https://..." hint="Wordmark / horizontal logo for headers and link previews." />
+          <Field label="Logo URL (icon)"
+            value={form.logo_icon} onChange={set('logo_icon')}
+            placeholder="https://..." hint="Square mark for social avatars and favicons." />
+          <Field label="Primary color"
+            value={form.color_primary} onChange={set('color_primary')}
+            placeholder="#E36525" hint="Hex code (e.g. #E36525)." />
+          <Field label="Secondary color"
+            value={form.color_secondary} onChange={set('color_secondary')}
+            placeholder="#1A2A3A" />
+          <Field label="Accent color"
+            value={form.color_accent} onChange={set('color_accent')}
+            placeholder="#9DB39C" />
+          <Field label="Brandbook URL"
+            value={form.brandbook_url} onChange={set('brandbook_url')}
+            placeholder="https://..." hint="Notion / PDF / Drive link to your brand guidelines." />
+          <Textarea2 label="Brandbook notes"
+            value={form.brandbook_notes} onChange={set('brandbook_notes')}
+            rows={4}
+            hint="Anything an image generator or designer should know — typography rules, photo style, what to avoid." />
+        </Section>
 
-      <Separator />
+        <Separator />
 
-      <Section
-        title="Brand assets"
-        description="Logos, colors, and brandbook reference. Used for link previews, social avatars, and image generation. Paste hosted URLs (Vercel Blob, Drive share, etc.)."
-      >
-        <Field label="Logo URL (main)"
-          value={form.logo_main} onChange={set('logo_main')}
-          placeholder="https://..." hint="Wordmark / horizontal logo for headers and link previews." />
-        <Field label="Logo URL (icon)"
-          value={form.logo_icon} onChange={set('logo_icon')}
-          placeholder="https://..." hint="Square mark for social avatars and favicons." />
-        <Field label="Primary color"
-          value={form.color_primary} onChange={set('color_primary')}
-          placeholder="#E36525" hint="Hex code (e.g. #E36525)." />
-        <Field label="Secondary color"
-          value={form.color_secondary} onChange={set('color_secondary')}
-          placeholder="#1A2A3A" />
-        <Field label="Accent color"
-          value={form.color_accent} onChange={set('color_accent')}
-          placeholder="#9DB39C" />
-        <Field label="Brandbook URL"
-          value={form.brandbook_url} onChange={set('brandbook_url')}
-          placeholder="https://..." hint="Notion / PDF / Drive link to your brand guidelines." />
-        <Textarea2 label="Brandbook notes"
-          value={form.brandbook_notes} onChange={set('brandbook_notes')}
-          rows={4}
-          hint="Anything an image generator or designer should know — typography rules, photo style, what to avoid." />
-      </Section>
+        <Section title="Content">
+          <Textarea2
+            label="Internal links (Markdown)"
+            value={form.internal_links_markdown}
+            onChange={set('internal_links_markdown')}
+            rows={8}
+            hint="Markdown list of pages. The blog post prompt uses these for contextual linking."
+          />
+          <Field label="Signature system name"
+            value={form.signature_system_name} onChange={set('signature_system_name')}
+            placeholder="Leave blank if none" />
+          <Field label="Signature system URL"
+            value={form.signature_system_url} onChange={set('signature_system_url')}
+            placeholder="https://..." />
+          <Field label="Pinterest board names"
+            value={form.pinterest_boards} onChange={set('pinterest_boards')}
+            hint="Pinterest board names — slash-separated" />
+          <Field label="Location keyword"
+            value={form.location_keyword} onChange={set('location_keyword')}
+            placeholder="Portland"
+            hint="Location keyword — e.g. 'Portland'" />
+          <Field label="Location hashtag"
+            value={form.location_hashtag} onChange={set('location_hashtag')}
+            placeholder="#PortlandChiropractor"
+            hint="Location hashtag — e.g. #PortlandChiropractor" />
+          <Field label="Brand hashtag"
+            value={form.brand_hashtag} onChange={set('brand_hashtag')}
+            placeholder="#MoveBetter"
+            hint="Brand hashtag — e.g. #MoveBetter" />
+          <Field label="Spoken URL"
+            value={form.spoken_url} onChange={set('spoken_url')}
+            placeholder="MoveBetter.co"
+            hint="Spoken URL — said aloud in video scripts, e.g. MoveBetter.co" />
+        </Section>
+      </TabsContent>
 
-      <Separator />
+      <TabsContent value="voice" className="space-y-6 mt-6">
+        <Section
+          title="AI voice context"
+          description="Injected into AI prompts. Write these as if briefing a copywriter."
+        >
+          <Textarea2 label="Clinic context"
+            value={form.clinic_context} onChange={set('clinic_context')} rows={3} />
+          <Field label="Audience (short)"
+            value={form.audience_short} onChange={set('audience_short')} />
+          <Textarea2 label="Audience (long form)"
+            value={form.audience_description} onChange={set('audience_description')}
+            rows={4}
+            hint="Full description of who you're writing for" />
+          <Field label="Activity context"
+            value={form.activity_context} onChange={set('activity_context')}
+            hint="Sport / discipline / lifestyle vocabulary used in 'active' tone" />
+          <Textarea2 label="Brand voice"
+            value={form.brand_voice} onChange={set('brand_voice')} rows={6} />
+          <Field label="Booking URL"
+            value={form.booking_url} onChange={set('booking_url')} placeholder="https://..." />
+        </Section>
 
-      <Section
-        title="AI voice context"
-        description="Injected into AI prompts. Write these as if briefing a copywriter."
-      >
-        <Textarea2 label="Clinic context"
-          value={form.clinic_context} onChange={set('clinic_context')} rows={3} />
-        <Field label="Audience (short)"
-          value={form.audience_short} onChange={set('audience_short')} />
-        <Textarea2 label="Audience (long form)"
-          value={form.audience_description} onChange={set('audience_description')}
-          rows={4}
-          hint="Full description of who you're writing for" />
-        <Field label="Activity context"
-          value={form.activity_context} onChange={set('activity_context')}
-          hint="Sport / discipline / lifestyle vocabulary used in 'active' tone" />
-        <Textarea2 label="Brand voice"
-          value={form.brand_voice} onChange={set('brand_voice')} rows={6} />
-        <Field label="Booking URL"
-          value={form.booking_url} onChange={set('booking_url')} placeholder="https://..." />
-      </Section>
+        <Separator />
 
-      <Separator />
+        <Section
+          title="AI tone modifiers"
+          description="Per-tone prompt fragments injected when generating content. Use {display_name} and {activity_context} as placeholders — they'll be replaced with this workspace's values at render time. Leave a tone blank to skip its modifier entirely."
+        >
+          <Textarea2 label="Active & Driven"
+            value={form.tone_active} onChange={set('tone_active')} rows={6}
+            hint="Used when the author picks the 'Active & Driven' tone." />
+          <Textarea2 label="Clinical & In-Depth"
+            value={form.tone_clinical} onChange={set('tone_clinical')} rows={6}
+            hint="Used when the author picks the 'Clinical & In-Depth' tone." />
+          <Textarea2 label="Warm & Reassuring"
+            value={form.tone_warm} onChange={set('tone_warm')} rows={6}
+            hint="Used when the author picks the 'Warm & Reassuring' tone." />
+          <Textarea2 label="Smart Default"
+            value={form.tone_smart} onChange={set('tone_smart')} rows={6}
+            hint="Used when the author picks 'Smart Default' or no tone." />
+        </Section>
 
-      <Section
-        title="AI tone modifiers"
-        description="Per-tone prompt fragments injected when generating content. Use {display_name} and {activity_context} as placeholders — they'll be replaced with this workspace's values at render time. Leave a tone blank to skip its modifier entirely."
-      >
-        <Textarea2 label="Active & Driven"
-          value={form.tone_active} onChange={set('tone_active')} rows={6}
-          hint="Used when the author picks the 'Active & Driven' tone." />
-        <Textarea2 label="Clinical & In-Depth"
-          value={form.tone_clinical} onChange={set('tone_clinical')} rows={6}
-          hint="Used when the author picks the 'Clinical & In-Depth' tone." />
-        <Textarea2 label="Warm & Reassuring"
-          value={form.tone_warm} onChange={set('tone_warm')} rows={6}
-          hint="Used when the author picks the 'Warm & Reassuring' tone." />
-        <Textarea2 label="Smart Default"
-          value={form.tone_smart} onChange={set('tone_smart')} rows={6}
-          hint="Used when the author picks 'Smart Default' or no tone." />
-      </Section>
+        <Separator />
 
-      <Separator />
+        <Section
+          title="AI paradigm content (advanced)"
+          description="Structured prompt context — patient/audience archetypes, the per-condition interview-context bank, and the topic-suggestions list shown on the Dashboard. Edit as JSON. Invalid JSON blocks save and shows the parse error inline. Leave empty to skip injection."
+        >
+          <Textarea2 label="Patient / audience context"
+            value={form.patient_context_json} onChange={set('patient_context_json')}
+            rows={14}
+            hint="Shape: { summaryBlurb, primaryAvatar, prototypes[], priorProviderPainPoints[], staffProfiles[] }" />
+          <Textarea2 label="Interview context (PNW condition bank)"
+            value={form.interview_context_json} onChange={set('interview_context_json')}
+            rows={18}
+            hint="Shape: { conditions: { [key]: { audienceProfile, audienceStakes, regionalAngles[], interviewTopics[], chronicRelevant } }, keywordAliases, fallback }" />
+          <Textarea2 label="Topic suggestions"
+            value={form.topic_suggestions_json} onChange={set('topic_suggestions_json')}
+            rows={14}
+            hint="Shape: array of { topic, category, priority: 'high'|'medium'|'low', keywords[], pnwNote }" />
+        </Section>
+      </TabsContent>
 
-      <Section
-        title="Output channels"
-        description="Choose which output channels this workspace generates. Each interview lets you pick a subset of these for that piece."
-      >
-        <div className="space-y-2">
-          {Object.values(OUTPUT_CHANNELS).map((channel) => {
-            const checked = form.enabled_outputs.includes(channel.id)
-            return (
-              <label
-                key={channel.id}
-                className="flex items-start gap-2.5 rounded-md border border-input p-2.5 cursor-pointer hover:bg-accent/30"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    setForm((f) => {
-                      const cur = Array.isArray(f.enabled_outputs) ? f.enabled_outputs : []
-                      const next = e.target.checked
-                        ? (cur.includes(channel.id) ? cur : [...cur, channel.id])
-                        : cur.filter((id) => id !== channel.id)
-                      return { ...f, enabled_outputs: next }
-                    })
-                  }}
-                  className="mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium leading-tight">{channel.label}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {channel.exportShape}
+      <TabsContent value="locations" className="space-y-6 mt-6">
+        <Section
+          title="Locations"
+          description="Each physical site you operate. The primary location's city/state and hashtag are mirrored back to the umbrella fields above so existing prompts keep rendering. Per-post location targeting comes online in a follow-up."
+        >
+          <LocationsPanel getToken={getToken} onSyncWorkspace={() => {
+            // Reload workspace so umbrella fields (location/keyword/hashtag)
+            // reflect the latest primary.
+            fetch('/api/workspace/me')
+              .then(r => r.ok ? r.json() : null)
+              .then(updated => {
+                if (updated) {
+                  setWs(updated)
+                  const refreshed = formFromWorkspace(updated)
+                  setForm(refreshed)
+                  setPristineForm(refreshed)
+                  qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
+                }
+              })
+              .catch(() => {})
+          }} />
+        </Section>
+      </TabsContent>
+
+      <TabsContent value="channels" className="space-y-6 mt-6">
+        <Section
+          title="Output channels"
+          description="Choose which output channels this workspace generates. Each interview lets you pick a subset of these for that piece."
+        >
+          <div className="space-y-2">
+            {Object.values(OUTPUT_CHANNELS).map((channel) => {
+              const checked = form.enabled_outputs.includes(channel.id)
+              return (
+                <label
+                  key={channel.id}
+                  className="flex items-start gap-2.5 rounded-md border border-input p-2.5 cursor-pointer hover:bg-accent/30"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      setForm((f) => {
+                        const cur = Array.isArray(f.enabled_outputs) ? f.enabled_outputs : []
+                        const next = e.target.checked
+                          ? (cur.includes(channel.id) ? cur : [...cur, channel.id])
+                          : cur.filter((id) => id !== channel.id)
+                        return { ...f, enabled_outputs: next }
+                      })
+                    }}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium leading-tight">{channel.label}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      {channel.exportShape}
+                    </div>
                   </div>
-                </div>
-              </label>
-            )
-          })}
-        </div>
-      </Section>
+                </label>
+              )
+            })}
+          </div>
+        </Section>
 
-      <Separator />
-
-      <Section title="Content">
-        <Textarea2
-          label="Internal links (Markdown)"
-          value={form.internal_links_markdown}
-          onChange={set('internal_links_markdown')}
-          rows={8}
-          hint="Markdown list of pages. The blog post prompt uses these for contextual linking."
-        />
-        <Field label="Signature system name"
-          value={form.signature_system_name} onChange={set('signature_system_name')}
-          placeholder="Leave blank if none" />
-        <Field label="Signature system URL"
-          value={form.signature_system_url} onChange={set('signature_system_url')}
-          placeholder="https://..." />
-        <Field label="Pinterest board names"
-          value={form.pinterest_boards} onChange={set('pinterest_boards')}
-          hint="Pinterest board names — slash-separated" />
-        <Field label="Location keyword"
-          value={form.location_keyword} onChange={set('location_keyword')}
-          placeholder="Portland"
-          hint="Location keyword — e.g. 'Portland'" />
-        <Field label="Location hashtag"
-          value={form.location_hashtag} onChange={set('location_hashtag')}
-          placeholder="#PortlandChiropractor"
-          hint="Location hashtag — e.g. #PortlandChiropractor" />
-        <Field label="Brand hashtag"
-          value={form.brand_hashtag} onChange={set('brand_hashtag')}
-          placeholder="#MoveBetter"
-          hint="Brand hashtag — e.g. #MoveBetter" />
-        <Field label="Spoken URL"
-          value={form.spoken_url} onChange={set('spoken_url')}
-          placeholder="MoveBetter.co"
-          hint="Spoken URL — said aloud in video scripts, e.g. MoveBetter.co" />
-      </Section>
-
-      <Separator />
-
-      <Section
-        title="AI paradigm content (advanced)"
-        description="Structured prompt context — patient/audience archetypes, the per-condition interview-context bank, and the topic-suggestions list shown on the Dashboard. Edit as JSON. Invalid JSON blocks save and shows the parse error inline. Leave empty to skip injection."
-      >
-        <Textarea2 label="Patient / audience context"
-          value={form.patient_context_json} onChange={set('patient_context_json')}
-          rows={14}
-          hint="Shape: { summaryBlurb, primaryAvatar, prototypes[], priorProviderPainPoints[], staffProfiles[] }" />
-        <Textarea2 label="Interview context (PNW condition bank)"
-          value={form.interview_context_json} onChange={set('interview_context_json')}
-          rows={18}
-          hint="Shape: { conditions: { [key]: { audienceProfile, audienceStakes, regionalAngles[], interviewTopics[], chronicRelevant } }, keywordAliases, fallback }" />
-        <Textarea2 label="Topic suggestions"
-          value={form.topic_suggestions_json} onChange={set('topic_suggestions_json')}
-          rows={14}
-          hint="Shape: array of { topic, category, priority: 'high'|'medium'|'low', keywords[], pnwNote }" />
-      </Section>
-
-      {hasPublishCapability(ws) && (
-        <>
-          <Separator />
-          <CredentialsSection getToken={getToken} />
-        </>
-      )}
+        {hasPublishCapability(ws) && (
+          <>
+            <Separator />
+            <CredentialsSection getToken={getToken} />
+          </>
+        )}
+      </TabsContent>
+      </Tabs>
     </div>
   )
 }
