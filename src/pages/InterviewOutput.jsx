@@ -12,10 +12,13 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { fetchClinician, fetchInterview, fetchCampaign, updateInterview } from '@/lib/api'
+import { fetchCampaign, updateInterview } from '@/lib/api'
+import { useClinician, useInterview, queryKeys } from '@/lib/queries'
+import { useQueryClient } from '@tanstack/react-query'
 import { fetchContentItemsByInterview, createContentItems, publishBlogToWebsite } from '@/lib/publish'
 import { generateContent } from '@/lib/claude'
 import { workspace } from '@/lib/workspace'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import {
   getSocialBatchSystemPrompt,
   getVideoScriptBatchSystemPrompt,
@@ -34,38 +37,40 @@ function parseSection(text, startMarker, endMarker) {
 }
 
 export default function InterviewOutput() {
+  useDocumentTitle('Output')
   const { clinicianId, interviewId } = useParams()
   const navigate = useNavigate()
   const { user } = useUser()
   const runtimeWorkspace = useWorkspace()
-  const [clinician, setClinician] = useState(null)
+  const qc = useQueryClient()
+  const { data: clinicianData } = useClinician(clinicianId)
+  const { data: interviewData, isLoading: interviewLoading } = useInterview(interviewId)
+  const clinician = clinicianData ?? null
   const [interview, setInterview] = useState(null)
   const [outputs, setOutputs] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [itemMap, setItemMap] = useState({})
   const [generating, setGenerating] = useState(null) // 'social' | 'video' | 'marketing'
   const [genError, setGenError] = useState('')
   const [campaign, setCampaign] = useState(null)
+  const loading = interviewLoading || !clinician || !interview
 
+  // Seed local interview + outputs from the cached row. Campaign settings
+  // come from a separate, unkeyed endpoint — fine to keep as a one-shot
+  // fetch here.
   useEffect(() => {
-    Promise.all([fetchClinician(clinicianId), fetchInterview(interviewId), fetchCampaign()])
-      .then(([c, i, camp]) => {
-        if (!c || !i || !i.outputs?.blogPost) { navigate('/'); return }
-        setClinician(c)
-        setInterview(i)
-        setOutputs(i.outputs)
-        setCampaign(camp)
-        fetchContentItemsByInterview(interviewId)
-          .then((items) => {
-            const map = {}
-            items.forEach((item) => { map[item.platform] = item.id })
-            setItemMap(map)
-          })
-          .catch(() => {})
+    if (interviewLoading) return
+    if (!interviewData || !interviewData.outputs?.blogPost) { navigate('/'); return }
+    setInterview(interviewData)
+    setOutputs(interviewData.outputs)
+    fetchCampaign().then(setCampaign).catch(() => {})
+    fetchContentItemsByInterview(interviewId)
+      .then((items) => {
+        const map = {}
+        items.forEach((item) => { map[item.platform] = item.id })
+        setItemMap(map)
       })
-      .catch(() => navigate('/'))
-      .finally(() => setLoading(false))
-  }, [clinicianId, interviewId, navigate])
+      .catch(() => {})
+  }, [interviewLoading, interviewData, interviewId, navigate])
 
   async function generateGroup(group) {
     if (!outputs?.blogPost) return
@@ -107,6 +112,10 @@ export default function InterviewOutput() {
       setOutputs(newOutputs)
       if (user?.id) {
         await updateInterview(interviewId, { outputs: newOutputs }, user.id)
+        // Flush caches so the freshly-generated outputs + any newly-created
+        // content_items rows are visible elsewhere (ContentHub, Dashboard).
+        qc.invalidateQueries({ queryKey: queryKeys.interviews.detail(interviewId) })
+        qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
       }
 
       // Create content items in the database for each generated platform
@@ -565,7 +574,7 @@ function WebsitePublishPanel({ markdown, fallbackTitle }) {
     const next = [...topics, slug]
     setAddingTopic(true)
     try {
-      const token = await getToken({ skipCache: true })
+      const token = await getToken()
       const r = await fetch('/api/workspace/me', {
         method: 'PATCH',
         headers: {
