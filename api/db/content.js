@@ -37,7 +37,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
   return res.status(status).json({ error: msg })
 }
 
-const SELECT = 'id,interview_id,clinician_id,clinician_name,topic,platform,content,status,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,notes,reviewed_by,approved_by,performed_well,created_at,updated_at'
+const SELECT = 'id,interview_id,clinician_id,clinician_name,topic,platform,content,status,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,notes,reviewed_by,approved_by,performed_well,archived_at,created_at,updated_at'
 
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
@@ -62,6 +62,7 @@ export default async function handler(req, res) {
     const from        = searchParams.get('from')        // ISO date
     const to          = searchParams.get('to')          // ISO date
     const interviewId = searchParams.get('interviewId')
+    const archived    = searchParams.get('archived')    // 'true' | 'only' | 'all' — default excludes archived
     const limit       = parseInt(searchParams.get('limit') || '100')
 
     let qs = `content_items?${wsFilter}&select=${SELECT}&order=created_at.desc&limit=${limit}`
@@ -70,6 +71,11 @@ export default async function handler(req, res) {
     if (from)        qs += `&scheduled_at=gte.${from}`
     if (to)          qs += `&scheduled_at=lte.${to}`
     if (interviewId) qs += `&interview_id=eq.${interviewId}`
+    // Archive filter — archived items are hidden by default so the Hub stays
+    // focused on live work. `archived=only` flips to the Archived view;
+    // `archived=all` returns both (used by callers that need totals).
+    if (archived === 'only')      qs += `&archived_at=not.is.null`
+    else if (archived !== 'all')  qs += `&archived_at=is.null`
 
     const r = await sb(qs)
     if (!r.ok) return dbErr(res, r)
@@ -115,7 +121,8 @@ export default async function handler(req, res) {
     if (!id) return err(res, 'Missing id')
     const patch = req.body || {}
 
-    // Map camelCase → snake_case
+    // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
+    // archive or `null` to restore.
     const allowed = {
       content:         patch.content,
       status:          patch.status,
@@ -130,6 +137,7 @@ export default async function handler(req, res) {
       reviewed_by:     patch.reviewedBy,
       approved_by:     patch.approvedBy,
       performed_well:  patch.performedWell,
+      archived_at:     patch.archivedAt,
       notes:           patch.notes,
       updated_at:      patch.updatedAt,
     }
