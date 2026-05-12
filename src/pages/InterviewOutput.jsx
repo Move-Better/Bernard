@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser, useAuth } from '@clerk/clerk-react'
 import {
@@ -54,6 +54,12 @@ export default function InterviewOutput() {
   const [campaign, setCampaign] = useState(null)
   const loading = interviewLoading || !clinician || !interview
 
+  // Abort in-flight AI calls if the user navigates away mid-generation.
+  // Each generateGroup() install a fresh controller; the cleanup below
+  // aborts whichever is current at unmount.
+  const genAbortRef = useRef(null)
+  useEffect(() => () => genAbortRef.current?.abort(), [])
+
   // Seed local interview + outputs from the cached row. Campaign settings
   // come from a separate, unkeyed endpoint — fine to keep as a one-shot
   // fetch here.
@@ -79,6 +85,10 @@ export default function InterviewOutput() {
     }
     setGenerating(group)
     setGenError('')
+    genAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    genAbortRef.current = ctrl
+    const { signal } = ctrl
     try {
       const tone = interview.tone || 'smart'
       const voiceMode = interview.voice_mode || 'practice'
@@ -87,7 +97,7 @@ export default function InterviewOutput() {
       let updates = {}
 
       if (group === 'social') {
-        const result = await generateContent(blogInput, getSocialBatchSystemPrompt(runtimeWorkspace, clinician.name, interview.topic, campaignContext, tone, voiceMode))
+        const result = await generateContent(blogInput, getSocialBatchSystemPrompt(runtimeWorkspace, clinician.name, interview.topic, campaignContext, tone, voiceMode), { signal })
         updates = {
           instagram: parseSection(result, '---INSTAGRAM---', '---FACEBOOK---'),
           facebook: parseSection(result, '---FACEBOOK---', '---GBP POST---'),
@@ -96,13 +106,13 @@ export default function InterviewOutput() {
           pinterest: parseSection(result, '---PINTEREST---', null),
         }
       } else if (group === 'video') {
-        const result = await generateContent(blogInput, getVideoScriptBatchSystemPrompt(runtimeWorkspace, clinician.name, interview.topic, campaignContext, tone, voiceMode))
+        const result = await generateContent(blogInput, getVideoScriptBatchSystemPrompt(runtimeWorkspace, clinician.name, interview.topic, campaignContext, tone, voiceMode), { signal })
         updates = {
           youtubeScript: parseSection(result, '---YOUTUBE SCRIPT---', '---TIKTOK SCRIPT---'),
           tiktokScript: parseSection(result, '---TIKTOK SCRIPT---', null),
         }
       } else if (group === 'marketing') {
-        const result = await generateContent(blogInput, getMarketingBatchSystemPrompt(runtimeWorkspace, clinician.name, interview.topic, campaignContext, tone))
+        const result = await generateContent(blogInput, getMarketingBatchSystemPrompt(runtimeWorkspace, clinician.name, interview.topic, campaignContext, tone), { signal })
         updates = {
           emailNewsletter: parseSection(result, '---EMAIL NEWSLETTER---', '---LANDING PAGE---'),
           landingPage: parseSection(result, '---LANDING PAGE---', '---GOOGLE ADS---'),
@@ -164,8 +174,12 @@ export default function InterviewOutput() {
           .catch(() => {})
       }
     } catch (err) {
+      // User-initiated cancel (navigation away mid-call) — keep UI quiet,
+      // the component is unmounting anyway.
+      if (err?.name === 'AbortError') return
       setGenError(err.message || 'Generation failed')
     } finally {
+      if (genAbortRef.current === ctrl) genAbortRef.current = null
       setGenerating(null)
     }
   }

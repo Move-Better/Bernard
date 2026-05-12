@@ -1,9 +1,17 @@
-async function apiFetch(path, init = {}) {
+import { throwApiError } from '@/lib/apiError'
+
+// Canonical fetch wrapper for our own /api routes. Routes error responses
+// through throwApiError (rich 429 handling + payload.message/error parsing),
+// guards the JSON success path so a 200-but-invalid-JSON body doesn't
+// silently return undefined to callers (FUNC-01, PR #304).
+export async function apiFetchResponse(path, init = {}) {
   const res = await fetch(path, init)
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}))
-    throw new Error(json.error || `Request failed: ${res.status}`)
-  }
+  if (!res.ok) await throwApiError(res)
+  return res
+}
+
+export async function apiFetch(path, init = {}) {
+  const res = await apiFetchResponse(path, init)
   return res.json().catch(() => { throw new Error(`Invalid JSON from ${path}`) })
 }
 

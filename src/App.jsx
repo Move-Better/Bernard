@@ -30,6 +30,7 @@ const Onboarding = lazy(() => import('@/pages/Onboarding'))
 import { workspace } from '@/lib/workspace'
 import { WorkspaceProvider, useWorkspaceState } from '@/lib/WorkspaceContext'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import { setSentryUser, setSentryWorkspace } from '@/lib/sentry'
 import { Toaster } from '@/lib/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -159,6 +160,12 @@ function WelcomeGate({ children }) {
   return children
 }
 
+// Wraps a route element in a RouteErrorBoundary so a render throw in one
+// page doesn't take out the whole app shell.
+function guarded(node) {
+  return <RouteErrorBoundary>{node}</RouteErrorBoundary>
+}
+
 // Routes shared between org-gated and domain-gated modes.
 function AppRoutes() {
   const location = useLocation()
@@ -169,7 +176,7 @@ function AppRoutes() {
       <WelcomeGate>
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/welcome" element={<Welcome />} />
+            <Route path="/welcome" element={guarded(<Welcome />)} />
           </Routes>
         </Suspense>
       </WelcomeGate>
@@ -180,22 +187,22 @@ function AppRoutes() {
       <Layout>
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/new" element={<NewInterview />} />
-            <Route path="/interview/:clinicianId/:interviewId" element={<InterviewSession />} />
-            <Route path="/output/:clinicianId/:interviewId" element={<InterviewOutput />} />
-            <Route path="/clinician/:clinicianId" element={<ClinicianProfile />} />
-            <Route path="/strategy" element={<Strategy />} />
-            <Route path="/hub" element={<ContentHub />} />
-            <Route path="/review/:itemId" element={<ReviewPost />} />
-            <Route path="/calendar" element={<ContentCalendar />} />
-            <Route path="/media" element={<MediaHub />} />
-            <Route path="/settings/integrations" element={<Integrations />} />
-            <Route path="/settings/workspace" element={<WorkspaceSettings />} />
+            <Route path="/" element={guarded(<Dashboard />)} />
+            <Route path="/new" element={guarded(<NewInterview />)} />
+            <Route path="/interview/:clinicianId/:interviewId" element={guarded(<InterviewSession />)} />
+            <Route path="/output/:clinicianId/:interviewId" element={guarded(<InterviewOutput />)} />
+            <Route path="/clinician/:clinicianId" element={guarded(<ClinicianProfile />)} />
+            <Route path="/strategy" element={guarded(<Strategy />)} />
+            <Route path="/hub" element={guarded(<ContentHub />)} />
+            <Route path="/review/:itemId" element={guarded(<ReviewPost />)} />
+            <Route path="/calendar" element={guarded(<ContentCalendar />)} />
+            <Route path="/media" element={guarded(<MediaHub />)} />
+            <Route path="/settings/integrations" element={guarded(<Integrations />)} />
+            <Route path="/settings/workspace" element={guarded(<WorkspaceSettings />)} />
             {/* Both Clerk-mounted pages use routing="path" so deep links to
                 Clerk's own sub-routes resolve under the same base. */}
-            <Route path="/settings/members/*" element={<Members />} />
-            <Route path="/account/*" element={<Account />} />
+            <Route path="/settings/members/*" element={guarded(<Members />)} />
+            <Route path="/account/*" element={guarded(<Account />)} />
           </Routes>
         </Suspense>
       </Layout>
@@ -253,7 +260,9 @@ function ProtectedApp() {
 function OnboardingShell() {
   return (
     <Suspense fallback={null}>
-      <Onboarding />
+      <RouteErrorBoundary>
+        <Onboarding />
+      </RouteErrorBoundary>
     </Suspense>
   )
 }
