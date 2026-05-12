@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { fetchCampaign, updateInterview } from '@/lib/api'
 import { useClinician, useInterview, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
-import { fetchContentItemsByInterview, createContentItems, publishBlogToWebsite } from '@/lib/publish'
+import { fetchContentItemsByInterview, createContentItems, publishBlogToWebsite, updateContentItem } from '@/lib/publish'
 import { generateContent } from '@/lib/claude'
 import { workspace } from '@/lib/workspace'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -256,6 +256,7 @@ export default function InterviewOutput() {
             <WebsitePublishPanel
               markdown={outputs.blogPost}
               fallbackTitle={interview.topic}
+              blogItemId={itemMap['blog']}
             />
           )}
         </TabsContent>
@@ -527,7 +528,7 @@ function todayIso() {
   return `${yyyy}-${mm}-${dd}`
 }
 
-function WebsitePublishPanel({ markdown, fallbackTitle }) {
+function WebsitePublishPanel({ markdown, fallbackTitle, blogItemId }) {
   const ws = useWorkspace()
   const { getToken } = useAuth()
   const { title: h1Title, body: bodyWithoutH1 } = useMemo(() => splitH1(markdown), [markdown])
@@ -640,6 +641,16 @@ function WebsitePublishPanel({ markdown, fallbackTitle }) {
       })
       setResult(res)
       setStatus('success')
+      // Stamp the blog content_item with the canonical URL so the daily
+      // GA4 cron (Tier 3 of the exemplar feedback loop) can pull pageviews
+      // for it. Best-effort; UI success doesn't depend on this PATCH.
+      if (blogItemId && res?.postUrl) {
+        updateContentItem(blogItemId, {
+          resolvedUrl: res.postUrl,
+          status: 'published',
+          publishedAt: new Date().toISOString(),
+        }).catch(() => {})
+      }
     } catch (e) {
       setError({ code: e.code, message: e.message })
       setStatus('error')
