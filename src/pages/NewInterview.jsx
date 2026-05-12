@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { useUser } from '@clerk/clerk-react'
-import { ArrowLeft, ArrowRight, Stethoscope, User, Loader2, TrendingUp, Sparkles } from 'lucide-react'
+import { useUser, useAuth } from '@clerk/clerk-react'
+import { ArrowLeft, ArrowRight, Stethoscope, User, Loader2, TrendingUp, Sparkles, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,15 +10,24 @@ import { Badge } from '@/components/ui/badge'
 import { getOrCreateClinician, createInterview, fetchClinicians } from '@/lib/api'
 import { getSuggestedTopics } from '@/lib/topicSuggestions'
 import { TONES, getVoiceModes, getPatientPrototypesUi } from '@/lib/prompts'
-import { useWorkspace } from '@/lib/WorkspaceContext'
+import { useWorkspace, useWorkspaceState } from '@/lib/WorkspaceContext'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { useUserRole } from '@/lib/useUserRole'
+import { toast } from '@/lib/toast'
 
 export default function NewInterview() {
+  useDocumentTitle('New interview')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useUser()
+  const { getToken } = useAuth()
   const workspace = useWorkspace()
+  const { role } = useUserRole()
+  const isAdmin = role === 'admin'
   const VOICE_MODES = getVoiceModes(workspace)
   const PATIENT_PROTOTYPES_UI = getPatientPrototypesUi(workspace)
+  const [addingSuggestion, setAddingSuggestion] = useState(false)
+  const [suggestionAddedFor, setSuggestionAddedFor] = useState('')
 
   const [clinicianName, setClinicianName] = useState('')
   const [condition, setCondition] = useState(searchParams.get('topic') || '')
@@ -85,6 +94,64 @@ export default function NewInterview() {
   const uncovered = suggestions.filter((s) => s.interviewCount === 0 && s.priority === 'high').slice(0, 8)
   const underrepresented = suggestions.filter((s) => s.interviewCount > 0 && s.interviewCount <= 2).slice(0, 6)
   const allHighPriority = suggestions.filter((s) => s.priority === 'high').slice(0, 12)
+
+  // Geo-aware label for the "popular topics" section — replaces the
+  // hardcoded "Popular in the Pacific Northwest" that shipped to every
+  // tenant. Falls back to a generic phrase when the workspace has no
+  // region_short configured.
+  const regionLabel = workspace?.region_short || workspace?.location || ''
+  const popularLabel = regionLabel
+    ? `Popular in ${regionLabel}:`
+    : 'Suggested topics:'
+
+  // Should we offer an "Add to suggestions" affordance? Admin-only, requires
+  // a non-empty typed topic that doesn't already match a suggestion. Match
+  // is case-insensitive on the topic string itself.
+  const trimmedCondition = condition.trim()
+  const conditionLc = trimmedCondition.toLowerCase()
+  const matchesExistingSuggestion = suggestions.some(
+    (s) => String(s.topic || '').toLowerCase() === conditionLc,
+  )
+  const canAddSuggestion =
+    isAdmin && trimmedCondition.length >= 3 && !matchesExistingSuggestion
+
+  async function handleAddSuggestion() {
+    if (!canAddSuggestion || addingSuggestion) return
+    setAddingSuggestion(true)
+    try {
+      const existing = Array.isArray(workspace?.topic_suggestions) ? workspace.topic_suggestions : []
+      const newRow = {
+        topic: trimmedCondition,
+        priority: 'medium',
+        keywords: [conditionLc],
+      }
+      const token = await getToken()
+      const res = await fetch('/api/workspace/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ topic_suggestions: [...existing, newRow] }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Could not save topic')
+      }
+      toast.success(`Added "${trimmedCondition}" to suggestions`)
+      setSuggestionAddedFor(trimmedCondition)
+      // Also reflect locally so the chip shows up in the suggestion sections
+      // immediately, without waiting for a workspace context refresh.
+      setSuggestions((prev) => [
+        ...prev,
+        { ...newRow, interviewCount: 0 },
+      ])
+    } catch (e) {
+      toast.error('Could not add topic', { description: e.message })
+    } finally {
+      setAddingSuggestion(false)
+    }
+  }
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -298,10 +365,40 @@ export default function NewInterview() {
                 id="condition"
                 placeholder="e.g. Low back pain, IT band rehab, postpartum recovery…"
                 value={condition}
-                onChange={(e) => setCondition(e.target.value)}
+                onChange={(e) => {
+                  setCondition(e.target.value)
+                  if (suggestionAddedFor && e.target.value.trim() !== suggestionAddedFor) {
+                    setSuggestionAddedFor('')
+                  }
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleStart()}
                 autoFocus
               />
+              {/* Admin-only affordance: surface "Add this topic to suggestions"
+                  when the typed value isn't already a known suggestion. Lets
+                  admins seed the workspace's topic library from the place
+                  they're already typing, instead of routing through Settings. */}
+              {canAddSuggestion && (
+                <button
+                  type="button"
+                  onClick={handleAddSuggestion}
+                  disabled={addingSuggestion}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50 mt-1"
+                >
+                  {addingSuggestion ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Plus className="h-3 w-3" />
+                  )}
+                  Add "{trimmedCondition}" to your workspace's topic suggestions
+                </button>
+              )}
+              {suggestionAddedFor && suggestionAddedFor === trimmedCondition && (
+                <p className="text-xs text-emerald-600 mt-1 inline-flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Added — you'll see it in your suggestions next time.
+                </p>
+              )}
             </div>
 
             {suggestionsLoading ? (
@@ -360,7 +457,7 @@ export default function NewInterview() {
 
                 {/* All high-priority topics */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Popular in the Pacific Northwest:</p>
+                  <p className="text-xs text-muted-foreground mb-2">{popularLabel}</p>
                   <div className="flex flex-wrap gap-2">
                     {allHighPriority.map((s) => (
                       <TopicChip
