@@ -4,7 +4,7 @@ import { useUser } from '@clerk/clerk-react'
 import {
   ArrowLeft, Send, CalendarDays, CheckCircle2, Loader2, Copy, Check,
   AlertCircle, Image, Trash2, ExternalLink, Eye, Pencil,
-  ChevronLeft, ChevronRight, Play, Video, RefreshCw, RotateCcw, ThumbsUp,
+  ChevronLeft, ChevronRight, Play, RefreshCw, RotateCcw, ThumbsUp,
 } from 'lucide-react'
 import PostPreview from '@/components/PostPreview'
 import { Button } from '@/components/ui/button'
@@ -158,26 +158,29 @@ export default function ReviewPost() {
   }, { disabled: !item || item?.status === 'published' })
 
   useEffect(() => {
+    let cancelled = false
     fetchContentItem(itemId)
       .then((i) => {
+        if (cancelled) return
         setItem(i)
         setContent(i?.content || '')
         if (i?.scheduled_at) {
           setScheduledAt(i.scheduled_at.slice(0, 16))
           setScheduleIsCustom(true)
         }
-        setTimeout(() => { isFirstLoad.current = false }, 100)
+        isFirstLoad.current = false
         if (i?.status === 'draft') {
           updateContentItem(itemId, { status: 'in_review' })
-            .then((updated) => { setItem(updated); invalidateContentCaches(updated) })
+            .then((updated) => { if (!cancelled) { setItem(updated); invalidateContentCaches(updated) } })
             .catch(() => {})
         }
         // GBP location picker is hydrated from workspace.locations in a
         // separate effect that waits for workspace to load — the picker now
         // shows workspace_locations rows (UUIDs), not Google location IDs.
       })
-      .catch(() => navigate('/hub'))
-      .finally(() => setLoading(false))
+      .catch(() => { if (!cancelled) { toast.error('Could not load post — returning to Content Hub.'); navigate('/hub') } })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [itemId])
 
   // Auto-suggest a schedule time based on what's already queued
@@ -254,8 +257,8 @@ export default function ReviewPost() {
       const effectiveScheduledAt = publishMode === 'schedule' ? (scheduledAt || null) : null
       const latest = { ...item, content, scheduledAt: effectiveScheduledAt, mediaUrls: item.media_urls || [], locationIds: item.platform === 'gbp' ? selectedLocs : undefined }
       await publishAndTrack(latest, user?.primaryEmailAddress?.emailAddress)
-      setSuccess(effectiveScheduledAt ? 'Scheduled successfully!' : 'Published successfully!')
-      setTimeout(() => navigate('/hub'), 1500)
+      setSuccess(effectiveScheduledAt ? 'Scheduled! Redirecting to Content Hub…' : 'Published! Redirecting to Content Hub…')
+      setTimeout(() => navigate('/hub'), 2000)
     } catch (e) {
       setError(`Publish failed: ${e.message}`)
     } finally {
@@ -352,6 +355,7 @@ export default function ReviewPost() {
       const updated = await updateContentItem(itemId, { content: newContent, status: 'in_review', updatedAt: new Date().toISOString() })
       setItem(updated)
       setContent(newContent)
+      setShowPreview(false)
       invalidateContentCaches(updated)
       setSuccess('Content regenerated!')
       setTimeout(() => setSuccess(''), 3000)
@@ -392,7 +396,7 @@ export default function ReviewPost() {
   function handleCopy() {
     navigator.clipboard.writeText(content)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => setCopied(false), 3000)
   }
 
   async function removeMedia(index) {
@@ -551,14 +555,14 @@ export default function ReviewPost() {
                       {/* Thumbnail */}
                       {m.type === 'video' ? (
                         <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center gap-1 px-1">
-                          {imgSrc && <img src={imgSrc} alt={m.name} className="absolute inset-0 w-full h-full object-cover opacity-50" onError={(e) => { e.target.style.display='none' }} />}
+                          {imgSrc && <img src={imgSrc} alt={m.name} className="absolute inset-0 w-full h-full object-cover opacity-50" loading="lazy" decoding="async" onError={(e) => { e.target.style.display='none' }} />}
                           <div className="relative z-10 flex flex-col items-center gap-1">
                             <Play className="h-6 w-6 text-white" />
                             <span className="text-[9px] text-white/70 text-center line-clamp-2 px-1">{m.name}</span>
                           </div>
                         </div>
                       ) : (
-                        <img src={imgSrc} alt={m.name} className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={imgSrc} alt={m.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
                       )}
 
                       {/* Position badge */}
@@ -669,7 +673,7 @@ export default function ReviewPost() {
               {publishMode === 'schedule' && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground">Schedule for</label>
+                    <label htmlFor="schedule-datetime" className="text-xs text-muted-foreground">Schedule for</label>
                     {scheduleSuggestion && (
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                         scheduleIsCustom
@@ -681,6 +685,7 @@ export default function ReviewPost() {
                     )}
                   </div>
                   <input
+                    id="schedule-datetime"
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(e) => { setScheduledAt(e.target.value); setScheduleIsCustom(true) }}
@@ -767,6 +772,10 @@ export default function ReviewPost() {
 
               {needsMedia && !hasMedia && (
                 <p className="text-xs text-amber-600 text-center">Add a photo or video to publish to {pm.label}</p>
+              )}
+
+              {item.platform === 'gbp' && selectedLocs.length === 0 && (
+                <p className="text-xs text-amber-600 text-center">Select at least one location to publish to Google Business</p>
               )}
 
               {/* Platform note */}
@@ -857,7 +866,7 @@ export default function ReviewPost() {
 //                    No manual refresh — the daily cron pulls these (interactive
 //                    refresh would require a per-call GA4 API round-trip whose
 //                    cost isn't justified for one-off editor curiosity).
-function EngagementPanel({ itemId, platform }) {
+function EngagementPanel({ itemId, platform: _platform }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [snapshot, setSnapshot] = useState(null)

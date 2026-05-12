@@ -11,7 +11,7 @@ import ContentBriefList from '@/components/ContentBriefList'
 import CollectionsBar from '@/components/CollectionsBar'
 import BulkActionBar from '@/components/BulkActionBar'
 import MediaHubHelp from '@/components/MediaHubHelp'
-import { listMedia, getMediaAsset, backfillThumbnails } from '@/lib/mediaLib'
+import { getMediaAsset, backfillThumbnails } from '@/lib/mediaLib'
 import { toast } from '@/lib/toast'
 import { useMediaInfinite, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
@@ -296,6 +296,7 @@ export default function MediaHub() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
+            aria-label="Filter by status"
             className="text-[11px] h-7 px-2 rounded-md border border-border bg-background text-foreground"
           >
             {STATUS_FILTERS.map((s) => (

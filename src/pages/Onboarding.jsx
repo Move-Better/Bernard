@@ -17,7 +17,7 @@
 // and does NOT use OrgGate (Clerk Org is created server-side at the claim step).
 // Just <ClerkProvider> + <SignedIn/SignedOut>.
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { SignedIn, SignedOut, SignIn, SignUp, useAuth, useUser } from '@clerk/clerk-react'
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,10 +25,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
-
-const STEPS = ['loading', 'capacity-full', 'auth', 'business', 'voice', 'subdomain', 'channels', 'review', 'launching']
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 export default function Onboarding() {
+  useDocumentTitle('Get started')
   const [step, setStep] = useState('loading')
   const [capacity, setCapacity] = useState(null)        // {cap, used, remaining, full}
   const [form, setForm] = useState({
@@ -184,7 +184,7 @@ export default function Onboarding() {
                 const data = await r.json()
                 setRedirectUrl(data.redirect_url)
                 setStep('launching')
-              } catch (e) {
+              } catch {
                 setSubmitError('network-error')
                 setSubmitting(false)
               }
@@ -505,7 +505,7 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
         recent_topics: Array.isArray(data.recent_topics) ? data.recent_topics : [],
         services: Array.isArray(data.services) ? data.services : [],
       })
-    } catch (e) {
+    } catch {
       setScanState({ status: 'error', error: 'network-error', sources: [], recent_topics: [], services: [] })
     }
   }
@@ -516,10 +516,10 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
       subtitle="The basics. You can edit any of this later in workspace settings."
     >
       <FieldRow label="Business name *" hint="What you'd put on a sign.">
-        <Input value={form.display_name} onChange={e => setField('display_name')(e.target.value)} placeholder="Acme Movement" />
+        <Input value={form.display_name} onChange={e => setField('display_name')(e.target.value)} placeholder="Acme Movement" autoComplete="organization" />
       </FieldRow>
       <FieldRow label="Website" hint="We can scan it to draft your brand voice — optional but recommended.">
-        <Input value={form.website} onChange={e => setField('website')(e.target.value)} placeholder="https://yourpractice.com" />
+        <Input type="url" value={form.website} onChange={e => setField('website')(e.target.value)} placeholder="https://yourpractice.com" autoComplete="url" />
       </FieldRow>
       <div className="space-y-2">
         <Label className="text-xs">Location *</Label>
@@ -535,6 +535,7 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
                   value={loc.city}
                   onChange={e => updateLocation(idx, 'city', e.target.value)}
                   placeholder={idx === 0 ? 'Portland' : 'Vancouver'}
+                  autoComplete="address-level2"
                 />
                 {idx === 0 && (
                   <p className="text-[10px] text-muted-foreground mt-1">City (primary)</p>
@@ -545,6 +546,7 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
                   value={loc.region}
                   onChange={e => updateLocation(idx, 'region', e.target.value)}
                   placeholder={idx === 0 ? 'OR' : 'WA'}
+                  autoComplete="address-level1"
                 />
                 {idx === 0 && (
                   <p className="text-[10px] text-muted-foreground mt-1">State</p>

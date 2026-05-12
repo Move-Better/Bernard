@@ -13,6 +13,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 function formFromWorkspace(ws) {
   return {
@@ -135,6 +136,7 @@ function hasPublishCapability(ws) {
 }
 
 export default function WorkspaceSettings() {
+  useDocumentTitle('Settings — Workspace')
   const { getToken } = useAuth()
   const { role, isLoading: roleLoading } = useUserRole()
   const [ws, setWs]       = useState(undefined) // undefined=loading, null=no-context, object=loaded
@@ -283,7 +285,7 @@ export default function WorkspaceSettings() {
 
       <Section title="Web presence">
         <Field label="Website"
-          value={form.website} onChange={set('website')} placeholder="https://..." />
+          value={form.website} onChange={set('website')} placeholder="https://..." type="url" autoComplete="url" />
         <Field label="Website hostname"
           value={form.website_hostname} onChange={set('website_hostname')}
           placeholder="movebetter.co"
@@ -357,7 +359,7 @@ export default function WorkspaceSettings() {
           placeholder="#9DB39C" />
         <Field label="Brandbook URL"
           value={form.brandbook_url} onChange={set('brandbook_url')}
-          placeholder="https://..." hint="Notion / PDF / Drive link to your brand guidelines." />
+          placeholder="https://..." hint="Notion / PDF / Drive link to your brand guidelines." type="url" autoComplete="off" />
         <Textarea2 label="Brandbook notes"
           value={form.brandbook_notes} onChange={set('brandbook_notes')}
           rows={4}
@@ -384,7 +386,7 @@ export default function WorkspaceSettings() {
         <Textarea2 label="Brand voice"
           value={form.brand_voice} onChange={set('brand_voice')} rows={6} />
         <Field label="Booking URL"
-          value={form.booking_url} onChange={set('booking_url')} placeholder="https://..." />
+          value={form.booking_url} onChange={set('booking_url')} placeholder="https://..." type="url" autoComplete="off" />
       </Section>
 
       <Separator />
@@ -558,7 +560,7 @@ function DangerZone({ workspace, getToken }) {
       // Workspace is now archived. workspaceContext rejects status !== 'active',
       // so any further API call will 404. Sign the user out + bounce to the
       // apex so they don't sit on a half-broken session.
-      try { await window.Clerk?.signOut?.() } catch {}
+      try { await window.Clerk?.signOut?.() } catch { /* empty */ }
       window.location.href = 'https://narraterx.ai'
     } catch (e) {
       setError(e?.message || 'network-error')
@@ -636,14 +638,16 @@ function Section({ title, description, children }) {
   )
 }
 
-function Field({ label, value, onChange, placeholder, hint }) {
+function Field({ label, value, onChange, placeholder, hint, type = 'text', autoComplete }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       <Input
+        type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
+        autoComplete={autoComplete}
         className="text-sm"
       />
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
@@ -663,7 +667,7 @@ function LogoField({ label, value, onChange, hint }) {
       <div className="flex items-start gap-3">
         {value ? (
           <div className="h-16 w-16 rounded border border-input bg-muted/30 overflow-hidden shrink-0 flex items-center justify-center">
-            <img src={value} alt={label} className="h-full w-full object-contain" />
+            <img src={value} alt={label} className="h-full w-full object-contain" loading="lazy" decoding="async" />
           </div>
         ) : (
           <div className="h-16 w-16 rounded border border-dashed border-input bg-muted/20 flex items-center justify-center shrink-0">
@@ -775,7 +779,7 @@ function CredentialsSection({ getToken }) {
     }
   }
 
-  useEffect(() => { reload() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  useEffect(() => { reload()   }, [])
 
   return (
     <Section
@@ -876,7 +880,7 @@ function LocationsPanel({ getToken, onSyncWorkspace }) {
     }
   }
 
-  useEffect(() => { reload() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  useEffect(() => { reload()   }, [])
 
   async function handleCreate() {
     if (!draft.city.trim()) {
@@ -1137,11 +1141,11 @@ function LocationFields({ draft, setDraft }) {
       <div className="grid grid-cols-12 gap-2">
         <div className="col-span-5 space-y-1">
           <Label className="text-xs">City</Label>
-          <Input value={draft.city} onChange={e => set('city')(e.target.value)} placeholder="Portland" className="text-sm" />
+          <Input value={draft.city} onChange={e => set('city')(e.target.value)} placeholder="Portland" className="text-sm" autoComplete="address-level2" />
         </div>
         <div className="col-span-3 space-y-1">
           <Label className="text-xs">State</Label>
-          <Input value={draft.region} onChange={e => set('region')(e.target.value)} placeholder="OR" className="text-sm" />
+          <Input value={draft.region} onChange={e => set('region')(e.target.value)} placeholder="OR" className="text-sm" autoComplete="address-level1" />
         </div>
         <div className="col-span-4 space-y-1">
           <Label className="text-xs">Label</Label>
@@ -1172,10 +1176,12 @@ function LocationFields({ draft, setDraft }) {
       <div className="space-y-1">
         <Label className="text-xs">Visit URL</Label>
         <Input
+          type="url"
           value={draft.visit_url}
           onChange={e => set('visit_url')(e.target.value)}
           placeholder="https://yourpractice.com/visit/portland"
           className="text-sm"
+          autoComplete="off"
         />
       </div>
       <div className="space-y-1">

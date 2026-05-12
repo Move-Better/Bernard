@@ -92,7 +92,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     try {
       const rows = await listContentPieces({ sourceId: asset.id, limit: 50 })
       setLinkedBriefs(rows)
-    } catch {}
+    } catch { /* empty */ }
   }, [asset.id])
 
   useEffect(() => { refreshBriefs() }, [refreshBriefs])
@@ -237,7 +237,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
       await navigator.clipboard.writeText(asset.blob_url)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    } catch (e) {
+    } catch {
       setError('Could not copy link — try selecting the URL manually.')
     }
   }
@@ -270,7 +270,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-background rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div className="bg-background rounded-xl shadow-2xl w-full max-w-full sm:max-w-3xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
           <h2 className="font-semibold text-sm truncate pr-2">{asset.filename}</h2>

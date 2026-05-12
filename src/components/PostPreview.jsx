@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Heart, MessageCircle, Send, Bookmark, ThumbsUp, Repeat2, Globe, MapPin, Video, ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { Heart, MessageCircle, Send, Bookmark, ThumbsUp, Repeat2, Globe, MapPin, ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import emailTemplateHtml from '../email-template.html?raw'
 import { workspace } from '@/lib/workspace'
 
@@ -61,7 +61,7 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
       {m.type === 'video' ? (
         <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center gap-2">
           {src ? (
-            <img src={src} alt={m.name} className="w-full h-full object-cover opacity-70" onError={(e) => { e.target.style.display = 'none' }} />
+            <img src={src} alt={m.name} className="w-full h-full object-cover opacity-70" loading="lazy" decoding="async" onError={(e) => { e.target.style.display = 'none' }} />
           ) : null}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="h-12 w-12 rounded-full bg-black/50 flex items-center justify-center">
@@ -71,7 +71,7 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
           <p className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-white/60 px-4 line-clamp-1">{m.name}</p>
         </div>
       ) : src ? (
-        <img src={src} alt={m.name} className="absolute inset-0 w-full h-full object-cover" />
+        <img src={src} alt={m.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
       ) : (
         <div className="absolute inset-0 bg-muted flex items-center justify-center">
           <p className="text-xs text-muted-foreground">{m.name}</p>
@@ -84,31 +84,36 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
           {idx > 0 && (
             <button
               onClick={() => setIdx(idx - 1)}
+              aria-label="Previous slide"
               className="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
           {idx < total - 1 && (
             <button
               onClick={() => setIdx(idx + 1)}
+              aria-label="Next slide"
               className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
 
           {/* Slide counter */}
-          <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full">
+          <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full" aria-hidden="true">
             {idx + 1} / {total}
           </div>
 
           {/* Dot indicators */}
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1" role="tablist" aria-label="Slides">
             {mediaUrls.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setIdx(i)}
+                role="tab"
+                aria-label={`Slide ${i + 1}`}
+                aria-selected={i === idx}
                 className={`rounded-full transition-all ${i === idx ? 'w-2 h-2 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
               />
             ))}
@@ -579,8 +584,8 @@ function EmailPreview({ content, mediaUrls = [] }) {
       <iframe
         srcDoc={filledHtml}
         title="Email Preview"
-        style={{ width: '100%', height: 960, border: '1px solid #e2e8f0', borderRadius: 8, display: 'block' }}
-        sandbox="allow-same-origin"
+        style={{ width: '100%', height: 'min(960px, 80vh)', border: '1px solid #e2e8f0', borderRadius: 8, display: 'block' }}
+        sandbox=""
       />
 
       {/* Section copy cards */}
