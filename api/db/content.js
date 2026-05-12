@@ -1,6 +1,10 @@
-export const config = { runtime: 'edge' }
+// Pinned to Node runtime so the Edge whole-graph bundler doesn't follow
+// the ratelimit.js → @clerk/backend → node:crypto chain into middleware.
+// Web-style (Request → Response) handler still works on Vercel's Node/Fluid runtime.
+export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../_lib/workspaceContext.js'
+import { enforceLimitEdge } from '../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -62,6 +66,9 @@ export default async function handler(req) {
 
   // ── POST (bulk create from interview outputs) ────────────────────────────
   if (req.method === 'POST') {
+    const limited = await enforceLimitEdge(req, 'media')
+    if (limited) return limited
+
     const body = await req.json()
 
     // Bulk insert
@@ -92,6 +99,9 @@ export default async function handler(req) {
 
   // ── PATCH ────────────────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
+    const limited = await enforceLimitEdge(req, 'media')
+    if (limited) return limited
+
     if (!id) return err('Missing id')
     const patch = await req.json()
 
@@ -126,6 +136,9 @@ export default async function handler(req) {
 
   // ── DELETE ───────────────────────────────────────────────────────────────
   if (req.method === 'DELETE') {
+    const limited = await enforceLimitEdge(req, 'media')
+    if (limited) return limited
+
     if (!id) return err('Missing id')
     const res = await sb(`content_items?id=eq.${id}&${wsFilter}`, { method: 'DELETE' })
     if (!res.ok) return err('Delete failed', 500)

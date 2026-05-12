@@ -1,6 +1,10 @@
-export const config = { runtime: 'edge' }
+// Pinned to Node runtime so the Edge whole-graph bundler doesn't follow
+// the ratelimit.js → @clerk/backend → node:crypto chain into middleware.
+// Web-style (Request → Response) handler still works on Vercel's Node/Fluid runtime.
+export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../_lib/workspaceContext.js'
+import { enforceLimitEdge } from '../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -49,6 +53,9 @@ export default async function handler(req) {
   }
 
   if (req.method === 'POST') {
+    const limited = await enforceLimitEdge(req, 'media')
+    if (limited) return limited
+
     const { name, createdById, createdByEmail } = await req.json()
     if (!name?.trim()) return err('Name required')
     if (!createdById) return err('Unauthorized', 401)
@@ -75,6 +82,9 @@ export default async function handler(req) {
   }
 
   if (req.method === 'DELETE') {
+    const limited = await enforceLimitEdge(req, 'media')
+    if (limited) return limited
+
     if (!id) return err('Missing id')
     if (!userId) return err('Unauthorized', 401)
 
