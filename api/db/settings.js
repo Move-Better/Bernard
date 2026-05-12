@@ -50,7 +50,7 @@ export default async function handler(req) {
     const update = { updated_at: new Date().toISOString() }
     if (body.mode) update.campaign_mode = body.mode
     if (body.notes !== undefined) update.campaign_notes = body.notes
-    const userId = req.headers.get('x-user-id')
+    const userId = req.headers['x-user-id'] ?? req.headers.get?.('x-user-id') ?? null
     if (userId) update.updated_by = userId
 
     const res = await sb(`clinic_settings`, {

@@ -30,7 +30,7 @@ const err = (msg, status = 400) =>
 export default async function handler(req) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
-  const userId = req.headers.get('x-user-id')
+  const userId = req.headers['x-user-id'] ?? req.headers.get?.('x-user-id') ?? null
 
   const ws = await workspaceContext(req)
   if (!ws) return err('Workspace not resolved', 400)
