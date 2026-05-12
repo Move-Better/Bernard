@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { fetchSimilarInterviews, updateInterview } from '@/lib/api'
 import { useClinician, useInterview, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
-import { createContentItems } from '@/lib/publish'
 import { streamMessage } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi } from '@/lib/prompts'
 import { getInitials } from '@/lib/utils'
@@ -384,21 +383,12 @@ export default function InterviewSession() {
 
       const outputs = { blogPost, generatedAt: new Date().toISOString() }
       await updateInterview(interviewId, { outputs, status: 'completed' }, user.id)
-      // Completed interview triggers a server-side cascade that creates
-      // content_items rows. Flush both caches so ContentHub / Calendar
-      // pick those up on next read.
+      // The PATCH above triggers a server-side cascade in api/db/interviews.js
+      // that creates the content_items rows. Flush caches so ContentHub /
+      // Calendar pick those up on next read.
       qc.invalidateQueries({ queryKey: queryKeys.interviews.all })
       qc.invalidateQueries({ queryKey: queryKeys.clinicians.all })
       qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
-      createContentItems({
-        interviewId,
-        clinicianId,
-        clinicianName: clinician.name,
-        topic: interview.topic,
-        platform: 'blog',
-        content: blogPost,
-        status: 'draft',
-      }).catch(() => {})
       navigate(`/output/${clinicianId}/${interviewId}`)
     } catch (err) {
       setError(`Failed to generate content: ${err.message}`)
