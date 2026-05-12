@@ -7,13 +7,20 @@ import { defineConfig, devices } from '@playwright/test'
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 
 // Vercel Deployment Protection 401s anonymous requests to preview URLs.
-// "Protection Bypass for Automation" (a per-project secret you mint in the
-// Vercel dashboard) lets us send a header and skip the SSO gate. Local runs
-// against localhost or unprotected hosts simply omit the env var.
-const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-const extraHTTPHeaders = bypassSecret
-  ? { 'x-vercel-protection-bypass': bypassSecret, 'x-vercel-set-bypass-cookie': 'true' }
-  : undefined
+// The bypass token can be sent either as a header or as a query parameter;
+// we use the query-parameter form because the header form triggers CORS
+// preflights on every cross-origin subresource (Clerk frontend API, Google
+// Fonts, etc.) — and those preflights then fail because the third-party
+// hosts don't whitelist the custom Vercel header. The query-param form,
+// combined with `x-vercel-set-bypass-cookie=samesitenone`, drops a
+// `_vercel_jwt` cookie on the first request, and all subsequent requests
+// authenticate via cookie with no custom headers anywhere.
+//
+// `bypassQuery` is wired into auth.setup.ts where it's appended to the
+// first page.goto. The cookie persists in storageState for the spec.
+export const bypassQuery = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  ? `x-vercel-protection-bypass=${encodeURIComponent(process.env.VERCEL_AUTOMATION_BYPASS_SECRET)}&x-vercel-set-bypass-cookie=samesitenone`
+  : ''
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -26,7 +33,6 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL,
-    extraHTTPHeaders,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

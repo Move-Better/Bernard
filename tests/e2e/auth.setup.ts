@@ -13,6 +13,7 @@
 import { test as setup, expect } from '@playwright/test'
 import path from 'node:path'
 import fs from 'node:fs'
+import { bypassQuery } from '../../playwright.config'
 
 const authFile = path.join(process.cwd(), 'tests/e2e/.auth/user.json')
 
@@ -28,8 +29,15 @@ setup('authenticate fixture user', async ({ page }) => {
   }
 
   // Navigate to the workspace-overridden home; SignedOut path renders Clerk's
-  // <SignIn /> component.
-  await page.goto(`/?workspace=${WORKSPACE_SLUG}`)
+  // <SignIn /> component. Append the Vercel protection-bypass query params
+  // when running against a protected preview — the first request drops a
+  // `_vercel_jwt` cookie via x-vercel-set-bypass-cookie=samesitenone, so
+  // every subsequent request authenticates via cookie and no custom headers
+  // are sent (which would trigger CORS preflights on Clerk + fonts).
+  const initialUrl = bypassQuery
+    ? `/?workspace=${WORKSPACE_SLUG}&${bypassQuery}`
+    : `/?workspace=${WORKSPACE_SLUG}`
+  await page.goto(initialUrl)
 
   // Clerk's identifier (email) field. Clerk-JS renders it after the SPA mounts
   // and Clerk Frontend API bootstrap returns 200. A long timeout here also
