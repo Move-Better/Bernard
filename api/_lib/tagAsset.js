@@ -1,5 +1,8 @@
 import { spawn } from 'node:child_process'
-import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { generateObject } from 'ai'
@@ -135,7 +138,9 @@ async function transcodeProxy(blobUrl) {
   try {
     const res = await fetch(blobUrl)
     if (!res.ok) throw new Error(`Proxy download failed: ${res.status}`)
-    await writeFile(inPath, Buffer.from(await res.arrayBuffer()))
+    // Stream to disk instead of buffering — videos can be 500MB+ and
+    // arrayBuffer() materializes the whole file in RAM, OOMing the function.
+    await pipeline(Readable.fromWeb(res.body), createWriteStream(inPath))
 
     await new Promise((resolve, reject) => {
       const args = [
