@@ -778,7 +778,7 @@ export default function ReviewPost() {
             </div>
           )}
 
-          {isPublished && item.buffer_update_id && (
+          {isPublished && (item.buffer_update_id || item.resolved_url) && (
             <EngagementPanel itemId={itemId} platform={item.platform} />
           )}
 
@@ -847,10 +847,16 @@ export default function ReviewPost() {
   )
 }
 
-// Tier 2a engagement panel. Shows the most recent Buffer-side stats for this
-// content item (latest engagement_snapshots row) and lets the editor refresh
-// them on demand. Mounted only when buffer_update_id is set — Buffer is the
-// only source we support today; GA4 / native platform pulls come later.
+// Engagement panel — surfaces the latest engagement_snapshots row for this
+// content_item. Two sources, two shapes:
+//
+//   Buffer (Tier 2): stats.statistics is a flat { reach, clicks, likes, ... }
+//                    object. Manual refresh hits /api/engagement/refresh.
+//
+//   GA4 (Tier 3):    stats is { pageviews, engaged_sessions, engagement_time }.
+//                    No manual refresh — the daily cron pulls these (interactive
+//                    refresh would require a per-call GA4 API round-trip whose
+//                    cost isn't justified for one-off editor curiosity).
 function EngagementPanel({ itemId, platform }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -888,49 +894,70 @@ function EngagementPanel({ itemId, platform }) {
     }
   }
 
-  const stats = snapshot?.stats?.statistics || {}
-  const hasAnyStat = Object.values(stats).some(v => typeof v === 'number' && v > 0)
+  const source = snapshot?.source
+  const isGA4  = source === 'ga4'
+
+  // Normalise the per-source shape into [{label, value}] tiles.
+  let tiles = []
+  if (isGA4) {
+    const s = snapshot?.stats || {}
+    tiles = [
+      { label: 'pageviews',        value: s.pageviews },
+      { label: 'engaged sessions', value: s.engaged_sessions },
+      { label: 'engagement time',  value: formatGA4Duration(s.engagement_time) },
+    ].filter((t) => typeof t.value === 'number' || (typeof t.value === 'string' && t.value !== '0s'))
+  } else {
+    const stats = snapshot?.stats?.statistics || {}
+    tiles = Object.entries(stats)
+      .filter(([, v]) => typeof v === 'number')
+      .map(([k, v]) => ({ label: k.replace(/_/g, ' '), value: v }))
+  }
+  const hasAnyStat = tiles.some((t) => (typeof t.value === 'number' ? t.value > 0 : Boolean(t.value)))
 
   return (
     <div className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium">Engagement</p>
-        <Button size="sm" variant="outline" onClick={onRefresh} disabled={refreshing}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        {!isGA4 && (
+          <Button size="sm" variant="outline" onClick={onRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        )}
       </div>
 
       {loading && <p className="text-xs text-muted-foreground">Loading…</p>}
 
       {!loading && !snapshot && (
         <p className="text-xs text-muted-foreground">
-          No engagement data yet. Click <span className="font-medium">Refresh</span> to pull the latest stats from Buffer.
+          No engagement data yet. {isGA4
+            ? 'GA4 numbers refresh automatically every night.'
+            : <>Click <span className="font-medium">Refresh</span> to pull the latest stats from Buffer.</>}
         </p>
       )}
 
       {!loading && snapshot && !hasAnyStat && (
         <p className="text-xs text-muted-foreground">
-          Buffer reports no engagement on this post yet — give it a day or two and refresh again.
+          {isGA4
+            ? 'GA4 reports no traffic to this URL yet — give it a few days for indexing and analytics ingestion.'
+            : 'Buffer reports no engagement on this post yet — give it a day or two and refresh again.'}
         </p>
       )}
 
       {!loading && snapshot && hasAnyStat && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {Object.entries(stats)
-            .filter(([, v]) => typeof v === 'number')
-            .map(([k, v]) => (
-              <div key={k} className="rounded-md bg-muted/40 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{k.replace(/_/g, ' ')}</p>
-                <p className="text-sm font-semibold tabular-nums">{v}</p>
-              </div>
-            ))}
+          {tiles.map((t) => (
+            <div key={t.label} className="rounded-md bg-muted/40 px-2.5 py-1.5">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.label}</p>
+              <p className="text-sm font-semibold tabular-nums">{t.value}</p>
+            </div>
+          ))}
         </div>
       )}
 
       {snapshot?.fetched_at && (
         <p className="text-[11px] text-muted-foreground">
-          Last pulled {formatDate(snapshot.fetched_at)} · source: {snapshot.source}
+          Last pulled {formatDate(snapshot.fetched_at)} · source: {source}
         </p>
       )}
 
@@ -939,4 +966,18 @@ function EngagementPanel({ itemId, platform }) {
       )}
     </div>
   )
+}
+
+// GA4 returns userEngagementDuration as total seconds across all sessions.
+// Render it as a human-readable string so the tile is glanceable instead of
+// a five-digit number that no editor will translate in their head.
+function formatGA4Duration(totalSeconds) {
+  const s = Number(totalSeconds)
+  if (!Number.isFinite(s) || s <= 0) return '0s'
+  if (s < 60) return `${Math.round(s)}s`
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  return rem ? `${h}h ${rem}m` : `${h}h`
 }
