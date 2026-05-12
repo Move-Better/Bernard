@@ -70,7 +70,22 @@ setup('authenticate fixture user', async ({ page }) => {
   }, ticket)
 
   // After setActive, the app re-renders: ClerkProvider hydrates the session,
-  // <SignedIn> mounts, OrgGate activates the workspace org, dashboard renders.
+  // <SignedIn> mounts, OrgGate activates the workspace org. WelcomeGate may
+  // route a freshly-provisioned test user to /welcome to show the
+  // announcement intro before the dashboard is reachable — dismiss it so
+  // the next assertion sees the dashboard.
+  const skipIntro = page.getByRole('button', { name: /skip intro/i })
+    .or(page.getByRole('link', { name: /skip intro/i }))
+    .first()
+  try {
+    await skipIntro.waitFor({ state: 'visible', timeout: 5_000 })
+    await skipIntro.click()
+  } catch {
+    // No welcome screen — user has already seen the announcement (warm runs
+    // after the first; the announcement-seen state persists in Clerk
+    // user.unsafeMetadata.seenAnnouncements).
+  }
+
   await expect(
     page.getByRole('link', { name: /new interview/i })
       .or(page.getByRole('button', { name: /new interview/i }))
