@@ -14,6 +14,9 @@ export function fetchContentItems(filters = {}) {
   if (filters.from)     params.set('from', filters.from)
   if (filters.to)       params.set('to', filters.to)
   if (filters.limit)    params.set('limit', String(filters.limit))
+  // 'only' → archived rows only; 'all' → live + archived. Omitting hides
+  // archived rows (the default the Hub wants).
+  if (filters.archived) params.set('archived', String(filters.archived))
   const qs = params.toString()
   return apiFetch(`/api/db/content${qs ? `?${qs}` : ''}`)
 }
