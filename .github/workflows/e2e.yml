@@ -1,0 +1,98 @@
+name: E2E smoke
+
+# Post-deploy smoke against the real production subdomain. Pre-merge gating
+# on PR-preview URLs is architecturally blocked: prod Clerk only accepts
+# origins that are narraterx.ai or a subdomain (vercel.app preview URLs are
+# rejected with "Production Keys are only allowed for domain narraterx.ai").
+# We run after each merge to main, wait for Vercel's production deployment,
+# then test against movebetter-people.narraterx.ai. Catches regressions
+# within a few minutes of shipping, before customers notice. See the
+# `project_e2e_staging_stack_option` memory for the pre-merge alternative.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Wait for the Vercel Production deployment for this commit to reach
+      # `success`. The Vercel GitHub integration posts deployment_status
+      # events on every commit; we poll the Deployments API rather than
+      # hitting the URL directly (cleaner and works regardless of any
+      # transient unprotected/protected toggles).
+      - name: Wait for Vercel production
+        id: vercel-prod
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 90); do
+            statuses_url=$(gh api \
+              "repos/${{ github.repository }}/deployments?sha=${HEAD_SHA}&environment=Production" \
+              --jq '.[0].statuses_url // ""')
+            if [ -n "$statuses_url" ]; then
+              state=$(gh api "$statuses_url" --jq '.[0].state // ""')
+              echo "[$i/90] state=$state"
+              case "$state" in
+                success)
+                  echo "Production deployment for ${HEAD_SHA} is ready."
+                  exit 0
+                  ;;
+                failure|error)
+                  echo "Vercel production deployment ended in state=$state — bailing." >&2
+                  exit 1
+                  ;;
+              esac
+            else
+              echo "[$i/90] no Production deployment yet for ${HEAD_SHA}"
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for Vercel Production deployment for ${HEAD_SHA}." >&2
+          exit 1
+
+      - name: Seed fixture data
+        env:
+          MULTITENANT_DATABASE_URL: ${{ secrets.MULTITENANT_DATABASE_URL }}
+          E2E_WORKSPACE_SLUG: movebetter-people
+          E2E_FIXTURE_CLINICIAN_NAME: E2E Smoke Clinician
+        run: npm run e2e:seed
+
+      - name: Install Playwright browsers
+        run: npm run e2e:install
+
+      - name: Run Playwright smoke
+        env:
+          E2E_BASE_URL: https://movebetter-people.narraterx.ai
+          E2E_WORKSPACE_SLUG: movebetter-people
+          E2E_FIXTURE_CLINICIAN_NAME: E2E Smoke Clinician
+          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
