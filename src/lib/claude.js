@@ -1,4 +1,4 @@
-import { throwApiError } from '@/lib/apiError'
+import { apiFetchResponse } from '@/lib/api'
 
 // Best-effort Clerk session token so /api/generate + /api/stream can key
 // rate-limit buckets on Clerk user.id instead of falling back to IP.
@@ -14,14 +14,13 @@ async function authHeaders() {
   }
 }
 
-export async function* streamMessage(messages, systemPrompt, { model } = {}) {
-  const response = await fetch('/api/stream', {
+export async function* streamMessage(messages, systemPrompt, { model, signal } = {}) {
+  const response = await apiFetchResponse('/api/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({ messages, systemPrompt, model }),
+    signal,
   })
-
-  if (!response.ok) await throwApiError(response)
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -52,14 +51,13 @@ export async function* streamMessage(messages, systemPrompt, { model } = {}) {
   }
 }
 
-export async function generateContent(messages, systemPrompt, { model } = {}) {
-  const response = await fetch('/api/generate', {
+export async function generateContent(messages, systemPrompt, { model, signal } = {}) {
+  const response = await apiFetchResponse('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({ messages, systemPrompt, model }),
+    signal,
   })
-
-  if (!response.ok) await throwApiError(response)
 
   const data = await response.json()
   const text = data?.content?.[0]?.text

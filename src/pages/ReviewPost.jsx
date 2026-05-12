@@ -97,6 +97,9 @@ export default function ReviewPost() {
   const [saveStatus, setSaveStatus]   = useState('') // '' | 'saving' | 'saved' | 'error'
   const autoSaveTimer                 = useRef(null)
   const isFirstLoad                   = useRef(true)
+  // Aborts the in-flight regenerate fetch if the user navigates away mid-call.
+  const regenAbortRef                 = useRef(null)
+  useEffect(() => () => regenAbortRef.current?.abort(), [])
   const [publishing, setPublishing]     = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [copied, setCopied]             = useState(false)
@@ -300,6 +303,10 @@ export default function ReviewPost() {
     setRegenerating(true)
     setError('')
     setSuccess('')
+    regenAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    regenAbortRef.current = ctrl
+    const { signal } = ctrl
     try {
       const interview = await fetchInterview(item.interview_id)
       const { messages, outputs, tone } = interview
@@ -344,7 +351,7 @@ export default function ReviewPost() {
       const generated = await generateContent(
         inputMessages,
         systemPrompt,
-        platform === 'blog' ? { model: 'claude-opus-4-7' } : {},
+        platform === 'blog' ? { model: 'claude-opus-4-7', signal } : { signal },
       )
       if (!generated) throw new Error('No content returned from generation.')
 
@@ -387,8 +394,11 @@ export default function ReviewPost() {
         })
       }
     } catch (e) {
+      // Cancelled by unmount — component is gone, no point updating state.
+      if (e?.name === 'AbortError') return
       setError(`Regenerate failed: ${e.message}`)
     } finally {
+      if (regenAbortRef.current === ctrl) regenAbortRef.current = null
       setRegenerating(false)
     }
   }

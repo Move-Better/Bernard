@@ -46,4 +46,11 @@ export function setSentryWorkspace(slug) {
   Sentry.setTag('workspace', slug || 'none')
 }
 
+// Surface an error to Sentry from anywhere (ErrorBoundaries, catch blocks).
+// No-op in dev / when DSN isn't configured — callers always log to console too.
+export function captureException(error, context) {
+  if (!initialized) return
+  Sentry.captureException(error, context ? { extra: context } : undefined)
+}
+
 export { Sentry }
