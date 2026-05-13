@@ -11,6 +11,7 @@ import { useClinician, useInterview, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { streamMessage } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
+import { detectEmotionalState, getEmotionPromptInjection } from '@/lib/emotionDetection'
 import { getInitials } from '@/lib/utils'
 import { workspace } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -27,6 +28,10 @@ const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 const QUESTION_TARGET_MIN = 5
 const QUESTION_TARGET_MAX = 8
 
+// Session-end phrases — matched at end of utterance to signal interview completion.
+// "next question" and "move on" are intentionally excluded here: they're opt-out
+// signals handled by emotionDetection (→ 'resistant' state) so the AI transitions
+// topics gracefully rather than ending the session.
 const STOP_PHRASES = [
   "that's all",
   "that's it",
@@ -35,8 +40,6 @@ const STOP_PHRASES = [
   "send it",
   "send that",
   "submit",
-  "next question",
-  "move on",
   "done",
 ]
 
@@ -96,6 +99,10 @@ export default function InterviewSession() {
   const finalTranscriptRef = useRef('')
   const interviewRef = useRef(null)
   const pastInterviewsRef = useRef([])
+  // Emotional-state ref: 'weighted' | 'resistant' | null.
+  // Set after each user message; reset to null after each AI response completes.
+  // State is per-exchange — not persistent across the whole session.
+  const emotionStateRef = useRef(null)
 
   function saveMessages(interviewId, patch, userId) {
     setSaveStatus('saving')
@@ -197,7 +204,12 @@ export default function InterviewSession() {
       l => l.id === interviewRef.current?.location_id
     )
     const overlaidWorkspace = applyLocationOverlay(runtimeWorkspace, interviewLocation)
-    const systemPrompt = getInterviewSystemPrompt(overlaidWorkspace, clinician.name, interviewRef.current.topic, pastInterviewsRef.current, interviewRef.current?.prototype_id)
+    const baseSystemPrompt = getInterviewSystemPrompt(overlaidWorkspace, clinician.name, interviewRef.current.topic, pastInterviewsRef.current, interviewRef.current?.prototype_id)
+    // Append per-exchange emotional context if detected, then clear the ref
+    // so it doesn't bleed into subsequent turns.
+    const emotionInjection = getEmotionPromptInjection(emotionStateRef.current)
+    emotionStateRef.current = null
+    const systemPrompt = emotionInjection ? baseSystemPrompt + emotionInjection : baseSystemPrompt
     let apiMessages = currentMessages.map((m) => ({ role: m.role, content: m.content }))
     // Claude API requires at least one message — inject a silent starter for new interviews
     if (apiMessages.length === 0) {
@@ -319,6 +331,20 @@ export default function InterviewSession() {
     const userMessage = { role: 'user', content: text }
     const updated = [...messagesRef.current, userMessage]
     setMessages(updated)
+
+    // Detect emotional state from the last 3 user messages before calling AI.
+    // The ref is read (and cleared) inside sendToAI so the injection is
+    // scoped to this single exchange only.
+    const recentUserMessages = updated
+      .filter((m) => m.role === 'user')
+      .slice(-3)
+      .map((m) => m.content)
+    emotionStateRef.current = detectEmotionalState(recentUserMessages)
+
+    // Opt-out phrases (RESIST_PHRASES) may appear mid-utterance as well as
+    // at the end. If the whole message is just an opt-out phrase and contains
+    // no other content, we still send it so the AI's back-off injection works
+    // naturally — we don't strip it the way STOP_PHRASES are stripped.
 
     if (user?.id) {
       saveMessages(interviewId, { messages: updated }, user.id)
