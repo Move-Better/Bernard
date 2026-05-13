@@ -62,6 +62,7 @@ export default async function handler(req, res) {
     const from        = searchParams.get('from')        // ISO date
     const to          = searchParams.get('to')          // ISO date
     const interviewId = searchParams.get('interviewId')
+    const clinicianId = searchParams.get('clinicianId')
     const archived    = searchParams.get('archived')    // 'true' | 'only' | 'all' — default excludes archived
     const limit       = parseInt(searchParams.get('limit') || '100')
 
@@ -71,6 +72,7 @@ export default async function handler(req, res) {
     if (from)        qs += `&scheduled_at=gte.${from}`
     if (to)          qs += `&scheduled_at=lte.${to}`
     if (interviewId) qs += `&interview_id=eq.${interviewId}`
+    if (clinicianId) qs += `&clinician_id=eq.${encodeURIComponent(clinicianId)}`
     // Archive filter — archived items are hidden by default so the Hub stays
     // focused on live work. `archived=only` flips to the Archived view;
     // `archived=all` returns both (used by callers that need totals).
