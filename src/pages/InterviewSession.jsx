@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
-import { ArrowLeft, Loader2, Sparkles, AlertCircle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight } from 'lucide-react'
+import { ArrowLeft, Loader2, Sparkles, AlertCircle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -18,6 +18,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { applyLocationOverlay } from '@/lib/locationOverlay'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import MicCheck from '@/components/MicCheck'
 
 // Concrete noun list for shallow-answer detection (Feature 2)
 const CONCRETE_NOUNS = ['patient', 'person', 'name', 'case', 'example', 'time', 'moment', 'client', 'athlete', 'runner', 'worker']
@@ -103,6 +104,9 @@ export default function InterviewSession() {
   const [transcript, setTranscript] = useState('')
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [showInstructions, setShowInstructions] = useState(true)
+  // micCheckPassed gates the mic check screen shown after the pre-interview
+  // instructions but before the AI sends its first question.
+  const [micCheckPassed, setMicCheckPassed] = useState(false)
   const [saveStatus, setSaveStatus] = useState('') // '' | 'saving' | 'saved' | 'error'
   // Verbatim-flag UX state. selectionTip = { text, top, left } when the user has
   // selected a chunk of clinician text inside the conversation log that's a
@@ -159,7 +163,11 @@ export default function InterviewSession() {
     if ((interviewData.messages || []).some((m) => m.content?.includes(COMPLETE_TOKEN))) {
       setInterviewComplete(true)
     }
-    if ((interviewData.messages || []).length > 0) setShowInstructions(false)
+    if ((interviewData.messages || []).length > 0) {
+      // Resuming an existing interview — skip instructions and mic check
+      setShowInstructions(false)
+      setMicCheckPassed(true)
+    }
 
     fetchSimilarInterviews(interviewData.topic, interviewId)
       .then((past) => { pastInterviewsRef.current = past || [] })
@@ -329,7 +337,7 @@ export default function InterviewSession() {
   }, [clinician, interviewId, user?.id])
 
   useEffect(() => {
-    if (!clinician || !interview || hasStarted.current || showInstructions) return
+    if (!clinician || !interview || hasStarted.current || showInstructions || !micCheckPassed) return
     hasStarted.current = true
     if (messages.length === 0) {
       sendToAI([])
@@ -337,7 +345,7 @@ export default function InterviewSession() {
       const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
       if (lastAssistant && !interviewComplete) speak(lastAssistant.content)
     }
-  }, [clinician, interview, showInstructions])
+  }, [clinician, interview, showInstructions, micCheckPassed])
 
   function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -644,11 +652,17 @@ export default function InterviewSession() {
 
           <Button className="w-full" size="lg" onClick={() => setShowInstructions(false)}>
             <Mic className="h-4 w-4 mr-2" />
-            I'm ready — start the interview
+            I&apos;m ready &mdash; start the interview
           </Button>
         </div>
       </div>
     )
+  }
+
+  // Mic check gate: shown after instructions are dismissed but before the AI
+  // sends its first question. onContinue flips micCheckPassed → true.
+  if (!micCheckPassed) {
+    return <MicCheck onContinue={() => setMicCheckPassed(true)} />
   }
 
   const displayMessages = messages.filter((m) => !m.content?.includes(COMPLETE_TOKEN))
@@ -781,6 +795,27 @@ export default function InterviewSession() {
             <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
+            </div>
+          )}
+
+          {interviewComplete && !isStreaming && (
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 flex flex-col gap-3 mt-2">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <p className="font-semibold text-sm text-emerald-900">
+                  {firstNameOnly ? `Great conversation, ${firstNameOnly}.` : 'Great conversation.'}
+                </p>
+              </div>
+              <p className="text-sm text-emerald-800/80 leading-relaxed">
+                Your story is being turned into content.
+              </p>
+              <Button
+                size="sm"
+                className="self-start bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
+                onClick={() => navigate(`/output/${clinicianId}/${interviewId}`)}
+              >
+                See your content →
+              </Button>
             </div>
           )}
 
