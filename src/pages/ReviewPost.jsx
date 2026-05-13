@@ -4,7 +4,7 @@ import { useUser } from '@clerk/clerk-react'
 import {
   ArrowLeft, Send, CalendarDays, CheckCircle2, Loader2, Copy, Check,
   AlertCircle, Image, Trash2, ExternalLink, Eye, Pencil,
-  ChevronLeft, ChevronRight, Play, RefreshCw, RotateCcw, ThumbsUp, Wand2,
+  ChevronLeft, ChevronRight, Play, RefreshCw, RotateCcw, ThumbsUp, Wand2, Layers,
 } from 'lucide-react'
 import PostPreview from '@/components/PostPreview'
 import { Button } from '@/components/ui/button'
@@ -582,6 +582,141 @@ export default function ReviewPost() {
     }
   }
 
+  // Carousel mode — one slide per overlay element. Cycles through source
+  // photos if there are fewer photos than elements. Each slide uses a
+  // centered "solo" layout (darken + large text) so the single element reads
+  // clearly without the bottom-gradient stack used in composeImage.
+  async function composeCarousel() {
+    const sources = (item.media_urls || []).filter((m) => m.type !== 'video' && m.url)
+    if (sources.length === 0) return toast.error('Add at least one photo first.')
+
+    const elements = [
+      { kind: 'hook',    text: overlayText?.hook    },
+      { kind: 'subhead', text: overlayText?.subhead },
+      { kind: 'cta',     text: overlayText?.cta     },
+    ].filter((e) => e.text)
+    if (elements.length === 0) return toast.error('Add overlay text before composing.')
+
+    setComposing(true)
+    try {
+      const SIZE = 1080
+      const composedSlides = []
+
+      for (let i = 0; i < elements.length; i++) {
+        const { kind, text } = elements[i]
+        const source = sources[i % sources.length]
+
+        const canvas = document.createElement('canvas')
+        canvas.width  = SIZE
+        canvas.height = SIZE
+        const ctx = canvas.getContext('2d')
+
+        await new Promise((resolve, reject) => {
+          const img = new window.Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            const scale = Math.max(SIZE / img.width, SIZE / img.height)
+            const w = img.width  * scale
+            const h = img.height * scale
+            ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h)
+            resolve()
+          }
+          img.onerror = reject
+          img.src = source.url
+        })
+
+        // Dim the photo so the single overlay element reads cleanly
+        ctx.fillStyle = 'rgba(0,0,0,0.48)'
+        ctx.fillRect(0, 0, SIZE, SIZE)
+
+        const PAD  = 80
+        const maxW = SIZE - PAD * 2
+
+        function wrapLines(str, maxLines) {
+          const words = str.split(' ')
+          const lines = []
+          let line = ''
+          for (const w of words) {
+            const test = line ? `${line} ${w}` : w
+            if (ctx.measureText(test).width > maxW && line) {
+              lines.push(line)
+              if (lines.length >= maxLines) { line = ''; break }
+              line = w
+            } else {
+              line = test
+            }
+          }
+          if (line) lines.push(line)
+          return lines.slice(0, maxLines)
+        }
+
+        ctx.textAlign    = 'center'
+        ctx.textBaseline = 'alphabetic'
+
+        if (kind === 'hook') {
+          ctx.font      = 'bold 96px "Inter", "Helvetica Neue", Arial, sans-serif'
+          ctx.fillStyle = 'white'
+          const lines = wrapLines(text.toUpperCase(), 4)
+          const lineH = 110
+          let y = (SIZE - lines.length * lineH) / 2 + lineH * 0.75
+          for (const l of lines) { ctx.fillText(l, SIZE / 2, y); y += lineH }
+        } else if (kind === 'subhead') {
+          ctx.font      = '500 56px "Inter", "Helvetica Neue", Arial, sans-serif'
+          ctx.fillStyle = 'white'
+          const lines = wrapLines(text, 6)
+          const lineH = 72
+          let y = (SIZE - lines.length * lineH) / 2 + lineH * 0.75
+          for (const l of lines) { ctx.fillText(l, SIZE / 2, y); y += lineH }
+        } else if (kind === 'cta') {
+          ctx.font = 'bold 56px "Inter", "Helvetica Neue", Arial, sans-serif'
+          const textW = ctx.measureText(text).width
+          const pillW = Math.min(textW + 96, maxW)
+          const pillH = 96
+          const pillX = (SIZE - pillW) / 2
+          const pillY = (SIZE - pillH) / 2
+          ctx.fillStyle = 'white'
+          const r = pillH / 2
+          ctx.beginPath()
+          ctx.moveTo(pillX + r, pillY)
+          ctx.lineTo(pillX + pillW - r, pillY)
+          ctx.arc(pillX + pillW - r, pillY + r, r, -Math.PI / 2, Math.PI / 2)
+          ctx.lineTo(pillX + r, pillY + pillH)
+          ctx.arc(pillX + r, pillY + r, r, Math.PI / 2, (3 * Math.PI) / 2)
+          ctx.closePath()
+          ctx.fill()
+          ctx.fillStyle    = 'black'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(text, SIZE / 2, pillY + r)
+        }
+        ctx.textAlign = 'start' // reset for any later draws
+
+        const blob = await new Promise((res, rej) =>
+          canvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), 'image/png', 0.92)
+        )
+        const file     = new File([blob], `ig-${kind}-${Date.now()}.png`, { type: 'image/png' })
+        const uploaded = await uploadMedia(file, {
+          createdBy: user?.primaryEmailAddress?.emailAddress || null,
+        })
+        composedSlides.push({ url: uploaded.url, type: 'image', name: file.name, thumbnailUrl: uploaded.url })
+      }
+
+      const newMedia = [...composedSlides, ...(item.media_urls || [])]
+      const updated  = await updateContentItem(itemId, { mediaUrls: newMedia })
+      setItem(updated)
+      invalidateContentCaches(updated)
+      toast.success(`${composedSlides.length} carousel slide${composedSlides.length === 1 ? '' : 's'} added`)
+    } catch (e) {
+      const isCors = e?.message?.toLowerCase().includes('cross') || e?.message?.toLowerCase().includes('taint')
+      toast.error('Carousel compose failed', {
+        description: isCors
+          ? 'A photo could not be read — download it and re-upload directly to fix this.'
+          : e?.message || 'Unknown error',
+      })
+    } finally {
+      setComposing(false)
+    }
+  }
+
   async function removeMedia(index) {
     const urls = [...(item.media_urls || [])]
     urls.splice(index, 1)
@@ -792,24 +927,33 @@ export default function ReviewPost() {
           {/* Instagram image overlay editor */}
           {item.platform === 'instagram' && !isPublished && (
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-start justify-between mb-2 gap-3">
                 <div>
                   <label className="text-sm font-medium">Image overlay text</label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Hook, subhead, and CTA baked onto the photo. Edit then hit Compose to generate the image.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Carousel splits hook, subhead, and CTA across separate slides (one per source photo). Single image stacks all three on one photo.</p>
                 </div>
                 {(item.media_urls || []).some((m) => m.type !== 'video') && (
-                  <Button
-                    variant="outline" size="sm"
-                    onClick={composeImage}
-                    disabled={composing}
-                    className="shrink-0 ml-3"
-                  >
-                    {composing
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      : <Wand2 className="h-3.5 w-3.5 mr-1.5" />
-                    }
-                    {composing ? 'Composing…' : 'Compose image'}
-                  </Button>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      onClick={composeCarousel}
+                      disabled={composing}
+                    >
+                      {composing
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        : <Layers className="h-3.5 w-3.5 mr-1.5" />
+                      }
+                      {composing ? 'Composing…' : 'Compose carousel'}
+                    </Button>
+                    <Button
+                      variant="outline" size="sm"
+                      onClick={composeImage}
+                      disabled={composing}
+                    >
+                      <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+                      Single image
+                    </Button>
+                  </div>
                 )}
               </div>
               <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
