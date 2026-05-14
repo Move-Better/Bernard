@@ -27,13 +27,16 @@ function sb(path, init = {}) {
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
 
-function buildPrompt(ws, coveredTopics, backlogTopics, count) {
+function buildPrompt(ws, coveredTopics, backlogTopics, performedWellTopics, count) {
   const covered = coveredTopics.length
     ? coveredTopics.map((t) => `- ${t}`).join('\n')
     : '(none yet)'
   const planned = backlogTopics.length
     ? backlogTopics.map((t) => `- ${t}`).join('\n')
     : '(none yet)'
+  const performers = performedWellTopics.length
+    ? performedWellTopics.map((t) => `- ${t}`).join('\n')
+    : '(none yet — suggest based on paradigm and audience alone)'
 
   const paradigm = ws.clinic_context
     || ws.audience_description
@@ -47,6 +50,9 @@ ${paradigm}
 AUDIENCE:
 ${ws.audience_description || 'Patients dealing with movement, pain, or rehabilitation concerns.'}
 
+TOPICS WHERE PAST CONTENT PERFORMED WELL (their audience responded — bias toward related and adjacent topics):
+${performers}
+
 TOPICS ALREADY COVERED IN INTERVIEWS:
 ${covered}
 
@@ -58,6 +64,7 @@ Suggest ${count} NEW interview topics this clinic should cover next. Each topic 
 - Relevant to this clinic's paradigm and patient base
 - Not already covered or planned above
 - Something patients actively search for or struggle with
+- Where possible, adjacent to or a natural extension of the top-performing topics listed above
 
 For each suggestion, return a single line in this exact format:
 TOPIC: <name of the condition or scenario>
@@ -108,7 +115,15 @@ export default async function handler(req, res) {
   const coveredTopics = [...coveredSet].slice(0, 50)
   const backlogTopics = [...backlogSet].slice(0, 50)
 
-  const systemPrompt = buildPrompt(ws, coveredTopics, backlogTopics, count)
+  const pwRes = await sb(
+    `content_items?${wsFilter}&performed_well=eq.true&select=topic&order=published_at.desc&limit=50`
+  )
+  const pwRows = pwRes.ok ? await pwRes.json() : []
+  const performedWellTopics = [
+    ...new Set(pwRows.map((r) => (r.topic || '').trim()).filter(Boolean)),
+  ].slice(0, 20)
+
+  const systemPrompt = buildPrompt(ws, coveredTopics, backlogTopics, performedWellTopics, count)
 
   let text
   try {
