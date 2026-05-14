@@ -490,8 +490,9 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   const [formatFilter, setFormat]     = useState(null)
   const [openAsset, setOpenAsset]     = useState(null)
   const [pickerRole, setPickerRole]   = useState(null)
-  const [confirmStrip, setConfirmStrip] = useState(null)  // onboarding auto-assign confirmation
-  const [adjusting, setAdjusting]       = useState(false)  // onboarding "Let me adjust" expanded view
+  const [confirmStrip, setConfirmStrip]   = useState(null)  // onboarding auto-assign confirmation
+  const [adjusting, setAdjusting]         = useState(false)  // onboarding "Let me adjust" expanded view
+  const [autoAssigning, setAutoAssigning] = useState(false)
 
   const filtered = useMemo(() => {
     return assets.filter((a) => {
@@ -518,11 +519,21 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         picked.push({ role: role.id, asset: best.a, confidence: best.c })
       }
     }
-    if (Object.keys(newAssignments).length > 0) {
+    if (Object.keys(newAssignments).length === 0) {
+      toast.info(assets.length === 0
+        ? 'Upload some assets first'
+        : 'No unassigned roles with confident matches — assign manually or re-tag assets')
+      return
+    }
+    setAutoAssigning(true)
+    try {
       // Single batched mutation rather than N parallel "assign" calls — keeps
       // the live path from spamming the API and the mockup path from N
       // re-renders.
       await ds.setBulkRoles(newAssignments)
+      if (!isOnboarding) toast.success(`Assigned ${picked.length} role${picked.length === 1 ? '' : 's'}`)
+    } finally {
+      setAutoAssigning(false)
     }
     if (isOnboarding) setConfirmStrip(picked)
   }
@@ -776,8 +787,11 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
               <Button size="sm" variant="outline" className="text-xs h-7" onClick={resetAssignments} disabled={filledRoles === 0}>
                 <RotateCcw className="h-3 w-3 mr-1" /> Reset
               </Button>
-              <Button size="sm" className="text-xs h-7" onClick={autoAssign}>
-                <Sparkles className="h-3 w-3 mr-1" /> Auto-assign suggested
+              <Button size="sm" className="text-xs h-7" onClick={autoAssign} disabled={autoAssigning}>
+                {autoAssigning
+                  ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  : <Sparkles className="h-3 w-3 mr-1" />}
+                Auto-assign suggested
               </Button>
             </div>
           </div>
