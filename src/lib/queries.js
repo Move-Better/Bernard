@@ -96,6 +96,7 @@ export const queryKeys = {
     all:  ['locations'],
     list: () => ['locations', 'list'],
   },
+  onboardingProgress: ['onboarding-progress'],
 }
 
 // ── Locations ──────────────────────────────────────────────────────────────
@@ -547,6 +548,27 @@ export function useBufferMetrics(contentItemId, options = {}) {
     },
     enabled: !!contentItemId,
     staleTime: 1000 * 60 * 30, // 30min — Buffer stats don't update by the second
+    ...options,
+  })
+}
+
+// ── Onboarding Progress ───────────────────────────────────────────────────────
+
+// Fetches activation checklist state + trial status for the current workspace.
+// Response: { steps: [{key, label, done}], trialDaysLeft, completed, plan }
+//
+// Refreshes every 60s so step completion is reflected shortly after a user
+// performs an action in another tab. Callers can also call refetch() directly
+// after a user action to get immediate feedback.
+export function useOnboardingProgress(options = {}) {
+  return useQuery({
+    queryKey: queryKeys.onboardingProgress,
+    queryFn: async () => {
+      const r = await fetch('/api/onboarding/progress', { credentials: 'include' })
+      if (!r.ok) return null
+      return r.json()
+    },
+    staleTime: 1000 * 60, // 60s
     ...options,
   })
 }

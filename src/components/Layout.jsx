@@ -9,6 +9,7 @@ import {
 import { CampaignModeChip } from '@/components/CampaignWidget'
 import { workspace } from '@/lib/workspace'
 import { useUserRole } from '@/lib/useUserRole'
+import TrialBanner from '@/components/TrialBanner'
 
 const NAV_ITEMS = [
   { to: '/',        label: 'Home',    match: (p) => p === '/' },
@@ -132,6 +133,8 @@ export default function Layout({ children }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <TrialBanner />
 
       <main className="container py-8">
         {children}

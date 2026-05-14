@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useUser, useAuth } from '@clerk/clerk-react'
+import { useUser } from '@clerk/clerk-react'
 import { FileText, Eye, Clock, Loader2, RefreshCw, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useStories, useClinicians } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { listMedia } from '@/lib/mediaLib'
 import { getSuggestedTopics } from '@/lib/topicSuggestions'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
@@ -21,8 +20,7 @@ const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 export default function Home() {
   useDocumentTitle('Home')
   const { user } = useUser()
-  const { getToken } = useAuth()
-  const { role, canReview } = useUserRole()
+  const { canReview } = useUserRole()
   const runtimeWorkspace = useWorkspace()
   const [searchParams] = useSearchParams()
 
@@ -31,10 +29,6 @@ export default function Home() {
 
   // Clinicians for "hasn't interviewed" bucket
   const { data: clinicians = [], isLoading: cliniciansLoading } = useClinicians()
-
-  // Getting-started signals
-  const [hasMedia, setHasMedia] = useState(false)
-  const [hasCredential, setHasCredential] = useState(false)
 
   // ?bucket= deep-link scroll
   useEffect(() => {
@@ -47,30 +41,6 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [searchParams])
 
-  // Live Getting Started signals
-  useEffect(() => {
-    listMedia({ limit: 1 })
-      .then((rows) => setHasMedia(Array.isArray(rows) && rows.length > 0))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (role !== 'admin') return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const token = await getToken()
-        const r = await fetch('/api/workspace/credentials', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!r.ok) return
-        const data = await r.json()
-        if (!cancelled) setHasCredential(Array.isArray(data) && data.length > 0)
-      } catch { /* empty */ }
-    })()
-    return () => { cancelled = true }
-  }, [role, getToken])
-
   // Derived data from stories
   const allInterviews = useMemo(
     () =>
@@ -78,11 +48,6 @@ export default function Home() {
         (c.interviews || []).map((i) => ({ ...i, clinicianName: c.name, clinicianId: c.id }))
       ),
     [clinicians]
-  )
-
-  const completedCount = useMemo(
-    () => allInterviews.filter((i) => i.status === 'completed').length,
-    [allInterviews]
   )
 
   const resumeInterviews = useMemo(() => {
@@ -182,13 +147,7 @@ export default function Home() {
       <h1 className="text-xl font-semibold text-gray-900">{greeting}</h1>
 
       {/* Getting Started (auto-hides when complete or dismissed) */}
-      <GettingStarted
-        cliniciansCount={clinicians.length}
-        completedCount={completedCount}
-        hasMedia={hasMedia}
-        hasCredential={hasCredential}
-        isAdmin={role === 'admin'}
-      />
+      <GettingStarted />
 
       {/* Main content: task buckets left, right rail right */}
       <div className="flex gap-6">
