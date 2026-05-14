@@ -91,6 +91,7 @@ export default function Home() {
       .filter(
         (i) =>
           i.status !== 'completed' &&
+          i.session_state != null &&
           i.updated_at &&
           now - new Date(i.updated_at).getTime() <= RESUME_WINDOW_MS
       )
