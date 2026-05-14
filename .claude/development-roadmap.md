@@ -58,6 +58,14 @@ The only end-to-end staff storytelling → clinical content pipeline. Not a gene
 - **Story Detail page** consolidates /output/:id and /review/:itemId into a single page (transcript left, every derived asset + ask-Bernard panel right). Supersedes the "drawer-based review" idea from the prior P2 plan — same intent, better surface.
 - Persistent "+ New Interview" CTA in the header.
 
+### UX: Workspace Settings — sidebar-nav refactor
+- Today's `/settings/workspace` is one long form with ~11 sections; the file is becoming unmaintainable and the IA hides what's tenant-editable.
+- Refactor to sidebar nav with sub-routes: **Workspace** (General · Bernard & voice · Locations · Output channels · Integrations · Brand kit) · **People** (Members & roles · Clinicians) · **Account** (Plan & billing · Audit log).
+- Each sub-page owns its own dirty state + save bar — no more single mega-save.
+- Lands with the Phase 1 IA work for the same chassis reason: billing UI and approval-workflow config need a home, and that home should be the new sidebar, not the legacy long-form page.
+- Breadcrumb header (`Settings / Bernard & voice`) replaces the floating top save bar.
+- Mockup reference: `.claude/mockups/media-and-settings.html` Page B.
+
 ### Interview Pause/Resume
 - State persists server-side; staff can close the browser and return
 - Clinical settings mean constant interruptions — a session that can't be paused gets abandoned
@@ -97,11 +105,24 @@ The only end-to-end staff storytelling → clinical content pipeline. Not a gene
 - Drag drafts from an "Unscheduled" rail onto date cells
 - Best lens for cadence planning
 
+### Bernard & voice — deep settings
+- Persona controls: AI interviewer name (currently hardcoded "Bernard"), greeting tone (Warm & curious / Direct & efficient / Playful), opening-line override.
+- Probe-depth sliders per tone: Quick (5 turns) / Story (8 turns) / Deep (12 turns) — tone choice on the new-interview screen picks one, the slider lets admins tune what each tone means in their workspace.
+- AI-behavior toggles (each is a real prompt/flow change, not just a knob):
+  - Emotional-weight detection (soften follow-ups + flag candidate verbatims)
+  - Cross-staff contrast probe (already partially built — expose the toggle)
+  - Prior-interview surfacing (Bernard references the clinician's earlier interviews)
+  - Mic-check gate before interview
+- New `workspace_settings_bernard` columns or a JSONB extension on `workspaces` — TBD during scoping.
+- This is the largest behavior-change item in P2; size as 1–2 weeks once scoped.
+
 ### Media Library redesign
 - Visual grid (Apple Photos / Figma assets feel) replacing the current MediaHub layout
 - Every interview-derived asset shows source clinician + "used ×N" badge linking back to the Story Detail page that consumed it
-- Filter chips for type/purpose/clinician; bulk selection bar for tagging/deletion
+- Filter chips for type/purpose/clinician with **inline counts** ("All · 312", "🎬 Video · 47"); bulk selection bar for tagging/deletion
+- **Date-grouped sections** (Recent · last 7 days / Earlier this month / older) replacing flat infinite scroll
 - Media becomes a header-icon utility, not primary nav (already moved in P1 IA refactor — this is the polish pass)
+- Mockup reference: `.claude/mockups/media-and-settings.html` Page A.
 
 ### Transcript Export
 - Downloadable PDF/text artifact of any interview
@@ -175,3 +196,5 @@ Outset/Listen Labs are at $3K+/mo for enterprise. NarrateRx isn't competing ther
 | No geo-local topic intelligence | 2 |
 | Stories needs lens variety (Pipeline / Calendar / Themes) | 2 |
 | Media library feels orphaned | 2 |
+| Workspace settings is one unmaintainable long form | **1** (sidebar refactor, lands with IA chassis) |
+| Bernard persona / probe depth / AI behaviors are hardcoded, not tenant-editable | 2 |
