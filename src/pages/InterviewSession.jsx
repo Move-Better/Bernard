@@ -114,6 +114,8 @@ export default function InterviewSession() {
   // instructions but before the AI sends its first question.
   const [micCheckPassed, setMicCheckPassed] = useState(false)
   const [saveStatus, setSaveStatus] = useState('') // '' | 'saving' | 'saved' | 'error'
+  // Resume banner: true for 1.5s when returning to a session with saved state
+  const [showResumeBanner, setShowResumeBanner] = useState(false)
   // Verbatim-flag UX state. selectionTip = { text, top, left } when the user has
   // selected a chunk of clinician text inside the conversation log that's a
   // valid substring of the user-message transcript; otherwise null.
@@ -137,6 +139,10 @@ export default function InterviewSession() {
   const reprobedIndexesRef = useRef(new Set())
   // Prior session context for returning clinicians
   const priorSessionContextRef = useRef(null)
+  // Refs for pause/resume persistence
+  const sessionSaveTimerRef = useRef(null)
+  const userIdRef = useRef(null)
+  const interviewCompleteRef = useRef(false)
 
   function saveMessages(interviewId, patch, userId) {
     setSaveStatus('saving')
@@ -157,6 +163,74 @@ export default function InterviewSession() {
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { transcriptRef.current = transcript }, [transcript])
   useEffect(() => { interviewRef.current = interview }, [interview])
+  useEffect(() => { userIdRef.current = user?.id }, [user?.id])
+  useEffect(() => { interviewCompleteRef.current = interviewComplete }, [interviewComplete])
+
+  // Build the session_state payload from the current messages ref.
+  // Called both from the debounced effect and from the unload/visibility handlers.
+  function buildSessionState(msgs) {
+    return {
+      messages: msgs,
+      paused_at: new Date().toISOString(),
+    }
+  }
+
+  // Persist session_state immediately — used by unload/visibility handlers
+  // where we can't await a fetch. sendBeacon is fire-and-forget but reliable
+  // for short payloads. Falls back to a synchronous keepalive fetch on browsers
+  // that don't support sendBeacon with JSON.
+  function flushSessionState(msgs) {
+    const uid = userIdRef.current
+    if (!uid || interviewCompleteRef.current || !msgs.length) return
+    const url = `/api/db/interviews?id=${encodeURIComponent(interviewId)}`
+    const payload = JSON.stringify({
+      session_state: buildSessionState(msgs),
+      paused_at: new Date().toISOString(),
+    })
+    if (typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([payload], { type: 'application/json' })
+      navigator.sendBeacon(url + `&_uid=${encodeURIComponent(uid)}`, blob)
+    } else {
+      fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': uid },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {})
+    }
+  }
+
+  // Debounced auto-save of session_state whenever messages change.
+  // Runs 3s after the last message update. Skipped when interview is done
+  // (session_state is cleared on completion instead).
+  useEffect(() => {
+    if (!user?.id || interviewComplete || messages.length === 0) return
+    clearTimeout(sessionSaveTimerRef.current)
+    sessionSaveTimerRef.current = setTimeout(() => {
+      updateInterview(
+        interviewId,
+        { session_state: buildSessionState(messages), paused_at: new Date().toISOString() },
+        user.id,
+      ).catch(() => {})
+    }, 3000)
+    return () => clearTimeout(sessionSaveTimerRef.current)
+  }, [messages, interviewComplete, user?.id, interviewId])
+
+  // Immediate flush on tab hide or page unload.
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') flushSessionState(messagesRef.current)
+    }
+    function onBeforeUnload() {
+      flushSessionState(messagesRef.current)
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+  }, [interviewId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed local interview state (which we then mutate during conversation)
   // from the cached row. Bounce back to dashboard on a hard 404 — the
@@ -165,14 +239,28 @@ export default function InterviewSession() {
     if (interviewLoading) return
     if (!interviewData) { navigate('/'); return }
     setInterview(interviewData)
-    setMessages(interviewData.messages || [])
-    if ((interviewData.messages || []).some((m) => m.content?.includes(COMPLETE_TOKEN))) {
+
+    // Resume from session_state if available (paused mid-interview).
+    // session_state.messages is the authoritative source when present; it
+    // may be ahead of the DB messages column (which only saves on each
+    // user turn, not on every AI response). Prefer session_state so the
+    // resumed transcript matches exactly what the clinician saw before pausing.
+    const savedState = interviewData.session_state
+    const restoredMessages = savedState?.messages ?? interviewData.messages ?? []
+    setMessages(restoredMessages)
+
+    if (restoredMessages.some((m) => m.content?.includes(COMPLETE_TOKEN))) {
       setInterviewComplete(true)
     }
-    if ((interviewData.messages || []).length > 0) {
+    if (restoredMessages.length > 0) {
       // Resuming an existing interview — skip instructions and mic check
       setShowInstructions(false)
       setMicCheckPassed(true)
+      // Show a brief "Resuming…" banner if we're restoring saved state
+      if (savedState?.messages?.length) {
+        setShowResumeBanner(true)
+        setTimeout(() => setShowResumeBanner(false), 1500)
+      }
     }
 
     // Auto-open output panel when landing directly on /…/output (e.g. bookmark)
@@ -337,6 +425,9 @@ export default function InterviewSession() {
     if (user?.id) {
       const patch = { messages: updated }
       if (isComplete) patch.status = 'in_progress'
+      // Clear session_state when the AI signals completion — the interview
+      // is done and the resume banner should not appear on next visit.
+      if (isComplete) { patch.session_state = null; patch.paused_at = null }
       saveMessages(interviewId, patch, user.id)
     }
 
@@ -469,7 +560,17 @@ export default function InterviewSession() {
   function leaveInterview() {
     window.speechSynthesis?.cancel()
     recognitionRef.current?.abort()
-    navigate(`/clinician/${clinicianId}`)
+    // Flush session_state immediately before leaving so resume works
+    // even if the debounced auto-save hasn't fired yet.
+    clearTimeout(sessionSaveTimerRef.current)
+    if (user?.id && !interviewComplete && messagesRef.current.length > 0) {
+      updateInterview(
+        interviewId,
+        { session_state: buildSessionState(messagesRef.current), paused_at: new Date().toISOString() },
+        user.id,
+      ).catch(() => {})
+    }
+    navigate('/')
   }
 
   // Verbatim flag helpers. The transcript-substring check guarantees flagged
@@ -608,7 +709,8 @@ export default function InterviewSession() {
       if (!blogPost.trim()) throw new Error('No content returned from generation')
 
       const outputs = { blogPost, generatedAt: new Date().toISOString() }
-      await updateInterview(interviewId, { outputs, status: 'completed' }, user.id)
+      // Clear session_state: completed interviews don't need resume capability.
+      await updateInterview(interviewId, { outputs, status: 'completed', session_state: null, paused_at: null }, user.id)
       // The PATCH above triggers a server-side cascade in api/db/interviews.js
       // that creates the content_items rows. Flush caches so ContentHub /
       // Calendar pick those up on next read.
@@ -762,6 +864,13 @@ export default function InterviewSession() {
           </>
         )}
       </div>
+
+      {showResumeBanner && (
+        <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center gap-2 shrink-0" role="status">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" aria-hidden="true" />
+          Resuming your session…
+        </div>
+      )}
 
       {!interviewComplete && (
         <StepIndicator
@@ -982,10 +1091,10 @@ export default function InterviewSession() {
         title="Pause this interview?"
         description={
           isListening
-            ? "We're still capturing your answer. Pausing now will drop the in-progress utterance. You can resume from the clinician's page — past Q&A is saved."
+            ? "We're still capturing your answer. Pausing now will drop the in-progress utterance. Your session will be saved — resume from the Home page."
             : isSpeaking || isStreaming
-              ? "The AI is mid-response. Pausing now will cut it off. Past Q&A is saved — you can resume from the clinician's page."
-              : "Pausing now will drop your in-progress utterance. Past Q&A is saved and you can resume from the clinician's page."
+              ? "The AI is mid-response. Pausing now will cut it off. Your session will be saved — resume from the Home page."
+              : "Pausing now will drop your in-progress utterance. Your session will be saved — resume from the Home page."
         }
         confirmLabel="Pause anyway"
         destructive={false}

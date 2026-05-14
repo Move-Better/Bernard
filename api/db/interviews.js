@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     if (id) {
       const r = await sb(
-        `interviews?id=eq.${id}&${wsFilter}&select=id,clinician_id,topic,status,messages,cleaned_messages,outputs,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,created_at,updated_at`
+        `interviews?id=eq.${id}&${wsFilter}&select=id,clinician_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,created_at,updated_at`
       )
       if (!r.ok) return dbErr(res, r)
       const data = await r.json()
@@ -121,6 +121,9 @@ export default async function handler(req, res) {
     if (body.locationId !== undefined) patch.location_id = body.locationId || null
     if (body.pullQuoteSelectedId !== undefined) patch.pull_quote_selected_id = body.pullQuoteSelectedId || null
     if (body.verbatimFlags !== undefined) patch.verbatim_flags = body.verbatimFlags
+    // session_state: null clears it (interview complete); object saves it
+    if ('session_state' in body) patch.session_state = body.session_state ?? null
+    if ('paused_at' in body) patch.paused_at = body.paused_at ?? null
 
     const r = await sb(`interviews?id=eq.${id}&${wsFilter}`, {
       method: 'PATCH',
