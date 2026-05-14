@@ -416,6 +416,32 @@ export function useStories(filters = {}, options = {}) {
   })
 }
 
+// Standalone fetcher extracted so prefetchQuery in StoryCard can reuse the
+// same queryFn without duplicating the fetch logic.
+export async function fetchStory(interviewId) {
+  const [intRes, contentRes] = await Promise.all([
+    fetch(`/api/db/interviews?id=${interviewId}`, { credentials: 'include' }),
+    fetch(`/api/db/content?interviewId=${interviewId}`, { credentials: 'include' }),
+  ])
+  if (!intRes.ok) throw new Error('Failed to fetch interview')
+  if (!contentRes.ok) throw new Error('Failed to fetch content')
+  const interviews = await intRes.json()
+  const contentItems = await contentRes.json()
+  const interview = Array.isArray(interviews) ? interviews[0] : interviews
+  if (!interview) return null
+  const pieces = Array.isArray(contentItems) ? contentItems : []
+  return {
+    ...interview,
+    pieces,
+    pieces_count: pieces.length,
+    story_stage: deriveStoryStage(interview, pieces),
+    last_activity_at: pieces.reduce(
+      (acc, p) => (p.updated_at > acc ? p.updated_at : acc),
+      interview.updated_at,
+    ),
+  }
+}
+
 // Detail query. Seeds placeholderData from the cached Stories list (if any)
 // so the header + tabs render instantly on navigation; the network round-trip
 // only blocks the transcript pane filling in. Without this, the page sits on
@@ -424,29 +450,7 @@ export function useStory(interviewId, options = {}) {
   const qc = useQueryClient()
   return useQuery({
     queryKey: queryKeys.stories.detail(interviewId),
-    queryFn: async () => {
-      const [intRes, contentRes] = await Promise.all([
-        fetch(`/api/db/interviews?id=${interviewId}`, { credentials: 'include' }),
-        fetch(`/api/db/content?interviewId=${interviewId}`, { credentials: 'include' }),
-      ])
-      if (!intRes.ok) throw new Error('Failed to fetch interview')
-      if (!contentRes.ok) throw new Error('Failed to fetch content')
-      const interviews = await intRes.json()
-      const contentItems = await contentRes.json()
-      const interview = Array.isArray(interviews) ? interviews[0] : interviews
-      if (!interview) return null
-      const pieces = Array.isArray(contentItems) ? contentItems : []
-      return {
-        ...interview,
-        pieces,
-        pieces_count: pieces.length,
-        story_stage: deriveStoryStage(interview, pieces),
-        last_activity_at: pieces.reduce(
-          (acc, p) => (p.updated_at > acc ? p.updated_at : acc),
-          interview.updated_at,
-        ),
-      }
-    },
+    queryFn: () => fetchStory(interviewId),
     enabled: !!interviewId,
     staleTime: 30_000,
     placeholderData: () => {

@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { formatRelativeDate } from '@/lib/utils'
+import { queryKeys, fetchStory } from '@/lib/queries'
 
 // Stage badge colors aligned with the canonical stages from stories.js.
 const STAGE_BADGE = {
@@ -48,6 +50,7 @@ const PLATFORM_DOT = {
  * @param {{ story: import('../../lib/stories').Story }} props
  */
 export default function StoryCard({ story }) {
+  const qc = useQueryClient()
   const {
     id,
     clinician_name,
@@ -69,6 +72,11 @@ export default function StoryCard({ story }) {
   return (
     <Link
       to={`/stories/${id}`}
+      onMouseEnter={() => qc.prefetchQuery({
+        queryKey: queryKeys.stories.detail(id),
+        queryFn: () => fetchStory(id),
+        staleTime: 30_000,
+      })}
       className="block bg-white rounded-lg shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-gray-200 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
       {/* Top row: clinician name + stage badge */}
