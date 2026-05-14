@@ -17,9 +17,11 @@ import { generateText } from 'ai'
 import { getDocumentProxy, extractText } from 'unpdf'
 
 // Rough character budget to keep the Claude call within token limits.
-// A 20-page brand book runs ~30k chars of extracted text; we take the first
-// 12k which covers the strategic/voice sections that typically appear up front.
-const MAX_PDF_CHARS = 12_000
+// A 20-page brand book runs ~30k chars of extracted text; we use 20k to
+// ensure color/font pages near the back of the PDF are included.
+const MAX_PDF_CHARS = 20_000
+
+const HEX_RE = /^#[0-9a-f]{3,6}$/i
 
 const EXTRACTION_PROMPT = `You are extracting brand guidelines from a brand book PDF to help an AI content writer produce on-brand copy.
 
@@ -29,12 +31,19 @@ BRAND VOICE: [2-4 adjectives or short phrases describing the brand's voice/perso
 TONE: [1-2 sentences describing the desired writing tone and emotional register]
 KEY MESSAGES: [3-5 core brand messages or beliefs, separated by " | "]
 AVOID: [3-5 things to never say or write, separated by " | "]
-ACCENT COLOR: [the primary brand hex color code, e.g. #FF6B2B — output only the hex, or "Not specified"]
+PRIMARY COLOR: [the single most prominent brand hex color (not black or white), e.g. #E36525 — output only the hex, or "Not specified"]
+SECONDARY COLORS: [all remaining named brand colors as hex codes, comma-separated, e.g. #6E7072, #C35727, #F57E20 — include every named color from Primary and Secondary color pages, exclude black (#000000) and white (#FFFFFF), or "Not specified"]
 HEADING FONT: [the primary heading/display typeface name, or "Not specified"]
 BODY FONT: [the body copy typeface name, or "Not specified"]
 
+Color extraction rules:
+- Brand books typically list colors with HEX codes. Extract ALL of them.
+- The primary/accent color is usually labeled as the main brand color or appears most in the logo.
+- Secondary colors include all other named palette entries (darker, lighter variants, neutrals, accent greys, greens, etc.).
+- Convert any RGB values to hex only if no hex is provided in the document.
+
 If a section isn't addressed in the document, write "Not specified" for that line.
-Output exactly 7 lines, no more.`
+Output exactly 8 lines, no more.`
 
 export async function extractBrandGuidelines(pdfBlobUrl) {
   if (!process.env.AI_GATEWAY_API_KEY) {
@@ -66,7 +75,7 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
       system: EXTRACTION_PROMPT,
       messages: [{ role: 'user', content: `BRAND BOOK TEXT:\n\n${pdfText}` }],
       temperature: 0.1,
-      maxTokens: 400,
+      maxTokens: 600,
     })
     const trimmed = text.trim()
     // Sanity-check: must have the four core section labels
@@ -78,19 +87,31 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
       return null
     }
 
-    // Parse optional style fields for the brand_style row
-    const accentMatch  = trimmed.match(/^ACCENT COLOR:\s*(.+)$/m)
-    const headingMatch = trimmed.match(/^HEADING FONT:\s*(.+)$/m)
-    const bodyMatch    = trimmed.match(/^BODY FONT:\s*(.+)$/m)
+    // Parse style fields for the brand_style row
+    const primaryMatch   = trimmed.match(/^PRIMARY COLOR:\s*(.+)$/m)
+    const secondaryMatch = trimmed.match(/^SECONDARY COLORS:\s*(.+)$/m)
+    const headingMatch   = trimmed.match(/^HEADING FONT:\s*(.+)$/m)
+    const bodyMatch      = trimmed.match(/^BODY FONT:\s*(.+)$/m)
 
-    const accentRaw  = accentMatch?.[1]?.trim()
-    const headingRaw = headingMatch?.[1]?.trim()
-    const bodyRaw    = bodyMatch?.[1]?.trim()
+    const primaryRaw   = primaryMatch?.[1]?.trim()
+    const secondaryRaw = secondaryMatch?.[1]?.trim()
+    const headingRaw   = headingMatch?.[1]?.trim()
+    const bodyRaw      = bodyMatch?.[1]?.trim()
 
     const stylePatch = {}
-    if (accentRaw && accentRaw !== 'Not specified' && /^#[0-9a-f]{3,6}$/i.test(accentRaw)) {
-      stylePatch.accent_color = accentRaw
+
+    if (primaryRaw && primaryRaw !== 'Not specified' && HEX_RE.test(primaryRaw)) {
+      stylePatch.accent_color = primaryRaw.toUpperCase()
     }
+
+    if (secondaryRaw && secondaryRaw !== 'Not specified') {
+      const secondaryHexes = secondaryRaw
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => HEX_RE.test(s))
+      if (secondaryHexes.length > 0) stylePatch.secondary_colors = secondaryHexes
+    }
+
     if (headingRaw && headingRaw !== 'Not specified') stylePatch.heading_font = headingRaw
     if (bodyRaw    && bodyRaw    !== 'Not specified') stylePatch.body_font    = bodyRaw
 
