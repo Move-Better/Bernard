@@ -46,6 +46,10 @@ const SELECT = 'id,interview_id,clinician_id,clinician_name,topic,platform,conte
 // the consuming shape.
 const SELECT_CARD = 'id,interview_id,workspace_id,platform,status,scheduled_at,published_at,updated_at'
 
+// Slim shape for the "What's working" top-performers widget. Only needs
+// metrics + display fields — drops content body, media_urls, notes, etc.
+const SELECT_PERFORMERS = 'id,interview_id,topic,platform,status,buffer_metrics,buffer_metrics_fetched_at,updated_at'
+
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
@@ -72,9 +76,9 @@ export default async function handler(req, res) {
     const clinicianId = searchParams.get('clinicianId')
     const archived    = searchParams.get('archived')    // 'true' | 'only' | 'all' — default excludes archived
     const limit       = parseInt(searchParams.get('limit') || '100')
-    const view        = searchParams.get('view')        // 'card' = slim shape for Stories list
+    const view        = searchParams.get('view')        // 'card' | 'performers' = slim shapes
 
-    const sel = view === 'card' ? SELECT_CARD : SELECT
+    const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
     if (status)      qs += `&status=eq.${status}`
     if (platform)    qs += `&platform=eq.${platform}`

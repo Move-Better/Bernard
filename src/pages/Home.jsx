@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
 import { FileText, Eye, Clock, Loader2, RefreshCw, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useStories, useClinicians } from '@/lib/queries'
+import { useStories, useClinicianSummaries } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { getSuggestedTopics } from '@/lib/topicSuggestions'
@@ -28,8 +28,10 @@ export default function Home() {
   // Stories (interviews + content pieces merged)
   const { data: stories = [], isLoading: storiesLoading, error: storiesError, refetch: refetchStories, isFetching: isRefetchingStories } = useStories()
 
-  // Clinicians for "hasn't interviewed" bucket
-  const { data: clinicians = [], isLoading: cliniciansLoading } = useClinicians()
+  // Slim clinician summaries — free cache hit when Stories has loaded first
+  // (useStories populates the card cache as a side-effect). Includes
+  // session_state so we can identify in-progress interviews for the resume strip.
+  const { data: clinicians = [], isLoading: cliniciansLoading } = useClinicianSummaries()
 
   // ?bucket= deep-link scroll
   useEffect(() => {
@@ -64,9 +66,10 @@ export default function Home() {
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
   }, [allInterviews])
 
+  // Derive from stories (already loaded) — each story maps 1:1 to an interview
   const existingTopics = useMemo(
-    () => allInterviews.map((i) => i.topic),
-    [allInterviews]
+    () => stories.map((s) => s.topic),
+    [stories]
   )
 
   // Archetype filter for PlanNextInterview. null = no filter. Workspaces
