@@ -286,9 +286,9 @@ function ProtectedApp() {
       </SignedIn>
 
       <SignedOut>
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-6">
+        <div className="min-h-screen flex items-start sm:items-center justify-center bg-background px-4 py-8">
+          <div className="w-full flex flex-col items-center">
+            <div className="text-center mb-6 max-w-md">
               <h1 className="text-xl font-bold">{signInName}</h1>
               <p className="text-sm text-muted-foreground">{signInBlurb}</p>
             </div>
@@ -296,8 +296,8 @@ function ProtectedApp() {
             <SignIn
               appearance={{
                 elements: {
-                  rootBox: 'mx-auto',
-                  card: 'shadow-sm border',
+                  rootBox: 'mx-auto w-full',
+                  card: 'shadow-sm border w-full',
                 },
               }}
             />
