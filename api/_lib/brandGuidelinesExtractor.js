@@ -23,15 +23,18 @@ const MAX_PDF_CHARS = 12_000
 
 const EXTRACTION_PROMPT = `You are extracting brand guidelines from a brand book PDF to help an AI content writer produce on-brand copy.
 
-Read the text below and output ONLY the following four lines (no headers, no bullet points, no extra commentary):
+Read the text below and output ONLY the following lines (no headers, no bullet points, no extra commentary):
 
 BRAND VOICE: [2-4 adjectives or short phrases describing the brand's voice/personality, comma-separated]
 TONE: [1-2 sentences describing the desired writing tone and emotional register]
 KEY MESSAGES: [3-5 core brand messages or beliefs, separated by " | "]
 AVOID: [3-5 things to never say or write, separated by " | "]
+ACCENT COLOR: [the primary brand hex color code, e.g. #FF6B2B — output only the hex, or "Not specified"]
+HEADING FONT: [the primary heading/display typeface name, or "Not specified"]
+BODY FONT: [the body copy typeface name, or "Not specified"]
 
 If a section isn't addressed in the document, write "Not specified" for that line.
-Output exactly 4 lines, no more.`
+Output exactly 7 lines, no more.`
 
 export async function extractBrandGuidelines(pdfBlobUrl) {
   if (!process.env.AI_GATEWAY_API_KEY) {
@@ -66,7 +69,7 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
       maxTokens: 400,
     })
     const trimmed = text.trim()
-    // Sanity-check: must have all four section labels
+    // Sanity-check: must have the four core section labels
     const valid = ['BRAND VOICE:', 'TONE:', 'KEY MESSAGES:', 'AVOID:'].every((label) =>
       trimmed.includes(label)
     )
@@ -74,7 +77,24 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
       console.error('brandGuidelinesExtractor: model output missing expected labels:', trimmed)
       return null
     }
-    return trimmed
+
+    // Parse optional style fields for the brand_style row
+    const accentMatch  = trimmed.match(/^ACCENT COLOR:\s*(.+)$/m)
+    const headingMatch = trimmed.match(/^HEADING FONT:\s*(.+)$/m)
+    const bodyMatch    = trimmed.match(/^BODY FONT:\s*(.+)$/m)
+
+    const accentRaw  = accentMatch?.[1]?.trim()
+    const headingRaw = headingMatch?.[1]?.trim()
+    const bodyRaw    = bodyMatch?.[1]?.trim()
+
+    const stylePatch = {}
+    if (accentRaw && accentRaw !== 'Not specified' && /^#[0-9a-f]{3,6}$/i.test(accentRaw)) {
+      stylePatch.accent_color = accentRaw
+    }
+    if (headingRaw && headingRaw !== 'Not specified') stylePatch.heading_font = headingRaw
+    if (bodyRaw    && bodyRaw    !== 'Not specified') stylePatch.body_font    = bodyRaw
+
+    return { guidelines: trimmed, stylePatch }
   } catch (e) {
     console.error('brandGuidelinesExtractor: model call failed:', e?.message)
     return null

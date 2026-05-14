@@ -90,12 +90,19 @@ async function handler(req, res) {
       const assetRes = await sb(`brand_assets?select=ai_classification&id=eq.${encodeURIComponent(assetId)}&limit=1`)
       if (assetRes.ok) {
         const assetRows = await assetRes.json()
-        const guidelines = assetRows?.[0]?.ai_classification?.extracted_guidelines
-        if (guidelines) {
+        const cls = assetRows?.[0]?.ai_classification || {}
+        if (cls.extracted_guidelines) {
           await sb(`workspaces?id=eq.${scope.id}`, {
             method: 'PATCH',
             headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify({ brand_guidelines: guidelines }),
+            body: JSON.stringify({ brand_guidelines: cls.extracted_guidelines }),
+          })
+        }
+        if (cls.extracted_style && Object.keys(cls.extracted_style).length > 0) {
+          await sb(`brand_style?workspace_id=eq.${scope.id}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify(cls.extracted_style),
           })
         }
       }

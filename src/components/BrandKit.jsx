@@ -34,9 +34,9 @@ const AUTO_ASSIGN_THRESHOLD = 0.7
 
 function classifyChips(a) {
   const chips = []
-  if (a.shape)      chips.push(a.shape)
-  if (a.background) chips.push(a.background === 'light' ? 'on light' : a.background === 'dark' ? 'on dark' : a.background)
-  if (a.color_mode) chips.push(a.color_mode.replace('_', ' '))
+  if (a.shape && a.shape !== 'unknown')           chips.push(a.shape)
+  if (a.background && a.background !== 'unknown') chips.push(a.background === 'light' ? 'on light' : a.background === 'dark' ? 'on dark' : a.background)
+  if (a.color_mode && a.color_mode !== 'unknown') chips.push(a.color_mode.replace(/_/g, ' '))
   return chips
 }
 
@@ -110,13 +110,13 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
     <div className="fixed inset-0 z-40 bg-black/40 flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-background border-l shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <div className="text-sm font-semibold truncate" title={asset.filename}>{asset.filename}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">
               {asset.width ? `${asset.width}×${asset.height}` : '—'} · {(asset.byte_size / 1024).toFixed(0)} KB · {asset.mime_type}
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="p-4">

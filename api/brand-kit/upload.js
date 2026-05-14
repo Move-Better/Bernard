@@ -200,10 +200,15 @@ async function handler(req, res) {
         // webhook returns 200 immediately and Vercel continues it in the background.
         if (isBrandBook && inserted?.id && blob.contentType === 'application/pdf') {
           waitUntil(
-            extractBrandGuidelines(blob.url).then(async (guidelines) => {
-              if (!guidelines) return
+            extractBrandGuidelines(blob.url).then(async (result) => {
+              if (!result) return
+              const { guidelines, stylePatch } = result
               // Store extracted text in ai_classification so it travels with the asset.
-              const updatedClassification = { ...ai_classification, extracted_guidelines: guidelines }
+              const updatedClassification = {
+                ...ai_classification,
+                extracted_guidelines: guidelines,
+                ...(Object.keys(stylePatch).length > 0 ? { extracted_style: stylePatch } : {}),
+              }
               const upd = await sb(`brand_assets?id=eq.${inserted.id}`, {
                 method: 'PATCH',
                 headers: { Prefer: 'return=minimal' },
@@ -213,14 +218,21 @@ async function handler(req, res) {
                 console.error('brand_assets guideline patch failed:', upd.status, await upd.text())
                 return
               }
-              // Sync to workspace so prompts can read brand_guidelines from the
-              // workspace row without an extra brand-kit query.
+              // Sync voice/tone guidelines to workspace row for AI prompt injection.
               const ws = await sb(`workspaces?id=eq.${scopeId}`, {
                 method: 'PATCH',
                 headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify({ brand_guidelines: guidelines }),
               })
               if (!ws.ok) console.error('workspace brand_guidelines sync failed:', ws.status, await ws.text())
+              // Write extracted colors/fonts to brand_style if found.
+              if (Object.keys(stylePatch).length > 0) {
+                const styleUpd = await sb(
+                  `brand_style?workspace_id=eq.${scopeId}`,
+                  { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(stylePatch) }
+                )
+                if (!styleUpd.ok) console.error('brand_style patch failed:', styleUpd.status, await styleUpd.text())
+              }
             }).catch((e) => console.error('brand guideline extraction failed:', e?.message))
           )
         } else {
