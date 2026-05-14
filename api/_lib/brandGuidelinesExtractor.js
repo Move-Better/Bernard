@@ -13,8 +13,12 @@
 // If extraction fails for any reason (bad PDF, model error, timeout) this
 // returns null so the caller can skip the DB write rather than storing garbage.
 
-import pdfParse from 'pdf-parse'
+import { createRequire } from 'node:module'
 import { generateText } from 'ai'
+
+// pdf-parse is CommonJS-only; use createRequire to load it from an ESM context.
+const require = createRequire(import.meta.url)
+const pdfParse = require('pdf-parse')
 
 // Rough character budget to keep the Claude call within token limits.
 // A 20-page brand book runs ~30k chars of extracted text; we take the first
