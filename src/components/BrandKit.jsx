@@ -448,6 +448,7 @@ async function collectFilesFromItems(items) {
 
 export default function BrandKit({ variant = 'settings', mockup = false, onAdvance }) {
   const isOnboarding = variant === 'onboarding'
+  const qc = useQueryClient()
   // Both hooks are declared so React's hook order stays consistent across
   // renders. The `mockup` prop is set at mount time and doesn't change, so
   // picking one of the two return values is safe.
