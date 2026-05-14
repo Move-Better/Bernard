@@ -50,6 +50,7 @@ export const queryKeys = {
   clinicians: {
     all:    ['clinicians'],
     list:   () => ['clinicians', 'list'],
+    card:   () => ['clinicians', 'card'],  // slim view=card shape; populated by useStories
     detail: (id) => ['clinicians', 'detail', id],
   },
   interviews: {
@@ -397,7 +398,12 @@ export function useSuggestTopics() {
 // read (drops `messages`, `content`, `media_urls`, `buffer_metrics`, etc.).
 // staleTime 5min — list rarely changes outside of explicit user actions, and
 // every relevant mutation invalidates queryKeys.stories.all.
+//
+// Side-effect: writes the raw clinicians array to queryKeys.clinicians.card()
+// so Home's useClinicianSummaries() is a free cache hit when Stories has
+// already loaded, eliminating the duplicate clinicians network request.
 export function useStories(filters = {}, options = {}) {
+  const qc = useQueryClient()
   return useQuery({
     queryKey: queryKeys.stories.list(filters),
     queryFn: async () => {
@@ -409,7 +415,25 @@ export function useStories(filters = {}, options = {}) {
       if (!contentRes.ok) throw new Error('Failed to fetch content')
       const clinicians = await cliniciansRes.json()
       const contentItems = await contentRes.json()
+      qc.setQueryData(queryKeys.clinicians.card(), clinicians)
       return buildStories(clinicians, contentItems)
+    },
+    staleTime: 5 * 60_000,
+    ...options,
+  })
+}
+
+// Slim clinician summaries — used by Home page for the "overdue" bucket and
+// resume strip. Shares the view=card endpoint with useStories; when Stories
+// has already loaded, setQueryData above makes this a zero-network cache hit.
+// Falls back to a direct fetch if Home loads before Stories (e.g. direct URL).
+export function useClinicianSummaries(options = {}) {
+  return useQuery({
+    queryKey: queryKeys.clinicians.card(),
+    queryFn: async () => {
+      const r = await fetch('/api/db/clinicians?view=card', { credentials: 'include' })
+      if (!r.ok) throw new Error('Failed to fetch clinicians')
+      return r.json()
     },
     staleTime: 5 * 60_000,
     ...options,
@@ -530,7 +554,9 @@ export function useTopPerformers() {
   return useQuery({
     queryKey: queryKeys.topPerformers,
     queryFn: async () => {
-      const r = await fetch('/api/db/content?status=published&limit=20', { credentials: 'include' })
+      // view=performers returns only the 5 cols this widget needs; drops
+      // content body, media_urls, notes, hashtags, etc. (full row = 27 cols).
+      const r = await fetch('/api/db/content?status=published&limit=20&view=performers', { credentials: 'include' })
       if (!r.ok) return []
       const items = await r.json()
       if (!Array.isArray(items)) return []
