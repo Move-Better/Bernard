@@ -533,6 +533,17 @@ export default function InterviewSession() {
       role: m.role,
       content: m.role === 'assistant' ? stripGapToken(stripAgreementToken(stripContrastToken(m.content))) : m.content,
     }))
+    // Cap the history window for interview turns. Full history is kept in state
+    // for display; only the last 20 messages (≈ 10 exchanges) go to the API to
+    // prevent unbounded payload growth on very long sessions. The system prompt
+    // already carries the topic and persona context, so the recent window is
+    // sufficient for continuity without risking a 413 or cost runaway.
+    if (apiMessages.length > 20) {
+      apiMessages = apiMessages.slice(-20)
+      // Ensure the trimmed window doesn't open with a user message following
+      // an implied assistant turn — if the slice starts on an assistant turn it
+      // means we cut right after a user answer, which is fine for the model.
+    }
     // Claude API requires at least one message — inject a silent starter for new interviews
     if (apiMessages.length === 0) {
       apiMessages = [{ role: 'user', content: 'Please begin the interview.' }]

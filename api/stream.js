@@ -8,7 +8,9 @@ import { enforceLimit } from './_lib/ratelimit.js'
 // runtime — Vercel ignores the returned Response and the function times out at
 // maxDuration. Stream via res.write() instead. (Caused the prod 504s after
 // the runtime flip in #293.)
-export const config = { runtime: 'nodejs', maxDuration: 60 }
+// 300s (Vercel Node max) — blog-post generation with Opus at 4096 tokens
+// routinely exceeds the old 60s cap, producing truncated or empty output.
+export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 // Streams a Claude completion via the Vercel AI Gateway.
 //
