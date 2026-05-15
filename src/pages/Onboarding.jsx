@@ -926,6 +926,12 @@ function ReviewScreen({ form, submitting, submitError, onBack, onSubmit }) {
           Create my workspace <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
+      <p className="text-[11px] text-muted-foreground text-center pt-1">
+        By creating your workspace you agree to our{' '}
+        <a href="/terms" className="underline underline-offset-2 hover:text-foreground transition-colors">Terms of Service</a>
+        {' '}and{' '}
+        <a href="/privacy" className="underline underline-offset-2 hover:text-foreground transition-colors">Privacy Policy</a>.
+      </p>
     </Card>
   )
 }
