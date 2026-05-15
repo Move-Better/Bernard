@@ -12,6 +12,9 @@
       ]
     }
   ],
+  "redirects": [
+    { "source": "/status", "destination": "https://stats.uptimerobot.com/GfIsrmmYYJ", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
