@@ -13,7 +13,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { recordAudit, snapshot } from '../../_lib/audit.js'
 import { requireRole } from '../../_lib/auth.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
-import { generateAndPersistThumbnail } from '../../_lib/thumbnail.js'
+import { generateThumbnailFromPath } from '../../_lib/thumbnail.js'
 
 // POST /api/media/:id/edit — Edit Media (rotate + crop).
 //
@@ -204,7 +204,12 @@ async function probeVideoDims(path) {
     let stderr = ''
     proc.stderr.on('data', (d) => { stderr += d.toString() })
     proc.on('close', () => {
-      const dim = stderr.match(/Stream #\d+:\d+(?:\([^)]+\))?:\s*Video:[^\n]*?\s(\d+)x(\d+)/)
+      // Dimensions follow the pixel format in the stream description, always
+      // after a comma (e.g. "yuv420p, 1920x1080"). Using \d{2,5} (2–5 digits)
+      // avoids false matches on codec hex tags like "(avc1 / 0x31637661)"
+      // where the leading 0 is a single digit — and the prior `\s\d+x\d+`
+      // pattern was matching that 0 first, returning width=0 → null in DB.
+      const dim = stderr.match(/Stream #\d+:\d+(?:\([^)]+\))?:\s*Video:[^\n]*?,\s*(\d{2,5})x(\d{2,5})/)
       const rot = stderr.match(/rotate\s*:\s*(-?\d+)/i)
       const dm  = stderr.match(/displaymatrix:\s*rotation of (-?[\d.]+)/i)
       const rRaw = rot
@@ -422,13 +427,22 @@ async function handler(req, res) {
         })
       }
 
-      // Regenerate the thumbnail for videos so the library shows the corrected
-      // orientation. Fire-and-forget — if it fails, the next manual "Redo
-      // thumbnail" recovers.
+      // Regenerate thumbnail synchronously from the re-encoded outPath already
+      // in /tmp — avoids a second blob download and ensures the 200 response
+      // includes the updated thumbnail_url so the UI shows the rotated frame
+      // immediately without needing a follow-up "Redo thumbnail" click.
+      // Pass source.thumbnail_url so the old thumbnail blob gets cleaned up.
+      let thumbnailUrl = null
       if (source.kind === 'video' && after) {
-        generateAndPersistThumbnail(after, scope).catch((e) => {
+        try {
+          thumbnailUrl = await generateThumbnailFromPath(
+            outPath,
+            { ...after, thumbnail_url: source.thumbnail_url },
+            scope,
+          )
+        } catch (e) {
           console.error('[edit] thumbnail regen failed:', e?.message)
-        })
+        }
       }
 
       await recordAudit({
@@ -440,7 +454,10 @@ async function handler(req, res) {
         scope,
       })
 
-      return res.status(200).json({ mode: 'replace-master', asset: after })
+      return res.status(200).json({
+        mode: 'replace-master',
+        asset: { ...after, thumbnail_url: thumbnailUrl },
+      })
     }
 
     // Variant insert: new media_assets row carrying parent_id + variant_label
@@ -472,11 +489,14 @@ async function handler(req, res) {
     const insertedRows = await ins.json()
     const variant = insertedRows[0] || null
 
-    // Kick off thumbnail extraction for the new video variant. Fire-and-forget.
+    // Regenerate thumbnail synchronously from outPath (already in /tmp).
+    let variantThumbnailUrl = null
     if (source.kind === 'video' && variant?.id) {
-      generateAndPersistThumbnail(variant, scope).catch((e) => {
+      try {
+        variantThumbnailUrl = await generateThumbnailFromPath(outPath, variant, scope)
+      } catch (e) {
         console.error('[edit] variant thumbnail failed:', e?.message)
-      })
+      }
     }
 
     await recordAudit({
@@ -488,7 +508,10 @@ async function handler(req, res) {
       scope,
     })
 
-    return res.status(200).json({ mode: 'variant', asset: variant })
+    return res.status(200).json({
+      mode: 'variant',
+      asset: variantThumbnailUrl ? { ...variant, thumbnail_url: variantThumbnailUrl } : variant,
+    })
   } catch (e) {
     console.error('[edit] failed:', e?.message)
     return res.status(500).json({ error: e?.message || 'Edit failed' })
