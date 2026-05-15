@@ -17,7 +17,6 @@ function formFromWorkspace(ws) {
     audience_description: ws.audience_description  ?? '',
     activity_context:     ws.activity_context      ?? '',
     brand_voice:          ws.brand_voice           ?? '',
-    booking_url:          ws.booking_url           ?? '',
     tone_active:          ws.tone_modifiers?.active   ?? '',
     tone_clinical:        ws.tone_modifiers?.clinical ?? '',
     tone_warm:            ws.tone_modifiers?.warm     ?? '',
@@ -44,7 +43,6 @@ function formToPatch(form) {
     audience_description: form.audience_description,
     activity_context:     form.activity_context,
     brand_voice:          form.brand_voice,
-    booking_url:          form.booking_url,
     tone_modifiers: {
       active:   form.tone_active   ?? '',
       clinical: form.tone_clinical ?? '',
@@ -168,9 +166,6 @@ export default function VoiceSettings() {
           hint="Sport / discipline / lifestyle vocabulary used in 'active' tone." />
         <Textarea2 label="Brand voice"
           value={form.brand_voice} onChange={set('brand_voice')} rows={6} />
-        <Field label="Booking URL"
-          value={form.booking_url} onChange={set('booking_url')}
-          placeholder="https://..." type="url" autoComplete="off" />
       </Section>
 
       <Separator />
