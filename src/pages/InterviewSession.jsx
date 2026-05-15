@@ -369,6 +369,10 @@ export default function InterviewSession() {
       const timer = setTimeout(() => startListening(), 400)
       return () => clearTimeout(timer)
     }
+    // `startListening` is a stable function defined in this component scope.
+    // Including it as a dep would re-fire the effect on every render and is
+    // unnecessary — the auto-listen trigger only depends on the three flags.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpeaking, isStreaming, interviewComplete])
 
   const sendToAI = useCallback(async (currentMessages) => {
@@ -464,6 +468,12 @@ export default function InterviewSession() {
 
     // Speak the clean version (without probe tokens)
     if (!isComplete) speak(stripGapToken(stripAgreementToken(stripContrastToken(cleanText))))
+    // `runtimeWorkspace`, `saveMessages`, and `speak` are stable for the
+    // session: workspace switching reloads the page; saveMessages and speak
+    // are unmemoized helpers re-created each render. Listing them would
+    // defeat useCallback (sendToAI would re-create constantly and re-trigger
+    // every effect that depends on it).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinician, interviewId, user?.id])
 
   useEffect(() => {
@@ -475,6 +485,11 @@ export default function InterviewSession() {
       const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
       if (lastAssistant && !interviewComplete) speak(lastAssistant.content)
     }
+    // Intentional one-shot kickoff effect. hasStarted.current guards against
+    // re-entry — listing `messages`, `interviewComplete`, `sendToAI`, or
+    // `speak` here would either re-trigger on every message (after the
+    // hasStarted guard, harmless but wasteful) or fight the guard pattern.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinician, interview, showInstructions, micCheckPassed])
 
   function startListening() {
@@ -569,6 +584,11 @@ export default function InterviewSession() {
     }
 
     sendToAI(updated)
+    // `saveMessages` is a stable scope-level helper, and `user.id` doesn't
+    // change mid-session (the auth-gated route remounts on user change).
+    // Listing them here would re-create this callback on every render and
+    // churn downstream effects that depend on it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening, interviewId, sendToAI])
 
   // Pause = leave the interview mid-flight. Conversation auto-saves on every
