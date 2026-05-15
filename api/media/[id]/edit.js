@@ -5,7 +5,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { put as blobPut } from '@vercel/blob'
+import { put as blobPut, del as blobDel } from '@vercel/blob'
 import ffmpegStaticPath from 'ffmpeg-static'
 import sharp from 'sharp'
 
@@ -161,6 +161,27 @@ async function editVideo({ inPath, outPath, rotate, crop, srcW, srcH }) {
   if (!s || s.size === 0) throw new Error('ffmpeg produced an empty output')
 }
 
+// Lossless rotation: stream-copy with a display-rotation metadata flag.
+// Pixel re-encode (editVideo) blew the 300s function ceiling on long clips
+// (prod 504 observed 2026-05-15). All modern browsers honor the rotate flag,
+// so for rotate-only ops we keep the bytes and just stamp the tag.
+// `existingRotate` is the source's current rotate metadata (0/90/180/270);
+// the new flag is the sum mod 360 so chained rotations compose correctly.
+async function editVideoRotateOnly({ inPath, outPath, rotate, existingRotate }) {
+  const finalRotate = (((existingRotate || 0) + rotate) % 360 + 360) % 360
+  await runFfmpeg([
+    '-y',
+    '-i', inPath,
+    '-c', 'copy',
+    '-metadata:s:v:0', `rotate=${finalRotate}`,
+    '-movflags', '+faststart',
+    outPath,
+  ])
+  const s = await stat(outPath).catch(() => null)
+  if (!s || s.size === 0) throw new Error('ffmpeg produced an empty output')
+  return { finalRotate }
+}
+
 // ── Probe output dimensions ──────────────────────────────────────────────────
 
 async function probeImageDims(path) {
@@ -170,17 +191,32 @@ async function probeImageDims(path) {
 
 // Use ffprobe via ffmpeg's stderr parsing — we don't ship ffprobe-static so
 // pull dimensions from sharp for images and from a cheap ffmpeg run for video.
+// Also surface the rotate metadata so editVideoRotateOnly can compose chained
+// rotations. Stream dims do NOT swap when a rotation tag is present — the
+// frames are stored raw and the player rotates on display.
 async function probeVideoDims(path) {
   return new Promise((resolve) => {
     const proc = spawn(FFMPEG_BIN, ['-i', path], { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderr = ''
     proc.stderr.on('data', (d) => { stderr += d.toString() })
     proc.on('close', () => {
-      const m = stderr.match(/Stream #\d+:\d+(?:\([^)]+\))?:\s*Video:[^\n]*?\s(\d+)x(\d+)/)
-      if (m) resolve({ width: parseInt(m[1], 10), height: parseInt(m[2], 10) })
-      else resolve({ width: null, height: null })
+      const dim = stderr.match(/Stream #\d+:\d+(?:\([^)]+\))?:\s*Video:[^\n]*?\s(\d+)x(\d+)/)
+      const rot = stderr.match(/rotate\s*:\s*(-?\d+)/i)
+      const dm  = stderr.match(/displaymatrix:\s*rotation of (-?[\d.]+)/i)
+      const rRaw = rot
+        ? parseInt(rot[1], 10)
+        : (dm ? Math.round(parseFloat(dm[1])) : 0)
+      // displaymatrix uses CCW degrees; rotate metadata uses CW. Normalize to
+      // 0/90/180/270 CW so the rest of the pipeline can reason in one frame.
+      const cw = dm && !rot ? -rRaw : rRaw
+      const rotate = ((cw % 360) + 360) % 360
+      resolve({
+        width:  dim ? parseInt(dim[1], 10) : null,
+        height: dim ? parseInt(dim[2], 10) : null,
+        rotate,
+      })
     })
-    proc.on('error', () => resolve({ width: null, height: null }))
+    proc.on('error', () => resolve({ width: null, height: null, rotate: 0 }))
   })
 }
 
@@ -282,7 +318,18 @@ async function handler(req, res) {
     }
 
     if (source.kind === 'video') {
-      await editVideo({ inPath, outPath, rotate, crop, srcW, srcH })
+      if (rotate && !crop) {
+        // Lossless metadata rotation — sub-second even for long clips. The
+        // pixel re-encode path (with crop) stays on libx264 and may still
+        // time out for very long videos, but rotate-only is the common case
+        // and was reliably 504-ing in prod (2026-05-15).
+        const meta = await probeVideoDims(inPath)
+        await editVideoRotateOnly({
+          inPath, outPath, rotate, existingRotate: meta.rotate,
+        })
+      } else {
+        await editVideo({ inPath, outPath, rotate, crop, srcW, srcH })
+      }
     } else {
       await editImage({
         inPath, outPath, rotate, crop, srcW, srcH, mimeType: source.mime_type,
@@ -290,20 +337,45 @@ async function handler(req, res) {
     }
 
     const outStat = await stat(outPath)
-    const outDims = source.kind === 'video'
-      ? await probeVideoDims(outPath)
-      : await probeImageDims(outPath)
+    let outDims
+    if (source.kind === 'video') {
+      const probed = await probeVideoDims(outPath)
+      // Stream dims don't swap when the metadata flag rotates the picture, so
+      // expose the displayed (post-rotation) dims to consumers. The pixel
+      // re-encode path already produces swapped stream dims, so its rotate
+      // metadata is 0 and the swap is a no-op there.
+      const swap = probed.rotate === 90 || probed.rotate === 270
+      outDims = swap
+        ? { width: probed.height, height: probed.width }
+        : { width: probed.width,  height: probed.height }
+    } else {
+      outDims = await probeImageDims(outPath)
+    }
 
     // Upload the new blob. Stream from disk — videos can be 500MB+ and
     // readFile() materializes the entire file in RAM.
     let uploaded
     if (mode === 'replace-master') {
-      const pathname = source.blob_pathname || source.blob_url.split('/').pop()
-      uploaded = await blobPut(pathname, createReadStream(outPath), {
+      // Cache-bust: write the rotated/cropped master to a FRESH pathname
+      // instead of overwriting in place. The CDN + browser cache by full URL,
+      // and an in-place overwrite was serving the pre-rotation bytes from
+      // cache for hours — the API would 200 but the user would see no change.
+      // The stale blob is deleted below, after the row is PATCHed.
+      const oldPath = source.blob_pathname
+        || (source.blob_url ? new URL(source.blob_url).pathname.replace(/^\//, '') : '')
+      const lastSlash = oldPath.lastIndexOf('/')
+      const blobDir = lastSlash > 0 ? oldPath.slice(0, lastSlash) : 'media/raw'
+      const tail    = lastSlash > 0 ? oldPath.slice(lastSlash + 1) : oldPath
+      const dot     = tail.lastIndexOf('.')
+      const base    = (dot > 0 ? tail.slice(0, dot) : tail) || `m-${source.id}`
+      // addRandomSuffix appends the unique segment, so the URL is guaranteed
+      // fresh and the next image/video load misses every layer of cache.
+      const newPathname = `${blobDir}/${base}${outExt}`
+      uploaded = await blobPut(newPathname, createReadStream(outPath), {
         access: 'public',
         contentType: source.mime_type,
-        addRandomSuffix: false,
-        allowOverwrite: true,
+        addRandomSuffix: true,
+        allowOverwrite: false,
       })
     } else {
       const pathname = variantPathname(source, outExt)
@@ -321,9 +393,12 @@ async function handler(req, res) {
     }
 
     if (mode === 'replace-master') {
-      // PATCH the source row: new dimensions + size; clear thumbnail so it
-      // re-generates on the new orientation. blob_url stays valid (same path).
+      // PATCH the source row: new URL, dimensions, size; clear thumbnail so it
+      // re-generates on the new orientation. blob_url + blob_pathname both
+      // change because the new blob lives at a fresh pathname (cache-bust).
       const updateBody = {
+        blob_url:      uploaded.url,
+        blob_pathname: uploaded.pathname,
         width:  outDims.width  || null,
         height: outDims.height || null,
         size_bytes: outStat.size || null,
@@ -339,6 +414,15 @@ async function handler(req, res) {
       if (!upd.ok) throw new Error(`PATCH master failed: ${upd.status} ${await upd.text()}`)
       const data = await upd.json()
       const after = data[0] ?? null
+
+      // Old blob is now orphaned — delete it. Fire-and-forget: if the delete
+      // fails, the row already points at the new blob and the only cost is a
+      // leftover object in storage (handled by the orphan-blob sweeper).
+      if (source.blob_url && source.blob_url !== uploaded.url) {
+        blobDel(source.blob_url).catch((e) => {
+          console.error('[edit] stale blob delete failed:', e?.message)
+        })
+      }
 
       // Regenerate the thumbnail for videos so the library shows the corrected
       // orientation. Fire-and-forget — if it fails, the next manual "Redo
