@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Navigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { Button } from '@/components/ui/button'
@@ -455,6 +455,11 @@ export default function WorkspaceSettings() {
 
       <Separator />
 
+      {/* ── Knowledge bank ───────────────────────────────────────────────── */}
+      <KnowledgeBankSection />
+
+      <Separator />
+
       {/* ── Billing ──────────────────────────────────────────────────────── */}
       <div id="billing" className="scroll-mt-20 space-y-4">
         <div>
@@ -616,6 +621,120 @@ function SubpageLink({ to, title, description }) {
       </div>
       <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
     </Link>
+  )
+}
+
+// ── Knowledge Bank Section ────────────────────────────────────────────────────
+
+const KIND_META = {
+  archetype:  { label: 'Patient archetypes',    color: 'bg-blue-100 text-blue-800' },
+  condition:  { label: 'Conditions treated',    color: 'bg-green-100 text-green-800' },
+  paradigm:   { label: 'Practice philosophy',   color: 'bg-purple-100 text-purple-800' },
+  value:      { label: 'Core values',           color: 'bg-amber-100 text-amber-800' },
+  objection:  { label: 'Patient hesitations',   color: 'bg-rose-100 text-rose-800' },
+}
+
+function KnowledgeBankSection() {
+  const [concepts, setConcepts] = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [reextracting, setReextracting] = useState(false)
+  const [toast, setToast]       = useState(null)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    fetch('/api/concepts/context?limit=50')
+      .then(r => r.ok ? r.json() : { concepts: [] })
+      .then(({ concepts: rows }) => setConcepts(rows || []))
+      .catch(() => setConcepts([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function reextract() {
+    setReextracting(true)
+    try {
+      const r = await fetch('/api/concepts/reextract', { method: 'POST' })
+      if (r.ok) {
+        setToast('Re-extraction queued — results will appear within a minute.')
+        setTimeout(() => { load(); setToast(null) }, 8000)
+      } else {
+        setToast('Re-extraction failed — check logs.')
+        setTimeout(() => setToast(null), 4000)
+      }
+    } catch {
+      setToast('Re-extraction failed.')
+      setTimeout(() => setToast(null), 4000)
+    } finally {
+      setReextracting(false)
+    }
+  }
+
+  const grouped = {}
+  if (concepts) {
+    for (const c of concepts) {
+      if (!grouped[c.kind]) grouped[c.kind] = []
+      grouped[c.kind].push(c)
+    }
+  }
+  const totalCount = concepts?.length ?? 0
+  const lastSeen = concepts?.length
+    ? new Date(Math.max(...concepts.map(c => new Date(c.last_seen_at || 0)))).toLocaleDateString()
+    : null
+
+  return (
+    <Section
+      title="Knowledge bank"
+      description="Learned automatically from completed interviews and approved content. Used to sharpen Bernard&apos;s questions and improve content drafts over time."
+    >
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading knowledge bank…
+        </div>
+      ) : totalCount === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">
+          No concepts learned yet. Complete and approve a few interviews to start building your practice&apos;s knowledge graph.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{totalCount} concepts learned{lastSeen ? ` · last updated ${lastSeen}` : ''}</span>
+          </div>
+          <div className="space-y-3">
+            {Object.entries(KIND_META).filter(([kind]) => grouped[kind]?.length).map(([kind, meta]) => (
+              <div key={kind}>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{meta.label}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {grouped[kind].slice(0, 12).map(c => (
+                    <span
+                      key={c.label}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.color}`}
+                      title={`Evidence: ${c.evidence_count} · Weight: ${Number(c.weight).toFixed(1)}`}
+                    >
+                      {c.label}
+                    </span>
+                  ))}
+                  {grouped[kind].length > 12 && (
+                    <span className="text-xs text-muted-foreground self-center">+{grouped[kind].length - 12} more</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {toast && (
+            <p className="text-xs text-muted-foreground border rounded px-3 py-2 bg-muted">{toast}</p>
+          )}
+          <Button
+            variant="outline" size="sm"
+            onClick={reextract}
+            disabled={reextracting}
+            className="mt-1"
+          >
+            {reextracting ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Re-extracting…</> : 'Re-extract from history'}
+          </Button>
+        </div>
+      )}
+    </Section>
   )
 }
 

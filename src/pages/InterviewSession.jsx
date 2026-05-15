@@ -139,6 +139,8 @@ export default function InterviewSession() {
   const reprobedIndexesRef = useRef(new Set())
   // Prior session context for returning clinicians
   const priorSessionContextRef = useRef(null)
+  // Learned practice knowledge from concept graph — fetched once at session start
+  const conceptBlockRef = useRef('')
   // Refs for pause/resume persistence
   const sessionSaveTimerRef = useRef(null)
   const userIdRef = useRef(null)
@@ -273,6 +275,13 @@ export default function InterviewSession() {
       .then((past) => { pastInterviewsRef.current = past || [] })
       .catch(() => {})
 
+    // Fetch learned practice knowledge for this topic — injected into every
+    // system prompt for this session. Fails silently (empty block = graceful noop).
+    fetch(`/api/concepts/context?topic=${encodeURIComponent(interviewData.topic || '')}`)
+      .then((r) => r.ok ? r.json() : { block: '' })
+      .then(({ block }) => { conceptBlockRef.current = block || '' })
+      .catch(() => {})
+
     // Feature 5: use clinician data (already fetched) to find prior sessions
     // for returning clinicians. fetchClinician returns interviews with topic+status
     // but not messages — topic alone is enough for the keyword-overlap check and
@@ -382,6 +391,7 @@ export default function InterviewSession() {
         isFirstMessage,
         shallowReprobe: shouldReprobe,
         priorSessionContext: priorSessionContextRef.current,
+        conceptBlock: conceptBlockRef.current,
       }
     )
 

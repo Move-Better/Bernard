@@ -8,6 +8,7 @@ export const config = { runtime: 'nodejs' }
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { buildPlanRows } from '../_lib/atomPlan.js'
+import { extractConcepts, buildInterviewText } from '../_lib/conceptExtractor.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -193,6 +194,27 @@ export default async function handler(req, res) {
               headers: { Prefer: 'return=minimal' },
             })
           }
+        }
+
+        // Fire-and-forget concept extraction from clinician's transcript turns.
+        // Uses cleaned_messages if available (cleanup-transcript pass), else raw messages.
+        const interviewForExtract = await sb(
+          `interviews?id=eq.${id}&${wsFilter}&select=cleaned_messages,messages`
+        ).then(r => r.ok ? r.json() : []).then(rows => rows[0])
+
+        if (interviewForExtract) {
+          const turns = interviewForExtract.cleaned_messages?.length
+            ? interviewForExtract.cleaned_messages
+            : interviewForExtract.messages
+          const interviewText = buildInterviewText(turns)
+          extractConcepts({
+            workspaceId:  ws.id,
+            sourceKind:   'interview_turn',
+            sourceId:     id,
+            text:         interviewText,
+            clinicianId:  rows[0].clinician_id ?? null,
+            weightDelta:  1.0,
+          })
         }
 
         // Auto-create content plan atoms once per interview (idempotent).

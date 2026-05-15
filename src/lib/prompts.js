@@ -219,6 +219,7 @@ export function getInterviewSystemPrompt(workspace, clinicianName, condition, pa
     isFirstMessage = false,
     shallowReprobe = false,
     priorSessionContext = null,
+    conceptBlock = '',
   } = opts
 
   const interviewerName = workspace?.interviewer_name || 'Bernard'
@@ -273,6 +274,7 @@ ${formatInterviewContextForPrompt(workspace, condition)}${pastContext}
 ${workspace.display_name} context: ${workspace.clinic_context}
 
 ${formatPatientContextForPrompt(workspace, prototypeId)}
+${conceptBlock}
 ${probeGoal}
 ${reprobeInstruction}${priorSessionBlock}
 CONTENT YOU NEED TO COLLECT — each area below produces specific downstream content. Ask about them in any order that flows naturally, but DO NOT move on from an area until the answer is specific and concrete enough to write from. Vague answers get follow-ups.
