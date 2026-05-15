@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PLATFORM_META, STATUS_META } from '@/lib/contentMeta'
 import { useUserRole } from '@/lib/useUserRole'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useComments,
   useAddComment,
@@ -257,7 +258,9 @@ function RegenerateButton({ piece }) {
 
 function ApprovalPanel({ piece }) {
   const { user } = useUser()
-  const { canReview } = useUserRole()
+  const { canReview, canPublish } = useUserRole()
+  const workspace = useWorkspace()
+  const skipReview = !!workspace?.skip_review
   const updateStatus = useUpdateContentItemStatus()
   const addComment = useAddComment(piece.id)
 
@@ -356,8 +359,8 @@ function ApprovalPanel({ piece }) {
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
-        {/* Send for review — all roles, only on draft */}
-        {piece.status === 'draft' && (
+        {/* Send for review — all roles, only on draft, only when review workflow is on */}
+        {piece.status === 'draft' && !skipReview && (
           <Button
             size="sm"
             variant="outline"
@@ -370,6 +373,23 @@ function ApprovalPanel({ piece }) {
               <Send className="h-3.5 w-3.5 mr-1.5" />
             )}
             Send for review
+          </Button>
+        )}
+
+        {/* Publish from draft — when workspace skips the review step */}
+        {piece.status === 'draft' && skipReview && canPublish && (
+          <Button
+            size="sm"
+            onClick={handlePublish}
+            disabled={publishing || isBusy}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {publishing ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {piece.platform === 'blog' ? 'Publish to Website' : 'Publish to Buffer'}
           </Button>
         )}
 
