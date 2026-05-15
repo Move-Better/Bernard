@@ -30,6 +30,7 @@ const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
+const Synthesis = lazy(() => import('@/pages/Synthesis'))
 import { workspace } from '@/lib/workspace'
 import { WorkspaceProvider, useWorkspaceState } from '@/lib/WorkspaceContext'
 import { UploadProgressProvider } from '@/lib/UploadProgressContext'
@@ -222,6 +223,7 @@ function AppRoutes() {
             <Route path="/clinician/:clinicianId" element={guarded(<ClinicianProfile />)} />
             <Route path="/stories" element={guarded(<Stories />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
+            <Route path="/synthesis" element={guarded(<Synthesis />)} />
             <Route path="/library" element={guarded(<MediaHub />)} />
             {/* Legacy redirects — /review/:itemId and /review-queue → new IA paths */}
             <Route path="/review/:itemId" element={<LegacyReviewRedirect />} />
