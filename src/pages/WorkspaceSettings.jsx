@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Separator } from '@/components/ui/separator'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
@@ -74,8 +74,7 @@ export default function WorkspaceSettings() {
   const [error, setError]   = useState(null)
 
   // Legacy redirect: /settings/workspace?billing=... and /settings/workspace#billing
-  // now live at /settings/workspace/billing. Hash compat is for bookmarks
-  // saved before the tab restructure (PR for "settings cleanup", 2026-05-15).
+  // now live at /settings/workspace/billing.
   useEffect(() => {
     const billing = searchParams.get('billing')
     if (billing) {
@@ -166,17 +165,18 @@ export default function WorkspaceSettings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Workspace Settings</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Identity, web presence, and content strings. Logos &amp; colors live in Brand kit; locations and billing have their own tabs.
+    <div className="max-w-3xl mx-auto space-y-6 pb-16">
+      {/* Sticky header / save bar */}
+      <div className="sticky top-14 z-10 -mx-6 px-6 py-4 bg-background/85 backdrop-blur border-b border-border/60 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">General</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Identity, web presence, and content strings used across prompts and link previews.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1">
           {saved && (
-            <span className="text-xs text-green-600 flex items-center gap-1">
+            <span className="text-xs text-emerald-600 flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />Saved
             </span>
           )}
@@ -185,133 +185,120 @@ export default function WorkspaceSettings() {
               <AlertCircle className="h-3.5 w-3.5" />{error}
             </span>
           )}
-          <Button size="sm" onClick={handleSave} disabled={saving}>
+          <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
             Save changes
           </Button>
         </div>
       </div>
 
-      <Section title="Identity">
-        <Field label="Workspace name"
-          value={form.display_name} onChange={set('display_name')} />
-        <Field label="Tagline"
-          value={form.tagline} onChange={set('tagline')} />
+      <SectionCard
+        title="Identity"
+        description="How this workspace introduces itself on the sign-in screen and in the browser tab."
+      >
+        <Grid>
+          <Field label="Workspace name"
+            value={form.display_name} onChange={set('display_name')} />
+          <Field label="Tagline"
+            value={form.tagline} onChange={set('tagline')} />
+        </Grid>
         <Field label="Sign-in blurb"
           value={form.sign_in_blurb} onChange={set('sign_in_blurb')}
           hint="Shown below the workspace name on the sign-in screen." />
         <Field label="App name"
           value={form.app_name} onChange={set('app_name')}
-          hint="App name in browser tab — e.g. 'Move Better — NarrateRx'" />
-      </Section>
+          hint="App name in the browser tab — e.g. “Move Better — NarrateRx”." />
+      </SectionCard>
 
-      <Separator />
-
-      <Section title="Web presence">
-        <Field label="Website"
-          value={form.website} onChange={set('website')} placeholder="https://..." type="url" autoComplete="url" />
-        <Field label="Website hostname"
-          value={form.website_hostname} onChange={set('website_hostname')}
-          placeholder="movebetter.co"
-          hint="Hostname only — e.g. movebetter.co" />
+      <SectionCard
+        title="Web presence"
+        description="Where this workspace lives on the web. Drives outbound links and link previews."
+      >
+        <Grid>
+          <Field label="Website"
+            value={form.website} onChange={set('website')} placeholder="https://..." type="url" autoComplete="url" />
+          <Field label="Website hostname"
+            value={form.website_hostname} onChange={set('website_hostname')}
+            placeholder="movebetter.co"
+            hint="Hostname only — no protocol or trailing slash." />
+        </Grid>
         <Textarea2 label="Link preview blurb"
           value={form.link_preview_blurb} onChange={set('link_preview_blurb')}
           rows={2}
-          hint="OG / link-preview blurb — one sentence under 130 chars" />
-      </Section>
+          hint="OG / link-preview blurb — one sentence under 130 chars." />
+      </SectionCard>
 
-      <Separator />
-
-      <Section title="Social handles">
-        <Field label="Instagram handle"
-          value={form.social_instagram} onChange={set('social_instagram')} placeholder="yourhandle" />
-        <Field label="Facebook handle"
-          value={form.social_facebook} onChange={set('social_facebook')} placeholder="yourpage" />
-      </Section>
-
-      <Separator />
-
-      <Section
-        title="Approval workflow"
-        description="When off, drafts route through a reviewer (Send for review → Approve → Publish). Turn this on for single-user workspaces so the editor can publish directly without a second pair of eyes."
+      <SectionCard
+        title="Social handles"
+        description="Used for @-mentions in generated copy and source-of-truth URLs."
       >
-        <label className="flex items-start gap-2.5 rounded-md border border-input p-2.5 cursor-pointer hover:bg-accent/30">
+        <Grid>
+          <Field label="Instagram handle"
+            value={form.social_instagram} onChange={set('social_instagram')} placeholder="yourhandle" />
+          <Field label="Facebook handle"
+            value={form.social_facebook} onChange={set('social_facebook')} placeholder="yourpage" />
+        </Grid>
+      </SectionCard>
+
+      <SectionCard
+        title="Approval workflow"
+        description="When off, drafts route through a reviewer (Send for review → Approve → Publish). Turn this on for single-user workspaces so the editor can publish directly."
+      >
+        <label className="flex items-start gap-3 rounded-lg border border-input p-3.5 cursor-pointer hover:bg-accent/30 transition-colors">
           <input
             type="checkbox"
             checked={!!form.skip_review}
             onChange={(e) => setForm((f) => ({ ...f, skip_review: e.target.checked }))}
-            className="mt-0.5"
+            className="mt-0.5 h-4 w-4"
           />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium leading-tight">Skip review step</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
+            <div className="text-xs text-muted-foreground mt-1">
               Editors can publish directly from a draft. No reviewer approval required.
             </div>
           </div>
         </label>
-      </Section>
+      </SectionCard>
 
-      <Separator />
-
-      <Section title="Content strings">
+      <SectionCard
+        title="Content strings"
+        description="Reusable phrases and links that flow into generated copy."
+      >
         <Textarea2
           label="Internal links (Markdown)"
           value={form.internal_links_markdown}
           onChange={set('internal_links_markdown')}
           rows={8}
+          mono
           hint="Markdown list of pages. The blog post prompt uses these for contextual linking."
         />
-        <Field label="Signature system name"
-          value={form.signature_system_name} onChange={set('signature_system_name')}
-          placeholder="Leave blank if none" />
-        <Field label="Signature system URL"
-          value={form.signature_system_url} onChange={set('signature_system_url')}
-          placeholder="https://..." />
+        <Grid>
+          <Field label="Signature system name"
+            value={form.signature_system_name} onChange={set('signature_system_name')}
+            placeholder="Leave blank if none" />
+          <Field label="Signature system URL"
+            value={form.signature_system_url} onChange={set('signature_system_url')}
+            placeholder="https://..." />
+        </Grid>
         <Field label="Pinterest board names"
           value={form.pinterest_boards} onChange={set('pinterest_boards')}
-          hint="Pinterest board names — slash-separated" />
-        <Field label="Brand hashtag"
-          value={form.brand_hashtag} onChange={set('brand_hashtag')}
-          placeholder="#MoveBetter"
-          hint="Brand hashtag — e.g. #MoveBetter" />
-        <Field label="Spoken URL"
-          value={form.spoken_url} onChange={set('spoken_url')}
-          placeholder="MoveBetter.co"
-          hint="Spoken URL — said aloud in video scripts, e.g. MoveBetter.co" />
-        <p className="text-[11px] text-muted-foreground">
-          Location keyword and hashtag now live with each location in the <Link to="/settings/workspace/locations" className="underline">Locations tab</Link> — the primary location&apos;s values flow into prompts automatically.
+          hint="Slash-separated — e.g. “Home tips / Recovery / Mobility”." />
+        <Grid>
+          <Field label="Brand hashtag"
+            value={form.brand_hashtag} onChange={set('brand_hashtag')}
+            placeholder="#MoveBetter" />
+          <Field label="Spoken URL"
+            value={form.spoken_url} onChange={set('spoken_url')}
+            placeholder="MoveBetter.co"
+            hint="Said aloud in video scripts." />
+        </Grid>
+        <p className="text-xs text-muted-foreground">
+          Location keyword and hashtag now live with each location in the{' '}
+          <Link to="/settings/workspace/locations" className="underline underline-offset-2 hover:text-foreground">Locations tab</Link>
+          {' '}— the primary location&apos;s values flow into prompts automatically.
         </p>
-      </Section>
+      </SectionCard>
 
-      <Separator />
-
-      <SubpageLink
-        to="/settings/workspace/voice"
-        title="Bernard & voice"
-        description="AI voice context, brand voice, audience, tone modifiers, and paradigm content (patient archetypes, interview bank, topic suggestions)."
-      />
-      <SubpageLink
-        to="/settings/workspace/locations"
-        title="Locations"
-        description="Each physical site you operate, with city, state, location keyword / hashtag, and per-location GBP channel ID."
-      />
-      <SubpageLink
-        to="/settings/workspace/channels"
-        title="Output channels"
-        description="Choose which channels this workspace generates content for, and manage publishing credentials."
-      />
-      <SubpageLink
-        to="/settings/brand-kit"
-        title="Brand kit"
-        description="Logos, colors, fonts, and brand book reference."
-      />
-      <SubpageLink
-        to="/settings/workspace/billing"
-        title="Plan & billing"
-        description="Manage your subscription plan and seats."
-      />
-
-      <Separator />
       <DangerZone workspace={ws} getToken={getToken} />
     </div>
   )
@@ -355,118 +342,115 @@ function DangerZone({ workspace, getToken }) {
   }
 
   return (
-    <Section title="Danger zone" description="Destructive actions. Read carefully — these affect every member of the workspace.">
-      <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-4 space-y-3">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
-          <div>
-            <p className="text-sm font-semibold text-destructive">Archive workspace</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Suspends this workspace immediately. All members lose access — the subdomain stops resolving and every API call returns 404. Content, media, and credentials stay in storage so the workspace can be restored manually via the database.
-            </p>
-            <ul className="text-[11px] text-muted-foreground list-disc pl-4 mt-1.5 space-y-0.5">
-              <li>Published posts on external channels (WordPress / Astro / Buffer) are <strong>not</strong> taken down.</li>
-              <li>Cron jobs that reference this workspace start no-op&apos;ing.</li>
-              <li>Your Clerk Organization is not deleted; members can still sign in elsewhere.</li>
-            </ul>
+    <Card className="border-destructive/30 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base text-destructive">Danger zone</CardTitle>
+        <CardDescription>
+          Destructive actions. Read carefully — these affect every member of the workspace.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-destructive">Archive workspace</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Suspends this workspace immediately. All members lose access — the subdomain stops resolving and every API call returns 404. Content, media, and credentials stay in storage so the workspace can be restored manually via the database.
+              </p>
+              <ul className="text-[11px] text-muted-foreground list-disc pl-4 mt-1.5 space-y-0.5">
+                <li>Published posts on external channels (WordPress / Astro / Buffer) are <strong>not</strong> taken down.</li>
+                <li>Cron jobs that reference this workspace start no-op&apos;ing.</li>
+                <li>Your Clerk Organization is not deleted; members can still sign in elsewhere.</li>
+              </ul>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">
+              To confirm, type the workspace slug: <code className="text-foreground bg-muted px-1 py-0.5 rounded">{slug}</code>
+            </Label>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={slug}
+              disabled={archiving}
+              autoComplete="off"
+              className="h-10 text-sm"
+            />
+            {error && (
+              <p className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {error === 'confirm-slug-mismatch'
+                  ? "The slug you typed doesn't match. Copy the value above exactly."
+                  : error}
+              </p>
+            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleArchive}
+              disabled={!matches || archiving}
+            >
+              {archiving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Archive this workspace
+            </Button>
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">
-            To confirm, type the workspace slug: <code className="text-foreground bg-muted px-1 py-0.5 rounded">{slug}</code>
-          </Label>
-          <Input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={slug}
-            disabled={archiving}
-            autoComplete="off"
-            className="text-sm"
-          />
-          {error && (
-            <p className="text-xs text-destructive flex items-center gap-1.5">
-              <AlertCircle className="h-3.5 w-3.5" />
-              {error === 'confirm-slug-mismatch'
-                ? "The slug you typed doesn't match. Copy the value above exactly."
-                : error}
-            </p>
-          )}
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleArchive}
-            disabled={!matches || archiving}
-          >
-            {archiving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-            Archive this workspace
-          </Button>
-        </div>
-      </div>
 
-      <p className="text-[11px] text-muted-foreground">
-        Rename, transfer ownership, and hard delete are not available in-app yet — each requires substantial server work (Vercel domain re-register, Clerk org-ownership swap, cross-table cascade + blob cleanup). Contact the platform team (drq@narraterx.ai) for any of these.
-      </p>
-    </Section>
+        <p className="text-[11px] text-muted-foreground">
+          Rename, transfer ownership, and hard delete are not available in-app yet — each requires substantial server work. Contact the platform team (drq@narraterx.ai) for any of these.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
-function SubpageLink({ to, title, description }) {
+function SectionCard({ title, description, children }) {
   return (
-    <Link
-      to={to}
-      className="flex items-center justify-between gap-4 rounded-lg border border-input px-4 py-3 hover:bg-accent/30 transition-colors group"
-    >
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-      </div>
-      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
-    </Link>
-  )
-}
-
-function Section({ title, description, children }) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-      </div>
-      <div className="space-y-3">
+    <Card className="shadow-none">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description && <CardDescription className="text-xs">{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="space-y-5">
         {children}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
+}
+
+function Grid({ children }) {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">{children}</div>
 }
 
 function Field({ label, value, onChange, placeholder, hint, type = 'text', autoComplete }) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">{label}</Label>
       <Input
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="text-sm"
+        className="h-10 text-sm"
       />
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }
 
-function Textarea2({ label, value, onChange, rows = 4, hint }) {
+function Textarea2({ label, value, onChange, rows = 4, hint, mono = false }) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">{label}</Label>
       <Textarea
         value={value}
         onChange={e => onChange(e.target.value)}
         rows={rows}
-        className="text-sm font-mono resize-y"
+        className={`text-sm resize-y ${mono ? 'font-mono' : ''}`}
       />
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }
