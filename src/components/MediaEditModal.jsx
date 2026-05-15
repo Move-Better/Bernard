@@ -141,10 +141,9 @@ export default function MediaEditModal({ asset, onClose, onSaved }) {
   }
 
   const ratio = ASPECT_PRESETS.find((p) => p.id === aspect)?.ratio || null
-  // Replace-master is only offered for rotate-only ops on a row that is itself
-  // a master — fixing a wrong-orientation upload should not also leave a
-  // duplicate variant around. We hide it once a crop has been touched.
-  const canReplaceMaster = !asset.parent_id && rotate && !cropTouched
+  // Replace-master is offered whenever the asset is itself a master (no parent_id).
+  // Variants can only be derived from masters, so this is always a safe offer.
+  const canReplaceMaster = !asset.parent_id
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -238,32 +237,28 @@ export default function MediaEditModal({ asset, onClose, onSaved }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-5 py-3 border-t shrink-0">
-          <div>
-            {canReplaceMaster && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => save({ replaceMaster: true })}
-                disabled={saving}
-                title="Overwrite the original in place — use this when the upload was simply oriented wrong"
-              >
-                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Fix the original
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>Cancel</Button>
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t shrink-0">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>Cancel</Button>
+          {canReplaceMaster && (
             <Button
+              variant="outline"
               size="sm"
-              onClick={() => save({ replaceMaster: false })}
+              onClick={() => save({ replaceMaster: true })}
               disabled={saving || !canEdit}
+              title="Overwrite the original in place — preserves the URL, replaces the file"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              Save as variant
+              Save original
             </Button>
-          </div>
+          )}
+          <Button
+            size="sm"
+            onClick={() => save({ replaceMaster: false })}
+            disabled={saving || !canEdit}
+          >
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+            Save as variant
+          </Button>
         </div>
       </div>
     </div>
