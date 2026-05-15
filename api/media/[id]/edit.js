@@ -204,7 +204,12 @@ async function probeVideoDims(path) {
     let stderr = ''
     proc.stderr.on('data', (d) => { stderr += d.toString() })
     proc.on('close', () => {
-      const dim = stderr.match(/Stream #\d+:\d+(?:\([^)]+\))?:\s*Video:[^\n]*?\s(\d+)x(\d+)/)
+      // Dimensions follow the pixel format in the stream description, always
+      // after a comma (e.g. "yuv420p, 1920x1080"). Using \d{2,5} (2–5 digits)
+      // avoids false matches on codec hex tags like "(avc1 / 0x31637661)"
+      // where the leading 0 is a single digit — and the prior `\s\d+x\d+`
+      // pattern was matching that 0 first, returning width=0 → null in DB.
+      const dim = stderr.match(/Stream #\d+:\d+(?:\([^)]+\))?:\s*Video:[^\n]*?,\s*(\d{2,5})x(\d{2,5})/)
       const rot = stderr.match(/rotate\s*:\s*(-?\d+)/i)
       const dm  = stderr.match(/displaymatrix:\s*rotation of (-?[\d.]+)/i)
       const rRaw = rot
