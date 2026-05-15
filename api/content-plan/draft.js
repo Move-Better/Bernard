@@ -8,6 +8,7 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../_lib/atomPrompts.js'
 import { suggestedScheduledAt } from '../_lib/atomPlan.js'
+import { getContextBlock } from '../_lib/conceptRetrieval.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -81,6 +82,9 @@ export default async function handler(req, res) {
       voiceNotes    = clinRows[0]?.voice_notes ?? ''
     }
 
+    // Augment with learned practice knowledge from the concept graph (non-blocking).
+    const conceptBlock = await getContextBlock({ workspaceId: ws.id, topic: interview.topic })
+
     // Build the focused atom prompt
     const systemPrompt = getAtomSystemPrompt(
       ws,
@@ -91,7 +95,7 @@ export default async function handler(req, res) {
       interview.voice_mode || 'practice',
       interview.tone || 'smart',
       voiceNotes,
-      ws.brand_guidelines || '',
+      (ws.brand_guidelines || '') + conceptBlock,
     )
     if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 

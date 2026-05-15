@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
+import { extractConcepts } from '../_lib/conceptExtractor.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -168,7 +169,32 @@ export default async function handler(req, res) {
     })
     if (!r.ok) return dbErr(res, r, 'Update failed')
     const data = await r.json()
-    return ok(res, data[0])
+    const updated = data[0]
+
+    // Fire-and-forget concept extraction on approval (positive signal) and
+    // change-request (negative signal, demotes phrasings that got rejected).
+    if (updated && patch.status === 'approved' && updated.content?.trim()) {
+      extractConcepts({
+        workspaceId:  ws.id,
+        sourceKind:   'approved_edit',
+        sourceId:     updated.id,
+        text:         updated.content,
+        clinicianId:  updated.clinician_id ?? null,
+        weightDelta:  1.5,
+      })
+    } else if (updated && patch.status === 'in_review' && patch.notes?.trim() && updated.content?.trim()) {
+      // Change request returned — mild negative signal on the rejected draft.
+      extractConcepts({
+        workspaceId:  ws.id,
+        sourceKind:   'rejected_edit',
+        sourceId:     updated.id,
+        text:         updated.content,
+        clinicianId:  updated.clinician_id ?? null,
+        weightDelta:  -0.5,
+      })
+    }
+
+    return ok(res, updated)
   }
 
   // ── DELETE ───────────────────────────────────────────────────────────────
