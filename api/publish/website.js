@@ -1,4 +1,5 @@
 import { withSentry } from '../_lib/sentry.js'
+export const config = { runtime: 'nodejs' }
 // Website publish endpoint — Node.js runtime.
 //
 // Two receiving modes are supported, dispatched on which credential the
