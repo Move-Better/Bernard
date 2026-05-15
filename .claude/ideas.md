@@ -98,3 +98,11 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 - **Effort:** Behavioral, not code
 - **Trigger to revisit:** Once we have a few sessions worth of grooming, we'll see which ideas keep coming back without being acted on — those are good `spawn_task` candidates.
 - **Status:** Parked (behavioral guideline, not a build)
+
+## Idea: Upload-time video normalize via streaming pipe
+- **Surfaced:** 2026-05-15 (rotate-bug follow-up — what's missing from media management)
+- **Area:** `api/media/upload.js`, new `api/_lib/videoNormalize.js`, optional `media_assets.is_faststart` column
+- **TLDR:** For uploads where `probeFaststart` returns `'tail'` (logged but not acted on as of PRs #453/#456/#458), re-mux the blob into a faststart-equivalent fragmented MP4 using a `fetch(blob) → ffmpeg-stdin → ffmpeg-stdout → blob-put` pipeline. No `/tmp` staging → works for any file size. Replaces the master with a fresh-pathname blob (same cache-bust pattern the edit endpoint uses), deletes the old. Optional: persist `is_faststart` so the UI can show a "normalizing…" badge while it's in flight. If the codec isn't H264/AAC, full re-encode through the same pipe.
+- **Effort:** ~1 day
+- **Trigger to revisit:** (a) external tenants start uploading non-faststart sources at volume, OR (b) crop operations on long clips start failing in the wild (currently mitigated by dropping `+faststart` from the edit path in #458), OR (c) playback start-latency complaints on long videos hosted from Blob.
+- **Status:** Parked
