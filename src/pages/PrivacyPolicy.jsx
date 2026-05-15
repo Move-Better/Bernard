@@ -171,6 +171,7 @@ export default function PrivacyPolicy() {
         {/* Footer links */}
         <div className="mt-12 pt-6 border-t flex gap-4 text-sm text-muted-foreground">
           <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+          <Link to="/status" className="hover:text-foreground transition-colors">Status</Link>
           <Link to="/" className="hover:text-foreground transition-colors">Back to app</Link>
         </div>
 
