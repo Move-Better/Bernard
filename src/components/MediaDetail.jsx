@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize } from 'lucide-react'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,6 +12,7 @@ import {
   tagMediaAsset,
   regenerateThumbnail,
   listVariants,
+  editMediaAsset,
 } from '@/lib/mediaLib'
 import { listContentPieces, createContentPiece, segmentMediaAsset } from '@/lib/contentLib'
 import { useUserRole } from '@/lib/useUserRole'
@@ -84,6 +85,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [showEdit, setShowEdit] = useState(false)
   const [variants, setVariants] = useState([])
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [rotatingQuick, setRotatingQuick] = useState(false)
 
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
 
@@ -143,6 +145,20 @@ export default function MediaDetail({ asset, onClose, onChange }) {
 
   useEffect(() => { refreshBriefs() }, [refreshBriefs])
   useEffect(() => { refreshVariants() }, [refreshVariants])
+
+  async function handleQuickRotate() {
+    setRotatingQuick(true)
+    try {
+      await editMediaAsset(asset.id, { rotate: 90, crop: null, mode: 'replace-master' })
+      toast.success('Rotated', { description: 'Original updated in place.' })
+      onChange?.()
+      refreshVariants()
+    } catch (e) {
+      toast.error('Rotate failed', { description: e.message })
+    } finally {
+      setRotatingQuick(false)
+    }
+  }
 
   function addTag() {
     const t = tagInput.trim().toLowerCase()
@@ -409,16 +425,31 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 {asset.thumbnail_url ? 'Redo thumbnail' : 'Make thumbnail'}
               </Button>
             )}
+            {canEdit && !asset.parent_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleQuickRotate}
+                disabled={rotatingQuick}
+                className="h-7 gap-1.5 text-[11px]"
+                title="Rotate 90° clockwise — overwrites the original in place"
+              >
+                {rotatingQuick
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RotateCw className="h-3.5 w-3.5" />}
+                Rotate
+              </Button>
+            )}
             {canEdit && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowEdit(true)}
+                onClick={() => { setIsFullscreen(true); setShowEdit(true) }}
                 className="h-7 gap-1.5 text-[11px]"
-                title="Rotate or crop — saves as a new variant by default"
+                title="Crop this asset — opens fullscreen crop editor"
               >
                 <Crop className="h-3.5 w-3.5" />
-                Edit
+                Crop
               </Button>
             )}
             {asset.kind === 'photo' && (
