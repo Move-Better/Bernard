@@ -134,30 +134,22 @@ function thumbPathname(asset) {
   return `media/thumbs/${asset.id}.jpg`
 }
 
-// Extract + upload + PATCH. Returns the new thumbnail_url, or null if the
-// asset is not a video / has no source blob to read from.
-export async function generateAndPersistThumbnail(asset, scope) {
-  if (!asset || asset.kind !== 'video') return null
-  if (!asset.blob_url) return null
+// Core: upload a JPEG from a local path, PATCH thumbnail_url, clean up the
+// old blob. Used both by generateAndPersistThumbnail (after download) and
+// directly by the edit endpoint (re-uses the re-encoded outPath already in
+// /tmp, avoiding a second blob fetch).
+export async function generateThumbnailFromPath(videoPath, asset, scope) {
   const s = requireScope(scope)
 
-  const dir     = await mkdtemp(join(tmpdir(), 'thumb-'))
-  const inPath  = join(dir, 'in.bin')
+  const dir     = await mkdtemp(join(tmpdir(), 'thumbout-'))
   const outPath = join(dir, 'out.jpg')
   try {
-    const res = await fetch(asset.blob_url)
-    if (!res.ok) throw new Error(`Source download failed: ${res.status}`)
-    // Stream to disk instead of buffering — videos can be 500MB+ and
-    // arrayBuffer() materializes the whole file in RAM, OOMing the function.
-    await pipeline(Readable.fromWeb(res.body), createWriteStream(inPath))
-
-    await extractFrame(inPath, outPath)
+    await extractFrame(videoPath, outPath)
     const jpeg = await readFile(outPath)
 
     // Fresh pathname on every regen — CDN + browser cache by full URL, so an
     // in-place overwrite (same URL) keeps serving the pre-rotation frame until
-    // the CDN TTL expires. addRandomSuffix guarantees a new URL, which misses
-    // every cache layer immediately.
+    // the CDN TTL expires. addRandomSuffix guarantees a new URL.
     const oldThumbnailUrl = asset.thumbnail_url || null
     const uploaded = await blobPut(thumbPathname(asset), jpeg, {
       access: 'public',
@@ -175,8 +167,6 @@ export async function generateAndPersistThumbnail(asset, scope) {
       throw new Error(`thumbnail PATCH failed: ${upd.status} ${await upd.text()}`)
     }
 
-    // Old thumbnail blob is now orphaned — delete it. Fire-and-forget; only
-    // cost of failure is a leftover small JPEG in storage.
     if (oldThumbnailUrl && oldThumbnailUrl !== uploaded.url) {
       blobDel(oldThumbnailUrl).catch((e) => {
         console.error('[thumbnail] stale blob delete failed:', e?.message)
@@ -184,6 +174,27 @@ export async function generateAndPersistThumbnail(asset, scope) {
     }
 
     return uploaded.url
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
+// Extract + upload + PATCH. Returns the new thumbnail_url, or null if the
+// asset is not a video / has no source blob to read from.
+export async function generateAndPersistThumbnail(asset, scope) {
+  if (!asset || asset.kind !== 'video') return null
+  if (!asset.blob_url) return null
+  requireScope(scope) // validate early before the expensive download
+
+  const dir    = await mkdtemp(join(tmpdir(), 'thumb-'))
+  const inPath = join(dir, 'in.bin')
+  try {
+    const res = await fetch(asset.blob_url)
+    if (!res.ok) throw new Error(`Source download failed: ${res.status}`)
+    // Stream to disk instead of buffering — videos can be 500MB+ and
+    // arrayBuffer() materializes the whole file in RAM, OOMing the function.
+    await pipeline(Readable.fromWeb(res.body), createWriteStream(inPath))
+    return await generateThumbnailFromPath(inPath, asset, scope)
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {})
   }
