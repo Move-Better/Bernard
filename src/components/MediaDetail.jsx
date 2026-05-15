@@ -95,6 +95,9 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const purgeReady  = isArchived && asset.archived_at && cooldownLeft === 0 && canPurge
 
   // Sync local state if a different asset is loaded into the same drawer.
+  // Intentional: reseeds ONLY on asset.id change. Listing every asset.* field
+  // here would clobber in-progress user edits the moment an autosave round-trip
+  // refreshes the upstream object.
   useEffect(() => {
     setTags(asset.tags || [])
     setNotes(asset.notes || '')
@@ -111,6 +114,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setError('')
     setShowPurge(false)
     setPurgeConfirm('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.id])
 
   const refreshBriefs = useCallback(async () => {

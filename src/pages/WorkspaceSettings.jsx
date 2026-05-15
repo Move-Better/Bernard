@@ -946,7 +946,7 @@ function LocationsPanel({ getToken, onSyncWorkspace }) {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState(emptyLocationDraft())
 
-  async function reload() {
+  const reload = useCallback(async () => {
     try {
       const r = await fetch('/api/workspace/locations', {
         headers: { Authorization: `Bearer ${await getToken({ skipCache: true })}` },
@@ -963,9 +963,9 @@ function LocationsPanel({ getToken, onSyncWorkspace }) {
       setLocations([])
       setError('network-error')
     }
-  }
+  }, [getToken])
 
-  useEffect(() => { reload()   }, [])
+  useEffect(() => { reload() }, [reload])
 
   async function handleCreate() {
     if (!draft.city.trim()) {
