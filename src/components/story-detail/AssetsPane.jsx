@@ -159,6 +159,7 @@ function ApprovalPanel({ piece }) {
         const description = descLine?.trim().slice(0, 200) || title
         const pubDate = new Date().toISOString().slice(0, 10)
         const result = await publishBlogToWebsite({ slug, title, description, pubDate, markdown })
+        await updateStatus.mutateAsync({ id: piece.id, status: 'published' })
         toast.success('Published to website', {
           description: result.postUrl ? `View at ${result.postUrl}` : 'Post is live.',
         })
@@ -173,6 +174,7 @@ function ApprovalPanel({ piece }) {
           },
           userEmail,
         )
+        await updateStatus.mutateAsync({ id: piece.id, status: 'published' })
         toast.success('Sent to Buffer')
       }
     } catch (e) {
@@ -265,6 +267,19 @@ function ApprovalPanel({ piece }) {
               <Send className="h-3.5 w-3.5 mr-1.5" />
             )}
             {piece.platform === 'blog' ? 'Publish to Website' : 'Publish to Buffer'}
+          </Button>
+        )}
+
+        {/* Published state — no further action available */}
+        {piece.status === 'published' && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled
+            className="border-green-300 bg-green-50 text-green-700 cursor-default opacity-100"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {piece.platform === 'blog' ? 'Published to Website' : 'Published to Buffer'}
           </Button>
         )}
       </div>
