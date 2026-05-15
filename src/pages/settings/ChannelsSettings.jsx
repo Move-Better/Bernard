@@ -1,146 +1,73 @@
 import { useState, useEffect } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
-import { Loader2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
-import { Section, SaveBar } from '@/components/settings/helpers'
-import { Separator } from '@/components/ui/separator'
-import CredentialForm from '@/components/CredentialForm'
+import {
+  Loader2, FileText, Mail, MapPin, Instagram, Facebook, Linkedin,
+  Youtube, Twitter, Pin, Music2, MessageCircle, Cloud, Megaphone,
+  LayoutTemplate, Radio, Film, Puzzle,
+} from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { useUserRole } from '@/lib/useUserRole'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
+import { OUTPUT_CHANNELS, EXPORT_SHAPES, PUBLISH_MODES } from '@/lib/outputChannels'
 
-// Mirrors CREDENTIAL_SERVICES in WorkspaceSettings — first-party publish
-// integrations only. External tenants go through Buffer.
-const CREDENTIAL_SERVICES = [
-  {
-    id: 'buffer',
-    label: 'Buffer',
-    description: 'Buffer access token — routes posts to every connected channel in your Buffer org.',
-    secretLabel: 'Access token',
-    fields: [],
-  },
-  {
-    id: 'wordpress',
-    label: 'WordPress',
-    description: 'WordPress REST publishing. site_url must include /wp-json/.',
-    secretLabel: 'Application password',
-    fields: [
-      { key: 'site_url', label: 'Site URL (must include /wp-json/)', placeholder: 'https://example.com/wp-json/wp/v2/posts' },
-      { key: 'user', label: 'WordPress username', placeholder: 'editor' },
-    ],
-  },
-  {
-    id: 'astro_github',
-    label: 'Astro + GitHub website',
-    description: 'Webhook publishing to an Astro site that commits markdown to GitHub.',
-    secretLabel: 'Shared bearer secret',
-    fields: [
-      { key: 'url', label: 'Publish webhook URL', placeholder: 'https://example.com/api/publish' },
-    ],
-  },
+// Icon per channel id. Falls back to Radio for any new channel we forget to map.
+const CHANNEL_ICONS = {
+  blog:           FileText,
+  email:          Mail,
+  gbp:            MapPin,
+  instagram_post: Instagram,
+  instagram_reel: Film,
+  facebook:       Facebook,
+  linkedin:       Linkedin,
+  tiktok:         Music2,
+  youtube_short:  Youtube,
+  pinterest:      Pin,
+  twitter:        Twitter,
+  threads:        MessageCircle,
+  bluesky:        Cloud,
+  mastodon:       MessageCircle,
+  google_ads:     Megaphone,
+  ig_ads:         Megaphone,
+  landing_page:   LayoutTemplate,
+}
+
+// Friendlier labels for export-shape / publish-mode badges.
+const SHAPE_LABEL = {
+  [EXPORT_SHAPES.MARKDOWN]:        'Markdown export',
+  [EXPORT_SHAPES.SOCIAL_COMPOSE]:  'Caption + image',
+  [EXPORT_SHAPES.HTML_EMAIL]:      'HTML email',
+}
+const MODE_LABEL = {
+  [PUBLISH_MODES.BUFFER]:  'via Buffer',
+  [PUBLISH_MODES.WEBSITE]: 'Direct publish',
+  [PUBLISH_MODES.TDC]:     'TrustDrivenCare',
+}
+
+// Channels are grouped for visual scanning; order within each group is
+// preserved from OUTPUT_CHANNELS.
+const GROUPS = [
+  { id: 'long', label: 'Long-form',  members: ['blog', 'email'] },
+  { id: 'local', label: 'Local',      members: ['gbp'] },
+  { id: 'social', label: 'Social',    members: ['instagram_post', 'facebook', 'linkedin', 'twitter', 'threads', 'bluesky', 'mastodon', 'pinterest'] },
+  { id: 'video',  label: 'Short video', members: ['instagram_reel', 'tiktok', 'youtube_short'] },
+  { id: 'paid',   label: 'Paid',     members: ['google_ads', 'ig_ads'] },
+  { id: 'web',    label: 'Web',      members: ['landing_page'] },
 ]
 
-function hasPublishCapability(ws) {
-  const caps = ws?.capabilities || {}
-  return Object.entries(caps).some(([k, v]) => k.endsWith('Publish') && Boolean(v))
-}
-
-function CredentialCard({ service, row, loading, onChange, getToken }) {
-  const [open, setOpen] = useState(false)
-  const configured = Boolean(row)
-  return (
-    <div className="rounded-md border border-input">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 p-3 text-left hover:bg-accent/30"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-          <div className="text-sm font-medium">{service.label}</div>
-          {configured && (
-            <span className="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-              Configured
-            </span>
-          )}
-          {!loading && !configured && (
-            <span className="text-[10px] uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-              Not set
-            </span>
-          )}
-        </div>
-        <div className="text-[11px] text-muted-foreground truncate">{service.description}</div>
-      </button>
-      {open && (
-        <div className="border-t border-input p-3">
-          <CredentialForm
-            service={service}
-            row={row}
-            getToken={getToken}
-            tokenOpts={{ skipCache: true }}
-            onChange={onChange}
-            removeIcon
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CredentialsSection({ getToken }) {
-  const [services, setServices] = useState(null)
-  const [error, setError] = useState(null)
-
-  const reload = async () => {
-    try {
-      const r = await fetch('/api/workspace/credentials', {
-        headers: { Authorization: `Bearer ${await getToken({ skipCache: true })}` },
-      })
-      if (!r.ok) {
-        setServices([])
-        setError(r.status === 403 ? 'forbidden' : `load-failed (${r.status})`)
-        return
-      }
-      const data = await r.json()
-      setServices(Array.isArray(data?.services) ? data.services : [])
-      setError(null)
-    } catch {
-      setServices([])
-      setError('network-error')
-    }
-  }
-
-  useEffect(() => { reload() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <Section
-      title="Publishing credentials"
-      description="Stored encrypted (AES-256-GCM) and decrypted only at publish time. Secrets are write-only."
-    >
-      {error && (
-        <div className="text-xs text-destructive flex items-center gap-1">
-          <AlertCircle className="h-3.5 w-3.5" />{error}
-        </div>
-      )}
-      <div className="space-y-2">
-        {CREDENTIAL_SERVICES.map((svc) => {
-          const row = services?.find?.((s) => s.service === svc.id) || null
-          return (
-            <CredentialCard
-              key={svc.id}
-              service={svc}
-              row={row}
-              loading={services === null}
-              onChange={reload}
-              getToken={getToken}
-            />
-          )
-        })}
-      </div>
-    </Section>
-  )
+function groupedChannels() {
+  const all = Object.values(OUTPUT_CHANNELS)
+  const assigned = new Set(GROUPS.flatMap((g) => g.members))
+  const grouped = GROUPS.map((g) => ({
+    label: g.label,
+    channels: g.members.map((id) => all.find((c) => c.id === id)).filter(Boolean),
+  })).filter((g) => g.channels.length > 0)
+  const leftovers = all.filter((c) => !assigned.has(c.id))
+  if (leftovers.length > 0) grouped.push({ label: 'Other', channels: leftovers })
+  return grouped
 }
 
 export default function ChannelsSettings() {
@@ -197,6 +124,16 @@ export default function ChannelsSettings() {
     }
   }
 
+  function toggle(channelId, on) {
+    setForm((f) => {
+      const cur = Array.isArray(f.enabled_outputs) ? f.enabled_outputs : []
+      const next = on
+        ? (cur.includes(channelId) ? cur : [...cur, channelId])
+        : cur.filter((id) => id !== channelId)
+      return { ...f, enabled_outputs: next }
+    })
+  }
+
   if (roleLoading || ws === undefined) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -211,63 +148,96 @@ export default function ChannelsSettings() {
     </div>
   )
 
+  const enabled = new Set(form.enabled_outputs)
+  const groups = groupedChannels()
+
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Output channels</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Choose which channels this workspace generates. Each interview lets you pick a subset.
-        </p>
+    <div className="max-w-3xl mx-auto space-y-6 pb-16">
+      {/* Sticky header / save bar */}
+      <div className="sticky top-14 z-10 -mx-6 px-6 py-4 bg-background/85 backdrop-blur border-b border-border/60 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Output channels</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Toggle the channels this workspace generates content for. Each interview lets the author pick a subset.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 pt-1">
+          {saved && <span className="text-xs text-emerald-600">Saved</span>}
+          {error && <span className="text-xs text-destructive">{error}</span>}
+          <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+            Save changes
+          </Button>
+        </div>
       </div>
 
-      <Section
-        title="Enabled channels"
-        description="Each interview lets you pick a subset of these for that content piece."
-      >
-        <div className="space-y-2">
-          {Object.values(OUTPUT_CHANNELS).map((channel) => {
-            const checked = form.enabled_outputs.includes(channel.id)
-            return (
-              <label
-                key={channel.id}
-                className="flex items-start gap-2.5 rounded-md border border-input p-2.5 cursor-pointer hover:bg-accent/30"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    setForm((f) => {
-                      const cur = Array.isArray(f.enabled_outputs) ? f.enabled_outputs : []
-                      const next = e.target.checked
-                        ? (cur.includes(channel.id) ? cur : [...cur, channel.id])
-                        : cur.filter((id) => id !== channel.id)
-                      return { ...f, enabled_outputs: next }
-                    })
-                  }}
-                  className="mt-0.5"
+      {groups.map((group) => (
+        <Card key={group.label} className="shadow-none">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base">{group.label}</CardTitle>
+            <CardDescription className="text-xs">
+              {group.channels.length} channel{group.channels.length === 1 ? '' : 's'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {group.channels.map((channel) => (
+                <ChannelTile
+                  key={channel.id}
+                  channel={channel}
+                  checked={enabled.has(channel.id)}
+                  onToggle={(on) => toggle(channel.id, on)}
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium leading-tight">{channel.label}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{channel.exportShape}</div>
-                </div>
-              </label>
-            )
-          })}
-        </div>
-      </Section>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
 
-      <SaveBar
-        saving={saving} saved={saved} error={error} isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={() => { setForm(pristine); setError(null) }}
-      />
-
-      {hasPublishCapability(ws) && (
-        <>
-          <Separator />
-          <CredentialsSection getToken={getToken} />
-        </>
-      )}
+      <Card className="shadow-none bg-muted/40">
+        <CardContent className="flex items-start gap-3 py-4">
+          <Puzzle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Publishing credentials (Buffer / WordPress / Astro) are managed on the{' '}
+            <Link to="/settings/integrations" className="underline underline-offset-2 hover:text-foreground">
+              Integrations
+            </Link>
+            {' '}page. Channels marked <span className="font-medium">via Buffer</span> need a Buffer token connected.
+          </p>
+        </CardContent>
+      </Card>
     </div>
+  )
+}
+
+function ChannelTile({ channel, checked, onToggle }) {
+  const Icon = CHANNEL_ICONS[channel.id] || Radio
+  const badge = channel.publishMode
+    ? MODE_LABEL[channel.publishMode]
+    : SHAPE_LABEL[channel.exportShape] || 'Export'
+  return (
+    <label
+      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+        checked
+          ? 'border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50/60'
+          : 'border-input hover:bg-accent/30'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onToggle(e.target.checked)}
+        className="h-4 w-4 shrink-0"
+      />
+      <div className={`flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${
+        checked ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'
+      }`}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium leading-tight truncate">{channel.label}</div>
+        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{badge}</div>
+      </div>
+    </label>
   )
 }

@@ -24,6 +24,7 @@ function formFromWorkspace(ws) {
     app_name:                ws.app_name                ?? '',
     website:                 ws.website                 ?? '',
     website_hostname:        ws.website_hostname        ?? '',
+    booking_url:             ws.booking_url             ?? '',
     link_preview_blurb:      ws.link_preview_blurb      ?? '',
     social_instagram:        ws.social?.instagram       ?? '',
     social_facebook:         ws.social?.facebook        ?? '',
@@ -45,6 +46,7 @@ function formToPatch(form) {
     app_name:                form.app_name,
     website:                 form.website,
     website_hostname:        form.website_hostname,
+    booking_url:             form.booking_url,
     link_preview_blurb:      form.link_preview_blurb,
     social: {
       instagram: form.social_instagram,
@@ -222,6 +224,10 @@ export default function WorkspaceSettings() {
             placeholder="movebetter.co"
             hint="Hostname only — no protocol or trailing slash." />
         </Grid>
+        <Field label="Booking URL"
+          value={form.booking_url} onChange={set('booking_url')}
+          placeholder="https://..." type="url" autoComplete="off"
+          hint="Primary call-to-action URL. Used in blog CTAs, email buttons, and social bios in generated copy." />
         <Textarea2 label="Link preview blurb"
           value={form.link_preview_blurb} onChange={set('link_preview_blurb')}
           rows={2}
