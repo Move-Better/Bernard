@@ -600,7 +600,7 @@ export function useUpdateContentItemStatus() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, status, approvedBy, approvedAt, reviewedBy }) => {
-      const r = await fetch('/api/db/content', {
+      const r = await fetch(`/api/db/content?id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

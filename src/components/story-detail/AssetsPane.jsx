@@ -271,20 +271,28 @@ function ApprovalPanel({ piece }) {
   const userEmail = user?.primaryEmailAddress?.emailAddress || user?.id || ''
 
   const handleSendForReview = async () => {
-    await updateStatus.mutateAsync({
-      id: piece.id,
-      status: 'in_review',
-      reviewedBy: userEmail,
-    })
+    try {
+      await updateStatus.mutateAsync({
+        id: piece.id,
+        status: 'in_review',
+        reviewedBy: userEmail,
+      })
+    } catch (err) {
+      toast.error('Failed to send for review', { description: err.message })
+    }
   }
 
   const handleApprove = async () => {
-    await updateStatus.mutateAsync({
-      id: piece.id,
-      status: 'approved',
-      approvedBy: userEmail,
-      approvedAt: new Date().toISOString(),
-    })
+    try {
+      await updateStatus.mutateAsync({
+        id: piece.id,
+        status: 'approved',
+        approvedBy: userEmail,
+        approvedAt: new Date().toISOString(),
+      })
+    } catch (err) {
+      toast.error('Failed to approve', { description: err.message })
+    }
   }
 
   const handleRequestChanges = async (e) => {
