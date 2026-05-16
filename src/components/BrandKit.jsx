@@ -42,10 +42,13 @@ function classifyChips(a) {
   return chips
 }
 
-// Renders the asset preview on a transparency-checkerboard backdrop so users
-// can see how the logo will look outside its native background. PDFs get a
-// document icon + filename instead.
-function AssetPreview({ asset, size = 'md' }) {
+// Renders the asset preview. `backdrop` controls what's behind the artwork —
+// 'checker' (default) shows transparency, 'light'/'dark' show flat fills so
+// users can spot logos that would otherwise vanish against same-color bg.
+// SVGs frequently ship with only a viewBox (no intrinsic width/height); we
+// render them as a background-image so `background-size: contain` scales the
+// vector to the container reliably across browsers.
+function AssetPreview({ asset, size = 'md', backdrop = 'checker' }) {
   const h = size === 'sm' ? 'h-24' : size === 'lg' ? 'h-40' : 'h-32'
   if (asset.mime_type === 'application/pdf') {
     return (
@@ -55,19 +58,30 @@ function AssetPreview({ asset, size = 'md' }) {
       </div>
     )
   }
+  const backdropStyle = backdrop === 'dark'
+    ? { backgroundColor: '#111827' }
+    : backdrop === 'light'
+      ? { backgroundColor: '#ffffff' }
+      : {
+          backgroundColor: '#fafafa',
+          backgroundImage:
+            'linear-gradient(45deg,#eef0f2 25%,transparent 25%),linear-gradient(-45deg,#eef0f2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eef0f2 75%),linear-gradient(-45deg,transparent 75%,#eef0f2 75%)',
+          backgroundSize: '12px 12px',
+          backgroundPosition: '0 0,0 6px,6px -6px,-6px 0',
+        }
   return (
     <div
-      className={`${h} w-full rounded-md flex items-center justify-center p-2`}
+      className={`${h} w-full rounded-md p-2`}
       style={{
-        backgroundColor: '#fafafa',
-        backgroundImage:
-          'linear-gradient(45deg,#eef0f2 25%,transparent 25%),linear-gradient(-45deg,#eef0f2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eef0f2 75%),linear-gradient(-45deg,transparent 75%,#eef0f2 75%)',
-        backgroundSize: '12px 12px',
-        backgroundPosition: '0 0,0 6px,6px -6px,-6px 0',
+        ...backdropStyle,
+        backgroundImage: `url(${JSON.stringify(asset.blob_url)})${backdropStyle.backgroundImage ? ', ' + backdropStyle.backgroundImage : ''}`,
+        backgroundRepeat: backdropStyle.backgroundImage ? 'no-repeat, repeat' : 'no-repeat',
+        backgroundSize: backdropStyle.backgroundImage ? `contain, ${backdropStyle.backgroundSize}` : 'contain',
+        backgroundPosition: backdropStyle.backgroundImage ? `center, ${backdropStyle.backgroundPosition}` : 'center',
       }}
-    >
-      <img src={asset.blob_url} alt={asset.filename} className="h-full w-full object-contain" />
-    </div>
+      role="img"
+      aria-label={asset.filename}
+    />
   )
 }
 
@@ -198,11 +212,24 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
 // Role assignment modal — used by the Roles panel's "Change" button.
 // Surfaces the highest-confidence candidates for that role first.
 function RolePickerModal({ role, assets, currentAssetId, onPick, onClose }) {
+  const [backdrop, setBackdrop] = useState('checker')
   if (!role) return null
   const def = ROLE_DEFS.find((r) => r.id === role)
   const scored = assets
     .map((a) => ({ a, c: a.ai_classification?.role_candidates?.find((cc) => cc.role === role)?.confidence || 0 }))
     .sort((x, y) => y.c - x.c)
+  const backdropBtn = (id, label) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setBackdrop(id)}
+      className={`text-2xs px-2 py-1 rounded border transition-colors ${
+        backdrop === id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+      }`}
+    >
+      {label}
+    </button>
+  )
   return (
     <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-background rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -211,7 +238,13 @@ function RolePickerModal({ role, assets, currentAssetId, onPick, onClose }) {
             <div className="text-sm font-semibold">Pick {def?.label}</div>
             <div className="text-xs text-muted-foreground mt-0.5">{def?.hint}</div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-3xs text-muted-foreground mr-1">Preview on</span>
+            {backdropBtn('checker', 'Transparent')}
+            {backdropBtn('light', 'Light')}
+            {backdropBtn('dark', 'Dark')}
+            <button onClick={onClose} className="ml-2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          </div>
         </div>
         <div className="p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {scored.map(({ a, c }) => {
@@ -225,7 +258,7 @@ function RolePickerModal({ role, assets, currentAssetId, onPick, onClose }) {
                   isCurrent ? 'border-success ring-2 ring-success/30' : 'border-border hover:border-primary/50'
                 }`}
               >
-                <AssetPreview asset={a} size="sm" />
+                <AssetPreview asset={a} size="sm" backdrop={backdrop} />
                 <div className="p-2 space-y-1">
                   <div className="text-3xs font-medium truncate" title={a.filename}>{a.filename}</div>
                   {c > 0 && (
