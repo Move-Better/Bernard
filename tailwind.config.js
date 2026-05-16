@@ -48,6 +48,12 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        // Voice-fidelity semantic tokens — see src/index.css for HSL values.
+        // The `<alpha-value>` placeholder enables opacity modifiers like
+        // bg-contrast-signal/10, border-agreement-signal/30, etc.
+        'verbatim-accent':  'hsl(var(--verbatim-accent) / <alpha-value>)',
+        'agreement-signal': 'hsl(var(--agreement-signal) / <alpha-value>)',
+        'contrast-signal':  'hsl(var(--contrast-signal) / <alpha-value>)',
       },
       borderRadius: {
         lg: 'var(--radius)',
