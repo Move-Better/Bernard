@@ -110,7 +110,26 @@ async function handler(req, res) {
       })
     }
   } else {
-    const result = await gql(BUFFER_TOKEN, '{ channels { id service isDisconnected } }')
+    // Buffer's channels query requires an organizationId. Fetch the account's
+    // first organization and use that as the scope.
+    const acct = await gql(BUFFER_TOKEN, '{ account { organizations { id } } }')
+    if (!acct.ok || acct.errors) {
+      const errMsg = acct.errors?.[0]?.message || `Buffer account query returned ${acct.status}`
+      const hint = acct.status === 401 || acct.status === 403
+        ? 'Buffer access token rejected (401/403). Regenerate the token in Workspace Settings → Publishing credentials.'
+        : errMsg
+      console.error('[publish/buffer] account query failed', acct.status, JSON.stringify(acct.errors))
+      return res.status(502).json({ error: hint })
+    }
+    const organizationId = acct.data?.account?.organizations?.[0]?.id
+    if (!organizationId) {
+      return res.status(502).json({ error: 'Buffer account has no organizations associated with this token.' })
+    }
+    const result = await gql(
+      BUFFER_TOKEN,
+      'query Channels($input: ChannelsInput!) { channels(input: $input) { id service isDisconnected } }',
+      { input: { organizationId } },
+    )
     if (!result.ok || result.errors) {
       const errMsg = result.errors?.[0]?.message || `Buffer channels query returned ${result.status}`
       const hint = result.status === 401 || result.status === 403
