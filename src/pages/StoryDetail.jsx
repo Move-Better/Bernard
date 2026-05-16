@@ -71,7 +71,16 @@ export default function StoryDetail() {
               {story.topic || 'Untitled interview'}
             </h1>
             {story.clinician_name && (
-              <p className="text-sm text-muted-foreground">{story.clinician_name}</p>
+              story.clinician_id ? (
+                <Link
+                  to={`/clinician/${story.clinician_id}`}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {story.clinician_name}
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">{story.clinician_name}</p>
+              )
             )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
