@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { Send, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useStories } from '@/lib/queries'
-import { useUserRole } from '@/lib/useUserRole'
 import { PLATFORM_META } from '@/lib/contentMeta'
 
 // Pieces that are clinician-approved and not yet scheduled are the
@@ -54,15 +53,15 @@ function VoiceChip({ provenance }) {
 }
 
 /**
- * Strip of approved-but-not-scheduled content pieces. Staff-only; clinicians
- * don't see it (no distribute role). Hidden when empty.
+ * Strip of approved-but-not-scheduled content pieces.
+ * Visible to all authenticated workspace members — clinicians who approved
+ * a draft can see it queued here too. Hidden when empty.
  */
 export default function LibraryReadyStrip() {
-  const { isStaff } = useUserRole()
   const { data: stories = [] } = useStories()
   const pieces = useMemo(() => pickReadyPieces(stories), [stories])
 
-  if (!isStaff || pieces.length === 0) return null
+  if (pieces.length === 0) return null
 
   return (
     <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 sm:p-5">
