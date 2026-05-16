@@ -138,6 +138,7 @@ export default async function handler(req, res) {
         interview.tone || 'smart',
         voiceNotes,
         (ws.brand_guidelines || '') + conceptBlock,
+        voicePhrases,
       )
       if (!systemPrompt) {
         return err(res, `No prompt defined for ${atom.platform}/${atom.angle}`, 422)

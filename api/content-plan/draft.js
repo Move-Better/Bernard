@@ -70,16 +70,24 @@ export default async function handler(req, res) {
     const blogPost = interview.outputs?.blogPost
     if (!blogPost) throw new Error('Blog post not generated yet — generate the blog post first')
 
-    // Fetch clinician name
+    // Fetch clinician name + voice substrate
     let clinicianName = ''
-    let voiceNotes = ''
-    const clinRes = await sb(
-      `clinicians?id=eq.${interview.clinician_id}&${wsFilter}&select=name,voice_notes`
-    )
+    let voiceNotes    = ''
+    let voicePhrases  = []
+    const [clinRes, phrasesRes] = await Promise.all([
+      sb(`clinicians?id=eq.${interview.clinician_id}&${wsFilter}&select=name,voice_notes`),
+      sb(
+        `clinician_voice_phrases?clinician_id=eq.${interview.clinician_id}&${wsFilter}` +
+        `&select=phrase&order=weight.desc,last_seen_at.desc&limit=8`,
+      ),
+    ])
     if (clinRes.ok) {
       const clinRows = await clinRes.json()
       clinicianName = clinRows[0]?.name ?? ''
       voiceNotes    = clinRows[0]?.voice_notes ?? ''
+    }
+    if (phrasesRes.ok) {
+      voicePhrases = await phrasesRes.json()
     }
 
     // Augment with learned practice knowledge from the concept graph (non-blocking).
@@ -96,6 +104,7 @@ export default async function handler(req, res) {
       interview.tone || 'smart',
       voiceNotes,
       (ws.brand_guidelines || '') + conceptBlock,
+      voicePhrases,
     )
     if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 

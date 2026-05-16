@@ -2,7 +2,15 @@
 // content — one platform, one angle, generated from the full blog post.
 // Returns null for unknown platform/angle combos so callers can bail early.
 
-export function getAtomSystemPrompt(workspace, clinicianName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '') {
+function buildVoicePhrasesBlock(phrases) {
+  const list = Array.isArray(phrases) ? phrases : []
+  if (!list.length) return ''
+  const examples = list.slice(0, 8).map((p) => `  • ${p.phrase || ''}`).filter((l) => l.trim() !== '•').join('\n')
+  if (!examples) return ''
+  return `\n\nVOICE PHRASE ANCHORS — sentences this clinician has shipped in approved content. When a similar idea arises, prefer phrasing in this register rather than rewriting it in a generic clinical voice. These are examples, NOT required quotations — only echo when the meaning genuinely aligns:\n${examples}\n`
+}
+
+export function getAtomSystemPrompt(workspace, clinicianName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '', voicePhrases = []) {
   const firstName = clinicianName.split(' ')[0]
   const isPersonal = voiceMode === 'personal'
   const toneNote = tone === 'smart'
@@ -202,11 +210,13 @@ Output ONLY the post body (with the CW prefix and alt-text placeholder if applic
     ? `\n\nBRAND GUIDELINES — extracted from ${workspace.display_name}'s brand book. Apply these to every word choice:\n${brandGuidelinesTrimmed}\n`
     : ''
 
+  const voicePhrasesBlockStr = buildVoicePhrasesBlock(voicePhrases)
+
   return `You are a content strategist helping ${workspace.display_name} create platform-specific content derived from a longer blog post about ${condition}.
 
 Your job: extract the most compelling angle and write ONE focused piece of content following the exact instructions below. Do NOT include section markers, headers, labels, or meta-commentary. Output ONLY the final content, ready to copy and use.
 
 ${instruction}
 
-${toneNote}${brandBlock}${voiceBlock}`
+${toneNote}${brandBlock}${voiceBlock}${voicePhrasesBlockStr}`
 }
