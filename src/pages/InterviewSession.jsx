@@ -1550,20 +1550,20 @@ function MessageBubble({ message, clinicianName, isStreaming }) {
       )}
       <div className="flex flex-col gap-1 max-w-[90%] sm:max-w-[80%]">
         {isContrast && (
-          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-full px-2.5 py-0.5">
+          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-contrast-signal bg-contrast-signal/10 border border-contrast-signal/30 rounded-full px-2.5 py-0.5">
             <ArrowLeftRight className="h-3 w-3 shrink-0" aria-hidden="true" />
             {contrastName ? `Different angle than ${contrastName}` : 'A colleague saw this differently'}
           </span>
         )}
         {isAgreement && (
-          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
+          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-agreement-signal bg-agreement-signal/10 border border-agreement-signal/30 rounded-full px-2.5 py-0.5">
             <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
             Shared view across your practice
           </span>
         )}
         {isGap && (
-          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-verbatim-accent bg-verbatim-accent/10 border border-verbatim-accent/30 rounded-full px-2.5 py-0.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-verbatim-accent shrink-0" aria-hidden="true" />
             Your take on this not yet captured
           </span>
         )}

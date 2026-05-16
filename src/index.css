@@ -35,6 +35,18 @@
     --input: 210 5% 88%;
     --ring: 20 76% 52%;
     --radius: 0.5rem;
+
+    /* ── Voice-fidelity semantic tokens ────────────────────────────────────
+       These three colors encode the cross-staff probe signals surfaced during
+       interviews and in the approval/drift surfaces. Using tokens (rather than
+       hardcoded amber/emerald/sky) lets a future tenant theme override all
+       three with a single CSS block.
+         verbatim-accent  — amber;  verbatim flags, gap probes, "not yet captured"
+         agreement-signal — emerald; shared-view badges, completion, success
+         contrast-signal  — sky;    different-angle badges, cross-staff contrast */
+    --verbatim-accent:   38 92% 50%;   /* amber-500 equivalent */
+    --agreement-signal: 152 76% 40%;   /* emerald-600 equivalent */
+    --contrast-signal:  199 95% 40%;   /* sky-600 equivalent */
   }
 }
 
