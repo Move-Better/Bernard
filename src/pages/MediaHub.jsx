@@ -15,6 +15,7 @@ import ContentBriefList from '@/components/ContentBriefList'
 import CollectionsBar from '@/components/CollectionsBar'
 import BulkActionBar from '@/components/BulkActionBar'
 import MediaHubHelp from '@/components/MediaHubHelp'
+import LibraryReadyStrip from '@/components/LibraryReadyStrip'
 import { getMediaAsset, backfillThumbnails } from '@/lib/mediaLib'
 import { toast } from '@/lib/toast'
 import { useMediaInfinite, useStories, queryKeys } from '@/lib/queries'
@@ -376,13 +377,17 @@ export default function MediaHub() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold">Media Hub</h1>
+          <h1 className="text-2xl font-bold">Library</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Your whole clinic&apos;s media library — interview clips, B-roll, photos, and brand assets. Interview uploads also feed the editor brief queue; everything else is tagged for search and reuse.
+            Your whole clinic&apos;s media — interview clips, B-roll, photos, and brand assets. Interview uploads also feed the editor brief queue; everything else is tagged for search and reuse.
           </p>
         </div>
         <MediaHubHelp />
       </div>
+
+      {/* Ready to distribute — staff-only inbox of approved pieces awaiting
+          media + publish. Hides itself when empty or for non-staff. */}
+      <LibraryReadyStrip />
 
       {/* Upload modal — triggered from the Upload button in the filter row */}
       {canUpload && (
