@@ -1067,7 +1067,7 @@ export default function InterviewSession() {
         {interviewComplete
           ? <Badge variant="secondary" className="text-xs">Interview Complete</Badge>
           : isOwner && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
@@ -1080,9 +1080,15 @@ export default function InterviewSession() {
                 <Sparkles className="h-3.5 w-3.5" />
                 Finish
               </Button>
-              <Button variant="outline" size="sm" onClick={handlePause} className="gap-1.5 text-muted-foreground">
-                <PauseCircle className="h-3.5 w-3.5" />
-                Pause
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePause}
+                title="Save and pause — you can resume later"
+                aria-label="Pause interview"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <PauseCircle className="h-4 w-4" />
               </Button>
             </div>
           )
