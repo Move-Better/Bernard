@@ -59,13 +59,14 @@ function AssetPreview({ asset, size = 'md' }) {
     <div
       className={`${h} w-full rounded-md flex items-center justify-center p-2`}
       style={{
+        backgroundColor: '#fafafa',
         backgroundImage:
-          'linear-gradient(45deg,#e5e7eb 25%,transparent 25%),linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e7eb 75%),linear-gradient(-45deg,transparent 75%,#e5e7eb 75%)',
+          'linear-gradient(45deg,#eef0f2 25%,transparent 25%),linear-gradient(-45deg,#eef0f2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eef0f2 75%),linear-gradient(-45deg,transparent 75%,#eef0f2 75%)',
         backgroundSize: '12px 12px',
         backgroundPosition: '0 0,0 6px,6px -6px,-6px 0',
       }}
     >
-      <img src={asset.blob_url} alt={asset.filename} className="max-h-full max-w-full object-contain" />
+      <img src={asset.blob_url} alt={asset.filename} className="h-full w-full object-contain" />
     </div>
   )
 }
