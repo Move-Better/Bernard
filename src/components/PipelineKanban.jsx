@@ -5,17 +5,21 @@ import { FileText, Clock, CheckCircle2, CalendarDays, Send, Image as ImageIcon, 
 import { Button } from '@/components/ui/button'
 import { formatRelativeDate } from '@/lib/utils'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { getContentStatusToken } from '@/lib/contentStatusTokens'
 
 // Five lanes in workflow order. Archived items are intentionally excluded —
 // they don't belong on the active pipeline. Published items DO render here
 // so the publisher sees recently-shipped work on the right edge, but dragging
 // out of Published is allowed (it just acts as an unpublish).
+//
+// Lane colours (accent/badge) and labels come from contentStatusTokens —
+// this file only owns lane order, icon, and publisher-inbox flagging.
 const LANES = [
-  { id: 'draft',     label: 'Draft',              icon: FileText,     accent: 'border-slate-200',  badge: 'bg-slate-100 text-slate-700',   publisherInbox: false },
-  { id: 'in_review', label: 'Needs Review',       icon: Clock,        accent: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700',   publisherInbox: false },
-  { id: 'approved',  label: 'Ready to Distribute', icon: CheckCircle2, accent: 'border-blue-300',   badge: 'bg-blue-100 text-blue-700',     publisherInbox: true  },
-  { id: 'scheduled', label: 'Scheduled',           icon: CalendarDays, accent: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', publisherInbox: false },
-  { id: 'published', label: 'Published',           icon: Send,         accent: 'border-emerald-200',badge: 'bg-emerald-100 text-emerald-700',publisherInbox: false },
+  { id: 'draft',     icon: FileText,     publisherInbox: false },
+  { id: 'in_review', icon: Clock,        publisherInbox: false },
+  { id: 'approved',  icon: CheckCircle2, publisherInbox: true  },
+  { id: 'scheduled', icon: CalendarDays, publisherInbox: false },
+  { id: 'published', icon: Send,         publisherInbox: false },
 ]
 
 // Transitions that need explicit confirmation because they're either
@@ -75,22 +79,23 @@ export default function PipelineKanban({ items, onStatusChange }) {
 function Lane({ lane, items, isPublisherInbox }) {
   const { setNodeRef, isOver } = useDroppable({ id: lane.id })
   const Icon = lane.icon
+  const token = getContentStatusToken(lane.id)
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl border p-3 transition-colors ${lane.accent} ${
+      className={`rounded-xl border p-3 transition-colors ${token.accent} ${
         isPublisherInbox ? 'bg-blue-50/60' : 'bg-card'
       } ${isOver ? 'bg-accent/30 ring-2 ring-primary/30' : ''}`}
     >
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-1.5">
           <Icon className={`h-3.5 w-3.5 ${isPublisherInbox ? 'text-blue-600' : 'text-muted-foreground'}`} />
-          <span className={`text-xs font-medium ${isPublisherInbox ? 'text-blue-700' : ''}`}>{lane.label}</span>
+          <span className={`text-xs font-medium ${isPublisherInbox ? 'text-blue-700' : ''}`}>{token.label}</span>
           {isPublisherInbox && items.length > 0 && (
             <span className="text-3xs font-semibold uppercase tracking-wide text-blue-500 ml-0.5">your queue</span>
           )}
         </div>
-        <span className={`text-3xs font-medium rounded-full px-1.5 py-0.5 ${lane.badge}`}>
+        <span className={`text-3xs font-medium rounded-full px-1.5 py-0.5 ${token.badge}`}>
           {items.length}
         </span>
       </div>
