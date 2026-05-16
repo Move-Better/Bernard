@@ -61,6 +61,7 @@ function summarizePiece(row) {
     scheduled_at: row.scheduled_at ?? null,
     published_at: row.published_at ?? null,
     updated_at: row.updated_at,
+    provenance: row.provenance ?? null,
   }
 }
 

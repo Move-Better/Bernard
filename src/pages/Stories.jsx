@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { useStories, useOnboardingProgress } from '@/lib/queries'
+import { useUserRole } from '@/lib/useUserRole'
 import StoriesViewToggle from '@/components/stories/StoriesViewToggle'
 import StoriesSidebar from '@/components/stories/StoriesSidebar'
 import StoriesFilters from '@/components/stories/StoriesFilters'
@@ -12,16 +13,18 @@ import UsageGate from '@/components/billing/UsageGate'
 /**
  * Stories page — top-level IA surface.
  *
- * Reads `?view=` (cards | pipeline | calendar | themes, default: cards) and
- * dispatches to the appropriate view component. All views share the same
- * useStories() data; filters live in URL params and are driven by the left
- * sidebar (md+) or the horizontal chip row (mobile fallback).
+ * Reads `?view=` (cards | pipeline | calendar | themes) and dispatches to the
+ * appropriate view component. Default view is role-aware: Publisher/staff land
+ * on the Kanban pipeline since that's their primary working surface; clinicians
+ * land on the cards grid. All views share the same useStories() data.
  *
  * The Themes view requires the Practice plan (cross_staff_synthesis feature).
  */
 export default function Stories() {
   const [searchParams] = useSearchParams()
-  const view = searchParams.get('view') || 'cards'
+  const { isStaff } = useUserRole()
+  const defaultView = isStaff ? 'pipeline' : 'cards'
+  const view = searchParams.get('view') || defaultView
 
   const { data: stories = [], isLoading } = useStories()
   const { data: progress } = useOnboardingProgress()

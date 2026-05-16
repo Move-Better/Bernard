@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
-import { FileText, Eye, Clock, Loader2, RefreshCw, ChevronRight } from 'lucide-react'
+import { FileText, Eye, Clock, Loader2, RefreshCw, ChevronRight, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useStories, useClinicianSummaries } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
@@ -21,7 +21,7 @@ const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 export default function Home() {
   useDocumentTitle('Home')
   const { user } = useUser()
-  const { canReview, role } = useUserRole()
+  const { canReview, role, isStaff } = useUserRole()
   const runtimeWorkspace = useWorkspace()
   const [searchParams] = useSearchParams()
 
@@ -121,7 +121,18 @@ export default function Home() {
     [stories, canReview]
   )
 
-  // ── Task bucket 3: Hasn't interviewed in a while ────────────────────────────
+  // ── Task bucket 3: Ready to distribute ─────────────────────────────────────
+  // Stories with at least one approved piece — publisher's inbox. Only shown
+  // to staff since clinicians don't distribute; an empty list hides the card.
+  const readyToDistribute = useMemo(
+    () =>
+      isStaff
+        ? stories.filter((s) => (s.pieces_by_status?.approved ?? 0) > 0)
+        : [],
+    [stories, isStaff]
+  )
+
+  // ── Task bucket 4: Hasn't interviewed in a while ────────────────────────────
   // Clinicians with 0 interviews OR most recent interview > 30 days ago
   const overdueClinicianItems = useMemo(() => {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
@@ -242,6 +253,37 @@ export default function Home() {
               )
             }}
           />
+
+          {readyToDistribute.length > 0 && (
+            <TaskBucketCard
+              id="distribute"
+              title="Ready to distribute"
+              icon={<Send className="h-4 w-4" />}
+              items={readyToDistribute}
+              emptyMessage="Nothing approved yet — check back after review."
+              renderItem={(s) => {
+                const approvedCount = s.pieces_by_status?.approved ?? 0
+                return (
+                  <Link
+                    key={s.id}
+                    to={`/stories/${s.id}`}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{s.clinicianName}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {s.topic}
+                        {approvedCount > 1 ? ` · ${approvedCount} pieces` : ''}
+                      </p>
+                    </div>
+                    <span className="text-xs font-medium text-primary text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-0.5">
+                      Distribute <ChevronRight className="h-3 w-3" />
+                    </span>
+                  </Link>
+                )
+              }}
+            />
+          )}
 
           <TaskBucketCard
             id="overdue"
