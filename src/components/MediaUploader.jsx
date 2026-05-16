@@ -444,7 +444,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                     : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                 }`}
               >
-                <span className="inline-flex h-4 w-4 rounded-full bg-current/20 items-center justify-center text-[9px] font-semibold shrink-0">
+                <span className="inline-flex h-4 w-4 rounded-full bg-current/20 items-center justify-center text-3xs font-semibold shrink-0">
                   {c.name?.[0] || '?'}
                 </span>
                 {c.name}
