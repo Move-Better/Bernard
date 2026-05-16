@@ -1,3 +1,4 @@
+import sharp from 'sharp'
 import { withSentry } from '../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
 // Website publish endpoint — Node.js runtime.
@@ -280,10 +281,26 @@ async function publishToWordPress(res, payload, cred) {
 async function uploadMedia(wp, sourceUrl, altText, overrideFilename = null) {
   const sourceRes = await fetch(sourceUrl)
   if (!sourceRes.ok) throw new Error(`Could not download image from ${sourceUrl} (${sourceRes.status})`)
-  const contentType = sourceRes.headers.get('content-type') || 'application/octet-stream'
-  const bytes = await sourceRes.arrayBuffer()
-  const filename = overrideFilename || filenameFromUrl(sourceUrl, contentType)
-  const body = Buffer.from(bytes)
+  const rawContentType = sourceRes.headers.get('content-type') || 'application/octet-stream'
+  const rawBytes = Buffer.from(await sourceRes.arrayBuffer())
+
+  // Resize to max 1920px wide, convert to JPEG so WP doesn't time out
+  // processing large PNGs or raw camera images.
+  let body, contentType
+  if (rawContentType.startsWith('image/')) {
+    body = await sharp(rawBytes)
+      .resize({ width: 1920, withoutEnlargement: true })
+      .jpeg({ quality: 85, progressive: true })
+      .toBuffer()
+    contentType = 'image/jpeg'
+  } else {
+    body = rawBytes
+    contentType = rawContentType
+  }
+
+  const filename = overrideFilename
+    ? overrideFilename.replace(/\.[^.]+$/, '.jpg')
+    : filenameFromUrl(sourceUrl, contentType)
 
   let uploadRes
   let lastErrText = ''
