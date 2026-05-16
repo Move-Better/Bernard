@@ -526,7 +526,6 @@ function ApprovalPanel({ piece }) {
   // otherwise. piece.approved_by historically holds an email; approved_by_name
   // is the resolved display name when the approver is a clinician.
   const approverName = piece.approved_by_name || piece.approved_by
-  const approverId   = piece.approved_by_clinician_id || piece.approved_by
 
   return (
     <div className="mt-3 pt-3 border-t space-y-3">
@@ -561,8 +560,10 @@ function ApprovalPanel({ piece }) {
         {piece.approved_by && piece.approved_at && (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             Approved by
-            <ClinicianChip name={approverName} id={approverId} size="sm" />
-            <span>{approverName}</span>
+            {piece.approved_by_clinician_id
+              ? <ClinicianChip name={approverName} id={piece.approved_by_clinician_id} size="sm" showName />
+              : <span>{approverName}</span>
+            }
             <span>on{' '}
               {new Date(piece.approved_at).toLocaleDateString(undefined, {
                 month: 'short',

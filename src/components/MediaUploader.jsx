@@ -249,7 +249,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       speakerRole: showSpeakerRole ? speakerRole : null,
       // Optional — server verifies workspace scope before linking.
       collectionId: collectionId || null,
-      clinicianId: clinicianId || null,
+      clinicianId: showClinicianPicker ? clinicianId || null : null,
     })))
 
     if (results.some((r) => r)) onUploaded?.()
