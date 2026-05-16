@@ -32,12 +32,17 @@ function isShallowAnswer(text) {
   return !CONCRETE_NOUNS.some((noun) => lower.includes(noun))
 }
 
-// Strip [CONTRAST] marker from AI message text before display
-function stripContrastToken(text) {
-  return text.replace(/\[CONTRAST\]/g, '').trim()
+// Token format: [CONTRAST][ClinicianlastName] or legacy [CONTRAST]
+// Extract the embedded clinician name if present, e.g. [CONTRAST][Sarah] → "Sarah"
+function extractContrastName(text) {
+  const m = text.match(/\[CONTRAST\]\[([^\]]+)\]/)
+  return m ? m[1] : null
 }
 
-// Detect if AI message was a contrast probe (Feature 1)
+function stripContrastToken(text) {
+  return text.replace(/\[CONTRAST\](\[[^\]]*\])?/g, '').trim()
+}
+
 function hasContrastSignal(text) {
   return text.includes('[CONTRAST]')
 }
@@ -1528,6 +1533,7 @@ function MessageBubble({ message, clinicianName, isStreaming }) {
   const isContrast  = isAI && hasContrastSignal(message.content)
   const isAgreement = isAI && hasAgreementSignal(message.content)
   const isGap       = isAI && hasGapSignal(message.content)
+  const contrastName = isContrast ? extractContrastName(message.content) : null
   const displayContent = isAI
     ? stripGapToken(stripAgreementToken(stripContrastToken(message.content)))
     : message.content
@@ -1544,20 +1550,22 @@ function MessageBubble({ message, clinicianName, isStreaming }) {
       )}
       <div className="flex flex-col gap-1 max-w-[90%] sm:max-w-[80%]">
         {isContrast && (
-          <Badge variant="outline" className="self-start flex items-center gap-1 text-[11px] text-muted-foreground border-muted-foreground/30 px-2 py-0.5">
-            <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
-            A colleague saw this differently
-          </Badge>
+          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-full px-2.5 py-0.5">
+            <ArrowLeftRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {contrastName ? `Different angle than ${contrastName}` : 'A colleague saw this differently'}
+          </span>
         )}
         {isAgreement && (
-          <Badge variant="outline" className="self-start flex items-center gap-1 text-[11px] text-emerald-700 border-emerald-200 bg-emerald-50 px-2 py-0.5">
-            ≡ Shared perspective at your practice
-          </Badge>
+          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
+            <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+            Shared view across your practice
+          </span>
         )}
         {isGap && (
-          <Badge variant="outline" className="self-start flex items-center gap-1 text-[11px] text-amber-700 border-amber-200 bg-amber-50 px-2 py-0.5">
-            ○ Your perspective on this not yet captured
-          </Badge>
+          <span className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+            Your take on this not yet captured
+          </span>
         )}
         <div
           className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
