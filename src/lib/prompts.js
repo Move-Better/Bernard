@@ -196,6 +196,26 @@ ${trimmed}
 `
 }
 
+// Per-clinician voice phrase anchors (Phase C.2). Literal sentences this
+// clinician has shipped in approved content. These are *examples*, not
+// requirements: when the draft naturally lands on a similar idea, prefer
+// phrasing in this voice register. The instruction below makes the
+// example/required distinction explicit so the model doesn't force-fit
+// phrases that don't belong.
+//
+// Phrases input shape: [{ phrase, weight, ... }] — only `phrase` is used.
+export function voicePhrasesBlock(phrases) {
+  const list = Array.isArray(phrases) ? phrases : []
+  if (!list.length) return ''
+  const top = list.slice(0, 8)
+  const examples = top.map((p) => `  • ${p.phrase || ''}`).filter((l) => l.trim() !== '•').join('\n')
+  if (!examples) return ''
+  return `
+VOICE PHRASE ANCHORS — sentences this clinician has shipped in approved content. When a similar idea arises in the draft, prefer phrasing in this register rather than rewriting it in a more generic clinical voice. These are examples, NOT required quotations — only echo when the meaning genuinely aligns; don't force-fit:
+${examples}
+`
+}
+
 // Appended to long-form generation prompts (blog + minimal-edits). Instructs
 // the model to emit a single trailing JSON block that maps each paragraph in
 // the generated content back to a user-message index + character span in the
@@ -354,12 +374,12 @@ ENDING THE INTERVIEW:
 ${isFirstMessage ? 'Introduce yourself briefly, then ask your first question.' : 'Continue the interview — do not reintroduce yourself.'}`
 }
 
-export function getBlogPostSystemPrompt(workspace, clinicianName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '') {
+export function getBlogPostSystemPrompt(workspace, clinicianName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = []) {
   const isPersonal = voiceMode === 'personal'
   return `You are a content writer for ${workspace.display_name} in ${workspace.location}. Based on the interview transcript below with ${clinicianName} about treating ${condition}, write an engaging, on-brand blog post targeted at ${workspace.region} readers.
 
 ${getFramingRule(workspace, { voiceMode, clinicianName, assetType: 'blog' })}
-${voiceNotesBlock(voiceNotes)}
+${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}
 ${workspace.display_name.toUpperCase()} BRAND VOICE:
 ${workspace.brand_voice}
 
@@ -419,10 +439,10 @@ TARGET LENGTH: 700–950 words. Write like a human who genuinely cares about hel
 ${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}`
 }
 
-export function getMinimalEditSystemPrompt(clinicianName, voiceMode = 'practice', voiceNotes = '') {
+export function getMinimalEditSystemPrompt(clinicianName, voiceMode = 'practice', voiceNotes = '', voicePhrases = []) {
   return `You are a transcript editor. Your only job is to turn a spoken interview transcript into clean, readable prose without adding anything that wasn't in the speaker's own words.
 
-${voiceNotesBlock(voiceNotes)}
+${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}
 WHAT YOU MUST DO:
 - Remove filler words and verbal tics: um, uh, like (as filler), you know, basically, sort of, kind of, right?, I mean, literally (as emphasis filler)
 - Fix run-on sentences: split at natural breath points, keep the speaker's syntax otherwise
