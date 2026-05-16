@@ -89,7 +89,7 @@ export default function StoryDetail() {
                       to={`/clinician/${story.clinician_id}`}
                       className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
                     >
-                      Voice notes →
+                      Clinician profile →
                     </Link>
                   )}
                 </div>
