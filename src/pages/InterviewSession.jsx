@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { fetchSimilarInterviews, fetchClinician, updateInterview, cleanupTranscript, populateContentItemProvenance } from '@/lib/api'
+import { apiFetch, fetchSimilarInterviews, fetchClinician, updateInterview, cleanupTranscript, populateContentItemProvenance } from '@/lib/api'
 import { extractProvenanceBlock } from '@/lib/provenance'
 import { useClinician, useInterview, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
@@ -878,12 +878,26 @@ export default function InterviewSession() {
         })
       }
 
+      // Top voice phrase anchors (Phase C.2). One light fetch right before
+      // generation; falls back to [] on any failure so a flaky endpoint can't
+      // block the blog draft.
+      let voicePhrases = []
+      try {
+        const vp = await apiFetch(
+          `/api/clinicians/voice-phrases?clinician_id=${clinician.id}&limit=8`
+        )
+        voicePhrases = Array.isArray(vp?.phrases) ? vp.phrases : []
+      } catch (e) {
+        console.warn('[interview] voice phrase fetch failed:', e?.message)
+      }
+
       const isMinimal = generationStyle === 'minimal_edits'
       const systemPrompt = isMinimal
-        ? getMinimalEditSystemPrompt(clinician.name, voiceMode, clinician.voice_notes || '')
+        ? getMinimalEditSystemPrompt(clinician.name, voiceMode, clinician.voice_notes || '', voicePhrases)
         : getBlogPostSystemPrompt(
             overlaidWorkspace, clinician.name, interview.topic, tone, voiceMode, interview.prototype_id,
             clinician.voice_notes || '',
+            voicePhrases,
           ) + buildVerbatimBlock(interview.verbatim_flags)
 
       const streamMessages = [

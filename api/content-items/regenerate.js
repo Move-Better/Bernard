@@ -88,14 +88,23 @@ export default async function handler(req, res) {
   // Load clinician (name + voice_notes) — workspace-scoped to prevent FK leakage.
   let clinicianName = ''
   let voiceNotes = ''
+  let voicePhrases = []
   if (interview.clinician_id) {
-    const clinRes = await sb(
-      `clinicians?id=eq.${interview.clinician_id}&${wsFilter}&select=name,voice_notes`,
-    )
+    const [clinRes, phrasesRes] = await Promise.all([
+      sb(`clinicians?id=eq.${interview.clinician_id}&${wsFilter}&select=name,voice_notes`),
+      // Top voice phrase anchors (Phase C.2). Weight desc → strongest first.
+      sb(
+        `clinician_voice_phrases?clinician_id=eq.${interview.clinician_id}&${wsFilter}` +
+        `&select=phrase&order=weight.desc,last_seen_at.desc&limit=8`
+      ),
+    ])
     if (clinRes.ok) {
       const rows = await clinRes.json()
       clinicianName = rows[0]?.name ?? ''
       voiceNotes    = rows[0]?.voice_notes ?? ''
+    }
+    if (phrasesRes.ok) {
+      voicePhrases = await phrasesRes.json()
     }
   }
 
@@ -199,6 +208,7 @@ export default async function handler(req, res) {
         interview.voice_mode || 'practice',
         interview.prototype_id,
         voiceNotes,
+        voicePhrases,
       ) + buildVerbatimBlock(interview.verbatim_flags)
 
       const messages = [
