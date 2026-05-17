@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, Plus, Play, Archive, Trash2, Loader2, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react'
+import { Sparkles, Plus, Play, Archive, Trash2, Loader2, AlertCircle, CheckCircle2, ChevronRight, Link as LinkIcon, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,7 @@ import {
   useSuggestTopics,
 } from '@/lib/queries'
 import { toast } from '@/lib/toast'
+import ReferencesPanel from '@/components/ReferencesPanel'
 
 // Strategic topic backlog. Sits inside the Strategy page and gives the clinic
 // a prioritized queue of "what to interview about next" — either AI-suggested
@@ -54,7 +55,9 @@ export default function TopicBacklogPanel() {
 
   function handleStart(topic) {
     updateMutation.mutate({ id: topic.id, patch: { status: 'in_progress' } }, { onError: onMutateError })
-    navigate(`/interview/new?topic=${encodeURIComponent(topic.topic)}`)
+    // Pass topicBacklogId so any attached references carry over to the
+    // resulting interview after creation (handled server-side).
+    navigate(`/interview/new?topic=${encodeURIComponent(topic.topic)}&topicBacklogId=${encodeURIComponent(topic.id)}`)
   }
 
   function handleArchive(topic) {
@@ -184,9 +187,11 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
   const isCompleted   = topic.status === 'completed'
   const isArchived    = topic.status === 'archived'
   const isAiSuggested = topic.source === 'ai_suggested'
+  const [refsOpen, setRefsOpen] = useState(false)
 
   return (
-    <div className={`py-3 flex items-start justify-between gap-3 ${isArchived || isCompleted ? 'opacity-70' : ''}`}>
+    <div className={`py-3 ${isArchived || isCompleted ? 'opacity-70' : ''}`}>
+    <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium">{topic.topic}</span>
@@ -209,6 +214,15 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
         {topic.rationale && (
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{topic.rationale}</p>
         )}
+        <button
+          type="button"
+          onClick={() => setRefsOpen(o => !o)}
+          className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <LinkIcon className="h-3 w-3" />
+          References
+          <ChevronDown className={`h-3 w-3 transition-transform ${refsOpen ? 'rotate-180' : ''}`} />
+        </button>
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
@@ -261,6 +275,12 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
+    </div>
+    {refsOpen && (
+      <div className="mt-2.5 ml-0 sm:ml-1 pl-3 border-l-2 border-muted">
+        <ReferencesPanel topicId={topic.id} compact />
+      </div>
+    )}
     </div>
   )
 }

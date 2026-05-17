@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     if (!(await enforceLimit(req, res, 'media'))) return
 
-    const { clinicianId, topic, ownerId, ownerEmail, tone, voiceMode, prototypeId, locationId, generationStyle } = req.body || {}
+    const { clinicianId, topic, ownerId, ownerEmail, tone, voiceMode, prototypeId, locationId, generationStyle, topicBacklogId } = req.body || {}
     if (!clinicianId) return err(res, 'Missing clinicianId')
     if (!topic?.trim()) return err(res, 'Topic required')
     if (!ownerId) return err(res, 'Unauthorized', 401)
@@ -100,7 +100,46 @@ export default async function handler(req, res) {
     })
     if (!r.ok) return dbErr(res, r, 'Create failed')
     const data = await r.json()
-    return ok(res, data[0], 201)
+    const interview = data[0]
+
+    // Carryover: copy any references attached to the originating topic_backlog
+    // row onto the new interview, so the reading list survives after the topic
+    // is archived. Best-effort — a copy failure must not 500 the interview
+    // create (the row is already inserted above).
+    if (topicBacklogId && interview?.id) {
+      try {
+        const refsRes = await sb(`interview_references?topic_id=eq.${topicBacklogId}&${wsFilter}&select=url,title,notes,use_as_source,added_by`)
+        if (refsRes.ok) {
+          const refs = await refsRes.json()
+          if (Array.isArray(refs) && refs.length > 0) {
+            const copies = refs.map((r) => ({
+              workspace_id: ws.id,
+              interview_id: interview.id,
+              topic_id: null,
+              url: r.url,
+              title: r.title,
+              notes: r.notes,
+              use_as_source: r.use_as_source,
+              added_by: r.added_by,
+            }))
+            const cpRes = await sb('interview_references', {
+              method: 'POST',
+              headers: { Prefer: 'return=minimal' },
+              body: JSON.stringify(copies),
+            })
+            if (!cpRes.ok) {
+              console.error(`[db/interviews] reference carryover ${cpRes.status} for interview=${interview.id} ws=${ws.slug}`)
+            }
+          }
+        } else {
+          console.error(`[db/interviews] reference carryover fetch ${refsRes.status} for topic=${topicBacklogId} ws=${ws.slug}`)
+        }
+      } catch (e) {
+        console.error(`[db/interviews] reference carryover threw for interview=${interview.id} ws=${ws.slug}: ${e?.message}`)
+      }
+    }
+
+    return ok(res, interview, 201)
   }
 
   if (req.method === 'PATCH') {
