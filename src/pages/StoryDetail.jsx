@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Link as LinkIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useStory } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
@@ -11,6 +11,7 @@ import TranscriptExport from '@/components/story-detail/TranscriptExport'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import { ClinicianChip } from '@/components/ClinicianChip'
+import ReferencesPanel from '@/components/ReferencesPanel'
 
 /**
  * StoryDetail — consolidated view for a single story (interview + pieces).
@@ -31,6 +32,7 @@ export default function StoryDetail() {
   // paragraph attribution row; TranscriptPane reacts by scrolling + highlighting
   // the corresponding user message.
   const [provenanceHighlight, setProvenanceHighlight] = useState(null)
+  const [refsOpen, setRefsOpen] = useState(false)
 
   // Fallback: if the URL param is actually a content_item id (legacy bookmark
   // or stale link from /review/:itemId redirect), resolve it to its parent
@@ -120,6 +122,28 @@ export default function StoryDetail() {
             <TranscriptExport story={story} />
           </div>
         </div>
+      </div>
+
+      {/* References — collapsible. External articles attached to this
+          interview (either added post-interview, or carried over from the
+          originating topic). */}
+      <div className="rounded-lg border bg-card">
+        <button
+          type="button"
+          onClick={() => setRefsOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
+        >
+          <span className="inline-flex items-center gap-2">
+            <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            References
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${refsOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {refsOpen && (
+          <div className="px-4 pb-4 pt-1 border-t">
+            <ReferencesPanel interviewId={story.id} />
+          </div>
+        )}
       </div>
 
       {/* Two-column body */}

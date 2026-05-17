@@ -46,6 +46,7 @@ import {
 } from './brandKitLib'
 import { fetchContentPlanAtoms, updateAtomStatus, draftAtom } from './contentPlan'
 import { fetchTopicBacklog, createTopic, updateTopic, deleteTopic, suggestTopics } from './topicBacklog'
+import { fetchReferences, createReference, updateReference, deleteReference } from './interviewReferences'
 import { buildStories, deriveStoryStage } from './stories'
 
 export const queryKeys = {
@@ -102,6 +103,11 @@ export const queryKeys = {
   campaigns: {
     all:  ['campaigns'],
     list: () => ['campaigns', 'list'],
+  },
+  references: {
+    all:           ['references'],
+    forTopic:      (id) => ['references', 'topic', id],
+    forInterview:  (id) => ['references', 'interview', id],
   },
   onboardingProgress: ['onboarding-progress'],
 }
@@ -410,6 +416,51 @@ export function useSuggestTopics() {
     errorMessage: "Couldn't suggest topics",
     mutationFn: (count) => suggestTopics(count),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.topicBacklog.all }),
+  })
+}
+
+// ── Interview references ───────────────────────────────────────────────────
+//
+// External article URLs attached to either a topic_backlog row (pre-interview
+// reading) or an interview (post-interview source list). Display-only; the
+// `use_as_source` flag is staged for a future AI-ingestion path.
+
+export function useReferences({ topicId, interviewId } = {}) {
+  const enabled = Boolean(topicId || interviewId)
+  return useQuery({
+    queryKey: topicId
+      ? queryKeys.references.forTopic(topicId)
+      : queryKeys.references.forInterview(interviewId),
+    queryFn: () => fetchReferences({ topicId, interviewId }),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useCreateReference() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't add reference",
+    mutationFn: (payload) => createReference(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.references.all }),
+  })
+}
+
+export function useUpdateReference() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't update reference",
+    mutationFn: ({ id, patch }) => updateReference(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.references.all }),
+  })
+}
+
+export function useDeleteReference() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't delete reference",
+    mutationFn: (id) => deleteReference(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.references.all }),
   })
 }
 

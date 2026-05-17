@@ -102,6 +102,7 @@ export default function NewInterview() {
         voiceMode,
         prototypeId: prototype,
         locationId,
+        topicBacklogId: searchParams.get('topicBacklogId') || undefined,
       })
       navigate(`/interview/${clinician.id}/${interview.id}`)
     } catch (e) {
