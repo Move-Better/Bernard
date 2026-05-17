@@ -22,6 +22,7 @@ const Integrations = lazy(() => import('@/pages/Integrations'))
 const WorkspaceSettings = lazy(() => import('@/pages/WorkspaceSettings'))
 const VoiceSettings = lazy(() => import('@/pages/settings/VoiceSettings'))
 const VoiceTonePage = lazy(() => import('@/pages/settings/VoiceTonePage'))
+const PatientsTopicsPage = lazy(() => import('@/pages/settings/PatientsTopicsPage'))
 const ChannelsSettings = lazy(() => import('@/pages/settings/ChannelsSettings'))
 const LocationsSettings = lazy(() => import('@/pages/settings/LocationsSettings'))
 const BillingSettings = lazy(() => import('@/pages/settings/BillingSettings'))
@@ -241,8 +242,8 @@ function AppRoutes() {
             <Route element={<SettingsLayout />}>
               <Route path="/settings/workspace" element={guarded(<WorkspaceSettings />)} />
               <Route path="/settings/workspace/voice" element={guarded(<VoiceTonePage />)} />
-              {/* PRs #3 + #4 will ship lean per-page versions for these two. */}
-              <Route path="/settings/workspace/patients" element={guarded(<VoiceSettings />)} />
+              <Route path="/settings/workspace/patients" element={guarded(<PatientsTopicsPage />)} />
+              {/* PR #4 will ship a lean Interview defaults page. */}
               <Route path="/settings/workspace/interview-defaults" element={guarded(<VoiceSettings />)} />
               <Route path="/settings/workspace/locations" element={guarded(<LocationsSettings />)} />
               <Route path="/settings/workspace/channels" element={guarded(<ChannelsSettings />)} />
