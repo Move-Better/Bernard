@@ -14,8 +14,8 @@
     "e2e:seed": "node scripts/seed-e2e-fixtures.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src api middleware.js --max-warnings 0",
-    "verify:bundles": "node scripts/verify-function-bundles.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify-bundles": "node scripts/verify-function-bundles.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^1.13.0",

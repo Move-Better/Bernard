@@ -16,4 +16,12 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm run build
+      # vercel build runs the Vite frontend build + bundles all API functions
+      # into .vercel/output/functions. This replaces the bare `npm run build`
+      # step so the bundle smoke test below has output to inspect.
+      # --yes skips the env-var pull prompt; .vercel/project.json provides
+      # project/org IDs without requiring a vercel login token.
+      - run: npx vercel build --yes
+      # Import every Node-runtime function bundle to catch ERR_INTERNAL_ASSERTION
+      # and other load-time crashes before they reach production.
+      - run: node scripts/verify-function-bundles.mjs

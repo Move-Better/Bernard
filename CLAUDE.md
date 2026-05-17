@@ -47,6 +47,21 @@ Vercel `/api/*` handlers must match the configured runtime — the runtime flag 
 
 For Supabase REST failures, the `dbErr(res, r, msg)` helper in each `api/db/*.js` file logs the full PostgREST response body to `vercel logs` (tagged `[db/<file>]`). Use the same pattern when adding new handlers that talk to Supabase REST — public response stays opaque, but root-causing is one log fetch away (`vercel logs --status-code 500 --expand`).
 
+### Bundle smoke test
+CI runs `node scripts/verify-function-bundles.mjs` after `npx vercel build --yes`. The script dynamically imports the entry point of every Node-runtime function bundle and fails if any throw at load time — the same failure mode as `ERR_INTERNAL_ASSERTION` (esbuild picks a wrong conditional-export path for a native dep like `sharp`). This is the bundle-time complement to the `narraterx/api-handler-shape` ESLint rule.
+
+**To run locally** (requires a prior `npx vercel build --yes`):
+```
+cd "/Users/qbook/Claude Projects/NarrateRx" && npm run verify-bundles
+```
+
+**When the check fires in CI:**
+1. The error message names the exact handler file that failed to load and prints the Node error (e.g. `ERR_INTERNAL_ASSERTION: Module "foo" was loaded as CJS`).
+2. Identify the import that caused the mismatch — usually a package with ESM-only sub-packages imported in a CJS context, or vice versa.
+3. Fix: static-import the CJS build directly (`import Foo from 'pkg/dist/cjs/index.js'`), or swap to a package that ships a proper dual build.
+
+**Allowlisting:** functions that legitimately cannot be smoke-tested in isolation are listed in the `ALLOWLIST` set at the top of `scripts/verify-function-bundles.mjs`. Each entry must include an inline comment explaining why. The allowlist should stay empty — never add a function just because it checks env vars at *call* time; the smoke test only loads the module graph, it doesn't invoke any handler.
+
 ## Large-file handling
 Functions that download media (videos, audio, large images) from blob storage **must stream** the response body to disk rather than buffering. `await res.arrayBuffer()` materializes the entire file in RAM and OOMs the function on anything over ~500MB (default Node function memory is 1024MB):
 
