@@ -106,6 +106,14 @@ export function deleteClinician(id, userId) {
   })
 }
 
+export function patchClinician(id, patch, userId) {
+  return apiFetch(`/api/db/clinicians?id=${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+    body: JSON.stringify(patch),
+  })
+}
+
 // ── Interviews ───────────────────────────────────────────────────────────────
 
 /** @param {string} id @returns {Promise<unknown>} */

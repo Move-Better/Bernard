@@ -83,7 +83,18 @@ export default function NewInterview() {
   const suggestionsLoading = cliniciansLoading
 
   function handleNext() {
-    if (step === 1 && clinicianName.trim()) setStep(2)
+    if (step !== 1 || !clinicianName.trim()) return
+    // Auto-fill from the clinician's saved recipe if they exist in the workspace.
+    const match = cliniciansForSuggestions.find(
+      (c) => c.name.trim().toLowerCase() === clinicianName.trim().toLowerCase()
+    )
+    if (match) {
+      if (match.default_audience)   setAudience(match.default_audience)
+      if (match.default_story_type) setStoryType(match.default_story_type)
+      if (match.default_tone)       setTone(match.default_tone)
+      if (match.default_voice_mode) setVoiceMode(match.default_voice_mode)
+    }
+    setStep(2)
   }
 
   async function handleStart(selectedCondition) {
