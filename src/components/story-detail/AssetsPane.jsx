@@ -871,11 +871,19 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
             <PlatformIcon className={`h-3.5 w-3.5 ${pm.color}`} />
             <span className={`text-xs font-medium ${pm.color}`}>{pm.label}</span>
           </div>
-          {active?.scheduled_at && (
-            <span className="text-xs text-muted-foreground">
-              Scheduled {new Date(active.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' })}
-            </span>
-          )}
+          {active?.scheduled_at && (() => {
+            const schedDate = new Date(active.scheduled_at)
+            const isStale = active.status !== 'published' && schedDate < new Date()
+            return isStale ? (
+              <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+                <span>⚠ Schedule expired ({schedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' })}) — repick a time before publishing</span>
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Scheduled {schedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' })}
+              </span>
+            )
+          })()}
         </div>
 
         {active && <ContentEditor key={active.id} piece={active} onProvenanceHighlight={onProvenanceHighlight} />}
