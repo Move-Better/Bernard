@@ -17,3 +17,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      # Import every API handler source file to catch ERR_INTERNAL_ASSERTION
+      # and other module-load-time crashes (sharp / jimp / native-module
+      # ESM-CJS mismatches) before they reach production. Runs against the
+      # installed node_modules — equivalent to what Vercel deploys, since
+      # Vercel copies the source files unchanged and traces dependencies.
+      - run: npm run verify-bundles
