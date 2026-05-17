@@ -54,6 +54,77 @@ function backdropStyleFor(backdrop) {
   }
 }
 
+function sanitizeSvg(markup) {
+  return markup
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+}
+
+// Fetches an SVG, inlines it, then rewrites the viewBox to the actual
+// content bounding box so artwork that ships with whitespace padding
+// (common with logo exports) fills the tile instead of rendering as a
+// speck centered in a huge canvas.
+function CroppedSvg({ url, label }) {
+  const [markup, setMarkup] = useState(null)
+  const hostRef = useRef(null)
+  useEffect(() => {
+    let alive = true
+    fetch(url)
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+      .then((txt) => { if (alive) setMarkup(sanitizeSvg(txt)) })
+      .catch(() => { if (alive) setMarkup('') })
+    return () => { alive = false }
+  }, [url])
+  useEffect(() => {
+    if (!hostRef.current || !markup) return
+    const svg = hostRef.current.querySelector('svg')
+    if (!svg) return
+    svg.removeAttribute('width')
+    svg.removeAttribute('height')
+    svg.style.display = 'block'
+    svg.style.width = '100%'
+    svg.style.height = '100%'
+    let done = false
+    const apply = () => {
+      if (done || !svg.isConnected) return
+      try {
+        const bb = svg.getBBox()
+        if (bb && bb.width > 0.5 && bb.height > 0.5) {
+          const pad = Math.max(bb.width, bb.height) * 0.04
+          svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${bb.width + pad * 2} ${bb.height + pad * 2}`)
+          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+          done = true
+        }
+      } catch { /* ignore */ }
+    }
+    const timers = [0, 80, 250, 600].map((d) => setTimeout(apply, d))
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(apply).catch(() => {})
+    }
+    return () => { done = true; timers.forEach(clearTimeout) }
+  }, [markup])
+  // While fetching (markup === null) or on fetch failure (markup === ''),
+  // fall back to a plain <img> so the user always sees something.
+  if (!markup) {
+    return (
+      <img
+        src={url}
+        alt={label}
+        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+      />
+    )
+  }
+  return (
+    <div
+      ref={hostRef}
+      aria-label={label}
+      style={{ width: '100%', height: '100%' }}
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
+  )
+}
+
 // Renders the asset preview. `backdrop` controls what's behind the artwork —
 // 'checker' (default) shows transparency, 'light'/'dark' show flat fills so
 // users can spot logos that would otherwise vanish against same-color bg.
@@ -70,22 +141,20 @@ function AssetPreview({ asset, size = 'md', backdrop = 'checker' }) {
       </div>
     )
   }
-  // Plain block container with definite pixel height + an <img> with explicit
-  // width:100%/height:100%/object-fit:contain inline styles. Previously we
-  // wrapped the img in `flex items-center justify-center` which can collapse
-  // the img to zero height when the source SVG has no intrinsic dimensions
-  // (only a viewBox). Inline styles also bypass any Tailwind preflight
-  // `img { height: auto }` precedence surprises.
   return (
     <div
       className="w-full rounded-md overflow-hidden"
       style={{ ...backdropStyleFor(backdrop), height: `${heightPx}px`, padding: '10px', boxSizing: 'border-box' }}
     >
-      <img
-        src={asset.blob_url}
-        alt={asset.filename}
-        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
-      />
+      {asset.mime_type === 'image/svg+xml' ? (
+        <CroppedSvg url={asset.blob_url} label={asset.filename} />
+      ) : (
+        <img
+          src={asset.blob_url}
+          alt={asset.filename}
+          style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+        />
+      )}
     </div>
   )
 }
