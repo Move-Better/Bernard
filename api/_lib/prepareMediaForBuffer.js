@@ -7,12 +7,11 @@ import { spawn } from 'node:child_process'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import ffmpegStaticPath from 'ffmpeg-static'
-// jimp's conditional exports map `import` → ESM and `require` → CJS. esbuild
-// follows the `import` condition when bundling, picks the ESM build, and the
-// resulting bundle crashes at Node runtime with ERR_INTERNAL_ASSERTION.
-// Bypassing conditional exports by referencing the CJS dist directly forces
-// esbuild to bundle the CJS build, which loads cleanly in Vercel Node functions.
-import { Jimp } from 'jimp/dist/commonjs/index.js'
+// sharp@0.34 is "type":"commonjs" — static import works cleanly with esbuild.
+// Earlier attempts used dynamic `await import('sharp')` which esbuild couldn't
+// bundle reliably; jimp was tried next but all @jimp/* sub-packages are
+// "type":"module", causing the same ERR_INTERNAL_ASSERTION at runtime.
+import sharp from 'sharp'
 
 // Per-platform caps used by Buffer's media validator:
 //   Instagram: 5000px image, 1920px video, 60s reel
@@ -31,11 +30,14 @@ async function resizeImageIfNeeded(url) {
   if (!r.ok) throw new Error(`download failed: ${r.status}`)
   const buf = Buffer.from(await r.arrayBuffer())
 
-  const img = await Jimp.read(buf)
-  if (img.width <= IMG_MAX_WIDTH) return url
+  const img  = sharp(buf, { failOn: 'none' }).rotate() // auto-orient from EXIF
+  const meta = await img.metadata().catch(() => ({}))
+  if (!meta.width || meta.width <= IMG_MAX_WIDTH) return url
 
-  img.resize({ w: IMG_MAX_WIDTH })
-  const resized = await img.getBuffer('image/jpeg', { quality: 88 })
+  const resized = await img
+    .resize({ width: IMG_MAX_WIDTH, withoutEnlargement: true })
+    .jpeg({ quality: 88 })
+    .toBuffer()
 
   const hash = createHash('sha256').update(url).digest('hex').slice(0, 16)
   const { url: blobUrl } = await blobPut(
