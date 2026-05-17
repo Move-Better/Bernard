@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import ffmpegStaticPath from 'ffmpeg-static'
+import sharp from 'sharp'
 
 // Per-platform caps used by Buffer's media validator:
 //   Instagram: 5000px image, 1920px video, 60s reel
@@ -25,7 +26,6 @@ async function resizeImageIfNeeded(url) {
   if (!r.ok) throw new Error(`download failed: ${r.status}`)
   const buf = Buffer.from(await r.arrayBuffer())
 
-  const { default: sharp } = await import('sharp')
   const img  = sharp(buf, { failOn: 'none' }).rotate() // auto-orient from EXIF
   const meta = await img.metadata().catch(() => ({}))
   if (!meta.width || meta.width <= IMG_MAX_WIDTH) return url
