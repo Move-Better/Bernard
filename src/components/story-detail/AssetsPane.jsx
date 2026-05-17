@@ -51,6 +51,15 @@ const STATUS_TO_STAGE = {
   published: 'published',
 }
 
+const STATUS_DOT = {
+  draft:     'bg-slate-400',
+  in_review: 'bg-amber-400',
+  approved:  'bg-blue-500',
+  scheduled: 'bg-purple-500',
+  published: 'bg-green-500',
+  archived:  'bg-zinc-400',
+}
+
 function StatusBadge({ status }) {
   const sm = STATUS_META[status] || { label: status || '—' }
   const stage = STATUS_TO_STAGE[status]
@@ -840,28 +849,47 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
       <div className="flex items-center justify-end px-3 pt-3">{ViewToggle}</div>
-      {/* Tab row */}
+      {/* Tab row — numbers same-platform pieces (e.g. "Facebook 2 of 5") and
+          shows a status dot so multiple drafts on the same channel are
+          distinguishable without clicking through each tab. */}
       <div className="flex gap-1 px-3 pt-3 pb-0 overflow-x-auto border-b">
-        {pieces.map((piece, i) => {
-          const meta = PLATFORM_META[piece.platform] || { label: piece.platform, icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100' }
-          const Icon = meta.icon
-          const isActive = i === activeIdx
-          return (
-            <button
-              key={piece.id}
-              type="button"
-              onClick={() => setActiveIdx(i)}
-              className={`flex items-center gap-1.5 shrink-0 px-3 py-2 text-xs rounded-t border-b-2 transition-colors ${
-                isActive
-                  ? 'border-primary text-primary font-medium bg-primary/5'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-3 w-3" />
-              {meta.label}
-            </button>
-          )
-        })}
+        {(() => {
+          const platformCounts = {}
+          for (const p of pieces) {
+            platformCounts[p.platform] = (platformCounts[p.platform] || 0) + 1
+          }
+          const platformIdx = {}
+          return pieces.map((piece, i) => {
+            const meta = PLATFORM_META[piece.platform] || { label: piece.platform, icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100' }
+            const Icon = meta.icon
+            const isActive = i === activeIdx
+            const total = platformCounts[piece.platform]
+            platformIdx[piece.platform] = (platformIdx[piece.platform] || 0) + 1
+            const nth = platformIdx[piece.platform]
+            const label = total > 1 ? `${meta.label} ${nth}/${total}` : meta.label
+            const statusDot = STATUS_DOT[piece.status] ?? 'bg-slate-300'
+            const statusLabel = STATUS_META[piece.status]?.label ?? piece.status
+            const preview = typeof piece.content === 'string' ? piece.content.slice(0, 80) : ''
+            const title = `${statusLabel}${preview ? ` — ${preview}${preview.length >= 80 ? '…' : ''}` : ''}`
+            return (
+              <button
+                key={piece.id}
+                type="button"
+                onClick={() => setActiveIdx(i)}
+                title={title}
+                className={`flex items-center gap-1.5 shrink-0 px-3 py-2 text-xs rounded-t border-b-2 transition-colors ${
+                  isActive
+                    ? 'border-primary text-primary font-medium bg-primary/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+                <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} aria-label={statusLabel} />
+              </button>
+            )
+          })
+        })()}
       </div>
 
       {/* Active piece body */}
