@@ -11,7 +11,14 @@
 // sequence as the input. If the model returns a different shape, the
 // cleanup is dropped and the original wins — better to ship the raw
 // transcript than to silently mutate the roles or drop turns.
-export const config = { runtime: 'nodejs', maxDuration: 60 }
+// maxDuration: 60s + maxTokens: 4000 (the previous values) silently
+// truncated cleanup output on 23-25 message interviews. Audit on 2026-05-18
+// found 4 of 5 completed interviews missing cleaned_messages because the
+// JSON response exceeded 4000 tokens and the length-match guard then
+// rejected the result. Bumping to the current Vercel default (300s) +
+// 16000 tokens gives plenty of headroom for any realistic interview length
+// — a fully-loaded 25-message transcript runs ~6000 output tokens.
+export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { generateText } from 'ai'
 import { workspaceContext } from '../_lib/workspaceContext.js'
@@ -143,7 +150,12 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-sonnet-4-6',
       system: prompt,
       messages: [{ role: 'user', content: 'Clean the transcript now.' }],
-      maxTokens: 4000,
+      // Sonnet 4.6 max output is 64k. 16k gives headroom for a fully-loaded
+      // 25-message interview (~6k output tokens) plus JSON wrapping. The
+      // previous 4k limit silently truncated the JSON array on big
+      // transcripts, which then failed the length-match guard and dropped
+      // the cleanup entirely.
+      maxTokens: 16000,
     })
     text = result.text
   } catch (e) {
