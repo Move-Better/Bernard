@@ -1,12 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useUpdateContentItem } from '@/lib/queries'
+import { useMemo } from 'react'
 
-// Pull `[ON SCREEN TEXT: ...]` lines out of a draft body. The AI atom prompts
-// emit these markers for video posts; we surface them as the suggested
-// overlay text the user can accept or edit.
+// Pull `[ON SCREEN TEXT: ...]` lines out of a draft body. The atom prompts
+// emit these markers; we surface them as the rendered overlay text.
 const MARKER_RE = /\[ON\s*SCREEN\s*TEXT:\s*([^\]]+)\]/gi
 
 export function extractMarkerSuggestions(content) {
@@ -20,7 +15,7 @@ export function extractMarkerSuggestions(content) {
   return out
 }
 
-function markersToOverlay(markers) {
+export function markersToOverlay(markers) {
   return {
     hook:    markers[0] || '',
     subhead: markers[1] || '',
@@ -28,135 +23,51 @@ function markersToOverlay(markers) {
   }
 }
 
+function Row({ label, value }) {
+  if (!value) return null
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="shrink-0 text-2xs font-medium uppercase tracking-wide text-muted-foreground w-14">{label}</span>
+      <span className="text-xs text-foreground/90 break-words">{value}</span>
+    </div>
+  )
+}
+
 /**
- * OverlayTextEditor — edit the {hook, subhead, cta} stored on
- * content_items.overlay_text. Pre-seeds from `[ON SCREEN TEXT: …]` markers
- * found in the draft body, but manual edits always win and persist.
+ * OverlayTextEditor — read-only display of the Instagram overlay (hook /
+ * subhead / cta) derived from `[ON SCREEN TEXT: …]` markers in the draft body.
+ *
+ * The body is the single source of truth: ContentEditor.handleSave parses
+ * markers and writes `overlay_text` alongside `content`. Edit the body to
+ * change the overlay. This panel is intentionally non-interactive — the
+ * earlier hook/subhead/cta inputs duplicated the body markers and routinely
+ * drifted out of sync.
  */
 export default function OverlayTextEditor({ piece }) {
-  const updateItem = useUpdateContentItem()
   const stored = piece?.overlay_text || null
   const markers = useMemo(() => extractMarkerSuggestions(piece?.content), [piece?.content])
-  const hasMarkers = markers.length > 0
 
-  // Local edit state — debounced save on blur.
-  const [hook, setHook] = useState(stored?.hook || '')
-  const [subhead, setSubhead] = useState(stored?.subhead || '')
-  const [cta, setCta] = useState(stored?.cta || '')
+  // Prefer stored overlay, fall back to live-parsed markers.
+  const live = markersToOverlay(markers)
+  const hook    = stored?.hook    || live.hook
+  const subhead = stored?.subhead || live.subhead
+  const cta     = stored?.cta     || live.cta
 
-  // Re-sync local state when the piece changes (tab switch). Deps are
-  // intentionally [piece?.id] only — listing stored.hook/subhead/cta would
-  // re-fire this effect every time a parent optimistic update or React
-  // Query refetch hands back a new piece reference, clobbering whatever
-  // the user is in the middle of typing. (Same failure pattern as the
-  // InterviewSession lost-interview bug: query-data seeding effects must
-  // be one-shot per route param, not reactive to query refetches.)
-  useEffect(() => {
-    setHook(stored?.hook || '')
-    setSubhead(stored?.subhead || '')
-    setCta(stored?.cta || '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piece?.id])
-
-  const saveOverlay = (next) =>
-    updateItem.mutateAsync({ id: piece.id, patch: { overlayText: next } })
-
-  const handleBlur = () => {
-    const next = { hook: hook.trim(), subhead: subhead.trim(), cta: cta.trim() }
-    const prev = { hook: (stored?.hook || '').trim(), subhead: (stored?.subhead || '').trim(), cta: (stored?.cta || '').trim() }
-    if (next.hook === prev.hook && next.subhead === prev.subhead && next.cta === prev.cta) return
-    // If everything is empty, store null so PostPreview hides the overlay.
-    if (!next.hook && !next.subhead && !next.cta) {
-      saveOverlay(null)
-    } else {
-      saveOverlay(next)
-    }
-  }
-
-  const handleUseAiSuggestions = () => {
-    const seeded = markersToOverlay(markers)
-    setHook(seeded.hook)
-    setSubhead(seeded.subhead)
-    setCta(seeded.cta)
-    saveOverlay(seeded.hook || seeded.subhead || seeded.cta ? seeded : null)
-  }
-
-  const isEmpty = !hook && !subhead && !cta
-  const suggestionAvailable = hasMarkers && (
-    isEmpty ||
-    hook.trim() !== (markers[0] || '').trim() ||
-    subhead.trim() !== (markers[1] || '').trim() ||
-    cta.trim() !== (markers[2] || '').trim()
-  )
+  if (!hook && !subhead && !cta) return null
 
   return (
-    <div className="rounded-md border bg-card p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            On-screen text
-          </p>
-          <p className="mt-0.5 text-2xs text-muted-foreground">
-            Overlay for video/image posts. Hook, subhead, and CTA stack top-to-bottom in the preview.
-          </p>
-        </div>
-        {suggestionAvailable && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={handleUseAiSuggestions}
-            disabled={updateItem.isPending}
-            title="Fill from [ON SCREEN TEXT: …] markers in the draft"
-          >
-            {updateItem.isPending ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            Use AI suggestions
-          </Button>
-        )}
+    <div className="rounded-md border bg-card p-3 space-y-1.5">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        On-screen text
+      </p>
+      <p className="text-2xs text-muted-foreground -mt-1">
+        Auto-derived from <code className="font-mono">[ON SCREEN TEXT: …]</code> markers in the draft. Edit the body to change.
+      </p>
+      <div className="pt-1 space-y-1">
+        <Row label="Hook"    value={hook} />
+        <Row label="Subhead" value={subhead} />
+        <Row label="CTA"     value={cta} />
       </div>
-
-      <div className="space-y-2">
-        <div>
-          <label className="mb-0.5 block text-2xs font-medium text-muted-foreground">Hook</label>
-          <Input
-            value={hook}
-            onChange={(e) => setHook(e.target.value)}
-            onBlur={handleBlur}
-            placeholder={markers[0] || 'e.g. Stop resting your back'}
-            className="h-8 text-xs"
-          />
-        </div>
-        <div>
-          <label className="mb-0.5 block text-2xs font-medium text-muted-foreground">Subhead</label>
-          <Input
-            value={subhead}
-            onChange={(e) => setSubhead(e.target.value)}
-            onBlur={handleBlur}
-            placeholder={markers[1] || 'Supporting line'}
-            className="h-8 text-xs"
-          />
-        </div>
-        <div>
-          <label className="mb-0.5 block text-2xs font-medium text-muted-foreground">CTA</label>
-          <Input
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            onBlur={handleBlur}
-            placeholder={markers[2] || 'Call to action'}
-            className="h-8 text-xs"
-          />
-        </div>
-      </div>
-
-      {hasMarkers && (
-        <p className="mt-2 text-2xs text-muted-foreground">
-          {markers.length} suggestion{markers.length === 1 ? '' : 's'} parsed from the draft.
-        </p>
-      )}
     </div>
   )
 }
