@@ -30,6 +30,7 @@ import {
   buildVerbatimBlock,
 } from '../../src/lib/prompts.js'
 import { applyLocationOverlay } from '../../src/lib/locationOverlay.js'
+import { extractProvenanceBlock } from '../../src/lib/provenance.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -186,8 +187,10 @@ export default async function handler(req, res) {
       })
       if (!text?.trim()) throw new Error('AI returned empty content')
 
-      // Mirror draft.js: split optional ---OVERLAY--- block for Instagram.
-      const [captionRaw, overlayRaw] = text.trim().split('---OVERLAY---')
+      // Mirror draft.js: split optional ---OVERLAY--- block for Instagram,
+      // and strip the <PROVENANCE> trailer (per-paragraph source metadata
+      // that the prompt asks the model to append — must not reach the editor).
+      const [captionRaw, overlayRaw] = extractProvenanceBlock(text.trim()).content.split('---OVERLAY---')
       newContent = captionRaw.trim()
 
       if (overlayRaw) {
@@ -259,7 +262,9 @@ export default async function handler(req, res) {
       })
       if (!text?.trim()) throw new Error('AI returned empty content')
 
-      newContent = text.trim()
+      // Strip the <PROVENANCE> trailer — long-form prompts append per-paragraph
+      // source attribution, but only the body copy belongs in content_items.content.
+      newContent = extractProvenanceBlock(text.trim()).content
       updatedBlogPost = newContent
     }
 

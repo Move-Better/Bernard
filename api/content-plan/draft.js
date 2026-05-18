@@ -10,6 +10,7 @@ import { enforceLimit } from '../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../_lib/atomPrompts.js'
 import { suggestedScheduledAt } from '../_lib/atomPlan.js'
 import { getContextBlock } from '../_lib/conceptRetrieval.js'
+import { extractProvenanceBlock } from '../../src/lib/provenance.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -154,7 +155,10 @@ export default async function handler(req, res) {
 
     // Split overlay block from caption. Instagram prompts append a
     // ---OVERLAY--- section; other platforms don't, so this is a no-op for them.
-    const [captionRaw, overlayRaw] = text.trim().split('---OVERLAY---')
+    // Also strip the <PROVENANCE> trailer — long-form prompts append it as
+    // per-paragraph source attribution, but the trailer is metadata, not body
+    // copy, and must never reach the editor surface.
+    const [captionRaw, overlayRaw] = extractProvenanceBlock(text.trim()).content.split('---OVERLAY---')
     const caption = captionRaw.trim()
 
     let overlay_text = null
@@ -241,7 +245,7 @@ export default async function handler(req, res) {
               })
               if (!locText?.trim()) return null
               return [loc.id, {
-                content:       locText.trim(),
+                content:       extractProvenanceBlock(locText.trim()).content,
                 location_name: loc.label ?? loc.city,
                 generated_at:  new Date().toISOString(),
               }]
