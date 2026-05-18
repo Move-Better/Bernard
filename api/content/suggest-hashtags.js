@@ -11,6 +11,7 @@ export const config = { runtime: 'nodejs', maxDuration: 60 }
 
 import { generateText } from 'ai'
 import { workspaceContext } from '../_lib/workspaceContext.js'
+import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -107,6 +108,8 @@ export default async function handler(req, res) {
 
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)
+  const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
+  if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   const { contentItemId } = req.body || {}
