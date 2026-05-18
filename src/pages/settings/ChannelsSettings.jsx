@@ -152,7 +152,7 @@ export default function ChannelsSettings() {
   const groups = groupedChannels()
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-16">
+    <div className="space-y-6 pb-16">
       {/* Sticky header / save bar */}
       <div className="sticky top-14 z-10 -mx-6 px-6 py-4 bg-background/85 backdrop-blur border-b border-border/60 flex items-start justify-between gap-4">
         <div className="min-w-0">
