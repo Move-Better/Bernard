@@ -2,7 +2,7 @@
 // Generates content for one atom from the interview transcript (primary
 // source) with the approved blog post passed in as editorial context.
 // Creates a content_item and marks the atom as drafted.
-export const config = { runtime: 'nodejs', maxDuration: 60 }
+export const config = { runtime: 'nodejs', maxDuration: 120 }
 
 import { generateText } from 'ai'
 import { workspaceContext } from '../_lib/workspaceContext.js'
@@ -201,6 +201,67 @@ export default async function handler(req, res) {
     }
     const itemRows = await itemRes.json()
     const contentPiece = itemRows[0]
+
+    // For GBP atoms: generate a per-location variant for every workspace_location
+    // that has a gbp_location_id configured. Each variant uses the same interview
+    // conversation but a location-patched system prompt (different location_keyword /
+    // city), so Google sees genuinely distinct local copy on each listing rather
+    // than the same text fanned out. Failures are non-blocking — canonical is kept.
+    if (atom.platform === 'gbp') {
+      const locsRes = await sb(
+        `workspace_locations?workspace_id=eq.${ws.id}&status=eq.active&gbp_location_id=not.is.null` +
+        `&select=id,label,city,location_keyword`,
+      )
+      const locations = locsRes.ok ? ((await locsRes.json()) ?? []) : []
+      if (locations.length > 0) {
+        const variantEntries = await Promise.all(
+          locations.map(async (loc) => {
+            try {
+              const locWs = { ...ws, location_keyword: loc.location_keyword ?? loc.city }
+              const locPrompt = getAtomSystemPrompt(
+                locWs,
+                clinicianName,
+                interview.topic,
+                'gbp',
+                atom.angle,
+                interview.voice_mode || 'practice',
+                interview.tone || 'smart',
+                voiceNotes,
+                (ws.brand_guidelines || '') + conceptBlock,
+                voicePhrases,
+                audienceLabel,
+                storyTypeLabel,
+              )
+              if (!locPrompt) return null
+              const { text: locText } = await generateText({
+                model: 'anthropic/claude-sonnet-4-6',
+                system: locPrompt,
+                messages: aiMessages,
+                maxTokens: 1000,
+              })
+              if (!locText?.trim()) return null
+              return [loc.id, {
+                content:       locText.trim(),
+                location_name: loc.label ?? loc.city,
+                generated_at:  new Date().toISOString(),
+              }]
+            } catch (locErr) {
+              console.error('[content-plan/draft] location variant failed', loc.id, locErr.message)
+              return null
+            }
+          }),
+        )
+        const overrides = Object.fromEntries(variantEntries.filter(Boolean))
+        if (Object.keys(overrides).length > 0) {
+          await sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ location_overrides: overrides, updated_at: new Date().toISOString() }),
+            headers: { Prefer: 'return=minimal' },
+          })
+          contentPiece.location_overrides = overrides
+        }
+      }
+    }
 
     // Mark the atom as drafted
     const updatedAtomRes = await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
