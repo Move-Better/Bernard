@@ -24,6 +24,7 @@ import {
 } from '@/lib/queries'
 import { publishAndTrack, publishBlogToWebsite } from '@/lib/publish'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
+import { extractProvenanceBlock } from '@/lib/provenance'
 import { toast, runWithToast } from '@/lib/toast'
 import BufferMetricsRow from './BufferMetricsRow'
 import ContentPlanPanel from '@/components/ContentPlanPanel'
@@ -196,9 +197,17 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
   // a JSON string so the textarea isn't [object Object]. Edits stay as plain
   // text — we don't try to re-parse on save; if the user mangled the JSON,
   // the backend will store the string and Plan/Preview will fall back.
-  const initial = typeof piece.content === 'string'
+  //
+  // Defense-in-depth: strip any <PROVENANCE>…</PROVENANCE> trailer that
+  // leaked into stored content from older generation paths. Server-side
+  // strip lives in draft.js + regenerate.js, but legacy rows still carry
+  // the trailer and would otherwise render as raw JSON in the editor.
+  const rawInitial = typeof piece.content === 'string'
     ? piece.content
     : piece.content == null ? '' : JSON.stringify(piece.content, null, 2)
+  const initial = typeof rawInitial === 'string'
+    ? extractProvenanceBlock(rawInitial).content
+    : rawInitial
 
   const [value, setValue] = useState(initial)
   const [viewMode, setViewMode] = useState('edit')
@@ -725,63 +734,11 @@ function ApprovalPanel({ piece }) {
   )
 }
 
-// ── ProvenanceTracePanel ─────────────────────────────────────────────────────
-
-const SOURCE_DOT = {
-  verbatim:        'bg-emerald-400',
-  close_paraphrase: 'bg-sky-400',
-  synthesis:       'bg-slate-300',
-}
-
-const SOURCE_LABEL = {
-  verbatim:        'Verbatim',
-  close_paraphrase: 'Paraphrase',
-  synthesis:       'Synthesis',
-}
-
-function ProvenanceTracePanel({ piece, onHighlight }) {
-  const blocks = piece.provenance?.blocks
-  if (!blocks?.length || !onHighlight) return null
-
-  const paragraphs = (typeof piece.content === 'string' ? piece.content : '')
-    .split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-
-  return (
-    <div className="mt-1 space-y-0.5">
-      <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1 px-1">
-        Paragraph sources — click to jump to transcript
-      </p>
-      {blocks.map((b) => {
-        const preview  = (paragraphs[b.ordinal] || b.text_prefix || '').slice(0, 70)
-        const dot      = SOURCE_DOT[b.source_type] ?? 'bg-slate-300'
-        const label    = SOURCE_LABEL[b.source_type] ?? b.source_type
-        const clickable = b.source_msg_index != null
-        return (
-          <button
-            key={b.ordinal}
-            type="button"
-            disabled={!clickable}
-            onClick={() => clickable && onHighlight({
-              msgIndex: b.source_msg_index,
-              start: b.source_span?.[0] ?? null,
-              end:   b.source_span?.[1] ?? null,
-            })}
-            className={`w-full text-left flex items-start gap-2 rounded px-2 py-1 text-xs transition-colors ${
-              clickable ? 'hover:bg-muted/60 cursor-pointer' : 'cursor-default opacity-50'
-            }`}
-            title={clickable ? 'Click to highlight source in transcript' : 'No transcript source (synthesis)'}
-          >
-            <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${dot}`} aria-hidden="true" />
-            <span className="text-muted-foreground truncate flex-1">{preview}{preview.length >= 70 ? '…' : ''}</span>
-            <span className="shrink-0 text-muted-foreground/60">{label}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 // ── AssetsPane ──────────────────────────────────────────────────────────────
+//
+// Paragraph-level attribution now lives inside ContentEditor's "Attributed"
+// view-mode toggle — see AttributedView above. The earlier ProvenanceTracePanel
+// duplicated that surface as a list below the editor and was removed for clarity.
 
 /**
  * AssetsPane — tabbed list of content pieces for a story.
@@ -958,9 +915,6 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
         </div>
 
         {active && <ContentEditor key={active.id} piece={active} onProvenanceHighlight={onProvenanceHighlight} />}
-
-        {/* Provenance attribution — paragraph-level voice trace to transcript source */}
-        {active && <ProvenanceTracePanel piece={active} onHighlight={onProvenanceHighlight} />}
 
         {/* Regenerate — re-runs the AI for this piece. Use when content is
             cut off, off-voice, or contains an obvious error. Resets to draft
