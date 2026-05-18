@@ -897,7 +897,7 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
               <button
                 key={piece.id}
                 type="button"
-                onClick={() => setActiveIdx(i)}
+                onClick={() => handleSelectPiece(piece.id)}
                 title={title}
                 className={`flex items-center gap-1.5 shrink-0 px-3 py-2 text-xs rounded-t border-b-2 transition-colors ${
                   isActive
