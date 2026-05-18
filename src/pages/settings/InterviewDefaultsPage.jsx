@@ -110,7 +110,7 @@ export default function InterviewDefaultsPage() {
   const interviewerName = runtimeWs?.interviewer_name || ws?.interviewer_name || 'Bernard'
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-8">
       {/* Breadcrumb + heading */}
       <div>
         <div className="flex items-center justify-between">
@@ -139,7 +139,7 @@ export default function InterviewDefaultsPage() {
         title="Pre-interview choices"
         description={`The two pickers ${interviewerName} surfaces at the start of every new interview.`}
       >
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-6">
           <SlotEditor
             label="Audience"
             description="Who the piece is for. Shapes how the interviewer probes and how the output is worded."

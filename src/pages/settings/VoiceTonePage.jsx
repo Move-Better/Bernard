@@ -124,7 +124,7 @@ export default function VoiceTonePage() {
   const clinicName = runtimeWs?.display_name || ws?.display_name || 'your practice'
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-8">
       {/* Breadcrumb + heading */}
       <div>
         <div className="flex items-center justify-between">
@@ -150,60 +150,63 @@ export default function VoiceTonePage() {
       {/* Unified brief + preview card */}
       <BriefAndPreviewCard form={form} interviewerName={interviewerName} />
 
-      {/* The clinic */}
-      <Section
-        title="The clinic"
-        description={`The core orienting brief ${interviewerName} uses to stay on-brand in every piece of content.`}
-      >
-        <Textarea2
-          label="What this clinic is about"
-          value={form.clinic_context}
-          onChange={set('clinic_context')}
-          rows={3}
-          hint={`${interviewerName} uses this to orient tone and framing across all content.`}
-        />
-        <Textarea2
-          label="Brand voice"
-          value={form.brand_voice}
-          onChange={set('brand_voice')}
-          rows={6}
-          hint="How your content should feel — the adjectives, cadences, and phrases that make your voice yours."
-        />
-      </Section>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
+        {/* The clinic */}
+        <Section
+          title="The clinic"
+          description={`The core orienting brief ${interviewerName} uses to stay on-brand in every piece of content.`}
+        >
+          <Textarea2
+            label="What this clinic is about"
+            value={form.clinic_context}
+            onChange={set('clinic_context')}
+            rows={3}
+            hint={`${interviewerName} uses this to orient tone and framing across all content.`}
+          />
+          <Textarea2
+            label="Brand voice"
+            value={form.brand_voice}
+            onChange={set('brand_voice')}
+            rows={6}
+            hint="How your content should feel — the adjectives, cadences, and phrases that make your voice yours."
+          />
+        </Section>
 
-      {/* Who you serve */}
-      <Section
-        title="Who you serve"
-        description={`${interviewerName} uses this to calibrate language and empathy — who is actually reading this content?`}
-      >
-        <Field
-          label="Audience in one line"
-          value={form.audience_short}
-          onChange={set('audience_short')}
-          hint={`A short label ${interviewerName} can reference quickly — e.g. "active adults 35–60 returning from injury."`}
-        />
-        <Textarea2
-          label="Full audience description"
-          value={form.audience_description}
-          onChange={set('audience_description')}
-          rows={4}
-          hint="The fuller picture of who you're writing for — their goals, fears, and what gets them to take action."
-        />
-        <Field
-          label="Activity or discipline vocabulary"
-          value={form.activity_context}
-          onChange={set('activity_context')}
-          hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
-        />
-      </Section>
+        {/* Who you serve */}
+        <Section
+          title="Who you serve"
+          description={`${interviewerName} uses this to calibrate language and empathy — who is actually reading this content?`}
+        >
+          <Field
+            label="Audience in one line"
+            value={form.audience_short}
+            onChange={set('audience_short')}
+            hint={`A short label ${interviewerName} can reference quickly — e.g. "active adults 35–60 returning from injury."`}
+          />
+          <Textarea2
+            label="Full audience description"
+            value={form.audience_description}
+            onChange={set('audience_description')}
+            rows={4}
+            hint="The fuller picture of who you're writing for — their goals, fears, and what gets them to take action."
+          />
+          <Field
+            label="Activity or discipline vocabulary"
+            value={form.activity_context}
+            onChange={set('activity_context')}
+            hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
+          />
+        </Section>
 
-      {/* Tone modes */}
-      <Section
-        title="Tone modes"
-        description={`When a clinician picks a tone at the start of an interview, ${interviewerName} applies the matching modifier below. Leave any tone blank to fall back to the system default shown inside the card.`}
-      >
-        <ToneModifierCards form={form} set={set} />
-      </Section>
+        {/* Tone modes — span both columns; cards already lay out internally */}
+        <Section
+          title="Tone modes"
+          description={`When a clinician picks a tone at the start of an interview, ${interviewerName} applies the matching modifier below. Leave any tone blank to fall back to the system default shown inside the card.`}
+          className="lg:col-span-2"
+        >
+          <ToneModifierCards form={form} set={set} />
+        </Section>
+      </div>
 
       <SaveBar
         saving={saving} saved={saved} error={error} isDirty={isDirty}

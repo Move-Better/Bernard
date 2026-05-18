@@ -103,7 +103,7 @@ export default function SettingsLayout() {
   if (isLoading) return null
 
   return (
-    <div className="flex gap-8 min-h-[calc(100vh-3.5rem)] max-w-6xl mx-auto">
+    <div className="flex gap-8 min-h-[calc(100vh-3.5rem)] max-w-[1600px] mx-auto px-4 xl:px-8">
       {/* Sidebar */}
       <aside className="w-52 shrink-0 pt-6 pr-2 border-r border-border">
         <div className="sticky top-20 space-y-6">

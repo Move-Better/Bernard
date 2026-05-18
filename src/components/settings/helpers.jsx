@@ -5,9 +5,9 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
-export function Section({ title, description, children }) {
+export function Section({ title, description, children, className = '' }) {
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className}`}>
       <div>
         <h2 className="text-sm font-semibold">{title}</h2>
         {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
@@ -21,7 +21,7 @@ export function Section({ title, description, children }) {
 
 export function Field({ label, value, onChange, placeholder, hint, type = 'text', autoComplete }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 max-w-xl">
       <Label className="text-xs">{label}</Label>
       <Input
         type={type}
@@ -38,7 +38,7 @@ export function Field({ label, value, onChange, placeholder, hint, type = 'text'
 
 export function Textarea2({ label, value, onChange, rows = 4, hint, mono = false }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 max-w-3xl">
       <Label className="text-xs">{label}</Label>
       <Textarea
         value={value}

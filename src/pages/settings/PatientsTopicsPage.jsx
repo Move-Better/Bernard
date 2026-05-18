@@ -124,7 +124,7 @@ export default function PatientsTopicsPage() {
   const clinicName = runtimeWs?.display_name || ws?.display_name || 'your practice'
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-8">
       {/* Breadcrumb + heading */}
       <div>
         <div className="flex items-center justify-between">

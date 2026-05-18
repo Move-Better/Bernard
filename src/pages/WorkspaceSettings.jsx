@@ -162,7 +162,7 @@ export default function WorkspaceSettings() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-16">
+    <div className="space-y-6 pb-16">
       {/* Sticky header / save bar */}
       <div className="sticky top-14 z-10 -mx-6 px-6 py-4 bg-background/85 backdrop-blur border-b border-border/60 flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -189,6 +189,7 @@ export default function WorkspaceSettings() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard
         title="Identity"
         description="How this workspace introduces itself on the sign-in screen and in the browser tab."
@@ -299,6 +300,8 @@ export default function WorkspaceSettings() {
           {' '}— the primary location&apos;s values flow into prompts automatically.
         </p>
       </SectionCard>
+
+      </div>
 
       <DangerZone workspace={ws} getToken={getToken} />
     </div>
