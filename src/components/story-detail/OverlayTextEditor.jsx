@@ -1,4 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useUpdateContentItem } from '@/lib/queries'
 
 // Pull `[ON SCREEN TEXT: ...]` lines out of a draft body. The atom prompts
 // emit these markers; we surface them as the rendered overlay text.
@@ -23,51 +27,116 @@ export function markersToOverlay(markers) {
   }
 }
 
-function Row({ label, value }) {
-  if (!value) return null
+// Rewrite the first three `[ON SCREEN TEXT: …]` markers in `content` to the
+// supplied hook / subhead / cta values, preserving any extra markers beyond
+// the third. If the body has fewer than three markers, append the missing
+// ones on their own lines so the body stays the source of truth.
+export function applyOverlayToBody(content, overlay) {
+  const values = [overlay.hook, overlay.subhead, overlay.cta]
+  const src = typeof content === 'string' ? content : ''
+  let i = 0
+  let replaced = src.replace(MARKER_RE, (match) => {
+    if (i >= values.length) { i++; return match }
+    const next = (values[i] ?? '').trim()
+    i++
+    return next ? `[ON SCREEN TEXT: ${next}]` : ''
+  })
+  const trailing = []
+  for (let j = i; j < values.length; j++) {
+    const v = (values[j] ?? '').trim()
+    if (v) trailing.push(`[ON SCREEN TEXT: ${v}]`)
+  }
+  if (trailing.length) {
+    replaced = replaced.replace(/\s*$/, '') + '\n\n' + trailing.join('\n')
+  }
+  return replaced
+}
+
+function Field({ label, value, onChange }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <span className="shrink-0 text-2xs font-medium uppercase tracking-wide text-muted-foreground w-14">{label}</span>
-      <span className="text-xs text-foreground/90 break-words">{value}</span>
+    <div className="flex items-center gap-2">
+      <label className="shrink-0 text-2xs font-medium uppercase tracking-wide text-muted-foreground w-14">
+        {label}
+      </label>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 text-xs"
+      />
     </div>
   )
 }
 
 /**
- * OverlayTextEditor — read-only display of the Instagram overlay (hook /
- * subhead / cta) derived from `[ON SCREEN TEXT: …]` markers in the draft body.
- *
- * The body is the single source of truth: ContentEditor.handleSave parses
- * markers and writes `overlay_text` alongside `content`. Edit the body to
- * change the overlay. This panel is intentionally non-interactive — the
- * earlier hook/subhead/cta inputs duplicated the body markers and routinely
- * drifted out of sync.
+ * OverlayTextEditor — editable hook / subhead / cta for the Instagram
+ * overlay. Saving writes the new values to `overlay_text` AND rewrites the
+ * `[ON SCREEN TEXT: …]` markers in the draft body so the two stay in sync.
  */
 export default function OverlayTextEditor({ piece }) {
   const stored = piece?.overlay_text || null
   const markers = useMemo(() => extractMarkerSuggestions(piece?.content), [piece?.content])
-
-  // Prefer stored overlay, fall back to live-parsed markers.
   const live = markersToOverlay(markers)
-  const hook    = stored?.hook    || live.hook
-  const subhead = stored?.subhead || live.subhead
-  const cta     = stored?.cta     || live.cta
 
-  if (!hook && !subhead && !cta) return null
+  const initial = useMemo(() => ({
+    hook:    stored?.hook    || live.hook    || '',
+    subhead: stored?.subhead || live.subhead || '',
+    cta:     stored?.cta     || live.cta     || '',
+  }), [stored?.hook, stored?.subhead, stored?.cta, live.hook, live.subhead, live.cta])
+
+  const [draft, setDraft] = useState(initial)
+  useEffect(() => { setDraft(initial) }, [initial])
+
+  const dirty =
+    draft.hook    !== initial.hook ||
+    draft.subhead !== initial.subhead ||
+    draft.cta     !== initial.cta
+
+  const updateItem = useUpdateContentItem()
+  const saving = updateItem.isPending
+
+  const handleSave = async () => {
+    try {
+      const overlay = {
+        hook:    draft.hook.trim(),
+        subhead: draft.subhead.trim(),
+        cta:     draft.cta.trim(),
+      }
+      const nextContent = applyOverlayToBody(piece.content, overlay)
+      await updateItem.mutateAsync({
+        id: piece.id,
+        patch: { content: nextContent, overlayText: overlay },
+      })
+      toast.success('Saved')
+    } catch (e) {
+      toast.error('Save failed', { description: e.message })
+    }
+  }
+
+  const handleReset = () => setDraft(initial)
 
   return (
-    <div className="rounded-md border bg-card p-3 space-y-1.5">
+    <div className="rounded-md border bg-card p-3 space-y-2">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         On-screen text
       </p>
       <p className="text-2xs text-muted-foreground -mt-1">
-        Auto-derived from <code className="font-mono">[ON SCREEN TEXT: …]</code> markers in the draft. Edit the body to change.
+        Edits here update the <code className="font-mono">[ON SCREEN TEXT: …]</code> markers in the draft.
       </p>
-      <div className="pt-1 space-y-1">
-        <Row label="Hook"    value={hook} />
-        <Row label="Subhead" value={subhead} />
-        <Row label="CTA"     value={cta} />
+      <div className="pt-1 space-y-1.5">
+        <Field label="Hook"    value={draft.hook}    onChange={(v) => setDraft((d) => ({ ...d, hook: v }))} />
+        <Field label="Subhead" value={draft.subhead} onChange={(v) => setDraft((d) => ({ ...d, subhead: v }))} />
+        <Field label="CTA"     value={draft.cta}     onChange={(v) => setDraft((d) => ({ ...d, cta: v }))} />
       </div>
+      {dirty && (
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <Button size="sm" variant="ghost" onClick={handleReset} disabled={saving}>
+            Reset
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
