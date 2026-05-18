@@ -31,7 +31,7 @@ import { toast, runWithToast } from '@/lib/toast'
 import BufferMetricsRow from './BufferMetricsRow'
 import ContentPlanPanel from '@/components/ContentPlanPanel'
 import MediaAttachmentPanel from './MediaAttachmentPanel'
-import OverlayTextEditor from './OverlayTextEditor'
+import OverlayTextEditor, { extractMarkerSuggestions, markersToOverlay } from './OverlayTextEditor'
 import PostPreview from '@/components/PostPreview'
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -244,7 +244,22 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
 
   const handleSave = async () => {
     try {
-      await updateItem.mutateAsync({ id: piece.id, patch: { content: value } })
+      // Body is the single source of truth for overlay text. When the draft
+      // contains `[ON SCREEN TEXT: …]` markers, derive overlay_text from them
+      // so it stays in sync with the body — and null it out when markers are
+      // removed. When there are no markers at all (clean body + overlay
+      // seeded from the AI's separate ---OVERLAY--- block), leave overlay_text
+      // alone so we don't wipe a pre-existing overlay on every save.
+      const patch = { content: value }
+      const markers = extractMarkerSuggestions(value)
+      if (markers.length > 0) {
+        patch.overlayText = markersToOverlay(markers)
+      } else if (piece.overlay_text && /\[ON\s*SCREEN\s*TEXT:/i.test(piece.content || '')) {
+        // User removed the markers from a body that previously had them →
+        // clear the derived overlay too.
+        patch.overlayText = null
+      }
+      await updateItem.mutateAsync({ id: piece.id, patch })
       toast.success('Saved')
     } catch (e) {
       toast.error('Save failed', { description: e.message })
@@ -1016,7 +1031,11 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
         {/* Media + overlay editors — attach photos/videos and tune the on-screen
             text overlay without leaving the Story screen. */}
         {active && <MediaAttachmentPanel piece={active} />}
-        {active && <OverlayTextEditor piece={active} />}
+        {/* On-screen text overlay only renders on Instagram — that's the
+            single platform whose PostPreview consumes overlay_text today
+            (see PostPreview.jsx switch). Showing it on text-heavy platforms
+            (LinkedIn, GBP, Facebook, email, blog) was pure noise. */}
+        {active?.platform === 'instagram' && <OverlayTextEditor piece={active} />}
 
         {/* Live channel preview */}
         {active && (
