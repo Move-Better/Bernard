@@ -33,14 +33,19 @@ export default function PlanNextInterview({
   const filteredEmpty = gaps.length === 0
 
   return (
-    <div className="rounded-xl border-2 border-primary/25 bg-accent/50 p-5">
+    <div className="rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
       <div className="flex flex-col sm:flex-row items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
+            <span
+              className="inline-block w-1 h-5 rounded-full shrink-0"
+              style={{ background: 'hsl(var(--primary))' }}
+              aria-hidden="true"
+            />
             <Icon as={TrendingUp} size="md" className="text-primary" />
-            <p className="text-sm font-semibold text-foreground">
+            <h2 className="text-sm font-bold tracking-tight text-foreground">
               {isEmpty ? 'Start with a high-impact topic' : 'Plan your next interview'}
-            </p>
+            </h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             {isEmpty
