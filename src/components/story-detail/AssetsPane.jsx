@@ -24,7 +24,7 @@ import {
   useRegenerateContentItem,
   queryKeys,
 } from '@/lib/queries'
-import { publishAndTrack, publishBlogToWebsite } from '@/lib/publish'
+import { publishAndTrack, publishBlogToWebsite, cancelBufferPost } from '@/lib/publish'
 import { suggestScheduleTime, explainPlatformSlot, findScheduleConflict } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { extractProvenanceBlock } from '@/lib/provenance'
@@ -880,6 +880,39 @@ function ApprovalPanel({ piece }) {
     }
   }
 
+  // Cancel a scheduled Buffer post. Calls Buffer's deletePost mutation, then
+  // resets the row to status='approved' with scheduled_at + buffer_update_id
+  // cleared so the reviewer can pick a different time or unapprove. NOT for
+  // already-published pieces (Buffer's API can't unpublish, only delete
+  // metadata; the post stays live on the platform).
+  const handleCancelScheduled = async () => {
+    if (!piece.buffer_update_id) {
+      toast.error('Cannot cancel — no Buffer post ID on file')
+      return
+    }
+    setPublishing(true)
+    try {
+      await runWithToast(cancelBufferPost(piece.buffer_update_id), {
+        loading: 'Cancelling on Buffer…',
+        success: 'Cancelled — back to Approved',
+        error: (e) => ({ message: 'Cancel failed', description: e.message }),
+      })
+      await updateStatus.mutateAsync({
+        id: piece.id,
+        status: 'approved',
+        scheduledAt: null,
+        bufferUpdateId: null,
+        publishedAt: null,
+      })
+      qc.invalidateQueries({ queryKey: queryKeys.stories.detail(piece.interview_id) })
+    } catch {
+      // runWithToast surfaced the error; keep status='scheduled' so the user
+      // can retry rather than having Buffer + our DB drift apart.
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   const isBusy = updateStatus.isPending || addComment.isPending
 
   const provSummary = piece.provenance?.summary
@@ -962,6 +995,46 @@ function ApprovalPanel({ piece }) {
         />
       )}
 
+      {/* Scheduled state — shows the scheduled time + Cancel button so the
+          reviewer can pull the post out of Buffer's queue and pick a different
+          time (or unapprove). Only valid for Buffer-dispatched platforms; blog
+          publishes don't go through this state. */}
+      {piece.status === 'scheduled' && canReview && piece.platform !== 'blog' && (
+        <div className="rounded-lg border bg-purple-50/40 p-3 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700">
+            <Calendar className="h-3.5 w-3.5" />
+            Scheduled on Buffer
+          </div>
+          {piece.scheduled_at && (
+            <p className="text-sm font-medium text-foreground">
+              {new Date(piece.scheduled_at).toLocaleString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancelScheduled}
+              disabled={publishing || !piece.buffer_update_id}
+              loading={publishing}
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+            >
+              {!publishing && <XCircle className="h-3.5 w-3.5 mr-1.5" />}
+              Cancel scheduled post
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Removes the post from Buffer&rsquo;s queue and returns this piece to Approved so you can pick a new time or unapprove.
+          </p>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         {/* Send for review — all roles, only on draft, only when review workflow is on */}
@@ -1026,15 +1099,28 @@ function ApprovalPanel({ piece }) {
 
         {/* Published state — no further action available */}
         {piece.status === 'published' && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled
-            className="border-green-300 bg-green-50 text-green-700 cursor-default opacity-100"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-            {piece.platform === 'blog' ? 'Published to Website' : 'Published to Buffer'}
-          </Button>
+          <div className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled
+              className="border-green-300 bg-green-50 text-green-700 cursor-default opacity-100"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              {piece.platform === 'blog' ? 'Published to Website' : 'Published to Buffer'}
+            </Button>
+            {piece.published_at && (
+              <span className="text-xs text-muted-foreground">
+                {new Date(piece.published_at).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  year: new Date(piece.published_at).getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
+          </div>
         )}
 
         {/* Live link — shown once the website publish round-trip captures a URL */}
