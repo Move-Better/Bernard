@@ -22,11 +22,16 @@ export default function ResumeStrip({ interviews, currentUserId, clinicians = []
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <PlayCircle className="h-3.5 w-3.5 text-primary" />
-        <p className="text-xs font-medium uppercase tracking-wider text-foreground">
-          In progress — pick up where you left off
-        </p>
-        <span className="text-xs text-muted-foreground">{interviews.length} active</span>
+        <span
+          className="inline-block w-1 h-5 rounded-full shrink-0"
+          style={{ background: 'hsl(var(--primary))' }}
+          aria-hidden="true"
+        />
+        <PlayCircle className="h-4 w-4 text-primary" />
+        <h2 className="text-sm font-bold tracking-tight text-foreground">
+          Pick up where you left off
+        </h2>
+        <span className="text-xs text-muted-foreground">· {interviews.length} active</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {visible.map((i) => (
@@ -68,29 +73,29 @@ function ResumeCard({ interview, currentUserId, clinicians }) {
   return (
     <Link
       to={href}
-      className="block rounded-xl border-2 border-primary/20 bg-primary/5 p-3.5 hover:border-primary/35 hover:bg-primary/10 transition-colors"
+      className="block rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.25)] hover:-translate-y-0.5 hover:border-[#fde0d2] hover:shadow-[0_8px_24px_-16px_rgba(227,101,37,0.35)] transition-all duration-150"
     >
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar className="h-6 w-6">
-          <AvatarFallback className="bg-primary/10 text-primary text-3xs font-semibold">
+          <AvatarFallback className="bg-primary/10 text-primary text-3xs font-bold">
             {getInitials(interview.clinicianName)}
           </AvatarFallback>
         </Avatar>
         <p
-          className="text-xs font-medium text-foreground/80 truncate"
+          className="text-xs font-semibold text-foreground/80 truncate"
           title={interview.clinicianName}
         >
           {interview.clinicianName}
         </p>
       </div>
-      <p className="text-sm font-semibold text-foreground truncate" title={interview.topic}>
+      <p className="text-sm font-bold text-foreground truncate leading-snug" title={interview.topic}>
         {interview.topic}
       </p>
-      <p className="text-2xs text-muted-foreground mt-0.5">
+      <p className="text-2xs text-muted-foreground mt-1">
         Updated {formatRelativeDate(interview.updated_at)}
         {ownerName ? ` · by ${ownerName}` : ''}
       </p>
-      <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
+      <div className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">
         Resume
         <ChevronRight className="h-3 w-3" />
       </div>

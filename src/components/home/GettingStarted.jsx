@@ -82,13 +82,18 @@ export default function GettingStarted() {
   }
 
   return (
-    <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-background p-5">
+    <div className="rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
+          <span
+            className="inline-block w-1 h-5 rounded-full shrink-0"
+            style={{ background: 'hsl(var(--primary))' }}
+            aria-hidden="true"
+          />
           <Icon as={Sparkles} size="md" className="text-primary" />
-          <p className="text-sm font-semibold">Getting started</p>
+          <h2 className="text-sm font-bold tracking-tight">Getting started</h2>
           <span className="text-xs text-muted-foreground">
-            {doneCount} of {items.length} done
+            · {doneCount} of {items.length} done
           </span>
         </div>
         <button

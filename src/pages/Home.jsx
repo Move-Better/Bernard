@@ -187,10 +187,39 @@ export default function Home() {
 
   const greeting = greetingFor(user, runtimeWorkspace)
 
+  // Lane accent colors for the bucket rails — keep aligned with the
+  // PipelineKanban lane palette so the same semantics carry across pages.
+  // primary orange flags the "do this now" surface (Awaiting review).
+  const ACCENT = {
+    myStories:    '#7c3aed', // violet
+    ready:        '#d97706', // amber  — drafting needed
+    review:       '#e36525', // primary orange — your action queue
+    distribute:   '#059669', // emerald
+    overdue:      '#0284c7', // sky
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Greeting */}
-      <h1 className="text-xl font-semibold text-foreground">{greeting}</h1>
+      {/* Greeting — slim gradient ribbon. The page's single "moment" of
+          the brand gradient; keep it short so body content stays above
+          the fold. */}
+      <div className="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-2xs font-bold uppercase tracking-widest opacity-85">
+            Welcome back
+          </p>
+          <h1 className="text-2xl font-extrabold tracking-tight leading-tight">{greeting}</h1>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/new"
+            className="inline-flex items-center gap-2 bg-white text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-slate-100 text-sm"
+          >
+            <Send className="h-4 w-4" aria-hidden="true" />
+            Start an interview
+          </Link>
+        </div>
+      </div>
 
       {/* Pre-roll: one section at a time. Priority: resume in-progress >
           coverage gaps (active workspace) > getting started (new workspace). */}
@@ -216,6 +245,7 @@ export default function Home() {
               id="my-stories"
               title="My recent stories"
               icon={<BookOpen className="h-4 w-4" />}
+              accent={ACCENT.myStories}
               items={myRecentInterviews}
               emptyMessage=""
               renderItem={(i) => (
@@ -250,6 +280,7 @@ export default function Home() {
             id="ready"
             title="Ready for content"
             icon={<FileText className="h-4 w-4" />}
+            accent={ACCENT.ready}
             items={readyForContent}
             emptyMessage="No stories waiting for content — great work."
             renderItem={(s) => (
@@ -273,6 +304,8 @@ export default function Home() {
             id="review"
             title="Awaiting your review"
             icon={<Eye className="h-4 w-4" />}
+            accent={ACCENT.review}
+            highlight
             items={awaitingReview}
             emptyMessage="Nothing in review — all clear."
             renderItem={(s) => {
@@ -305,6 +338,7 @@ export default function Home() {
               id="distribute"
               title="Ready to distribute"
               icon={<Send className="h-4 w-4" />}
+              accent={ACCENT.distribute}
               items={readyToDistribute}
               emptyMessage="Nothing approved yet — check back after review."
               renderItem={(s) => {
@@ -335,6 +369,7 @@ export default function Home() {
             id="overdue"
             title="Hasn't interviewed in a while"
             icon={<Clock className="h-4 w-4" />}
+            accent={ACCENT.overdue}
             items={overdueClinicianItems}
             emptyMessage="Everyone has been interviewed recently — great cadence."
             renderItem={(c) => (
