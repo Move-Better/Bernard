@@ -129,6 +129,17 @@ export async function publishBlogToWebsite(post) {
 // targets they can dispatch to. Mirrors PLATFORM_TO_SERVICE in api/publish/buffer.js.
 export const BUFFER_DISPATCH_PLATFORMS = BUFFER_PLATFORMS
 
+// Cancel a scheduled Buffer post by its bufferUpdateId. The endpoint treats
+// "already gone" (NotFoundError) as success — idempotent. Throws on real
+// failures so callers can keep the row in 'scheduled' on error.
+export async function cancelBufferPost(bufferUpdateId) {
+  return apiFetch('/api/publish/buffer', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bufferUpdateId }),
+  })
+}
+
 // ── Workbench dispatch (Media Hub editor briefs) ─────────────────────────────
 // Materializes an edit brief into a content_items row and pushes it through the
 // universal api/publish/buffer.js endpoint. Returns the new content_items row.

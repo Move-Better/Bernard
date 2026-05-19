@@ -110,7 +110,9 @@ function buildMetadata(platform, mediaUrls, _content = '') {
 }
 
 async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  if (req.method !== 'POST' && req.method !== 'DELETE') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
   const scope = await workspaceScope(req)
   const workspaceId = scope?.workspace?.id
@@ -121,6 +123,47 @@ async function handler(req, res) {
     })
   }
   const BUFFER_TOKEN = cred.secret
+
+  // DELETE — cancel a scheduled Buffer post.
+  //
+  // Body: { bufferUpdateId: string }. Calls Buffer's deletePost mutation,
+  // which removes the post from the channel's queue. Returns 200 on success
+  // or when Buffer reports the post is already gone (idempotent). Other
+  // failures bubble up as 502 with the upstream message.
+  if (req.method === 'DELETE') {
+    const body = (typeof req.body === 'object' && req.body) ? req.body : {}
+    const { bufferUpdateId } = body
+    if (!bufferUpdateId || typeof bufferUpdateId !== 'string') {
+      return res.status(400).json({ error: 'Missing bufferUpdateId' })
+    }
+    const r = await gql(BUFFER_TOKEN, `
+      mutation DeletePost($input: DeletePostInput!) {
+        deletePost(input: $input) {
+          __typename
+          ... on PostActionSuccess { post { id } }
+          ... on NotFoundError { message }
+          ... on UnauthorizedError { message }
+          ... on UnexpectedError { message }
+          ... on InvalidInputError { message }
+        }
+      }
+    `, { input: { id: bufferUpdateId } })
+    if (r.errors) {
+      console.error('[publish/buffer DELETE] deletePost error', JSON.stringify(r.errors))
+      return res.status(502).json({ error: r.errors[0]?.message || 'Buffer cancel failed' })
+    }
+    const payload = r.data?.deletePost
+    if (payload && payload.__typename !== 'PostActionSuccess') {
+      // Treat NotFoundError as success — post is already gone, which is what
+      // the caller wants. Surface other typed errors as 502.
+      if (payload.__typename === 'NotFoundError') {
+        return res.status(200).json({ success: true, alreadyGone: true })
+      }
+      console.error('[publish/buffer DELETE] deletePost rejected', JSON.stringify(payload))
+      return res.status(502).json({ error: payload.message || `Buffer cancel failed (${payload.__typename})` })
+    }
+    return res.status(200).json({ success: true })
+  }
 
   const body = (typeof req.body === 'object' && req.body) ? req.body : {}
   // locationContents: { [workspace_locations.id]: string } — per-location body overrides.
