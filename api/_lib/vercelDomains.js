@@ -76,12 +76,46 @@ export async function addProjectDomain(name) {
   const code = errBody?.error?.code
   const message = errBody?.error?.message || 'unknown'
 
-  // Idempotent path: domain already attached to this project.
+  // Idempotent path: domain already attached to this project (unambiguous codes).
   if (code === 'domain_already_in_use_by_project' || code === 'domain_already_exists') {
     return { added: false, name, alreadyAttached: true }
   }
 
+  // Ambiguous code: `domain_already_in_use` fires for BOTH same-project and
+  // other-project-same-team. Inspect the domain to disambiguate — if it's
+  // already on our project, treat as success; otherwise surface the conflict.
+  if (code === 'domain_already_in_use') {
+    const projects = await fetchDomainProjects(name)
+    if (projects.includes(process.env.VERCEL_PROJECT_ID)) {
+      return { added: false, name, alreadyAttached: true }
+    }
+  }
+
   throw new VercelDomainError(message, { status: r.status, code, detail: errBody })
+}
+
+// Returns the list of project IDs the given domain is attached to. Returns
+// [] on any error (404, network, malformed response) so the caller treats the
+// ambiguous case as a real conflict rather than a silent success.
+async function fetchDomainProjects(name) {
+  const url = `${VERCEL_API}/v6/domains/${encodeURIComponent(name)}${teamQuery()}`
+  let r
+  try {
+    r = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
+    })
+  } catch {
+    return []
+  }
+  if (!r.ok) return []
+  let body = null
+  try { body = await r.json() } catch { return [] }
+  // Vercel's domain envelope has shifted shape across API versions; accept
+  // both `{ domain: { projects: [...] } }` and a flat `{ projects: [...] }`,
+  // and tolerate entries that are either bare IDs or `{ id }` objects.
+  const raw = body?.domain?.projects ?? body?.projects
+  if (!Array.isArray(raw)) return []
+  return raw.map((p) => (typeof p === 'string' ? p : p?.id)).filter(Boolean)
 }
 
 // Best-effort detach (rollback path when a downstream step fails after the
