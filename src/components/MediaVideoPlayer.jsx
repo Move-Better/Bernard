@@ -18,6 +18,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
 
+// jsdelivr without the `/+esm` suffix on @mux/mux-player serves the
+// package's `main` field, which is a CJS bundle. Loading that with
+// `type="module"` parses CJS as ESM and blows up with a stray "window is
+// not defined" (the CJS shim references `window` from a non-browser path).
+// Mux's official embed snippet uses a plain `<script src=...>` against
+// this URL — which serves the UMD/browser build. Mirror that exactly.
 const MUX_PLAYER_CDN = 'https://cdn.jsdelivr.net/npm/@mux/mux-player'
 
 let muxPlayerLoading = null
@@ -28,8 +34,7 @@ function ensureMuxPlayerLoaded() {
   muxPlayerLoading = new Promise((resolve, reject) => {
     const s = document.createElement('script')
     s.src = MUX_PLAYER_CDN
-    s.type = 'module'
-    s.async = true
+    s.defer = true
     s.onload = () => resolve()
     s.onerror = () => {
       muxPlayerLoading = null

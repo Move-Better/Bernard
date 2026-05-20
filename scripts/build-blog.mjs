@@ -170,11 +170,13 @@ function renderPostHtml({ data, body }) {
 </section>
 `
   }
-  // Load the Mux player web component once when the post needs it. The CDN
-  // module is ~70KB gz; lazy-loading via the script tag keeps photo-only
-  // posts free of the cost.
+  // Load the Mux player web component once when the post needs it. Plain
+  // `<script defer>` — NOT `type="module"`. jsdelivr's default at this URL
+  // is the package's CJS main; parsing it as ESM crashes with a spurious
+  // "window is not defined". Mux's own embed snippet uses defer/UMD.
+  // Cost is ~70KB gz, only paid by posts that actually have a video hero.
   const muxPlayerScript = heroVideo
-    ? `<script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>`
+    ? `<script defer src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>`
     : ''
 
   return `<!doctype html>
