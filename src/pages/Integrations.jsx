@@ -48,7 +48,6 @@ const INTEGRATIONS = [
   {
     id: 'wordpress',
     label: 'WordPress (REST publish)',
-    capabilityKey: 'websitePublish',
     description: 'Publish blog posts directly to a WordPress site via the REST API + an application password.',
     platforms: ['Website'],
     secretLabel: 'Application password',
@@ -66,7 +65,6 @@ const INTEGRATIONS = [
   {
     id: 'astro_github',
     label: 'Astro + GitHub website',
-    capabilityKey: 'websitePublish',
     description: 'Webhook-based publish to an Astro site that commits markdown to a GitHub repo.',
     platforms: ['Website'],
     secretLabel: 'Shared bearer secret',
