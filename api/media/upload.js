@@ -8,6 +8,7 @@ import ffmpegStaticPath from 'ffmpeg-static'
 import { segmentAndPersist } from '../_lib/segmentInterview.js'
 import { generateAndPersistThumbnail } from '../_lib/thumbnail.js'
 import { processImageUpload } from '../_lib/imagePipeline.js'
+import { createAsset as createMuxAsset, muxConfigured } from '../_lib/muxClient.js'
 import { recordAudit, snapshot } from '../_lib/audit.js'
 import { requireRole } from '../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
@@ -446,6 +447,68 @@ async function handler(req, res) {
             // depends on the other, and a thumbnail is the user-visible signal
             // in the Media Hub grid even when AI tagging fails.
             if (insertedRow.kind === 'video') {
+              // Hand the video off to Mux for HLS transcoding. Mux fetches
+              // the source from our public Blob URL, encodes an adaptive
+              // bitrate ladder, and fires a `video.asset.ready` webhook at
+              // /api/webhooks/mux. The webhook flips transcode_status to
+              // 'ready' so the UI can swap the "Transcoding…" placeholder
+              // for <mux-player>. Original Blob is retained as
+              // original_blob_url — never deleted by this path.
+              //
+              // The passthrough field round-trips the media_assets.id so
+              // the webhook can re-locate the row without depending on the
+              // mux_asset_id PATCH below landing first (Mux is fast enough
+              // that ready can arrive in <2s for short clips).
+              if (muxConfigured()) {
+                waitUntil(
+                  (async () => {
+                    const policy = innerScope.workspace?.video_playback_policy === 'public'
+                      ? 'public'
+                      : 'signed'
+                    const { assetId, playbackId } = await createMuxAsset({
+                      inputUrl:       blob.url,
+                      playbackPolicy: policy,
+                      passthrough:    insertedRow.id,
+                    })
+                    const patch = {
+                      mux_asset_id:      assetId,
+                      transcode_status:  'processing',
+                      original_blob_url: blob.url,
+                    }
+                    if (playbackId) patch.mux_playback_id = playbackId
+                    const upd = await sb(
+                      `media_assets?id=eq.${insertedRow.id}&${scopeColumn}=eq.${scopeId}`,
+                      { method: 'PATCH', body: JSON.stringify(patch) },
+                    )
+                    if (!upd.ok) {
+                      console.error('[upload] Mux PATCH failed:', upd.status, await upd.text())
+                    }
+                  })().catch(async (e) => {
+                    console.error('Mux create failed:', e?.message)
+                    // Stamp the row so the UI doesn't sit on "Transcoding…"
+                    // forever when our create call itself errored (vs. a
+                    // ready/errored webhook never arriving).
+                    await sb(
+                      `media_assets?id=eq.${insertedRow.id}&${scopeColumn}=eq.${scopeId}`,
+                      {
+                        method: 'PATCH',
+                        body: JSON.stringify({ transcode_status: 'errored' }),
+                      },
+                    ).catch(() => {})
+                  }),
+                )
+              } else {
+                // No Mux env on this deployment — mark the row 'skipped' so
+                // the UI knows to play directly from blob_url instead of
+                // waiting for a webhook that will never arrive.
+                waitUntil(
+                  sb(
+                    `media_assets?id=eq.${insertedRow.id}&${scopeColumn}=eq.${scopeId}`,
+                    { method: 'PATCH', body: JSON.stringify({ transcode_status: 'skipped' }) },
+                  ).catch((e) => console.error('Mux skip-mark PATCH failed:', e?.message)),
+                )
+              }
+
               waitUntil(
                 generateAndPersistThumbnail(insertedRow, innerScope)
                   .catch((e) => console.error('Thumbnail generation failed:', e?.message)),

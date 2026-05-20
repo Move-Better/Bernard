@@ -20,6 +20,7 @@ import { toast, runWithToast } from '@/lib/toast'
 import ContentBriefDetail from './ContentBriefDetail'
 import CollectionPicker from './CollectionPicker'
 import MediaEditModal from './MediaEditModal'
+import MediaVideoPlayer from './MediaVideoPlayer'
 
 const STATUSES = ['raw', 'tagged', 'rendered', 'approved', 'archived']
 // Purpose is the primary fork (see MediaUploader for the source of truth).
@@ -379,19 +380,19 @@ export default function MediaDetail({ asset, onClose, onChange }) {
         ) : (<>
         <div className="flex-1 overflow-y-auto">
           {/* Player / preview */}
-          <div className="bg-black flex items-center justify-center" style={{ minHeight: 240 }}>
-            {asset.kind === 'video' ? (
-              <video src={asset.blob_url} controls className="max-h-[60vh] max-w-full" />
-            ) : (
+          {asset.kind === 'video' ? (
+            <MediaVideoPlayer asset={asset} />
+          ) : (
+            <div className="bg-black flex items-center justify-center" style={{ minHeight: 240 }}>
               <img
                 src={asset.blob_url}
-                alt={asset.filename}
+                alt={asset.alt_text || asset.filename}
                 className="max-h-[60vh] max-w-full cursor-grab active:cursor-grabbing"
                 draggable
                 title="Drag this image into another browser tab to upload it there, or use Copy / Download below."
               />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Use elsewhere — copy link, download, or drag the preview to
               another browser tab's upload widget. The whole point of Media
