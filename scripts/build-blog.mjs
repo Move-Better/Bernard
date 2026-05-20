@@ -126,16 +126,41 @@ function renderPostHtml({ data, body }) {
 
   const bodyHtml = marked.parse(body, { gfm: true, breaks: false })
 
-  // Hero image rendered between the title hero and the body — gives every
-  // post a visual anchor without forcing the writer to put `![](...)` inline.
-  // Alt text falls back to title when Studio sends the original filename
-  // (which is useless as alt text — e.g. "IMG_1234.jpeg").
+  // Hero rendered between the title hero and the body — gives every post
+  // a visual anchor without forcing the writer to put `![](...)` inline.
+  // Three modes, in precedence order:
+  //   1. heroVideo (Mux) — <mux-player> with playback ID. Plays everywhere
+  //      via HLS, no codec roulette. Signed-policy videos can't render on
+  //      the static blog (no token-mint endpoint here), so we only emit
+  //      the player for 'public' policy; signed videos fall through to
+  //      the image hero (or no hero).
+  //   2. hero (image) — the historical path. Alt text falls back to title
+  //      when Studio sends the original filename.
+  //   3. nothing.
+  const heroVideo = data.heroVideo && data.heroVideo.playbackId && data.heroVideo.type === 'mux'
+    ? data.heroVideo
+    : null
   const heroSrc = data.hero || ''
   const heroAltCandidate = data.heroAlt || ''
   const looksLikeFilename = /\.(jpe?g|png|gif|webp|avif|heic)$/i.test(heroAltCandidate) || /^[A-F0-9-]{20,}_/i.test(heroAltCandidate)
   const heroAlt = (heroAltCandidate && !looksLikeFilename) ? heroAltCandidate : title
-  const heroBlock = heroSrc
-    ? `
+
+  let heroBlock = ''
+  if (heroVideo && heroVideo.policy !== 'signed') {
+    const vAlt = heroVideo.alt && !/\.(mov|mp4|m4v|webm)$/i.test(heroVideo.alt)
+      ? heroVideo.alt
+      : title
+    heroBlock = `
+<section class="upost-hero-image">
+  <div class="container">
+    <figure class="upost-hero-figure">
+      <mux-player playback-id="${escapeHtml(heroVideo.playbackId)}" stream-type="on-demand" metadata-video-title="${escapeHtml(vAlt)}" accent-color="#000" style="width:100%;aspect-ratio:16/9;max-height:60vh;"></mux-player>
+    </figure>
+  </div>
+</section>
+`
+  } else if (heroSrc) {
+    heroBlock = `
 <section class="upost-hero-image">
   <div class="container">
     <figure class="upost-hero-figure">
@@ -144,12 +169,19 @@ function renderPostHtml({ data, body }) {
   </div>
 </section>
 `
+  }
+  // Load the Mux player web component once when the post needs it. The CDN
+  // module is ~70KB gz; lazy-loading via the script tag keeps photo-only
+  // posts free of the cost.
+  const muxPlayerScript = heroVideo
+    ? `<script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>`
     : ''
 
   return `<!doctype html>
 <html lang="en">
 <head>
   ${HEAD_COMMON}
+  ${muxPlayerScript}
   <title>${escapeHtml(title)} — NarrateRx</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <link rel="canonical" href="${canonical}" />

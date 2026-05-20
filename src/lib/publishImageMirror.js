@@ -41,16 +41,42 @@ export function extractInlineImages(markdown) {
   return out
 }
 
+// URL precedence post-2026-05-20 hybrid storage:
+//   web_url / web_blob_url (resized variant)
+//   → url / blob_url (canonical, already the web variant for post-PR1 uploads)
+//   → rendered_url (legacy compositing output)
+// Originals stay private — never surfaced to the publish payload.
 export function pickHero(mediaUrls) {
   if (!Array.isArray(mediaUrls)) return null
   for (const entry of mediaUrls) {
     if (!entry) continue
     const isImage = entry.kind === 'image' || entry.type === 'image' || entry.type === 'photo'
     if (!isImage) continue
-    const url = entry.url || entry.blob_url || entry.rendered_url
+    const url = entry.web_url || entry.web_blob_url || entry.url || entry.blob_url || entry.rendered_url
     if (!url) continue
     const alt = entry.alt || entry.name || ''
     return { url, alt }
+  }
+  return null
+}
+
+// Mux-transcoded video hero, mirrors pickHero. Only ready videos with a
+// playback_id are eligible — pending/processing/errored never become heroes.
+export function pickHeroVideo(mediaUrls) {
+  if (!Array.isArray(mediaUrls)) return null
+  for (const entry of mediaUrls) {
+    if (!entry) continue
+    const isVideo = entry.kind === 'video' || entry.type === 'video'
+    if (!isVideo) continue
+    const playbackId = entry.mux_playback_id || entry.playback_id
+    if (!playbackId) continue
+    if (entry.transcode_status && entry.transcode_status !== 'ready') continue
+    return {
+      type:        'mux',
+      playbackId,
+      alt:         entry.alt || entry.name || '',
+      policy:      entry.video_playback_policy || 'signed',
+    }
   }
   return null
 }
@@ -71,9 +97,13 @@ export function buildImagesManifest({ markdown, mediaUrls, slug } = {}) {
     filename:   defaultFilename(slug, idx + 1, img.url),
     mirrorable: isMirrorableUrl(img.url),
   }))
+  // heroVideo only emitted when there's no image hero — receivers can only
+  // render one hero slot; older receivers ignore unknown fields cleanly.
+  const heroVideo = hero ? null : pickHeroVideo(mediaUrls)
   return {
     heroImage:    heroUrl || undefined,
     heroImageAlt: hero?.alt || undefined,
+    heroVideo:    heroVideo || undefined,
     images,
   }
 }

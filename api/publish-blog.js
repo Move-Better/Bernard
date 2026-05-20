@@ -47,6 +47,19 @@ function buildMarkdownFile(data) {
   if (data.author)       fm.push(`author: ${yamlQuote(data.author)}`)
   if (data.heroImage)    fm.push(`hero: ${yamlQuote(data.heroImage)}`)
   if (data.heroImageAlt) fm.push(`heroAlt: ${yamlQuote(data.heroImageAlt)}`)
+  // heroVideo is emitted as a small inline-object so scripts/build-blog.mjs
+  // can render <mux-player playback-id="…"> without parsing a nested YAML
+  // block. Shape: { playbackId, type, policy, alt }.
+  if (data.heroVideo && data.heroVideo.playbackId && data.heroVideo.type === 'mux') {
+    const v = data.heroVideo
+    const parts = [
+      `playbackId: ${yamlQuote(v.playbackId)}`,
+      `type: ${yamlQuote(v.type)}`,
+    ]
+    if (v.policy) parts.push(`policy: ${yamlQuote(v.policy)}`)
+    if (v.alt)    parts.push(`alt: ${yamlQuote(v.alt)}`)
+    fm.push(`heroVideo: { ${parts.join(', ')} }`)
+  }
   if (Array.isArray(data.tags) && data.tags.length) {
     fm.push(`tags: [${data.tags.map(yamlQuote).join(', ')}]`)
   }
