@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
+  getMediaAsset,
   updateMediaAsset,
   archiveMediaAsset,
   restoreMediaAsset,
@@ -53,6 +55,31 @@ function daysSince(iso) {
   return (Date.now() - new Date(iso).getTime()) / 86_400_000
 }
 
+// Signal that the server pipeline finished:
+//  - photos: imagePipeline.js PATCHes web_blob_url when sharp resize succeeds
+//  - videos: Mux webhook flips transcode_status to 'ready'
+// Anything else is still in flight (or never started — legacy rows).
+function pipelinePending(a) {
+  if (!a) return false
+  if (a.kind === 'photo') return !a.web_blob_url
+  if (a.kind === 'video') {
+    const s = a.transcode_status
+    return !s || s === 'pending' || s === 'processing'
+  }
+  return false
+}
+
+// Pull the file extension off the original blob URL pathname so the download
+// button can advertise the source format (HEIC, ARW, etc.) accurately.
+function originalExt(url) {
+  if (!url) return null
+  try {
+    const path = new URL(url).pathname
+    const m = path.match(/\.([a-z0-9]+)$/i)
+    return m ? m[1].toUpperCase() : null
+  } catch { return null }
+}
+
 // Detail/edit drawer for a single media asset.
 // `asset` is the row, `onClose` dismisses, `onChange` is called after save/delete.
 export default function MediaDetail({ asset, onClose, onChange }) {
@@ -87,8 +114,46 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [variants, setVariants] = useState([])
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [rotatingQuick, setRotatingQuick] = useState(false)
+  const [downloadingOriginal, setDownloadingOriginal] = useState(false)
 
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
+
+  // Track when polling started for this asset, so we can cap at ~60s even if
+  // the pipeline silently errored. Resets on asset.id change via the effect
+  // below that already reseeds form state.
+  const pollStartRef = useRef(Date.now())
+
+  // Poll the row until the pipeline lands. The list view refetches on
+  // upload-done, but the detail drawer doesn't see that signal — so without
+  // this, opening the drawer immediately after upload shows a stale row
+  // (status='raw', broken HEIC preview) until a manual refresh.
+  const { data: liveAsset } = useQuery({
+    queryKey: ['media-asset', asset.id],
+    queryFn: () => getMediaAsset(asset.id),
+    initialData: asset,
+    refetchInterval: (q) => {
+      const row = q.state.data
+      if (!pipelinePending(row)) return false
+      if (Date.now() - pollStartRef.current > 60_000) return false
+      return 2000
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  // Use the freshest copy for rendered URLs / pipeline status. Editable form
+  // state stays seeded from the original `asset` prop (see asset.id effect
+  // below) so in-progress edits aren't clobbered by a poll round-trip.
+  const a = liveAsset || asset
+  const isOptimizing = pipelinePending(a)
+
+  // When the pipeline finishes mid-drawer, let the parent list refresh too so
+  // the grid thumb stops looking stale. Edge-triggered on the pending→ready
+  // transition only.
+  const wasOptimizingRef = useRef(isOptimizing)
+  useEffect(() => {
+    if (wasOptimizingRef.current && !isOptimizing) onChange?.()
+    wasOptimizingRef.current = isOptimizing
+  }, [isOptimizing, onChange])
 
   const isArchived  = asset.status === 'archived'
   const archivedAge = daysSince(asset.archived_at)
@@ -117,6 +182,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setError('')
     setShowPurge(false)
     setPurgeConfirm('')
+    pollStartRef.current = Date.now()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.id])
 
@@ -317,7 +383,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(asset.blob_url)
+      await navigator.clipboard.writeText(a.blob_url)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -328,26 +394,45 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   // Cross-origin <a download> doesn't reliably trigger a save in browsers, so
   // fetch the blob first and create an object URL. Vercel Blob public URLs are
   // CORS-enabled, so this works without a proxy.
+  async function downloadFromUrl(url, filename) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
+    const blob = await res.blob()
+    const objUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objUrl)
+  }
+
   async function downloadAsset() {
     setDownloading(true); setError('')
     try {
-      const res = await fetch(asset.blob_url)
-      if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
-      const blob = await res.blob()
-      const objUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objUrl
-      a.download = asset.filename
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(objUrl)
+      await downloadFromUrl(a.blob_url, a.filename)
     } catch (e) {
       setError(e.message || 'Download failed.')
     } finally {
       setDownloading(false)
     }
   }
+
+  async function downloadOriginal() {
+    if (!a.original_blob_url) return
+    setDownloadingOriginal(true); setError('')
+    try {
+      await downloadFromUrl(a.original_blob_url, a.filename)
+    } catch (e) {
+      setError(e.message || 'Download failed.')
+    } finally {
+      setDownloadingOriginal(false)
+    }
+  }
+
+  const hasOriginal = !!a.original_blob_url && a.original_blob_url !== a.blob_url
+  const originalLabel = originalExt(a.original_blob_url) || 'original format'
 
   // Segmenter only runs on interview-purpose video (server enforces the same
   // gate in segmentInterview.js). Disable the button up-front so B-roll /
@@ -380,17 +465,23 @@ export default function MediaDetail({ asset, onClose, onChange }) {
         ) : (<>
         <div className="flex-1 overflow-y-auto">
           {/* Player / preview */}
-          {asset.kind === 'video' ? (
-            <MediaVideoPlayer asset={asset} />
+          {a.kind === 'video' ? (
+            <MediaVideoPlayer asset={a} />
           ) : (
-            <div className="bg-black flex items-center justify-center" style={{ minHeight: 240 }}>
+            <div className="relative bg-black flex items-center justify-center" style={{ minHeight: 240 }}>
               <img
-                src={asset.blob_url}
-                alt={asset.alt_text || asset.filename}
+                src={a.blob_url}
+                alt={a.alt_text || a.filename}
                 className="max-h-[60vh] max-w-full cursor-grab active:cursor-grabbing"
                 draggable
                 title="Drag this image into another browser tab to upload it there, or use Copy / Download below."
               />
+              {isOptimizing && (
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 text-white text-2xs">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Optimizing for web…
+                </div>
+              )}
             </div>
           )}
 
@@ -424,6 +515,21 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 : <Download className="h-3.5 w-3.5" />}
               Download
             </Button>
+            {hasOriginal && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={downloadOriginal}
+                disabled={downloadingOriginal}
+                className="h-7 gap-1.5 text-2xs"
+                title="The web variant is recommended for embedding. Use the original only when you need the source format — e.g. archival, re-processing, or pixel-perfect editing."
+              >
+                {downloadingOriginal
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <FileDown className="h-3.5 w-3.5" />}
+                Download original ({originalLabel})
+              </Button>
+            )}
             {asset.kind === 'video' && canEdit && (
               <Button
                 size="sm"
