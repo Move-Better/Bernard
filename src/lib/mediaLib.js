@@ -212,9 +212,32 @@ async function transcodeViaWorker(file) {
 
 async function maybeTranscodeHeic(file) {
   if (!isHeicFile(file)) return file
-  const jpeg = await transcodeViaWorker(file)
-  const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg')
-  return new File([jpeg], newName, { type: 'image/jpeg', lastModified: file.lastModified })
+  try {
+    const jpeg = await transcodeViaWorker(file)
+    const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg')
+    return new File([jpeg], newName, { type: 'image/jpeg', lastModified: file.lastModified })
+  } catch (e) {
+    // heic2any 0.0.4's bundled libheif WASM rejects some HEIC variants
+    // (Live Photo sequences, certain HEVC profiles, anything iCloud has
+    // re-encoded with newer codecs) with errors like 'ERR_LIBHEIF format
+    // not supported'. Rather than fail the upload, hand the raw HEIC to
+    // the server: api/media/upload.js accepts image/heic + image/heif,
+    // and the server's image pipeline (api/_lib/imagePipeline.js) decodes
+    // them with sharp's libheif binding — which is a much newer libvips
+    // build and routinely handles formats heic2any chokes on.
+    //
+    // The resulting media_assets row still ends up with a JPEG web
+    // variant + AI alt text, indistinguishable from the client-transcode
+    // path. Original HEIC stays in original_blob_url.
+    console.warn('[heic] client transcode failed, falling back to server-side conversion:', e?.message)
+    // Re-stamp the mime so the upload handshake's content-type matches
+    // the file's true format — some browsers fill .heic files with
+    // empty/octet-stream mime, which would otherwise fall through the
+    // server's ALLOWED_MIME check.
+    const declaredType = file.type || 'image/heic'
+    const heicType = /heic|heif/i.test(declaredType) ? declaredType : 'image/heic'
+    return new File([file], file.name, { type: heicType, lastModified: file.lastModified })
+  }
 }
 
 // Direct-to-Blob upload. The handleUpload endpoint records the asset on
