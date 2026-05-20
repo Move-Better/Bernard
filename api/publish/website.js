@@ -21,6 +21,20 @@ export const config = { runtime: 'nodejs' }
 // or generic 'website' creds resolve, use Astro. The legacy env-var fallback in
 // getCredential keeps per-brand deployments working — WORDPRESS_USER/PASSWORD
 // surfaces as 'wordpress' creds, NARRATERX_PUBLISH_SECRET as 'website'.
+//
+// Payload contract (callers pass these in payload):
+//   slug, title, description, pubDate, markdown        — required
+//   updatedDate, author, tags[], draft, topic           — optional metadata
+//   heroImage, heroImageAlt                              — hero image (web variant URL — see buildImagesManifest)
+//   heroVideo: { playbackId, type: 'mux', policy, alt } — optional Mux video hero
+//                                                          (only emitted when no heroImage; receivers that don't
+//                                                          understand it ignore the field, so the post still ships)
+//   images[]: { url, alt, filename, mirrorable }        — inline body images for the WP mirror-on-publish path
+//
+// Per the 2026-05-20 hybrid-storage decision, the URL fields above are
+// expected to be the web variants (resized images / Mux playback IDs). The
+// payload never references original_blob_url — originals stay private to
+// the Library.
 
 import { marked } from 'marked'
 import { getCredential } from '../_lib/getCredential.js'
@@ -80,6 +94,10 @@ async function publishToAstro(res, payload, cred) {
   if (payload.author)       body.author       = payload.author
   if (payload.heroImage)    body.heroImage    = payload.heroImage
   if (payload.heroImageAlt) body.heroImageAlt = payload.heroImageAlt
+  // Mux video hero — forwarded as-is. The narraterx.ai blog receiver knows
+  // about it (scripts/build-blog.mjs renders <mux-player>); third-party
+  // receivers that don't understand the field ignore it cleanly.
+  if (payload.heroVideo && payload.heroVideo.playbackId) body.heroVideo = payload.heroVideo
   if (Array.isArray(payload.tags) && payload.tags.length) body.tags = payload.tags
   if (typeof payload.draft === 'boolean') body.draft = payload.draft
   // Inline image manifest — each entry is { url, alt, filename, mirrorable }.

@@ -60,13 +60,20 @@ export function extractInlineImages(markdown) {
 // Hero pick: first image entry in media_urls. Falls back to null when only
 // videos are attached. Returns the alt from the entry (or filename stem) so
 // downstream WP / Astro can set alt_text on the media row.
+//
+// URL precedence (per the 2026-05-20 hybrid-storage decision):
+//   web_blob_url (resized variant — what should land on the public site)
+//   → blob_url (canonical, already the web variant for post-PR1 uploads)
+//   → rendered_url (legacy compositing output)
+// `originalBlobUrl` is never surfaced here — originals stay private to the
+// Library; the publish side only ever ships the web variant.
 export function pickHero(mediaUrls) {
   if (!Array.isArray(mediaUrls)) return null
   for (const entry of mediaUrls) {
     if (!entry) continue
     const isImage = entry.kind === 'image' || entry.type === 'image' || entry.type === 'photo'
     if (!isImage) continue
-    const url = entry.url || entry.blob_url || entry.rendered_url
+    const url = entry.web_url || entry.web_blob_url || entry.url || entry.blob_url || entry.rendered_url
     if (!url) continue
     const alt = entry.alt || entry.name || ''
     return { url, alt }
@@ -74,8 +81,42 @@ export function pickHero(mediaUrls) {
   return null
 }
 
+// Hero VIDEO pick — the symmetric helper for Mux-transcoded video heroes.
+// Returns { playbackId, type: 'mux', alt } so the receiver renders
+// <mux-player playback-id="…"> instead of an <img>. Falls back to null when
+// no transcoded video is present (we don't surface non-Mux videos as a
+// hero — without HLS they don't play reliably cross-browser).
+export function pickHeroVideo(mediaUrls) {
+  if (!Array.isArray(mediaUrls)) return null
+  for (const entry of mediaUrls) {
+    if (!entry) continue
+    const isVideo = entry.kind === 'video' || entry.type === 'video'
+    if (!isVideo) continue
+    const playbackId = entry.mux_playback_id || entry.playback_id
+    if (!playbackId) continue
+    if (entry.transcode_status && entry.transcode_status !== 'ready') continue
+    return {
+      type:        'mux',
+      playbackId,
+      alt:         entry.alt || entry.name || '',
+      policy:      entry.video_playback_policy || 'signed',
+    }
+  }
+  return null
+}
+
 // Build the full per-publish image manifest. `slug` seeds deterministic
 // filenames so retries don't fan-out duplicate uploads on the receiver.
+//
+// Output shape (extended 2026-05-20 for the hybrid storage rollout):
+//   heroImage     — chosen via pickHero (web_url > web_blob_url > url > …)
+//   heroImageAlt  — alt from the matching media_urls entry
+//   heroVideo     — { playbackId, type: 'mux', alt, policy } when an
+//                   image hero isn't available but a transcoded video is.
+//                   Receivers that understand the field render <mux-player>;
+//                   older receivers ignore unknown fields, so the post still
+//                   publishes (just without a hero video).
+//   images        — inline body image manifest with deterministic filenames
 export function buildImagesManifest({ markdown, mediaUrls, slug } = {}) {
   const hero = pickHero(mediaUrls)
   const inline = extractInlineImages(markdown)
@@ -92,9 +133,15 @@ export function buildImagesManifest({ markdown, mediaUrls, slug } = {}) {
     mirrorable: isMirrorableUrl(img.url),
   }))
 
+  // Only emit heroVideo when there isn't an image hero — receivers can only
+  // render one hero slot, and an image is the safer choice when both are
+  // available (older receivers + RSS reader fallback).
+  const heroVideo = hero ? null : pickHeroVideo(mediaUrls)
+
   return {
     heroImage:    heroUrl || undefined,
     heroImageAlt: hero?.alt || undefined,
+    heroVideo:    heroVideo || undefined,
     images,
   }
 }

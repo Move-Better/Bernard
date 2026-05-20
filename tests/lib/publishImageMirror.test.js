@@ -3,10 +3,12 @@ import {
   buildImagesManifest,
   extractInlineImages,
   pickHero,
+  pickHeroVideo,
 } from '../../src/lib/publishImageMirror.js'
 import {
   rewriteMarkdownImageUrls,
   buildImagesManifest as serverBuildImagesManifest,
+  pickHeroVideo as serverPickHeroVideo,
 } from '../../api/_lib/publishImageMirror.js'
 
 const BLOB_HOST = 'https://example.public.blob.vercel-storage.com'
@@ -129,5 +131,107 @@ describe('rewriteMarkdownImageUrls', () => {
     const md = '[link](https://x/y.jpg) plus ![pic](https://x/y.jpg)'
     const out = rewriteMarkdownImageUrls(md, { 'https://x/y.jpg': 'https://NEW/y.jpg' })
     expect(out).toBe('[link](https://x/y.jpg) plus ![pic](https://NEW/y.jpg)')
+  })
+})
+
+describe('pickHero — web variant precedence', () => {
+  it('prefers web_blob_url over blob_url when both are present', () => {
+    const entry = {
+      type: 'image',
+      blob_url:     'https://x/original.heic',
+      web_blob_url: 'https://x/web.jpg',
+      alt: 'A',
+    }
+    expect(pickHero([entry])).toEqual({ url: 'https://x/web.jpg', alt: 'A' })
+  })
+
+  it('falls back to blob_url when web variant is absent (legacy row)', () => {
+    const entry = { type: 'image', blob_url: 'https://x/old.jpg', alt: 'A' }
+    expect(pickHero([entry])).toEqual({ url: 'https://x/old.jpg', alt: 'A' })
+  })
+})
+
+describe('pickHeroVideo', () => {
+  it('emits a Mux hero when transcode_status is ready and playback id is set', () => {
+    const v = {
+      type: 'video',
+      mux_playback_id: 'pb-abc',
+      transcode_status: 'ready',
+      alt: 'A clip',
+    }
+    expect(pickHeroVideo([v])).toEqual({
+      type: 'mux',
+      playbackId: 'pb-abc',
+      alt: 'A clip',
+      policy: 'signed',
+    })
+    // server copy is symmetric
+    expect(serverPickHeroVideo([v])).toEqual({
+      type: 'mux',
+      playbackId: 'pb-abc',
+      alt: 'A clip',
+      policy: 'signed',
+    })
+  })
+
+  it('skips videos whose transcode is still pending or errored', () => {
+    expect(pickHeroVideo([{ type: 'video', mux_playback_id: 'p', transcode_status: 'pending' }])).toBeNull()
+    expect(pickHeroVideo([{ type: 'video', mux_playback_id: 'p', transcode_status: 'errored' }])).toBeNull()
+  })
+
+  it('skips videos with no playback id (Mux skipped on that row)', () => {
+    expect(pickHeroVideo([{ type: 'video', transcode_status: 'skipped' }])).toBeNull()
+  })
+
+  it('respects an explicit public playback policy', () => {
+    const v = {
+      type: 'video',
+      mux_playback_id: 'p',
+      transcode_status: 'ready',
+      video_playback_policy: 'public',
+    }
+    expect(pickHeroVideo([v])?.policy).toBe('public')
+  })
+
+  it('returns null when no video entries are present', () => {
+    expect(pickHeroVideo([{ type: 'image', blob_url: 'x' }])).toBeNull()
+    expect(pickHeroVideo(null)).toBeNull()
+  })
+})
+
+describe('buildImagesManifest — heroVideo emission', () => {
+  it('emits heroVideo when no image hero is present', () => {
+    const out = buildImagesManifest({
+      markdown: 'body without inline images',
+      mediaUrls: [
+        { type: 'video', mux_playback_id: 'p', transcode_status: 'ready', alt: 'V' },
+      ],
+      slug: 's',
+    })
+    expect(out.heroImage).toBeUndefined()
+    expect(out.heroVideo).toEqual({ type: 'mux', playbackId: 'p', alt: 'V', policy: 'signed' })
+  })
+
+  it('prefers an image hero over a video hero when both exist', () => {
+    const out = buildImagesManifest({
+      markdown: '',
+      mediaUrls: [
+        { type: 'video', mux_playback_id: 'p', transcode_status: 'ready' },
+        { type: 'image', blob_url: 'https://x/a.jpg' },
+      ],
+      slug: 's',
+    })
+    // pickHero scans for any image, even if it appears after the video entry
+    expect(out.heroImage).toBe('https://x/a.jpg')
+    expect(out.heroVideo).toBeUndefined()
+  })
+
+  it('server and client builders agree on the manifest shape', () => {
+    const args = {
+      markdown: '![alt](https://x.public.blob.vercel-storage.com/body.jpg)',
+      mediaUrls: [{ type: 'image', web_blob_url: 'https://x/web.jpg', alt: 'H' }],
+      slug: 'post',
+    }
+    expect(serverBuildImagesManifest(args)).toEqual(buildImagesManifest(args))
   })
 })
