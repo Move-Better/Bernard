@@ -24,7 +24,9 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 //   IDs live on workspace_locations.gbp_location_id).
 // 'drive' uses OAuth (api/integrations/drive/*) for write — listed here only
 //   so the standard GET/DELETE paths can read/remove the row uniformly.
-const KNOWN_SERVICES = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'tdc', 'drive'])
+// 'beehiiv' newsletter publish via api/publish/beehiiv.js (creates drafts;
+//   tenant finishes scheduling + audience picker inside Beehiiv).
+const KNOWN_SERVICES = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'tdc', 'drive', 'beehiiv'])
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
