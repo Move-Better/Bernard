@@ -1418,7 +1418,7 @@ function ApprovalPanel({ piece }) {
  * with role-gated actions (send for review, approve, request changes, publish).
  * The full ReviewPost editor remains accessible via the "Open for editing" link.
  */
-export default function AssetsPane({ story, onProvenanceHighlight }) {
+export default function AssetsPane({ story, onProvenanceHighlight, className = '' }) {
   // Sort so series parts appear in series_part order within their series.
   // The content API returns rows by created_at.desc, which doesn't match
   // series_part ordering, so without this the tabs would render as e.g.
@@ -1484,7 +1484,7 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
 
   if (view === 'plan') {
     return (
-      <div className="rounded-xl border bg-card p-4 space-y-4">
+      <div className={`rounded-xl border bg-card p-4 space-y-4 ${className}`}>
         <div className="flex items-center justify-end">{ViewToggle}</div>
         <ContentPlanPanel
           interviewId={story?.id}
@@ -1502,7 +1502,7 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
 
   if (pieces.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-4 space-y-3">
+      <div className={`rounded-xl border bg-card p-4 space-y-3 ${className}`}>
         <div className="flex items-center justify-end">{ViewToggle}</div>
         <p className="text-sm text-muted-foreground">
           No content pieces yet. Generate content from the interview to see it here.
@@ -1516,7 +1516,7 @@ export default function AssetsPane({ story, onProvenanceHighlight }) {
   const PlatformIcon = pm.icon
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className={`rounded-xl border bg-card overflow-hidden ${className}`}>
       <div className="flex items-center justify-end px-3 pt-3">{ViewToggle}</div>
       {/* Tab row — numbers same-platform pieces (e.g. "Facebook 2 of 5") and
           shows a status dot so multiple drafts on the same channel are

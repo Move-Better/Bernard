@@ -33,7 +33,7 @@ function StatCard({ icon: Icon, label, value, sub }) {
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div>
-        <p className="text-2xl font-semibold leading-none">{value}</p>
+        <p className="text-4xl font-extrabold leading-none tracking-tight">{value}</p>
         <p className="text-xs text-muted-foreground mt-1">{label}</p>
         {sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{sub}</p>}
       </div>
@@ -276,6 +276,14 @@ export default function Synthesis() {
         </Button>
       </div>
 
+      {/* Coverage legend — above stats so readers learn the color code
+          before they see the numbers it grades. */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400 inline-block" /> Mentioned by ≥2 clinicians (agreement territory)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" /> Mentioned by 1 clinician only</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gray-300 inline-block" /> Not yet covered</span>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatCard icon={BookOpen}  label="Concepts learned"   value={coverage.total} />
@@ -286,13 +294,6 @@ export default function Synthesis() {
           value={`${coverage.coveragePercent}%`}
           sub="concepts × clinicians mentioned"
         />
-      </div>
-
-      {/* Coverage legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400 inline-block" /> Mentioned by ≥2 clinicians (agreement territory)</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" /> Mentioned by 1 clinician only</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gray-300 inline-block" /> Not yet covered</span>
       </div>
 
       {/* Top gaps callout */}
@@ -341,7 +342,7 @@ export default function Synthesis() {
         <TrendingUp className="h-6 w-6 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium">Build content from any theme</p>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          Hover any concept row and click &quot;Draft content&quot; to start a new interview or content piece targeting that theme.
+          Click &quot;Draft content&quot; on any concept row to start a new interview or content piece targeting that theme.
         </p>
         <Button asChild size="sm" className="mt-2">
           <Link to="/new">Start a new interview</Link>

@@ -408,10 +408,25 @@ export default function MediaHub() {
             Library
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Your whole clinic&apos;s media — interview clips, B-roll, photos, and brand assets. Interview uploads also feed the editor brief queue; everything else is tagged for search and reuse.
+            Interview clips, B-roll, photos, and brand assets — tagged for reuse across content.
           </p>
         </div>
-        <MediaHubHelp />
+        <div className="flex items-center gap-1 shrink-0">
+          {role === 'admin' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onBackfillThumbnails}
+              disabled={backfilling}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+              title="Admin: backfill missing video thumbnails"
+              aria-label="Backfill thumbnails"
+            >
+              {backfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Film className="h-4 w-4" />}
+            </Button>
+          )}
+          <MediaHubHelp />
+        </div>
       </div>
 
       {/* Ready to distribute — staff-only inbox of approved pieces awaiting
@@ -533,19 +548,6 @@ export default function MediaHub() {
             </Button>
           )}
 
-          {role === 'admin' && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onBackfillThumbnails}
-              disabled={backfilling}
-              className="h-7 gap-1.5 text-2xs rounded-full"
-              title="Generate missing thumbnails for older videos"
-            >
-              {backfilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Film className="h-3.5 w-3.5" />}
-              {backfilling ? 'Backfilling…' : 'Backfill thumbnails'}
-            </Button>
-          )}
         </div>
 
         {/* Single consolidated chip strip: kind · purpose · clinician.
@@ -672,16 +674,24 @@ export default function MediaHub() {
           the photo-app default; the workflow view is opt-in for editors who
           want the NEW / pipeline / available / shipped buckets. */}
       {!loading && allAssets.length > 0 && (
-        <div className="flex items-center justify-between gap-3 text-2xs text-muted-foreground">
-          <span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-2xs text-muted-foreground">
             {allAssets.length} asset{allAssets.length === 1 ? '' : 's'} loaded{hasMore ? ' · more available' : ''}
           </span>
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className="text-2xs underline-offset-2 hover:underline hover:text-foreground transition-colors"
-          >
-            {showAll ? 'Switch to workflow view' : 'Switch to date view'}
-          </button>
+          <div className="inline-flex items-center rounded-full border border-border bg-muted p-0.5 text-2xs">
+            <button
+              onClick={() => setShowAll(false)}
+              className={`px-3 py-1 rounded-full font-medium transition-colors ${!showAll ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Workflow
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={`px-3 py-1 rounded-full font-medium transition-colors ${showAll ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              By date
+            </button>
+          </div>
         </div>
       )}
 

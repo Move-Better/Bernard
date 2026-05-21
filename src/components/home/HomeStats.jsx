@@ -108,16 +108,20 @@ export default function HomeStats({ stories = [] }) {
         <div className="text-sm text-muted-foreground">interviews captured</div>
       </div>
 
-      {/* Drafts — warm-tint "do this now" card */}
-      <div className="rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
+      {/* Drafts — neutral stat. The warm "do this now" treatment lives on
+          DraftsReadyRow (piece-level cards below), so this card stays a
+          plain stat to avoid two warm-tinted surfaces competing for the
+          same action. The primary-colored number + "action" badge still
+          carry the signal. */}
+      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center justify-between">
-          <div className="text-2xs font-bold uppercase tracking-widest" style={{ color: '#c04d18' }}>Drafts</div>
+          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Drafts</div>
           {metrics.drafts > 0 ? (
             <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-2xs font-bold px-2 py-0.5">action</span>
           ) : null}
         </div>
         <div className="text-4xl font-extrabold tracking-tight mt-2 text-primary tabular-nums">{metrics.drafts}</div>
-        <div className="text-sm" style={{ color: '#7a3a14' }}>awaiting your review</div>
+        <div className="text-sm text-muted-foreground">awaiting your review</div>
         {metrics.drafts > 0 && (metrics.breakdown.blog + metrics.breakdown.email + metrics.breakdown.social + metrics.breakdown.other > 0) ? (
           <div className="mt-3 flex flex-wrap gap-1">
             {metrics.breakdown.blog > 0 && (
