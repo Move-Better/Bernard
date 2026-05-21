@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   Settings, Mic2, Radio, Puzzle, Palette, Users, CreditCard, MapPin,
+  Sliders, Stethoscope,
 } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 // Flat list used for the mobile chip rail. Order mirrors the desktop
 // sidebar reading order so muscle memory carries across breakpoints.
@@ -12,8 +14,8 @@ import { useUserRole } from '@/lib/useUserRole'
 const MOBILE_NAV = [
   { to: '/settings/workspace',                    label: 'General',            icon: Settings,   exact: true },
   { to: '/settings/workspace/voice',              label: 'Voice & tone',       icon: Mic2 },
-  { to: '/settings/workspace/patients',           label: 'Patients & topics',  icon: Mic2 },
-  { to: '/settings/workspace/interview-defaults', label: 'Interview defaults', icon: Mic2 },
+  { to: '/settings/workspace/patients',           label: 'Patients & topics',  icon: Stethoscope },
+  { to: '/settings/workspace/interview-defaults', label: 'Interview defaults', icon: Sliders },
   { to: '/settings/workspace/locations',          label: 'Locations',          icon: MapPin },
   { to: '/settings/workspace/channels',           label: 'Output channels',    icon: Radio },
   { to: '/settings/integrations',                 label: 'Integrations',       icon: Puzzle },
@@ -161,7 +163,13 @@ export default function SettingsLayout() {
 
   // Non-admin users can still reach integrations and account pages, but the
   // workspace-scoped sections gate themselves internally.
-  if (isLoading) return null
+  if (isLoading) {
+    return (
+      <div className="min-h-[calc(100dvh-3.5rem)] flex items-center justify-center">
+        <LoadingState />
+      </div>
+    )
+  }
 
   const isAdmin = role === 'admin'
   // Mobile rail filters the same way the sidebar groups do — hide

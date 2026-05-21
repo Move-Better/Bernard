@@ -118,16 +118,13 @@ export default function Stories() {
               {mineOnly ? 'My stories' : 'Stories'}
             </h1>
             {!isLoading && stories.length > 0 ? (
-              <span className="text-sm text-muted-foreground truncate">
-                {stories.length === 1 ? '1 story' : `${stories.length} stories`}
+              <span className="text-sm text-muted-foreground truncate flex items-baseline gap-2">
                 {awaitingReviewCount > 0 ? (
-                  <>
-                    {' · '}
-                    <span className="text-primary font-semibold">
-                      {awaitingReviewCount} awaiting review
-                    </span>
-                  </>
-                ) : ''}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">
+                    {awaitingReviewCount} awaiting review
+                  </span>
+                ) : null}
+                <span>{stories.length === 1 ? '1 story' : `${stories.length} stories`}</span>
               </span>
             ) : null}
           </div>
@@ -157,7 +154,7 @@ export default function Stories() {
           <button
             type="button"
             onClick={clearCampaign}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 text-warning px-3 py-1.5 text-xs font-semibold hover:bg-warning/20 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
           >
             <Target className="h-3 w-3" aria-hidden="true" />
             Campaign: {activeCampaignObj.name}

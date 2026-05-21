@@ -294,10 +294,12 @@ export default function StoryDetail() {
         )}
       </div>
 
-      {/* Two-column body */}
+      {/* Two-column body. On mobile, AssetsPane (approve/distribute) renders
+          first so a clinician reviewing on a phone doesn't scroll past the
+          full transcript to reach the action surface. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
         <TranscriptPane story={story} isLoadingTranscript={isPlaceholderData} provenanceHighlight={provenanceHighlight} />
-        <AssetsPane story={story} onProvenanceHighlight={setProvenanceHighlight} />
+        <AssetsPane story={story} onProvenanceHighlight={setProvenanceHighlight} className="order-first md:order-none" />
       </div>
 
       {/* Delete confirmation — only reachable for the interview's owner (the

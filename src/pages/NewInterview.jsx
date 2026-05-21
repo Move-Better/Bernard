@@ -419,6 +419,26 @@ export default function NewInterview() {
             </div>
           )}
 
+          {/* Start interview — primary CTA. Placed above the topic
+              suggestion list so it stays above the fold; when the user
+              picks a suggestion the chip itself triggers the same
+              handler. */}
+          <Button
+            onClick={() => handleStart()}
+            disabled={!clinicianName.trim() || !condition.trim() || loading}
+            className="w-full"
+            size="lg"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                Start interview
+                <ArrowRight className="h-4 w-4 ml-1.5" />
+              </>
+            )}
+          </Button>
+
           {/* Topic suggestions — collapsed under a heading so they don't
               dominate the page now that the lever section is bigger. */}
           {suggestionsLoading ? (
@@ -487,22 +507,6 @@ export default function NewInterview() {
               </div>
             </div>
           )}
-
-          <Button
-            onClick={() => handleStart()}
-            disabled={!clinicianName.trim() || !condition.trim() || loading}
-            className="w-full"
-            size="lg"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                Start interview
-                <ArrowRight className="h-4 w-4 ml-1.5" />
-              </>
-            )}
-          </Button>
         </CardContent>
       </Card>
 
