@@ -109,11 +109,34 @@ async function testBearerEndpoint({ config, secret }) {
   return { ok: true, info: { endpoint: url } }
 }
 
+async function testBeehiiv({ config, secret }) {
+  const publicationId = config?.publication_id
+  if (!publicationId) return { ok: false, error: 'Missing Publication ID. Get it from your Beehiiv URL: app.beehiiv.com/publications/<publication_id>/...' }
+  // GET the publication — cheapest read that exercises both the API key and
+  // the publication_id being a valid pair under that key's scope.
+  const r = await fetchWithTimeout(`https://api.beehiiv.com/v2/publications/${encodeURIComponent(publicationId)}`, {
+    headers: { Authorization: `Bearer ${secret}` },
+  })
+  if (r.status === 401 || r.status === 403) {
+    return { ok: false, error: 'Beehiiv rejected the API key (401/403). Regenerate at Beehiiv → Settings → Integrations → API and paste again.' }
+  }
+  if (r.status === 404) {
+    return { ok: false, error: `Beehiiv could not find publication "${publicationId}". Check the Publication ID — it should look like "pub_xxxxxxxx".` }
+  }
+  if (!r.ok) {
+    return { ok: false, error: `Beehiiv responded ${r.status}` }
+  }
+  const body = await r.json().catch(() => ({}))
+  const name = body?.data?.name || body?.name || publicationId
+  return { ok: true, info: { publication: name } }
+}
+
 const TESTERS = {
   buffer:       ({ secret }) => testBuffer(secret),
   wordpress:    testWordPress,
   astro_github: testBearerEndpoint,
   website:      testBearerEndpoint,
+  beehiiv:      testBeehiiv,
 }
 
 async function handler(req, res) {

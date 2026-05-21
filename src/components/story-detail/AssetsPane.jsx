@@ -26,7 +26,7 @@ import {
   useSplitBlogIntoSeries,
   queryKeys,
 } from '@/lib/queries'
-import { publishAndTrack, publishBlogToWebsite, cancelBufferPost } from '@/lib/publish'
+import { publishAndTrack, publishBlogToWebsite, sendBlogToBeehiiv, cancelBufferPost } from '@/lib/publish'
 import { suggestScheduleTime, explainPlatformSlot, findScheduleConflict } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { extractProvenanceBlock } from '@/lib/provenance'
@@ -728,6 +728,7 @@ function WhenToPublishCard({
   piece, suggested, otherScheduled,
   bufferUseQueue, prefsOverride,
   onSchedule, onPublishToQueue, onPublishNow,
+  onSendToBeehiiv, beehiivPublishing,
   publishing,
 }) {
   const [mode, setMode] = useState('default') // 'default' | 'pick'
@@ -742,7 +743,10 @@ function WhenToPublishCard({
     : null
   const customInPast = customDate && customDate.getTime() <= Date.now()
 
-  // Blog: synchronous publish, no scheduling choice.
+  // Blog: synchronous publish, no scheduling choice. Beehiiv is offered as an
+  // optional secondary destination — it creates a draft and pops Beehiiv open
+  // in a new tab for final review. Independent of the website publish, so a
+  // tenant can do either, both, or neither.
   if (piece.platform === 'blog') {
     return (
       <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
@@ -750,7 +754,7 @@ function WhenToPublishCard({
         <Button
           size="sm"
           onClick={onPublishNow}
-          disabled={publishing}
+          disabled={publishing || beehiivPublishing}
           loading={publishing}
           className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
@@ -760,6 +764,21 @@ function WhenToPublishCard({
         <p className="text-xs text-muted-foreground">
           Publishes immediately — the website webhook can take 30–90s.
         </p>
+        {onSendToBeehiiv && (
+          <div className="pt-2 mt-1 border-t border-muted-foreground/10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <button
+              type="button"
+              onClick={onSendToBeehiiv}
+              disabled={publishing || beehiivPublishing}
+              className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+            >
+              {beehiivPublishing ? 'Sending to Beehiiv…' : 'Also send draft to Beehiiv'}
+            </button>
+            <span className="text-muted-foreground">
+              Creates a draft — finish the send in Beehiiv.
+            </span>
+          </div>
+        )}
       </div>
     )
   }
@@ -920,6 +939,7 @@ function ApprovalPanel({ piece }) {
   const [changeRequestOpen, setChangeRequestOpen] = useState(false)
   const [changeRequestBody, setChangeRequestBody] = useState('')
   const [publishing, setPublishing] = useState(false)
+  const [beehiivPublishing, setBeehiivPublishing] = useState(false)
 
   // Cross-story scheduled items from the React Query cache. Free when Stories
   // has already loaded; falls back to empty when it hasn't (e.g. direct URL
@@ -1103,6 +1123,62 @@ function ApprovalPanel({ piece }) {
     }
   }
 
+  // Send the blog draft to Beehiiv as a draft post. Independent of the
+  // website-publish path — a blog can go to the website, Beehiiv, both, or
+  // neither. Does NOT advance piece.status; Beehiiv is a secondary destination
+  // and the tenant finishes the send inside Beehiiv's UI (audience picker,
+  // scheduling, thumbnail review).
+  const handleSendToBeehiiv = async () => {
+    if (piece.platform !== 'blog') return
+    setBeehiivPublishing(true)
+    try {
+      const markdown = typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)
+      const lines = markdown.split('\n')
+      const titleLine = lines.find((l) => /^#\s/.test(l))
+      const title = titleLine ? titleLine.replace(/^#+\s+/, '').trim() : (piece.topic || 'Blog Post')
+      const descLine = lines.find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
+      const description = descLine?.trim().slice(0, 200) || title
+      // Slug isn't required by Beehiiv (it assigns its own) but we echo it so
+      // logs correlate; mirrors the slug derivation in handlePublish.
+      const SLUG_MAX = 60
+      const rawSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      let slug = rawSlug
+      if (rawSlug.length > SLUG_MAX) {
+        const truncated = rawSlug.slice(0, SLUG_MAX)
+        const lastHyphen = truncated.lastIndexOf('-')
+        slug = (lastHyphen > SLUG_MAX / 2 ? truncated.slice(0, lastHyphen) : truncated).replace(/-+$/, '')
+      }
+      const heroImage = Array.isArray(piece.media_urls) && piece.media_urls[0]?.url
+        ? piece.media_urls[0].url
+        : undefined
+      const payload = { title, description, markdown, slug }
+      if (heroImage) payload.heroImage = heroImage
+      const result = await runWithToast(sendBlogToBeehiiv(payload), {
+        loading: 'Sending draft to Beehiiv…',
+        success: (r) => ({
+          message: 'Draft in Beehiiv',
+          description: r.postUrl ? 'Open Beehiiv to add thumbnail, set audience, and schedule.' : 'Draft created — finish in Beehiiv.',
+        }),
+        error: (e) => ({
+          message: e.code === 'not_configured' ? 'Beehiiv not connected' : 'Beehiiv send failed',
+          description: e.code === 'not_configured'
+            ? 'Add a Beehiiv API key in Settings → Integrations.'
+            : e.message,
+        }),
+      })
+      if (result?.postUrl && typeof window !== 'undefined') {
+        // Open Beehiiv in a new tab so the user lands directly in the
+        // post editor for final review. Most tenants want this — they came
+        // here to send a newsletter, not stop at "draft saved."
+        window.open(result.postUrl, '_blank', 'noopener')
+      }
+    } catch {
+      // runWithToast already surfaced the error toast.
+    } finally {
+      setBeehiivPublishing(false)
+    }
+  }
+
   // Cancel a scheduled Buffer post. Calls Buffer's deletePost mutation, then
   // resets the row to status='approved' with scheduled_at + buffer_update_id
   // cleared so the reviewer can pick a different time or unapprove. NOT for
@@ -1215,6 +1291,8 @@ function ApprovalPanel({ piece }) {
           onSchedule={(d) => handlePublish({ scheduledAt: d })}
           onPublishToQueue={() => handlePublish({ useQueue: true })}
           onPublishNow={() => handlePublish({})}
+          onSendToBeehiiv={piece.platform === 'blog' ? handleSendToBeehiiv : undefined}
+          beehiivPublishing={beehiivPublishing}
           publishing={publishing}
         />
       )}

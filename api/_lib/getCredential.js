@@ -16,6 +16,8 @@
 //                     { config: { repo, branch, ... }, secret: github_token }
 //   'website'       — Generic webhook-based publish
 //                     { config: { url }, secret: shared_secret }
+//   'beehiiv'       — Beehiiv newsletter publish (drafts)
+//                     { config: { publication_id }, secret: api_key }
 //
 // Decryption uses WORKSPACE_CREDENTIALS_KEY (see credentialCrypto.js).
 //

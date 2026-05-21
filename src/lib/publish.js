@@ -126,6 +126,30 @@ export async function publishBlogToWebsite(post) {
   }
 }
 
+// ── Beehiiv publish (newsletter draft) ──────────────────────────────────────
+// Pushes a blog post to Beehiiv as a DRAFT. The tenant finishes the post in
+// Beehiiv (thumbnail review, audience picker, scheduling). Throws an Error
+// whose `.code` is one of: not_configured, auth_failed, publication_not_found,
+// invalid_payload, rate_limited, network_error, upstream_error.
+export async function sendBlogToBeehiiv(post) {
+  try {
+    return await apiFetch('/api/publish/beehiiv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(post),
+    })
+  } catch (err) {
+    if (err?.name === 'ApiError') {
+      const wrapped = new Error(err.payload?.message || err.message || `Beehiiv publish failed (${err.status})`)
+      wrapped.code = err.payload?.error || 'upstream_error'
+      wrapped.status = err.status
+      wrapped.details = err.payload
+      throw wrapped
+    }
+    throw err
+  }
+}
+
 // Universal Buffer-eligible platform list — exposed so workbench UIs know which
 // targets they can dispatch to. Mirrors PLATFORM_TO_SERVICE in api/publish/buffer.js.
 export const BUFFER_DISPATCH_PLATFORMS = BUFFER_PLATFORMS
