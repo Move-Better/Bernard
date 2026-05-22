@@ -48,6 +48,14 @@ export default function OnboardingInterview() {
   const [completed, setCompleted] = useState(false)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  // 'idle' before completion / when resumed in a synthesized state
+  // 'running' while the synth handler is working (~30–60s)
+  // 'success' on synthesis finish
+  // 'error' on synthesis failure (user can retry from the success card)
+  // 'already' when the interview is already synthesized on first load
+  const [synthesisStatus, setSynthesisStatus] = useState('idle')
+  const [synthesisError, setSynthesisError] = useState(null)
+  const [synthesisCounts, setSynthesisCounts] = useState(null)
 
   // Seed-once guard — without this, a refetch (e.g. tab refocus) would stomp
   // local message state mid-conversation. Pattern lifted from the React Query
@@ -78,6 +86,10 @@ export default function OnboardingInterview() {
         setMessages(Array.isArray(row?.messages) ? row.messages : [])
         if (row?.status === 'completed' || row?.status === 'synthesized') {
           setCompleted(true)
+        }
+        if (row?.status === 'synthesized') {
+          // Already done — show the finished state without re-running synthesis.
+          setSynthesisStatus('already')
         }
       } catch (e) {
         if (!cancelled) setError(e?.message || 'Failed to start interview')
@@ -173,6 +185,36 @@ export default function OnboardingInterview() {
     runAssistantTurn([], { isFirstMessage: true })
   }, [loading, completed, streaming, interview, messages.length, runAssistantTurn])
 
+  // Run synthesis. Extracted as its own callback so the auto-trigger effect
+  // and the retry button can both invoke it.
+  const runSynthesis = useCallback(async () => {
+    if (!interviewId) return
+    setSynthesisStatus('running')
+    setSynthesisError(null)
+    try {
+      const result = await apiFetch('/api/onboarding/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: interviewId, founderName }),
+      })
+      setSynthesisCounts(result?.counts || null)
+      setSynthesisStatus('success')
+    } catch (e) {
+      console.error('[OnboardingInterview] synthesis failed', e)
+      setSynthesisError(e?.message || 'Synthesis failed')
+      setSynthesisStatus('error')
+    }
+  }, [interviewId, founderName])
+
+  // Auto-trigger synthesis as soon as the interview flips to completed.
+  // Idempotency: status==='synthesized' on first load short-circuits to
+  // 'already' (set in bootstrap), so we never re-run.
+  useEffect(() => {
+    if (!completed || !interviewId) return
+    if (synthesisStatus !== 'idle') return
+    runSynthesis()
+  }, [completed, interviewId, synthesisStatus, runSynthesis])
+
   const handleSend = useCallback(async () => {
     const trimmed = input.trim()
     if (!trimmed || streaming || completed) return
@@ -267,18 +309,13 @@ export default function OnboardingInterview() {
       </div>
 
       {completed ? (
-        <Card className="border-success/40 bg-success/5">
-          <CardContent className="pt-6 text-center space-y-3">
-            <CheckCircle2 className="h-8 w-8 mx-auto text-success" />
-            <div className="space-y-1">
-              <p className="font-medium">Interview complete — thank you.</p>
-              <p className="text-sm text-muted-foreground">
-                We&apos;ll synthesize this into your workspace&apos;s voice settings. For now your workspace is using paradigm defaults; the next iteration will write your voice phrases, patient context, and topic seeds.
-              </p>
-            </div>
-            <Button onClick={() => navigate('/')}>Back to Home</Button>
-          </CardContent>
-        </Card>
+        <SynthesisStateCard
+          status={synthesisStatus}
+          error={synthesisError}
+          counts={synthesisCounts}
+          onRetry={runSynthesis}
+          onHome={() => navigate('/')}
+        />
       ) : (
         <div className="border-t pt-4 space-y-2">
           {error && (
@@ -309,6 +346,74 @@ export default function OnboardingInterview() {
         </div>
       )}
     </div>
+  )
+}
+
+function SynthesisStateCard({ status, error, counts, onRetry, onHome }) {
+  if (status === 'running') {
+    return (
+      <Card className="border-primary/40 bg-primary/5">
+        <CardContent className="pt-6 text-center space-y-3">
+          <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
+          <div className="space-y-1">
+            <p className="font-medium">Interview complete — synthesizing your voice…</p>
+            <p className="text-sm text-muted-foreground">
+              About a minute. We&apos;re reading your transcript and writing your workspace&apos;s voice guidance, patient archetype, topic queue, and phrase bank. Hang tight.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <Card className="border-destructive/40 bg-destructive/5">
+        <CardContent className="pt-6 text-center space-y-3">
+          <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+          <div className="space-y-1">
+            <p className="font-medium">Synthesis failed.</p>
+            <p className="text-sm text-muted-foreground">
+              Your transcript is safe — we just couldn&apos;t process it on this attempt. Most failures are transient (rate limit, gateway hiccup); retrying usually works.
+            </p>
+            {error && <p className="text-xs text-destructive/80 font-mono">{error}</p>}
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={onHome}>Back to Home</Button>
+            <Button onClick={onRetry}>Try again</Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // success or already-synthesized
+  const isFresh = status === 'success'
+  return (
+    <Card className="border-success/40 bg-success/5">
+      <CardContent className="pt-6 text-center space-y-3">
+        <CheckCircle2 className="h-8 w-8 mx-auto text-success" />
+        <div className="space-y-1">
+          <p className="font-medium">
+            {isFresh ? 'Done — your workspace now sounds like you.' : 'Onboarding interview complete.'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {isFresh
+              ? 'From here on, content NarrateRx generates uses the voice, audience, and topic queue from your interview.'
+              : 'Your workspace voice was already synthesized. Visit Settings → Voice to review or refine.'}
+          </p>
+          {counts && (
+            <p className="text-xs text-muted-foreground pt-1">
+              Wrote {counts.voice_phrases} phrase{counts.voice_phrases === 1 ? '' : 's'},
+              {' '}{counts.topics} topic seed{counts.topics === 1 ? '' : 's'},
+              {' '}{counts.pain_points} prior-provider note{counts.pain_points === 1 ? '' : 's'}
+              {counts.has_prototype ? ', and a patient archetype' : ''}.
+            </p>
+          )}
+        </div>
+        <Button onClick={onHome}>Back to Home</Button>
+      </CardContent>
+    </Card>
   )
 }
 
