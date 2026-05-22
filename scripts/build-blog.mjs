@@ -195,6 +195,7 @@ function renderPostHtml({ data, body }) {
   <meta name="twitter:card" content="summary_large_image" />
   ${pubDate ? `<meta property="article:published_time" content="${pubDate}" />` : ''}
   ${updatedDate ? `<meta property="article:modified_time" content="${updatedDate}" />` : ''}
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
@@ -273,6 +274,7 @@ function renderIndexHtml(posts) {
   <meta property="og:url" content="https://narraterx.ai/blog" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
