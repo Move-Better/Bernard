@@ -7,10 +7,10 @@
 // Founder-only — gated by the API route's requireRole(['admin']) check.
 // Workspace-scoped via workspaceContext on the server.
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
-import { Loader2, Send, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react'
+import { Loader2, Send, CheckCircle2, AlertCircle, Sparkles, FlaskConical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,6 +56,18 @@ export default function OnboardingInterview() {
   const [synthesisStatus, setSynthesisStatus] = useState('idle')
   const [synthesisError, setSynthesisError] = useState(null)
   const [synthesisCounts, setSynthesisCounts] = useState(null)
+  const [synthesisResult, setSynthesisResult] = useState(null)  // dry-run only
+
+  // Dry-run mode: append ?dryRun=1 to the URL. Runs synthesis end-to-end and
+  // returns the JSON payload for inspection, but performs ZERO writes — no
+  // workspace voice update, no voice_phrases, no interview status flip. Used
+  // during P5 prompt-tuning so we can iterate without clobbering production
+  // workspace data.
+  const [searchParams] = useSearchParams()
+  const dryRun = useMemo(() => {
+    const v = searchParams.get('dryRun')
+    return v === '1' || v === 'true'
+  }, [searchParams])
 
   // Seed-once guard — without this, a refetch (e.g. tab refocus) would stomp
   // local message state mid-conversation. Pattern lifted from the React Query
@@ -87,8 +99,10 @@ export default function OnboardingInterview() {
         if (row?.status === 'completed' || row?.status === 'synthesized') {
           setCompleted(true)
         }
-        if (row?.status === 'synthesized') {
+        if (row?.status === 'synthesized' && !dryRun) {
           // Already done — show the finished state without re-running synthesis.
+          // Dry-run mode intentionally re-fires so the tester can compare a
+          // tuned prompt against a previous run on the same transcript.
           setSynthesisStatus('already')
         }
       } catch (e) {
@@ -99,7 +113,10 @@ export default function OnboardingInterview() {
     })()
 
     return () => { cancelled = true }
-  }, [workspace?.id, user?.id, founderName])
+    // dryRun is included so the synthesized-state short-circuit re-evaluates if
+    // the user appends ?dryRun=1 mid-session. The seededRef guard inside still
+    // prevents the network call from re-firing.
+  }, [workspace?.id, user?.id, founderName, dryRun])
 
   // Auto-scroll to the latest message. Smooth on append; instant on initial
   // load so we don't get a long scroll animation showing the resumed transcript.
@@ -186,25 +203,31 @@ export default function OnboardingInterview() {
   }, [loading, completed, streaming, interview, messages.length, runAssistantTurn])
 
   // Run synthesis. Extracted as its own callback so the auto-trigger effect
-  // and the retry button can both invoke it.
+  // and the retry button can both invoke it. `dryRun` is threaded from the
+  // URL query — when true, the handler returns the synthesis JSON without
+  // writing anything.
   const runSynthesis = useCallback(async () => {
     if (!interviewId) return
     setSynthesisStatus('running')
     setSynthesisError(null)
+    setSynthesisResult(null)
     try {
       const result = await apiFetch('/api/onboarding/synthesize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: interviewId, founderName }),
+        body: JSON.stringify({ id: interviewId, founderName, dryRun }),
       })
       setSynthesisCounts(result?.counts || null)
+      if (dryRun && result?.synthesisResult) {
+        setSynthesisResult(result.synthesisResult)
+      }
       setSynthesisStatus('success')
     } catch (e) {
       console.error('[OnboardingInterview] synthesis failed', e)
       setSynthesisError(e?.message || 'Synthesis failed')
       setSynthesisStatus('error')
     }
-  }, [interviewId, founderName])
+  }, [interviewId, founderName, dryRun])
 
   // Auto-trigger synthesis as soon as the interview flips to completed.
   // Idempotency: status==='synthesized' on first load short-circuits to
@@ -277,6 +300,18 @@ export default function OnboardingInterview() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+      {dryRun && (
+        <div className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 flex items-center gap-2 text-sm">
+          <FlaskConical className="h-4 w-4 text-warning shrink-0" />
+          <span>
+            <span className="font-semibold">Dry-run mode.</span>{' '}
+            Synthesis will run end-to-end and show you the JSON output, but{' '}
+            <span className="font-medium">nothing will be written</span> to your
+            workspace, voice phrases, or interview status. Remove
+            {' '}<code className="font-mono text-xs">?dryRun=1</code>{' '}from the URL to run for real.
+          </span>
+        </div>
+      )}
       <Card className="mb-4">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -313,6 +348,8 @@ export default function OnboardingInterview() {
           status={synthesisStatus}
           error={synthesisError}
           counts={synthesisCounts}
+          result={synthesisResult}
+          dryRun={dryRun}
           onRetry={runSynthesis}
           onHome={() => navigate('/')}
         />
@@ -349,16 +386,20 @@ export default function OnboardingInterview() {
   )
 }
 
-function SynthesisStateCard({ status, error, counts, onRetry, onHome }) {
+function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, onHome }) {
   if (status === 'running') {
     return (
       <Card className="border-primary/40 bg-primary/5">
         <CardContent className="pt-6 text-center space-y-3">
           <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
           <div className="space-y-1">
-            <p className="font-medium">Interview complete — synthesizing your voice…</p>
+            <p className="font-medium">
+              {dryRun ? 'Running dry-run synthesis…' : 'Interview complete — synthesizing your voice…'}
+            </p>
             <p className="text-sm text-muted-foreground">
-              About a minute. We&apos;re reading your transcript and writing your workspace&apos;s voice guidance, patient archetype, topic queue, and phrase bank. Hang tight.
+              {dryRun
+                ? 'About a minute. The model is producing the synthesis JSON; nothing will be written.'
+                : 'About a minute. We’re reading your transcript and writing your workspace’s voice guidance, patient archetype, topic queue, and phrase bank. Hang tight.'}
             </p>
           </div>
         </CardContent>
@@ -389,29 +430,51 @@ function SynthesisStateCard({ status, error, counts, onRetry, onHome }) {
 
   // success or already-synthesized
   const isFresh = status === 'success'
+  const headline = dryRun
+    ? 'Dry-run synthesis complete — nothing was written.'
+    : isFresh
+      ? 'Done — your workspace now sounds like you.'
+      : 'Onboarding interview complete.'
+  const subhead = dryRun
+    ? 'Review the JSON below. Tune the synthesis prompt if anything looks off, then remove ?dryRun=1 from the URL to run for real.'
+    : isFresh
+      ? 'From here on, content NarrateRx generates uses the voice, audience, and topic queue from your interview.'
+      : 'Your workspace voice was already synthesized. Visit Settings → Voice to review or refine.'
+  const verb = dryRun ? 'Would write' : 'Wrote'
   return (
-    <Card className="border-success/40 bg-success/5">
+    <Card className={dryRun ? 'border-warning/40 bg-warning/5' : 'border-success/40 bg-success/5'}>
       <CardContent className="pt-6 text-center space-y-3">
-        <CheckCircle2 className="h-8 w-8 mx-auto text-success" />
+        {dryRun
+          ? <FlaskConical className="h-8 w-8 mx-auto text-warning" />
+          : <CheckCircle2 className="h-8 w-8 mx-auto text-success" />}
         <div className="space-y-1">
-          <p className="font-medium">
-            {isFresh ? 'Done — your workspace now sounds like you.' : 'Onboarding interview complete.'}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {isFresh
-              ? 'From here on, content NarrateRx generates uses the voice, audience, and topic queue from your interview.'
-              : 'Your workspace voice was already synthesized. Visit Settings → Voice to review or refine.'}
-          </p>
+          <p className="font-medium">{headline}</p>
+          <p className="text-sm text-muted-foreground">{subhead}</p>
           {counts && (
             <p className="text-xs text-muted-foreground pt-1">
-              Wrote {counts.voice_phrases} phrase{counts.voice_phrases === 1 ? '' : 's'},
+              {verb} {counts.voice_phrases} phrase{counts.voice_phrases === 1 ? '' : 's'},
               {' '}{counts.topics} topic seed{counts.topics === 1 ? '' : 's'},
               {' '}{counts.pain_points} prior-provider note{counts.pain_points === 1 ? '' : 's'}
               {counts.has_prototype ? ', and a patient archetype' : ''}.
             </p>
           )}
         </div>
-        <Button onClick={onHome}>Back to Home</Button>
+        {dryRun && result && (
+          <details className="text-left rounded-md border bg-background p-3 mt-2">
+            <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Synthesis result (JSON)
+            </summary>
+            <pre className="mt-3 max-h-[500px] overflow-auto text-xs leading-relaxed whitespace-pre-wrap font-mono">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          </details>
+        )}
+        <div className="flex gap-2 justify-center">
+          {dryRun && (
+            <Button variant="outline" onClick={onRetry}>Run again</Button>
+          )}
+          <Button onClick={onHome}>Back to Home</Button>
+        </div>
       </CardContent>
     </Card>
   )
