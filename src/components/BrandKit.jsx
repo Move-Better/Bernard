@@ -20,6 +20,7 @@ import {
   useDeleteBrandAsset,
 } from '@/lib/queries'
 import { toast } from '@/lib/toast'
+import { GoogleFontPicker } from '@/components/GoogleFontPicker'
 
 // Brand Kit — three panels (Library, Roles, Style) plus an onboarding variant.
 // Renders identically against the real backend (default) or fixture data
@@ -1068,16 +1069,28 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
               </div>
               <div>
                 <Label className="text-xs">Heading font</Label>
-                <Input value={style.heading_font || ''} onChange={(e) => setStyle((s) => ({ ...s, heading_font: e.target.value }))} className="h-8 text-xs mt-1" placeholder="e.g. Inter" />
+                <div className="mt-1">
+                  <GoogleFontPicker
+                    value={style.heading_font || ''}
+                    onChange={(v) => setStyle((s) => ({ ...s, heading_font: v }))}
+                    sampleText="Headline preview"
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-xs">Body font</Label>
-                <Input value={style.body_font || ''} onChange={(e) => setStyle((s) => ({ ...s, body_font: e.target.value }))} className="h-8 text-xs mt-1" placeholder="e.g. Source Sans 3" />
+                <div className="mt-1">
+                  <GoogleFontPicker
+                    value={style.body_font || ''}
+                    onChange={(v) => setStyle((s) => ({ ...s, body_font: v }))}
+                    sampleText="The quick brown fox jumps over the lazy dog"
+                  />
+                </div>
               </div>
             </div>
             <p className="text-2xs text-muted-foreground flex items-start gap-1.5">
               <TagIcon className="h-3 w-3 mt-0.5 shrink-0" />
-              Font names are stored as strings; the rendering layer (email, site, social) honors them where the channel supports custom fonts and falls back to system defaults otherwise.
+              Pick from Google Fonts — the family name is stored on the workspace and the rendering layer (email, site, social) honors it where the channel supports custom fonts, falling back to system defaults otherwise.
             </p>
           </div>
         </section>
