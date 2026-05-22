@@ -143,8 +143,13 @@ export default async function handler(req, res) {
     return err(res, 'AI_GATEWAY_API_KEY is not set on this deployment', 500)
   }
 
-  const { id, founderName } = req.body || {}
+  const { id, founderName, dryRun } = req.body || {}
   if (!id) return err(res, 'Missing id')
+  // Dry-run mode runs the LLM and returns the synthesis result but performs
+  // NO writes — no workspace PATCH, no voice_phrases insert, no interview
+  // status flip. Used during P5 prompt-tuning so we can iterate without
+  // clobbering production workspace voice / topic_suggestions.
+  const isDryRun = dryRun === true
 
   // Load the interview row. Workspace filter is the multi-tenant fence.
   const loadR = await sb(
@@ -155,11 +160,14 @@ export default async function handler(req, res) {
   if (!interview) return err(res, 'Not found', 404)
   if (interview.owner_id !== auth.userId) return err(res, 'Forbidden', 403)
 
-  // Only `completed` interviews are synthesizable. `synthesized` blocks the
-  // second-call idempotency case; `in_progress` is a guard against premature
-  // calls; `abandoned` is the explicit-throwaway state.
-  if (interview.status !== 'completed') {
-    return err(res, `Cannot synthesize ${interview.status} interview`, 409)
+  // Real runs require status='completed' — `synthesized` blocks re-write,
+  // `in_progress` is premature, `abandoned` is the explicit throwaway.
+  // Dry runs additionally accept `synthesized` so we can compare a new
+  // prompt's output against a previous run on the same transcript without
+  // resetting status.
+  const allowedStatuses = isDryRun ? ['completed', 'synthesized'] : ['completed']
+  if (!allowedStatuses.includes(interview.status)) {
+    return err(res, `Cannot synthesize ${interview.status} interview${isDryRun ? ' (dry-run)' : ''}`, 409)
   }
 
   const messages = Array.isArray(interview.messages) ? interview.messages : []
@@ -214,6 +222,36 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[onboarding/synthesize] validation failed:', e?.message, 'parsed:', JSON.stringify(parsed).slice(0, 1000))
     return err(res, `Synthesis validation failed: ${e?.message}`, 502)
+  }
+
+  // ── DRY RUN: short-circuit before any writes ────────────────────────────
+  // Returns the same shape as a real run plus `dryRun: true` and the full
+  // synthesisResult payload for inspection. Nothing is written: no workspace
+  // PATCH, no voice_phrases insert, no interview status flip.
+  if (isDryRun) {
+    return ok(res, {
+      ok: true,
+      dryRun: true,
+      counts: {
+        brand_voice_chars: normalized.brandVoice.length,
+        topics: normalized.topics.length,
+        voice_phrases: normalized.voicePhrases.length,
+        has_prototype: !!normalized.prototype,
+        pain_points: normalized.painPoints.length,
+      },
+      synthesisResult: {
+        brand_voice: normalized.brandVoice,
+        patient_context: {
+          summaryBlurb: normalized.summaryBlurb,
+          prototype: normalized.prototype,
+          priorProviderPainPoints: normalized.painPoints,
+        },
+        topic_suggestions: normalized.topics,
+        voice_phrases: normalized.voicePhrases,
+        model: MODEL_ID,
+        prompt_version: SYNTHESIS_PROMPT_VERSION,
+      },
+    })
   }
 
   // ── Build workspace PATCH ───────────────────────────────────────────────
