@@ -14,7 +14,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { generateText } from 'ai'
-import { workspaceContext } from '../_lib/workspaceContext.js'
+import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import {
@@ -290,6 +290,12 @@ export default async function handler(req, res) {
     body: JSON.stringify(wsPatch),
   })
   if (!patchR.ok) return dbErr(res, patchR, 'Workspace update failed')
+  // The synthesize step writes patient_context / topic_suggestions /
+  // brand_voice / display_name onto the workspace, and the user is redirected
+  // straight to Settings. Drop the per-instance cache so the first GET on
+  // this instance sees the synthesized values.
+  invalidateWorkspaceCacheById(ws.id)
+  invalidateWorkspaceCacheBySlug(ws.slug)
 
   // ── Upsert voice phrases ────────────────────────────────────────────────
   // Skip silently if we have no clinician_id (orphaned interview) or no phrases

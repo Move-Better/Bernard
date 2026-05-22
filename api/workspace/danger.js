@@ -22,7 +22,7 @@ export const config = { runtime: 'nodejs' }
 //   - hard delete (cascade across tables + blob storage + Clerk org)
 
 import { requireRole } from '../_lib/auth.js'
-import { workspaceContext } from '../_lib/workspaceContext.js'
+import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../_lib/workspaceContext.js'
 import { recordAudit, actorFromRequest, ipFromRequest, uaFromRequest } from '../_lib/audit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -83,6 +83,13 @@ async function handler(req, res) {
       console.error('[danger] archive failed:', r.status, text)
       return res.status(500).json({ error: 'archive-failed' })
     }
+    // Drop the per-instance cache so the now-archived workspace stops being
+    // resolved as active on this instance. Sibling instances expire on the
+    // 60s TTL; workspaceContext.js also rejects rows whose status != 'active'
+    // on read, so the worst-case staleness is a brief auth-pass on a row
+    // that's about to be denied anyway.
+    invalidateWorkspaceCacheById(workspace.id)
+    invalidateWorkspaceCacheBySlug(workspace.slug)
     // Record to the existing media_audit table — same actor / IP / UA
     // fingerprint shape, distinguished by the action prefix. Best-effort;
     // archive completes regardless of audit write success.

@@ -9,7 +9,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 60 }
 
 import { generateText } from 'ai'
-import { workspaceContext } from './_lib/workspaceContext.js'
+import { workspaceContext, invalidateWorkspaceCacheById } from './_lib/workspaceContext.js'
 import { enforceLimit } from './_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -181,6 +181,10 @@ async function saveCache(wsId, suggestions) {
   if (!r.ok) {
     const body = await r.text().catch(() => '')
     console.error('[topic-suggestions] cache save failed:', r.status, body)
+  } else {
+    // Drop the workspace cache so a follow-up refresh on this instance sees
+    // the freshly-generated suggestions (sibling instances TTL out at 60s).
+    invalidateWorkspaceCacheById(wsId)
   }
 }
 
