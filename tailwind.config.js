@@ -12,9 +12,9 @@ export default {
       center: true,
       padding: '1.5rem',
       screens: {
-        lg:  '1100px',
-        xl:  '1400px',
-        '2xl': '1600px',
+        lg:  '1280px',
+        xl:  '1560px',
+        '2xl': '1800px',
       },
     },
     extend: {
