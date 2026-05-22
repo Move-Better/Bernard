@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { UserButtonWithProfile } from '@/components/UserButtonWithProfile'
+import { UserButton } from '@clerk/clerk-react'
 import { useSelfClinicianId } from '@/lib/useSelfClinicianId'
 import { Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -59,7 +59,7 @@ export default function Layout({ children }) {
             ))}
           </nav>
           <div className="hidden md:flex items-center gap-1">
-            <SettingsMenu role={role} isStaff={isStaff} />
+            <SettingsMenu role={role} isStaff={isStaff} selfClinicianId={selfClinicianId} />
           </div>
 
           {/* New Interview — primary action, visible on every page */}
@@ -71,7 +71,7 @@ export default function Layout({ children }) {
             </Link>
           </Button>
 
-          <UserButtonWithProfile />
+          <UserButton afterSignOutUrl="/" userProfileUrl="/account" />
 
           {/* Hamburger — mobile only. Opens a dialog with the nav links,
               admin chrome, and campaign chip in a vertical stack. */}
@@ -173,7 +173,7 @@ function NavLink({ to, label, active }) {
 // Single "⚙ Tools" dropdown that replaces the 4-icon pile in the desktop
 // header. Closes on outside click or Escape. All admin items are only
 // rendered when role === 'admin'.
-function SettingsMenu({ role, isStaff }) {
+function SettingsMenu({ role, isStaff, selfClinicianId }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -213,8 +213,13 @@ function SettingsMenu({ role, isStaff }) {
             </Link>
           )}
           {role === 'admin' && <div className="border-t border-border my-1" />}
+          {selfClinicianId && (
+            <Link to={`/clinician/${selfClinicianId}`} onClick={() => setOpen(false)} className={itemClass}>
+              <UserCircle className="h-4 w-4 shrink-0" /> My clinician profile
+            </Link>
+          )}
           <Link to="/account" onClick={() => setOpen(false)} className={itemClass}>
-            <UserCircle className="h-4 w-4 shrink-0" /> Your account
+            <UserCircle className="h-4 w-4 shrink-0" /> Account &amp; security
           </Link>
           <Link to="/settings/integrations" onClick={() => setOpen(false)} className={itemClass}>
             <Settings className="h-4 w-4 shrink-0" /> Integrations
