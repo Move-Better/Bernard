@@ -110,6 +110,13 @@ export default function PhoneCall() {
   const turnsRef       = useRef(/** @type {{role:'user'|'assistant',content:string,partial?:boolean}[]} */ ([]))
   const completedRef   = useRef(false)
   const assistantBufRef = useRef('')
+  // Live user-side transcript buffer. Whisper streams .delta events while the
+  // user is speaking; we accumulate them into a partial user turn so the
+  // clinician sees their words appear in real time (parity with the chat
+  // interview's interim-transcript UI). On .completed we promote the partial
+  // to a final turn — OR drop it entirely if it failed the hallucination /
+  // speech-duration gates.
+  const userBufRef     = useRef('')
   // Speech duration tracking: VAD fires speech_started → speech_stopped with
   // timestamps. We use the duration to reject ambient-noise blips (Whisper
   // hallucinates "Diolch yn fawr" / "Thank you" on silence; if the speech
@@ -419,6 +426,9 @@ export default function PhoneCall() {
     // answers; ambient noise that triggers VAD is typically < 300ms.
     if (evt.type === 'input_audio_buffer.speech_started') {
       speechStartedAtRef.current = Date.now()
+      // New utterance starting — drop any leftover partial buffer so we
+      // don't bleed the previous turn's deltas into this one.
+      userBufRef.current = ''
       return
     }
     if (evt.type === 'input_audio_buffer.speech_stopped') {
@@ -428,7 +438,24 @@ export default function PhoneCall() {
       return
     }
 
-    // ── User-side STT (Whisper, server-side) ──────────────────────────────
+    // ── User-side STT (Whisper) — live partial deltas while speaking ──────
+    // Whisper streams .delta events as the user is talking so the transcript
+    // updates in real time — matches the interim-results behavior of the
+    // chat interview and gives the user immediate feedback that the call IS
+    // hearing them. We render these as a partial user turn (italicized
+    // muted), then promote-or-drop on .completed.
+    if (
+      evt.type === 'conversation.item.input_audio_transcription.delta' ||
+      evt.type === 'conversation.item.input_audio_transcription.partial'
+    ) {
+      const delta = String(evt.delta ?? evt.transcript ?? '')
+      if (!delta) return
+      userBufRef.current += delta
+      setTurns((prev) => upsertPartialUser(prev, userBufRef.current))
+      return
+    }
+
+    // ── User-side STT (Whisper) — final transcript ────────────────────────
     if (evt.type === 'conversation.item.input_audio_transcription.completed') {
       const text = String(evt.transcript ?? '').trim()
       if (!text) return
@@ -442,6 +469,7 @@ export default function PhoneCall() {
       //      content. Suppress + skip.
       const looksHallucinated = isLikelyWhisperHallucination(text)
       const tooShort = lastSpeechDurMsRef.current > 0 && lastSpeechDurMsRef.current < 500
+      userBufRef.current = ''
       if (looksHallucinated || tooShort) {
         if (import.meta.env.DEV) {
           console.info(
@@ -449,12 +477,22 @@ export default function PhoneCall() {
             { text, durMs: lastSpeechDurMsRef.current, looksHallucinated },
           )
         }
-        // Don't render, don't persist, don't ask Bernard to respond.
+        // Drop any partial we showed while speech was streaming and skip the
+        // response trigger — the user saw the partial briefly which is fine,
+        // it disappears now that we know it was noise.
+        setTurns((prev) => {
+          const next = dropPartialUser(prev)
+          turnsRef.current = next
+          return next
+        })
         return
       }
 
+      // Promote the partial to a finalized turn (or merge with the previous
+      // finalized user turn if there was no streaming partial, e.g. .delta
+      // events weren't emitted for this turn).
       setTurns((prev) => {
-        const next = appendOrMergeUser(prev, text)
+        const next = finalizeUser(prev, text)
         turnsRef.current = next
         return next
       })
@@ -910,6 +948,56 @@ function appendOrMergeUser(prev, text) {
     return next
   }
   return [...prev, { role: 'user', content: text }]
+}
+
+/**
+ * Replace or insert the in-progress user turn (delta accumulation, partial=true).
+ * Mirror of upsertPartialAssistant but for the user side. Live deltas from
+ * Whisper get accumulated into one partial row that updates word-by-word.
+ *
+ * @param {{role:'user'|'assistant',content:string,partial?:boolean}[]} prev
+ * @param {string} buffered
+ */
+function upsertPartialUser(prev, buffered) {
+  const last = prev[prev.length - 1]
+  if (last && last.role === 'user' && last.partial) {
+    const next = prev.slice(0, -1)
+    next.push({ role: 'user', content: buffered, partial: true })
+    return next
+  }
+  return [...prev, { role: 'user', content: buffered, partial: true }]
+}
+
+/**
+ * Promote a partial user turn to finalized. If for some reason there was no
+ * partial (Whisper didn't emit deltas this turn), fall back to merging /
+ * appending against the previous finalized turn — keeps behaviour consistent
+ * with the no-deltas path.
+ *
+ * @param {{role:'user'|'assistant',content:string,partial?:boolean}[]} prev
+ * @param {string} finalText
+ */
+function finalizeUser(prev, finalText) {
+  const last = prev[prev.length - 1]
+  if (last && last.role === 'user' && last.partial) {
+    const next = prev.slice(0, -1)
+    next.push({ role: 'user', content: finalText })
+    return next
+  }
+  return appendOrMergeUser(prev, finalText)
+}
+
+/**
+ * Drop the in-progress partial user turn (used when the .completed event was
+ * filtered out as a hallucination — we showed the partial while speech was
+ * streaming but now know it shouldn't stay in the transcript).
+ *
+ * @param {{role:'user'|'assistant',content:string,partial?:boolean}[]} prev
+ */
+function dropPartialUser(prev) {
+  const last = prev[prev.length - 1]
+  if (last && last.role === 'user' && last.partial) return prev.slice(0, -1)
+  return prev
 }
 
 /**
