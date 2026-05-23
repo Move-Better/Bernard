@@ -31,7 +31,7 @@ export default function CaptureReview() {
   const navigate = useNavigate()
   const { clinicianId, interviewId } = useParams()
   const qc = useQueryClient()
-  const { workspace: ws } = useWorkspace()
+  const ws = useWorkspace()
 
   const { data: interview, isLoading: ivLoading, isError: ivError } = useInterview(interviewId)
   const { data: clinician, isLoading: clLoading } = useClinician(clinicianId)
