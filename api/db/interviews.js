@@ -380,18 +380,30 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
 
-    const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id`)
+    const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,capture_mode`)
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
     if (rows[0].owner_id !== userId) return err(res, 'Forbidden', 403)
 
-    // Block deletion if any content items from this interview have been published
-    const pubChk = await sb(`content_items?interview_id=eq.${id}&${wsFilter}&status=eq.published&select=id&limit=1`)
-    if (pubChk.ok) {
-      const published = await pubChk.json()
-      if (published.length > 0) {
-        return err(res, 'This interview has published content and cannot be deleted. Archive the published posts first.', 409)
+    // Block deletion if any content items from this interview have been
+    // published. The guard exists because "published" normally means
+    // "live on the user's website via the NarrateRx publish flow" — and
+    // deleting the source interview would orphan engagement metrics that
+    // point back to it.
+    //
+    // Imported interviews (capture_mode='text_import') get an automatic
+    // status='published' + resolved_url=<source URL> on the keystone,
+    // but the source post lives at the user's site independently of
+    // NarrateRx. Deleting the interview just removes our record of it —
+    // nothing is orphaned. So skip the guard for imports.
+    if (rows[0].capture_mode !== 'text_import') {
+      const pubChk = await sb(`content_items?interview_id=eq.${id}&${wsFilter}&status=eq.published&select=id&limit=1`)
+      if (pubChk.ok) {
+        const published = await pubChk.json()
+        if (published.length > 0) {
+          return err(res, 'This interview has published content and cannot be deleted. Archive the published posts first.', 409)
+        }
       }
     }
 
