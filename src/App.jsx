@@ -18,6 +18,7 @@ const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
 const VoiceMemo = lazy(() => import('@/pages/VoiceMemo'))
+const HandoutCapture = lazy(() => import('@/pages/HandoutCapture'))
 const VoiceTraining = lazy(() => import('@/pages/VoiceTraining'))
 const PhoneCall = lazy(() => import('@/pages/PhoneCall'))
 const CaptureReview = lazy(() => import('@/pages/CaptureReview'))
@@ -235,6 +236,7 @@ function AppRoutes() {
             <Route path="/new" element={guarded(<CapturePicker />)} />
             <Route path="/new/interview" element={guarded(<NewInterview />)} />
             <Route path="/new/voice-memo" element={guarded(<VoiceMemo />)} />
+            <Route path="/new/handout" element={guarded(<HandoutCapture />)} />
             <Route path="/settings/voice-training" element={guarded(<VoiceTraining />)} />
             <Route path="/new/live-interview" element={guarded(<PhoneCall />)} />
             {/* Legacy redirect — the Phase 5 spike originally shipped as

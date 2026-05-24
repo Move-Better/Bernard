@@ -549,6 +549,73 @@ ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words. Write lik
 ${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}`
 }
 
+/**
+ * Patient handout prompt — Phase 5 Feature 4.
+ *
+ * After an in-clinic encounter, the clinician records a 30–60 second voice
+ * memo about the patient ("I just saw a runner, post-op shoulder, gave her
+ * three movements, want her resting it at night"). This prompt turns that
+ * memo into a one-page printable handout in the clinician's voice.
+ *
+ * Fundamentally different from a blog post:
+ *   - Audience: ONE patient who just left the clinic — not "readers"
+ *   - Voice: warm, personal, first-person — "I", "we", direct
+ *   - Format: practical, not marketing — what we did, what to do at home
+ *   - Length: fits a printed page — ~250–400 words
+ *   - NO booking CTAs, NO SEO links, NO marketing voice
+ *
+ * Never include patient names, dates, or identifying details. The clinician
+ * adds those by hand at print time. This is enforced by the prompt because
+ * we never store PHI in content_items.
+ */
+export function getPatientHandoutSystemPrompt(workspace, clinicianName, transcript, voiceNotes = '', voicePhrases = []) {
+  return `You are writing a patient handout in the voice of ${clinicianName}, a clinician at ${workspace.display_name}. The patient just finished an in-clinic visit. ${clinicianName} recorded a quick voice memo about what happened — your job is to turn that memo into a calm, useful one-page handout the patient can read at home.
+
+${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}
+${workspace.display_name.toUpperCase()} BRAND VOICE:
+${workspace.brand_voice}
+
+WHAT THIS HANDOUT IS — AND ISN'T:
+- It IS: a personal note from ${clinicianName} to one patient, written like they'd hand it across the desk.
+- It IS: warm, specific, practical, calm.
+- It IS NOT: a blog post, a marketing piece, or a list of generic exercises.
+- It IS NOT: medical jargon, a diagnosis, or anything that reads as legal advice.
+- Avoid booking CTAs, links, hashtags, or "schedule your next visit" lines.
+
+PHI BOUNDARY — strict:
+- Do NOT include any patient name, age, occupation, gender, identifying detail, or specific date.
+- If the voice memo mentions a name ("Karen", "the runner I saw at 2pm"), generalize: "today", "after our session", "the work we just did together."
+- Refer to the patient as "you" throughout.
+- Refer to specific exercises only by what they DO, not by their copyrighted brand name unless it's universal (e.g., "deadlift" yes, branded protocol names no unless they were in the memo).
+
+VOICE:
+- First person from ${clinicianName} — "I", "we", "let's."
+- Conversational, the way ${clinicianName} talks. Not clinical English.
+- Short paragraphs. Plain words.
+
+HANDOUT FORMAT (Markdown):
+
+# [A short, human-titled heading — something the patient would actually want to read. Not "Post-Visit Care Instructions." More like "What we did today, and what to do next." 6–10 words.]
+
+[Opening: one paragraph, 2–3 sentences. What we did together and why. In ${clinicianName}'s voice, warm and grounded.]
+
+## What to do this week
+[2–4 short paragraphs OR a bulleted list — whichever fits the actual exercises and habits from the voice memo. Each item: what to do, how often, and the key thing to feel or avoid. Keep it concrete enough that the patient could do it tonight without guessing.]
+
+## What to watch for
+[2–4 short lines on what's normal, what's a sign to back off, and what would warrant a call back. Calm, not alarming.]
+
+## When we'll check in
+[1–2 sentences about the next step — usually a follow-up window or a "let me know how it goes" note. NEVER a hard-sell booking link. ${clinicianName}'s natural way of staying connected.]
+
+LENGTH: 250–400 words total. If the voice memo is sparse, keep the handout sparse too — never invent exercises or recommendations that weren't in the memo.
+
+CLINICIAN'S VOICE MEMO (verbatim transcript):
+${transcript}
+
+Return only the handout body in Markdown. No preamble, no explanation, no "Here is the handout:" lead-in. Start with the # heading.`
+}
+
 export function getMinimalEditSystemPrompt(clinicianName, voiceMode = 'practice', voiceNotes = '', voicePhrases = []) {
   return `You are a transcript editor. Your only job is to turn a spoken interview transcript into clean, readable prose without adding anything that wasn't in the speaker's own words.
 
