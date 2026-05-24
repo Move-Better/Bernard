@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -27,6 +27,10 @@ export default function CapturePicker() {
   // onboarded to the Phase 5 spike see the tile. Avoids the $5/call surprise
   // for tenants who haven't asked.
   const liveInterviewEnabled = workspace?.realtime_voice_enabled === true
+  // Patient handouts lane (Phase 5 Feature 4) — gated on per-workspace
+  // patient_handouts_enabled flag. Default false; on for workspaces
+  // actively dogfooding the in-clinic handout workflow.
+  const handoutsEnabled = workspace?.patient_handouts_enabled === true
 
   // Preserve any incoming query params (?topic=…, ?topicBacklogId=…) when
   // routing into the chosen mode — these come from suggestion links and
@@ -126,6 +130,36 @@ export default function CapturePicker() {
                 <p className="text-sm text-muted-foreground mt-1">
                   Continuous voice conversation with Bernard. No press-to-talk —
                   just talk, pause, think out loud.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+        )}
+
+        {/* Patient handout — Phase 5 Feature 4. Gated on
+            workspace.patient_handouts_enabled. Hidden entirely for
+            workspaces that haven't been opted in. */}
+        {handoutsEnabled && (
+        <button
+          type="button"
+          onClick={() => go('/new/handout')}
+          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+        >
+          <Card className="h-full transition hover:border-primary hover:shadow-sm">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <span className="text-3xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded border text-muted-foreground">
+                  Beta
+                </span>
+              </div>
+              <div>
+                <div className="font-medium">Patient handout</div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  After a visit, say what just happened. NarrateRx writes a one-page handout in your voice.
                 </p>
               </div>
             </CardContent>
