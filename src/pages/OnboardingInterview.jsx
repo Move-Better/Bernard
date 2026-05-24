@@ -454,6 +454,39 @@ export default function OnboardingInterview() {
     await runAssistantTurn(next, { isFirstMessage: false })
   }, [streaming, completed, messages, runAssistantTurn])
 
+  // ── Finish — explicit "I'm done" button override ─────────────────────────
+  // Bernard only emits INTERVIEW_COMPLETE when the founder signals done in
+  // their answer. The button gives a deterministic exit when the founder
+  // feels they've covered enough — important UX for the external-tenant
+  // proof-of-concept where "say 'I'm done' to the voice agent" is fragile.
+  //
+  // Gated below MIN_TURNS_TO_FINISH so users don't end on turn 2 by accident.
+  // Synthesis quality on too-short transcripts is bad; the gate is a soft
+  // guardrail. We use TURN_PAIRS (assistant + user = 1 pair) for the count.
+  const MIN_TURNS_TO_FINISH = 6
+  const userTurnCount = messages.filter((m) => m.role === 'user').length
+  const canFinish = userTurnCount >= MIN_TURNS_TO_FINISH
+  const finishHelper = canFinish
+    ? null
+    : `Keep going — Finish unlocks after ${MIN_TURNS_TO_FINISH - userTurnCount} more answer${MIN_TURNS_TO_FINISH - userTurnCount === 1 ? '' : 's'}.`
+
+  const handleFinish = useCallback(async () => {
+    if (completed || streaming || !canFinish) return
+    // Cancel any in-flight TTS / mic so we don't fight the synthesis flow.
+    try { ttsRef.current?.cancel() } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
+    userAnswerActiveRef.current = false
+    clearTimeout(restartTimerRef.current)
+    try { recognitionRef.current?.stop() } catch { /* ignore */ }
+
+    setIsSpeaking(false)
+    setIsListening(false)
+    setCompleted(true)
+    // Persist the existing transcript with status='completed'. The synthesis
+    // effect fires off `completed`, so this single PATCH triggers the rest.
+    await persist(messages, 'completed')
+  }, [completed, streaming, canFinish, messages, persist])
+
   // Auto-listen after TTS playback ends — 700ms gives iOS time to release
   // the audio session before the mic engine tries to claim it.
   useEffect(() => {
@@ -648,6 +681,30 @@ export default function OnboardingInterview() {
               <AlertCircle className="h-4 w-4" /> {error}
             </p>
           )}
+
+          {/* Progress strip — gives the founder a sense of how far they've
+              come and a deterministic exit (Finish) instead of needing to
+              say "I'm done" to Bernard. Important for the external-tenant
+              proof-of-concept; "talk to a voice agent to end" is fragile UX. */}
+          <div className="flex items-center justify-between gap-3 mb-2 px-1">
+            <p className="text-xs text-muted-foreground">
+              {userTurnCount === 0
+                ? 'About 15 minutes total. Just answer naturally.'
+                : <>Turn {userTurnCount} · {finishHelper || 'Finish whenever you feel you’ve covered enough.'}</>}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleFinish}
+              disabled={!canFinish || streaming || completed}
+              title={canFinish ? 'End the interview and synthesize your voice' : finishHelper || undefined}
+              aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+              className="gap-1.5 shrink-0"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Finish
+            </Button>
+          </div>
 
           {/* Bottom dock — mic for SpeechRecognition browsers, textarea for
               iOS Safari et al. Same visual surface either way. */}
