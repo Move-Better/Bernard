@@ -35,7 +35,7 @@ import {
   getSeriesPartSystemPrompt,
   buildVerbatimBlock,
 } from '../../src/lib/prompts.js'
-import { resolveOwnHistoryBlock } from '../_lib/practiceMemory.js'
+import { resolveOwnHistoryBlock, buildRagQuery } from '../_lib/practiceMemory.js'
 import { applyLocationOverlay } from '../../src/lib/locationOverlay.js'
 import { extractProvenanceBlock } from '../../src/lib/provenance.js'
 import { resolveLengthPreset, LENGTH_PRESETS } from '../../src/lib/lengthPresets.js'
@@ -228,6 +228,7 @@ export default async function handler(req, res) {
         workspaceId:        ws.id,
         clinicianId:        interview.clinician_id,
         excludeInterviewId: interview.id,
+        query:              buildRagQuery(interview),
       })
     : ''
 

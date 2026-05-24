@@ -62,10 +62,16 @@ export function pickPriorInterviews(allInterviews, currentInterviewId) {
 
 // Build the system-prompt block. Returns '' when there's no signal so the
 // prompt stays quiet for first-session clinicians.
-export function buildOwnHistoryBlock({ clinicianName, priorInterviews = [], priorContent = [] }) {
+// Cap per related-snippet text length and the total RAG block size, so a
+// noisy retrieval can't blow out the prompt.
+const RAG_SNIPPET_CHARS = 500
+const RAG_BLOCK_MAX_CHARS = 3000
+
+export function buildOwnHistoryBlock({ clinicianName, priorInterviews = [], priorContent = [], relatedSnippets = [] }) {
   const hasInterviews = priorInterviews.length > 0
   const hasContent = priorContent.length > 0
-  if (!hasInterviews && !hasContent) return ''
+  const hasRelated = Array.isArray(relatedSnippets) && relatedSnippets.length > 0
+  if (!hasInterviews && !hasContent && !hasRelated) return ''
 
   const sections = []
 
@@ -97,9 +103,24 @@ export function buildOwnHistoryBlock({ clinicianName, priorInterviews = [], prio
     if (formatted) sections.push(formatted)
   }
 
+  if (hasRelated) {
+    let usedChars = 0
+    const lines = []
+    for (const s of relatedSnippets) {
+      const text = truncate(stripMarkdown(s?.text || ''), RAG_SNIPPET_CHARS)
+      if (!text) continue
+      const label = s?.source_label || 'Earlier'
+      const line = `[RELATED — ${label}]\n${text}`
+      if (usedChars + line.length > RAG_BLOCK_MAX_CHARS) break
+      lines.push(line)
+      usedChars += line.length
+    }
+    if (lines.length > 0) sections.push(lines.join('\n\n'))
+  }
+
   if (sections.length === 0) return ''
 
-  const directive = `YOUR PRIOR THINKING — content ${clinicianName} has already produced. Reference it naturally when today's topic connects: "Last time you talked about X — has your thinking evolved?" or "You've written that Y matters — does this story tie back to that?" Don't recap; build on. Never quote these verbatim.`
+  const directive = `YOUR PRIOR THINKING — content ${clinicianName} has already produced. The RECENT block is always-on hot context; the RELATED block was retrieved from the full corpus by topic similarity to today's session. Reference it naturally when today's topic connects: "Last time you talked about X — has your thinking evolved?" or "You've written that Y matters — does this story tie back to that?" Don't recap; build on. Never quote these verbatim.`
 
   return `\n${directive}\n\n${sections.join('\n\n')}\n`
 }

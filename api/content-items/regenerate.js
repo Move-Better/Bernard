@@ -23,7 +23,7 @@ import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../_lib/atomPrompts.js'
 import { getContextBlock } from '../_lib/conceptRetrieval.js'
-import { resolveOwnHistoryBlock } from '../_lib/practiceMemory.js'
+import { resolveOwnHistoryBlock, buildRagQuery } from '../_lib/practiceMemory.js'
 import { loadActiveCampaign } from '../_lib/campaignSettings.js'
 import { getCampaignPromptContext } from '../../src/lib/campaigns.js'
 import { extractProvenanceBlock } from '../../src/lib/provenance.js'
@@ -128,6 +128,7 @@ export default async function handler(req, res) {
         workspaceId:        ws.id,
         clinicianId:        interview.clinician_id,
         excludeInterviewId: interview.id,
+        query:              buildRagQuery(interview),
       })
     : ''
 

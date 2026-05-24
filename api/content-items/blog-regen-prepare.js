@@ -15,7 +15,7 @@ export const config = { runtime: 'nodejs', maxDuration: 60 }
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
-import { resolveOwnHistoryBlock } from '../_lib/practiceMemory.js'
+import { resolveOwnHistoryBlock, buildRagQuery } from '../_lib/practiceMemory.js'
 import {
   getBlogPostSystemPrompt,
   getMinimalEditSystemPrompt,
@@ -125,6 +125,7 @@ export default async function handler(req, res) {
         workspaceId:        ws.id,
         clinicianId:        interview.clinician_id,
         excludeInterviewId: interview.id,
+        query:              buildRagQuery(interview),
       })
     : ''
 
