@@ -221,3 +221,47 @@ export async function indexContentItem({ workspaceId, contentItemId }) {
 function cap(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
 }
+
+/**
+ * Vector-search the practice-memory corpus for snippets related to a query.
+ * Calls the match_practice_memory_chunks RPC (migration 074) so cosine
+ * ranking happens server-side.
+ *
+ * @param {object} args
+ * @param {string} args.workspaceId
+ * @param {string=} args.clinicianId      — scope to this clinician's chunks
+ * @param {string} args.query             — natural-language text (transcript excerpt, topic, etc.)
+ * @param {number=} args.topK             — default 6
+ * @param {string[]=} args.excludeSourceIds — skip these source IDs (e.g., hot-tier items, current interview)
+ * @returns {Promise<Array<{source_type, source_id, source_label, text, similarity}>>}
+ */
+export async function searchPracticeMemory({ workspaceId, clinicianId, query, topK = 6, excludeSourceIds = [] }) {
+  try {
+    if (!workspaceId) return []
+    const q = String(query || '').trim()
+    if (!q) return []
+
+    const [embedding] = await embedTexts([q])
+    if (!embedding) return []
+
+    const r = await sb('rpc/match_practice_memory_chunks', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_workspace_id:       workspaceId,
+        p_clinician_id:       clinicianId ?? null,
+        p_query_embedding:    `[${embedding.join(',')}]`,
+        p_match_count:        topK,
+        p_exclude_source_ids: excludeSourceIds,
+      }),
+    })
+    if (!r.ok) {
+      const body = await r.text().catch(() => '')
+      console.error(`[practiceMemoryRag] search ${r.status}: ${body.slice(0, 300)}`)
+      return []
+    }
+    return await r.json()
+  } catch (e) {
+    console.error(`[practiceMemoryRag] searchPracticeMemory threw: ${e?.message}`)
+    return []
+  }
+}
