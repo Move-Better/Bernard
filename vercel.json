@@ -44,7 +44,8 @@
   ],
   "crons": [
     { "path": "/api/cron/backup-db", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/refresh-engagement", "schedule": "0 11 * * *" }
+    { "path": "/api/cron/refresh-engagement", "schedule": "0 11 * * *" },
+    { "path": "/api/cron/sync-author-corpus", "schedule": "0 6 * * 0" }
   ],
   "functions": {
     "api/media/upload.js": {
