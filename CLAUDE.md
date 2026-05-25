@@ -244,7 +244,14 @@ cd "/Users/qbook/Claude Projects/NarrateRx" && npm run deploy:prod
 
 If the project root is on another branch (with WIP), do not switch under the user. Either run the deploy from a separate `main`-tracking worktree that's `vercel link`ed to the `narraterx` project (copy `.vercel/project.json` in if needed) or ask the user to free up the project root. Always confirm the resulting deploy is aliased to `narraterx.ai` + `*.narraterx.ai` with `vercel inspect <dpl-id>` before declaring it done — deploys from an unlinked worktree silently create a separate Vercel project and never touch the real prod aliases.
 
-**Auto-deploy after your own merge.** When a PR you opened in this session is merged and the project root is clean + on `main`, immediately run `npm run deploy:prod` without asking. The preflight guard (cwd / branch / clean tree / origin parity) is the safety net — confirming each time just adds friction to a loop the user has already pre-authorized via the Git autonomy policy. Skip the auto-deploy and confirm first when (a) the merge wasn't yours this session, (b) the PR touched migrations that haven't been verified on prod, billing, or auth, (c) the user is mid-conversation about something else, or (d) `gh pr view` shows the PR merged but `mergeStateStatus` indicates a blocked state worth surfacing. Don't auto-deploy more than once per session without checking back in — batch follow-up merges into a single deploy after the user gives a "go" or after a meaningful pause.
+**Vercel's GitHub integration auto-deploys every push to `main`.** Each merge to `main` triggers a Vercel build that finishes in ~2 minutes and is aliased to `narraterx.ai` automatically. The auto-deploy runs in a real git clone, so `VERCEL_GIT_COMMIT_SHA` is set naturally and the auto-update notifier works correctly. **Do NOT run `npm run deploy:prod` after your own merge — it ships the exact same commit a second time, doubles the build cost, and just clobbers the GitHub-integration alias with an identical artifact.** Discovered 2026-05-25 (commits #839/#840/#841 each got two production deployments — one auto, one manual — for no benefit).
+
+After a merge, verify the auto-deploy via `vercel ls narraterx --prod | head -3` (look for a ● Ready row whose age matches the merge time) or `vercel inspect narraterx.ai` (confirm the deployed SHA matches `git rev-parse origin/main`). That's the whole post-merge protocol.
+
+`npm run deploy:prod` is still the right tool for:
+- The GitHub integration is failing or paused
+- A hotfix needs to ship from a worktree without a PR
+- You need to deploy code that isn't yet (or won't ever be) on `main`
 
 ## Audit and checkup
 Three complementary commands cover code/UI/prod health:
