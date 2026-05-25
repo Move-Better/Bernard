@@ -115,10 +115,59 @@ function OrgGate({ clerkOrgId, children }) {
   const activeOrgId = session?.lastActiveOrganizationId ?? null
   const isActive = match && activeOrgId === clerkOrgId
 
+  // Track whether we've been stuck at "waiting to activate" long enough to
+  // show the user something other than a blank screen. Reported 2026-05-25
+  // after #837/#840/#841 stopped the wrong-org error screen — but exposed a
+  // separate failure mode where setActive resolves without flipping the
+  // session and the original one-shot effect never retried, leaving OrgGate
+  // returning null forever until manual reload.
+  const [stuckLevel, setStuckLevel] = useState(0) // 0=ok, 1=loading-spinner, 2=offer-reload
+
+  // Retry setActive periodically while !isActive. Clerk's setActive can
+  // resolve without actually updating session.lastActiveOrganizationId
+  // (especially after a cross-subdomain navigation where the session is
+  // hydrating from cookies). One call isn't enough — keep trying every
+  // 500ms. The effect's cleanup runs when isActive flips to true (deps
+  // change), so success naturally stops the retries.
   useEffect(() => {
     if (!match || isActive) return
-    setActive({ organization: match.organization.id }).catch(() => {})
-  }, [match, isActive, setActive])
+    let cancelled = false
+    let attempts = 0
+    const MAX_ATTEMPTS = 10 // 10 × 500ms = 5s before giving up
+
+    async function tryActivate() {
+      if (cancelled) return
+      attempts++
+      try {
+        await setActive({ organization: match.organization.id })
+      } catch (e) {
+        console.warn(`[OrgGate] setActive attempt ${attempts} threw:`, e?.message || e)
+      }
+      // Wait for session state to propagate. If it flipped, isActive becomes
+      // true on the next render, this effect's cleanup fires, cancelled=true.
+      await new Promise(resolve => { setTimeout(resolve, 500) })
+      if (cancelled) return
+      if (attempts < MAX_ATTEMPTS) {
+        tryActivate()
+      } else {
+        console.error(`[OrgGate] setActive(${match.organization.id}) failed to flip session after ${MAX_ATTEMPTS} attempts. activeOrgId=${activeOrgId}`)
+      }
+    }
+
+    tryActivate()
+    return () => { cancelled = true }
+  }, [match, isActive, setActive, activeOrgId])
+
+  // Stuck-detection timers. After 1.5s blank, show a spinner. After 5s,
+  // offer a Reload button (the underlying retry loop has already exhausted
+  // by then). Reset whenever the gate's children become renderable.
+  useEffect(() => {
+    if (!isLoaded || !match) { setStuckLevel(0); return }
+    if (isActive && tokenReady) { setStuckLevel(0); return }
+    const t1 = setTimeout(() => setStuckLevel(s => Math.max(s, 1)), 1500)
+    const t2 = setTimeout(() => setStuckLevel(s => Math.max(s, 2)), 5000)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [isLoaded, match, isActive, tokenReady])
 
   // Once the session says the right org is active, confirm the issued token
   // actually carries that org before letting children fetch any API routes.
@@ -175,7 +224,37 @@ function OrgGate({ clerkOrgId, children }) {
   }, [isActive, clerkOrgId, getToken])
 
   // Still loading org list, org switch pending, or token hasn't refreshed yet.
-  if (!isLoaded || (match && (!isActive || !tokenReady))) return null
+  // Returns a loading state instead of blank to avoid the "white screen until
+  // manual reload" UX reported 2026-05-25.
+  if (!isLoaded || (match && (!isActive || !tokenReady))) {
+    if (stuckLevel === 0) return null // brief, normal-case — no flash
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-sm text-center space-y-3 p-8">
+          <div
+            className="mx-auto h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin"
+            aria-hidden="true"
+          />
+          {stuckLevel === 1 && (
+            <p className="text-sm text-muted-foreground">Switching workspace…</p>
+          )}
+          {stuckLevel === 2 && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Workspace is taking longer than expected to activate.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Reload page
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (!match) {
     return (
