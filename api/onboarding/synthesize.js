@@ -413,7 +413,7 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString(),
     }),
   })
-  if (!markR.ok) return dbErr(res, markR, 'Interview update failed')
+  if (!markR.ok) { await revertClaim(); return dbErr(res, markR, 'Interview update failed') }
 
   return ok(res, {
     ok: true,
