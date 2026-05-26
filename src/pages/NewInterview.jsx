@@ -100,7 +100,7 @@ export default function NewInterview() {
     )
   }, [cliniciansForSuggestions, clinicianName])
 
-  const { data: recipes = [] } = useClinicianRecipes(resolvedClinician?.id)
+  const { data: recipes = [], isLoading: recipesLoading } = useClinicianRecipes(resolvedClinician?.id)
 
   // Apply a recipe to all five levers + clear the "drift from recipe" flag
   // by setting selectedRecipeId. Sticky: levers stay until the user either
@@ -114,20 +114,23 @@ export default function NewInterview() {
     if (recipe.cleanup_level) setCleanupLevel(recipe.cleanup_level)
   }
 
-  // Auto-apply the clinician's default recipe on first recipe load. Bail if
-  // the user has already picked one to avoid stomping their choice on a
-  // background refetch.
+  // Auto-apply the clinician's default recipe on first recipe load. When no
+  // recipe exists, fall back to the clinician's default_tone preference so
+  // the tone picker reflects their saved preference instead of hardcoded 'smart'.
   const [autoAppliedFor, setAutoAppliedFor] = useState(null)
   useEffect(() => {
-    if (!resolvedClinician || !recipes.length) return
+    if (!resolvedClinician || recipesLoading) return
     if (autoAppliedFor === resolvedClinician.id) return
     const defaultRecipe = recipes.find((r) => r.is_default) || recipes[0]
     if (defaultRecipe) {
       applyRecipe(defaultRecipe)
-      setAutoAppliedFor(resolvedClinician.id)
+    } else if (resolvedClinician.default_tone) {
+      // No saved recipe — use the clinician's preferred tone
+      setTone(resolvedClinician.default_tone)
     }
+    setAutoAppliedFor(resolvedClinician.id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedClinician?.id, recipes.length])
+  }, [resolvedClinician?.id, recipes.length, recipesLoading])
 
   // When the user edits any lever in Tune, mark the recipe as "drifted" so
   // they can save the new combo as a new recipe.
