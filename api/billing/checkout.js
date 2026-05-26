@@ -53,6 +53,28 @@ async function handler(req, res) {
   const protocol = process.env.VERCEL_ENV === 'production' ? 'https' : 'https'
   const base = `${protocol}://${host}`
 
+  // Active subscribers must change plans through the billing portal —
+  // a second Checkout Session would create a duplicate subscription, and
+  // the webhook would overwrite stripe_subscription_id leaving the first
+  // one orphaned but still billing. Return the portal URL in the same
+  // { url } shape so the client just redirects.
+  if (ws.stripe_subscription_id && ws.stripe_customer_id) {
+    try {
+      const portal = await stripePost('/billing_portal/sessions', {
+        customer: ws.stripe_customer_id,
+        return_url: `${base}/settings/workspace/billing`,
+      })
+      if (portal.error) {
+        console.error('[billing/checkout] portal redirect error:', portal.error)
+        return res.status(500).json({ error: 'stripe-error', detail: portal.error.message })
+      }
+      return res.status(200).json({ url: portal.url })
+    } catch (e) {
+      console.error('[billing/checkout] portal redirect failed:', e?.message)
+      return res.status(500).json({ error: 'portal-failed' })
+    }
+  }
+
   try {
     const sessionParams = {
       mode: 'subscription',
