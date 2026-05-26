@@ -288,14 +288,14 @@ export default function PhoneCall() {
       clinicianIdRef.current = clinician.id
 
       // 2. Create the interview row. capture_mode='realtime_voice' marks it
-      //    so analytics can split realtime vs. chat. Defaults match what
-      //    NewInterview ships for a tone='smart' / voice_mode='practice'
-      //    interview — the user can refine after completion if they want.
+      //    so analytics can split realtime vs. chat. Tone uses the clinician's
+      //    saved default (getOrCreateClinician returns default_tone); falls
+      //    back to 'smart' for a brand-new clinician with no preference set.
       const interview = await createInterview({
         clinicianId: clinician.id,
         topic: topic.trim(),
         ownerEmail: user.primaryEmailAddress?.emailAddress,
-        tone: 'smart',
+        tone: clinician.default_tone || 'smart',
         voiceMode: 'practice',
       })
       // Tag capture_mode separately — createInterview's signature doesn't
@@ -338,7 +338,7 @@ export default function PhoneCall() {
         pastInterviews || [],
         null, // prototypeId — none for realtime spike
         {
-          tone: 'smart',
+          tone: clinicianRow?.default_tone || clinician.default_tone || 'smart',
           isFirstMessage: true,
           priorSessionContext,
           conceptBlock:   conceptCtx?.block || '',

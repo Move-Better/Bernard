@@ -16,6 +16,7 @@ import {
 import {
   useClinician, useClinicianSummaries, useDeleteClinician, useDeleteInterview,
   useClinicianRecipes, usePatchClinicianRecipe, useDeleteClinicianRecipe,
+  usePatchClinician,
 } from '@/lib/queries'
 import { resolveOwnerName } from '@/components/home/helpers'
 import { resolveAudienceSlot, resolveStoryTypeSlot } from '@/lib/interviewOptionsCatalog'
@@ -522,6 +523,9 @@ export default function ClinicianProfile() {
       {activeTab === 'settings' && (
         <div className="px-6 py-6 space-y-4 max-w-2xl">
           {isMyClinicianProfile && <DisplayNameCard />}
+          {(isMyClinicianProfile || role === 'admin') && (
+            <DefaultToneCard clinician={clinician} />
+          )}
           <ClinicianCampaignCard
             clinician={clinician}
             canEdit={isMyClinicianProfile || role === 'admin'}
@@ -640,6 +644,79 @@ function PublishedPostRow({ post }) {
             <ChevronRight className="h-4 w-4" />
           </Link>
         </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Default tone card ─────────────────────────────────────────────────────────
+
+function DefaultToneCard({ clinician }) {
+  const { user } = useUser()
+  const patchClinician = usePatchClinician()
+  const tones = TONES
+  const current = clinician.default_tone || 'smart'
+  const [selected, setSelected] = useState(current)
+  const [saved, setSaved] = useState(false)
+
+  const isDirty = selected !== current
+
+  async function handleSave() {
+    await patchClinician.mutateAsync({ id: clinician.id, patch: { default_tone: selected }, userId: user?.id })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <Card>
+      <CardContent className="py-5 space-y-3">
+        <div>
+          <p className="text-sm font-semibold">Default tone</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pre-selects this tone whenever you start a new interview, voice memo, or import. Can still be changed per-interview.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {tones.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setSelected(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                selected === t.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/40'
+              }`}
+            >
+              {t.emoji && <span>{t.emoji}</span>}
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 pt-1">
+          <Button
+            size="sm"
+            disabled={!isDirty || patchClinician.isPending}
+            onClick={handleSave}
+          >
+            {patchClinician.isPending ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Saving…</>
+            ) : saved ? (
+              'Saved ✓'
+            ) : (
+              'Save preference'
+            )}
+          </Button>
+          {isDirty && !patchClinician.isPending && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setSelected(current)}
+            >
+              Reset
+            </button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
