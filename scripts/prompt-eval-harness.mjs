@@ -174,7 +174,7 @@ function makeVariants(interview, clinician, phrases, voiceNotes) {
 function buildEvalPrompt({ blogPost, clinicianName, condition, voicePhrases, workspace }) {
   const phraseExamples = (voicePhrases || []).slice(0, 6).map(p => `- "${p.phrase}"`).join('\n')
   return {
-    system: `You are a precise content quality evaluator for a clinical content platform. You score blog posts on specific dimensions. Return ONLY valid JSON — no markdown, no commentary, no preamble.`,
+    system: `You are a precise content quality evaluator for a clinical content platform. You score blog posts on specific dimensions. Your entire response must be a single valid JSON object. Do NOT wrap it in markdown code fences. Do NOT include any text before or after the JSON object. Start your response with { and end with }.`,
     user: `Evaluate this blog post about "${condition}" written for a clinician named ${clinicianName} at ${workspace.display_name}.
 
 CLINICIAN'S KNOWN VOICE PHRASES (authentic lines from their approved content):
@@ -284,7 +284,7 @@ for (const interview of testInterviews) {
         model: EVAL_MODEL,
         system: evalPrompt.system,
         messages: [{ role: 'user', content: evalPrompt.user }],
-        maxOutputTokens: 300,
+        maxOutputTokens: 600,  // 300 caused truncation; haiku wraps in ```json fences even with "no markdown" instruction
       })
 
       try {
