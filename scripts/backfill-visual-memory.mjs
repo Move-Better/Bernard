@@ -29,16 +29,24 @@
  */
 
 import { readFile } from 'node:fs/promises'
-import { indexMediaAsset } from '../api/_lib/visualMemoryIndex.js'
-
-// ── env ──────────────────────────────────────────────────────────────────────
-const envText = await readFile('.env.local', 'utf8').catch(() => '')
-for (const line of envText.split(/\r?\n/)) {
-  const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1')
-}
 
 const args = process.argv.slice(2)
+const EXTRA_ENV_FILE = args.find(a => a.startsWith('--env-file='))?.split('=')[1]
+
+// ── env (MUST happen before importing api/_lib/* — those modules read
+//        SUPABASE_URL / OPENAI_API_KEY at module-load time, so static imports
+//        would capture undefined values when invoked as a CLI script) ────────
+//
+// Order: --env-file (if provided, e.g. a 1P FIFO mount path) → .env.local fallback.
+// Read each source ONCE — 1Password FIFO mounts are one-shot.
+const envSources = [EXTRA_ENV_FILE, '.env.local'].filter(Boolean)
+for (const src of envSources) {
+  const envText = await readFile(src, 'utf8').catch(() => '')
+  for (const line of envText.split(/\r?\n/)) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1')
+  }
+}
 const WORKSPACE_SLUG = args.find(a => a.startsWith('--workspace='))?.split('=')[1] ?? null
 const LIMIT = parseInt(args.find(a => a.startsWith('--limit='))?.split('=')[1] ?? '0', 10)
 const BATCH = parseInt(args.find(a => a.startsWith('--batch='))?.split('=')[1] ?? '50', 10)
@@ -58,6 +66,11 @@ if (!DRY_RUN && (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.inclu
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+// Dynamic import — must come AFTER env is loaded so the imported module's
+// module-level `const SUPABASE_URL = process.env.SUPABASE_URL` reads a real
+// value rather than `undefined` left over from before .env.local was parsed.
+const { indexMediaAsset } = await import('../api/_lib/visualMemoryIndex.js')
 
 // ── Supabase helpers ─────────────────────────────────────────────────────────
 function sb(path, init = {}) {
