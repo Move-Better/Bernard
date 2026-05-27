@@ -283,6 +283,17 @@ export async function uploadMedia(file, meta = {}, options = {}) {
     // webhook (Vercel Blob → server) is signature-verified by handleUpload
     // and doesn't need a user token.
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    // Multipart splits the file into ~5 MB parts uploaded in parallel and
+    // retries any individual part that fails. That's the practical "survive
+    // the screen turning off / a brief network blip" behavior — a transient
+    // failure on one chunk just retries that chunk instead of nuking the
+    // whole upload. Also meaningfully speeds up multi-hundred-MB videos.
+    multipart: true,
+    // AbortController plumbed in from UploadProgressContext so the Cancel
+    // button can kill an in-flight upload. @vercel/blob/client honors this
+    // by aborting the multipart upload on Vercel's side so we don't leave
+    // orphan parts in the store.
+    abortSignal: options.abortSignal || undefined,
     // @vercel/blob exposes determinate progress via onUploadProgress. Event
     // shape: { loaded, total, percentage }. We forward it directly so the
     // caller can render an actual progress bar instead of an opaque spinner.

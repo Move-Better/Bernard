@@ -59,8 +59,30 @@ async function waitForPipelineSettle(blobUrl, { timeoutMs = 12000, intervalMs = 
   return null
 }
 
+// Recognize an AbortController-driven cancellation across the various shapes
+// @vercel/blob/client + the underlying fetch can throw on abort. Different
+// browser engines surface this differently (DOMException 'AbortError', a
+// plain Error with name='AbortError', or a message containing 'aborted'),
+// so we check loosely rather than depend on one shape.
+function isAbortError(err) {
+  if (!err) return false
+  if (err.name === 'AbortError') return true
+  if (typeof err.message === 'string' && /aborted|cancell?ed/i.test(err.message)) return true
+  return false
+}
+
 export function UploadProgressProvider({ children }) {
   const [uploads, setUploads] = useState([])
+
+  // Per-upload AbortController so the Cancel button can kill an in-flight
+  // upload without affecting siblings. Ref-backed so cancelling doesn't
+  // re-render the whole tray.
+  const controllersRef = useRef(new Map())
+
+  // Stash the original File + meta per row so Retry can re-run the same
+  // upload after a cancel or failure. File objects don't belong in React
+  // state (equality churn), so they live in a ref.
+  const retryRef = useRef(new Map())
 
   // Pages that care about "an upload finished, refresh me" register via
   // subscribe(). We keep this in a ref-backed Set so subscribers added during
@@ -79,42 +101,36 @@ export function UploadProgressProvider({ children }) {
   }, [])
 
   const dismissCompleted = useCallback(() => {
-    setUploads((prev) => prev.filter((r) => r.status !== 'done' && r.status !== 'error'))
+    setUploads((prev) => prev.filter((r) => {
+      const done = r.status === 'done' || r.status === 'error' || r.status === 'canceled'
+      if (done) {
+        retryRef.current.delete(r.id)
+        controllersRef.current.delete(r.id)
+      }
+      return !done
+    }))
   }, [])
 
   const dismissRow = useCallback((id) => {
     setUploads((prev) => prev.filter((r) => r.id !== id))
+    retryRef.current.delete(id)
+    controllersRef.current.delete(id)
   }, [])
 
-  // startUpload — runs HEIC transcode (if needed) → vercel/blob client upload
-  // → asset-row indexing poll. Each row gets a stable id so progress updates
-  // can find it without colliding with concurrent uploads of similarly-named
-  // files. Returns the final blob (or null on error) so call sites can chain.
-  const startUpload = useCallback(async (file, meta = {}) => {
-    const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
-
-    const row = {
-      id,
-      name: file.name,
-      size: file.size || 0,
-      status: 'uploading',
-      loaded: 0,
-      total: file.size || 0,
-      progress: 0,
-      transcoding: false,
-      error: null,
-      slowIndex: false,
-      startedAt: Date.now(),
-    }
-    setUploads((prev) => [row, ...prev])
+  // Internal — runs the actual upload for a row that's already been
+  // registered in state. Used by both startUpload (new) and retryUpload
+  // (re-run). Keeps the AbortController + File ref bookkeeping in one place.
+  const runUpload = useCallback(async (id, file, meta) => {
+    const controller = new AbortController()
+    controllersRef.current.set(id, controller)
+    retryRef.current.set(id, { file, meta })
 
     try {
       const blob = await uploadMedia(
         file,
         meta,
         {
+          abortSignal: controller.signal,
           onTranscodeStart: () => setUploads((prev) => prev.map((r) =>
             r.id === id ? { ...r, transcoding: true } : r,
           )),
@@ -149,6 +165,9 @@ export function UploadProgressProvider({ children }) {
         r.id === id ? { ...r, status: 'done', slowIndex: !indexed, originalSize } : r,
       ))
       notifyUploaded()
+      // Success — drop the retry stash to free the File reference.
+      retryRef.current.delete(id)
+      controllersRef.current.delete(id)
 
       // Images get an extra short poll for the resize/AI-alt pipeline to
       // settle so the tray can show "Optimized 4.2 MB → 380 KB". Best-effort
@@ -164,12 +183,82 @@ export function UploadProgressProvider({ children }) {
 
       return blob
     } catch (e) {
+      const aborted = isAbortError(e) || controller.signal.aborted
       setUploads((prev) => prev.map((r) =>
-        r.id === id ? { ...r, status: 'error', error: e?.message || 'Upload failed', transcoding: false } : r,
+        r.id === id
+          ? {
+              ...r,
+              status: aborted ? 'canceled' : 'error',
+              error: aborted ? null : (e?.message || 'Upload failed'),
+              transcoding: false,
+            }
+          : r,
       ))
+      // Keep retryRef populated on error/cancel so Retry can find the File.
+      // Cleared on Dismiss or on successful retry.
+      controllersRef.current.delete(id)
       return null
     }
   }, [notifyUploaded])
+
+  // startUpload — public entry. Registers a fresh row + kicks off the upload
+  // pipeline. Returns the final blob (or null on error/cancel) so call sites
+  // can chain.
+  const startUpload = useCallback(async (file, meta = {}) => {
+    const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+    const row = {
+      id,
+      name: file.name,
+      size: file.size || 0,
+      status: 'uploading',
+      loaded: 0,
+      total: file.size || 0,
+      progress: 0,
+      transcoding: false,
+      error: null,
+      slowIndex: false,
+      startedAt: Date.now(),
+    }
+    setUploads((prev) => [row, ...prev])
+
+    return runUpload(id, file, meta)
+  }, [runUpload])
+
+  // Cancel an in-flight upload. The AbortController triggers @vercel/blob's
+  // cancellation path, which aborts the multipart upload on Vercel's side
+  // so we don't leak orphan parts. The row stays in the tray as 'canceled'
+  // until the user dismisses it (so a fat-fingered cancel can be retried).
+  const cancelUpload = useCallback((id) => {
+    const controller = controllersRef.current.get(id)
+    if (controller) {
+      try { controller.abort() } catch { /* already aborted */ }
+    }
+    // If the upload was still in HEIC-transcode or hadn't reached the upload
+    // yet, the abort won't surface as a thrown error from the SDK — mark the
+    // row canceled defensively so the user gets immediate feedback.
+    setUploads((prev) => prev.map((r) =>
+      r.id === id && (r.status === 'uploading' || r.status === 'indexing')
+        ? { ...r, status: 'canceled', error: null, transcoding: false }
+        : r,
+    ))
+  }, [])
+
+  // Re-run an upload that failed or was canceled. Uses the File + meta we
+  // stashed at start. If the retry stash is missing (e.g. the row was
+  // dismissed), no-op — the UI shouldn't surface a Retry button in that case.
+  const retryUpload = useCallback((id) => {
+    const stash = retryRef.current.get(id)
+    if (!stash) return
+    setUploads((prev) => prev.map((r) =>
+      r.id === id
+        ? { ...r, status: 'uploading', progress: 0, loaded: 0, error: null, transcoding: false, startedAt: Date.now() }
+        : r,
+    ))
+    runUpload(id, stash.file, stash.meta)
+  }, [runUpload])
 
   const hasActiveUploads = useMemo(
     () => uploads.some((r) => r.status === 'uploading' || r.status === 'indexing'),
@@ -180,10 +269,12 @@ export function UploadProgressProvider({ children }) {
     uploads,
     hasActiveUploads,
     startUpload,
+    cancelUpload,
+    retryUpload,
     dismissCompleted,
     dismissRow,
     subscribe,
-  }), [uploads, hasActiveUploads, startUpload, dismissCompleted, dismissRow, subscribe])
+  }), [uploads, hasActiveUploads, startUpload, cancelUpload, retryUpload, dismissCompleted, dismissRow, subscribe])
 
   return (
     <UploadProgressContext.Provider value={value}>
@@ -204,6 +295,8 @@ export function useUploadProgress() {
       uploads: [],
       hasActiveUploads: false,
       startUpload: async () => null,
+      cancelUpload: () => {},
+      retryUpload: () => {},
       dismissCompleted: () => {},
       dismissRow: () => {},
       subscribe: () => () => {},
