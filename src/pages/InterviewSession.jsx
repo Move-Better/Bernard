@@ -626,6 +626,9 @@ export default function InterviewSession() {
         gapBlock:       gapBlockRef.current,
         audienceSlot:   resolveAudienceSlot(interviewRef.current?.audience, overlaidWorkspace?.audience_options),
         storyTypeSlot:  resolveStoryTypeSlot(interviewRef.current?.story_type, overlaidWorkspace?.story_type_options),
+        // Team-as-talent (Phase 1.5): branch to non-clinical staff prompt when applicable.
+        // Default 'clinician' keeps existing behavior byte-identical.
+        staffType:      clinician?.staff_type || 'clinician',
       }
     )
 

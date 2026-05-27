@@ -344,6 +344,9 @@ export default function PhoneCall() {
           conceptBlock:   conceptCtx?.block || '',
           agreementBlock: conceptCtx?.agreementBlock || '',
           gapBlock:       conceptCtx?.gapBlock || '',
+          // Team-as-talent (Phase 1.5): branch to non-clinical staff prompt when applicable.
+          // Default 'clinician' keeps existing behavior byte-identical.
+          staffType:      clinicianRow?.staff_type || clinician?.staff_type || 'clinician',
         },
       )
       // Voice-mode patience override sits ABOVE the standard prompt so the
