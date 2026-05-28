@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose,
 } from '@/components/ui/Drawer'
-import { CampaignModeChip } from '@/components/CampaignWidget'
 import { workspace as STATIC_WORKSPACE } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
@@ -191,11 +190,6 @@ export default function Layout({ children }) {
                   <Settings className="h-4 w-4" /> Integrations
                 </Link>
               </DrawerClose>
-            )}
-            {hasCapability(CAP_INTERVIEW_START) && (
-              <div className="px-3 py-2">
-                <CampaignModeChip />
-              </div>
             )}
           </div>
         </DrawerContent>
@@ -392,9 +386,6 @@ function SettingsMenu({ role, isStaff, selfClinicianId }) {
               <Building2 className="h-4 w-4 shrink-0" /> Workspace settings
             </Link>
           )}
-          <div className="border-t border-border my-1 px-3 pt-2 pb-1">
-            <CampaignModeChip />
-          </div>
         </div>
       )}
     </div>

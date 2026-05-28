@@ -30,6 +30,11 @@ const CONTENT_STYLE_OPTIONS = [
     description: 'Event-registration push — every post drives RSVPs.',
   },
   {
+    value: 'referral',
+    label: 'Referral',
+    description: 'Peer-to-peer — voice aimed at trainers, coaches, PTs, surgeons, and other referring providers.',
+  },
+  {
     value: 'relationship',
     label: 'Relationship',
     description: 'Community / retention — non-clinical, suppresses clinical topic gaps during the window.',

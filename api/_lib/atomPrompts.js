@@ -19,11 +19,12 @@ function buildVoicePhrasesBlock(phrases) {
   return `\n\nVOICE PHRASE ANCHORS — sentences this clinician has shipped in approved content. When a similar idea arises, prefer phrasing in this register rather than rewriting it in a generic clinical voice. These are examples, NOT required quotations — only echo when the meaning genuinely aligns:\n${examples}\n`
 }
 
-// `campaignContext` — output of getCampaignPromptContext(campaign, ws) from
-// src/lib/campaigns.js. Empty string for bookings mode (default) or when no
-// active campaign is set. When present, it overrides the default CTA framing
-// in each per-platform instruction. Blog posts intentionally do NOT consume
-// this; see src/lib/campaigns.js header for the why.
+// `campaignContext` — output of getTentpolePromptContext(campaign, ws) from
+// api/_lib/tentpoleCampaignContext.js. Empty string when no campaign is
+// active or when the active campaign's content_style is 'clinical'. When
+// present, it overrides the default CTA framing in each per-platform
+// instruction. Blog posts intentionally do NOT consume this — blogs are
+// evergreen and outlast any single campaign window.
 export function getAtomSystemPrompt(workspace, clinicianName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '', voicePhrases = [], audienceLabel = null, storyTypeLabel = null, campaignContext = '', ownHistoryBlock = '') {
   const firstName = clinicianName.split(' ')[0]
   const isPersonal = voiceMode === 'personal'
