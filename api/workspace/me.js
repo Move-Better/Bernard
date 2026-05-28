@@ -13,8 +13,8 @@ export const config = { runtime: 'nodejs' }
 // 404 when no resolvable workspace (apex, www, preview URL, unknown subdomain).
 
 import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../_lib/workspaceContext.js'
-import { requireRole } from '../_lib/auth.js'
-import { resolveCapabilities } from '../_lib/capabilities.js'
+import { requireRole, requireCapability } from '../_lib/auth.js'
+import { resolveCapabilities, CAP_SETTINGS_EDIT } from '../_lib/capabilities.js'
 
 // Hard allowlist — only these columns may be patched via this endpoint.
 // slug, clerk_org_id, capabilities, status are developer-owned.
@@ -300,13 +300,25 @@ async function handler(req, res) {
       console.error('[workspace/me] tier fetch failed:', e?.message)
     }
 
-    // Phase 4 PR 2: resolve the user's effective capability set. Owners and
-    // internal-plan org admins get every capability automatically — mirrors
-    // the admin bypass in requireRole + requireTier. Non-admin users get the
-    // resolved template (workspace override OR code default for their tier).
-    const isOrgAdminCaller   = auth.role === 'admin' || workspace?.plan === 'internal'
-    const tierForCapabilities = isOrgAdminCaller ? 'owner' : (current_user_tier || 'clinician')
-    const current_user_capabilities = resolveCapabilities(tierForCapabilities, workspace)
+    // Phase 4 PR 3: resolve the user's effective capability set. Matches the
+    // opt-in-per-user model used by requireCapability server-side:
+    //   • Clerk org admins (isOrgAdmin === true) ALWAYS get the owner template.
+    //   • Users with NO explicit permission_tier set fall back to legacy —
+    //     full owner caps when requireRole resolved them to admin (covers the
+    //     internal-plan bypass case so Move Better members keep working as
+    //     today). Non-admins with no tier get the 'clinician' default template.
+    //   • Users with an explicit tier are resolved against the workspace's
+    //     role_templates (or code defaults).
+    let current_user_capabilities
+    if (auth.isOrgAdmin) {
+      current_user_capabilities = resolveCapabilities('owner', workspace)
+    } else if (!current_user_tier) {
+      current_user_capabilities = auth.role === 'admin'
+        ? resolveCapabilities('owner', workspace)
+        : resolveCapabilities('clinician', workspace)
+    } else {
+      current_user_capabilities = resolveCapabilities(current_user_tier, workspace)
+    }
 
     return res.status(200).json({
       ...workspace,
@@ -325,6 +337,12 @@ async function handler(req, res) {
     if (!auth.ok) {
       const status = auth.reason === 'forbidden' ? 403 : 401
       return res.status(status).json({ error: auth.reason })
+    }
+
+    // Phase 4 PR 3: capability gate on settings edits.
+    const capAuth = await requireCapability(req, workspace, [CAP_SETTINGS_EDIT])
+    if (!capAuth.ok) {
+      return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
     }
 
     const body = req.body || {}
