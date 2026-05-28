@@ -158,6 +158,7 @@ export default function PackageCard({ pkg, clinicianName, onApprove, onSkip }) {
             variant="outline"
             className="flex-1 text-xs h-8"
             disabled
+            title="Edit caption and clip — coming soon"
           >
             Edit
           </Button>
