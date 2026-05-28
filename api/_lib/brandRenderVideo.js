@@ -26,14 +26,11 @@ import { randomUUID } from 'node:crypto'
 import ffmpegPath from 'ffmpeg-static'
 import sharp from 'sharp'
 import { buildBrandOverlaySvg, resolveBrandColors } from './brandRender.js'
-import { getBrandFont } from './brandFonts.js'
+import { getBrandFont, ensureFontconfig } from './brandFonts.js'
 import { transcribeToSrt } from './whisper.js'
 
 // Max source video size we'll download. ZV-1F 4K clips can be large; cap at 500MB.
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024
-
-// Threshold above which we extract audio before sending to Whisper (25MB API limit).
-const WHISPER_AUDIO_EXTRACT_THRESHOLD = 20 * 1024 * 1024
 
 /**
  * Channel specs for video rendering.
@@ -92,6 +89,9 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
+  // Initialise fontconfig before any Sharp SVG work. No-op after first call.
+  await ensureFontconfig()
+
   const id = randomUUID()
   const tmpInput   = `/tmp/vid-in-${id}.mp4`
   const tmpAudio   = `/tmp/vid-audio-${id}.mp3`
@@ -115,26 +115,22 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     }
 
     // ── 2. Whisper transcription (best-effort) ───────────────────────────────
+    // ALWAYS extract audio to MP3 first — sidesteps the Whisper "Invalid file format"
+    // error we saw in prod 2026-05-27 when sending MP4 directly. MP3 is well-tested,
+    // smaller to upload, and works for any input size.
     let hadSubtitles = false
     try {
-      let transcribeSource = tmpInput
+      await runFfmpeg([
+        '-i', tmpInput,
+        '-vn',                          // no video
+        '-acodec', 'libmp3lame',
+        '-ar', '16000',                 // 16kHz — Whisper-optimal sample rate
+        '-ac', '1',                     // mono
+        '-b:a', '32k',
+        '-y', tmpAudio,
+      ])
 
-      // If the video is larger than the Whisper limit, extract audio to MP3 first.
-      // libmp3lame at 32kbps mono 16kHz: a 5-min 100MB video → ~1MB audio.
-      if (actualSize > WHISPER_AUDIO_EXTRACT_THRESHOLD) {
-        await runFfmpeg([
-          '-i', tmpInput,
-          '-vn',                          // no video
-          '-acodec', 'libmp3lame',
-          '-ar', '16000',                 // 16kHz — Whisper-optimal sample rate
-          '-ac', '1',                     // mono
-          '-b:a', '32k',
-          '-y', tmpAudio,
-        ])
-        transcribeSource = tmpAudio
-      }
-
-      const srt = await transcribeToSrt(transcribeSource)
+      const srt = await transcribeToSrt(tmpAudio)
       if (srt && srt.trim()) {
         await writeFileP(tmpSrt, srt, 'utf8')
         hadSubtitles = true

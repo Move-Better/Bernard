@@ -248,6 +248,7 @@ export default async function handler(req, res) {
         errors.push({ channel, error: `unsupported_kind: ${clip.kind}` })
       }
     } catch (e) {
+      console.error(`[generate-package] channel ${channel} failed:`, e?.stack || e?.message || e)
       errors.push({ channel, error: e?.message || 'unknown' })
     }
   }

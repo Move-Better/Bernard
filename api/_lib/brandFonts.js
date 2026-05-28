@@ -15,12 +15,55 @@
 // invocations within the same warm Vercel function instance. Cold starts
 // re-fetch (one ~50ms hit then cached for the container's lifetime).
 
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FALLBACK_FONT_PATH = join(__dirname, 'fonts', 'Inter-Bold.ttf')
+const FONTS_DIR = join(__dirname, 'fonts')
+
+// ── Fontconfig initialisation ───────────────────────────────────────────────
+// librsvg (used by Sharp for SVG rendering) tries to initialise fontconfig on
+// first use. In Vercel Node functions there's no /etc/fonts/fonts.conf, so it
+// emits "Fontconfig error: Cannot load default config file" to stderr — noisy
+// at best, and on cold starts has been observed to cascade into harder failures.
+//
+// Fix: write a minimal fonts.conf to /tmp pointing at our bundled fonts dir,
+// and point FONTCONFIG_FILE / FONTCONFIG_PATH at it BEFORE Sharp/librsvg uses
+// it. Callers should `await ensureFontconfig()` before invoking renderPhoto/
+// VideoChannel — both render fns do this themselves.
+
+const MINIMAL_FONTS_CONF = `<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>${FONTS_DIR}</dir>
+  <cachedir>/tmp/fontconfig-cache</cachedir>
+  <config></config>
+</fontconfig>
+`
+
+let fontconfigReady = false
+export async function ensureFontconfig() {
+  if (fontconfigReady) return
+  try {
+    const confPath = '/tmp/fonts.conf'
+    if (!existsSync(confPath)) {
+      await writeFile(confPath, MINIMAL_FONTS_CONF, 'utf8')
+    }
+    if (!existsSync('/tmp/fontconfig-cache')) {
+      await mkdir('/tmp/fontconfig-cache', { recursive: true })
+    }
+    process.env.FONTCONFIG_FILE = confPath
+    process.env.FONTCONFIG_PATH = '/tmp'
+    fontconfigReady = true
+  } catch (e) {
+    // Non-fatal: librsvg will still emit the warning but renders work via @font-face
+    console.warn('[brandFonts] fontconfig setup failed (non-fatal):', e.message)
+    fontconfigReady = true  // don't retry on every call
+  }
+}
 
 // In-memory font cache: family name → TTF Buffer
 const FONT_CACHE = new Map()
