@@ -381,11 +381,19 @@ function SignedInPrompt({ onContinue }) {
         if (!r.ok) throw new Error(`status ${r.status}`)
         const data = await r.json()
         if (cancelled) return
-        setState({
-          status: 'done',
-          workspaces: data.workspaces || [],
-          suggested: data.suggested || [],
-        })
+        const workspaces = data.workspaces || []
+        const suggested = data.suggested || []
+        // Invited-user happy path: exactly one workspace membership means we
+        // know where they belong. Skip the click-through entirely — the user
+        // just accepted an org invite and shouldn't have to think about
+        // "your workspace" pickers or "create another workspace" buttons that
+        // historically lured them into the new-tenant wizard.
+        if (workspaces.length === 1) {
+          setState({ status: 'redirecting', workspaces, suggested })
+          window.location.href = workspaces[0].url
+          return
+        }
+        setState({ status: 'done', workspaces, suggested })
       } catch {
         // On error, fall through to the wizard — better to let them create a
         // new workspace than to strand them.
@@ -400,6 +408,16 @@ function SignedInPrompt({ onContinue }) {
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Checking your workspaces…
+      </div>
+    )
+  }
+
+  if (state.status === 'redirecting') {
+    const ws = state.workspaces[0]
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Taking you to {ws?.display_name || ws?.slug || 'your workspace'}…
       </div>
     )
   }
