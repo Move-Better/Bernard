@@ -601,7 +601,14 @@ export function getBlogPostSystemPrompt(workspace, clinicianName, condition, ton
   const internalLinksBlock = workspace.internal_links_markdown
     ? `\nINTERNAL LINKS — available if a natural opportunity arises. Use descriptive anchor text (never "click here"). Don't force them; never bend the writing to hit a link count:\n\n${workspace.internal_links_markdown}\n`
     : ''
-  const externalLinksLine = `\nEXTERNAL LINKS — only if they genuinely support a specific claim ${clinicianName} made (Mayo Clinic, NIH/PubMed, Cleveland Clinic, ACA). Anchor text must be descriptive. Default to no external links rather than forcing one.\n`
+  const externalLinksLine = `\nEXTERNAL LINKS — research citations serve readers and back up ${clinicianName}'s credibility. Treat ${clinicianName}'s clinical positions as hypotheses and look for the research that supports them:
+- A clinician's treatment philosophy is often ahead of mainstream practice but grounded in existing literature. "We believe most low back pain is not structural" is not a personal opinion — it has a research base. Find it and cite it.
+- For clinical claims, treatment approaches, and positions that challenge conventional wisdom, search for supporting research (NIH/PubMed, Cochrane, Mayo Clinic, Cleveland Clinic, ACA, professional society guidelines) and link the best source.
+- ${clinicianName} explicitly naming a study or protocol → always find and link it.
+- Aim for 1–3 external citations per post where the content warrants them. Don't count-fill — only link what genuinely supports what ${clinicianName} said.
+- Pure personal anecdote (a patient story, a personal experience narrative) with no research parallel → skip the external link.
+- Never manufacture a citation. If no real source exists for a claim, leave it unsupported rather than linking something tangential.
+- Anchor text must be descriptive (e.g., "research on nonspecific low back pain and imaging overuse" — never "click here" or "this study").\n`
   const bookingLine = workspace.booking_url
     ? `\nIf the piece naturally arrives at "what should the reader do next," the booking destination is ${workspace.booking_url}. No prescribed wording — let ${clinicianName}'s voice carry the close.\n`
     : ''
