@@ -20,7 +20,7 @@
 
 import sharp from 'sharp'
 import { Readable } from 'node:stream'
-import { getBrandFont } from './brandFonts.js'
+import { getBrandFont, ensureFontconfig } from './brandFonts.js'
 
 // Channel specs. Width × height in pixels. Add new channels here.
 export const CHANNEL_SPECS = {
@@ -181,6 +181,10 @@ export async function renderPhotoChannel({ photoUrl, channel, captionText, works
   if (!spec) {
     throw new Error(`Unknown channel: ${channel}`)
   }
+
+  // Initialise fontconfig before any Sharp SVG work (writes /tmp/fonts.conf,
+  // sets FONTCONFIG_FILE env var). No-op after first call.
+  await ensureFontconfig()
 
   // Fetch source photo into memory. Cap at 50MB to avoid surprise OOMs.
   const response = await fetch(photoUrl)
