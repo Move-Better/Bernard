@@ -28,7 +28,6 @@ import VoiceFreshnessCard from '@/components/VoiceFreshnessCard'
 import VoicePlaybackCard from '@/components/VoicePlaybackCard'
 import VoiceCloneCard from '@/components/VoiceCloneCard'
 import { DisplayNameCard } from '@/components/DisplayNameCard'
-import { ClinicianCampaignCard } from '@/components/ClinicianCampaignCard'
 import { formatDate, formatRelativeDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -548,10 +547,6 @@ export default function ClinicianProfile() {
           {(isMyClinicianProfile || role === 'admin') && (
             <CaptureCompanionCard clinician={clinician} />
           )}
-          <ClinicianCampaignCard
-            clinician={clinician}
-            canEdit={isMyClinicianProfile || role === 'admin'}
-          />
           {role === 'admin' && <ClinicianRecipeCard clinician={clinician} />}
         </div>
       )}
