@@ -218,8 +218,8 @@ export default function StoryDetail() {
       navigate('/stories')
     } catch (e) {
       // The DELETE handler returns 409 if the interview has published content
-      // items — surface that inline so the user understands why.
-      setDeleteError(e?.message || 'Delete failed')
+      // items — map machine codes to plain English instead of leaking them.
+      setDeleteError(friendlyDeleteError(e))
     }
   }
 
