@@ -12,7 +12,7 @@ import { extractProvenanceBlock } from '@/lib/provenance'
 import { useClinician, useInterview, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { streamMessage } from '@/lib/claude'
-import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getMinimalEditSystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
+import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
 import { resolveAudienceSlot, resolveStoryTypeSlot } from '@/lib/interviewOptionsCatalog'
 import { detectEmotionalState, getEmotionPromptInjection } from '@/lib/emotionDetection'
 import { getInitials } from '@/lib/utils'
@@ -1048,13 +1048,44 @@ export default function InterviewSession() {
   const blogStreamingTextRef = useRef('')
   const [blogStreamingTokens, setBlogStreamingTokens] = useState(0)
 
+  // "What you covered" recap — a fast 3-line summary generated in parallel
+  // with the blog draft. It finishes in a few seconds (the blog takes 60-120s),
+  // so it fills the wait on the generation card with an immediate "the AI heard
+  // me" moment, and is persisted into outputs.coveredSummary so it also shows on
+  // Story Detail. Runs Haiku for speed; failure is non-fatal (blog is the
+  // primary deliverable). Returns the recap string (or '' on failure).
+  const [coveredSummary, setCoveredSummary] = useState('')
+  async function generateCoveredSummary() {
+    try {
+      const apiMessages = messages.map((m) => ({ role: m.role, content: m.content }))
+      const sys = getCoveredSummarySystemPrompt(clinician.name, interview.topic)
+      const seed = [...apiMessages, { role: 'user', content: 'Summarize what I covered, in 3 lines.' }]
+      let acc = ''
+      for await (const delta of streamMessage(seed, sys, { model: 'claude-haiku-4-5', maxOutputTokens: 300 })) {
+        acc += delta
+        setCoveredSummary(acc)
+      }
+      const finalSummary = acc.trim()
+      setCoveredSummary(finalSummary)
+      return finalSummary
+    } catch (e) {
+      console.warn('[interview] covered-summary generation failed (non-fatal):', e?.message)
+      return ''
+    }
+  }
+
   async function handleGenerateContent() {
     setIsGenerating(true)
     setError('')
     blogStreamingTextRef.current = ''
     setBlogStreamingTokens(0)
+    setCoveredSummary('')
     ttsRef.current?.cancel()
     window.speechSynthesis?.cancel()
+    // Kick off the "what you covered" recap in parallel — it lands in a few
+    // seconds and fills the generation wait. We await its promise just before
+    // the outputs PATCH (by then it's long done) so it persists with the blog.
+    const summaryPromise = generateCoveredSummary()
     // Kick off the transcript cleanup pass in parallel with the blog draft.
     // It writes cleaned_messages on the interview row independently, so
     // failure is non-fatal — the editor falls back to the raw transcript on
@@ -1138,7 +1169,12 @@ export default function InterviewSession() {
       const { content: blogPost, provenanceJson } = extractProvenanceBlock(blogStreamingTextRef.current)
       if (!blogPost.trim()) throw new Error('No content returned from generation')
 
+      // The recap started in parallel at the top; by now (after a 60-120s blog
+      // stream) it's long resolved. Await defensively so it persists with the
+      // blog. Non-fatal: '' if it failed.
+      const recap = await summaryPromise.catch(() => '')
       const outputs = { blogPost, generatedAt: new Date().toISOString() }
+      if (recap) outputs.coveredSummary = recap
       // Clear session_state: completed interviews don't need resume capability.
       await updateInterview(interviewId, { outputs, status: 'completed', session_state: null, paused_at: null })
       // The PATCH above triggers a server-side cascade in api/db/interviews.js
@@ -1541,6 +1577,16 @@ export default function InterviewSession() {
                   ? 'Removing filler words while preserving your exact phrasing. We\'ll open the story view when it\'s ready.'
                   : 'Turning your interview into a full blog post. We\'ll open the story view when it\'s ready — social, video, and marketing content will generate on demand from there.'}
               </p>
+              {coveredSummary && (
+                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3.5 py-3">
+                  <p className="text-2xs font-bold uppercase tracking-widest text-emerald-700 mb-1.5">
+                    What you covered
+                  </p>
+                  <div className="text-sm text-emerald-900/90 leading-relaxed whitespace-pre-line">
+                    {coveredSummary}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -711,6 +711,23 @@ ${transcript}
 Return only the handout body in Markdown. No preamble, no explanation, no "Here is the handout:" lead-in. Start with the # heading.`
 }
 
+// Post-interview "what you covered" recap. Runs the moment an interview wraps,
+// in parallel with the blog generation, to give the clinician an immediate
+// "the AI actually heard me" moment while the longer draft is still writing.
+// Deliberately tiny: 3 short second-person lines grounded ONLY in what was
+// said. No new claims, no marketing tone — this is a mirror, not a pitch.
+export function getCoveredSummarySystemPrompt(clinicianName, topic = '') {
+  const who = clinicianName || 'the clinician'
+  return [
+    `You are summarizing an interview you just conducted with ${who}.`,
+    topic ? `The interview was about: ${topic}.` : '',
+    'Write a short recap of what THEY covered, addressed directly to them ("You walked through…", "You shared…").',
+    'Exactly 3 lines. Each line one specific thing they actually said — a point, a story, an example, or an insight from the transcript.',
+    'Ground every line in the transcript. Do NOT invent, generalize, or add anything they did not say.',
+    'Warm and plain. No marketing language, no hype, no preamble, no closing line. Output only the 3 lines, each starting with "• ".',
+  ].filter(Boolean).join('\n')
+}
+
 export function getMinimalEditSystemPrompt(clinicianName, voiceMode = 'practice', voiceNotes = '', voicePhrases = []) {
   return `You are a transcript editor. Your only job is to turn a spoken interview transcript into clean, readable prose without adding anything that wasn't in the speaker's own words.
 
