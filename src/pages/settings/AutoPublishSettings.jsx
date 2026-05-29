@@ -22,7 +22,7 @@ const CHANNELS = [
   { id: 'blog',      label: 'Blog (website)',         icon: FileText,  status: 'soon' },
 ]
 
-const DEFAULT_VOICE_FIDELITY_MIN = 70
+const DEFAULT_VOICE_FIDELITY_MIN = 7
 const DEFAULT_SIMILARITY_MIN     = 0.65
 
 function channelDefaults(existing = {}) {
@@ -169,11 +169,11 @@ export default function AutoPublishSettings() {
                       Min voice fidelity score
                     </Label>
                     <span className="text-xs font-mono tabular-nums">
-                      {Math.round(ch.voice_fidelity_min)} / 100
+                      {ch.voice_fidelity_min.toFixed(1)} / 10
                     </span>
                   </div>
                   <input
-                    type="range" min={50} max={100} step={1}
+                    type="range" min={5} max={10} step={0.1}
                     value={ch.voice_fidelity_min}
                     onChange={(e) => setChannel(id, { voice_fidelity_min: parseFloat(e.target.value) })}
                     className="w-full h-2 rounded-full accent-primary cursor-pointer"
@@ -182,8 +182,8 @@ export default function AutoPublishSettings() {
                     <span>Permissive</span><span>Default</span><span>Strict</span>
                   </div>
                   <p className="text-2xs text-muted-foreground">
-                    Default 70. Packages below this score are held for manual review.
-                    Rubric: 90–100 = on-voice, 70–89 = mostly faithful, 50–69 = noticeable drift.
+                    Default 7. Packages below this score are held for manual review.
+                    Rubric: 9–10 = on-voice, 7–8.9 = mostly faithful, 5–6.9 = noticeable drift.
                   </p>
                 </div>
 
