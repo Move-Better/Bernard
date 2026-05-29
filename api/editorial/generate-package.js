@@ -34,16 +34,15 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { generateText } from 'ai'
-import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { searchClips } from '../_lib/clipSearch.js'
 import { fetchFusedRagContext } from '../_lib/ragFusion.js'
-import { renderPhotoChannel, CHANNEL_SPECS } from '../_lib/brandRender.js'
-import { renderVideoChannel, VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
-import { scoreCaptionFidelity } from '../_lib/captionFidelity.js'
+import { CHANNEL_SPECS } from '../_lib/brandRender.js'
+import { VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
+import { renderAndPatchPackage } from '../_lib/renderPackageChannels.js'
 import { generateSyntheticBroll, runwayConfigured } from '../_lib/syntheticBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -344,7 +343,6 @@ export default async function handler(req, res) {
 
   const clip = clips[0]
   const isVideo = clip.kind === 'video'
-  const isPhoto = clip.kind === 'photo'
 
   // Resolve channels
   const specMap = isVideo ? VIDEO_CHANNEL_SPECS : CHANNEL_SPECS
@@ -418,88 +416,31 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'db_error', detail: e.message })
   }
 
-  // --- 5. Render each channel ───────────────────────────────────────────────
-  const renders = []
-  const errors = []
+  // --- 5. Render off the request path ──────────────────────────────────────
+  // The row is already status='generating'. Render in the background instead of
+  // awaiting it inside the request: a large source (downscaled on ingest) can
+  // take minutes, which raced both the 300s function ceiling and the caller's
+  // short-lived Clerk token (→ "invalid-token"). The Slate polls the row until
+  // status flips to complete/failed. Mirrors the b-roll path's waitUntil + 202.
+  waitUntil(
+    renderAndPatchPackage({
+      workspace:     ws,
+      packageId,
+      sourceUrl:     clip.blobUrl,
+      sourceAssetId: clip.assetId,
+      kind:          isVideo ? 'video' : 'photo',
+      channels,
+      captionText,
+      clinicianName,
+      filename:      clip.filename,
+      topic,
+      clinicianId:   lookupClinicianId || null,
+    })
+  )
 
-  for (const channel of channels) {
-    try {
-      const safeFilename = (clip.filename || 'render')
-        .replace(/[^\w.-]/g, '_')
-        .replace(/\.\w+$/, '')
-
-      if (isPhoto) {
-        const { buffer, width, height } = await renderPhotoChannel({
-          photoUrl: clip.blobUrl,
-          channel,
-          captionText,
-          workspace: ws,
-          clinicianName,
-        })
-        const pathname = `media/renders/${ws.slug}/${clip.assetId}/${channel}-${safeFilename}.jpg`
-        const blob = await blobPut(pathname, buffer, {
-          access: 'public', contentType: 'image/jpeg', addRandomSuffix: false, allowOverwrite: true,
-        })
-        renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length })
-
-      } else if (isVideo) {
-        const { buffer, width, height, hadSubtitles } = await renderVideoChannel({
-          videoUrl: clip.blobUrl,
-          channel,
-          captionText,
-          workspace: ws,
-          clinicianName,
-        })
-        const pathname = `media/renders/${ws.slug}/${clip.assetId}/${channel}-${safeFilename}.mp4`
-        const blob = await blobPut(pathname, buffer, {
-          access: 'public', contentType: 'video/mp4', addRandomSuffix: false, allowOverwrite: true,
-        })
-        renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length, hadSubtitles })
-
-      } else {
-        errors.push({ channel, error: `unsupported_kind: ${clip.kind}` })
-      }
-    } catch (e) {
-      console.error(`[generate-package] channel ${channel} failed:`, e?.stack || e?.message || e)
-      errors.push({ channel, error: e?.message || 'unknown' })
-    }
-  }
-
-  // --- 6. Update package row with results ──────────────────────────────────
-  const finalStatus = renders.length > 0 ? 'complete' : 'failed'
-  const errorMessage = errors.length ? errors.map((e) => `${e.channel}: ${e.error}`).join('; ') : null
-
-  await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      renders,
-      status: finalStatus,
-      error_message: errorMessage,
-    }),
-  }).catch((e) => {
-    console.error('[generate-package] patch failed:', e.message)
-  })
-
-  // Background voice-fidelity scoring — fire-and-forget via waitUntil.
-  if (finalStatus === 'complete') {
-    waitUntil(
-      scoreCaptionFidelity({
-        packageId,
-        workspaceId:   ws.id,
-        workspaceName: ws.display_name,
-        clinicianId:   lookupClinicianId || null,
-        topic,
-        captionText,
-      }).catch((e) => {
-        console.error('[generate-package] caption fidelity scoring failed:', e?.message || e)
-      })
-    )
-  }
-
-  const elapsedMs = Date.now() - started
-
-  return res.status(renders.length > 0 ? 200 : 500).json({
+  return res.status(202).json({
     packageId,
+    status: 'generating',
     topic,
     captionText,
     clinicianName,
@@ -514,8 +455,5 @@ export default async function handler(req, res) {
       aiTags:          clip.aiTags,
     },
     channels,
-    renders,
-    errors: errors.length ? errors : undefined,
-    elapsedMs,
   })
 }
