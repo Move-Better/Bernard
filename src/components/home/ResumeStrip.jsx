@@ -64,7 +64,7 @@ function ResumeCard({ interview, currentUserId, clinicians }) {
   const isOwner = interview.owner_id === currentUserId
   const href = isOwner
     ? `/interview/${interview.staffId}/${interview.id}`
-    : `/clinician/${interview.staffId}`
+    : `/staff/${interview.staffId}`
   // Owner attribution only renders when (a) we're not the owner and (b)
   // resolveOwnerName produced a real name (clinician.name preferred, then
   // dot-separated email; otherwise null → no suffix).

@@ -454,6 +454,15 @@ function LegacyReviewRedirect() {
   return <Navigate to={`/stories/${itemId}`} replace />
 }
 
+// Legacy redirect: /clinician/:staffId → /staff/:staffId. The roster entity was
+// renamed clinician→staff (2026-05-29); preserve old bookmarked profile links
+// (and any ?tab=voice query) so in-flight links don't 404.
+function LegacyClinicianRedirect() {
+  const { staffId } = useParams()
+  const { search } = useLocation()
+  return <Navigate to={`/staff/${staffId}${search}`} replace />
+}
+
 // Phase 4: users without interview.start capability (producers in the default
 // template, viewers, etc.) land on /slate as their home. Users with the
 // capability see Home as before. Wrapped at the / route so the redirect
@@ -506,7 +515,8 @@ function AppRoutes() {
             {/* Legacy paths — both now redirect to /stories/:interviewId */}
             <Route path="/interview/:staffId/:interviewId/output" element={<LegacyOutputRedirect />} />
             <Route path="/output/:staffId/:interviewId" element={<LegacyOutputRedirect />} />
-            <Route path="/clinician/:staffId" element={guarded(<StaffProfile />)} />
+            <Route path="/staff/:staffId" element={guarded(<StaffProfile />)} />
+            <Route path="/clinician/:staffId" element={<LegacyClinicianRedirect />} />
             <Route path="/stories" element={guarded(<Stories />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
             <Route path="/synthesis" element={guarded(<Synthesis />)} />

@@ -256,7 +256,7 @@ export default function VoiceTraining() {
       saveStash(staffId, null)
       setPendingStash(null)
       toast.success('Voice clone created — content can now use your voice.')
-      navigate(`/clinician/${staffId}?tab=voice`)
+      navigate(`/staff/${staffId}?tab=voice`)
     } catch (e) {
       setError(e?.message || 'Voice cloning failed.')
       setState('recorded')
@@ -295,7 +295,7 @@ export default function VoiceTraining() {
       saveStash(staffId, null)
       setPendingStash(null)
       toast.success('Voice clone created — content can now use your voice.')
-      navigate(`/clinician/${staffId}?tab=voice`)
+      navigate(`/staff/${staffId}?tab=voice`)
     } catch (e) {
       setError(e?.message || 'Resume failed.')
     } finally {
@@ -318,7 +318,7 @@ export default function VoiceTraining() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 space-y-6">
       <Link
-        to={staffId ? `/clinician/${staffId}?tab=voice` : '/'}
+        to={staffId ? `/staff/${staffId}?tab=voice` : '/'}
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile

@@ -301,7 +301,7 @@ export default function StoryDetail() {
             {story.staff_name && (
               story.staff_id ? (
                 <Link
-                  to={`/clinician/${story.staff_id}`}
+                  to={`/staff/${story.staff_id}`}
                   className="inline-flex text-muted-foreground hover:text-foreground"
                 >
                   <StaffChip

@@ -178,7 +178,7 @@ export default function Layout({ children }) {
             )}
             {selfStaffId && hasCapability(CAP_INTERVIEW_START) && (
               <DrawerClose asChild>
-                <Link to={`/clinician/${selfStaffId}`} className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
+                <Link to={`/staff/${selfStaffId}`} className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
                   <UserCircle className="h-4 w-4" /> My staff profile
                 </Link>
               </DrawerClose>
@@ -370,7 +370,7 @@ function SettingsMenu({ role, isEditor, selfStaffId }) {
           )}
           {role === 'admin' && <div className="border-t border-border my-1" />}
           {selfStaffId && (
-            <Link to={`/clinician/${selfStaffId}`} onClick={() => setOpen(false)} className={itemClass}>
+            <Link to={`/staff/${selfStaffId}`} onClick={() => setOpen(false)} className={itemClass}>
               <UserCircle className="h-4 w-4 shrink-0" /> My staff profile
             </Link>
           )}

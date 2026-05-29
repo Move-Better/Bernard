@@ -182,7 +182,7 @@ export default function InterviewDefaultsPage() {
 //
 // Read-only directory of clinicians with a "voice notes" badge. The full
 // edit surface for a clinician's voice notes lives on their profile at
-// /clinician/:id — this card is a fast scanner + nav shortcut.
+// /staff/:id — this card is a fast scanner + nav shortcut.
 
 function VoiceMemoryRoster({ interviewerName }) {
   const { data: clinicians = [], isLoading } = useClinicians()
@@ -215,7 +215,7 @@ function VoiceMemoryRoster({ interviewerName }) {
             return (
               <li key={c.id}>
                 <Link
-                  to={`/clinician/${c.id}`}
+                  to={`/staff/${c.id}`}
                   className="flex items-center gap-2.5 py-1 group"
                 >
                   <StaffChip id={c.id} name={c.name} size="sm" showName nameClassName="text-xs text-indigo-800 group-hover:text-indigo-950" />

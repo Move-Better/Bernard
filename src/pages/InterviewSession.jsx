@@ -1337,7 +1337,7 @@ export default function InterviewSession() {
       <div className="flex flex-col min-w-0 flex-1">
       <div className="flex items-center gap-3 pb-4 shrink-0">
         <Button variant="ghost" size="icon" asChild>
-          <Link to={`/clinician/${staffId}`}>
+          <Link to={`/staff/${staffId}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
