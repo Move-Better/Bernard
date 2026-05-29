@@ -358,14 +358,14 @@ function AuthScreen({ capacity, onSignedIn }) {
           <button
             type="button"
             onClick={() => setMode('signup')}
-            className={`px-3 py-1.5 rounded-md ${mode === 'signup' ? 'bg-orange-600 text-white' : 'bg-muted text-muted-foreground'}`}
+            className={`px-3 py-1.5 rounded-md ${mode === 'signup' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
           >
             Sign up
           </button>
           <button
             type="button"
             onClick={() => setMode('signin')}
-            className={`px-3 py-1.5 rounded-md ${mode === 'signin' ? 'bg-orange-600 text-white' : 'bg-muted text-muted-foreground'}`}
+            className={`px-3 py-1.5 rounded-md ${mode === 'signin' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
           >
             I already have an account
           </button>
@@ -756,6 +756,11 @@ const VOICE_PLACEHOLDERS = {
 
 function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
   const topics = scanState?.recent_topics || []
+  // Require at least "what you do" — it drives every generated post and the
+  // onboarding interview context. audience_short and brand_voice are strongly
+  // encouraged but skippable (the interview refines them). Without this guard
+  // a tenant can click straight through and get blank-context content.
+  const canContinue = form.clinic_context.trim().length >= 10
   return (
     <Card
       title="Brand voice"
@@ -763,9 +768,9 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
     >
       {/* Voice-fidelity promise — sets the right expectation before the user
           touches any fields. Everything generated traces back to these inputs. */}
-      <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 flex items-start gap-3 -mt-1">
+      <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 flex items-start gap-3 -mt-1">
         <span className="text-base mt-0.5 shrink-0">🎙</span>
-        <p className="text-xs text-indigo-800 leading-relaxed">
+        <p className="text-xs text-orange-900 leading-relaxed">
           <span className="font-semibold">Voice fidelity is the promise.</span> Everything NarrateRx generates traces back to what your clinicians actually said. These voice inputs make sure every draft sounds like your clinic — not generic AI content. When you review a draft, you&apos;ll see exactly which phrases came from the interview and which the AI filled in.
         </p>
       </div>
@@ -815,9 +820,14 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
           </p>
         </div>
       )}
+      {!canContinue && form.clinic_context.trim().length > 0 && (
+        <p className="text-2xs text-destructive">
+          Add a bit more detail about what you do (at least 10 characters).
+        </p>
+      )}
       <div className="flex items-center justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>← Back</Button>
-        <Button onClick={onContinue}>
+        <Button onClick={onContinue} disabled={!canContinue}>
           Continue <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
@@ -1173,7 +1183,7 @@ function LaunchingScreen({ redirectUrl }) {
       >
         <div className="text-xs text-destructive flex items-center gap-1">
           <AlertCircle className="h-3.5 w-3.5" />
-          Generation is taking longer than expected — try again or check your connection.
+          Subdomain activation is taking longer than expected — try again or check your connection.
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button
@@ -1198,7 +1208,7 @@ function LaunchingScreen({ redirectUrl }) {
   return (
     <Card
       title="Setting up your workspace…"
-      subtitle="Provisioning your subdomain, creating your org, and wiring up your voice context. New subdomains take about 10–30 seconds for the SSL certificate to issue."
+      subtitle="Provisioning your subdomain and wiring up your voice context. This usually takes 5–15 seconds."
     >
       <div className="flex items-center gap-3 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-orange-600" />

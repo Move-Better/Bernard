@@ -417,10 +417,20 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString(),
     }),
   })
-  // Do NOT revertClaim() here — workspace data is already written correctly.
-  // Leaving the interview at 'synthesizing' blocks retry (allowed-statuses
-  // gate requires 'completed'), preventing pain_points from doubling.
-  if (!markR.ok) { return dbErr(res, markR, 'Interview update failed') }
+  if (!markR.ok) {
+    // Do NOT revert here. The workspace write above already succeeded —
+    // brand_voice, patient_context, and topic_suggestions are persisted.
+    // Reverting to 'completed' would enable a retry that re-runs Claude and
+    // re-merges potentially different AI output into the workspace (pain points
+    // are Set-deduped by exact string, but model non-determinism means a second
+    // run can produce slightly different phrasing and create duplicates).
+    //
+    // Leaving the interview in 'synthesizing' is the safer failure mode: an
+    // admin can manually flip it to 'synthesized' in the DB. The workspace is
+    // already correctly updated.
+    console.error(`[onboarding/synthesize] markR failed after workspace write — interview ${id} stuck in synthesizing. Manual DB fix: UPDATE workspace_onboarding_interviews SET status='synthesized' WHERE id='${id}'`)
+    return dbErr(res, markR, 'Workspace context saved but interview status update failed — your voice context is ready. Contact support if this message persists.')
+  }
 
   return ok(res, {
     ok: true,
