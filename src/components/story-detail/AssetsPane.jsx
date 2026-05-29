@@ -34,6 +34,7 @@ import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { extractProvenanceBlock } from '@/lib/provenance'
 import { toast, runWithToast } from '@/lib/toast'
 import BufferMetricsRow from './BufferMetricsRow'
+import WinnerToggle from './WinnerToggle'
 import ContentPlanPanel from '@/components/ContentPlanPanel'
 import MediaAttachmentPanel from './MediaAttachmentPanel'
 import SlideEditor from './SlideEditor'
@@ -1885,6 +1886,10 @@ export default function AssetsPane({
             {active.status === 'published' && active.buffer_update_id && (
               <BufferMetricsRow contentItemId={active.id} />
             )}
+
+            {/* V5 engagement loop: human "this worked" signal on published pieces.
+                Feeds the Slate's Coverage winners + proven-topic resurfacing. */}
+            {active.status === 'published' && <WinnerToggle piece={active} />}
 
             <ApprovalPanel piece={active} />
           </div>

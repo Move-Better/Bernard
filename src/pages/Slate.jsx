@@ -63,8 +63,11 @@ function triageReasonFor(pkg) {
  * Pick topic gaps: suggestions not yet covered by a today package.
  * Returns topic strings, up to `count`.
  */
-function pickTopicGaps(workspace, todayTopics, count) {
-  const ranked = getSuggestedTopics(workspace, [], null)
+function pickTopicGaps(workspace, todayTopics, count, provenTopics = []) {
+  // V5: provenTopics (topics whose past published content was flagged a winner)
+  // float up within their gap/priority tier so the daily slate resurfaces
+  // formats the audience has rewarded. Empty array = neutral ranking.
+  const ranked = getSuggestedTopics(workspace, [], null, provenTopics)
   const used = new Set(todayTopics.map((t) => t.toLowerCase()))
   const gaps = ranked.filter((s) => !used.has(s.topic.toLowerCase()))
   return gaps.slice(0, count).map((s) => s.topic)
@@ -79,6 +82,22 @@ export default function Slate() {
   const clinicianMap = useMemo(
     () => Object.fromEntries(clinicians.map((c) => [c.id, c.name])),
     [clinicians]
+  )
+
+  // V5 engagement loop: pull the same coverage rollup the Coverage tab uses so
+  // the daily generator can bias toward "proven" topics — those whose past
+  // published content was flagged a winner (performed_well). Shares the query
+  // cache with CoveragePanel via the identical key. Failure is non-fatal: an
+  // empty proven list just yields neutral topic ranking.
+  const { data: coverage } = useQuery({
+    queryKey: ['editorial-coverage'],
+    queryFn: () => apiFetch('/api/editorial/coverage'),
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  })
+  const provenTopics = useMemo(
+    () => (coverage?.topics || []).filter((t) => t.winner_count > 0).map((t) => t.topic),
+    [coverage]
   )
 
   const [view, setView] = useState('today')  // 'today' | 'triage' | 'consent' | 'qc' | 'coverage'
@@ -202,7 +221,7 @@ export default function Slate() {
     // campaigns are active).
     const activeCampaigns = Array.isArray(ws?.active_campaigns) ? ws.active_campaigns : []
     const slotAssignments = allocateSlots(activeCampaigns, needed)
-    const fallbackTopics = pickTopicGaps(ws, todayTopics, needed)
+    const fallbackTopics = pickTopicGaps(ws, todayTopics, needed, provenTopics)
 
     // Build the per-slot generation plan. For campaign slots, the topic is
     // the campaign's theme_notes (or name as fallback). For non-campaign
