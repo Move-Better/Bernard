@@ -216,7 +216,29 @@ async function processWorkspace(ws, summary) {
       continue
     }
 
+    // Atomically claim the package before dispatching. Vercel cron runs can
+    // overlap if a previous run hangs (e.g. slow Buffer API), and two runs
+    // reading the same auto_published_at=is.null package would each dispatch —
+    // double-posting to the customer's Google Business Profile. The PATCH is
+    // filtered on auto_published_at=is.null, so only one run wins the claim;
+    // a losing run gets 0 rows back and skips. The claim is released below if
+    // nothing actually dispatches, so a transient failure retries next run.
+    const claimRes = await sb(
+      `story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}&auto_published_at=is.null`,
+      {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ auto_published_at: now }),
+      }
+    )
+    const claimed = claimRes.ok ? await claimRes.json().catch(() => []) : []
+    if (!Array.isArray(claimed) || claimed.length === 0) {
+      // Another concurrent run already claimed this package — skip silently.
+      continue
+    }
+
     // Dispatch each eligible channel.
+    let dispatchedAny = false
     for (const channel of result.channels) {
       if (channel === 'gbp') {
         if (gbpChannels.length === 0) {
@@ -254,7 +276,18 @@ async function processWorkspace(ws, summary) {
         }).catch((e) => console.error('[auto-publish] auto_published_at patch failed:', e?.message))
 
         dispatched.push({ id: pkg.id, channel, bufferId: dispatch.bufferId, ciId })
+        dispatchedAny = true
       }
+    }
+
+    // We claimed the package (set auto_published_at) but nothing actually
+    // dispatched — release the claim so a future run can retry it. Without this
+    // a transient Buffer failure would permanently strand the package.
+    if (!dispatchedAny) {
+      await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ auto_published_at: null }),
+      }).catch((e) => console.error('[auto-publish] claim release failed:', e?.message))
     }
   }
 
