@@ -1162,7 +1162,15 @@ export default function InterviewSession() {
       // voice_fidelity_score + voice_audit. The UI doesn't wait — Story Detail
       // shows the score/flags on next fetch once it lands.
       runVoiceAuditForInterview(interviewId, 'blog').catch((err) => {
-        console.warn('[interview] voice audit failed (non-fatal):', err?.message)
+        // 401 here means Clerk session expired mid-interview. The auto-publish
+        // gate treats voice_fidelity_score=null as "unscored — hold" so the
+        // package won't ship without a score. User can re-trigger from Story Detail.
+        const status = err?.status ?? err?.statusCode
+        if (status === 401) {
+          console.warn('[interview] voice audit skipped — session expired (401); package will hold until rescored')
+        } else {
+          console.warn('[interview] voice audit failed (non-fatal):', err?.message)
+        }
       })
       // Stop mic recording + upload audio for voice clone training.
       // Fire-and-forget — resolve() fires before the upload completes so
