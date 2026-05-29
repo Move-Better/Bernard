@@ -23,14 +23,11 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
-import { renderPhotoChannel, CHANNEL_SPECS } from '../_lib/brandRender.js'
-import { renderVideoChannel, VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
-import { scoreCaptionFidelity } from '../_lib/captionFidelity.js'
+import { renderAndPatchPackage } from '../_lib/renderPackageChannels.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -66,8 +63,6 @@ export default async function handler(req, res) {
 
   const { packageId, captionText } = req.body || {}
   if (!packageId) return res.status(400).json({ error: 'packageId_required' })
-
-  const started = Date.now()
 
   // --- Load package ---
   const pkgRes = await sb(
@@ -115,95 +110,49 @@ export default async function handler(req, res) {
     ? pkg.channels
     : (isVideo ? ['linkedin_video', 'instagram_reel', 'blog_hero_video'] : ['linkedin_feed', 'instagram_reel_still', 'blog_hero'])
 
-  const safeFilename = (asset.filename || 'render')
-    .replace(/[^\w.-]/g, '_')
-    .replace(/\.\w+$/, '')
-
-  // --- Re-render all channels ---
-  const renders = []
-  const errors = []
-
-  for (const channel of channels) {
-    try {
-      if (isVideo) {
-        if (!VIDEO_CHANNEL_SPECS[channel]) { errors.push({ channel, error: 'unknown_channel' }); continue }
-        const { buffer, width, height, hadSubtitles } = await renderVideoChannel({
-          videoUrl: asset.blob_url,
-          channel,
-          captionText: newCaption,
-          workspace: ws,
-          clinicianName,
-        })
-        const pathname = `media/renders/${ws.slug}/${pkg.source_asset_id}/${channel}-${safeFilename}.mp4`
-        const blob = await blobPut(pathname, buffer, {
-          access: 'public', contentType: 'video/mp4', addRandomSuffix: false, allowOverwrite: true,
-        })
-        renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length, hadSubtitles })
-      } else {
-        if (!CHANNEL_SPECS[channel]) { errors.push({ channel, error: 'unknown_channel' }); continue }
-        const { buffer, width, height } = await renderPhotoChannel({
-          photoUrl: asset.blob_url,
-          channel,
-          captionText: newCaption,
-          workspace: ws,
-          clinicianName,
-        })
-        const pathname = `media/renders/${ws.slug}/${pkg.source_asset_id}/${channel}-${safeFilename}.jpg`
-        const blob = await blobPut(pathname, buffer, {
-          access: 'public', contentType: 'image/jpeg', addRandomSuffix: false, allowOverwrite: true,
-        })
-        renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length })
-      }
-    } catch (e) {
-      console.error(`[rerender-package] channel ${channel} failed:`, e?.stack || e?.message || e)
-      errors.push({ channel, error: e?.message || 'unknown' })
-    }
-  }
-
-  if (renders.length === 0) {
-    return res.status(500).json({ error: 'all_channels_failed', errors })
-  }
-
-  // --- Patch package with new renders + caption ---
-  const finalStatus = renders.length > 0 ? 'complete' : 'failed'
-  const patchRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
+  // --- Mark the package as rendering, clearing any prior failure ---
+  // The Slate treats status='generating' as in-progress and keeps polling, so
+  // the card flips to "complete"/"failed" once the background render settles.
+  const claimRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      caption_text: newCaption,
-      renders,
-      status: finalStatus,
-      updated_at: new Date().toISOString(),
+      caption_text:  newCaption,
+      status:        'generating',
+      error_message: null,
+      updated_at:    new Date().toISOString(),
     }),
   })
-  if (!patchRes.ok) {
-    const text = await patchRes.text().catch(() => '')
-    console.error('[rerender-package] patch failed:', patchRes.status, text)
+  if (!claimRes.ok) {
+    const text = await claimRes.text().catch(() => '')
+    console.error('[rerender-package] claim patch failed:', claimRes.status, text)
     return res.status(500).json({ error: 'db_patch_failed', detail: text })
   }
-  const updated = await patchRes.json()
 
-  // Background re-score now that the caption text + renders have changed.
-  if (finalStatus === 'complete') {
-    waitUntil(
-      scoreCaptionFidelity({
-        packageId,
-        workspaceId:   ws.id,
-        workspaceName: ws.display_name,
-        clinicianId:   pkg.clinician_id || null,
-        topic:         pkg.topic,
-        captionText:   newCaption,
-      }).catch((e) => {
-        console.error('[rerender-package] caption fidelity scoring failed:', e?.message || e)
-      })
-    )
-  }
+  // --- Render off the request path ---
+  // A large source (downscaled on ingest) can take minutes to render; holding
+  // the HTTP request open raced the 300s function ceiling AND the caller's
+  // short-lived Clerk token (→ "invalid-token"). waitUntil keeps the function
+  // alive to finish server-side while the client gets an instant 202 and the
+  // Slate polls the row for completion.
+  waitUntil(
+    renderAndPatchPackage({
+      workspace:     ws,
+      packageId,
+      sourceUrl:     asset.blob_url,
+      sourceAssetId: pkg.source_asset_id,
+      kind:          isVideo ? 'video' : 'photo',
+      channels,
+      captionText:   newCaption,
+      clinicianName,
+      filename:      asset.filename,
+      topic:         pkg.topic,
+      clinicianId:   pkg.clinician_id || null,
+    })
+  )
 
-  return res.status(200).json({
+  return res.status(202).json({
     packageId,
+    status: 'generating',
     captionText: newCaption,
-    renders,
-    errors: errors.length ? errors : undefined,
-    elapsedMs: Date.now() - started,
-    package: updated?.[0],
   })
 }

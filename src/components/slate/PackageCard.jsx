@@ -207,9 +207,18 @@ export default function PackageCard({ pkg, clinicianName, triageReason, onApprov
           captionText: captionChanged ? caption : undefined,
         }),
       })
-      onUpdate?.({ ...pkg, ...result?.package, caption_text: result?.captionText ?? pkg.caption_text, renders: result?.renders ?? pkg.renders })
+      // Rendering now runs in the background (202) — a large source can take a
+      // minute. Optimistically flip the card to 'generating' and clear any prior
+      // error so it shows progress; the Slate polls the row until it settles to
+      // complete/failed (no flicker back to the old failed state).
+      onUpdate?.({
+        ...pkg,
+        status: 'generating',
+        error_message: null,
+        caption_text: result?.captionText ?? caption ?? pkg.caption_text,
+      })
       setEditing(false)
-      toast('Re-rendered successfully.')
+      toast('Re-rendering — this can take a minute for longer videos.')
     } catch (err) {
       toast.error(err?.message || 'Re-render failed.')
     } finally {
