@@ -60,21 +60,29 @@ export default function SplitSuggestionBanner({ piece }) {
   async function handleSplit() {
     try {
       const result = await split.mutateAsync({ id: piece.id, parts })
-      const n = result?.parts?.length ?? parts
-      // The source piece is now archived; point the URL at the new Part 1 so
-      // AssetsPane lands on a real piece instead of the stale id.
-      const part1 = result?.parts?.find?.((p) => p.series_part === 1)
-      if (part1?.id) {
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev)
-          next.set('piece', part1.id)
-          return next
-        }, { replace: true })
+      const parts_result = result?.parts ?? []
+      const n = parts_result.length || parts
+      if (parts_result.length === 0) {
+        toast.error('Series generated but returned no parts', {
+          description: 'Refresh the page — your split may still have succeeded.',
+        })
+      } else {
+        // The source piece is now archived; point the URL at the new Part 1 so
+        // AssetsPane lands on a real piece instead of the stale id.
+        // Prefer series_part===1; fall back to first element if the field is missing.
+        const part1 = parts_result.find((p) => p.series_part === 1) ?? parts_result[0]
+        if (part1?.id) {
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev)
+            next.set('piece', part1.id)
+            return next
+          }, { replace: true })
+        }
+        toast.success(
+          `Split into ${n}-part series`,
+          { description: 'New drafts created. Original blog archived for rollback.' },
+        )
       }
-      toast.success(
-        `Split into ${n}-part series`,
-        { description: 'New drafts created. Original blog archived for rollback.' },
-      )
     } catch (e) {
       toast.error('Series generation failed', {
         description: e?.message || 'Try again — the planner sometimes needs a second pass.',

@@ -59,7 +59,10 @@ async function patchItem(wsId, contentItemId, patch) {
   return sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${wsId}`, {
     method: 'PATCH',
     body: JSON.stringify(patch),
-  }).catch(() => {})
+  }).catch((err) => {
+    console.error('[voiceAudit] patchItem network error:', err?.message || err)
+    return null
+  })
 }
 
 /**
