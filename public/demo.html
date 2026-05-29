@@ -127,38 +127,36 @@
   <div class="container">
     <p class="uband-eyebrow">The interactive replay</p>
     <h2>Step through <em>a real interview.</em></h2>
-    <p class="uband-lede">The product preview below replays the actual NarrateRx pipeline with real Move Better interview answers. Watch each stage, then see what NarrateRx generated from it.</p>
+    <p class="uband-lede">Watch a real Move Better answer become a finished post, then tap a channel to see the same idea ready for social, email, or Google.</p>
 
-    <!-- Reuse the home-page preview widget -->
-    <div class="upreview">
+    <!-- Interactive demo widget (driven by site.js [data-demo]) -->
+    <div class="upreview" data-demo>
       <div class="upreview-window">
         <div class="upreview-bar">
           <div class="dots"><span></span><span></span><span></span></div>
-          <div class="urlbar">app.narraterx.ai<span class="path"> / interview / new</span></div>
+          <div class="urlbar">app.narraterx.ai<span class="path"> / your interview</span></div>
         </div>
         <div class="upreview-body">
           <div class="upreview-pane">
-            <p class="h">Interview · question 3 of 5</p>
-            <p class="q">"What did you see this week that stuck with you?"</p>
-            <div class="a">
-              A runner. Two years of "IT band syndrome." Every coach told her to foam-roll more. She'd never once been asked to breathe. Twenty minutes later she ran down the hall and started crying. That's it. That's the week.
-            </div>
+            <p class="h">Your interview · question 3 of 5</p>
+            <p class="q">"What's something you wish every patient understood?"</p>
+            <div class="a" data-demo-answer></div>
           </div>
           <div class="upreview-pane">
-            <p class="h">NarrateRx · generated</p>
-            <div class="upreview-tabs">
-              <span class="is-on">Blog</span>
-              <span>Social</span>
-              <span>Email</span>
-              <span>Google</span>
+            <p class="h" data-demo-status>NarrateRx</p>
+            <div class="upreview-tabs" data-demo-tabs role="tablist" aria-label="Generated content channels">
+              <span class="is-on" data-tab="blog" role="tab" tabindex="0">Blog</span>
+              <span data-tab="social" role="tab" tabindex="0">Social</span>
+              <span data-tab="email" role="tab" tabindex="0">Email</span>
+              <span data-tab="google" role="tab" tabindex="0">Google</span>
             </div>
-            <div class="out">
-              <span class="head">Two years of IT band. Twenty minutes of breathing.</span>
-              <span class="meta">Blog post · 1,050 words · movebetter.co</span>
-              She came in carrying two years of foam-rolling advice and a diagnosis that never quite fit. <span class="chip">IT band syndrome</span> is the catch-all for lateral knee pain that doesn't respond to the obvious treatments — because it isn't where the problem actually is.
-            </div>
+            <div class="out" data-demo-out></div>
           </div>
         </div>
+      </div>
+      <div class="udemo-controls">
+        <button type="button" class="ubtn ubtn-quiet udemo-replay" data-demo-replay>↻ Replay</button>
+        <span class="udemo-note">Real answer. Real output. Nothing was made up for the demo.</span>
       </div>
     </div>
     <p class="unote">All quotes and outputs are from a real Move Better interview. Voice, examples, and clinical details are drawn entirely from what the clinician actually said.</p>
