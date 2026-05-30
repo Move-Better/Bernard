@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { StaffChip } from '@/components/StaffChip'
 import ReadAloudButton from '@/components/ReadAloudButton'
 import { PLATFORM_META, STATUS_META } from '@/lib/contentMeta'
-import { getStageToken } from '@/lib/stageTokens'
+import { getStageToken, getStatusDot } from '@/lib/stageTokens'
 import { getPatientPrototypesUi } from '@/lib/prompts'
 import { LENGTH_PRESETS, resolveLengthPreset } from '@/lib/lengthPresets'
 import { useUserRole } from '@/lib/useUserRole'
@@ -77,15 +77,6 @@ const STATUS_TO_STAGE = {
   approved:  'review',
   scheduled: 'scheduled',
   published: 'published',
-}
-
-const STATUS_DOT = {
-  draft:     'bg-slate-400',
-  in_review: 'bg-amber-400',
-  approved:  'bg-amber-500',
-  scheduled: 'bg-purple-500',
-  published: 'bg-green-500',
-  archived:  'bg-zinc-400',
 }
 
 function StatusBadge({ status }) {
@@ -589,7 +580,7 @@ function RegenerateButton({ piece, story }) {
                   type="button"
                   onClick={() => setLengthPreset(p.id)}
                   title={`${p.description} (${p.targetWords} words)`}
-                  className={`rounded-full border px-2 py-0.5 text-2xs transition ${
+                  className={`rounded-full border px-2 py-0.5 text-xs transition ${
                     selected
                       ? 'border-amber-500 bg-amber-200 text-amber-900 font-medium'
                       : 'border-amber-300 bg-white text-amber-700 hover:bg-amber-100'
@@ -675,7 +666,7 @@ function SeriesBadge({ active, pieces, onJump }) {
                 onClick={() => !isActive && onJump(s.id)}
                 disabled={isActive}
                 title={isActive ? `You are on Part ${s.series_part}` : `Jump to Part ${s.series_part}`}
-                className={`min-w-[1.25rem] rounded px-1 text-2xs font-medium transition ${
+                className={`min-w-[1.25rem] rounded px-1 text-xs font-medium transition ${
                   isActive
                     ? 'bg-violet-300 text-violet-900 cursor-default'
                     : 'bg-white text-violet-700 hover:bg-violet-200 border border-violet-200'
@@ -759,7 +750,7 @@ function SplitIntoSeriesButton({ piece }) {
                 key={n}
                 type="button"
                 onClick={() => setParts(n)}
-                className={`rounded-full border px-2.5 py-0.5 text-2xs transition ${
+                className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
                   selected
                     ? 'border-violet-500 bg-violet-200 text-violet-900 font-medium'
                     : 'border-violet-300 bg-white text-violet-700 hover:bg-violet-100'
@@ -1910,7 +1901,7 @@ export default function AssetsPane({
               : null
             const label = seriesLabel
               || (total > 1 ? `${meta.label} ${nth}/${total}` : meta.label)
-            const statusDot = STATUS_DOT[piece.status] ?? 'bg-slate-300'
+            const statusDot = getStatusDot(piece.status)
             const statusLabel = STATUS_META[piece.status]?.label ?? piece.status
             const preview = typeof piece.content === 'string' ? piece.content.slice(0, 80) : ''
             const title = `${statusLabel}${preview ? ` — ${preview}${preview.length >= 80 ? '…' : ''}` : ''}`

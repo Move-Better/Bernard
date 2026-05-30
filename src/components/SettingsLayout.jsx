@@ -76,7 +76,7 @@ function SidebarItem({ item }) {
       to={item.to}
       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
         isActive
-          ? 'bg-[hsl(20_60%_95%)] text-[#c04d18] font-semibold ring-1 ring-[#fde0d2]'
+          ? 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       }`}
     >
@@ -107,7 +107,7 @@ function SidebarSubGroup({ item }) {
               to={child.to}
               className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors ${
                 isActive
-                  ? 'bg-[hsl(20_60%_95%)] text-[#c04d18] font-semibold ring-1 ring-[#fde0d2]'
+                  ? 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
@@ -150,7 +150,7 @@ function MobileNavRail({ visibleItems }) {
             ref={isActive ? activeRef : undefined}
             className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
               isActive
-                ? 'border-[#fde0d2] bg-[hsl(20_60%_95%)] text-[#c04d18]'
+                ? 'border-primary/20 bg-primary/10 text-primary'
                 : 'border-border bg-white text-muted-foreground active:bg-accent/40 hover:text-foreground hover:border-slate-300'
             }`}
           >

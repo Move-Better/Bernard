@@ -45,6 +45,39 @@ export const STATUS_META = {
 // rows with archived_at set come back regardless of their underlying status.
 export const STATUS_TABS = ['all', 'draft', 'in_review', 'approved', 'scheduled', 'published', 'archived']
 
+// Platform family → content-type group for surfaces that colour by channel
+// family rather than per-platform brand (e.g. the DraftsReadyRow review
+// cards, LibraryReadyStrip). Keyed independently from per-platform brand
+// colours so a rebrand to one family (e.g. "social" becomes teal) touches
+// one place.
+export const PLATFORM_FAMILY_PILL = {
+  blog:   'bg-emerald-50 text-emerald-700',
+  email:  'bg-amber-50 text-amber-700',
+  social: 'bg-violet-50 text-violet-700',
+  local:  'bg-sky-50 text-sky-700',
+}
+
+const PLATFORM_TO_FAMILY = {
+  blog: 'blog', landing_page: 'blog',
+  email: 'email',
+  instagram: 'social', facebook: 'social', linkedin: 'social',
+  tiktok: 'social', youtube: 'social', pinterest: 'social', twitter: 'social',
+  gbp: 'local',
+}
+
+/**
+ * @param {string} platform
+ * @returns {{ label: string, pill: string }}
+ */
+export function getPlatformFamilyPill(platform) {
+  const meta = PLATFORM_META[platform]
+  const family = PLATFORM_TO_FAMILY[platform] || 'social'
+  return {
+    label: meta?.label?.replace(' Post', '') ?? platform,
+    pill:  PLATFORM_FAMILY_PILL[family] ?? 'bg-slate-100 text-slate-700',
+  }
+}
+
 // Chip groups for the platform filter — IG Ads sits alone between Social and Google.
 export const PLATFORM_GROUPS = [
   ['blog'],
