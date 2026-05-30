@@ -57,3 +57,19 @@ export function renderSegments(segmentIds) {
     body: JSON.stringify({ segmentIds }),
   })
 }
+
+/**
+ * Render the WHOLE source video as one keep-whole, landscape long-form story
+ * package — the other explicit choice next to "Find clips". Returns 202 with
+ * { packageId, status, channels }; the Slate polls story_packages for
+ * completion. Anything over the 120s long-form cap is trimmed until the
+ * chunked-render follow-up.
+ * @param {string} assetId
+ */
+export function renderWholeVideo(assetId) {
+  return apiFetch('/api/editorial/render-longform', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assetId }),
+  })
+}

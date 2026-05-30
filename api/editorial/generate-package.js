@@ -33,7 +33,6 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { generateText } from 'ai'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
@@ -43,6 +42,7 @@ import { fetchFusedRagContext } from '../_lib/ragFusion.js'
 import { CHANNEL_SPECS } from '../_lib/brandRender.js'
 import { VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
 import { renderAndPatchPackage } from '../_lib/renderPackageChannels.js'
+import { generateCaption } from '../_lib/captionGen.js'
 import { generateSyntheticBroll, runwayConfigured } from '../_lib/syntheticBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -62,100 +62,6 @@ async function sb(path, init = {}) {
       ...init.headers,
     },
   })
-}
-
-/**
- * Generate a compelling 1-2 sentence caption.
- * V6: when practiceChunks are available, injects the clinician's prior
- * framing so the caption echoes their actual voice on this topic.
- * Phase 4 Tentpole PR B: when campaign is provided, injects the campaign's
- * theme + content_style so the caption serves the campaign goal.
- */
-async function generateCaption({ topic, clip, workspace, staffId = null, practiceChunks = [], campaign = null }) {
-  const toneHint = workspace?.brand_voice?.tone_descriptors?.join(', ') || 'warm, expert'
-  const clipContext = [
-    clip.visualNarrative ? `Visual: ${clip.visualNarrative}` : '',
-    clip.aiTags?.length ? `Tags: ${(clip.aiTags || []).join(', ')}` : '',
-  ].filter(Boolean).join('. ')
-
-  const priorThinking = practiceChunks
-    .slice(0, 3)
-    .map((c) => String(c.text || '').slice(0, 200).trim())
-    .filter(Boolean)
-    .join(' … ')
-
-  // Fetch the clinician's authentic voice phrases + notes so the caption is
-  // graded ON its input. The V1 fidelity scorer (api/_lib/captionFidelity.js)
-  // judges voice_fidelity against `staff_voice_phrases`, and the long-form blog
-  // path already injects them — which is why long-form scores ~7.3 while
-  // captions (voice-blind until now) score ~6. Mirror the blog-regen fetch.
-  // Non-fatal: empty corpus → falls back to tone descriptors alone.
-  let voicePhrases = []
-  let voiceNotes = ''
-  if (staffId && workspace?.id) {
-    try {
-      const [sRes, pRes] = await Promise.all([
-        sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspace.id}&select=voice_notes`),
-        sb(`staff_voice_phrases?staff_id=eq.${staffId}&workspace_id=eq.${workspace.id}&select=phrase&order=weight.desc,last_seen_at.desc&limit=8`),
-      ])
-      if (sRes.ok) { const r = await sRes.json(); voiceNotes = r?.[0]?.voice_notes || '' }
-      if (pRes.ok) voicePhrases = await pRes.json()
-    } catch { /* non-fatal — score on tone descriptors alone */ }
-  }
-
-  const systemLines = [
-    'You write short, compelling social media captions for a clinical practitioner.',
-    `Tone: ${toneHint}. Write 1-2 sentences only. Do NOT use hashtags. Do NOT include a call to action.`,
-    'Speak from the practitioner\'s perspective as if they\'re sharing something meaningful.',
-  ]
-  if (voicePhrases.length) {
-    systemLines.push(
-      'The clinician\'s authentic voice — match this rhythm, cadence, and word choice (don\'t quote verbatim):\n' +
-      voicePhrases.map((p) => `- "${p.phrase}"`).join('\n')
-    )
-  }
-  if (voiceNotes.trim()) {
-    systemLines.push(`Voice notes for this clinician: ${voiceNotes.trim().slice(0, 400)}`)
-  }
-  if (priorThinking) {
-    systemLines.push(`The practitioner's prior thinking on this topic: ${priorThinking}`)
-    systemLines.push('Echo their specific clinical framing naturally — don\'t copy phrases verbatim.')
-  }
-  // Campaign context — tightens the caption to the campaign goal. The
-  // content_style flag changes the register:
-  //   • promotional  — pitch-y, urgency, drives toward event
-  //   • relationship — warm, community, NO clinical talk
-  //   • clinical     — default (no extra instruction)
-  if (campaign) {
-    if (campaign.theme_notes) {
-      systemLines.push(`This caption is part of an active campaign: ${campaign.name}. Campaign theme: ${campaign.theme_notes}`)
-    } else if (campaign.name) {
-      systemLines.push(`This caption is part of an active campaign: ${campaign.name}.`)
-    }
-    if (campaign.content_style === 'promotional') {
-      systemLines.push('Style: promotional. Subtly orient the reader toward an upcoming event — don\'t hard-sell, but make it clear something specific is happening.')
-    } else if (campaign.content_style === 'relationship') {
-      systemLines.push('Style: relationship — warm, community-focused. Do NOT talk about clinical care, assessments, or treatment. Focus on the people, the relationship, the moment.')
-    }
-  }
-
-  const { text } = await generateText({
-    // Sonnet, matching the long-form blog path (api/content-items/regenerate.js)
-    // that scores ~7.3 voice fidelity — captions are the highest-volume text the
-    // pipeline emits and ride every clip, so they earn the better model.
-    model: 'anthropic/claude-sonnet-4-6',
-    system: systemLines.join('\n'),
-    messages: [{
-      role: 'user',
-      content: `Topic: ${topic}
-Clip context: ${clipContext || '(clinical care photo/video)'}
-
-Write a caption (1-2 sentences, no hashtags, no CTA):`,
-    }],
-    maxOutputTokens: 200,
-  })
-
-  return text.trim().replace(/^["']|["']$/g, '')
 }
 
 export default async function handler(req, res) {
