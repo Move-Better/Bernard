@@ -325,6 +325,7 @@ async function handler(req, res) {
     // shows. Non-fatal on failure.
     let current_user_tier = null
     let current_user_producer_onboarded_at = null
+    let current_user_capability_overrides = {}
     try {
       const ctr = await sb(
         `staff?user_id=eq.${encodeURIComponent(auth.userId)}` +
@@ -357,7 +358,7 @@ async function handler(req, res) {
         ? resolveCapabilities('owner', workspace)
         : resolveCapabilities('clinician', workspace)
     } else {
-      current_user_capabilities = resolveCapabilities(current_user_tier, workspace)
+      current_user_capabilities = resolveCapabilities(current_user_tier, workspace, current_user_capability_overrides)
     }
 
     // Phase 4 Tentpole PR B: embed currently-active campaigns so the Slate
