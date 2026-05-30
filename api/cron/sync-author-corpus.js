@@ -24,6 +24,12 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 const SOURCE_SLUG = 'movebetter-people'
 const TARGET_SLUG = 'qbook'
 
+// Q's Clerk user_id — the single identity that owns both workspaces. The source
+// clinician must be resolved by this id, never by row age: if movebetter-people
+// onboards a second clinician whose staff row predates Q's, an oldest-row lookup
+// would index the wrong person's interviews into the qbook (Author Mode) corpus.
+const Q_USER_ID = 'user_3DWDihgcc6OPc5eVvYkZO9sgqVt'
+
 import { indexInterviewTranscriptFull } from '../_lib/practiceMemoryRag.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -76,8 +82,9 @@ export async function syncAuthorCorpus({ log = false, dryRun = false } = {}) {
   }
 
   // ── Resolve Q's clinician in each workspace (matched by user_id) ───────
+  // Anchor on Q's user_id, not row age — see Q_USER_ID note above.
   const srcClRes = await sb(
-    `staff?workspace_id=eq.${srcWs.id}&user_id=not.is.null&select=id,name,user_id&order=created_at.asc&limit=1`
+    `staff?workspace_id=eq.${srcWs.id}&user_id=eq.${Q_USER_ID}&select=id,name,user_id&limit=1`
   )
   if (!srcClRes.ok) throw new Error(`source clinician fetch ${srcClRes.status}`)
   const [srcStaff] = await srcClRes.json()
