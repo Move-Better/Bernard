@@ -663,7 +663,7 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
   return (
     <Card
       title="Tell us about your business"
-      subtitle="The basics. You can edit any of this later in workspace settings."
+      subtitle="First, a few basics — we use these to set up your workspace and make your content sound like it's genuinely from your practice, not generic AI. Nothing here is locked in; you can edit all of it later in settings."
     >
       <FieldRow label="Business name *" hint="What you'd put on a sign.">
         <Input value={form.display_name} onChange={e => setField('display_name')(e.target.value)} placeholder="Acme Movement" autoComplete="organization" />
@@ -1034,10 +1034,13 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
   return (
     <Card
       title="Pick your channels"
-      subtitle="Which outputs will this workspace generate? Each interview lets you pick a subset. You can change this any time in settings."
+      subtitle="Where should your content go? Pick the formats this workspace should create — each interview drafts the ones you choose here so you're never staring at a blank page. You can change this any time in settings."
     >
       <div className="rounded-lg border border-orange-200 bg-orange-50 px-3.5 py-2.5 text-xs text-orange-900 leading-relaxed">
         Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Connect an integration later (starting with <strong>Buffer</strong>) and those channels upgrade to one-click publishing.
+      </div>
+      <div className="rounded-lg border border-input bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
+        Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.
       </div>
       <div className="space-y-2">
         {Object.values(OUTPUT_CHANNELS).map(channel => {
