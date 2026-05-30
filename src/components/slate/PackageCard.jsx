@@ -160,6 +160,9 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
   // pending_broll = Runway job submitted, renders will arrive async
   const isGeneratingBroll = pkg.status === 'pending_broll' || pkg.broll_status === 'generating'
   const isGenerating = pkg.status === 'generating' || pkg.status === 'pending' || isGeneratingBroll
+  // Chunked keep-whole long-form render: piece-progress for the spinner so a
+  // 30–60 min render shows movement instead of a blank multi-minute wait.
+  const chunkProgress = pkg.chunk_progress && pkg.chunk_progress.total > 0 ? pkg.chunk_progress : null
   const isFailed     = pkg.status === 'failed'
   const renders      = Array.isArray(pkg.renders) ? pkg.renders : []
   const previewRender = renders[0]
@@ -277,6 +280,21 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
             <span className="text-xs font-medium">
               {rerendering ? 'Re-rendering…' : isGeneratingBroll ? 'Generating b-roll…' : 'Generating…'}
             </span>
+            {/* Long-form chunked render: show piece-progress + a bar so a long
+                talk's multi-minute render reads as "working", not "stuck". */}
+            {!rerendering && chunkProgress && (
+              <div className="flex flex-col items-center gap-1 w-[120px]">
+                <span className="text-2xs text-white/70">
+                  Piece {Math.min(chunkProgress.done + 1, chunkProgress.total)} of {chunkProgress.total}
+                </span>
+                <div className="h-1 w-full rounded-full bg-white/20 overflow-hidden">
+                  <div
+                    className="h-full bg-white/80 transition-all duration-500"
+                    style={{ width: `${Math.round((chunkProgress.done / chunkProgress.total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
             {isGeneratingBroll && (
               <span className="text-2xs text-white/60 max-w-[120px] text-center">
                 Runway AI is creating footage — usually ready in 1–2 min
