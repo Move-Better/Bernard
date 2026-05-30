@@ -93,7 +93,7 @@ function SidebarSubGroup({ item }) {
   const location = useLocation()
   return (
     <div className="space-y-0.5">
-      <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5 text-3xs font-semibold text-muted-foreground/70">
+      <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground/70">
         <item.icon className="h-3 w-3 shrink-0" />
         {item.label}
       </div>
