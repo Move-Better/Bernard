@@ -74,7 +74,7 @@ jobs:
         env:
           MULTITENANT_DATABASE_URL: ${{ secrets.MULTITENANT_DATABASE_URL }}
           E2E_WORKSPACE_SLUG: movebetter-people
-          E2E_FIXTURE_CLINICIAN_NAME: E2E Smoke Clinician
+          E2E_FIXTURE_STAFF_NAME: E2E Smoke Staff
         run: npm run e2e:seed
 
       - name: Install Playwright browsers
@@ -84,7 +84,7 @@ jobs:
         env:
           E2E_BASE_URL: https://movebetter-people.narraterx.ai
           E2E_WORKSPACE_SLUG: movebetter-people
-          E2E_FIXTURE_CLINICIAN_NAME: E2E Smoke Clinician
+          E2E_FIXTURE_STAFF_NAME: E2E Smoke Staff
           E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           # The workflow mints a Clerk sign-in ticket via Backend API and
           # exchanges it in-browser, so the password is unused here. Keep the

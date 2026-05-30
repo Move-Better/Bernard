@@ -85,14 +85,14 @@ const interviews = await sbGet(
 console.log(`  ✓ Interviews: ${interviews.length}`)
 if (!interviews.length) { console.error('No completed interviews found'); process.exit(1) }
 
-// Pull clinicians for voice data
+// Pull staff for voice data
 const staffIds = [...new Set(interviews.map(i => i.staff_id).filter(Boolean))]
-const clinicians = staffIds.length
+const staff = staffIds.length
   ? await sbGet(`staff?id=in.(${staffIds.join(',')})&select=id,name,voice_notes`)
   : []
-const staffMap = Object.fromEntries(clinicians.map(c => [c.id, c]))
+const staffMap = Object.fromEntries(staff.map(c => [c.id, c]))
 
-// Pull voice phrases for each clinician
+// Pull voice phrases for each staff member
 const phraseRows = staffIds.length
   ? await sbGet(`staff_voice_phrases?staff_id=in.(${staffIds.join(',')})&select=staff_id,phrase,weight&order=weight.desc&limit=50`)
   : []
@@ -102,7 +102,7 @@ for (const p of phraseRows) {
   phrasesMap[p.staff_id].push(p)
 }
 
-console.log(`  ✓ Clinicians: ${clinicians.map(c => c.name).join(', ')}`)
+console.log(`  ✓ Staff: ${staff.map(c => c.name).join(', ')}`)
 console.log(`  ✓ Voice phrases: ${phraseRows.length} total`)
 
 // ── Build transcript helper ───────────────────────────────────────────────────
@@ -130,8 +130,8 @@ const {
 // Each variant specifies parameters passed to getBlogPostSystemPrompt.
 // The "group" field clusters related variants for comparison.
 
-function makeVariants(interview, clinician, phrases, voiceNotes) {
-  const cName = clinician?.name || 'the clinician'
+function makeVariants(interview, staffMember, phrases, voiceNotes) {
+  const cName = staffMember?.name || 'the clinician'
   const condition = interview.topic || 'low back pain'
   const transcript = buildTranscript(interview)
   const phrasesArr = phrases || []
@@ -211,10 +211,10 @@ console.log()
 const results = []  // { variantId, group, label, topic, score, wordCount, blogSnippet, notes }
 
 for (const interview of testInterviews) {
-  const clinician = staffMap[interview.staff_id]
+  const staffMember = staffMap[interview.staff_id]
   const phrases = phrasesMap[interview.staff_id] || []
-  const voiceNotes = clinician?.voice_notes || ''
-  const variants = makeVariants(interview, clinician, phrases, voiceNotes)
+  const voiceNotes = staffMember?.voice_notes || ''
+  const variants = makeVariants(interview, staffMember, phrases, voiceNotes)
   const activeVariants = QUICK ? variants.filter(v => v.group === 'tone') : variants
   const transcript = buildTranscript(interview)
 
@@ -224,7 +224,7 @@ for (const interview of testInterviews) {
   }
 
   console.log(`\n📝 Interview: "${interview.topic}" (${interview.id.slice(0, 8)})`)
-  console.log(`   Clinician: ${clinician?.name || 'unknown'} | Phrases: ${phrases.length}`)
+  console.log(`   Staff: ${staffMember?.name || 'unknown'} | Phrases: ${phrases.length}`)
   console.log(`   Transcript: ${transcript.split(' ').length} words`)
   console.log(`   Variants: ${activeVariants.length}`)
 

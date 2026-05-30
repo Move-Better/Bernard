@@ -102,7 +102,7 @@ export default async function handler(req, res) {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: auth.workspace.id,
-      staff_id: auth.clinician.id,
+      staff_id: auth.staffMember.id,
       kind,
       status: 'raw',
       source: 'capture_companion',
@@ -116,7 +116,7 @@ export default async function handler(req, res) {
       asset_purpose: 'capture_moment',
       notes: caption || null,
       tags: locationHint ? [locationHint] : [],
-      created_by: auth.clinician.user_id || null,
+      created_by: auth.staffMember.user_id || null,
     }),
   })
 
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
 
   // Update token last-used (best effort)
   waitUntil(
-    sb(`staff?id=eq.${auth.clinician.id}`, {
+    sb(`staff?id=eq.${auth.staffMember.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ capture_upload_token_last_used_at: new Date().toISOString() }),
     }).catch(() => {}),

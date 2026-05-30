@@ -122,7 +122,7 @@ try {
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   )
   assert(
-    'clinicians.user_id column exists',
+    'staff.user_id column exists',
     probe.ok,
     probe.ok ? '' : `→ got HTTP ${probe.status} — run migration 051_staff_user_id.sql`
   )

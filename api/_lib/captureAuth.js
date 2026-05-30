@@ -1,6 +1,6 @@
 // Shared auth helper for /api/capture/* endpoints.
 // Authenticates a Bearer capture upload token (cct_ prefix) from the staff table.
-// Returns { clinician, workspace } or null on any auth/expiry/gate failure.
+// Returns { staffMember, workspace } or null on any auth/expiry/gate failure.
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -24,21 +24,21 @@ export async function authByCaptureToken(token) {
   )
   if (!r.ok) return null
   const rows = await r.json()
-  const clinician = rows?.[0]
-  if (!clinician) return null
+  const staffMember = rows?.[0]
+  if (!staffMember) return null
 
-  if (clinician.capture_upload_token_expires_at) {
-    const exp = new Date(clinician.capture_upload_token_expires_at).getTime()
+  if (staffMember.capture_upload_token_expires_at) {
+    const exp = new Date(staffMember.capture_upload_token_expires_at).getTime()
     if (Date.now() > exp) return null
   }
 
   const wr = await sb(
-    `workspaces?id=eq.${clinician.workspace_id}&status=eq.active&select=id,slug,video_pipeline_enabled`,
+    `workspaces?id=eq.${staffMember.workspace_id}&status=eq.active&select=id,slug,video_pipeline_enabled`,
   )
   if (!wr.ok) return null
   const wsRows = await wr.json()
   const workspace = wsRows?.[0]
   if (!workspace?.video_pipeline_enabled) return null
 
-  return { clinician, workspace }
+  return { staffMember, workspace }
 }

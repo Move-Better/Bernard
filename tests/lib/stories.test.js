@@ -60,19 +60,19 @@ describe('buildStories', () => {
     warnSpy.mockRestore()
   })
 
-  it('returns [] when given zero clinicians', () => {
+  it('returns [] when given zero staff', () => {
     expect(buildStories([], [])).toEqual([])
     expect(buildStories(null, null)).toEqual([])
     expect(buildStories(undefined, undefined)).toEqual([])
   })
 
-  it('returns [] when clinicians exist but have no interviews', () => {
-    const clinicians = [{ id: 'c1', name: 'Dr. A', interviews: [] }]
-    expect(buildStories(clinicians, [])).toEqual([])
+  it('returns [] when staff exist but have no interviews', () => {
+    const staff = [{ id: 'c1', name: 'Dr. A', interviews: [] }]
+    expect(buildStories(staff, [])).toEqual([])
   })
 
   it('builds a story with empty pieces when interview has no content_items', () => {
-    const clinicians = [{
+    const staff = [{
       id: 'c1',
       name: 'Dr. A',
       workspace_id: 'ws1',
@@ -87,7 +87,7 @@ describe('buildStories', () => {
         updated_at: '2026-05-02T00:00:00Z',
       }],
     }]
-    const result = buildStories(clinicians, [])
+    const result = buildStories(staff, [])
     expect(result).toHaveLength(1)
     const s = result[0]
     expect(s.id).toBe('iv1')
@@ -108,7 +108,7 @@ describe('buildStories', () => {
   })
 
   it('rolls up multiple pieces under one interview', () => {
-    const clinicians = [{
+    const staff = [{
       id: 'c1',
       name: 'Dr. A',
       interviews: [{
@@ -126,7 +126,7 @@ describe('buildStories', () => {
       { id: 'p2', interview_id: 'iv1', workspace_id: 'ws1', platform: 'blog',      status: 'draft',     scheduled_at: null,                   published_at: null, updated_at: '2026-05-04T00:00:00Z' },
       { id: 'p3', interview_id: 'iv1', workspace_id: 'ws1', platform: 'facebook',  status: 'scheduled', scheduled_at: '2026-06-01T09:00:00Z', published_at: null, updated_at: '2026-05-03T00:00:00Z' },
     ]
-    const [s] = buildStories(clinicians, contentItems)
+    const [s] = buildStories(staff, contentItems)
     expect(s.pieces).toHaveLength(3)
     expect(s.pieces_count).toBe(3)
     expect(s.pieces_by_status.scheduled).toBe(2)
@@ -139,8 +139,8 @@ describe('buildStories', () => {
     expect(s.has_outputs).toBe(true)
   })
 
-  it('emits one story per interview across multiple clinicians', () => {
-    const clinicians = [
+  it('emits one story per interview across multiple staff', () => {
+    const staff = [
       { id: 'c1', name: 'Dr. A', interviews: [
         { id: 'iv1', status: 'completed', workspace_id: 'ws1', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
         { id: 'iv2', status: 'in_progress', workspace_id: 'ws1', created_at: '2026-02-01T00:00:00Z', updated_at: '2026-02-01T00:00:00Z' },
@@ -152,7 +152,7 @@ describe('buildStories', () => {
     const contentItems = [
       { id: 'p1', interview_id: 'iv1', workspace_id: 'ws1', platform: 'instagram', status: 'published', scheduled_at: null, published_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
     ]
-    const stories = buildStories(clinicians, contentItems)
+    const stories = buildStories(staff, contentItems)
     expect(stories.map((s) => s.id)).toEqual(['iv1', 'iv2', 'iv3'])
     expect(stories.find((s) => s.id === 'iv1').story_stage).toBe('published')
     expect(stories.find((s) => s.id === 'iv2').story_stage).toBe('capture')
@@ -162,7 +162,7 @@ describe('buildStories', () => {
   })
 
   it('drops orphan content_items whose interview_id has no matching interview', () => {
-    const clinicians = [{
+    const staff = [{
       id: 'c1', name: 'Dr. A', interviews: [
         { id: 'iv1', status: 'completed', workspace_id: 'ws1', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
       ],
@@ -171,14 +171,14 @@ describe('buildStories', () => {
       { id: 'p1', interview_id: 'iv1', workspace_id: 'ws1', platform: 'instagram', status: 'draft', scheduled_at: null, published_at: null, updated_at: '2026-01-02T00:00:00Z' },
       { id: 'p-orphan', interview_id: 'iv-missing', workspace_id: 'ws1', platform: 'blog', status: 'draft', scheduled_at: null, published_at: null, updated_at: '2026-01-02T00:00:00Z' },
     ]
-    const stories = buildStories(clinicians, contentItems)
+    const stories = buildStories(staff, contentItems)
     expect(stories).toHaveLength(1)
     expect(stories[0].pieces).toHaveLength(1)
     expect(stories[0].pieces[0].id).toBe('p1')
   })
 
   it('drops content_items whose workspace_id does not match the interview workspace_id and logs', () => {
-    const clinicians = [{
+    const staff = [{
       id: 'c1', name: 'Dr. A', interviews: [
         { id: 'iv1', status: 'completed', workspace_id: 'ws1', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
       ],
@@ -187,7 +187,7 @@ describe('buildStories', () => {
       { id: 'p-good', interview_id: 'iv1', workspace_id: 'ws1', platform: 'blog', status: 'draft', scheduled_at: null, published_at: null, updated_at: '2026-01-02T00:00:00Z' },
       { id: 'p-bad',  interview_id: 'iv1', workspace_id: 'ws-other', platform: 'blog', status: 'published', scheduled_at: null, published_at: '2026-01-03T00:00:00Z', updated_at: '2026-01-03T00:00:00Z' },
     ]
-    const stories = buildStories(clinicians, contentItems)
+    const stories = buildStories(staff, contentItems)
     expect(stories).toHaveLength(1)
     expect(stories[0].pieces).toHaveLength(1)
     expect(stories[0].pieces[0].id).toBe('p-good')

@@ -61,7 +61,7 @@ export default async function handler(req, res) {
   if (staffId) {
     try {
       const r = await fetch(
-        `${process.env.SUPABASE_URL}/rest/v1/clinicians` +
+        `${process.env.SUPABASE_URL}/rest/v1/staff` +
         `?id=eq.${encodeURIComponent(staffId)}` +
         `&workspace_id=eq.${ws.id}` +
         `&voice_clone_revoked_at=is.null` +

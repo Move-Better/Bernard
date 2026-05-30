@@ -80,14 +80,14 @@ const workspaceMap = Object.fromEntries(workspaces.map(w => [w.id, w]))
 const wsIds = workspaces.map(w => w.id)
 
 // Clinicians (all in scope workspaces)
-const clinicians = await sbGet(
+const staff = await sbGet(
   `staff?workspace_id=in.(${wsIds.join(',')})&select=id,name,workspace_id,voice_notes`
 )
-const staffMap = Object.fromEntries(clinicians.map(c => [c.id, c]))
-console.log(`  ✓ Clinicians: ${clinicians.length}`)
+const staffMap = Object.fromEntries(staff.map(c => [c.id, c]))
+console.log(`  ✓ Staff: ${staff.length}`)
 
-// Voice phrases per clinician
-const cIds = clinicians.map(c => c.id)
+// Voice phrases per staff member
+const cIds = staff.map(c => c.id)
 const phraseRows = cIds.length
   ? await sbGet(`staff_voice_phrases?staff_id=in.(${cIds.join(',')})&select=staff_id,phrase,weight&order=weight.desc`)
   : []
@@ -96,7 +96,7 @@ for (const p of phraseRows) {
   if (!phrasesMap[p.staff_id]) phrasesMap[p.staff_id] = []
   phrasesMap[p.staff_id].push(p)
 }
-console.log(`  ✓ Voice phrases: ${phraseRows.length} total across ${Object.keys(phrasesMap).length} clinicians`)
+console.log(`  ✓ Voice phrases: ${phraseRows.length} total across ${Object.keys(phrasesMap).length} staff`)
 
 // Content items (approved or published, with content text).
 // Fetch per-workspace to avoid URL-length issues with in.() on many UUIDs.
@@ -150,7 +150,7 @@ let skipped = 0
 
 for (let i = 0; i < contentItems.length; i++) {
   const item = contentItems[i]
-  const clinician = staffMap[item.staff_id]
+  const staffMember = staffMap[item.staff_id]
   const workspace = workspaceMap[item.workspace_id]
   const phrases = phrasesMap[item.staff_id] || []
 
@@ -159,7 +159,7 @@ for (let i = 0; i < contentItems.length; i++) {
     continue
   }
 
-  const cName = clinician?.name || 'unknown clinician'
+  const cName = staffMember?.name || 'unknown staff'
   const wName = workspace?.display_name || 'unknown workspace'
 
   process.stdout.write(`  [${i+1}/${contentItems.length}] ${item.platform?.padEnd(12)} ${cName.slice(0,15).padEnd(15)} `)
