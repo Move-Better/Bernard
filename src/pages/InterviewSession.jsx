@@ -393,18 +393,22 @@ export default function InterviewSession() {
   }, [messages, interviewComplete, user?.id, interviewId])
 
   // Immediate flush on tab hide or page unload.
+  // iOS Safari fires `pagehide` instead of `beforeunload` when switching apps
+  // or closing a tab, so both listeners share the same handler body.
   useEffect(() => {
     function onVisibilityChange() {
       if (document.visibilityState === 'hidden') flushSessionState(messagesRef.current)
     }
-    function onBeforeUnload() {
+    function onUnload() {
       flushSessionState(messagesRef.current)
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
-    window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener('beforeunload', onUnload)
+    window.addEventListener('pagehide', onUnload)
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange)
-      window.removeEventListener('beforeunload', onBeforeUnload)
+      window.removeEventListener('beforeunload', onUnload)
+      window.removeEventListener('pagehide', onUnload)
     }
   }, [interviewId]) // eslint-disable-line react-hooks/exhaustive-deps
 
