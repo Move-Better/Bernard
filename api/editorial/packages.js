@@ -68,14 +68,32 @@ export default async function handler(req, res) {
   // media_assets (declared in migration 088); we use the alias prefix
   // (source_asset:) to keep a stable name even if the table is renamed later.
   let query = `story_packages?workspace_id=eq.${ws.id}&order=created_at.desc&limit=${limit}&offset=${offset}`
-  query += `&select=id,topic,caption_text,similarity,channels,renders,status,error_message,created_at,source_asset_id,staff_id,campaign_id,voice_fidelity_score,voice_fidelity_breakdown,auto_publish_state,auto_published_at,source_asset:media_assets(consent_status,consent_notes),campaign:campaigns(id,name,content_style,event_at)`
+  // Embed chunk statuses for the keep-whole long-form lane so the Slate can show
+  // piece-progress ("N of M") while a multi-minute chunked render runs. Only
+  // chunked long-form packages have rows in story_package_chunks; for every other
+  // package the embed is an empty array (negligible payload). We collapse it to a
+  // compact { done, total } below rather than shipping the raw rows.
+  query += `&select=id,topic,caption_text,similarity,channels,renders,status,error_message,created_at,source_asset_id,staff_id,campaign_id,voice_fidelity_score,voice_fidelity_breakdown,auto_publish_state,auto_published_at,source_asset:media_assets(consent_status,consent_notes),campaign:campaigns(id,name,content_style,event_at),story_package_chunks(status)`
   if (status) query += `&status=eq.${status}`
   if (staffId) query += `&staff_id=eq.${staffId}`
 
   const dbRes = await sb(query)
   if (!dbRes.ok) return res.status(500).json({ error: 'db_error' })
 
-  const packages = await dbRes.json()
+  const rawPackages = await dbRes.json()
+  // Collapse the embedded chunk rows into a compact progress summary and drop the
+  // raw array from the response.
+  const packages = (Array.isArray(rawPackages) ? rawPackages : []).map((pkg) => {
+    const chunkRows = Array.isArray(pkg.story_package_chunks) ? pkg.story_package_chunks : []
+    const rest = { ...pkg }
+    delete rest.story_package_chunks
+    if (!chunkRows.length) return rest
+    rest.chunk_progress = {
+      done: chunkRows.filter((c) => c.status === 'done').length,
+      total: chunkRows.length,
+    }
+    return rest
+  })
   const totalHeader = dbRes.headers.get('Content-Range')
   // Supabase Content-Range: 0-19/143
   const total = totalHeader ? parseInt(totalHeader.split('/')[1], 10) : undefined
