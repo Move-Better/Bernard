@@ -317,7 +317,11 @@ def build(token):
     put_uuid = uid()
     actions.append(a_http_put_file(
         put_uuid,
-        url_value=named_var('UploadUrl'),
+        # WFURL is a TEXT field — a variable must be embedded via the inline
+        # string-token form, NOT a bare attachment (which renders as an empty
+        # "URL" pill). Attachment form is only for object fields like WFInput /
+        # WFRequestVariable (the File).
+        url_value=named_var_inline('UploadUrl'),
         header_pairs=[
             ('Authorization', prefix_named_var('Bearer ', 'ClientToken')),
             ('x-api-version', text_token('12')),
