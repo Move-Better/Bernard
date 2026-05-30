@@ -22,6 +22,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { toast, runWithToast } from '@/lib/toast'
 import ContentBriefDetail from './ContentBriefDetail'
 import ClipFinder from './ClipFinder'
+import WholeVideoAction from './WholeVideoAction'
 import CollectionPicker from './CollectionPicker'
 import MediaEditModal from './MediaEditModal'
 import MediaVideoPlayer from './MediaVideoPlayer'
@@ -824,9 +825,14 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             {/* Collections — editorial groupings (campaigns, series, etc.) */}
             <CollectionPicker assetId={asset.id} onChange={() => onChange?.()} />
 
-            {/* Multi-clip: turn one long source into several standalone clips */}
+            {/* Two explicit, opt-in video choices — segment vs keep-whole. */}
             {asset.kind === 'video' && (
-              <ClipFinder asset={a} canEdit={canEdit} />
+              <>
+                {/* Multi-clip: turn one long source into several standalone clips */}
+                <ClipFinder asset={a} canEdit={canEdit} />
+                {/* Keep-whole: render the entire source as one landscape package */}
+                <WholeVideoAction asset={a} canEdit={canEdit} />
+              </>
             )}
 
             {/* Edit briefs */}
