@@ -57,6 +57,11 @@ export async function createAsset({ inputUrl, playbackPolicy = 'signed', passthr
     // mp4 download URLs for non-browser consumers.
     mp4_support: 'none',
     encoding_tier: 'smart',
+    // Without this, Mux defaults to 1080p and silently downscales 4K source —
+    // iPhones often shoot 4K, so a clean capture would still play back soft.
+    // '2160p' preserves up to 4K; Mux only encodes renditions up to the actual
+    // source resolution, so this costs nothing extra for ≤1080p uploads.
+    max_resolution_tier: '2160p',
   }
   if (passthrough) body.passthrough = String(passthrough)
 
