@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Eye, ChevronRight } from 'lucide-react'
-import { PLATFORM_META } from '@/lib/contentMeta'
+import { getPlatformFamilyPill } from '@/lib/contentMeta'
 
 // DraftsReadyRow — the Home page's "do this now" surface, replacing the
 // vertical "Awaiting review" task bucket with the horizontal 3-card row
@@ -15,23 +15,8 @@ import { PLATFORM_META } from '@/lib/contentMeta'
 // Auto-hides when nothing is in review — the page just rolls into the
 // remaining task buckets below.
 
-const PLATFORM_FAMILY = {
-  blog:          { family: 'blog',   label: 'Blog',     pill: 'bg-emerald-50 text-emerald-700' },
-  landing_page:  { family: 'blog',   label: 'Landing',  pill: 'bg-emerald-50 text-emerald-700' },
-  email:         { family: 'email',  label: 'Email',    pill: 'bg-amber-50 text-amber-700'     },
-  instagram:     { family: 'social', label: 'IG',       pill: 'bg-violet-50 text-violet-700'   },
-  facebook:      { family: 'social', label: 'FB',       pill: 'bg-violet-50 text-violet-700'   },
-  linkedin:      { family: 'social', label: 'LinkedIn', pill: 'bg-violet-50 text-violet-700'   },
-  tiktok:        { family: 'social', label: 'TikTok',   pill: 'bg-violet-50 text-violet-700'   },
-  youtube:       { family: 'social', label: 'YouTube',  pill: 'bg-violet-50 text-violet-700'   },
-  pinterest:     { family: 'social', label: 'Pin',      pill: 'bg-violet-50 text-violet-700'   },
-  gbp:           { family: 'local',  label: 'GBP',      pill: 'bg-sky-50 text-sky-700'         },
-  twitter:       { family: 'social', label: 'X',        pill: 'bg-violet-50 text-violet-700'   },
-}
-
 function platformChip(platform) {
-  const meta = PLATFORM_FAMILY[platform] || { label: PLATFORM_META[platform]?.label || platform, pill: 'bg-slate-100 text-slate-700' }
-  return meta
+  return getPlatformFamilyPill(platform)
 }
 
 function voiceMatchFor(piece) {
@@ -62,7 +47,7 @@ export default function DraftsReadyRow({ stories = [] }) {
   const overflow = Math.max(0, pieces.length - visible.length)
 
   return (
-    <div id="review" className="rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
+    <div id="review" className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
         <span
           className="inline-block w-1 h-6 rounded-full shrink-0"
@@ -84,7 +69,7 @@ export default function DraftsReadyRow({ stories = [] }) {
             <Link
               key={piece.id}
               to={`/stories/${piece.storyId}?piece=${piece.id}`}
-              className="block rounded-xl border border-border bg-white p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-[#fde0d2] hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="block rounded-xl border border-border bg-white p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${chip.pill}`}>
