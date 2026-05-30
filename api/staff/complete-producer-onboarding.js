@@ -54,21 +54,21 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'db_lookup_failed' })
   }
   const rows = await lookup.json().catch(() => [])
-  const clinician = rows?.[0]
-  if (!clinician) {
+  const staffMember = rows?.[0]
+  if (!staffMember) {
     return res.status(404).json({ error: 'no_staff_row' })
   }
 
   // Idempotent: if already set, return existing timestamp.
-  if (clinician.producer_onboarded_at) {
+  if (staffMember.producer_onboarded_at) {
     return res.status(200).json({
-      onboarded_at: clinician.producer_onboarded_at,
+      onboarded_at: staffMember.producer_onboarded_at,
       already_complete: true,
     })
   }
 
   const now = new Date().toISOString()
-  const patchRes = await sb(`staff?id=eq.${clinician.id}&workspace_id=eq.${ws.id}`, {
+  const patchRes = await sb(`staff?id=eq.${staffMember.id}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
     body: JSON.stringify({ producer_onboarded_at: now }),
   })

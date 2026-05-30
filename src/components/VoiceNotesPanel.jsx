@@ -13,7 +13,7 @@ import { apiFetch } from '@/lib/api'
 //
 // The notes themselves are computed by /api/staff/refresh-voice-notes,
 // which compares ai_original_content vs. content for recent edited drafts.
-export default function VoiceNotesPanel({ clinician }) {
+export default function VoiceNotesPanel({ staffMember }) {
   const qc = useQueryClient()
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError]           = useState('')
@@ -27,11 +27,11 @@ export default function VoiceNotesPanel({ clinician }) {
       const data = await apiFetch('/api/staff/refresh-voice-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_id: clinician.id }),
+        body: JSON.stringify({ staff_id: staffMember.id }),
       })
       setResult(data)
       // Refetch the clinician so the new voice_notes show in the UI
-      qc.invalidateQueries({ queryKey: queryKeys.staff.detail(clinician.id) })
+      qc.invalidateQueries({ queryKey: queryKeys.staff.detail(staffMember.id) })
     } catch (e) {
       setError(e.message || 'Refresh failed')
     } finally {
@@ -39,9 +39,9 @@ export default function VoiceNotesPanel({ clinician }) {
     }
   }
 
-  const notes        = clinician.voice_notes || ''
-  const refreshedAt  = clinician.voice_notes_refreshed_at
-  const editsCount   = clinician.voice_notes_edits_analyzed || 0
+  const notes        = staffMember.voice_notes || ''
+  const refreshedAt  = staffMember.voice_notes_refreshed_at
+  const editsCount   = staffMember.voice_notes_edits_analyzed || 0
   const hasNotes     = notes.trim().length > 0
   const everAnalyzed = Boolean(refreshedAt)
 
@@ -59,7 +59,7 @@ export default function VoiceNotesPanel({ clinician }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            What the AI has learned about how {clinician.name.split(' ')[0]} edits drafts. These patterns are injected into every future prompt to reduce revisions.
+            What the AI has learned about how {staffMember.name.split(' ')[0]} edits drafts. These patterns are injected into every future prompt to reduce revisions.
           </p>
         </div>
         <Button
@@ -100,7 +100,7 @@ export default function VoiceNotesPanel({ clinician }) {
         </div>
       ) : (
         <div className="rounded-lg bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-          {clinician.name.split(' ')[0]} has not built up enough edit history yet. Once a few drafts have been edited and published, click Refresh to distill the patterns.
+          {staffMember.name.split(' ')[0]} has not built up enough edit history yet. Once a few drafts have been edited and published, click Refresh to distill the patterns.
         </div>
       )}
 

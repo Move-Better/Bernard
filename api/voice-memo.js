@@ -200,8 +200,8 @@ export default async function handler(req, res) {
     })
     if (!cRes.ok) {
       const body = await cRes.text().catch(() => '')
-      console.error(`[voice-memo] clinician create failed ${cRes.status}: ${body.slice(0, 300)}`)
-      return res.status(500).json({ error: 'Could not create clinician record' })
+      console.error(`[voice-memo] staff create failed ${cRes.status}: ${body.slice(0, 300)}`)
+      return res.status(500).json({ error: 'Could not create staff member record' })
     }
     staffId = (await cRes.json())[0]?.id
   }

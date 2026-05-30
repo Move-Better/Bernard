@@ -183,8 +183,8 @@ export default async function handler(req, res) {
     })
     if (!cRes.ok) {
       const body = await cRes.text().catch(() => '')
-      console.error(`[handout] clinician create failed: ${body.slice(0, 300)}`)
-      return res.status(500).json({ error: 'Could not create clinician record' })
+      console.error(`[handout] staff create failed: ${body.slice(0, 300)}`)
+      return res.status(500).json({ error: 'Could not create staff member record' })
     }
     const created = (await cRes.json())[0]
     staffId = created?.id

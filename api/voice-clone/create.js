@@ -88,10 +88,10 @@ export default async function handler(req, res) {
     `&select=id,name,eleven_voice_id,voice_clone_revoked_at&limit=1`
   )
   if (!staffRes.ok) {
-    return res.status(502).json({ error: 'Could not look up clinician' })
+    return res.status(502).json({ error: 'Could not look up staff member' })
   }
-  const [clinician] = await staffRes.json()
-  if (!clinician) return res.status(404).json({ error: 'Clinician not found in this workspace' })
+  const [staffMember] = await staffRes.json()
+  if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
 
   // ── Buffer audio ────────────────────────────────────────────────────────────
   let audioBuffer
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
   }
 
   // ── Clone + persist (shared with /resume) ───────────────────────────────────
-  const result = await cloneFromSampleUrl({ ws, clinician, sampleUrl: blobResult.url })
+  const result = await cloneFromSampleUrl({ ws, staffMember, sampleUrl: blobResult.url })
   if (!result.ok) return res.status(result.status).json(result.body)
   return res.status(200).json({ voiceId: result.voiceId, sampleUrl: result.sampleUrl })
 }

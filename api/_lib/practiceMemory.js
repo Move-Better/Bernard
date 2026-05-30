@@ -58,7 +58,7 @@ async function fetchStaffMemberInterviews(workspaceId, staffId) {
   const qs = `staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=name,interviews(${INTERVIEW_FIELDS})`
   const r = await sb(qs)
   if (!r.ok) {
-    console.error(`[practiceMemory] clinician fetch ${r.status} ws=${workspaceId} clinician=${staffId}`)
+    console.error(`[practiceMemory] staff fetch ${r.status} ws=${workspaceId} staff=${staffId}`)
     return null
   }
   const rows = await r.json()
@@ -69,7 +69,7 @@ async function fetchRecentApprovedContent(workspaceId, staffId, limit = 3) {
   const qs = `content_items?workspace_id=eq.${workspaceId}&staff_id=eq.${staffId}&status=in.(approved,published)&archived_at=is.null&select=id,topic,platform,content&order=created_at.desc&limit=${limit}`
   const r = await sb(qs)
   if (!r.ok) {
-    console.error(`[practiceMemory] content fetch ${r.status} ws=${workspaceId} clinician=${staffId}`)
+    console.error(`[practiceMemory] content fetch ${r.status} ws=${workspaceId} staff=${staffId}`)
     return []
   }
   return await r.json()

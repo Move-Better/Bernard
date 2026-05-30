@@ -73,8 +73,8 @@ export default function StaffProfile() {
   const navigate = useNavigate()
   const { user } = useUser()
   const { role } = useUserRole()
-  const { data: clinician, isLoading: loading, error: loadError } = useStaffMember(staffId)
-  const { data: clinicians = [] } = useStaffSummaries()
+  const { data: staffMember, isLoading: loading, error: loadError } = useStaffMember(staffId)
+  const { data: staffList = [] } = useStaffSummaries()
 
   // Initial tab can be deep-linked via ?tab=voice|settings|activity. Used by
   // /settings/voice-training success path so users land directly on the
@@ -95,25 +95,25 @@ export default function StaffProfile() {
   const deleting = deleteStaffMut.isPending || deleteInterviewMut.isPending
 
   useEffect(() => {
-    if (!loading && (loadError || clinician === null)) navigate('/')
-  }, [loading, loadError, clinician, navigate])
+    if (!loading && (loadError || staffMember === null)) navigate('/')
+  }, [loading, loadError, staffMember, navigate])
 
   useEffect(() => {
-    if (!clinician) return
-    const isOwner = clinician.created_by_id === user?.id
+    if (!staffMember) return
+    const isOwner = staffMember.created_by_id === user?.id
     if (!isOwner && role !== 'admin') return
-    fetchStaffMemberArc(staffId, clinician.interviews || [])
+    fetchStaffMemberArc(staffId, staffMember.interviews || [])
       .then(setArc)
       .catch(() => {})
-  }, [clinician, staffId, user?.id, role])
+  }, [staffMember, staffId, user?.id, role])
 
   // Fetch voice-phrases for the hero ring + phrase preview.
   useEffect(() => {
-    if (!clinician?.id) return
-    apiFetch(`/api/staff/voice-phrases?staff_id=${clinician.id}&limit=6`)
+    if (!staffMember?.id) return
+    apiFetch(`/api/staff/voice-phrases?staff_id=${staffMember.id}&limit=6`)
       .then(setVoiceData)
       .catch(() => {})
-  }, [clinician?.id])
+  }, [staffMember?.id])
 
   async function handleDeleteInterview(interviewId) {
     setDeleteError('')
@@ -128,7 +128,7 @@ export default function StaffProfile() {
   async function handleDeleteStaff() {
     try {
       await deleteStaffMut.mutateAsync({ id: staffId, userId: user.id })
-      toast.success(`Deleted ${clinician?.name || 'staff member'}`)
+      toast.success(`Deleted ${staffMember?.name || 'staff member'}`)
       navigate('/')
     } catch (e) {
       toast.error('Could not delete staff member', { description: e.message })
@@ -136,16 +136,16 @@ export default function StaffProfile() {
   }
 
   if (loading) return <LoadingState />
-  if (!clinician) return null
+  if (!staffMember) return null
 
-  const interviews = clinician.interviews || []
+  const interviews = staffMember.interviews || []
   const completed = interviews.filter((i) => i.status === 'completed')
   const inProgress = interviews.filter((i) => i.status === 'in_progress')
-  const isMyStaffProfile = clinician.created_by_id === user?.id
+  const isMyStaffProfile = staffMember.created_by_id === user?.id
   const showArc = isMyStaffProfile || role === 'admin'
 
   // Voice hero data
-  const speed = clinician?.tts_settings?.speed ?? SPEED_DEFAULT
+  const speed = staffMember?.tts_settings?.speed ?? SPEED_DEFAULT
   const totalPhrases = voiceData?.total_phrases ?? 0
   const topPhrases = voiceData?.phrases ?? []
   const pieceCount = voiceData?.pieces_count ?? 0
@@ -165,11 +165,11 @@ export default function StaffProfile() {
 
           {/* Identity row */}
           <div className="flex items-center gap-4 mb-3 flex-wrap sm:flex-nowrap">
-            <StaffChip id={clinician.id} name={clinician.name} size="xl" />
+            <StaffChip id={staffMember.id} name={staffMember.name} size="xl" />
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold leading-tight truncate">{clinician.name}</h1>
+              <h1 className="text-xl font-bold leading-tight truncate">{staffMember.name}</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Member since {formatDate(clinician.created_at)}
+                Member since {formatDate(staffMember.created_at)}
               </p>
             </div>
 
@@ -208,7 +208,7 @@ export default function StaffProfile() {
                   variant="ghost"
                   size="icon"
                   className="text-muted-foreground hover:text-destructive"
-                  onClick={() => setDeleteTarget({ type: 'clinician' })}
+                  onClick={() => setDeleteTarget({ type: 'staff' })}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -267,7 +267,7 @@ export default function StaffProfile() {
           {interviews.length === 0 ? (
             <EmptyState
               icon={<MessageSquare className="h-5 w-5" />}
-              title={`No interviews yet for ${clinician.name.split(' ')[0]}`}
+              title={`No interviews yet for ${staffMember.name.split(' ')[0]}`}
               description="Each interview captures a staff member's voice on a topic and generates a story with publish-ready drafts. Start one to build this profile."
               action={
                 <Button asChild size="sm">
@@ -287,7 +287,7 @@ export default function StaffProfile() {
                         interview={interview}
                         staffId={staffId}
                         currentUserId={user?.id}
-                        clinicians={clinicians}
+                        staffList={staffList}
                         onDelete={() => setDeleteTarget({ type: 'interview', id: interview.id })}
                       />
                     ))}
@@ -305,7 +305,7 @@ export default function StaffProfile() {
                         interview={interview}
                         staffId={staffId}
                         currentUserId={user?.id}
-                        clinicians={clinicians}
+                        staffList={staffList}
                         onDelete={() => setDeleteTarget({ type: 'interview', id: interview.id })}
                       />
                     ))}
@@ -336,7 +336,7 @@ export default function StaffProfile() {
                   &ldquo;{arc.standoutQuote.text}&rdquo;
                 </p>
                 <footer className="text-xs text-muted-foreground">
-                  — {clinician.name.split(' ')[0]}
+                  — {staffMember.name.split(' ')[0]}
                   {arc.standoutQuote.interviewTopic && (
                     <span className="ml-1 text-muted-foreground/60">· {arc.standoutQuote.interviewTopic}</span>
                   )}
@@ -451,14 +451,14 @@ export default function StaffProfile() {
                       </div>
 
                       {/* Voice memory excerpt */}
-                      {clinician.voice_notes ? (
+                      {staffMember.voice_notes ? (
                         <div>
                           <p className="text-2xs font-semibold uppercase tracking-wider text-white/40 mb-2">Voice memory</p>
                           <div
                             className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/65"
                             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
                           >
-                            {clinician.voice_notes}
+                            {staffMember.voice_notes}
                           </div>
                         </div>
                       ) : (
@@ -521,7 +521,7 @@ export default function StaffProfile() {
                 size="sm"
                 icon={<MessageSquare className="h-4 w-4" />}
                 title="Voice profile starts with an interview"
-                description={`Run a first interview with ${clinician.name.split(' ')[0]} to begin extracting signature phrases and building their voice model.`}
+                description={`Run a first interview with ${staffMember.name.split(' ')[0]} to begin extracting signature phrases and building their voice model.`}
                 action={
                   <Button asChild size="sm">
                     <Link to="/new">Start first interview</Link>
@@ -529,10 +529,10 @@ export default function StaffProfile() {
                 }
               />
             )}
-            {isMyStaffProfile && <VoicePlaybackCard clinician={clinician} />}
-            {isMyStaffProfile && <VoiceCloneCard clinician={clinician} />}
-            <VoiceFreshnessCard staffId={clinician.id} staffName={clinician.name} />
-            {isMyStaffProfile && <VoiceNotesPanel clinician={clinician} />}
+            {isMyStaffProfile && <VoicePlaybackCard staffMember={staffMember} />}
+            {isMyStaffProfile && <VoiceCloneCard staffMember={staffMember} />}
+            <VoiceFreshnessCard staffId={staffMember.id} staffName={staffMember.name} />
+            {isMyStaffProfile && <VoiceNotesPanel staffMember={staffMember} />}
           </div>
         </div>
       )}
@@ -542,12 +542,12 @@ export default function StaffProfile() {
         <div className="px-6 py-6 space-y-4 max-w-2xl">
           {isMyStaffProfile && <DisplayNameCard />}
           {(isMyStaffProfile || role === 'admin') && (
-            <DefaultToneCard clinician={clinician} />
+            <DefaultToneCard staffMember={staffMember} />
           )}
           {(isMyStaffProfile || role === 'admin') && (
-            <CaptureCompanionCard clinician={clinician} />
+            <CaptureCompanionCard staffMember={staffMember} />
           )}
-          {role === 'admin' && <StaffRecipeCard clinician={clinician} />}
+          {role === 'admin' && <StaffRecipeCard staffMember={staffMember} />}
         </div>
       )}
 
@@ -559,11 +559,11 @@ export default function StaffProfile() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {deleteTarget?.type === 'clinician' ? 'Delete staff profile?' : 'Delete interview?'}
+              {deleteTarget?.type === 'staff' ? 'Delete staff profile?' : 'Delete interview?'}
             </DialogTitle>
             <DialogDescription>
-              {deleteTarget?.type === 'clinician'
-                ? `This will permanently delete ${clinician.name}'s profile and all their interviews. This cannot be undone.`
+              {deleteTarget?.type === 'staff'
+                ? `This will permanently delete ${staffMember.name}'s profile and all their interviews. This cannot be undone.`
                 : 'This will permanently delete this interview and all generated content. This cannot be undone.'}
             </DialogDescription>
           </DialogHeader>
@@ -584,7 +584,7 @@ export default function StaffProfile() {
               variant="destructive"
               disabled={deleting}
               onClick={() =>
-                deleteTarget?.type === 'clinician'
+                deleteTarget?.type === 'staff'
                   ? handleDeleteStaff()
                   : handleDeleteInterview(deleteTarget.id)
               }
@@ -668,18 +668,18 @@ function PublishedPostRow({ post }) {
 
 // ── Default tone card ─────────────────────────────────────────────────────────
 
-function DefaultToneCard({ clinician }) {
+function DefaultToneCard({ staffMember }) {
   const { user } = useUser()
   const patchStaff = usePatchStaff()
   const tones = TONES
-  const current = clinician.default_tone || 'smart'
+  const current = staffMember.default_tone || 'smart'
   const [selected, setSelected] = useState(current)
   const [saved, setSaved] = useState(false)
 
   const isDirty = selected !== current
 
   async function handleSave() {
-    await patchStaff.mutateAsync({ id: clinician.id, patch: { default_tone: selected }, userId: user?.id })
+    await patchStaff.mutateAsync({ id: staffMember.id, patch: { default_tone: selected }, userId: user?.id })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -741,7 +741,7 @@ function DefaultToneCard({ clinician }) {
 
 // ── Capture Companion card ────────────────────────────────────────────────────
 //
-// Manages the per-clinician Capture Upload Token used by the iOS Capture
+// Manages the per-staff Capture Upload Token used by the iOS Capture
 // Companion Shortcut. Calls api/capture/token.js (PR #872) — GET reads the
 // current state (without revealing the token value), POST generates/rotates
 // (returns plaintext ONCE), DELETE revokes.
@@ -749,7 +749,7 @@ function DefaultToneCard({ clinician }) {
 // The PWA /capture page does NOT use this token — it uses Clerk session auth.
 // Token only matters for the iOS Shortcut path.
 
-function CaptureCompanionCard({ clinician }) {
+function CaptureCompanionCard({ staffMember }) {
   const [tokenState, setTokenState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -761,7 +761,7 @@ function CaptureCompanionCard({ clinician }) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    apiFetch(`/api/capture/token?staffId=${clinician.id}`)
+    apiFetch(`/api/capture/token?staffId=${staffMember.id}`)
       .then((data) => {
         if (cancelled) return
         setTokenState(data)
@@ -776,11 +776,11 @@ function CaptureCompanionCard({ clinician }) {
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [clinician.id])
+  }, [staffMember.id])
 
   const generateMutation = useAppMutation({
     mutationFn: () =>
-      apiFetch(`/api/capture/token?staffId=${clinician.id}`, { method: 'POST' }),
+      apiFetch(`/api/capture/token?staffId=${staffMember.id}`, { method: 'POST' }),
     onSuccess: (data) => {
       setNewToken(data?.token || null)
       setTokenState({
@@ -798,7 +798,7 @@ function CaptureCompanionCard({ clinician }) {
 
   const revokeMutation = useAppMutation({
     mutationFn: () =>
-      apiFetch(`/api/capture/token?staffId=${clinician.id}`, { method: 'DELETE' }),
+      apiFetch(`/api/capture/token?staffId=${staffMember.id}`, { method: 'DELETE' }),
     onSuccess: () => {
       setTokenState({ hasToken: false, expiresAt: null, lastUsedAt: null })
       setNewToken(null)
@@ -962,11 +962,11 @@ function CaptureCompanionCard({ clinician }) {
   )
 }
 
-// ── Clinician recipe card ─────────────────────────────────────────────────────
+// ── Staff recipe card ─────────────────────────────────────────────────────────
 
-function StaffRecipeCard({ clinician }) {
+function StaffRecipeCard({ staffMember }) {
   const workspace = useWorkspace()
-  const { data: recipes = [], isLoading } = useStaffRecipes(clinician.id)
+  const { data: recipes = [], isLoading } = useStaffRecipes(staffMember.id)
   const patchMut  = usePatchStaffRecipe()
   const deleteMut = useDeleteStaffRecipe()
   const VOICE_MODES = getVoiceModes(workspace)
@@ -992,7 +992,7 @@ function StaffRecipeCard({ clinician }) {
       <div>
         <p className="text-sm font-semibold">Interview recipes</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Saved lever combinations for {clinician.name.split(' ')[0]}. The starred recipe auto-fills the New Interview form.
+          Saved lever combinations for {staffMember.name.split(' ')[0]}. The starred recipe auto-fills the New Interview form.
         </p>
       </div>
 
@@ -1089,10 +1089,10 @@ function RecipeRow({ recipe, workspace, voiceModes, onSetDefault, onDelete, busy
 
 // ── Interview row ─────────────────────────────────────────────────────────────
 
-function InterviewRow({ interview, staffId, currentUserId, clinicians, onDelete }) {
+function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }) {
   const isOwner = interview.owner_id === currentUserId
   const isComplete = interview.status === 'completed'
-  const ownerName = !isOwner ? resolveOwnerName(interview, clinicians) : null
+  const ownerName = !isOwner ? resolveOwnerName(interview, staffList) : null
   const href = isComplete
     ? `/output/${staffId}/${interview.id}`
     : `/interview/${staffId}/${interview.id}`

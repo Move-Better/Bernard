@@ -11,8 +11,8 @@ const RESUME_INITIAL_CAP = 6
 // Props:
 //   interviews     — array from Dashboard/Home's resumeInterviews memo
 //   currentUserId  — Clerk user.id for ownership check
-//   clinicians     — workspace clinicians (used to resolve owner_id → name)
-export default function ResumeStrip({ interviews, currentUserId, clinicians = [] }) {
+//   staff     — workspace staff (used to resolve owner_id → name)
+export default function ResumeStrip({ interviews, currentUserId, staff = [] }) {
   const [showAll, setShowAll] = useState(false)
   const visible = showAll ? interviews : interviews.slice(0, RESUME_INITIAL_CAP)
   const hiddenCount = interviews.length - RESUME_INITIAL_CAP
@@ -35,7 +35,7 @@ export default function ResumeStrip({ interviews, currentUserId, clinicians = []
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {visible.map((i) => (
-          <ResumeCard key={i.id} interview={i} currentUserId={currentUserId} clinicians={clinicians} />
+          <ResumeCard key={i.id} interview={i} currentUserId={currentUserId} staff={staff} />
         ))}
       </div>
       {hiddenCount > 0 && !showAll && (
@@ -60,7 +60,7 @@ export default function ResumeStrip({ interviews, currentUserId, clinicians = []
   )
 }
 
-function ResumeCard({ interview, currentUserId, clinicians }) {
+function ResumeCard({ interview, currentUserId, staff }) {
   const isOwner = interview.owner_id === currentUserId
   const href = isOwner
     ? `/interview/${interview.staffId}/${interview.id}`
@@ -68,7 +68,7 @@ function ResumeCard({ interview, currentUserId, clinicians }) {
   // Owner attribution only renders when (a) we're not the owner and (b)
   // resolveOwnerName produced a real name (clinician.name preferred, then
   // dot-separated email; otherwise null → no suffix).
-  const ownerName = !isOwner ? resolveOwnerName(interview, clinicians) : null
+  const ownerName = !isOwner ? resolveOwnerName(interview, staff) : null
 
   return (
     <Link

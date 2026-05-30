@@ -83,7 +83,7 @@ export default function StoryCard({ story }) {
         </span>
       </div>
 
-      {/* Clinician — secondary context */}
+      {/* Staff — secondary context */}
       <div className="mb-3">
         <StaffChip
           id={staff_id}

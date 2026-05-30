@@ -176,9 +176,9 @@ export default function InterviewSession() {
   const qc = useQueryClient()
   const { data: staffData } = useStaffMember(staffId)
   const { data: interviewData, isLoading: interviewLoading } = useInterview(interviewId)
-  const clinician = staffData ?? null
+  const staffMember = staffData ?? null
   const [interview, setInterview] = useState(null)
-  const loading = interviewLoading || !clinician || !interview
+  const loading = interviewLoading || !staffMember || !interview
   const [messages, setMessages] = useState([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
@@ -559,7 +559,7 @@ export default function InterviewSession() {
     // Today only `speed` is exposed in the UI; voiceId is reserved for a
     // future per-clinician voice picker. Falls through to env-var defaults
     // server-side when these are undefined.
-    const tts = clinician?.tts_settings || {}
+    const tts = staffMember?.tts_settings || {}
     getTts().speak(text, {
       voiceId: tts.voice_id || undefined,
       speed: typeof tts.speed === 'number' ? tts.speed : undefined,
@@ -603,7 +603,7 @@ export default function InterviewSession() {
   }, [isSpeaking, isStreaming, interviewComplete])
 
   const sendToAI = useCallback(async (currentMessages) => {
-    if (!clinician || !interviewRef.current) return
+    if (!staffMember || !interviewRef.current) return
     setIsStreaming(true)
     setStreamingText('')
     setError('')
@@ -628,7 +628,7 @@ export default function InterviewSession() {
 
     const baseSystemPrompt = getInterviewSystemPrompt(
       overlaidWorkspace,
-      clinician.name,
+      staffMember.name,
       interviewRef.current.topic,
       pastInterviewsRef.current,
       interviewRef.current?.prototype_id,
@@ -644,7 +644,7 @@ export default function InterviewSession() {
         storyTypeSlot:  resolveStoryTypeSlot(interviewRef.current?.story_type, overlaidWorkspace?.story_type_options),
         // Team-as-talent (Phase 1.5): branch to non-clinical staff prompt when applicable.
         // Default 'clinician' keeps existing behavior byte-identical.
-        staffType:      clinician?.staff_type || 'clinician',
+        staffType:      staffMember?.staff_type || 'clinician',
       }
     )
 
@@ -721,10 +721,10 @@ export default function InterviewSession() {
     // defeat useCallback (sendToAI would re-create constantly and re-trigger
     // every effect that depends on it).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clinician, interviewId, user?.id])
+  }, [staffMember, interviewId, user?.id])
 
   useEffect(() => {
-    if (!clinician || !interview || hasStarted.current || showInstructions || !micCheckPassed) return
+    if (!staffMember || !interview || hasStarted.current || showInstructions || !micCheckPassed) return
     hasStarted.current = true
     // Start recording the clinician's mic for voice clone training.
     // Non-blocking + non-fatal — interview continues even if capture fails.
@@ -740,7 +740,7 @@ export default function InterviewSession() {
     // `speak` here would either re-trigger on every message (after the
     // hasStarted guard, harmless but wasteful) or fight the guard pattern.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clinician, interview, showInstructions, micCheckPassed])
+  }, [staffMember, interview, showInstructions, micCheckPassed])
 
   function startListening({ preserveTranscript = false } = {}) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -1058,7 +1058,7 @@ export default function InterviewSession() {
   async function generateCoveredSummary() {
     try {
       const apiMessages = messages.map((m) => ({ role: m.role, content: m.content }))
-      const sys = getCoveredSummarySystemPrompt(clinician.name, interview.topic)
+      const sys = getCoveredSummarySystemPrompt(staffMember.name, interview.topic)
       const seed = [...apiMessages, { role: 'user', content: 'Summarize what I covered, in 3 lines.' }]
       let acc = ''
       for await (const delta of streamMessage(seed, sys, { model: 'claude-haiku-4-5', maxOutputTokens: 300 })) {
@@ -1124,7 +1124,7 @@ export default function InterviewSession() {
       let voicePhrases = []
       try {
         const vp = await apiFetch(
-          `/api/staff/voice-phrases?staff_id=${clinician.id}&limit=8`
+          `/api/staff/voice-phrases?staff_id=${staffMember.id}&limit=8`
         )
         voicePhrases = Array.isArray(vp?.phrases) ? vp.phrases : []
       } catch (e) {
@@ -1133,10 +1133,10 @@ export default function InterviewSession() {
 
       const isMinimal = generationStyle === 'minimal_edits'
       const systemPrompt = isMinimal
-        ? getMinimalEditSystemPrompt(clinician.name, voiceMode, clinician.voice_notes || '', voicePhrases)
+        ? getMinimalEditSystemPrompt(staffMember.name, voiceMode, staffMember.voice_notes || '', voicePhrases)
         : getBlogPostSystemPrompt(
-            overlaidWorkspace, clinician.name, interview.topic, tone, voiceMode, interview.prototype_id,
-            clinician.voice_notes || '',
+            overlaidWorkspace, staffMember.name, interview.topic, tone, voiceMode, interview.prototype_id,
+            staffMember.voice_notes || '',
             voicePhrases,
             resolveAudienceSlot(interview.audience, overlaidWorkspace?.audience_options),
             resolveStoryTypeSlot(interview.story_type, overlaidWorkspace?.story_type_options),
@@ -1243,7 +1243,7 @@ export default function InterviewSession() {
     if (!interviewComplete) return
     if (autoGenFiredRef.current) return
     if (isGenerating) return
-    if (!interview || !clinician || !user?.id) return
+    if (!interview || !staffMember || !user?.id) return
     if (interview.outputs?.blogPost) return
     if (user.id !== interview.owner_id) return
     autoGenFiredRef.current = true
@@ -1252,7 +1252,7 @@ export default function InterviewSession() {
     // re-fire the effect every render and double-bill the generation. The
     // guard ref above already pins this to a single invocation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewComplete, isGenerating, interview, clinician, user?.id])
+  }, [interviewComplete, isGenerating, interview, staffMember, user?.id])
 
   if (loading) {
     return (
@@ -1262,7 +1262,7 @@ export default function InterviewSession() {
     )
   }
 
-  if (!clinician || !interview) return null
+  if (!staffMember || !interview) return null
 
   const isOwner = user?.id === interview.owner_id
 
@@ -1274,7 +1274,7 @@ export default function InterviewSession() {
             <Link to="/new"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
           <div>
-            <p className="font-medium text-sm">{clinician.name}</p>
+            <p className="font-medium text-sm">{staffMember.name}</p>
             <p className="text-xs text-muted-foreground">{interview.topic}</p>
           </div>
         </div>
@@ -1312,11 +1312,11 @@ export default function InterviewSession() {
   // Mic check gate: shown after instructions are dismissed but before the AI
   // sends its first question. onContinue flips micCheckPassed → true.
   if (!micCheckPassed) {
-    return <MicCheck onContinue={() => setMicCheckPassed(true)} ttsSettings={clinician?.tts_settings} />
+    return <MicCheck onContinue={() => setMicCheckPassed(true)} ttsSettings={staffMember?.tts_settings} />
   }
 
   const displayMessages = messages.filter((m) => !m.content?.includes(COMPLETE_TOKEN))
-  const firstNameOnly = clinician.name.split(' ')[0]
+  const firstNameOnly = staffMember.name.split(' ')[0]
   // Require at least one back-and-forth before Finish: an opening prompt plus
   // one captured user answer isn't enough material for the AI to write from.
   const userMessageCount = messages.filter((m) => m.role === 'user').length
@@ -1343,11 +1343,11 @@ export default function InterviewSession() {
         </Button>
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-            {getInitials(clinician.name)}
+            {getInitials(staffMember.name)}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm leading-none">{clinician.name}</p>
+          <p className="font-medium text-sm leading-none">{staffMember.name}</p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate" title={interview.topic}>{interview.topic}</p>
         </div>
         {saveStatus && (
@@ -1508,7 +1508,7 @@ export default function InterviewSession() {
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden="true" />
                 <p className="font-semibold text-sm text-emerald-900">
-                  {clinician.name ? `Great conversation, ${clinician.name}.` : 'Great conversation.'}
+                  {staffMember.name ? `Great conversation, ${staffMember.name}.` : 'Great conversation.'}
                 </p>
               </div>
               <p className="text-sm text-emerald-800/80 leading-relaxed">

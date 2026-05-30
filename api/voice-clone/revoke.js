@@ -55,15 +55,15 @@ export default async function handler(req, res) {
     `&workspace_id=eq.${ws.id}` +
     `&select=id,eleven_voice_id&limit=1`
   )
-  if (!lookupRes.ok) return res.status(502).json({ error: 'Could not look up clinician' })
-  const [clinician] = await lookupRes.json()
-  if (!clinician) return res.status(404).json({ error: 'Clinician not found in this workspace' })
+  if (!lookupRes.ok) return res.status(502).json({ error: 'Could not look up staff member' })
+  const [staffMember] = await lookupRes.json()
+  if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
 
-  if (clinician.eleven_voice_id) {
+  if (staffMember.eleven_voice_id) {
     try {
-      await deleteVoice(clinician.eleven_voice_id)
+      await deleteVoice(staffMember.eleven_voice_id)
     } catch (e) {
-      console.warn(`[voice-clone] delete upstream failed for clinician=${staffId}: ${e?.message}`)
+      console.warn(`[voice-clone] delete upstream failed for staff=${staffId}: ${e?.message}`)
       // Continue to null out locally — keeping a dangling voice_id on our
       // side is worse than leaking an upstream voice that the user can
       // manually delete in the ElevenLabs dashboard.

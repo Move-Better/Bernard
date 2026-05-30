@@ -99,10 +99,10 @@ export default function CampaignsSettings() {
   const [editing, setEditing] = useState(null) // null | 'new' | campaign object
 
   // Clinician map for rendering target labels on campaign rows.
-  const { data: clinicians = [] } = useStaffSummaries()
+  const { data: staff = [] } = useStaffSummaries()
   const staffMap = useMemo(
-    () => Object.fromEntries(clinicians.map((c) => [c.id, c.name])),
-    [clinicians]
+    () => Object.fromEntries(staff.map((c) => [c.id, c.name])),
+    [staff]
   )
 
   const load = useCallback(async () => {

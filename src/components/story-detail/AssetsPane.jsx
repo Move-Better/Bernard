@@ -500,11 +500,11 @@ function RegenerateButton({ piece, story }) {
 
   // Length preset is only meaningful for blog (the only long-form piece with a
   // server-side regenerate prompt today). Seeded from the piece's persisted
-  // preset, then the clinician's preferred default, then 'standard'.
+  // preset, then the staff member's preferred default, then 'standard'.
   const isBlog = piece.platform === 'blog'
   const initialLengthPreset = resolveLengthPreset(
     piece.length_preset,
-    story?.clinician?.preferred_length,
+    story?.staffMember?.preferred_length,
   )
   const [lengthPreset, setLengthPreset] = useState(initialLengthPreset)
 

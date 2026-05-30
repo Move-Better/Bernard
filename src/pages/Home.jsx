@@ -37,7 +37,7 @@ export default function Home() {
   // Slim clinician summaries — free cache hit when Stories has loaded first
   // (useStories populates the card cache as a side-effect). Includes
   // session_state so we can identify in-progress interviews for the resume strip.
-  const { data: clinicians = [], isLoading: staffLoading } = useStaffSummaries()
+  const { data: staff = [], isLoading: staffLoading } = useStaffSummaries()
 
   // ?bucket= deep-link scroll
   useEffect(() => {
@@ -53,10 +53,10 @@ export default function Home() {
   // Derived data from stories
   const allInterviews = useMemo(
     () =>
-      clinicians.flatMap((c) =>
+      staff.flatMap((c) =>
         (c.interviews || []).map((i) => ({ ...i, staffName: c.name, staffId: c.id }))
       ),
-    [clinicians]
+    [staff]
   )
 
   const resumeInterviews = useMemo(() => {
@@ -137,7 +137,7 @@ export default function Home() {
 
   // ── Task bucket 3: Ready to distribute ─────────────────────────────────────
   // Stories with at least one approved piece — publisher's inbox. Only shown
-  // to staff since clinicians don't distribute; an empty list hides the card.
+  // to staff since staff don't distribute; an empty list hides the card.
   const readyToDistribute = useMemo(
     () =>
       isEditor
@@ -150,7 +150,7 @@ export default function Home() {
   // Clinicians with 0 interviews OR most recent interview > 30 days ago
   const overdueStaffItems = useMemo(() => {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
-    return clinicians.filter((c) => {
+    return staff.filter((c) => {
       const interviews = c.interviews || []
       if (interviews.length === 0) return true
       const mostRecent = interviews.reduce((latest, i) => {
@@ -159,7 +159,7 @@ export default function Home() {
       }, 0)
       return mostRecent < thirtyDaysAgo
     })
-  }, [clinicians])
+  }, [staff])
 
   const isLoading = storiesLoading || staffLoading
 
@@ -227,7 +227,7 @@ export default function Home() {
       {/* Pre-roll: one section at a time. Priority: resume in-progress >
           coverage gaps (active workspace) > getting started (new workspace). */}
       {resumeInterviews.length > 0 ? (
-        <ResumeStrip interviews={resumeInterviews} currentUserId={user?.id} clinicians={clinicians} />
+        <ResumeStrip interviews={resumeInterviews} currentUserId={user?.id} staff={staff} />
       ) : unfilteredGaps.length > 0 && stories.length > 0 ? (
         <PlanNextInterview
           gaps={topicGaps}

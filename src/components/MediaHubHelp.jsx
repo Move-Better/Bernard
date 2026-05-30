@@ -94,7 +94,7 @@ export default function MediaHubHelp() {
               </div>
 
               <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-2">
-                <div className="font-medium">For clinicians</div>
+                <div className="font-medium">For staff</div>
                 <p className="text-muted-foreground">
                   You&apos;ll see this page if you&apos;re curious or want to flag a clip for the team. Browse, search by patient pseudonym or condition, and add a note on a clip if you spot something the team should turn into content. Your editor handles the editing side.
                 </p>

@@ -81,10 +81,10 @@ function maxTimestamp(values) {
 }
 
 /**
- * Join clinicians-with-nested-interviews and content_items into a flat
+ * Join staff-with-nested-interviews and content_items into a flat
  * list of Story objects.
  *
- * @param {Array} clinicians  — output of /api/db/staff (with `interviews[]`)
+ * @param {Array} staff  — output of /api/db/staff (with `interviews[]`)
  * @param {Array} contentItems — output of /api/db/content (workspace-scoped)
  * @returns {Array<Story>}
  *
@@ -93,8 +93,8 @@ function maxTimestamp(values) {
  * upstream endpoints already enforce workspace_id filtering — this is a
  * belt-and-suspenders guard, not the primary defense.
  */
-export function buildStories(clinicians, contentItems) {
-  const staffList = Array.isArray(clinicians) ? clinicians : []
+export function buildStories(staff, contentItems) {
+  const staffList = Array.isArray(staff) ? staff : []
   const itemList = Array.isArray(contentItems) ? contentItems : []
 
   // Index content_items by interview_id.
@@ -107,9 +107,9 @@ export function buildStories(clinicians, contentItems) {
   }
 
   const stories = []
-  for (const clinician of staffList) {
-    if (!clinician) continue
-    const interviews = Array.isArray(clinician.interviews) ? clinician.interviews : []
+  for (const staffMember of staffList) {
+    if (!staffMember) continue
+    const interviews = Array.isArray(staffMember.interviews) ? staffMember.interviews : []
     for (const interview of interviews) {
       if (!interview || !interview.id) continue
 
@@ -162,9 +162,9 @@ export function buildStories(clinicians, contentItems) {
 
       stories.push({
         id: interview.id,
-        workspace_id: interview.workspace_id || clinician.workspace_id || null,
-        staff_id: clinician.id,
-        staff_name: clinician.name,
+        workspace_id: interview.workspace_id || staffMember.workspace_id || null,
+        staff_id: staffMember.id,
+        staff_name: staffMember.name,
         topic: interview.topic,
         status: interview.status,
         capture_mode: interview.capture_mode || 'interview',
