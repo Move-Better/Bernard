@@ -359,21 +359,33 @@ def main():
     data = build(args.token)
 
     xml_tmp = Path('/tmp/narraterx_capture.plist')
+    unsigned = Path('/tmp/NarrateRx Capture (unsigned).shortcut')
     out = Path.home() / 'Desktop' / 'NarrateRx Capture.shortcut'
 
     with open(xml_tmp, 'wb') as f:
         plistlib.dump(data, f, fmt=plistlib.FMT_XML)
 
     result = subprocess.run(
-        ['plutil', '-convert', 'binary1', str(xml_tmp), '-o', str(out)],
+        ['plutil', '-convert', 'binary1', str(xml_tmp), '-o', str(unsigned)],
         capture_output=True, text=True,
     )
-
     if result.returncode != 0:
         print(f'plutil error: {result.stderr}')
         sys.exit(1)
 
-    print(f'✓  {out}')
+    # macOS refuses to import unsigned .shortcut files. Sign against Apple's
+    # servers so the file imports with a double-click. Requires network.
+    sign = subprocess.run(
+        ['shortcuts', 'sign', '--mode', 'anyone',
+         '--input', str(unsigned), '--output', str(out)],
+        capture_output=True, text=True,
+    )
+    if sign.returncode != 0:
+        print(f'shortcuts sign error: {sign.stderr or sign.stdout}')
+        print('(The unsigned file is at: ' + str(unsigned) + ')')
+        sys.exit(1)
+
+    print(f'✓  {out}  (signed)')
     print()
     print('Next steps:')
     print('  1. Double-click the file to import into Shortcuts')
