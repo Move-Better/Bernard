@@ -295,7 +295,7 @@ def build(token=None, distributable=False):
             'ParameterKey': 'WFTextActionText',
             'Category': 'Parameter',
             'ActionIndex': 0,
-            'Text': 'Paste your NarrateRx upload token (Capture page → Get iOS Shortcut)',
+            'Text': "Tap the field below and choose Paste — your NarrateRx token is already on your clipboard.",
             'DefaultValue': '',
         })
         auth_header = lambda: prefix_named_var('Bearer ', 'Token')
@@ -390,8 +390,15 @@ def build(token=None, distributable=False):
         'WFWorkflowOutputContentItemClasses': [],
         'WFWorkflowTypes': [],
         'WFWorkflowIcon': {
+            # Apple only allows one of their built-in glyphs + a palette color for
+            # the in-Shortcuts-app tile (no custom image — that's only possible on
+            # the Home Screen icon, chosen by the user at Add-to-Home-Screen time).
+            # Color 431817727 = Apple palette green RGBA(25,189,3) — the green that
+            # best matches the NarrateRx logo (the logo's evergreen #1c4d37 isn't in
+            # Apple's palette; this is the closest green). Glyph 59682 = camera,
+            # verified against electrikmilk/cherri glyphs. (Was glyph 59511.)
             'WFWorkflowIconStartColor': 431817727,
-            'WFWorkflowIconGlyphNumber': 59511,
+            'WFWorkflowIconGlyphNumber': 59682,
         },
     }
 
@@ -406,7 +413,12 @@ def main():
 
     if args.distributable:
         data = build(distributable=True)
-        out_name = 'NarrateRx Capture (Distributable).shortcut'
+        # The displayed name in the Shortcuts app is taken from this filename at
+        # import time, so keep it clean — no "(Distributable)" suffix leaking into
+        # what the user sees on their phone. (Personal build below writes the same
+        # filename; they're generated one at a time to ~/Desktop and imported, so
+        # the throwaway Desktop file just overwrites the previous one.)
+        out_name = 'NarrateRx Capture.shortcut'
     else:
         if not args.token:
             print('Error: pass --token cct_... (personal) or --distributable (team install).')

@@ -528,9 +528,24 @@ export default function Capture() {
                     </Button>
                     <p className="text-xs text-muted-foreground">
                       One tap: we generate your personal token, copy it to your clipboard, and open
-                      Apple&apos;s installer. When the Shortcut asks for your token on install,
-                      just <span className="font-medium">paste</span> — it&apos;s already copied.
+                      Apple&apos;s installer. Then:
                     </p>
+                    <ol className="text-xs text-muted-foreground list-decimal pl-4 space-y-1">
+                      <li>
+                        On the <span className="font-medium">Configure Shortcut</span> screen, tap the
+                        token field and choose <span className="font-medium">Paste</span> (your token is
+                        already on the clipboard), then tap <span className="font-medium">Add Shortcut</span>.
+                      </li>
+                      <li>
+                        Open the <span className="font-medium">Shortcuts</span> app and find{' '}
+                        <span className="font-medium">NarrateRx Capture</span>.
+                      </li>
+                      <li>
+                        Touch and hold it → <span className="font-medium">Add to Home Screen</span> →{' '}
+                        <span className="font-medium">Add</span>. Now one tap from your home screen records
+                        and uploads — no browser.
+                      </li>
+                    </ol>
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground italic">
