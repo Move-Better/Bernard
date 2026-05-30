@@ -233,13 +233,13 @@ export default async function handler(req, res) {
       : Promise.resolve({ ok: true, json: async () => [] }),
     sb(`workspaces?id=eq.${ws.id}&select=patient_context,topic_suggestions,brand_voice,display_name`),
   ])
-  if (!clinR.ok) { await revertClaim(); return dbErr(res, clinR, 'Clinician load failed') }
+  if (!clinR.ok) { await revertClaim(); return dbErr(res, clinR, 'Staff load failed') }
   if (!wsR.ok)   { await revertClaim(); return dbErr(res, wsR,   'Workspace load failed') }
 
-  const clinician = (await clinR.json())[0] || null
+  const staffMember = (await clinR.json())[0] || null
   const wsRow     = (await wsR.json())[0] || {}
   const wsForPrompt = { display_name: wsRow.display_name || ws.display_name }
-  const founderDisplayName = clinician?.name || fname
+  const founderDisplayName = staffMember?.name || fname
 
   // Run synthesis.
   const systemPrompt = getOnboardingSynthesisSystemPrompt(wsForPrompt, founderDisplayName)
@@ -354,7 +354,7 @@ export default async function handler(req, res) {
   // ── Upsert voice phrases ────────────────────────────────────────────────
   // Skip silently if we have no staff_id (orphaned interview) or no phrases
   // (a thin transcript). The synthesis row still gets marked 'synthesized'.
-  if (clinician?.id && normalized.voicePhrases.length) {
+  if (staffMember?.id && normalized.voicePhrases.length) {
     const rows = []
     const seen = new Set()
     for (const p of normalized.voicePhrases) {
@@ -363,7 +363,7 @@ export default async function handler(req, res) {
       seen.add(norm)
       rows.push({
         workspace_id: ws.id,
-        staff_id: clinician.id,
+        staff_id: staffMember.id,
         phrase: p.phrase,
         phrase_normalized: norm,
         weight: 1.0,

@@ -60,7 +60,7 @@ export function StaffChip({
 }) {
   const colorClass = colorFor(id || name)
   const sizeClass = SIZE_CLASSES[size] ?? SIZE_CLASSES.md
-  const displayName = name || 'Unknown clinician'
+  const displayName = name || 'Unknown staff'
 
   const avatar = (
     <span

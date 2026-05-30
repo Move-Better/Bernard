@@ -51,8 +51,8 @@ function newToken() {
 }
 
 /**
- * Resolve the target clinician + permission check.
- * Returns { ok, clinician } or { ok:false, status, reason }.
+ * Resolve the target staff member + permission check.
+ * Returns { ok, staffMember } or { ok:false, status, reason }.
  */
 async function resolveTarget(req) {
   const ws = await workspaceContext(req)
@@ -72,7 +72,7 @@ async function resolveTarget(req) {
   const url = new URL(req.url, 'http://localhost')
   const staffIdParam = url.searchParams.get('staffId')
 
-  let clinician
+  let staffMember
   if (staffIdParam) {
     const r = await sb(
       `staff?id=eq.${staffIdParam}&workspace_id=eq.${ws.id}` +
@@ -80,7 +80,7 @@ async function resolveTarget(req) {
     )
     if (!r.ok) return { ok: false, status: 500, reason: 'db_error' }
     const rows = await r.json()
-    clinician = rows?.[0]
+    staffMember = rows?.[0]
   } else {
     const r = await sb(
       `staff?user_id=eq.${encodeURIComponent(auth.userId)}&workspace_id=eq.${ws.id}` +
@@ -88,13 +88,13 @@ async function resolveTarget(req) {
     )
     if (!r.ok) return { ok: false, status: 500, reason: 'db_error' }
     const rows = await r.json()
-    clinician = rows?.[0]
+    staffMember = rows?.[0]
   }
 
-  if (!clinician) return { ok: false, status: 404, reason: 'staff_not_found' }
+  if (!staffMember) return { ok: false, status: 404, reason: 'staff_not_found' }
 
   // Permission gate: self (matching user_id), or producer/owner in same workspace.
-  const isSelf = clinician.user_id && clinician.user_id === auth.userId
+  const isSelf = staffMember.user_id && staffMember.user_id === auth.userId
   let callerTier = null
   if (!isSelf) {
     const callerRes = await sb(
@@ -110,7 +110,7 @@ async function resolveTarget(req) {
     return { ok: false, status: 403, reason: 'forbidden' }
   }
 
-  return { ok: true, clinician, ws }
+  return { ok: true, staffMember, ws }
 }
 
 export default async function handler(req, res) {
@@ -120,19 +120,19 @@ export default async function handler(req, res) {
 
   const t = await resolveTarget(req)
   if (!t.ok) return res.status(t.status).json({ error: t.reason })
-  const { clinician, ws } = t
+  const { staffMember, ws } = t
 
   if (req.method === 'GET') {
     return res.status(200).json({
-      hasToken: !!clinician.capture_upload_token,
-      expiresAt: clinician.capture_upload_token_expires_at || null,
-      lastUsedAt: clinician.capture_upload_token_last_used_at || null,
+      hasToken: !!staffMember.capture_upload_token,
+      expiresAt: staffMember.capture_upload_token_expires_at || null,
+      lastUsedAt: staffMember.capture_upload_token_last_used_at || null,
       // Never reveal the actual token value on GET; only POST returns it.
     })
   }
 
   if (req.method === 'DELETE') {
-    const r = await sb(`staff?id=eq.${clinician.id}&workspace_id=eq.${ws.id}`, {
+    const r = await sb(`staff?id=eq.${staffMember.id}&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
       body: JSON.stringify({
         capture_upload_token: null,
@@ -148,7 +148,7 @@ export default async function handler(req, res) {
   const token = newToken()
   const expiresAt = new Date(Date.now() + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-  const r = await sb(`staff?id=eq.${clinician.id}&workspace_id=eq.${ws.id}`, {
+  const r = await sb(`staff?id=eq.${staffMember.id}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
     body: JSON.stringify({
       capture_upload_token: token,

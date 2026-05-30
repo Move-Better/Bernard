@@ -78,10 +78,10 @@ export default function Slate() {
   const ws = useWorkspace()
   const qc = useQueryClient()
 
-  const { data: clinicians = [] } = useStaffSummaries()
+  const { data: staff = [] } = useStaffSummaries()
   const staffMap = useMemo(
-    () => Object.fromEntries(clinicians.map((c) => [c.id, c.name])),
-    [clinicians]
+    () => Object.fromEntries(staff.map((c) => [c.id, c.name])),
+    [staff]
   )
 
   // V5 engagement loop: pull the same coverage rollup the Coverage tab uses so
@@ -370,7 +370,7 @@ export default function Slate() {
                 : view === 'qc'
                   ? `${qcPackages.length} package${qcPackages.length !== 1 ? 's' : ''} below brand voice threshold (lowest fidelity first)`
                   : view === 'coverage'
-                    ? 'Per-clinician capture activity and topic coverage gaps'
+                    ? 'Per-staff capture activity and topic coverage gaps'
                     : new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>

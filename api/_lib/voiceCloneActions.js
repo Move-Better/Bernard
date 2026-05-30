@@ -57,29 +57,29 @@ export function mapCloneError(message) {
 
 /**
  * Clone the sample at `sampleUrl` to ElevenLabs, free any prior slot, and
- * persist the result to the clinician row.
+ * persist the result to the staff row.
  *
  * @param {object} args
  * @param {{id: string, slug: string}} args.ws
- * @param {{id: string, name: string|null, eleven_voice_id: string|null, voice_clone_revoked_at: string|null}} args.clinician
+ * @param {{id: string, name: string|null, eleven_voice_id: string|null, voice_clone_revoked_at: string|null}} args.staffMember
  * @param {string} args.sampleUrl   — public Vercel Blob URL of the sample
  * @returns {Promise<
  *   | { ok: true, voiceId: string, sampleUrl: string }
  *   | { ok: false, status: number, body: { error: string, sampleUrl?: string, voiceIdUpstream?: string } }
  * >}
  */
-export async function cloneFromSampleUrl({ ws, clinician, sampleUrl }) {
+export async function cloneFromSampleUrl({ ws, staffMember, sampleUrl }) {
   if (!sampleUrl) {
     return { ok: false, status: 400, body: { error: 'sampleUrl required' } }
   }
 
   // Free the prior slot best-effort. ElevenLabs Starter caps custom voices
   // at 10 — leaking slots on re-clones blocks future training.
-  if (clinician.eleven_voice_id && !clinician.voice_clone_revoked_at) {
+  if (staffMember.eleven_voice_id && !staffMember.voice_clone_revoked_at) {
     try {
-      await deleteVoice(clinician.eleven_voice_id)
+      await deleteVoice(staffMember.eleven_voice_id)
     } catch (e) {
-      console.warn(`[voice-clone] prior voice delete failed for clinician=${clinician.id}: ${e?.message}`)
+      console.warn(`[voice-clone] prior voice delete failed for staff=${staffMember.id}: ${e?.message}`)
       // Continue — surface max_voices_reached from createInstantVoice if it
       // matters; otherwise the dangling voice can be cleaned up manually.
     }
@@ -88,21 +88,21 @@ export async function cloneFromSampleUrl({ ws, clinician, sampleUrl }) {
   let voiceId
   try {
     const result = await createInstantVoice({
-      name:        `${clinician.name || 'Clinician'} — NarrateRx`,
+      name:        `${staffMember.name || 'Staff member'} — NarrateRx`,
       sampleUrl,
-      description: `NarrateRx voice clone for ${clinician.name || clinician.id} (workspace ${ws.slug}).`,
+      description: `NarrateRx voice clone for ${staffMember.name || staffMember.id} (workspace ${ws.slug}).`,
     })
     voiceId = result.voiceId
   } catch (e) {
     const message = e?.message || String(e)
-    console.error(`[voice-clone] createInstantVoice failed for clinician=${clinician.id}: ${message}`)
+    console.error(`[voice-clone] createInstantVoice failed for staff=${staffMember.id}: ${message}`)
     const mapped = mapCloneError(message)
     // Include sampleUrl so the client can stash it for a resume attempt.
     return { ok: false, status: mapped.status, body: { ...mapped.body, sampleUrl } }
   }
 
   const patchRes = await sb(
-    `staff?id=eq.${encodeURIComponent(clinician.id)}&workspace_id=eq.${ws.id}`,
+    `staff?id=eq.${encodeURIComponent(staffMember.id)}&workspace_id=eq.${ws.id}`,
     {
       method: 'PATCH',
       body: JSON.stringify({
@@ -115,7 +115,7 @@ export async function cloneFromSampleUrl({ ws, clinician, sampleUrl }) {
   )
   if (!patchRes.ok) {
     const body = await patchRes.text().catch(() => '')
-    console.error(`[voice-clone] clinician PATCH ${patchRes.status}: ${body.slice(0, 300)}`)
+    console.error(`[voice-clone] staff PATCH ${patchRes.status}: ${body.slice(0, 300)}`)
     return {
       ok: false,
       status: 502,

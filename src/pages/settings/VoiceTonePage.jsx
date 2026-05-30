@@ -210,7 +210,7 @@ export default function VoiceTonePage() {
         {/* Tone modes — span both columns; cards already lay out internally */}
         <Section
           title="Tone modes"
-          description={`When a clinician picks a tone at the start of an interview, ${interviewerName} applies the matching modifier below. Leave any tone blank to fall back to the system default shown inside the card.`}
+          description={`When a staff member picks a tone at the start of an interview, ${interviewerName} applies the matching modifier below. Leave any tone blank to fall back to the system default shown inside the card.`}
           className="lg:col-span-2"
         >
           <ToneModifierCards form={form} set={set} />

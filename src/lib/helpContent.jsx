@@ -54,7 +54,7 @@ export const HELP_CONTENT = {
   slate: {
     title: 'Story Slate — how it works',
     intro:
-      'The Slate is the daily planning board for what your practice could publish. Each morning the system proposes a handful of ready-to-build story packages — a topic, a suggested clinician, and a draft angle — so you decide what to make instead of starting from a blank page.',
+      'The Slate is the daily planning board for what your practice could publish. Each morning the system proposes a handful of ready-to-build story packages — a topic, a suggested staff member, and a draft angle — so you decide what to make instead of starting from a blank page.',
     steps: [
       {
         icon: Clapperboard,
@@ -79,7 +79,7 @@ export const HELP_CONTENT = {
       {
         icon: BarChart3,
         title: 'Check Coverage for gaps',
-        body: 'The Coverage tab shows which clinicians and which topics you have been capturing — and where the gaps are — so your published mix reflects the whole practice, not just whoever is most camera-ready.',
+        body: 'The Coverage tab shows which staff and which topics you have been capturing — and where the gaps are — so your published mix reflects the whole practice, not just whoever is most camera-ready.',
       },
     ],
     notes: [
@@ -103,7 +103,7 @@ export const HELP_CONTENT = {
       {
         icon: Filter,
         title: 'Filter down to what you need',
-        body: 'The chip row narrows the list by clinician, platform, stage, and more. "Mine only" limits it to your own stories so you are not wading through the whole practice.',
+        body: 'The chip row narrows the list by staff, platform, stage, and more. "Mine only" limits it to your own stories so you are not wading through the whole practice.',
       },
       {
         icon: Target,

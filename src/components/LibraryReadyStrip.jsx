@@ -94,7 +94,7 @@ export default function LibraryReadyStrip() {
                 <Icon className="h-3 w-3" />
                 {pm.label}
               </span>
-              <div className="text-xs font-semibold text-foreground truncate">{p.staffName || 'Unknown clinician'}</div>
+              <div className="text-xs font-semibold text-foreground truncate">{p.staffName || 'Unknown staff'}</div>
               <div className="text-2xs text-muted-foreground line-clamp-2">{p.topic}</div>
               <VoiceChip provenance={p.provenance} />
               <span className="mt-auto inline-flex items-center justify-end gap-0.5 text-2xs font-bold text-primary group-hover:underline underline-offset-2 transition-colors">

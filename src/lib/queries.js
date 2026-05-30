@@ -231,7 +231,7 @@ export function useStaffMember(id, options = {}) {
 export function useDeleteStaff() {
   const qc = useQueryClient()
   return useAppMutation({
-    errorMessage: "Couldn't delete clinician",
+    errorMessage: "Couldn't delete staff member",
     mutationFn: ({ id, userId }) => deleteStaff(id, userId),
     onSuccess: (_data, { id }) => {
       // Wipe the list cache + the specific detail so a re-fetch sees fresh
@@ -247,7 +247,7 @@ export function useDeleteStaff() {
 export function usePatchStaff() {
   const qc = useQueryClient()
   return useAppMutation({
-    errorMessage: "Couldn't save clinician",
+    errorMessage: "Couldn't save staff member",
     mutationFn: ({ id, patch, userId }) => patchStaff(id, patch, userId),
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.staff.detail(id) })
@@ -525,20 +525,20 @@ export function useDeleteReference() {
 // staleTime 5min — list rarely changes outside of explicit user actions, and
 // every relevant mutation invalidates queryKeys.stories.all.
 //
-// Side-effect: writes the raw clinicians array to queryKeys.staff.card()
+// Side-effect: writes the raw staff array to queryKeys.staff.card()
 // so Home's useStaffSummaries() is a free cache hit when Stories has
-// already loaded, eliminating the duplicate clinicians network request.
+// already loaded, eliminating the duplicate staff network request.
 export function useStories(filters = {}, options = {}) {
   const qc = useQueryClient()
   return useQuery({
     queryKey: queryKeys.stories.list(filters),
     queryFn: async () => {
-      const [clinicians, contentItems] = await Promise.all([
+      const [staff, contentItems] = await Promise.all([
         apiFetch('/api/db/staff?view=card'),
         apiFetch('/api/db/content?view=card&limit=500'),
       ])
-      qc.setQueryData(queryKeys.staff.card(), clinicians)
-      return buildStories(clinicians, contentItems)
+      qc.setQueryData(queryKeys.staff.card(), staff)
+      return buildStories(staff, contentItems)
     },
     staleTime: 5 * 60_000,
     ...options,

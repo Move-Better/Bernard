@@ -199,7 +199,7 @@ export async function extractVoicePhrases({ workspaceId, staffId, content }) {
     }
 
     console.info(
-      `[voicePhraseExtractor] workspace=${workspaceId} clinician=${staffId} ` +
+      `[voicePhraseExtractor] workspace=${workspaceId} staff=${staffId} ` +
       `phrases=${phrases.length}`
     )
   } catch (e) {

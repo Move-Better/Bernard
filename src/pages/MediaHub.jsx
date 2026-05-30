@@ -80,7 +80,7 @@ export default function MediaHub() {
   const kind    = searchParams.get('kind')    || ''
   const purpose = searchParams.get('purpose') || ''
   const status  = searchParams.get('status')  || ''
-  const staffFilter = searchParams.get('clinician') || ''
+  const staffFilter = searchParams.get('staff') || ''
 
   function setParam(key, value) {
     setSearchParams((prev) => {
@@ -94,7 +94,7 @@ export default function MediaHub() {
   const setKind      = (v) => setParam('kind', v)
   const setPurpose   = (v) => setParam('purpose', v)
   const setStatus    = (v) => setParam('status', v)
-  const setStaffFilter = (v) => setParam('clinician', v)
+  const setStaffFilter = (v) => setParam('staff', v)
 
   const [search, setSearch]     = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -485,7 +485,7 @@ export default function MediaHub() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, clinician, notes…"
+              placeholder="Search by name, staff, notes…"
               className="pl-8 pr-8 h-8 text-sm"
             />
             {search && (

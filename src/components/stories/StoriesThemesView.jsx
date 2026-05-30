@@ -122,13 +122,13 @@ function ThemeCard({ topic, stories, workspace }) {
   const { byArchetype, untagged } = archetypeMix(stories, workspace)
   const showMix = byArchetype.length > 0 || untagged > 0
 
-  // Clinician initials — deduplicated by staff_id
+  // Staff initials — deduplicated by staff_id
   const seen = new Set()
-  const clinicians = []
+  const staff = []
   for (const s of stories) {
     if (!seen.has(s.staff_id)) {
       seen.add(s.staff_id)
-      clinicians.push({ id: s.staff_id, name: s.staff_name || '?' })
+      staff.push({ id: s.staff_id, name: s.staff_name || '?' })
     }
   }
 
@@ -140,19 +140,19 @@ function ThemeCard({ topic, stories, workspace }) {
   const stagesPresent = Object.entries(stageCounts).filter(([, n]) => n > 0)
 
   // Perspectives: only stories with an actual verbatim pull-quote count as a
-  // perspective. Topic-text fallbacks were misleading (every clinician with a
+  // perspective. Topic-text fallbacks were misleading (every staff member with a
   // story would appear as a "perspective" even though we had nothing to quote),
   // so drop them entirely. When there's nothing to quote, the section shows a
   // muted "no verbatim yet" line instead of fake contrast.
   const withQuote    = stories.filter((s) => !!s.verbatim_snippet)
   const perspectives = withQuote.slice(0, 3).map((s) => ({
     staffId: s.staff_id,
-    name:        s.staff_name || 'Clinician',
+    name:        s.staff_name || 'Staff member',
     snippet:     firstSentence(s.verbatim_snippet),
   }))
 
   // Label is "Contrasting views" only when ≥2 actual verbatim quotes exist
-  // (meaning two clinicians said something we can genuinely contrast). Otherwise
+  // (meaning two staff said something we can genuinely contrast). Otherwise
   // "Perspectives" — accurate but no false-contrast claim.
   const verbatimCount = perspectives.length
   const perspLabel    = verbatimCount >= 2 ? 'Contrasting views' : 'Perspectives'
@@ -165,7 +165,7 @@ function ThemeCard({ topic, stories, workspace }) {
         <h3 className="font-semibold text-gray-900 text-base leading-snug">{topic}</h3>
         <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full shrink-0">
           <Users size={11} />
-          {clinicians.length} {clinicians.length === 1 ? 'clinician' : 'staff'}
+          {staff.length} {staff.length === 1 ? 'staff member' : 'staff'}
         </span>
       </div>
 
@@ -195,14 +195,14 @@ function ThemeCard({ topic, stories, workspace }) {
         </div>
       )}
 
-      {/* Clinician chips */}
+      {/* Staff chips */}
       <div className="flex flex-wrap gap-1.5">
-        {clinicians.slice(0, 5).map((c) => (
+        {staff.slice(0, 5).map((c) => (
           <StaffChip key={c.id} id={c.id} name={c.name} />
         ))}
-        {clinicians.length > 5 && (
+        {staff.length > 5 && (
           <span className="inline-flex items-center justify-center h-7 px-2 rounded-full bg-gray-100 text-gray-500 text-xs">
-            +{clinicians.length - 5}
+            +{staff.length - 5}
           </span>
         )}
       </div>
@@ -239,7 +239,7 @@ function ThemeCard({ topic, stories, workspace }) {
               </div>
               {verbatimCount === 1 && (
                 <p className="text-xs text-gray-400 mt-2">
-                  Contrast emerges when 2+ clinicians weigh in.
+                  Contrast emerges when 2+ staff weigh in.
                 </p>
               )}
             </>

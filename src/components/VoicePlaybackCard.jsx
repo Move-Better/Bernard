@@ -31,8 +31,8 @@ function fmt(n) {
   return n.toFixed(2).replace(/\.?0+$/, '') + '×'
 }
 
-export default function VoicePlaybackCard({ clinician }) {
-  const initial = clamp(Number(clinician?.tts_settings?.speed ?? DEFAULT))
+export default function VoicePlaybackCard({ staffMember }) {
+  const initial = clamp(Number(staffMember?.tts_settings?.speed ?? DEFAULT))
   const [speed, setSpeed] = useState(initial)
   const [playing, setPlaying] = useState(false)
   const ttsRef = useRef(null)
@@ -41,8 +41,8 @@ export default function VoicePlaybackCard({ clinician }) {
   // Reset local state if the underlying clinician swaps (rare on this page,
   // but guards against stale slider values after cache invalidation).
   useEffect(() => {
-    setSpeed(clamp(Number(clinician?.tts_settings?.speed ?? DEFAULT)))
-  }, [clinician?.id, clinician?.tts_settings?.speed])
+    setSpeed(clamp(Number(staffMember?.tts_settings?.speed ?? DEFAULT)))
+  }, [staffMember?.id, staffMember?.tts_settings?.speed])
 
   useEffect(() => () => { ttsRef.current?.cancel() }, [])
 
@@ -57,7 +57,7 @@ export default function VoicePlaybackCard({ clinician }) {
     primeAudioPlayback()
     setPlaying(true)
     getTts().speak(PREVIEW_TEXT, {
-      voiceId: clinician?.tts_settings?.voice_id || undefined,
+      voiceId: staffMember?.tts_settings?.voice_id || undefined,
       speed,
       onEnd: () => setPlaying(false),
       onError: () => setPlaying(false),
@@ -70,12 +70,12 @@ export default function VoicePlaybackCard({ clinician }) {
   }
 
   async function handleSave() {
-    const next = { ...(clinician?.tts_settings || {}), speed }
+    const next = { ...(staffMember?.tts_settings || {}), speed }
     try {
       await patchStaff.mutateAsync({
-        id: clinician.id,
+        id: staffMember.id,
         patch: { tts_settings: next },
-        userId: clinician.created_by_id,
+        userId: staffMember.created_by_id,
       })
       toast.success('Voice pace saved')
     } catch (e) {

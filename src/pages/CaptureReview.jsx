@@ -35,7 +35,7 @@ export default function CaptureReview() {
   const ws = useWorkspace()
 
   const { data: interview, isLoading: ivLoading, isError: ivError } = useInterview(interviewId)
-  const { data: clinician, isLoading: clLoading } = useStaffMember(staffId)
+  const { data: staffMember, isLoading: clLoading } = useStaffMember(staffId)
 
   // Editable transcript — seeded from the Whisper output on first load.
   const [transcript, setTranscript] = useState(null) // null = not yet seeded
@@ -119,12 +119,12 @@ export default function CaptureReview() {
 
       const systemPrompt = getBlogPostSystemPrompt(
         overlaidWorkspace,
-        clinician?.name || 'the clinician',
+        staffMember?.name || 'the clinician',
         interview?.topic || 'Voice memo',
         interview?.tone || 'smart',
         interview?.voice_mode || 'personal',
         interview?.prototype_id || null,
-        clinician?.voice_notes || '',
+        staffMember?.voice_notes || '',
         voicePhrases,
         resolveAudienceSlot(interview?.audience, overlaidWorkspace?.audience_options),
         resolveStoryTypeSlot(interview?.story_type, overlaidWorkspace?.story_type_options),
@@ -180,7 +180,7 @@ export default function CaptureReview() {
       setStreamingText('')
       setError(err?.message || 'Generation failed — please try again.')
     }
-  }, [transcript, clinician, interview, ws, staffId, interviewId, isGenerating, isTextImport, navigate, qc])
+  }, [transcript, staffMember, interview, ws, staffId, interviewId, isGenerating, isTextImport, navigate, qc])
 
   const loading = ivLoading || clLoading
 

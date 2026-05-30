@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queries'
 import { toast } from '@/lib/toast'
 
 function fmtDate(iso) {
@@ -22,16 +23,16 @@ function fmtDate(iso) {
   catch { return '' }
 }
 
-export default function VoiceCloneCard({ clinician }) {
+export default function VoiceCloneCard({ staffMember }) {
   const queryClient = useQueryClient()
   const [revoking, setRevoking] = useState(false)
 
-  const hasClone = !!clinician?.eleven_voice_id && !clinician?.voice_clone_revoked_at
-  const hadClone = !!clinician?.voice_clone_revoked_at && !clinician?.eleven_voice_id
-  const consentAt = clinician?.voice_clone_consent_at
+  const hasClone = !!staffMember?.eleven_voice_id && !staffMember?.voice_clone_revoked_at
+  const hadClone = !!staffMember?.voice_clone_revoked_at && !staffMember?.eleven_voice_id
+  const consentAt = staffMember?.voice_clone_consent_at
 
   const onRevoke = async () => {
-    if (!clinician?.id) return
+    if (!staffMember?.id) return
     if (!confirm('Revoke this voice clone? The voice will be deleted from ElevenLabs and content will stop using it.')) {
       return
     }
@@ -39,11 +40,10 @@ export default function VoiceCloneCard({ clinician }) {
     try {
       await apiFetch('/api/voice-clone/revoke', {
         method: 'POST',
-        body: JSON.stringify({ staffId: clinician.id }),
+        body: JSON.stringify({ staffId: staffMember.id }),
       })
-      // Invalidate the clinician cache so the card flips state.
-      queryClient.invalidateQueries({ queryKey: ['clinician'] })
-      queryClient.invalidateQueries({ queryKey: ['clinician-summaries'] })
+      // Invalidate the staff cache so the card flips state.
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.all })
       toast.success('Voice clone revoked.')
     } catch (e) {
       toast.error(e?.message || 'Revoke failed.')

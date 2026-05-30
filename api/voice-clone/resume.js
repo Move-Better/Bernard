@@ -55,13 +55,13 @@ export default async function handler(req, res) {
   }
 
   // Guard: the URL must be in our blob storage AND under the expected
-  // voice-clone-samples/<workspace-slug>/<clinician-id>- prefix. This stops
+  // voice-clone-samples/<workspace-slug>/<staff-id>- prefix. This stops
   // a caller from cloning arbitrary URLs at our ElevenLabs expense.
   const expectedPrefix = `voice-clone-samples/${ws.slug}/${staffId}-`
   const looksOk = /^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//.test(sampleUrl)
     && sampleUrl.includes(expectedPrefix)
   if (!looksOk) {
-    return res.status(400).json({ error: 'sampleUrl does not match expected workspace/clinician path' })
+    return res.status(400).json({ error: 'sampleUrl does not match expected workspace/staff path' })
   }
 
   const staffRes = await sb(
@@ -70,10 +70,10 @@ export default async function handler(req, res) {
     `&select=id,name,eleven_voice_id,voice_clone_revoked_at&limit=1`
   )
   if (!staffRes.ok) {
-    return res.status(502).json({ error: 'Could not look up clinician' })
+    return res.status(502).json({ error: 'Could not look up staff member' })
   }
-  const [clinician] = await staffRes.json()
-  if (!clinician) return res.status(404).json({ error: 'Clinician not found in this workspace' })
+  const [staffMember] = await staffRes.json()
+  if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
 
   // Verify the blob is actually reachable before we call ElevenLabs — fail
   // fast with a clear message so the client clears its stash instead of
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
     return res.status(410).json({ error: 'The earlier recording is no longer available — please record again.' })
   }
 
-  const result = await cloneFromSampleUrl({ ws, clinician, sampleUrl })
+  const result = await cloneFromSampleUrl({ ws, staffMember, sampleUrl })
   if (!result.ok) return res.status(result.status).json(result.body)
   return res.status(200).json({ voiceId: result.voiceId, sampleUrl: result.sampleUrl })
 }

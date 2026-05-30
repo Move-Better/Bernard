@@ -66,7 +66,7 @@ export default function Stories() {
   }, [storiesAll, mineOnly, realOnly, user])
   const { data: progress } = useOnboardingProgress()
   const { data: campaigns = [] } = useCampaigns()
-  const { data: clinicians = [] } = useStaff({ enabled: !!campaignFilter })
+  const { data: staff = [] } = useStaff({ enabled: !!campaignFilter })
   const { data: locations = [] } = useLocations()
   const workspace = useWorkspace()
   const currentPlan = progress?.plan
@@ -152,8 +152,8 @@ export default function Stories() {
             into 3+ rows and crowd the sticky header. */}
         <div className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Owner — "Mine only" active chip. No selector form because the only
-            two states are "all" and "me"; non-me clinician filtering is
-            handled by the existing /clinicians/:id page. */}
+            two states are "all" and "me"; non-me staff filtering is
+            handled by the existing /staff/:id page. */}
         {mineOnly ? (
           <button
             type="button"
@@ -265,7 +265,7 @@ export default function Stories() {
       {/* Campaign progress strip — shown whenever a campaign filter is
           active. Lives below the sticky chrome so it scrolls with content. */}
       {activeCampaignObj ? (
-        <CampaignProgressStrip campaign={activeCampaignObj} clinicians={clinicians} />
+        <CampaignProgressStrip campaign={activeCampaignObj} staff={staff} />
       ) : null}
 
       {/* View dispatch */}

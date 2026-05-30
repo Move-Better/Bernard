@@ -121,12 +121,12 @@ export default function MediaDetail({ asset, onClose, onChange }) {
 
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
 
-  // Workspace-scoped clinician roster. useStaffSummaries hits
+  // Workspace-scoped staff roster. useStaffSummaries hits
   // /api/db/staff?view=card which resolves workspace from the Clerk
   // token — no client-side workspace filtering needed.
   const { data: staffRows = [] } = useStaffSummaries()
-  const clinicians = Array.isArray(staffRows) ? staffRows : []
-  const currentStaff = clinicians.find((c) => c.id === (asset.staff_id || ''))
+  const staff = Array.isArray(staffRows) ? staffRows : []
+  const currentStaff = staff.find((c) => c.id === (asset.staff_id || ''))
 
   // Track when polling started for this asset, so we can cap at ~60s even if
   // the pipeline silently errored. Resets on asset.id change via the effect
@@ -694,7 +694,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               </div>
             </div>
 
-            {/* Attributed clinician — drives the video lower-third, Haiku
+            {/* Attributed staff member — drives the video lower-third, Haiku
                 caption persona, practice memory, and voice-phrase weaving.
                 Unattributed assets fall back to just the workspace name in
                 renders, so flag them prominently. */}
@@ -706,7 +706,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 {!staffId && (
                   <span
                     className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/30"
-                    title="No clinician attached — video renders fall back to the workspace name and AI captions can't apply this clinician's voice."
+                    title="No staff member attached — video renders fall back to the workspace name and AI captions can't apply this staff member's voice."
                   >
                     <AlertTriangle className="h-3 w-3" />
                     Unattributed
@@ -725,7 +725,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full sm:max-w-xs"
               >
                 <option value="">(unattributed)</option>
-                {clinicians.map((c) => (
+                {staff.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>

@@ -53,10 +53,10 @@ export function formatInterviewerName(email) {
  *      have, we'd rather return null than render a garbled label.
  *   3. null — caller should hide the "by …" suffix entirely.
  */
-export function resolveOwnerName(interview, clinicians) {
+export function resolveOwnerName(interview, staff) {
   if (!interview) return null
-  if (Array.isArray(clinicians) && interview.owner_id) {
-    const match = clinicians.find((c) => c && c.user_id === interview.owner_id)
+  if (Array.isArray(staff) && interview.owner_id) {
+    const match = staff.find((c) => c && c.user_id === interview.owner_id)
     if (match?.name) return match.name
   }
   const email = interview.owner_email

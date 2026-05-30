@@ -84,8 +84,8 @@ export default async function handler(req, res) {
   const clinRes = await sb(`staff?id=eq.${staffId}&${wsFilter}&select=id,name`)
   if (!clinRes.ok) return err(res, 'Database error', 500)
   const clinRows = await clinRes.json()
-  if (!clinRows.length) return err(res, 'Clinician not found', 404)
-  const clinician = clinRows[0]
+  if (!clinRows.length) return err(res, 'Staff member not found', 404)
+  const staffMember = clinRows[0]
 
   // Pull recent content_items where the clinician edited the AI draft.
   // We compare in JS rather than via a PostgREST filter because content
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
     })
   }
 
-  const systemPrompt = buildAnalysisPrompt(clinician.name, ws.display_name, editPairs)
+  const systemPrompt = buildAnalysisPrompt(staffMember.name, ws.display_name, editPairs)
 
   let analysisText
   try {

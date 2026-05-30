@@ -4,9 +4,9 @@ import { StaffChip } from '@/components/StaffChip'
 
 /**
  * Amber-tinted progress strip shown above the Stories grid when a campaign
- * filter is active. Expandable list of clinicians who haven't contributed yet.
+ * filter is active. Expandable list of staff who haven't contributed yet.
  */
-export default function CampaignProgressStrip({ campaign, clinicians = [] }) {
+export default function CampaignProgressStrip({ campaign, staff = [] }) {
   const [showPending, setShowPending] = useState(false)
 
   const targetIds = Array.isArray(campaign.target_staff_ids)
@@ -31,15 +31,15 @@ export default function CampaignProgressStrip({ campaign, clinicians = [] }) {
           Active campaign
         </span>
         <span className="font-semibold text-sm">{campaign.name}</span>
-        <span className="text-xs text-white/85">No clinicians targeted yet</span>
+        <span className="text-xs text-white/85">No staff targeted yet</span>
       </div>
     )
   }
 
   const pendingIds = targetIds.filter((id) => !contributedIds.has(id))
   const pendingStaff = pendingIds.map((id) => {
-    const match = clinicians.find((c) => c.id === id)
-    return { id, name: match?.name || match?.full_name || 'Unknown clinician' }
+    const match = staff.find((c) => c.id === id)
+    return { id, name: match?.name || match?.full_name || 'Unknown staff' }
   })
 
   return (
@@ -52,7 +52,7 @@ export default function CampaignProgressStrip({ campaign, clinicians = [] }) {
           </span>
           <span className="font-semibold text-sm truncate">
             {campaign.name} — {contributed} of {targetTotal}{' '}
-            {targetTotal === 1 ? 'clinician has' : 'clinicians have'} contributed
+            {targetTotal === 1 ? 'staff member has' : 'staff have'} contributed
           </span>
         </div>
         <div className="flex items-center gap-3 shrink-0">

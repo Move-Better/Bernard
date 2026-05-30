@@ -78,7 +78,7 @@ export default async function handler(req, res) {
         const rows = await r.json()
         if (rows[0]?.eleven_voice_id) cloneVoiceId = rows[0].eleven_voice_id
       } else {
-        console.error(`[tts] clinician voice lookup ${r.status} clinician=${staffId}`)
+        console.error(`[tts] staff voice lookup ${r.status} staff=${staffId}`)
       }
     } catch (e) {
       console.error('[tts] clinician voice lookup threw:', e?.message || e)

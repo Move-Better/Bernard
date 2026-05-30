@@ -98,7 +98,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Database error' })
   }
   const byUser = await byUserRes.json()
-  if (byUser.length > 0) return res.status(200).json({ clinician: byUser[0], created: false })
+  if (byUser.length > 0) return res.status(200).json({ staffMember: byUser[0], created: false })
 
   // Resolve a display name. Trust the client-supplied label when present (it's
   // only a label, never identity), otherwise derive from the Clerk profile so
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
       if (claimRes.ok) {
         const claimed = await claimRes.json()
         if (Array.isArray(claimed) && claimed.length > 0) {
-          return res.status(200).json({ clinician: claimed[0], created: false })
+          return res.status(200).json({ staffMember: claimed[0], created: false })
         }
         // Zero rows updated — lost the race; fall through to create.
       } else {
@@ -163,5 +163,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Database error' })
   }
   const created = await createRes.json()
-  return res.status(201).json({ clinician: created[0], created: true })
+  return res.status(201).json({ staffMember: created[0], created: true })
 }

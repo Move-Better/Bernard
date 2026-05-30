@@ -158,14 +158,14 @@ export default function NewInterview() {
     setLoading(true)
     setError('')
     try {
-      const clinician = await getOrCreateStaff({
+      const staffMember = await getOrCreateStaff({
         name: staffName.trim(),
         createdById: user.id,
         createdByEmail: user.primaryEmailAddress?.emailAddress,
         userId: isSelf ? user.id : undefined,
       })
       const interview = await createInterview({
-        staffId: clinician.id,
+        staffId: staffMember.id,
         topic,
         ownerEmail: user.primaryEmailAddress?.emailAddress,
         tone,
@@ -175,7 +175,7 @@ export default function NewInterview() {
         cleanupLevel,
         topicBacklogId: searchParams.get('topicBacklogId') || undefined,
       })
-      navigate(`/interview/${clinician.id}/${interview.id}`)
+      navigate(`/interview/${staffMember.id}/${interview.id}`)
     } catch (e) {
       setError(e.message)
       setLoading(false)
@@ -268,11 +268,11 @@ export default function NewInterview() {
           <CardDescription>Topic is the only required field.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Clinician */}
+          {/* Staff member */}
           <div className="space-y-1.5">
-            <Label htmlFor="clinician">Staff member</Label>
+            <Label htmlFor="staff">Staff member</Label>
             <Input
-              id="clinician"
+              id="staff"
               placeholder="e.g. Dr. Quasney"
               value={staffName}
               onChange={(e) => setStaffName(e.target.value)}
@@ -489,7 +489,7 @@ export default function NewInterview() {
       <SaveRecipeDialog
         open={saveRecipeOpen}
         onClose={() => setSaveRecipeOpen(false)}
-        clinician={resolvedStaff}
+        staffMember={resolvedStaff}
         levers={{ tone, voice_mode: voiceMode, cleanup_level: cleanupLevel }}
         existingRecipeCount={recipes.length}
         onSaved={(recipe) => {
@@ -598,7 +598,7 @@ function ActiveLeversRow({
 
 // ── Save recipe dialog ─────────────────────────────────────────────────────
 
-function SaveRecipeDialog({ open, onClose, clinician, levers, existingRecipeCount, onSaved }) {
+function SaveRecipeDialog({ open, onClose, staffMember, levers, existingRecipeCount, onSaved }) {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('⭐')
   const [isDefault, setIsDefault] = useState(false)
@@ -613,13 +613,13 @@ function SaveRecipeDialog({ open, onClose, clinician, levers, existingRecipeCoun
     }
   }, [open, existingRecipeCount])
 
-  if (!clinician) return null
+  if (!staffMember) return null
 
   async function handleSave() {
     if (!name.trim()) return
     try {
       const saved = await createMut.mutateAsync({
-        staffId: clinician.id,
+        staffId: staffMember.id,
         name: name.trim(),
         emoji: emoji.trim() || '⭐',
         is_default: isDefault,
@@ -639,7 +639,7 @@ function SaveRecipeDialog({ open, onClose, clinician, levers, existingRecipeCoun
         <DialogHeader>
           <DialogTitle>Save as recipe</DialogTitle>
           <DialogDescription>
-            Save the current lever combination so {clinician.name.split(' ')[0]} can re-use it.
+            Save the current lever combination so {staffMember.name.split(' ')[0]} can re-use it.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

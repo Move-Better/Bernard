@@ -186,7 +186,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   const [collectionId, setCollectionId] = useState('')
   const [collections, setCollections] = useState([])
   const [staffId, setStaffId] = useState('')
-  const [clinicians, setStaff] = useState([])
+  const [staff, setStaff] = useState([])
   // Smart-preview tray — files pending upload, with detected duration + any
   // purpose mismatch flags. Cleared after a successful upload kick-off.
   const [pending, setPending] = useState([])
@@ -198,7 +198,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   // for interview uploads where the speaker IS the clinician. Admin-staff and
   // patient-guest interviews don't get the picker — the clip isn't "of" a
   // clinician in those cases, so attribution would be misleading.
-  const showStaffPicker = ((!showSpeakerRole) || speakerRole === 'clinician') && clinicians.length > 0
+  const showStaffPicker = ((!showSpeakerRole) || speakerRole === 'clinician') && staff.length > 0
   // Build a continuous 1-N step numbering regardless of which optional
   // sections actually render. Purpose is always step 1; the counter starts
   // at 2 so the next-shown section gets 2. DOM order is: purpose → speaker
@@ -209,7 +209,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   const stepCollection = collections.length > 0 ? stepCounter++ : null
   const stepDrop = stepCounter
 
-  // Fetch active collections and clinicians once on mount.
+  // Fetch active collections and staff once on mount.
   useEffect(() => {
     let cancelled = false
     listCollections({ status: 'active', limit: 100 })
@@ -400,7 +400,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Tag a clinician so this asset shows up on their profile and in searches.
+                Tag a staff member so this asset shows up on their profile and in searches.
               </p>
             </div>
           </div>
@@ -416,7 +416,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             >
               — Not sure / multiple
             </button>
-            {clinicians.map((c) => (
+            {staff.map((c) => (
               <button
                 type="button"
                 key={c.id}
@@ -537,8 +537,8 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             {collectionId && collections.find((c) => c.id === collectionId)
               ? ` · ${collections.find((c) => c.id === collectionId).name}`
               : ''}
-            {staffId && clinicians.find((c) => c.id === staffId)
-              ? ` · ${clinicians.find((c) => c.id === staffId).name}`
+            {staffId && staff.find((c) => c.id === staffId)
+              ? ` · ${staff.find((c) => c.id === staffId).name}`
               : ''}.
           </p>
         </div>

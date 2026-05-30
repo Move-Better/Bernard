@@ -96,12 +96,12 @@ async function authByCaptureToken(token) {
   )
   if (!r.ok) return null
   const rows = await r.json()
-  const clinician = rows?.[0]
-  if (!clinician) return null
+  const staffMember = rows?.[0]
+  if (!staffMember) return null
 
   // Expiry check
-  if (clinician.capture_upload_token_expires_at) {
-    const exp = new Date(clinician.capture_upload_token_expires_at).getTime()
+  if (staffMember.capture_upload_token_expires_at) {
+    const exp = new Date(staffMember.capture_upload_token_expires_at).getTime()
     if (Date.now() > exp) return null
   }
 
@@ -109,14 +109,14 @@ async function authByCaptureToken(token) {
   // status=eq.active guard ensures archived workspaces can't receive uploads
   // from still-valid capture tokens.
   const wr = await sb(
-    `workspaces?id=eq.${clinician.workspace_id}&status=eq.active&select=id,slug,video_pipeline_enabled`,
+    `workspaces?id=eq.${staffMember.workspace_id}&status=eq.active&select=id,slug,video_pipeline_enabled`,
   )
   if (!wr.ok) return null
   const wsRows = await wr.json()
   const workspace = wsRows?.[0]
   if (!workspace?.video_pipeline_enabled) return null
 
-  return { clinician, workspace }
+  return { staffMember, workspace }
 }
 
 async function readBodyToBuffer(req) {
@@ -197,7 +197,7 @@ export default async function handler(req, res) {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: auth.workspace.id,
-      staff_id: auth.clinician.id,
+      staff_id: auth.staffMember.id,
       kind,
       status: 'raw',
       source: 'capture_companion',
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
       asset_purpose: 'capture_moment',
       notes: caption,
       tags: locationHint ? [locationHint] : [],
-      created_by: auth.clinician.user_id || null,
+      created_by: auth.staffMember.user_id || null,
     }),
   })
 
@@ -222,7 +222,7 @@ export default async function handler(req, res) {
 
   // --- Update token last-used (best effort) ---
   waitUntil(
-    sb(`staff?id=eq.${auth.clinician.id}`, {
+    sb(`staff?id=eq.${auth.staffMember.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ capture_upload_token_last_used_at: new Date().toISOString() }),
     }).catch(() => {}),

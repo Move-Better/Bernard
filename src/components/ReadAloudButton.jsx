@@ -94,7 +94,7 @@ export default function ReadAloudButton({
       onClick={onClick}
       disabled={disabled}
       className={className}
-      title={staffId ? "Hear this in this clinician's voice (if cloned)" : 'Hear this in the default voice'}
+      title={staffId ? "Hear this in this staff member's voice (if cloned)" : 'Hear this in the default voice'}
     >
       {state === 'loading' ? (
         <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Loading…</>

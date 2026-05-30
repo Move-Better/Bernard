@@ -3,15 +3,15 @@
 // redesign-mapping.md). Owns the per-workspace UI defaults that show up
 // at the start of every interview:
 //
-//   audience_options    — slot list (catalog + custom) the clinician
+//   audience_options    — slot list (catalog + custom) the staff member
 //                         chooses from for "who is this for"
 //   story_type_options  — slot list for "what kind of piece are we making"
 //
-// Also surfaces a read-only per-clinician voice-memory roster. The roster
+// Also surfaces a read-only per-staff voice-memory roster. The roster
 // lived on the legacy VoiceSettings page where it was an awkward fit
 // under "Voice & tone"; here it groups naturally with "what shows up at
-// interview start" — both are about the moment the clinician kicks off
-// a conversation. Each row links to the clinician's profile where the
+// interview start" — both are about the moment the staff member kicks off
+// a conversation. Each row links to the staff member's profile where the
 // voice notes are actually edited.
 
 import { useState, useEffect } from 'react'
@@ -135,10 +135,10 @@ export default function InterviewDefaultsPage() {
             style={{ background: 'hsl(var(--primary))' }}
             aria-hidden="true"
           />
-          What clinicians see at interview start
+          What staff see at interview start
         </h1>
         <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">
-          The audience and story-type choices a clinician picks from before {interviewerName} starts asking
+          The audience and story-type choices a staff member picks from before {interviewerName} starts asking
           questions. Curate from the master catalog or add custom slots — up to 6 catalog + 2 custom per list.
         </p>
       </div>
@@ -166,7 +166,7 @@ export default function InterviewDefaultsPage() {
         </div>
       </Section>
 
-      {/* Per-clinician voice memory roster (read-only nav, edits live on the profile) */}
+      {/* Per-staff voice memory roster (read-only nav, edits live on the profile) */}
       <VoiceMemoryRoster interviewerName={interviewerName} />
 
       <SaveBar
@@ -178,24 +178,24 @@ export default function InterviewDefaultsPage() {
   )
 }
 
-// ── Per-clinician voice memory roster ────────────────────────────────────────
+// ── Per-staff voice memory roster ────────────────────────────────────────
 //
-// Read-only directory of clinicians with a "voice notes" badge. The full
-// edit surface for a clinician's voice notes lives on their profile at
+// Read-only directory of staff with a "voice notes" badge. The full
+// edit surface for a staff member's voice notes lives on their profile at
 // /staff/:id — this card is a fast scanner + nav shortcut.
 
 function VoiceMemoryRoster({ interviewerName }) {
-  const { data: clinicians = [], isLoading } = useStaff()
+  const { data: staff = [], isLoading } = useStaff()
 
   return (
     <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-4 py-4">
       <div className="flex items-start gap-3 mb-3">
         <Mic className="h-4 w-4 mt-0.5 text-indigo-700/80 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-indigo-900">Per-clinician voice memory</p>
+          <p className="text-sm font-medium text-indigo-900">Per-staff voice memory</p>
           <p className="text-xs text-indigo-700 mt-0.5">
-            As clinicians edit AI drafts, {interviewerName} learns how each person writes — phrases
-            they keep, ones they cut, the way they naturally say things. Open a clinician&rsquo;s profile
+            As staff edit AI drafts, {interviewerName} learns how each person writes — phrases
+            they keep, ones they cut, the way they naturally say things. Open a staff member&rsquo;s profile
             to review or add notes that sharpen every future draft for them.
           </p>
         </div>
@@ -204,13 +204,13 @@ function VoiceMemoryRoster({ interviewerName }) {
       {isLoading ? (
         <div className="flex items-center gap-2 py-2 pl-7">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-          <span className="text-xs text-indigo-600">Loading clinicians…</span>
+          <span className="text-xs text-indigo-600">Loading staff…</span>
         </div>
-      ) : clinicians.length === 0 ? (
-        <p className="text-xs text-indigo-600 pl-7">No clinicians yet — add one to start building voice memory.</p>
+      ) : staff.length === 0 ? (
+        <p className="text-xs text-indigo-600 pl-7">No staff yet — add one to start building voice memory.</p>
       ) : (
         <ul className="space-y-1 pl-7">
-          {clinicians.map(c => {
+          {staff.map(c => {
             const hasNotes = !!(c.voice_notes || '').trim()
             return (
               <li key={c.id}>
