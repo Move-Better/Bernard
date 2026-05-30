@@ -482,6 +482,12 @@ export default function NewInterview() {
             </div>
           ) : (uncovered.length > 0 || underrepresented.length > 0 || allHighPriority.length > 0) && (
             <div className="space-y-3 border-t pt-4">
+              <div>
+                <p className="text-xs font-medium">Topic ideas to get you started</p>
+                <p className="text-2xs text-muted-foreground mt-0.5">
+                  Drawn from questions people {regionLabel ? `in ${regionLabel} ` : ''}commonly search for{regionLabel ? '' : ' about your kind of practice'}. They&apos;re just a starting point — tap one, type your own topic above, or ignore them entirely.
+                </p>
+              </div>
               {uncovered.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
