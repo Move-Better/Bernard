@@ -52,6 +52,19 @@ test('interview create flow + integrations page', async ({ page }) => {
   await page.getByLabel(/^topic/i).fill('E2E smoke topic — safe to delete')
   await page.getByRole('button', { name: /start interview/i }).click()
 
+  // ── 3a. Mic check gate ────────────────────────────────────────────────────
+  // After clicking "Start interview" the form advances to a MicCheck step
+  // before any DB write. Headless Chromium has no microphone, so getUserMedia
+  // throws and the component lands on status='mic-denied', showing a
+  // "Continue anyway" button. Click it to invoke onContinue() → createAndStart().
+  // We also accept "Continue without audio" (speaker-failed path) in case the
+  // environment has a mic but no speakers.
+  const micContinue = page
+    .getByRole('button', { name: /continue anyway|continue without audio/i })
+    .first()
+  await expect(micContinue).toBeVisible({ timeout: 15_000 })
+  await micContinue.click()
+
   // The "Create failed" banner is the canary for the regression. Use a race
   // between the destructive banner and the success navigation so we fail
   // fast with a useful message if Create comes back broken.
