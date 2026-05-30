@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One-off: merge Dr. Q + Dr. Michael Quasney clinician rows in the
+ * One-off: merge Dr. Q + Dr. Michael Quasney staff rows in the
  * movebetter-people workspace. These are two rows owned by the same Clerk
  * user, created before the user_id binding existed.
  *
@@ -47,10 +47,10 @@ console.log(DRY_RUN ? 'DRY RUN\n' : 'LIVE RUN\n')
 
 // Sanity check both rows exist and grab created_by_id from the winner
 const { rows: clins } = await db.query(
-  `select id, name, user_id, created_by_id from clinicians where id = any($1)`,
+  `select id, name, user_id, created_by_id from staff where id = any($1)`,
   [[WINNER_ID, LOSER_ID]]
 )
-console.log('Found clinicians:')
+console.log('Found staff:')
 for (const c of clins) console.log(`  ${c.id.slice(0,8)} "${c.name}" user_id=${c.user_id || 'null'} created_by=${c.created_by_id?.slice(0,12)}`)
 if (clins.length !== 2) { console.error('Expected 2 rows; aborting'); process.exit(1) }
 
@@ -82,11 +82,11 @@ try {
   console.log(`Moved ${moveRc.rowCount} recipes`)
 
   // Set user_id on the winner (= the shared Clerk created_by_id)
-  await db.query(`update clinicians set user_id = $1, updated_at = now() where id = $2`, [winner.created_by_id, WINNER_ID])
+  await db.query(`update staff set user_id = $1, updated_at = now() where id = $2`, [winner.created_by_id, WINNER_ID])
   console.log(`Set user_id on winner`)
 
   // Delete the loser
-  const del = await db.query(`delete from clinicians where id = $1`, [LOSER_ID])
+  const del = await db.query(`delete from staff where id = $1`, [LOSER_ID])
   console.log(`Deleted ${del.rowCount} loser row`)
 
   await db.query('COMMIT')

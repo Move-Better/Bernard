@@ -15,7 +15,7 @@
 
 import { test, expect } from '@playwright/test'
 
-const FIXTURE_CLINICIAN = process.env.E2E_FIXTURE_CLINICIAN_NAME || 'E2E Smoke Clinician'
+const FIXTURE_STAFF = process.env.E2E_FIXTURE_STAFF_NAME || 'E2E Smoke Staff'
 
 test('interview create flow + integrations page', async ({ page }) => {
   // ── 1. Dashboard ─────────────────────────────────────────────────────────
@@ -32,12 +32,12 @@ test('interview create flow + integrations page', async ({ page }) => {
   // picker; we click "Start Interview" to land on the original form at
   // /new/interview.
   //
-  // The setup form itself is unchanged: single-screen (Clinician + Topic +
-  // tune chips + Start interview). One Start press creates the clinician +
+  // The setup form itself is unchanged: single-screen (Staff member + Topic +
+  // tune chips + Start interview). One Start press creates the staff +
   // interview rows and navigates straight into the session.
   //
   // This is the PR #244 surface: without workspace_id filtering on the
-  // clinicians/interviews POSTs, the create returned "Create failed" with a
+  // staff/interviews POSTs, the create returned "Create failed" with a
   // 500. We assert (a) no error banner, (b) navigation to the session URL.
   await newInterviewLink.click()
   await expect(page).toHaveURL(/\/new$/)
@@ -48,7 +48,7 @@ test('interview create flow + integrations page', async ({ page }) => {
   await page.getByRole('button', { name: /start interview/i }).first().click()
   await expect(page).toHaveURL(/\/new\/interview/)
 
-  await page.getByLabel(/^clinician$/i).fill(FIXTURE_CLINICIAN)
+  await page.getByLabel(/^staff member$/i).fill(FIXTURE_STAFF)
   await page.getByLabel(/^topic/i).fill('E2E smoke topic — safe to delete')
   await page.getByRole('button', { name: /start interview/i }).click()
 

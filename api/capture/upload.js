@@ -85,7 +85,7 @@ function kindFromMime(mime) {
 
 /**
  * Authenticate the Bearer capture_upload_token.
- * Returns the matching clinician + workspace row, or null on failure.
+ * Returns the matching staff member + workspace row, or null on failure.
  */
 async function authByCaptureToken(token) {
   if (!token || !token.startsWith('cct_')) return null

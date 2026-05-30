@@ -7,7 +7,7 @@ exercises the core interview-create flow + workspace-gated reads on
 
 Catches the kind of regressions that took down 2026-05-11:
 
-- **PR #244** — `/api/db/{interviews,clinicians,content,settings}` weren't
+- **PR #244** — `/api/db/{interviews,staff,content,settings}` weren't
   workspace-scoped. New Interview Step 2 returned "Create failed" for every
   workspace.
 - **PR #213** — `OrgGate` raced Clerk's `setActive`. Every workspace-gated
@@ -55,7 +55,7 @@ MULTITENANT_DATABASE_URL=...   # same value as in your .env.local
 |---|---|---|---|
 | `E2E_BASE_URL` | optional, defaults `https://movebetter-people.narraterx.ai` | Not sensitive | Playwright `baseURL` |
 | `E2E_WORKSPACE_SLUG` | optional, defaults `movebetter-people` | Not sensitive | seed |
-| `E2E_FIXTURE_CLINICIAN_NAME` | optional, defaults `E2E Smoke Clinician` | Not sensitive | seed + spec |
+| `E2E_FIXTURE_STAFF_NAME` | optional, defaults `E2E Smoke Staff` | Not sensitive | seed + spec |
 | `E2E_TEST_USER_EMAIL` | GHA secret | Mildly sensitive | resolving the Clerk user via Backend API |
 | `E2E_TEST_USER_PASSWORD` | GHA secret | **Sensitive** | break-glass / local UI sign-in only — the workflow doesn't use it |
 | `CLERK_SECRET_KEY` | GHA secret `E2E_CLERK_SECRET_KEY` (prod `sk_live_...`) | **Sensitive** | minting Clerk sign-in tickets server-side |
@@ -69,10 +69,10 @@ mirrored to GitHub repo secrets of the same name.
 The smoke runs against the actual production `movebetter-people` workspace.
 Side effects per run:
 
-- `E2E Smoke Clinician` exists permanently in `clinicians` (seeded
+- `E2E Smoke Staff` exists permanently in `staff` (seeded
   idempotently).
 - Each green run creates one new `interviews` row with topic
-  `"E2E smoke topic — safe to delete"` and the smoke clinician as creator.
+  `"E2E smoke topic — safe to delete"` and the smoke staff member as creator.
   The topic prefix is intentional — search for it and bulk-delete from time
   to time. (Future improvement: auto-prune older test interviews in the
   seed step.)

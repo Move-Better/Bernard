@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Idempotently seed a known clinician in the e2e fixture workspace so the
+// Idempotently seed a known staff member in the e2e fixture workspace so the
 // Playwright smoke can always find it. "Pick first available" was tempting
-// but masks the regression we care about — if the clinicians list is empty
+// but masks the regression we care about — if the staff list is empty
 // because workspace scoping is broken, the test should fail loudly, not
 // silently pass with whatever happened to be there.
 //
@@ -10,7 +10,7 @@
 //
 // Optional env:
 //   E2E_WORKSPACE_SLUG       — defaults to 'movebetter-people'
-//   E2E_FIXTURE_CLINICIAN_NAME — defaults to 'E2E Smoke Clinician'
+//   E2E_FIXTURE_STAFF_NAME — defaults to 'E2E Smoke Staff'
 //
 // Reads .env.local first when MULTITENANT_DATABASE_URL is not already set so
 // it works the same way locally as `npm run backup:db` does.
@@ -37,7 +37,7 @@ async function resolveConnectionString() {
 }
 
 const WORKSPACE_SLUG = process.env.E2E_WORKSPACE_SLUG || 'movebetter-people'
-const CLINICIAN_NAME = process.env.E2E_FIXTURE_CLINICIAN_NAME || 'E2E Smoke Clinician'
+const STAFF_NAME = process.env.E2E_FIXTURE_STAFF_NAME || 'E2E Smoke Staff'
 
 const connectionString = await resolveConnectionString()
 try {
@@ -68,31 +68,31 @@ try {
     process.exit(1)
   }
 
-  // Upsert by (workspace_id, name). The clinicians table doesn't have a
+  // Upsert by (workspace_id, name). The staff table doesn't have a
   // unique constraint there so we look up first and only insert if absent.
   const existing = await client.query(
-    'select id, name from clinicians where workspace_id = $1 and lower(name) = lower($2) limit 1',
-    [workspace.id, CLINICIAN_NAME],
+    'select id, name from staff where workspace_id = $1 and lower(name) = lower($2) limit 1',
+    [workspace.id, STAFF_NAME],
   )
 
   let staffId
   if (existing.rows[0]) {
     staffId = existing.rows[0].id
-    console.log(`✓ Fixture clinician already present: ${existing.rows[0].id} — ${existing.rows[0].name}`)
+    console.log(`✓ Fixture staff member already present: ${existing.rows[0].id} — ${existing.rows[0].name}`)
   } else {
     const inserted = await client.query(
-      `insert into clinicians (workspace_id, name, created_by_id, created_by_email)
+      `insert into staff (workspace_id, name, created_by_id, created_by_email)
        values ($1, $2, 'e2e-seed', 'e2e@narraterx.test')
        returning id, name`,
-      [workspace.id, CLINICIAN_NAME],
+      [workspace.id, STAFF_NAME],
     )
     staffId = inserted.rows[0].id
-    console.log(`✓ Seeded fixture clinician: ${inserted.rows[0].id} — ${inserted.rows[0].name}`)
+    console.log(`✓ Seeded fixture staff member: ${inserted.rows[0].id} — ${inserted.rows[0].name}`)
   }
 
   // Prune interviews + downstream content_items created by previous smoke
   // runs to keep the prod workspace tidy. Recognized by their fixture
-  // clinician + the well-known "safe to delete" topic prefix used in the
+  // staff member + the well-known "safe to delete" topic prefix used in the
   // spec. content_items get auto-created only when an interview status
   // flips to 'completed' (the smoke leaves status='in_progress'), so this
   // is usually a no-op for the items table — but we delete defensively

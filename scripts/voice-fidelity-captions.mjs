@@ -104,14 +104,14 @@ const wsIds = workspaces.map((w) => w.id)
 console.log(`  ✓ Workspaces: ${workspaces.map((w) => w.slug).join(', ')}`)
 
 // Clinicians
-const clinicians = await sbGet(
+const staff = await sbGet(
   `staff?workspace_id=in.(${wsIds.join(',')})&select=id,name,workspace_id,voice_notes`
 )
-const staffMap = Object.fromEntries(clinicians.map((c) => [c.id, c]))
-console.log(`  ✓ Clinicians: ${clinicians.length}`)
+const staffMap = Object.fromEntries(staff.map((c) => [c.id, c]))
+console.log(`  ✓ Staff: ${staff.length}`)
 
 // Voice phrases
-const cIds = clinicians.map((c) => c.id)
+const cIds = staff.map((c) => c.id)
 const phraseRows = cIds.length
   ? await sbGet(`staff_voice_phrases?staff_id=in.(${cIds.join(',')})&select=staff_id,phrase,weight&order=weight.desc`)
   : []
@@ -191,7 +191,7 @@ let skipped = 0
 
 for (let i = 0; i < packages.length; i++) {
   const pkg = packages[i]
-  const clinician = staffMap[pkg.staff_id]
+  const staffMember = staffMap[pkg.staff_id]
   const workspace = workspaceMap[pkg.workspace_id]
   const phrases = phrasesMap[pkg.staff_id] || []
 
@@ -202,7 +202,7 @@ for (let i = 0; i < packages.length; i++) {
     continue
   }
 
-  const cName = clinician?.name || 'unknown clinician'
+  const cName = staffMember?.name || 'unknown staff'
   const wName = workspace?.display_name || 'unknown workspace'
 
   process.stdout.write(`  [${i + 1}/${packages.length}] ${pkg.id.slice(0, 8)} ${cName.slice(0, 18).padEnd(18)} `)

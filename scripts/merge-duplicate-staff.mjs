@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Merge duplicate Self clinicians and backfill `user_id`.
+ * Merge duplicate Self staff and backfill `user_id`.
  *
- * Identifies clinician rows that all belong to the same Clerk user within a
+ * Identifies staff member rows that all belong to the same Clerk user within a
  * workspace, picks a canonical winner (most interviews, ties broken by
  * earliest created_at), moves all data from the losers onto the winner, then
  * deletes the loser rows. Sets `user_id = clerk_user_id` on the winner.
  *
  * Heuristic for "this row is the user themself":
  *   1. created_by_id matches a Clerk user in the workspace's org
- *   2. AND the clinician.name matches (case-insensitive) one of:
+ *   2. AND the staff member.name matches (case-insensitive) one of:
  *        - clerk.unsafeMetadata.display_name
  *        - clerk.fullName
  *        - clerk.firstName + ' ' + clerk.lastName
@@ -19,14 +19,14 @@
  * they're proxies (admin recorded someone else's interview) and lookup-by-
  * name continues to work for them.
  *
- * Tables that point at clinicians.id (must be re-pointed at the winner):
+ * Tables that point at staff.id (must be re-pointed at the winner):
  *   - interviews.staff_id
  *   - staff_recipes.staff_id  (deduped — winner keeps unique-named
  *     recipes; loser duplicates with the same name are dropped)
  *
  * Usage:
- *   node scripts/merge-duplicate-clinicians.mjs --dry-run
- *   node scripts/merge-duplicate-clinicians.mjs
+ *   node scripts/merge-duplicate-staff.mjs --dry-run
+ *   node scripts/merge-duplicate-staff.mjs
  *
  * Requires: MULTITENANT_DATABASE_URL + CLERK_SECRET_KEY in .env.local
  */
@@ -99,20 +99,20 @@ await db.connect()
 console.log(`Connected to ${dbUrl.split('@')[1]?.split('/')[0] || '???'}`)
 console.log(DRY_RUN ? 'DRY RUN — no writes\n' : 'LIVE RUN — writing changes\n')
 
-// Group clinicians by (workspace_id, created_by_id). Each group is a
+// Group staff by (workspace_id, created_by_id). Each group is a
 // candidate for "same person who created multiple rows in same workspace."
-const { rows: clinicians } = await db.query(`
+const { rows: staff } = await db.query(`
   select c.id, c.workspace_id, c.name, c.user_id, c.created_by_id, c.created_at,
          (select count(*) from interviews i where i.staff_id = c.id) as iv_count
-  from clinicians c
+  from staff c
   where c.created_by_id is not null
   order by c.workspace_id, c.created_by_id, iv_count desc, c.created_at asc
 `)
 
-console.log(`Loaded ${clinicians.length} clinicians (with created_by_id)`)
+console.log(`Loaded ${staff.length} staff (with created_by_id)`)
 
 const groups = new Map()
-for (const c of clinicians) {
+for (const c of staff) {
   const key = `${c.workspace_id}::${c.created_by_id}`
   if (!groups.has(key)) groups.set(key, [])
   groups.get(key).push(c)
@@ -147,7 +147,7 @@ for (const [key, rows] of groups) {
 
   if (selfRows.length === 0) {
     // This user created rows but none match their own names — they're all
-    // proxies (e.g. admin recorded interviews for other clinicians). Skip.
+    // proxies (e.g. admin recorded interviews for other staff). Skip.
     totalProxiesSkipped += rows.length
     continue
   }
@@ -162,7 +162,7 @@ for (const [key, rows] of groups) {
   if (!winner.user_id) {
     console.log(`backfill: ws=${winner.workspace_id.slice(0,8)} winner=${winner.id.slice(0,8)} name="${winner.name}" → user_id=${createdById.slice(0,12)}`)
     if (!DRY_RUN) {
-      await db.query(`update clinicians set user_id = $1, updated_at = now() where id = $2`, [createdById, winner.id])
+      await db.query(`update staff set user_id = $1, updated_at = now() where id = $2`, [createdById, winner.id])
     }
     totalBackfills++
   }
@@ -201,12 +201,12 @@ for (const [key, rows] of groups) {
         }
       }
 
-      // Move any other clinician-pointing rows. None exist today besides
+      // Move any other staff member-pointing rows. None exist today besides
       // interviews + staff_recipes, but a generic FK-discovery would
       // catch future additions. For now, keep it explicit.
 
       // Delete the loser row
-      await db.query(`delete from clinicians where id = $1`, [loser.id])
+      await db.query(`delete from staff where id = $1`, [loser.id])
     }
     await db.query('COMMIT')
     totalMerges += losers.length
