@@ -208,6 +208,14 @@ If the column is missing, paste the relevant `ALTER TABLE ... ADD COLUMN IF NOT 
 
 Local migration runs require an unredacted `MULTITENANT_DATABASE_URL` in `.env.local`. `vercel env pull` replaces Sensitive vars with `*****REDACTED*****`, which silently breaks the apply script (`TypeError: Invalid URL`). After any `vercel env pull`, restore `MULTITENANT_DATABASE_URL` from 1Password (NarrateRx vault) before running migrations locally.
 
+## Deleting or merging a `staff` row — repoint FKs first (5 of 12 cascade)
+
+`staff.id` is a foreign key in **12 tables**, and **5 are `ON DELETE CASCADE`** — `content_items`, `interviews`, `practice_memory_chunks`, `staff_recipes`, `staff_voice_phrases`. There is also a denormalized, non-FK reference: `campaigns.target_staff_ids` (`uuid[]`). Deleting a staff row that still has cascade children **silently destroys that learning** (interviews, voice phrases, memory chunks) — no error, it just vanishes.
+
+Rule: before ANY staff delete or merge, count children per `staff_id` across all 12 tables, repoint every one to the surviving row FIRST, then delete. Make the DELETE **self-guarding** — `AND NOT EXISTS (SELECT 1 FROM <child> WHERE staff_id = s.id)` for all 12 tables **plus** `AND NOT EXISTS (SELECT 1 FROM campaigns c WHERE s.id = ANY(c.target_staff_ids))` — so a stray child can never be cascaded away even if state shifted between the count and the delete. **Never trust a plan/spec that calls a row "empty" or "safe to delete" — verify against live counts.** (2026-05-30: the staff-integration plan labeled the Animals Q proxy "0 of everything"; it actually held 1 interview a literal-reading delete would have CASCADE-destroyed.)
+
+Prefer the atomic, collision-safe `merge_staff(source, target, workspace)` SQL function (migration 112) over hand-rolled deletes — it repoints all 12 FKs + the campaigns array, blocks cross-workspace merges, and de-dups the 3 child tables that carry a `staff_id`-bearing unique index (`staff_voice_phrases`, `staff_corpus_documents`, `staff_recipes` one-default). Do NOT combine the repoint `UPDATE`s and the staff `DELETE` in a single multi-CTE statement: data-modifying CTEs share one snapshot, so the cascade-vs-repoint interaction is unpredictable. Sequence them (repoint, verify zero children, then delete) or call the function. This same repoint-then-delete discipline applies to any future table whose FKs cascade — re-discover the FK graph from `information_schema` before assuming the list of children.
+
 ## Blob store
 All production media lives in a single Vercel Blob store (`narraterx-prod`, prefix `t4otw6ecf8ztxfeq`), attached to the `narraterx` Vercel project on team `movebetter`. `BLOB_READ_WRITE_TOKEN` in `.env.local` / Vercel env points to this store.
 
