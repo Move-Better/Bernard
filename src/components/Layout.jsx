@@ -6,7 +6,7 @@ import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
-  Check, UserCircle, Mic2, BookOpen, PenLine, Clapperboard, Camera, ImagePlus,
+  Check, UserCircle, Mic2, BookOpen, PenLine, Clapperboard, Camera, GalleryHorizontalEnd,
   LayoutDashboard, Newspaper, FolderOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -32,10 +32,14 @@ const NAV_ITEMS = [
     requiresCapability: CAP_INTERVIEW_START },
   { to: '/stories',    label: 'Stories',     match: (p) => p.startsWith('/stories'),           icon: Newspaper,
     requiresCapability: CAP_INTERVIEW_START },
-  { to: '/library',    label: 'Library',     match: (p) => p.startsWith('/library'),           icon: FolderOpen },
-  { to: '/needs-media', label: 'Needs Media', match: (p) => p.startsWith('/needs-media'),      icon: ImagePlus },
-  { to: '/capture',    label: 'Capture',     match: (p) => p.startsWith('/capture'),           icon: Camera },
-  { to: '/pre-visit',  label: 'Pre-Visit',   match: (p) => p.startsWith('/pre-visit'),         icon: Mic2,
+  { to: '/library',    label: 'Library',     match: (p) => p.startsWith('/library'),                                       icon: FolderOpen },
+  // Storyboard — the content→media tool (sibling to Slate, which is the
+  // video→content tool). Drafts that still need a photo/video; open one to
+  // review + attach media at full size. Ungated like Library so producers
+  // (no interview.start) see it. '/needs-media' is the old route, redirected.
+  { to: '/storyboard', label: 'Storyboard', match: (p) => p.startsWith('/storyboard') || p.startsWith('/needs-media'), icon: GalleryHorizontalEnd },
+  { to: '/capture',    label: 'Capture',     match: (p) => p.startsWith('/capture'),                                    icon: Camera },
+  { to: '/pre-visit',  label: 'Pre-Visit',   match: (p) => p.startsWith('/pre-visit'),                                  icon: Mic2,
     requiresCapability: CAP_INTERVIEW_START },
   { to: '/book',       label: 'Book',        match: (p) => p.startsWith('/book'),              icon: BookOpen,
     requiresCapability: CAP_INTERVIEW_START },

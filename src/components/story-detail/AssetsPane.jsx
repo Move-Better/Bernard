@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import {
   FileText, CheckCircle2, XCircle, Send, Loader2,
   ChevronDown, MessageSquare, Eye, RotateCcw, ExternalLink, Quote,
   Calendar, Clock, AlertTriangle, Layers, Copy, Download, Lock,
+  Image as ImageIcon, ArrowRight,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,7 +42,6 @@ import { toast, runWithToast } from '@/lib/toast'
 import BufferMetricsRow from './BufferMetricsRow'
 import WinnerToggle from './WinnerToggle'
 import ContentPlanPanel from '@/components/ContentPlanPanel'
-import MediaAttachmentPanel from './MediaAttachmentPanel'
 import SlideEditor from './SlideEditor'
 import VoiceFidelityBadge from './VoiceFidelityBadge'
 import SplitSuggestionBanner from './SplitSuggestionBanner'
@@ -305,7 +305,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
           Read-aloud (Phase 5 F#3 audio caller) sits on the right; uses this
           piece's staff_id so the voice clone is auto-resolved server-side. */}
       <div className="flex items-center gap-1">
-        {([...(hasProvenance ? ['attributed'] : []), 'edit', 'assets']).map((mode) => (
+        {([...(hasProvenance ? ['attributed'] : []), 'edit']).map((mode) => (
           <button
             key={mode}
             type="button"
@@ -321,7 +321,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {mode === 'edit' ? 'Plain Text' : mode === 'attributed' ? 'Attributed' : 'Assets'}
+            {mode === 'edit' ? 'Plain Text' : 'Attributed'}
           </button>
         ))}
         <div className="ml-auto">
@@ -341,11 +341,6 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
           blocks={piece.provenance.blocks}
           onHighlight={onProvenanceHighlight}
         />
-      ) : viewMode === 'assets' ? (
-        <div className="space-y-3">
-          <MediaAttachmentPanel piece={piece} />
-          {piece.platform === 'instagram' && <SlideEditor piece={piece} />}
-        </div>
       ) : (
         <textarea
           ref={taRef}
@@ -378,6 +373,22 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
           </Button>
         </div>
       )}
+      {/* Carousel slide-text editor stays in the editor — it's editorial, not
+          media attach. Media attach/approval moved to the Storyboard page. */}
+      {piece.platform === 'instagram' && viewMode === 'edit' && <SlideEditor piece={piece} />}
+      {/* Handoff to Storyboard: media is reviewed + attached at full size there. */}
+      <Link
+        to={`/storyboard/${piece.id}`}
+        className="flex items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs transition-colors hover:border-primary/40 hover:bg-accent/20"
+      >
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <ImageIcon className="h-3.5 w-3.5" />
+          {Array.isArray(piece.media_urls) ? piece.media_urls.length : 0} media attached
+        </span>
+        <span className="inline-flex items-center gap-1 font-medium text-primary">
+          Open in Storyboard <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </Link>
     </div>
   )
 }
@@ -1160,6 +1171,7 @@ function WhenToPublishCard({
 
 function ApprovalPanel({ piece }) {
   const { user } = useUser()
+  const navigate = useNavigate()
   const { canReview } = useUserRole()
   const workspace = useWorkspace()
   const skipReview = !!workspace?.skip_review
@@ -1210,6 +1222,10 @@ function ApprovalPanel({ piece }) {
         approvedBy: userEmail,
         approvedAt: new Date().toISOString(),
       })
+      // Words approved → hand off to Storyboard to attach/approve media. The
+      // media step now lives on its own full-size page, not in this editor.
+      toast.success('Approved — add media in Storyboard')
+      navigate(`/storyboard/${piece.id}`)
     } catch (err) {
       toast.error('Failed to approve', { description: err.message })
     }
@@ -1255,7 +1271,25 @@ function ApprovalPanel({ piece }) {
   //   { useQueue: true }    — add to Buffer's queue (shareNext)
   //   {}                    — publish immediately (shareNow)
   // Blog publishes ignore both args and go to the website webhook synchronously.
-  const handlePublish = async ({ scheduledAt: scheduledDate, useQueue } = {}) => {
+  const handlePublish = async ({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck } = {}) => {
+    // Soft media gate (warn, don't block): a draft with no photo/video can still
+    // ship — but media usually helps. Warn once with an override; "Add media"
+    // routes to Storyboard. A confirmed publish re-runs with bypassMediaCheck.
+    const hasMedia = Array.isArray(piece.media_urls) && piece.media_urls.length > 0
+    if (!hasMedia && !bypassMediaCheck) {
+      toast.warning('This post has no photo or video', {
+        description: 'Posts with media usually perform better.',
+        action: {
+          label: 'Publish anyway',
+          onClick: () => handlePublish({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck: true }),
+        },
+        cancel: {
+          label: 'Add media',
+          onClick: () => navigate(`/storyboard/${piece.id}`),
+        },
+      })
+      return
+    }
     const effectiveScheduledAt = scheduledDate ? scheduledDate.toISOString() : null
     const usingQueue = !!useQueue
 
