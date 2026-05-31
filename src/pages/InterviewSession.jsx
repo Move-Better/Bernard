@@ -22,6 +22,7 @@ import { applyLocationOverlay } from '@/lib/locationOverlay'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import MicCheck from '@/components/MicCheck'
+import VideoAttachPrompt from '@/components/VideoAttachPrompt'
 import { createTtsPlayer, primeAudioPlayback, onAudioPlaybackFailure } from '@/lib/tts'
 import { useRegisterBusy } from '@/lib/appBusy'
 import { useInterviewAudioCapture } from '@/hooks/useInterviewAudioCapture'
@@ -1092,6 +1093,8 @@ export default function InterviewSession() {
   // Completion card — shown for ~3s between generation finishing and StoryDetail navigation.
   const [completionData, setCompletionData] = useState(null)
   const completionNavTimerRef = useRef(null)
+  // Video attach prompt — replaces auto-nav; clinician can attach iPhone recording.
+  const [showVideoPrompt, setShowVideoPrompt] = useState(false)
 
   useEffect(() => {
     if (!isGenerating) {
@@ -1278,9 +1281,11 @@ export default function InterviewSession() {
       const voicePct = deriveVoicePct(provenanceJson || '')
       setIsGenerating(false)
       setCompletionData({ voicePct, staffName: staffMember.name, topic: interview.topic })
+      // Show the video-attach prompt after a brief pause so the completion card
+      // is visible first. Auto-nav is deferred until the user skips or attaches.
       completionNavTimerRef.current = setTimeout(() => {
-        navigate(`/stories/${interviewId}`, { replace: true })
-      }, 3000)
+        setShowVideoPrompt(true)
+      }, 2000)
     } catch (err) {
       setError(`Failed to generate content: ${err.message}`)
       setIsGenerating(false)
@@ -1669,14 +1674,14 @@ export default function InterviewSession() {
         </div>
       )}
 
-      {completionData && !isGenerating && (
+      {completionData && !isGenerating && !showVideoPrompt && (
         <div className="flex-1 flex items-center justify-center py-6">
           <button
             type="button"
             className="rounded-xl border bg-card p-6 max-w-md w-full text-left space-y-3 hover:border-primary/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             onClick={() => {
               if (completionNavTimerRef.current) clearTimeout(completionNavTimerRef.current)
-              navigate(`/stories/${interviewId}`, { replace: true })
+              setShowVideoPrompt(true)
             }}
           >
             <div className="flex items-center gap-3">
@@ -1694,9 +1699,21 @@ export default function InterviewSession() {
                 : 'Voice-faithful draft complete.'}
             </p>
             <p className="text-xs text-muted-foreground">
-              Opening your story… <span className="italic">tap to go now</span>
+              One moment… <span className="italic">tap to continue</span>
             </p>
           </button>
+        </div>
+      )}
+
+      {completionData && !isGenerating && showVideoPrompt && (
+        <div className="flex-1 flex items-center justify-center py-6">
+          <div className="rounded-xl border bg-card max-w-md w-full">
+            <VideoAttachPrompt
+              interviewId={interviewId}
+              staffName={completionData.staffName}
+              onDone={() => navigate(`/stories/${interviewId}`, { replace: true })}
+            />
+          </div>
         </div>
       )}
 
