@@ -324,10 +324,13 @@ export function useContentItem(id, options = {}) {
 // Ranked media candidates for a draft (the media→content matcher). `enabled` is
 // destructured so the worklist can fetch lazily per-row (one embed per expand,
 // no thundering herd on page load) while still respecting the pieceId guard.
-export function useMediaSuggestions(pieceId, { enabled = true, ...options } = {}) {
+export function useMediaSuggestions(pieceId, { enabled = true, kind, k, ...options } = {}) {
   return useQuery({
-    queryKey: queryKeys.contentItems.mediaSuggestions(pieceId),
-    queryFn: () => suggestMediaForDraft(pieceId),
+    // kind/k change the candidate set, so they must change the cache key —
+    // otherwise flipping the Storyboard photo/video toggle would read a stale
+    // "both" result. suggestMediaForDraft spreads opts into the request body.
+    queryKey: [queryKeys.contentItems.mediaSuggestions(pieceId), { kind: kind || 'any', k: k || null }],
+    queryFn: () => suggestMediaForDraft(pieceId, { kind, k }),
     enabled: !!pieceId && enabled,
     staleTime: 5 * 60_000,        // suggestions are stable within a session
     refetchOnWindowFocus: false,

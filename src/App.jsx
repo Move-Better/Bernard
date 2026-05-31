@@ -50,7 +50,8 @@ const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
-const NeedsMedia = lazy(() => import('@/pages/NeedsMedia'))
+const Storyboard = lazy(() => import('@/pages/Storyboard'))
+const StoryboardPiece = lazy(() => import('@/pages/StoryboardPiece'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
 const PreVisitMessage = lazy(() => import('@/pages/PreVisitMessage'))
 const AuthorMode = lazy(() => import('@/pages/AuthorMode'))
@@ -525,8 +526,11 @@ function AppRoutes() {
             <Route path="/write" element={guarded(<AuthorMode />)} />
             <Route path="/book"  element={guarded(<Book />)} />
             <Route path="/library" element={guarded(<MediaHub />)} />
-            {/* Media→content matcher worklist (Phase P0) — drafts with no media attached. */}
-            <Route path="/needs-media" element={guarded(<NeedsMedia />)} />
+            {/* Storyboard — the content→media tool. Open a draft to review +
+                attach media at full size. /needs-media redirects to it. */}
+            <Route path="/storyboard" element={guarded(<Storyboard />)} />
+            <Route path="/storyboard/:pieceId" element={guarded(<StoryboardPiece />)} />
+            <Route path="/needs-media" element={<Navigate to="/storyboard" replace />} />
             {/* Universal PWA capture surface — works on any device with a browser + camera. */}
             <Route path="/capture" element={guarded(<Capture />)} />
             {/* Phase 3 Story Director — daily story slate for producers + clinicians. */}
