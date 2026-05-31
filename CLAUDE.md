@@ -28,6 +28,19 @@ The 2026-05-29 carousel bug (PR #980) was exactly this: per-slide overlay text (
 
 Rule: for any feature that renders a derived artifact (overlay image, composited graphic, baked text, watermark), grep the renderer's callers. If it's called only in `*Preview` / `*Editor` components and never in a publish/upload/export path, the published output is stale or raw — the renderer needs a real produce-and-upload step on the publish path (reuse the SAME renderer so it stays WYSIWYG), not just a canvas. Confirm the live output, not the editor preview, before calling it done.
 
+## The quality metric itself can be the bug — validate the validator
+
+We gate caption work on an LLM-judge fidelity scorer (`api/_lib/captionFidelity.js` + the offline `scripts/voice-fidelity-captions.mjs`, sharing one rubric module `api/_lib/captionFidelityRubric.js`; CI gate `scripts/verify-caption-fidelity.mjs`). On 2026-05-31 the U1 keystone (feed the clip transcript into captions) measured a **−0.68 regression** — and that number was wrong. The grader was the broken thing: it **never received the transcript** it claimed to judge faithfulness against, and two of its dimensions rewarded clinical register ("real anatomy, technique names"), so it actively penalized faithful warm/personal captions. After the grader was rewritten to grade `said_fidelity` against the transcript with a register-neutral `voice_match` (PR #1081), the same change measured **+1.74**.
+
+Hold both ideas at once: **keep holding on a red metric** (don't declare green when it isn't — that discipline is what forced the investigation), **but audit the metric when it contradicts a strong human read.** Before trusting an LLM-judge score to gate a feature:
+
+- **Confirm it receives the reference it claims to compare against.** Cheapest, highest-yield check. The old grader's inputs were `{caption, phrases, names}` — no transcript. It could not measure faithfulness in principle.
+- **Check it isn't rewarding a proxy.** "Sounds clinical" was standing in for "is good"; the proxy silently inverts on the edge case (emotional/personal content).
+- **Average ≥3 samples.** Single-shot Haiku scoring swings ±2 and *flips the sign* between runs. A lucky +0.57 and an unlucky −0.68 were both noise.
+- **Validate the grader with controlled probes** (faithful vs unfaithful, personal vs clinical) over real references — run the old grader alongside to reproduce the bias. Probe inputs for an instrument are legitimate eval methodology, not the "no fake data" violation (that's about faking app state).
+- **Never tune the generator's prompt to game a mismatched grader.** Fix the grader.
+- **One shared rubric module.** The eval prompt had drifted into 2–3 near-identical copies; any rubric used in >1 place must be a single import or the copies diverge. Full write-up in `memory/feedback_validate_the_validator.md`.
+
 ## Multi-tenant SaaS
 NarrateRx runs as a single shared deployment that serves multiple workspaces by subdomain (`<slug>.narraterx.ai`). Move Better People, Equine, and Animals are the three seed workspaces; external tenants self-onboard at `narraterx.ai/onboard`. All tenant-editable config — display name, voice/tone modifiers, interview/patient context, topic suggestions, output channels, publish credentials — lives in the `workspaces` row in the shared narraterx Supabase, edited via `/settings/workspace`.
 

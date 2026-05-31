@@ -116,7 +116,17 @@ clipper" and not "build a better clipper" — it's **plug the brain into the joi
 > - **F3** ✅ code shipped — [#1077](https://github.com/Move-Better/NarrateRx/pull/1077). Hard cap + retry on the summary model call, PATCH, and the shared embeddings HTTP call. No human gate (resilience).
 > - **F1** ✅ code shipped — [#1078](https://github.com/Move-Better/NarrateRx/pull/1078). Extracts on interview *completion* at provisional weight 0.5. Proven on Dr. Tyler's real transcript (0→25 phrases). **Gate pending:** confirm a non-Q clinician's *next* live completion lands phrases.
 > - **F4** ✅ COMPLETE — the code (claim-by-email + access-matrix reconciliation surface) was already on `main`; Part A prod reconciliation **verified done** 2026-05-31 via a live child-count audit (every clinician bound, learning intact; the "unclaimed proxies" were e2e smoke fixtures). Open flags resolved: Whitney already `org:admin` ×3, e2e kept admin (Playwright role-tolerant), AJ confirmed interviewable talent. Only the *optional* Clerk invite-accept webhook is unbuilt. **No prod writes were needed.**
-> - **U1** 🟡 in flight in a separate session — [#1079](https://github.com/Move-Better/NarrateRx/pull/1079), **held not merged**: the dropped-`clipTranscript`-param fix is correct + CI-green, but `captionFidelity` *regresses* on a brand-story test clip (scorer rewards clinical phrase-echo). Needs a human call + F4 attribution.
+> - **Caption grader** ✅ SHIPPED — [#1081](https://github.com/Move-Better/NarrateRx/pull/1081) merged. The
+>   `captionFidelity` scorer was the wrong instrument: it **never received the clip transcript** and two of
+>   its five dimensions rewarded clinical register ("real anatomy, technique names"), so it penalized
+>   faithful warm/personal captions. Rewrote it to `faithfulness-v2` (single shared rubric
+>   `api/_lib/captionFidelityRubric.js`): grades **said_fidelity** against the transcript + **register-neutral
+>   voice_match**. Baseline recalibrated 5.5→4.8. This was the keystone unblock for U1.
+> - **U1** 🟢 VINDICATED, ready to advance — [#1079](https://github.com/Move-Better/NarrateRx/pull/1079). The
+>   −0.68 "regression" was the *grader's* fault, not U1's. Re-measured under the fixed grader: transcript-
+>   grounding wins **+1.74 overall / +2.62 said_fidelity, C beats A on 7/7 clips**. Next: rebase on `main`,
+>   re-run the smoke with the new rubric, arm auto-merge; the human-attach gate (Q attaches a real clip to a
+>   real draft) still stands. (Spawned task: "Advance U1 caption-transcript PR #1079".)
 >
 > State-of-the-world items 4 (approval-gated phrases) and 5 (capture-indexing) above are the
 > gaps F1 and F3 just closed — read them as the pre-sprint baseline.
@@ -134,7 +144,7 @@ clipper" and not "build a better clipper" — it's **plug the brain into the joi
 
 | # | Bet | What it does | Est. Days | Est. Claude Cost |
 |---|---|---|---|---|
-| **U1** 🟡 #1079 held | Wire the brain into captions (keystone) | Set `staff_id` on media at capture + thread the clip's transcript into `generateCaption`; load the phrases that already exist (`captionGen.js`). This is Caption A→C from the smoke. Smallest change, biggest measurable lift. _Dropped-param fix correct + CI-green but `captionFidelity` regresses on a brand-story clip — held for human call + F4 media attribution._ | 1–2d | $6–14 (Opus prompt + Sonnet) |
+| **U1** 🟢 #1079 ready | Wire the brain into captions (keystone) | Set `staff_id` on media at capture + thread the clip's transcript into `generateCaption`; load the phrases that already exist (`captionGen.js`). This is Caption A→C from the smoke. Smallest change, biggest measurable lift. _Dropped-param fix correct + CI-green. The early −0.68 "regression" was the broken grader, now fixed (#1081); re-measured **+1.74 overall / +2.62 said_fidelity, 7/7**. Ready to advance; human-attach gate remains._ | 1–2d | $6–14 (Opus prompt + Sonnet) |
 | **U2** | Knowledge-fed clip selection | Feed phrases + practice memory into `segmentDetect` so it picks moments that sound like the clinician. | 2–3d | $10–20 (Opus + Sonnet) |
 | **U3** | Assisted pick→edit→attach loop | Propose 3–5 clips → human picks → light in-app trim / crop-to-vertical / caption → **attach to the draft.** Adds the missing human-pick gate (`render-segments` renders all today). | 3–5d | $15–30 (Sonnet, some Opus) |
 | **U4** | Daily short-clip lane (highest frequency) | The *most common* capture: drop a short clip → knowledge-fed caption → pick → attach. Includes the **no-audio path** (caption from visual + topic + phrases when audio is lost). | 2–4d | $10–20 (Sonnet) |
@@ -285,6 +295,18 @@ foundation (0 segments, a 2/10 caption, an unconsulted corpus).
 > data in the live app **and** the relevant metric moved (fidelity score, media-link rate, or
 > phrases-learned). One bet validated before the next starts. This is already in the
 > Definition of Done ("feature used in-browser at least once") — the video lane skipped it.
+
+**Corollary — the metric itself can be the bug (learned on U1, 2026-05-31).** "The relevant
+metric moved" only works if the metric measures the right thing. U1 looked like a −0.68
+*regression* — but the `captionFidelity` grader was broken: it never received the clip
+transcript and rewarded clinical register, so it penalized faithful warm/personal captions.
+After the grader was rewritten (#1081), the same change measured **+1.74**. So: **hold on a red
+metric (correct — don't declare green when it isn't), AND audit the metric when it contradicts a
+strong human read.** Before trusting an LLM-judge score to gate a bet, confirm it (a) receives
+the reference it claims to compare against, (b) isn't rewarding a proxy (clinical jargon ≠
+faithfulness), and (c) is averaged over ≥3 samples (single-shot scoring swings ±2 and flips
+signs). Validate the grader with controlled probes; never tune the generator to game it. Full
+write-up: `memory/feedback_validate_the_validator.md`.
 
 ---
 
