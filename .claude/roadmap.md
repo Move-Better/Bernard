@@ -115,7 +115,7 @@ clipper" and not "build a better clipper" — it's **plug the brain into the joi
 | **F1** | Learn voice phrases on capture | Extract voice phrases from the interview transcript **at completion**, not only on approval (`content.js:188`). Gives every clinician a real voice substrate from day one — closes the gap that leaves Sophie/Tyler/Whitney at 0 phrases. | 1–2d | $6–12 (Sonnet) |
 | **F2** | Auto edit-loop | When a draft is edited + approved, auto-analyze the diff into `voice_notes`. Every edit becomes learning, no manual button. | 1–2d | $5–10 (Sonnet) |
 | **F3** | Harden capture-indexing | The summary→practice-memory `waitUntil` path **currently works** but is unguarded (no retry / hard cap / log). Protect the one feed mechanism that already fires on completion so it can't silently strand. _Lower priority than F1 — not a live outage._ | 0.5d | $2–4 (Sonnet) |
-| **F4** | Roster de-dup + attribution | Reconcile Clerk members ↔ `staff` rows; backfill `staff_id` on existing media (null on ~92%). Prereq for F1 *and* U1. **Execution runbook with live UUIDs: `plan-staff-integration.md`.** | 1–2d | $4–10 (Sonnet) |
+| **F4** | Roster de-dup + attribution | Reconcile Clerk members ↔ `staff` rows; backfill `staff_id` on existing media (null on ~92%). Prereq for F1 *and* U1. **Execution runbook inline below.** | 1–2d | $4–10 (Sonnet) |
 
 ### USE THE BRAIN (the media↔content join — the bottleneck)
 
@@ -133,6 +133,72 @@ clipper" and not "build a better clipper" — it's **plug the brain into the joi
 |---|---|---|---|---|
 | **E1** | Video-interview capture | Record video *during* the live interview → one session yields words + attributed clips + media inserts. The natural fusion of the interview engine + the clip lane. | 4–6d | $20–40 (Opus + Sonnet) |
 | **E2** | One talk → a month (repurpose A2) | The monthly long-capture: master + social clips bundled as one campaign. Spec: `feature-repurpose-a2.md`. | 3–5d | $15–30 (Sonnet) |
+
+---
+
+## F4 detail — staff identity reconciliation (execution runbook)
+
+_Folded in from the former `plan-staff-integration.md`. All UUIDs/user_ids verified live
+against prod (Supabase `wrqfrjhevkbbheymzezy` + Clerk API) on 2026-05-30._
+
+**⚠️ Security action (do first):** `CLERK_SECRET_KEY` (`sk_live_…`) was exposed in a Claude
+session transcript 2026-05-30. Rotate it (Clerk Dashboard → API Keys → roll), then update
+1Password (`narraterx-local`) + Vercel `narraterx` prod env. Old key dies on roll.
+
+**Root cause (one bug → all splits):** `api/staff/ensure-self.js:127` claims a clinician's
+pre-existing proxy row by **name match** (`name=ilike`). On login Clerk supplies a profile
+name (`drtyler`, `Michael Quasney`, `Zach Cullen`) that ≠ the admin-set display name
+(`Dr. Tyler`, `Dr. Q`, `Dr. Zachary Cullen`) → no match → a fresh EMPTY row is created,
+orphaning the learning. **Fix: match on email** (`created_by_email` == Clerk primary email),
+which is stable.
+
+**Target state (decided 2026-05-30):**
+
+| Person | Email | Workspaces | staff_type | Notes |
+|---|---|---|---|---|
+| Q | drq@ | People (owner), Equine, Animals | clinician | display `Dr. Q`, legal `Michael Quasney` |
+| Whitney | drwhitney@ | People, **Equine (lead)**, **Animals (lead)** | clinician | claim Equine proxy; CREATE Animals row |
+| Cullen | drzach@ | People | clinician | claim proxy (53 phrases) |
+| Sophie | drsophie@ | People | clinician | claim proxy |
+| Tyler | drtyler@ | People | clinician | MERGE split (keep proxy w/ learning) |
+| AJ Adams | aj@ | People | clinician (talent) | CREATE row |
+| Alli Madsen | alli@ | People | non_clinical_staff (producer) | CREATE row; ⚠️ Clerk admin |
+| Philip | philip@ | People | non_clinical_staff (producer) | ✅ already correct |
+| e2e | e2e@ | People | clinician | KEEP — intentional E2E runner |
+
+**Part A — one-time cleanup (prod identity writes).** All workspace-scoped. The MERGE is the
+delicate one: `staff_id` is an FK in **12 tables** (`concept_mentions, content_items,
+interviews, media_assets, practice_memory_chunks, staff_corpus_documents, staff_recipes,
+staff_voice_phrases, story_packages, video_segments, visual_memory_chunks,
+workspace_onboarding_interviews`) — a merge MUST repoint all 12 or it silently drops learning.
+Helpers: `scripts/merge-duplicate-staff.mjs`, `scripts/merge-drq-rows.mjs` (read + extend first).
+
+- **People** (`76faa447-b1f4-4038-babc-4d86536b049d`):
+  1. Claim Cullen — staff `4dc8770f-fde4-43b5-8095-70412ecd8506` → `user_id = user_3Dg9rAvtFYjZoUx1xE1oIyJARqT` (53 phrases preserved).
+  2. Claim Sophie — staff `943b7dc3-1aed-4d06-94b3-6129155f3be2` → `user_id = user_3DuKCpQDQIcnvmk2w1Tgkhh7HSh`.
+  3. Merge Tyler — keep proxy `9ad92a24-34ab-42cc-8cf4-74f582a2e504` (1 interview, 1 content, 2 concept_mentions); set `user_id = user_3EPMVyGr7nr3Vv1K4EsuiymsFq9`; repoint any FK rows from empty login `5a252b47-cce1-412a-85ab-9518ed3c5160` → proxy (check all 12 tables), then DELETE `5a252b47`.
+  4. Create AJ — clinician, `user_id = user_3DaM77u4L0T8AXJRiZNwwCGHDAF`, name `AJ Adams`, created_by_email `aj@movebetter.co`.
+  5. Create Alli — non_clinical_staff, tier `producer`, `user_id = user_3EJanw8N7Z3Z5OX6uuGtnrHyFDK`, name `Alli Madsen`.
+  6. Leave `e2e` (`44b369a6`) + the two null-user `E2E Smoke *` fixtures (`2234d376`, `2d9a6c18`).
+- **Equine** (`c871533c-7055-40aa-8aac-cf32a6a0db60`):
+  7. Claim Whitney — staff `1dda338f-032b-41d5-9a95-b662ccc4a0c9` (37 phrases) → `user_id = user_3DWEe2NFl2XZLNTSAX3uQHlcL5g`.
+  8. Rename Q — staff `c3afc82c-625a-4cc0-9a20-c499cb886b08`: name → `Dr. Q`, legal_name → `Michael Quasney`.
+- **Animals** (`d7527281-d0e6-49e3-8bfd-2cca1a5fb25d`):
+  9. Rename Q (real, bound) — staff `7d80b811-e95f-40e1-b0d8-acfaf2ffdcb9`: name → `Dr. Q`, legal → `Michael Quasney`.
+  10. Delete empty Q proxy — staff `c4cce5c2-853f-4f1e-8c44-bc7e4731eb3f` (user_id null, 0 of everything; confirm zero FK rows first).
+  11. Create Whitney (Animals lead) — clinician, `user_id = user_3DWEe2NFl2XZLNTSAX3uQHlcL5g`, name `Dr. Whitney Phillips`.
+
+**Part B — durable fix (so it never regresses):**
+1. `ensure-self.js`: claim by email, not name (case-insensitive `created_by_email` match before name fallback before create; keep the conditional-claim race guard).
+2. Reconciliation surface: extend `/api/workspace/access-matrix` to flag (a) Clerk members with no staff row, (b) >1 staff row per email in a workspace, (c) bound rows whose email has an unclaimed proxy sibling — surface in `/settings/access` with one-click claim/merge for the owner.
+3. (Optional) Member→staff on invite-accept via Clerk webhook so future Alli/AJ gaps can't open.
+
+**Open flags to confirm at execution:**
+- Alli is a Clerk ORG ADMIN but slated for `producer` tier — `/api/workspace/me` elevates org admins to `owner` via `isOrgAdmin` short-circuit, so her *effective* permission is owner regardless. Downgrade her Clerk role to `member` if she should only have producer powers. (Q to decide.)
+- `e2e@` is a Clerk admin in the live People org — kept as the E2E runner; consider least-privilege (member) if the smoke suite allows.
+- AJ as interviewable clinician — confirm he's on-camera/voice talent before investing capture/voice-clone.
+
+**Done = both:** (a) every real Clerk member has exactly one bound staff row per workspace, no unclaimed proxies for active logins, no duplicate-per-email; (b) each merged/claimed clinician's learning still attached (phrase/chunk/media counts unchanged pre/post across the 12 FK tables). Then update `memory/workspace_clinician_roster.md`.
 
 ---
 
@@ -224,7 +290,6 @@ foundation (0 segments, a 2/10 caption, an unconsulted corpus).
 
 ## References
 
-- `plan-staff-integration.md` — F4 execution runbook (live Clerk/Supabase UUIDs, claim-by-email fix).
 - `feature-repurpose-a2.md` — E2 spec.
 - `design-interview-output-voice-fidelity.md` — voice-fidelity redesign (overlaps F1/U1).
 - `v6-rag-architecture-sketch.md` — the fusion layer U2 extends.
