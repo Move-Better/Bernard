@@ -11,9 +11,11 @@
  *
  * Topic, staffId, clip context, and the voice-phrase corpus are held constant,
  * so any score delta is attributable solely to the transcript grounding U1 adds.
- * Each caption is then scored with the same Haiku evaluator + prompt as
- * scripts/voice-fidelity-captions.mjs (the CI-gate scorer), against the
- * clinician's real staff_voice_phrases.
+ * Each caption is then scored with the SHARED faithfulness-v2 rubric
+ * (api/_lib/captionFidelityRubric.js — the same buildFidelityPrompt/parseFidelity
+ * the live scorer + CI gate use). The clip's own transcript is passed in as the
+ * GOLD reference for both A and C, so `said_fidelity` measures how faithfully each
+ * caption conveys what was actually said — the property U1 is supposed to lift.
  *
  * READ-ONLY: pulls workspace/staff/phrases/asset rows; never writes. No
  * story_packages are touched, no scores persisted.
@@ -28,6 +30,7 @@
 import { readFile } from 'node:fs/promises'
 import { generateText } from 'ai'
 import { generateCaption } from '../api/_lib/captionGen.js'
+import { buildFidelityPrompt, parseFidelity } from '../api/_lib/captionFidelityRubric.js'
 
 // ── env ───────────────────────────────────────────────────────────────────────
 const envText = await readFile('.env.local', 'utf8').catch(() => '')
@@ -70,56 +73,25 @@ const CLIPS = [
   { assetId: 'e5473db3', grade: Q_STAFF,      authorMatch: false, label: 'P1109360.MP4 (→Q)' },
 ]
 
-// ── Evaluator (identical prompt to scripts/voice-fidelity-captions.mjs) ─────────
-function buildEvalPrompt({ topic, caption, staffName, phrases, workspaceName }) {
-  const phraseExamples = (phrases || []).slice(0, 8).map((p) => `- "${p.phrase}"`).join('\n')
-  const hasPhrases = phraseExamples.length > 0
-  return {
-    system: `You are a precise content quality evaluator for SHORT social-distribution copy
-(captions + thumbnail titles). Score the package on multiple voice fidelity
-dimensions. Return ONLY valid JSON — no markdown, no preamble, no commentary.`,
-    user: `Evaluate this story package — a thumbnail title + accompanying caption that
-will be burned into video subtitles and posted as the social caption. Written
-for ${staffName} at ${workspaceName}.
-
-${hasPhrases ? `CLINICIAN'S AUTHENTIC VOICE PHRASES (use these to judge fidelity):
-${phraseExamples}` : `(No voice phrases on record for this clinician yet — score voice_fidelity at 5 if you can't compare.)`}
-
-TITLE (thumbnail text, ${(topic || '').length} chars):
-"${topic || ''}"
-
-CAPTION (subtitle + social copy, ${(caption || '').length} chars):
-"${caption || ''}"
-
-Score each dimension 1–10 and return this exact JSON shape (no other keys):
-{
-  "voice_fidelity": <1-10; rhythm + word choice match to the voice phrases above${hasPhrases ? '' : '; score 5 if no phrases'}>,
-  "clinical_texture": <1-10; sounds like a real practitioner, not generic content-mill>,
-  "redundancy": <1-10 INVERSE — 10=tight no repetition, 1=title and caption restate each other>,
-  "specificity": <1-10; concrete vs vague (real anatomy, technique names, situations, not platitudes)>,
-  "brand_fit": <1-10; feels like an authentic practice voice, not a corporate template>,
-  "red_flag": "<one short phrase: the single biggest issue, or 'none'>"
-}`,
-  }
-}
-const DIMS = ['voice_fidelity', 'clinical_texture', 'redundancy', 'specificity', 'brand_fit']
+// ── Evaluator (SHARED faithfulness-v2 rubric — buildFidelityPrompt/parseFidelity) ─
+// The clip's transcript is passed in as the GOLD reference for BOTH A and C, so
+// `said_fidelity` directly measures how faithfully each caption carries what was
+// actually said. We report `overall` + `said_fidelity` (the U1-relevant dimension).
 const EVAL_SAMPLES = 3   // single-shot Haiku scoring is noisy (±2); average to stabilize.
-async function scoreOnce({ topic, caption, staffName, phrases, workspaceName }) {
-  const p = buildEvalPrompt({ topic, caption, staffName, phrases, workspaceName })
-  const { text } = await generateText({ model: EVAL_MODEL, system: p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 220 })
-  let r = {}
-  try { r = JSON.parse(text.trim()) } catch { try { r = JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()) } catch { /* empty */ } }
-  const valid = DIMS.filter((d) => typeof r[d] === 'number')
-  const overall = valid.length ? valid.reduce((s, d) => s + r[d], 0) / valid.length : null
-  return { overall, voice_fidelity: typeof r.voice_fidelity === 'number' ? r.voice_fidelity : null, red_flag: r.red_flag || null }
+async function scoreOnce({ topic, caption, transcript, staffName, phrases, workspaceName }) {
+  const p = buildFidelityPrompt({ topic, caption, transcript, phrases, staffName, workspaceName })
+  const { text } = await generateText({ model: EVAL_MODEL, system: p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
+  const parsed = parseFidelity(text)
+  if (!parsed) return { overall: null, said_fidelity: null, red_flag: null }
+  return { overall: parsed.overall, said_fidelity: parsed.breakdown.said_fidelity ?? null, red_flag: parsed.breakdown.red_flag || null }
 }
 async function score(args) {
   const runs = []
   for (let i = 0; i < EVAL_SAMPLES; i++) runs.push(await scoreOnce(args))
   const ov = runs.map((r) => r.overall).filter((v) => v != null)
-  const vf = runs.map((r) => r.voice_fidelity).filter((v) => v != null)
+  const sf = runs.map((r) => r.said_fidelity).filter((v) => v != null)
   const avg = (a) => a.length ? Number((a.reduce((s, x) => s + x, 0) / a.length).toFixed(2)) : null
-  return { overall: avg(ov), voice_fidelity: avg(vf), red_flag: runs[runs.length - 1].red_flag, n: ov.length }
+  return { overall: avg(ov), said_fidelity: avg(sf), red_flag: runs[runs.length - 1].red_flag, n: ov.length }
 }
 
 // ── Load shared context ─────────────────────────────────────────────────────────
@@ -158,15 +130,17 @@ for (const c of CLIPS) {
   // Identical inputs except clipTranscript — isolates U1's variable.
   const capA = await generateCaption({ topic, clip, workspace: ws, staffId: staff.id, clipTranscript: '' })
   const capC = await generateCaption({ topic, clip, workspace: ws, staffId: staff.id, clipTranscript: transcript })
-  const sA = await score({ topic, caption: capA, staffName: staff.name, phrases: staff.phrases, workspaceName: wsName })
-  const sC = await score({ topic, caption: capC, staffName: staff.name, phrases: staff.phrases, workspaceName: wsName })
+  // Both captions graded against the SAME gold reference (the clip's real
+  // transcript) — said_fidelity then measures faithfulness to what was said.
+  const sA = await score({ topic, caption: capA, transcript, staffName: staff.name, phrases: staff.phrases, workspaceName: wsName })
+  const sC = await score({ topic, caption: capC, transcript, staffName: staff.name, phrases: staff.phrases, workspaceName: wsName })
 
   results.push({ label: c.label, staff: staff.name, authorMatch: c.authorMatch, topic, transcriptLen: transcript.length, capA, capC, sA, sC })
   console.log(`━━━ ${c.label}  (graded vs ${staff.name}, ${staff.phrases.length} phrases, transcript ${transcript.length} chars) ━━━`)
   console.log(`  topic: ${topic.slice(0, 90)}`)
-  console.log(`  A (no transcript)  ${sA.overall}/10  vf=${sA.voice_fidelity}  flag=${sA.red_flag}`)
+  console.log(`  A (no transcript)  ${sA.overall}/10  said_fidelity=${sA.said_fidelity}  flag=${sA.red_flag}`)
   console.log(`     "${capA}"`)
-  console.log(`  C (+ transcript)   ${sC.overall}/10  vf=${sC.voice_fidelity}  flag=${sC.red_flag}`)
+  console.log(`  C (+ transcript)   ${sC.overall}/10  said_fidelity=${sC.said_fidelity}  flag=${sC.red_flag}`)
   console.log(`     "${capC}"`)
   console.log(`  Δ overall: ${(sC.overall - sA.overall >= 0 ? '+' : '')}${(sC.overall - sA.overall).toFixed(2)}\n`)
 }
@@ -175,15 +149,22 @@ for (const c of CLIPS) {
 function summarize(label, rows) {
   const valid = rows.filter((r) => r.sA.overall != null && r.sC.overall != null)
   if (!valid.length) { console.log(`${label}: no valid rows`); return }
-  const avgA = valid.reduce((s, r) => s + r.sA.overall, 0) / valid.length
-  const avgC = valid.reduce((s, r) => s + r.sC.overall, 0) / valid.length
-  const wins = valid.filter((r) => r.sC.overall > r.sA.overall).length
-  const ties = valid.filter((r) => r.sC.overall === r.sA.overall).length
+  const mean = (sel) => valid.reduce((s, r) => s + sel(r), 0) / valid.length
+  const avgAo = mean((r) => r.sA.overall),       avgCo = mean((r) => r.sC.overall)
+  const winsO = valid.filter((r) => r.sC.overall > r.sA.overall).length
+  const tiesO = valid.filter((r) => r.sC.overall === r.sA.overall).length
+  // said_fidelity (the U1-relevant dimension) — only rows where both parsed it.
+  const sfRows = valid.filter((r) => r.sA.said_fidelity != null && r.sC.said_fidelity != null)
+  const winsS = sfRows.filter((r) => r.sC.said_fidelity > r.sA.said_fidelity).length
+  const tiesS = sfRows.filter((r) => r.sC.said_fidelity === r.sA.said_fidelity).length
+  const sf = (sel) => sfRows.length ? (sfRows.reduce((s, r) => s + sel(r), 0) / sfRows.length) : null
+  const avgAs = sf((r) => r.sA.said_fidelity), avgCs = sf((r) => r.sC.said_fidelity)
+  const sgn = (x) => (x >= 0 ? '+' : '') + x.toFixed(2)
   console.log(`\n── ${label} (n=${valid.length}) ──`)
-  console.log(`  Avg A (no transcript): ${avgA.toFixed(2)}/10`)
-  console.log(`  Avg C (+ transcript):  ${avgC.toFixed(2)}/10`)
-  console.log(`  Δ avg:                 ${(avgC - avgA >= 0 ? '+' : '')}${(avgC - avgA).toFixed(2)}`)
-  console.log(`  C wins / ties / losses: ${wins} / ${ties} / ${valid.length - wins - ties}`)
+  console.log(`  overall        A ${avgAo.toFixed(2)} → C ${avgCo.toFixed(2)}   Δ ${sgn(avgCo - avgAo)}   C wins/ties/losses: ${winsO} / ${tiesO} / ${valid.length - winsO - tiesO}`)
+  if (sfRows.length) {
+    console.log(`  said_fidelity  A ${avgAs.toFixed(2)} → C ${avgCs.toFixed(2)}   Δ ${sgn(avgCs - avgAs)}   C wins/ties/losses: ${winsS} / ${tiesS} / ${sfRows.length - winsS - tiesS}`)
+  }
 }
 console.log('\n════════════════════ SUMMARY ════════════════════')
 console.log(`(eval = mean of ${EVAL_SAMPLES} Haiku samples per caption)`)
