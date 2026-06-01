@@ -11,13 +11,11 @@ import { fetchStaff } from '@/lib/api'
 
 // Asset purpose is the primary fork — it decides which downstream pipeline
 // the upload feeds. We render the choice as deliberate cards (not a dropdown)
-// because picking the wrong one routes the upload through the wrong AI prompt
-// and queues unwanted edit briefs.
+// because picking the wrong one routes the upload through the wrong AI prompt.
 //
-//   interview — someone speaking on camera; runs the segmenter, produces
-//               edit briefs for the contractor.
+//   interview — someone speaking on camera; runs the transcriber + segmenter.
 //   broll     — treatment/interaction footage with no spoken narrative;
-//               tagged for search, no segmenter, no briefs.
+//               tagged for search only.
 //   photo     — clinic, team, equipment, before/after, social shots.
 //   brand     — logos, headshots, graphics (lives in Brand Kit too).
 const PURPOSES = [
@@ -199,12 +197,9 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   // patient-guest interviews don't get the picker — the clip isn't "of" a
   // clinician in those cases, so attribution would be misleading.
   const showStaffPicker = ((!showSpeakerRole) || speakerRole === 'clinician') && staff.length > 0
-  // Build a continuous 1-N step numbering regardless of which optional
-  // sections actually render. Purpose is always step 1; the counter starts
-  // at 2 so the next-shown section gets 2. DOM order is: purpose → speaker
-  // role → clinician → collection → drop zone.
+  // Build a continuous 1-N step numbering. Purpose (+ inline speaker chips)
+  // is always step 1. DOM order: purpose → staff → collection → drop zone.
   let stepCounter = 2
-  const stepSpeakerRole = showSpeakerRole ? stepCounter++ : null
   const stepStaff = showStaffPicker ? stepCounter++ : null
   const stepCollection = collections.length > 0 ? stepCounter++ : null
   const stepDrop = stepCounter
@@ -284,9 +279,9 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   return (
     <div>
       {/* Step 1 — what kind of asset is this. Purpose is the primary fork: it
-          decides whether this upload feeds the interview-segmenter pipeline
-          (and therefore generates edit briefs), gets tagged-only for search,
-          or lands in the Brand Kit. Picking wrong = wrong downstream noise. */}
+          decides whether this upload feeds the transcriber + segmenter pipeline,
+          gets tagged-only for search, or lands in the Brand Kit.
+          Picking wrong = wrong downstream noise. */}
       <div className="mb-3 rounded-xl border bg-card p-4">
         <div className="flex items-center gap-2 mb-2.5">
           <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-semibold">1</span>
@@ -295,7 +290,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               What kind of asset is this? <span className="text-destructive">*</span>
             </div>
             <p className="text-2xs text-muted-foreground">
-              Picks the right pipeline. Only interview clips go to the editor&apos;s brief queue.
+              Picks the right pipeline. Interview clips are transcribed; everything else is tagged for search.
             </p>
           </div>
         </div>
@@ -325,61 +320,43 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             )
           })}
         </div>
-      </div>
 
-      {/* Step 2 — speaker role, conditional on interview purpose. For B-roll,
-          photos, and brand assets the question doesn't apply, so we hide it
-          entirely instead of forcing a default that downstream prompts
-          would treat as meaningful. */}
-      {showSpeakerRole && (
-        <div className="mb-3 rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-2.5">
-            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-semibold">{stepSpeakerRole}</span>
-            <div>
-              <div className="text-sm font-semibold">
-                Who&apos;s speaking in these clips? <span className="text-destructive">*</span>
+        {/* Speaker chips — inline refinement for interview clips only */}
+        {showSpeakerRole && (
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <p className="text-2xs text-muted-foreground mb-1.5">Who&apos;s speaking?</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SPEAKER_ROLES.map((r) => {
+                const Icon = r.icon
+                const active = speakerRole === r.id
+                return (
+                  <button
+                    type="button"
+                    key={r.id}
+                    onClick={() => setSpeakerRole(r.id)}
+                    className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      active
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {r.label}
+                  </button>
+                )
+              })}
+            </div>
+            {speakerRole === 'patient_guest' && (
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/15 p-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+                <p className="text-2xs text-warning">
+                  Verify written consent from the patient before uploading. Patient-guest content cannot be published without it.
+                </p>
               </div>
-              <p className="text-2xs text-muted-foreground">
-                This shapes how AI reviews the upload. Pick before dropping files.
-              </p>
-            </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {SPEAKER_ROLES.map((r) => {
-              const Icon = r.icon
-              const active = speakerRole === r.id
-              return (
-                <button
-                  type="button"
-                  key={r.id}
-                  onClick={() => setSpeakerRole(r.id)}
-                  className={`text-left rounded-lg border-2 p-2.5 transition-colors ${
-                    active
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className={`h-4 w-4 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <span className={`text-sm font-medium ${active ? 'text-primary' : ''}`}>{r.label}</span>
-                  </div>
-                  <div className="text-2xs text-muted-foreground mt-0.5 leading-snug">
-                    {r.sublabel}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-          {speakerRole === 'patient_guest' && (
-            <div className="mt-2.5 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/15 p-2.5">
-              <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-              <p className="text-xs text-warning">
-                Verify written consent from the patient before uploading. Patient-guest content cannot be published without it.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Clinician picker — optional. Shows for non-interview uploads
           (broll/photo/brand) and for interview clips where the speaker is the
@@ -578,7 +555,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               ))}
             </div>
             <p className="mt-2 text-3xs text-muted-foreground">
-              AI tags every upload for search. Interview clips also feed the editor brief queue.
+              AI tags every upload for search. Interview clips are also transcribed.
             </p>
           </div>
         )}
