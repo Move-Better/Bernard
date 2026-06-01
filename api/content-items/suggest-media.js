@@ -55,6 +55,87 @@ async function sb(path, init = {}) {
   })
 }
 
+// Expand whole-video candidates into their precut segments.
+//
+// The matcher (searchClips → match_visual_memory_chunks) ranks WHOLE media
+// assets — it has no awareness that the video pipeline (find-clips →
+// video_segments, migration 105) chopped a long source into standalone ≤60s
+// moments. So a video draft would only ever be offered the full source clip,
+// never the 20-second segment the producer actually wants in a carousel.
+//
+// This bridges the two: for every video candidate that has kept/rendered
+// segments, we emit each segment as its own candidate (carrying start_sec /
+// end_sec / hook), keeping the parent whole-video candidate too so the producer
+// can still pick the full clip. brandRenderVideo cuts the slice live at publish
+// (`-ss <start> -t <len>`), so a segment needs no pre-rendered file — just the
+// parent's blobUrl + the offsets.
+//
+// Segments inherit their parent's similarity (segments aren't independently
+// embedded), so they sort right next to the source clip. A segment sorts just
+// ahead of its parent so the tighter, ready-to-post moment leads.
+async function expandVideoSegments(clips, workspaceId) {
+  const videoAssetIds = [...new Set(
+    clips.filter((c) => c.kind === 'video' && c.assetId).map((c) => c.assetId),
+  )]
+  if (videoAssetIds.length === 0) return clips
+
+  // Only 'kept' / 'rendered' segments are producer-approved; 'proposed' are
+  // still awaiting review on the Slate and 'discarded' were rejected.
+  const inList = videoAssetIds.map((id) => `"${id}"`).join(',')
+  let segRows = []
+  try {
+    const r = await sb(
+      `video_segments?workspace_id=eq.${workspaceId}` +
+      `&source_asset_id=in.(${inList})` +
+      `&status=in.(kept,rendered)` +
+      `&select=id,source_asset_id,start_sec,end_sec,hook,order_index,status` +
+      `&order=source_asset_id,order_index`,
+    )
+    if (!r.ok) {
+      // Non-fatal: fall back to whole-video candidates. A segment-fetch failure
+      // must never sink the whole suggestion response.
+      console.warn(`[suggest-media] segment fetch failed ${r.status} — returning whole videos only`)
+      return clips
+    }
+    segRows = await r.json()
+  } catch (e) {
+    console.warn('[suggest-media] segment fetch threw — returning whole videos only:', e?.message)
+    return clips
+  }
+  if (!Array.isArray(segRows) || segRows.length === 0) return clips
+
+  const byAsset = new Map()
+  for (const s of segRows) {
+    if (!byAsset.has(s.source_asset_id)) byAsset.set(s.source_asset_id, [])
+    byAsset.get(s.source_asset_id).push(s)
+  }
+
+  const out = []
+  for (const clip of clips) {
+    const segs = clip.kind === 'video' && clip.assetId ? byAsset.get(clip.assetId) : null
+    if (segs && segs.length > 0) {
+      // Emit each segment as its own candidate, then the parent whole-video.
+      for (const s of segs) {
+        const start = Number(s.start_sec) || 0
+        const end = Number(s.end_sec) || 0
+        out.push({
+          ...clip,
+          // Distinct identity so a segment and its parent don't dedupe to one
+          // another in the UI (mediaEntryKey falls back to this when present).
+          segmentId:   s.id,
+          isSegment:   true,
+          startSec:    start,
+          endSec:      end,
+          durationS:   end > start ? end - start : clip.durationS,
+          segmentHook: s.hook || '',
+        })
+      }
+    }
+    out.push(clip)
+  }
+  return out
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' })
@@ -116,6 +197,14 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[content-items/suggest-media] search failed:', e?.message)
     return res.status(500).json({ error: 'search_failed', detail: e?.message })
+  }
+
+  // Expand whole-video candidates into their precut segments, so a video draft
+  // can be given a tight ≤60s moment (rendered live at publish) and not just the
+  // full source. Skipped for photo-only searches (no video candidates to expand)
+  // and best-effort: any failure leaves the whole-video candidates intact.
+  if (kind !== 'photo') {
+    clips = await expandVideoSegments(clips, ws.id)
   }
 
   return res.status(200).json({

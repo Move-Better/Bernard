@@ -138,7 +138,12 @@ export default function StoryboardPiece() {
     )
   }
 
-  const clips = (sugg?.clips || []).filter((c) => !attachedKeys.has(c.assetId))
+  // A candidate's identity must match the attached-entry key (mediaEntryKey):
+  // a precut segment is keyed by its segmentId, a whole asset by assetId. Using
+  // assetId alone would (a) hide a whole video once any of its segments is
+  // attached, and (b) collapse multiple segments of one source to one card.
+  const clipKey = (c) => c.segmentId || c.assetId
+  const clips = (sugg?.clips || []).filter((c) => !attachedKeys.has(clipKey(c)))
   const showKindToggle = platformKind === null
 
   return (
@@ -249,10 +254,10 @@ export default function StoryboardPiece() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {clips.map((clip) => (
                 <CandidateCard
-                  key={clip.chunkId || clip.assetId}
+                  key={clip.segmentId || clip.chunkId || clip.assetId}
                   clip={clip}
-                  attached={attachedKeys.has(clip.assetId)}
-                  attaching={attachingKey === clip.assetId}
+                  attached={attachedKeys.has(clipKey(clip))}
+                  attaching={attachingKey === clipKey(clip)}
                   onPreview={() => setPreviewClip(clip)}
                   onAttach={() => attachEntry(clipToMediaEntry(clip))}
                 />

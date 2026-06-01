@@ -1,5 +1,10 @@
 // Single source of truth for the content_items.media_urls entry shape:
-//   { url, type: 'image'|'video', kind, thumbnailUrl, mediaAssetId, name, duration_s? }
+//   { url, type: 'image'|'video', kind, thumbnailUrl, mediaAssetId, name,
+//     duration_s?,
+//     // precut-segment fields (video only) — when present, this entry is a
+//     // ≤60s slice of the source video, rendered live at publish via
+//     // brandRenderVideo (`-ss start_sec -t (end_sec-start_sec)`):
+//     segment_id?, start_sec?, end_sec?, segment_hook? }
 //
 // Both the suggestion path (searchClips / suggest-media result rows) and the
 // manual Library picker (media_assets rows) normalize THROUGH here, so
@@ -12,6 +17,11 @@
 // all share one definition instead of three drifting copies.
 
 // A searchClips / suggest-media result row → media_urls entry.
+//
+// When the row is a precut segment (clip.isSegment — see expandVideoSegments in
+// api/content-items/suggest-media.js), the start/end offsets and hook ride along
+// so publish can render just that slice. The url stays the PARENT source video's
+// blob (brandRenderVideo cuts the slice live; there is no separate segment file).
 export function clipToMediaEntry(clip) {
   const isVideo = clip.kind === 'video'
   const url = clip.blobUrl || clip.url
@@ -23,6 +33,14 @@ export function clipToMediaEntry(clip) {
     mediaAssetId: clip.assetId,
     name:         clip.filename || null,
     ...(clip.durationS != null ? { duration_s: clip.durationS } : {}),
+    ...(clip.isSegment
+      ? {
+          segment_id:   clip.segmentId,
+          start_sec:    clip.startSec,
+          end_sec:      clip.endSec,
+          segment_hook: clip.segmentHook || '',
+        }
+      : {}),
   }
 }
 
@@ -41,8 +59,11 @@ export function pickerItemToMediaEntry(asset) {
   }
 }
 
-// Stable dedup/identity key for a media entry — the asset id when known, else
-// the url. Used to dedupe attaches and to filter already-attached candidates.
+// Stable dedup/identity key for a media entry — the segment id when this entry
+// is a precut slice, else the asset id, else the url. The segment id matters so
+// a segment and its parent whole-video (same mediaAssetId) don't collapse to one
+// identity: you can attach both, and an already-attached segment doesn't hide
+// its source clip from the candidate list.
 export function mediaEntryKey(entry) {
-  return entry.mediaAssetId || entry.url
+  return entry.segmentId || entry.segment_id || entry.mediaAssetId || entry.url
 }

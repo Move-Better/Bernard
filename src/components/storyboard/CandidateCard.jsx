@@ -1,4 +1,4 @@
-import { Play, Image as ImageIcon, Check, Plus, Loader2, Maximize2, Video } from 'lucide-react'
+import { Play, Image as ImageIcon, Check, Plus, Loader2, Maximize2, Video, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 function topTags(aiTags, n = 5) {
@@ -25,7 +25,8 @@ function fmtDuration(s) {
  *
  * Props:
  *   clip      — a suggest-media result ({ assetId, kind, blobUrl, thumbnailUrl,
- *               similarity, aiTags, durationS, chunkId, filename })
+ *               similarity, aiTags, durationS, chunkId, filename }). A precut
+ *               segment also carries { isSegment, startSec, endSec, segmentHook }.
  *   attached  — already on the draft (button shows "Attached")
  *   attaching — this card's attach is in flight
  *   onPreview — open the full-size preview dialog
@@ -33,9 +34,14 @@ function fmtDuration(s) {
  */
 export default function CandidateCard({ clip, attached, attaching, onPreview, onAttach }) {
   const isVideo = clip.kind === 'video'
+  const isSegment = !!clip.isSegment
   const thumb = clip.thumbnailUrl || (!isVideo ? clip.blobUrl : null)
   const pct = Math.round((clip.similarity || 0) * 100)
   const tags = topTags(clip.aiTags)
+  // A precut clip's own length (end-start); falls back to the source duration.
+  const segLen = isSegment
+    ? fmtDuration((Number(clip.endSec) || 0) - (Number(clip.startSec) || 0))
+    : null
 
   return (
     <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
@@ -63,23 +69,41 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
         <span className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-2xs font-semibold text-white">
           {pct}% match
         </span>
+        {/* Precut-clip marker — a primary pill so a short, ready-to-post cut
+            reads apart from the full source video at a glance. */}
+        {isSegment && (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-3xs font-semibold text-primary-foreground shadow group-hover:opacity-0">
+            <Scissors className="h-2.5 w-2.5" /> Clip
+          </span>
+        )}
         <span className="absolute right-2 top-2 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
           <Maximize2 className="h-3.5 w-3.5" />
         </span>
-        {/* Kind badge — labels each candidate Photo or Video (with its length
-            when known) so the producer can tell stills from clips at a glance,
-            on top of the centered play overlay videos already get. */}
+        {/* Kind badge — labels each candidate Photo, Video, or a precut Clip
+            (with its length) so the producer can tell stills from clips from
+            ready-to-post segments at a glance. */}
         <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-3xs font-medium text-white">
           {isVideo ? <Video className="h-2.5 w-2.5" /> : <ImageIcon className="h-2.5 w-2.5" />}
-          {isVideo ? (fmtDuration(clip.durationS) ? `Video · ${fmtDuration(clip.durationS)}` : 'Video') : 'Photo'}
+          {isSegment
+            ? (segLen ? `Clip · ${segLen}` : 'Clip')
+            : isVideo
+              ? (fmtDuration(clip.durationS) ? `Video · ${fmtDuration(clip.durationS)}` : 'Video')
+              : 'Photo'}
         </span>
       </button>
       <div className="space-y-2 p-2.5">
-        {tags.length > 0 && (
+        {/* For a precut clip, lead with its hook (the standalone moment's
+            title) — that's why this slice was cut out and what makes it
+            postable. Falls back to the source's visual tags. */}
+        {isSegment && clip.segmentHook ? (
+          <p className="line-clamp-2 text-2xs font-medium leading-snug text-foreground" title={clip.segmentHook}>
+            “{clip.segmentHook}”
+          </p>
+        ) : tags.length > 0 ? (
           <p className="line-clamp-2 text-2xs leading-snug text-muted-foreground" title={tags.join(', ')}>
             {tags.join(' · ')}
           </p>
-        )}
+        ) : null}
         <Button
           type="button"
           size="sm"
