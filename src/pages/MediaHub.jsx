@@ -355,7 +355,7 @@ export default function MediaHub() {
             <DialogHeader>
               <DialogTitle>Upload media</DialogTitle>
               <DialogDescription>
-                Pick the asset kind, then drop your files. Interview clips feed the editor brief queue; everything else is tagged for search and reuse.
+                Pick the asset kind, then drop your files. Everything gets tagged for search and reuse.
               </DialogDescription>
             </DialogHeader>
             <MediaUploader
