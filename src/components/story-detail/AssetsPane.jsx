@@ -1862,6 +1862,12 @@ export default function AssetsPane({
   onViewChange,
 }) {
   const workspace = useWorkspace()
+  // pieceParam must be declared before pieces so the useMemo can include a
+  // filtered-out piece when navigated to (e.g. a social atom draft whose
+  // platform isn't in the story's selected_outputs channel list).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const pieceParam = searchParams.get('piece')
+
   // Sort so series parts appear in series_part order within their series.
   // The content API returns rows by created_at.desc, which doesn't match
   // series_part ordering, so without this the tabs would render as e.g.
@@ -1874,15 +1880,26 @@ export default function AssetsPane({
     const filtered = activeChannels
       ? base.filter((p) => activeChannels.includes(p.platform))
       : base
+    // Always include the piece being navigated to, even if its platform is
+    // filtered (e.g. an Instagram atom draft when only youtube/gbp/blog are
+    // active). Without this, handleSelectPiece can't find the piece and
+    // silently falls through to the first tab (wrong piece shown).
+    if (pieceParam && !filtered.some((p) => p.id === pieceParam)) {
+      const extra = base.find((p) => p.id === pieceParam)
+      if (extra) return [...filtered, extra].sort((a, b) => {
+        if (a.series_id && a.series_id === b.series_id) {
+          return (a.series_part || 0) - (b.series_part || 0)
+        }
+        return 0
+      })
+    }
     return [...filtered].sort((a, b) => {
       if (a.series_id && a.series_id === b.series_id) {
         return (a.series_part || 0) - (b.series_part || 0)
       }
       return 0
     })
-  }, [story?.pieces, story?.selected_outputs, workspace?.enabled_outputs])
-  const [searchParams, setSearchParams] = useSearchParams()
-  const pieceParam = searchParams.get('piece')
+  }, [story?.pieces, story?.selected_outputs, workspace?.enabled_outputs, pieceParam])
   const initialIdx = pieceParam
     ? Math.max(0, pieces.findIndex((p) => p.id === pieceParam))
     : 0
@@ -1913,8 +1930,14 @@ export default function AssetsPane({
 
   const handleSelectPiece = (pieceId) => {
     const idx = pieces.findIndex((p) => p.id === pieceId)
-    if (idx >= 0) setActiveIdx(idx)
-    setView('edit')
+    if (idx >= 0) {
+      setActiveIdx(idx)
+      setView('edit')
+    }
+    // Always update the URL param. If the piece was filtered out (e.g. a
+    // social atom draft not in selected_outputs), the pieces useMemo will
+    // recompute to include it, and the sync useEffect below will then set
+    // activeIdx + switch to edit mode correctly.
     if (pieceId && pieceId !== pieceParam) {
       const next = new URLSearchParams(searchParams)
       next.set('piece', pieceId)
