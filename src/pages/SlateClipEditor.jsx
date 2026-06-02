@@ -99,6 +99,10 @@ export default function SlateClipEditor() {
   // --- Caption text ---
   const [captionText, setCaptionText] = useState('')
 
+  // --- Caption overlay controls (C2) ---
+  const [overlayPosition, setOverlayPosition] = useState('bottom')
+  const [overlaySize, setOverlaySize] = useState('medium')
+
   // --- Platform selection for "As a post" ---
   const [platform, setPlatform] = useState('instagram')
 
@@ -121,6 +125,8 @@ export default function SlateClipEditor() {
           startSec,
           durationSec,
           subtitles: true,
+          overlayPosition,
+          overlaySize,
         }),
       })
       const render = result?.renders?.[0]
@@ -284,14 +290,24 @@ export default function SlateClipEditor() {
                   onEnded={() => setPlaying(false)}
                   playsInline
                 />
-                {/* Caption band preview — fixed at bottom, matches render output */}
-                {captionText && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[85%] pointer-events-none">
-                    <div className="bg-foreground/85 text-white text-center text-sm font-bold px-3 py-2 rounded-md leading-snug">
+                {/* Caption band preview — WYSIWYG: position + size match render output */}
+                {captionText ? (
+                  <div
+                    className={`absolute left-0 right-0 pointer-events-none flex items-center justify-center py-2 px-4 bg-black/70 ${
+                      overlayPosition === 'top'    ? 'top-0' :
+                      overlayPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
+                      'bottom-0'
+                    }`}
+                  >
+                    <p className={`text-white font-bold text-center leading-tight ${
+                      overlaySize === 'small' ? 'text-xs' :
+                      overlaySize === 'large' ? 'text-base' :
+                      'text-sm'
+                    }`}>
                       {captionText}
-                    </div>
+                    </p>
                   </div>
-                )}
+                ) : null}
                 <button
                   type="button"
                   onClick={togglePlay}
@@ -375,6 +391,56 @@ export default function SlateClipEditor() {
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground text-right">{captionText.length}/500</p>
+
+            {/* Position + size controls */}
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-14 shrink-0">Position</span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'top',    label: 'Top' },
+                    { value: 'center', label: 'Center' },
+                    { value: 'bottom', label: 'Bottom' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setOverlayPosition(value); setRenderedBlobUrl(null) }}
+                      className={`text-xs px-2.5 py-1 rounded-md font-medium border transition-colors ${
+                        overlayPosition === value
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-14 shrink-0">Size</span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'small',  label: 'Small' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'large',  label: 'Large' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setOverlaySize(value); setRenderedBlobUrl(null) }}
+                      className={`text-xs px-2.5 py-1 rounded-md font-medium border transition-colors ${
+                        overlaySize === value
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Auto-suggest */}

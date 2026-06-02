@@ -120,16 +120,21 @@ export function buildBrandOverlaySvg({
   accentColor,
   fontBuffer,
   captionOpacity = 0.88,
+  captionSizeScale = 1,
 }) {
   // Layout constants — proportional to the smaller dimension so they scale
   // sensibly across 1:1, 9:16, and 16:9.
   const baseDim = Math.min(width, height)
   const captionBandHeight = Math.round(baseDim * 0.18)
-  const captionBandY = captionPos === 'top' ? 0 : (height - captionBandHeight)
+  const captionBandY = captionPos === 'top'
+    ? 0
+    : captionPos === 'center'
+      ? Math.round((height - captionBandHeight) / 2)
+      : (height - captionBandHeight)
   const lowerThirdHeight = Math.round(baseDim * 0.09)
   const lowerThirdY = height - lowerThirdHeight
 
-  const captionFontSize = Math.round(baseDim * 0.048)
+  const captionFontSize = Math.round(baseDim * 0.048 * captionSizeScale)
   const captionSidePadding = Math.round(width * 0.05)
   const captionInnerWidth = width - (2 * captionSidePadding)
   const maxCharsPerLine = Math.max(14, Math.round(captionInnerWidth / (captionFontSize * 0.55)))
