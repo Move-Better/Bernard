@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon } from 'lucide-react'
+import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useContentItems } from '@/lib/queries'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -34,6 +34,44 @@ function ageLabel(days) {
   if (days == null) return null
   if (days <= 0) return 'today'
   return `${days}d ago`
+}
+
+// Publisher inbox banner — shown at the top of Storyboard when there is
+// actionable work. Mirrors the DraftsReadyRow warm-inbox treatment from Home
+// so the visual language is consistent: primary-orange border + gradient bg =
+// "your queue, act now."
+function PublisherInboxBanner({ needsMediaCount, readyCount }) {
+  if (needsMediaCount === 0 && readyCount === 0) return null
+  const parts = []
+  if (needsMediaCount > 0)
+    parts.push(`${needsMediaCount} draft${needsMediaCount > 1 ? 's' : ''} need${needsMediaCount === 1 ? 's' : ''} media`)
+  if (readyCount > 0)
+    parts.push(`${readyCount} ready to send`)
+  return (
+    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)] px-5 py-4 flex items-center gap-3">
+      <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-primary" aria-hidden="true" />
+      <Inbox className="h-4 w-4 text-primary shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-foreground">
+          Your queue: {parts.join(' · ')}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {needsMediaCount > 0
+            ? 'Start with the oldest draft — attach media, then compose and schedule.'
+            : "Media's attached — open each and compose & schedule to get it out the door."}
+        </p>
+      </div>
+      {readyCount > 0 && (
+        <Link
+          to="/storyboard#ready"
+          className="shrink-0 inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+        >
+          <Send className="h-3.5 w-3.5" />
+          {readyCount} ready to send
+        </Link>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -91,6 +129,8 @@ export default function Storyboard() {
         </p>
       </div>
 
+      {!isLoading && <PublisherInboxBanner needsMediaCount={rows.length} readyCount={ready.length} />}
+
       {isLoading ? (
         <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading your drafts…
@@ -117,13 +157,22 @@ export default function Storyboard() {
             </section>
           )}
 
-          {/* Ready to Distribute — has media, not yet published. The home for a
-              piece after you attach media, so it never disappears on you. */}
+          {/* Ready to Distribute — has media, not yet published. Publisher's
+              action queue: these are done waiting, they just need to be sent.
+              Warm-orange heading + badge so the eye lands here as "act now",
+              matching the approved-lane treatment in PipelineKanban. */}
           {ready.length > 0 && (
-            <section className="space-y-3">
-              <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Ready to distribute · {ready.length}
-              </p>
+            <section id="ready" className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-1 h-4 rounded-full shrink-0 bg-primary" aria-hidden="true" />
+                <Send className="h-3.5 w-3.5 text-primary" />
+                <p className="text-sm font-bold text-[#7a3a14] tracking-tight">
+                  Ready to distribute
+                </p>
+                <span className="text-3xs font-bold rounded-full px-2 py-0.5 bg-primary text-primary-foreground">
+                  {ready.length}
+                </span>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {ready.map((piece) => (
                   <ReadyCard key={piece.id} piece={piece} />
@@ -197,13 +246,13 @@ function ReadyCard({ piece }) {
   return (
     <Link
       to={`/storyboard/${piece.id}/publish`}
-      className="group rounded-lg border border-success/30 bg-success/5 p-3 transition-colors hover:border-success/60 hover:shadow-sm"
+      className="group rounded-lg border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(227,101,37,0.3)] hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-2">
         <Badge variant="outline" className="gap-1 text-2xs">
           {Icon && <Icon className="h-3 w-3" />}{meta.label}
         </Badge>
-        <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-success">
+        <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-muted-foreground">
           <ImageIcon className="h-3 w-3" /> {count}
         </span>
       </div>
@@ -218,7 +267,7 @@ function ReadyCard({ piece }) {
         )}
       </div>
       <div className="mt-3 flex items-center justify-end">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline underline-offset-2">
           Compose &amp; publish <ArrowRight className="h-3.5 w-3.5" />
         </span>
       </div>
