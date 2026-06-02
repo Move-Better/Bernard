@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon, FileText, Camera } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon, FileText, Camera, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -18,7 +18,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
  * mode the user picks so deep links from suggestions / backlog still work.
  */
 export default function CapturePicker() {
-  useDocumentTitle('New capture')
+  useDocumentTitle('New')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const workspace = useWorkspace()
@@ -51,9 +51,9 @@ export default function CapturePicker() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New capture</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">New</h1>
           <p className="text-sm text-muted-foreground">
-            How would you like to capture this one?
+            How would you like to add to your pipeline today?
           </p>
         </div>
       </div>
@@ -71,7 +71,7 @@ export default function CapturePicker() {
                 <MessageSquareText className="h-5 w-5" />
               </div>
               <div>
-                <div className="font-medium">Start Interview</div>
+                <div className="font-medium">Interview</div>
                 <p className="text-sm text-muted-foreground mt-1">
                   AI-led conversation. Best when you want to think out loud
                   about a topic and let prompts surface your thinking.
@@ -215,6 +215,20 @@ export default function CapturePicker() {
           </Card>
         </button>
       </div>
+
+      {/* iOS Shortcut — links to the full /capture page which hosts the
+          token-generation flow and install instructions. */}
+      <button
+        type="button"
+        onClick={() => go('/capture')}
+        className="w-full flex items-center gap-3 rounded-lg border border-dashed border-border bg-transparent px-4 py-3 text-left hover:border-primary/40 hover:bg-primary/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <Zap className="h-4 w-4 text-primary shrink-0" />
+        <div>
+          <p className="text-sm font-medium">Get iOS Shortcut</p>
+          <p className="text-xs text-muted-foreground">Native 4K · one tap · no browser</p>
+        </div>
+      </button>
 
       {/* Seminar / Talk — Phase 2 placeholder. Visible-but-disabled so users
           know it's coming; prevents the picker from looking incomplete. */}
