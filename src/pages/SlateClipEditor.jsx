@@ -112,29 +112,61 @@ export default function SlateClipEditor() {
   // --- "Adjust by hand" collapsed state ---
   const [adjustOpen, setAdjustOpen] = useState(false)
 
-  // --- AI chat log (Phase 4 wires real AI; chips are UI-only now) ---
+  // --- AI chat log (Phase 4 — real AI) ---
   const [chatLog, setChatLog] = useState([
-    { role: 'assistant', text: 'I can help you find the best moment, tighten the caption, or apply your brand style. Ask me anything.' },
+    { role: 'assistant', text: 'I can help you tighten the caption or adjust the size. Ask me anything.' },
   ])
   const [chatInput, setChatInput] = useState('')
   const chatLogRef = useRef(null)
+  const [chatLoading, setChatLoading] = useState(false)
 
-  function fireChip(label) {
-    setChatLog((prev) => [
-      ...prev,
-      { role: 'user', text: label },
-      { role: 'assistant', text: '✓ AI wiring coming in Phase 4 — your clip is ready to hand-edit or send now.' },
-    ])
+  function appendChat(msg) {
+    setChatLog((prev) => [...prev, msg])
     setTimeout(() => {
       if (chatLogRef.current) chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight
     }, 50)
   }
 
-  function submitChat() {
+  async function fireChip(label) {
+    if (chatLoading) return
+    appendChat({ role: 'user', text: label })
+    setChatLoading(true)
+    try {
+      const result = await apiFetch('/api/editorial/restyle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'clip',
+          instruction: label,
+          content: captionText,
+          transcript: asset?.transcript_excerpt || '',
+        }),
+      })
+      if (result?.changes?.content) {
+        setCaptionText(result.changes.content)
+        setRenderedBlobUrl(null)
+      }
+      if (typeof result?.changes?.fontSizeStep === 'number') {
+        setOverlaySize((prev) => {
+          const sizes = ['small', 'medium', 'large']
+          const idx = sizes.indexOf(prev)
+          const next = Math.max(0, Math.min(sizes.length - 1, idx + result.changes.fontSizeStep))
+          return sizes[next]
+        })
+      }
+      appendChat({ role: 'assistant', text: result?.explanation || 'Done!' })
+    } catch (e) {
+      appendChat({ role: 'assistant', text: `Could not apply: ${e?.message || 'unknown error'}` })
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  async function submitChat() {
     const msg = chatInput.trim()
-    if (!msg) return
+    if (!msg || chatLoading) return
     setChatInput('')
-    fireChip(msg)
+    await fireChip(msg)
   }
 
   async function renderClip() {
@@ -432,7 +464,7 @@ export default function SlateClipEditor() {
               <Wand2 className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Polish this clip</span>
               <span className="text-2xs text-muted-foreground">· just ask</span>
-              {suggestionsLoading && (
+              {(suggestionsLoading || chatLoading) && (
                 <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-auto" />
               )}
             </div>
@@ -465,29 +497,33 @@ export default function SlateClipEditor() {
               <div className="flex flex-wrap gap-1.5 mb-2 text-2xs">
                 <button
                   type="button"
+                  disabled={chatLoading}
                   onClick={() => applyTopSuggestion()}
-                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors"
+                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Find the best moment
                 </button>
                 <button
                   type="button"
+                  disabled={chatLoading}
                   onClick={() => fireChip('Punchier caption')}
-                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors"
+                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Punchier caption
                 </button>
                 <button
                   type="button"
+                  disabled={chatLoading}
                   onClick={() => fireChip('Bigger caption')}
-                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors"
+                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Bigger caption
                 </button>
                 <button
                   type="button"
+                  disabled={chatLoading}
                   onClick={() => fireChip('Brand book')}
-                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors flex items-center gap-1"
+                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Book className="h-3 w-3" />Brand book
                 </button>
@@ -498,13 +534,15 @@ export default function SlateClipEditor() {
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') submitChat() }}
-                  placeholder="e.g. 'start where he says the breath part'…"
+                  placeholder="e.g. 'punchier caption' or 'bigger text'…"
                   className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-xs outline-none focus:ring-2 focus:ring-primary/30"
+                  disabled={chatLoading}
                 />
                 <button
                   type="button"
+                  disabled={chatLoading || !chatInput.trim()}
                   onClick={submitChat}
-                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1 hover:bg-primary/90 transition-colors"
+                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CornerDownLeft className="h-3.5 w-3.5" />
                 </button>

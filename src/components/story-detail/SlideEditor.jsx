@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Move, Maximize, Wand2, Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Loader2, Move, Maximize, Wand2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUpdateContentItem, useCarouselThemes } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { apiFetch } from '@/lib/api'
 import {
   BLOCK_ROLES,
   POSITION_PRESETS,
@@ -661,13 +662,40 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
 const CHANGE_THE_LOOK_CHIPS = [
   { id: 'bigger', label: 'Bigger headlines' },
   { id: 'pages', label: 'Add page numbers' },
-  { id: 'tighten', label: 'Tighten to 4 slides' },
+  { id: 'tighten', label: 'Tighten slides' },
   { id: 'brand', label: 'Match brand book' },
 ]
 
-function ChangeTheLookPanel() {
+function ChangeTheLookPanel({ slideCount, onThemeChange, onFontSizeStep, onPageNumbers, onSlideCountTarget }) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function fireRestyle(instruction) {
+    if (!instruction.trim() || loading) return
+    setLoading(true)
+    try {
+      const result = await apiFetch('/api/editorial/restyle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'carousel',
+          instruction: instruction.trim(),
+          slideCount,
+        }),
+      })
+      const changes = result?.changes || {}
+      if (changes.themeId && onThemeChange) onThemeChange(changes.themeId)
+      if (typeof changes.fontSizeStep === 'number' && onFontSizeStep) onFontSizeStep(changes.fontSizeStep)
+      if (changes.addPageNumbers && onPageNumbers) onPageNumbers(true)
+      if (typeof changes.slideCountTarget === 'number' && onSlideCountTarget) onSlideCountTarget(changes.slideCountTarget)
+      toast.success(result?.explanation || 'Done!')
+    } catch (e) {
+      toast.error(`Could not apply: ${e?.message || 'unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="rounded-md border border-primary/30 bg-card overflow-hidden">
@@ -679,6 +707,7 @@ function ChangeTheLookPanel() {
         <Wand2 className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="text-xs font-semibold text-foreground">Change the look</span>
         <span className="text-2xs text-muted-foreground">· works across all slides</span>
+        {loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
         <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -689,8 +718,9 @@ function ChangeTheLookPanel() {
               <button
                 key={chip.id}
                 type="button"
-                onClick={() => toast.info(`"${chip.label}" — AI wiring coming in Phase 4`)}
-                className="px-2.5 py-1 rounded-full border border-border text-2xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                disabled={loading}
+                onClick={() => fireRestyle(chip.label)}
+                className="px-2.5 py-1 rounded-full border border-border text-2xs text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {chip.label}
               </button>
@@ -703,29 +733,23 @@ function ChangeTheLookPanel() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && input.trim()) {
-                  toast.info(`"${input.trim()}" — AI wiring coming in Phase 4`)
+                  fireRestyle(input)
                   setInput('')
                 }
               }}
-              placeholder="e.g. make slide 3 the proof point"
+              placeholder="e.g. bigger headlines, brand navy, add page numbers…"
               className="flex-1 px-2.5 py-1.5 rounded-md border border-input bg-background text-xs outline-none focus:ring-1 focus:ring-primary/50"
+              disabled={loading}
             />
             <button
               type="button"
-              onClick={() => {
-                if (input.trim()) {
-                  toast.info(`"${input.trim()}" — AI wiring coming in Phase 4`)
-                  setInput('')
-                }
-              }}
-              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0"
+              disabled={loading || !input.trim()}
+              onClick={() => { fireRestyle(input); setInput('') }}
+              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Ask
             </button>
           </div>
-          <p className="text-2xs text-muted-foreground italic">
-            AI suggestions — wired in Phase 4. Chips log intent for now.
-          </p>
         </div>
       )}
     </div>
@@ -766,6 +790,9 @@ export default function SlideEditor({ piece }) {
   const customThemes = allThemes.filter((t) => t.custom)
   const theme = resolveTheme(themeId, customThemes)
 
+  // Global font size step applied on top of the active theme (0 = theme default)
+  const [_globalFontSizeStep, setGlobalFontSizeStep] = useState(0)
+
   const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.carousel_theme_id || null)
   const updateItem = useUpdateContentItem()
   const [rendering, setRendering] = useState(false)
@@ -800,6 +827,37 @@ export default function SlideEditor({ piece }) {
   }
   function bindPhoto(idx, photoIdx) {
     updateSlide(idx, { ...slides[idx], photo_idx: photoIdx })
+  }
+
+  // ChangeTheLookPanel callbacks
+  function handleThemeChange(newThemeId) {
+    setThemeId(newThemeId === 'bold-dark' ? null : newThemeId)
+  }
+  function handleFontSizeStep(step) {
+    setGlobalFontSizeStep((prev) => Math.max(-2, Math.min(2, prev + step)))
+  }
+  function handlePageNumbers(enabled) {
+    // Mark each slide to show page numbers by adding a 'page' block if not present
+    setSlides((prev) => prev.map((s) => {
+      const hasPage = s.blocks.some((b) => b.role === 'page')
+      if (enabled && !hasPage) {
+        return { ...s, blocks: [...s.blocks, emptyBlockFor(s.template, 'page')] }
+      }
+      return s
+    }))
+  }
+  function handleSlideCountTarget(target) {
+    setSlides((prev) => {
+      if (prev.length <= target) return prev
+      // Keep first slide (hook) and last slide (CTA), trim body slides from the middle
+      const first = prev[0]
+      const last = prev[prev.length - 1]
+      if (target <= 1) return [first]
+      if (target === 2) return [first, last]
+      const body = prev.slice(1, prev.length - 1)
+      const keep = body.slice(0, target - 2)
+      return [first, ...keep, last]
+    })
   }
 
   async function handleSave() {
@@ -908,7 +966,13 @@ export default function SlideEditor({ piece }) {
       />
 
       {/* 2. CHANGE THE LOOK — collapsed accordion */}
-      <ChangeTheLookPanel />
+      <ChangeTheLookPanel
+        slideCount={slides.length}
+        onThemeChange={handleThemeChange}
+        onFontSizeStep={handleFontSizeStep}
+        onPageNumbers={handlePageNumbers}
+        onSlideCountTarget={handleSlideCountTarget}
+      />
 
       {/* 3. Theme picker */}
       <div className="flex items-center gap-2 flex-wrap">
