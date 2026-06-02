@@ -65,7 +65,7 @@ function SourceVideoCard({ asset, staffName, onEdit }) {
           <p className="text-xs text-muted-foreground">{staffName}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          {asset.duration_sec ? `${Math.round(asset.duration_sec)}s` : '—'}
+          {asset.duration_s ? `${Math.round(asset.duration_s)}s` : '—'}
           {asset.created_at && (
             <> · {new Date(asset.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
           )}
@@ -127,7 +127,8 @@ export default function Slate() {
   })
 
   const sourceVideos = useMemo(() => {
-    const assets = mediaData?.assets || []
+    // listMedia() returns a flat array directly (not { assets: [] })
+    const assets = Array.isArray(mediaData) ? mediaData : []
     const counts = clipCounts?.counts || {}
     const filtered = activeStaffId
       ? assets.filter((a) => a.staff_id === activeStaffId)
@@ -137,7 +138,10 @@ export default function Slate() {
 
   // Staff who have videos (for filter chips)
   const activeStaffIds = useMemo(
-    () => [...new Set((mediaData?.assets || []).map((a) => a.staff_id).filter(Boolean))],
+    () => {
+      const assets = Array.isArray(mediaData) ? mediaData : []
+      return [...new Set(assets.map((a) => a.staff_id).filter(Boolean))]
+    },
     [mediaData]
   )
 
