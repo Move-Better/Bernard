@@ -32,6 +32,12 @@
       "port": 5178
     },
     {
+      "name": "goofy-cartwright",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx/.claude/worktrees/goofy-cartwright-3375a0", "run", "dev", "--", "--port", "5179"],
+      "port": 5179
+    },
+    {
       "name": "mockups",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "/Users/qbook/Claude Projects/NarrateRx/.claude/mockups", "-p", "5174", "--no-clipboard"],
