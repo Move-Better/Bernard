@@ -14,6 +14,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_CAMPAIGNS_EDIT } from '@/lib/capabilities'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { formatRelativeDate } from '@/lib/utils'
 
 // Phase 4 Tentpole PR A — Multi-campaign admin surface.
 //
@@ -251,6 +252,9 @@ function CampaignRow({ campaign: c, onEdit, muted, staffMap }) {
   const targetLabel = targets.length === 0
     ? 'Workspace-wide'
     : `Targets: ${targets.map((id) => staffMap?.[id] || 'Unknown').join(', ')}`
+  const aiExplanation = c.ai_tune_state?.explanation
+    ? c.ai_tune_state.explanation.slice(0, 100) + (c.ai_tune_state.explanation.length > 100 ? '…' : '')
+    : null
   return (
     <button
       type="button"
@@ -274,6 +278,11 @@ function CampaignRow({ campaign: c, onEdit, muted, staffMap }) {
           }`}>
             {targetLabel}
           </span>
+          {c.ai_tuned_at && (
+            <span className="inline-flex items-center text-3xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded gap-1">
+              AI tuned {formatRelativeDate(c.ai_tuned_at)}
+            </span>
+          )}
         </div>
         <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
           <span className="inline-flex items-center gap-1">
@@ -284,6 +293,11 @@ function CampaignRow({ campaign: c, onEdit, muted, staffMap }) {
             <span className="truncate max-w-md">— {c.theme_notes}</span>
           )}
         </div>
+        {aiExplanation && (
+          <p className="text-xs text-muted-foreground mt-1 truncate max-w-xl italic">
+            {aiExplanation}
+          </p>
+        )}
       </div>
       <Pencil className="h-3.5 w-3.5 text-muted-foreground mt-1 shrink-0" />
     </button>
