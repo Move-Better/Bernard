@@ -41,7 +41,6 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.3.3",
     "@vercel/functions": "^3.5.0",
-    "@vercel/toolbar": "^0.2.6",
     "ai": "^6.0.175",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
