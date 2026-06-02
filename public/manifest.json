@@ -2,7 +2,7 @@
   "name": "NarrateRx",
   "short_name": "NarrateRx",
   "description": "Capture clinic moments. Your next patient is already watching.",
-  "start_url": "/capture",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",

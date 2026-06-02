@@ -20,6 +20,7 @@ import PlanNextInterview from '@/components/home/PlanNextInterview'
 import TaskBucketCard from '@/components/home/TaskBucketCard'
 import HomeRightRail from '@/components/home/HomeRightRail'
 import PageHelp from '@/components/PageHelp'
+import InstallBanner from '@/components/home/InstallBanner'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 const MY_STORIES_LIMIT = 5
@@ -218,6 +219,8 @@ export default function Home() {
           </Link>
         </div>
       </div>
+
+      <InstallBanner />
 
       {/* "Finish onboarding" card. Self-gated (admin + workspace not yet
           onboarded + not snoozed) — renders nothing for the 99% case. Sits
