@@ -32,7 +32,7 @@ const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
  */
 export default function StoriesCalendarView({ stories, isLoading }) {
   const [today]       = useState(new Date())
-  const [view, setView]          = useState('month')
+  const [view, setView]          = useState('plan')
   const [current, setCurrent]    = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [weekAnchor, setWeekAnchor] = useState(startOfWeek(today))
 
@@ -64,6 +64,13 @@ export default function StoriesCalendarView({ stories, isLoading }) {
         <div className="flex items-center bg-muted rounded-md p-0.5">
           <button
             type="button"
+            onClick={() => setView('plan')}
+            className={`px-2 py-1 text-xs rounded ${view === 'plan' ? 'bg-background shadow' : 'text-muted-foreground'}`}
+          >
+            Plan
+          </button>
+          <button
+            type="button"
             onClick={() => setView('month')}
             className={`px-2 py-1 text-xs rounded ${view === 'month' ? 'bg-background shadow' : 'text-muted-foreground'}`}
           >
@@ -77,10 +84,14 @@ export default function StoriesCalendarView({ stories, isLoading }) {
             Week
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">Tinted cells = high-engagement windows</p>
+        <p className="text-xs text-muted-foreground">
+          {view === 'plan' ? 'Content trickles out across the next 4 weeks' : 'Tinted cells = high-engagement windows'}
+        </p>
       </div>
 
-      {view === 'month' ? (
+      {view === 'plan' ? (
+        <PlanView today={today} items={scheduledPieces} />
+      ) : view === 'month' ? (
         <MonthView
           current={current}
           today={today}
@@ -98,7 +109,7 @@ export default function StoriesCalendarView({ stories, isLoading }) {
         />
       )}
 
-      {scheduledPieces.length === 0 && (
+      {view !== 'plan' && scheduledPieces.length === 0 && (
         <EmptyState
           icon={<CalendarDays className="h-5 w-5" />}
           title="Nothing scheduled yet"
@@ -107,6 +118,65 @@ export default function StoriesCalendarView({ stories, isLoading }) {
         />
       )}
     </div>
+  )
+}
+
+// PlanView — the "by ship date" trickle view: the current week plus the next
+// three, each a card. Empty weeks read "thin week" so the surface never looks
+// barren the way a mostly-empty month grid does. Matches the portfolio mockup.
+function PlanView({ today, items }) {
+  const weekStart = startOfWeek(today)
+  const weeks = Array.from({ length: 4 }, (_, w) => {
+    const start = new Date(weekStart)
+    start.setDate(weekStart.getDate() + w * 7)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 7)
+    const wkItems = items
+      .filter((it) => {
+        const t = new Date(it.scheduled_at)
+        return t >= start && t < end
+      })
+      .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+    return { start, items: wkItems }
+  })
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {weeks.map((wk, i) => (
+        <div key={i} className="rounded-xl border bg-card p-3">
+          <div className="mb-2 flex items-baseline gap-1.5">
+            <span className="text-xs font-semibold">Week {i + 1}</span>
+            <span className="text-3xs text-muted-foreground">
+              {wk.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {wk.items.length}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {wk.items.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">thin week</p>
+            ) : (
+              wk.items.map((item) => <PlanRow key={item.id} item={item} />)
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PlanRow({ item }) {
+  const pm = PLATFORM_META[item.platform]
+  const Icon = pm?.icon
+  const t = new Date(item.scheduled_at)
+  return (
+    <Link
+      to={`/stories/${item.storyId}`}
+      title={`${pm?.label || item.platform} · ${item.topic}`}
+      className="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition-colors hover:border-primary"
+    >
+      {Icon && <Icon className={`h-3 w-3 shrink-0 ${pm?.color || 'text-muted-foreground'}`} />}
+      <span className="flex-1 truncate">{item.topic}</span>
+      <span className="shrink-0 text-3xs text-muted-foreground">{DAY_NAMES[t.getDay()]} {t.getDate()}</span>
+    </Link>
   )
 }
 
@@ -153,7 +223,7 @@ function MonthView({ current, today, items, onPrev, onNext }) {
           return (
             <div
               key={day}
-              className={`min-h-[100px] border-b p-1.5 ${i % 7 !== 6 ? 'border-r' : ''} ${optimal ? 'bg-success/5' : ''}`}
+              className={`min-h-[100px] border-b p-1.5 ${i % 7 !== 6 ? 'border-r' : ''} ${optimal ? 'bg-success/10' : ''}`}
             >
               <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{day}</div>
               <div className="space-y-0.5">

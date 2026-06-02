@@ -324,11 +324,12 @@ export default function SlateClipEditor() {
         </button>
       </div>
 
-      {/* Two-column main layout */}
-      <div className="grid grid-cols-12 gap-5">
+      {/* Two-column main layout — clip is the hero on the left in a fixed-width
+          column (no dead gutters); controls fill the rest of the row. */}
+      <div className="grid gap-5 lg:grid-cols-[420px_minmax(0,1fr)]">
 
-        {/* LEFT col (7): clip canvas hero + trim timeline */}
-        <div className="col-span-12 lg:col-span-7">
+        {/* LEFT: clip canvas hero + trim timeline */}
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">The clip</span>
             {videoDuration > 0 && (
@@ -441,8 +442,8 @@ export default function SlateClipEditor() {
           </div>
         </div>
 
-        {/* RIGHT col (5): transcript + polish + adjust + outputs */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-3">
+        {/* RIGHT: transcript + polish + adjust + outputs */}
+        <div className="flex min-w-0 flex-col gap-3">
 
           {/* What he actually said */}
           <div className="bg-card border border-border rounded-xl p-3">
@@ -459,7 +460,7 @@ export default function SlateClipEditor() {
           </div>
 
           {/* Polish this clip — AI conversation */}
-          <div className="flex-1 min-h-0 bg-card border border-primary/40 rounded-xl overflow-hidden flex flex-col">
+          <div className="bg-card border border-primary/40 rounded-xl overflow-hidden flex flex-col">
             <div className="px-4 py-2.5 bg-primary/5 border-b border-border flex items-center gap-2 shrink-0">
               <Wand2 className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Polish this clip</span>
@@ -472,7 +473,7 @@ export default function SlateClipEditor() {
             {/* Chat log */}
             <div
               ref={chatLogRef}
-              className="px-4 py-3 space-y-2 text-xs flex-1 min-h-[80px] overflow-y-auto"
+              className="px-4 py-3 space-y-2 text-xs max-h-[200px] min-h-[64px] overflow-y-auto"
             >
               {chatLog.map((msg, i) => (
                 msg.role === 'user' ? (
