@@ -18,7 +18,7 @@ export default function WholeVideoAction({ asset, canEdit }) {
     setRendering(true)
     try {
       await renderWholeVideo(assetId)
-      toast('Rendering full-length video — track it in the Story Slate.', {
+      toast('Rendering full-length video — track it in Slate.', {
         action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
       })
     } catch (e) {

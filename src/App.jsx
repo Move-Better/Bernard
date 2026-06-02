@@ -541,7 +541,7 @@ function AppRoutes() {
             <Route path="/needs-media" element={<Navigate to="/storyboard" replace />} />
             {/* Universal PWA capture surface — works on any device with a browser + camera. */}
             <Route path="/capture" element={guarded(<Capture />)} />
-            {/* Slate — clip workshop. Uses the * catch-all pattern so descendant
+            {/* Slate. Uses the * catch-all pattern so descendant
                 routes resolve correctly (see CLAUDE.md Router conventions). */}
             <Route path="/slate" element={guarded(<Slate />)} />
             <Route path="/slate/clip/:assetId" element={guarded(<SlateClipEditor />)} />

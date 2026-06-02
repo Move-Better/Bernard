@@ -1,6 +1,6 @@
 // POST /api/editorial/render-segments
 //
-// Slate clip workshop — AI "Find clips" output (Option 2).
+// Slate Slate — AI "Find clips" output (Option 2).
 //
 // Turns kept proposed segments into rendered media_assets b-roll clips — one
 // media_assets row per segment, parent_asset_id set to the source video, exactly

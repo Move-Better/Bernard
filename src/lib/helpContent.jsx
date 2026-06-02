@@ -52,9 +52,9 @@ export const HELP_CONTENT = {
   },
 
   slate: {
-    title: 'Clip Workshop — how it works',
+    title: 'Slate — how it works',
     intro:
-      'The Clip Workshop is where you turn raw source videos into short, polished clips. Pick a video from your library, trim the best moment, add a caption, and send it forward — either as a post draft ready for Words, or as b-roll saved back to the Library.',
+      'Slate is where you turn raw source videos into short, polished clips. Pick a video from your library, trim the best moment, add a caption, and send it forward — either as a post draft ready for Words, or as b-roll saved back to the Library.',
     steps: [
       {
         icon: Film,

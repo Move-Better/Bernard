@@ -1,6 +1,6 @@
 // POST /api/editorial/clip-to-post
 //
-// Slate clip workshop — "As a post" output.
+// Slate Slate — "As a post" output.
 //
 // Takes a rendered clip blob URL and creates a content_items draft so the
 // clip flows into the normal Storyboard → publish pipeline.

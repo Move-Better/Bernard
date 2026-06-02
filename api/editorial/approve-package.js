@@ -207,7 +207,7 @@ export default async function handler(req, res) {
     }),
     status:         'approved',
     approved_at:    now,
-    notes:          `Approved from Story Slate (package ${packageId})`,
+    notes:          `Approved from Slate (package ${packageId})`,
     provenance:     {
       source:       'story_package',
       package_id:   packageId,

@@ -82,7 +82,7 @@ export function renderWholeVideo(assetId) {
  * "Repurpose: <filename>" campaign, kicks the keep-whole long-form master render
  * AND social-clip detection — both tagged to the same campaign. Returns 202 with
  * { campaignId, campaignName, masterPackageId, clipsStatus, mode, channels }.
- * Track the master in the Story Slate; review proposed clips in the ClipFinder panel.
+ * Track the master in the Slate; review proposed clips in the ClipFinder panel.
  * @param {string} assetId
  * @param {number} [maxSegments]
  */

@@ -2,7 +2,7 @@
 // and kick off visual-memory indexing in the background.
 //
 // Called from:
-//   • api/editorial/clip-to-broll.js  (new manual clip workshop output)
+//   • api/editorial/clip-to-broll.js  (new manual Slate output)
 //   • api/editorial/approve-package.js library branch (existing package path)
 //
 // params:

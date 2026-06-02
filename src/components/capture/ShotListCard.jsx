@@ -39,7 +39,7 @@ export default function ShotListCard({ onPick }) {
         <h2 className="text-sm font-semibold text-primary">What to capture next</h2>
       </div>
       <p className="text-xs text-primary/70 mb-3">
-        Your story slate needs source material on these. Tap one to start with that in mind.
+        Slate needs source material on these. Tap one to start with that in mind.
       </p>
       <div className="flex flex-col gap-2">
         {directives.map((d, i) => (

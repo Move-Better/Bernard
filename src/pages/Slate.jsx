@@ -166,7 +166,7 @@ export default function Slate() {
         <div className="min-w-0">
           <p className="text-2xs font-bold uppercase tracking-widest opacity-85">Tools</p>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
-            {view === 'coverage' ? 'Capture Coverage' : 'Clip Workshop'}
+            {view === 'coverage' ? 'Capture Coverage' : 'Slate'}
           </h1>
           <p className="text-sm opacity-80 mt-0.5">
             {view === 'coverage'

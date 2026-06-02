@@ -11,7 +11,7 @@ import { findClips, getSegments, updateSegment, renderSegments } from '@/lib/cli
 // clinician keeps/discards and renders the kept ones into media_assets b-roll
 // clips (parent_asset_id = source). The finished clips land in the Library and
 // bump the source's "clips cut" count on the Slate — the same media_asset model
-// the manual Slate clip workshop produces.
+// the manual Slate workflow produces.
 
 function mmss(sec) {
   const s = Math.max(0, Math.round(Number(sec) || 0))

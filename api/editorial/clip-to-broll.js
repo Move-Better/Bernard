@@ -1,6 +1,6 @@
 // POST /api/editorial/clip-to-broll
 //
-// Slate clip workshop — "Library b-roll" output.
+// Slate Slate — "Library b-roll" output.
 //
 // Saves a rendered clip as a media_assets broll row and kicks off
 // visual-memory indexing so it surfaces in ranked Suggested media.
