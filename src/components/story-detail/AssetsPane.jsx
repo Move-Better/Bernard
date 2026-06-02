@@ -40,6 +40,7 @@ import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { extractProvenanceBlock } from '@/lib/provenance'
 import { isInstagramReel } from '@/lib/mediaEntry'
 import { toast, runWithToast } from '@/lib/toast'
+import { apiFetch } from '@/lib/api'
 import BufferMetricsRow from './BufferMetricsRow'
 import WinnerToggle from './WinnerToggle'
 import ContentPlanPanel from '@/components/ContentPlanPanel'
@@ -246,13 +247,21 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
     } catch { /* private browsing */ }
     return 'attributed'
   })
+  // Track the last-saved text so learn-from-edit always compares against what
+  // was on disk before this edit session, not the in-memory initial. Updated
+  // only after a successful save so a failed save doesn't shift the baseline.
+  const originalRef = useRef(initial)
+  const [learnNote, setLearnNote] = useState(null) // e.g. "AI noted 2 phrase(s)"
   const taRef = useRef(null)
   const updateItem = useUpdateContentItem()
 
   // Re-sync local buffer when the saved row changes from elsewhere
   // (regenerate, server roundtrip after Save). Without this the textarea
   // would stay pinned to the user's stale buffer after a Regenerate.
-  useEffect(() => { setValue(initial) }, [initial])
+  useEffect(() => {
+    setValue(initial)
+    originalRef.current = initial
+  }, [initial])
 
   // Auto-grow textarea to fit content, clamped so very long posts stay
   // scrollable instead of pushing the rest of the pane off-screen.
@@ -285,6 +294,34 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
       }
       await updateItem.mutateAsync({ id: piece.id, patch })
       toast.success('Saved')
+
+      // Phase 8 — fire-and-forget voice learning. Capture any new phrases the
+      // clinician wrote into the voice library. This MUST NOT block or fail the
+      // save — it's a best-effort enrichment. We capture the baseline before
+      // updating originalRef so the comparison is always "what was on disk" vs
+      // "what was just saved".
+      if (piece.staff_id) {
+        const baselineText = originalRef.current
+        const savedText = value
+        originalRef.current = savedText
+        apiFetch('/api/editorial/learn-from-edit', {
+          method: 'POST',
+          body: JSON.stringify({
+            original: baselineText,
+            edited: savedText,
+            staff_id: piece.staff_id,
+            piece_id: piece.id,
+          }),
+        }).then((result) => {
+          if (result?.captured > 0) {
+            setLearnNote(`AI noted ${result.captured} phrase${result.captured === 1 ? '' : 's'} from your edits`)
+          }
+        }).catch(() => {
+          // Swallow — voice learning is non-blocking; the save already succeeded.
+        })
+      } else {
+        originalRef.current = value
+      }
     } catch (e) {
       toast.error('Save failed', { description: e.message })
     }
@@ -357,7 +394,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
             size="sm"
             variant="ghost"
             className="h-7 text-xs"
-            onClick={() => setValue(initial)}
+            onClick={() => { setValue(initial); setLearnNote(null) }}
             disabled={saving}
           >
             Reset
@@ -372,6 +409,13 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
             {saving ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
+      )}
+      {/* AI-learns hint — shown when the editor is dirty (prompts the clinician)
+          or after a save that captured phrases (confirms learning happened). */}
+      {viewMode === 'edit' && (dirty || learnNote) && (
+        <p className="text-2xs text-muted-foreground mt-1">
+          {learnNote ?? 'When you edit, AI learns your phrasing — next drafts sound more like you.'}
+        </p>
       )}
       {/* Handoff to Storyboard: media is reviewed + attached at full size there,
           and the carousel composer + publish actions live on the publish step. */}
