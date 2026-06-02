@@ -22,7 +22,7 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT_COMMON  = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,visual_narrative,asset_purpose,speaker_role,parent_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,staff_id,consent_status'
+const SELECT_COMMON  = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,visual_narrative,asset_purpose,speaker_role,parent_id,parent_asset_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,staff_id,consent_status'
 const SELECT_COMPACT = 'id,kind,status,filename,mime_type,size_bytes,duration_s,blob_url,original_blob_url,web_blob_url,mux_playback_id,transcode_status,rendered_url,thumbnail_url'
 
 async function handler(req, res) {
@@ -39,7 +39,12 @@ async function handler(req, res) {
   const purpose     = searchParams.get('purpose')      // interview | broll | photo | brand
   const speakerRole = searchParams.get('speakerRole')  // clinician | admin | patient_guest
   const sources     = searchParams.get('sources')      // 'true' → parent_id IS NULL (sources only)
-  const parent      = searchParams.get('parent')       // parent_id for variants of one source
+  const parent      = searchParams.get('parent')       // parent_id — rotation/crop/edit variants of one upload
+  // clipParent: parent_asset_id — clips CUT FROM a source video (Slate/AI provenance).
+  // Distinct from `parent` (parent_id): clips are first-class b-roll masters
+  // (parent_id IS NULL, so they still appear in the grid + Suggested media);
+  // parent_asset_id only records which source they were derived from.
+  const clipParent  = searchParams.get('clipParent')
   const collectionId = searchParams.get('collectionId')// limit to assets in a given collection
   const compact     = searchParams.get('compact') === 'true'
   const limit       = Math.min(parseInt(searchParams.get('limit') || '60'), 200)
@@ -94,6 +99,7 @@ async function handler(req, res) {
   if (speakerRole) qs += `&speaker_role=eq.${speakerRole}`
   if (sources === 'true') qs += `&parent_id=is.null`
   if (parent)      qs += `&parent_id=eq.${encodeURIComponent(parent)}`
+  if (clipParent)  qs += `&parent_asset_id=eq.${encodeURIComponent(clipParent)}`
   if (collectionAssetIds) {
     qs += `&id=in.(${collectionAssetIds.map(encodeURIComponent).join(',')})`
   }
