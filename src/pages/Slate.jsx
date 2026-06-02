@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Scissors, Loader2, AlertCircle, BarChart3, Film, ShieldAlert,
-  Search, RefreshCw, ChevronRight,
+  ShieldCheck, PlayCircle, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -12,76 +12,83 @@ import { apiFetch } from '@/lib/api'
 import { listMedia } from '@/lib/mediaLib'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import CoveragePanel from '@/components/slate/CoveragePanel'
-import PageHelp from '@/components/PageHelp'
 
 const REFETCH_INTERVAL_MS = 30_000
 
-function consentLabel(status) {
-  if (status === 'pending') return { label: 'Consent pending', color: 'text-amber-700 bg-amber-50 border-amber-200' }
-  if (status === 'revoked') return { label: 'Consent revoked', color: 'text-red-700 bg-red-50 border-red-200' }
-  return null
-}
-
 function clipCount(asset) {
-  // parent_asset_id counter — populated when Phase 1 clips are cut
   return typeof asset.clip_count === 'number' ? asset.clip_count : null
 }
 
-function SourceVideoCard({ asset, staffName, onEdit }) {
-  const consent = consentLabel(asset.consent_status)
+function consentOk(asset) {
+  const s = asset?.consent_status
+  return s !== 'pending' && s !== 'revoked'
+}
+
+function VideoCard({ asset, staffName, onEdit }) {
+  const ok = consentOk(asset)
   const clips = clipCount(asset)
   const thumbUrl = asset.thumbnail_url || null
+  const durationLabel = asset.duration_s
+    ? (() => {
+        const m = Math.floor(asset.duration_s / 60)
+        const s = Math.floor(asset.duration_s % 60)
+        return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `0:${s.toString().padStart(2, '0')}`
+      })()
+    : null
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+    <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 hover:-translate-y-px transition-all">
       {/* Thumbnail */}
-      <div className="aspect-video bg-muted relative overflow-hidden">
+      <div className="aspect-video bg-muted relative overflow-hidden flex items-center justify-center">
         {thumbUrl ? (
-          <img src={thumbUrl} alt="" className="w-full h-full object-contain" />
+          <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <Film className="h-10 w-10 opacity-30" />
-          </div>
+          <PlayCircle className="h-9 w-9 text-muted-foreground/40" />
         )}
-        {consent && (
-          <div className={`absolute top-2 left-2 text-2xs font-semibold px-2 py-0.5 rounded-full border ${consent.color} flex items-center gap-1`}>
-            <ShieldAlert className="h-3 w-3" />
-            {consent.label}
-          </div>
+        {durationLabel && (
+          <span className="absolute bottom-1.5 right-1.5 text-3xs text-white/85 bg-black/40 rounded px-1.5 py-0.5">
+            {durationLabel}
+          </span>
         )}
-        {clips !== null && (
-          <div className="absolute bottom-2 right-2 text-2xs font-bold px-2 py-0.5 rounded-full bg-black/60 text-white">
+        {clips !== null && clips > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-3xs bg-white/90 text-foreground rounded px-1.5 py-0.5 font-medium">
             {clips} clip{clips !== 1 ? 's' : ''} cut
-          </div>
+          </span>
         )}
       </div>
 
       {/* Body */}
-      <div className="p-3 flex flex-col gap-2 flex-1">
-        <p className="text-sm font-semibold line-clamp-2 leading-snug">
+      <div className="p-3 flex flex-col gap-1.5 flex-1">
+        <p className="text-sm font-medium leading-snug line-clamp-2">
           {asset.filename || 'Untitled video'}
         </p>
-        {staffName && (
-          <p className="text-xs text-muted-foreground">{staffName}</p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {asset.duration_s ? `${Math.round(asset.duration_s)}s` : '—'}
-          {asset.created_at && (
-            <> · {new Date(asset.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
+        <div className="flex items-center gap-2 text-2xs text-muted-foreground">
+          {staffName && <span>{staffName}</span>}
+          {ok ? (
+            <span className="ml-auto flex items-center gap-1 text-success">
+              <ShieldCheck className="h-3 w-3" />consent ok
+            </span>
+          ) : (
+            <span className="ml-auto flex items-center gap-1 text-destructive">
+              <ShieldAlert className="h-3 w-3" />consent pending
+            </span>
           )}
-        </p>
+        </div>
 
-        <Button
-          size="sm"
-          className="mt-auto w-full gap-1.5"
-          onClick={() => onEdit(asset.id)}
-          disabled={!!consent}
-          title={consent ? consent.label + ' — resolve before cutting clips' : undefined}
+        <button
+          type="button"
+          onClick={() => ok && onEdit(asset.id)}
+          disabled={!ok}
+          className={`mt-1.5 w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+            ok
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'bg-muted text-muted-foreground cursor-not-allowed'
+          }`}
+          title={!ok ? 'Resolve consent before cutting clips' : undefined}
         >
           <Scissors className="h-3.5 w-3.5" />
           Cut a clip
-          <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-        </Button>
+        </button>
       </div>
     </div>
   )
@@ -100,10 +107,8 @@ export default function Slate() {
 
   const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'in_progress' | 'coverage'
   const [searchQ, setSearchQ] = useState('')
-  const [activeStaffId, setActiveStaffId] = useState(null)
-  const [isManualRefetching, setIsManualRefetching] = useState(false)
 
-  // Source videos with clip potential (kind=video, not archived)
+  // Source videos (kind=video, not archived)
   const {
     data: mediaData,
     isLoading,
@@ -117,7 +122,7 @@ export default function Slate() {
     refetchOnWindowFocus: false,
   })
 
-  // Clip counts per source asset (from child rows with parent_asset_id set)
+  // Clip counts per source asset
   const { data: clipCounts } = useQuery({
     queryKey: ['slate-clip-counts'],
     queryFn: () => apiFetch('/api/editorial/clip-counts'),
@@ -127,23 +132,21 @@ export default function Slate() {
   })
 
   const sourceVideos = useMemo(() => {
-    // listMedia() returns a flat array directly (not { assets: [] })
     const assets = Array.isArray(mediaData) ? mediaData : []
     const counts = clipCounts?.counts || {}
-    const filtered = activeStaffId
-      ? assets.filter((a) => a.staff_id === activeStaffId)
-      : assets
-    return filtered.map((a) => ({ ...a, clip_count: counts[a.id] ?? null }))
-  }, [mediaData, clipCounts, activeStaffId])
+    return assets.map((a) => ({ ...a, clip_count: counts[a.id] ?? null }))
+  }, [mediaData, clipCounts])
 
-  // Staff who have videos (for filter chips)
-  const activeStaffIds = useMemo(
-    () => {
-      const assets = Array.isArray(mediaData) ? mediaData : []
-      return [...new Set(assets.map((a) => a.staff_id).filter(Boolean))]
-    },
-    [mediaData]
+  const needsCuttingVideos = useMemo(
+    () => sourceVideos.filter((a) => !a.clip_count),
+    [sourceVideos]
   )
+  const inProgressVideos = useMemo(
+    () => sourceVideos.filter((a) => !!a.clip_count),
+    [sourceVideos]
+  )
+
+  const visibleVideos = view === 'in_progress' ? inProgressVideos : needsCuttingVideos
 
   if (!ws?.video_pipeline_enabled) {
     return (
@@ -164,159 +167,115 @@ export default function Slate() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="nx-grad-ribbon flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <p className="text-2xs font-bold uppercase tracking-widest opacity-85">Tools</p>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
-            {view === 'coverage' ? 'Capture Coverage' : 'Slate'}
-          </h1>
-          <p className="text-sm opacity-80 mt-0.5">
-            {view === 'coverage'
-              ? 'Per-staff capture activity and topic coverage gaps'
-              : 'Turn raw video into clips. Each clip becomes a post or reusable b-roll — both feed the one pipeline.'}
-          </p>
+    <div className="flex flex-col gap-4">
+      {/* Page heading */}
+      <div className="flex items-end gap-2 mt-1">
+        <h1 className="text-xl font-semibold">Slate</h1>
+        <span className="text-muted-foreground text-sm mb-0.5">
+          · turn raw video into clips — each becomes a post or reusable b-roll
+        </span>
+      </div>
+
+      {/* Tabs + search row */}
+      <div className="flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => setView('needs_cutting')}
+          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            view === 'needs_cutting'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Needs cutting{' '}
+          {!isLoading && (
+            <span className="opacity-70">{needsCuttingVideos.length}</span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('in_progress')}
+          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            view === 'in_progress'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          In progress{' '}
+          {!isLoading && (
+            <span className="opacity-70">{inProgressVideos.length}</span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('coverage')}
+          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
+            view === 'coverage'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />Coverage
+        </button>
+
+        {/* Search — right side */}
+        {view !== 'coverage' && (
+          <div className="ml-auto relative">
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="search"
+              placeholder="Search videos…"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-card text-sm w-48 outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Content area */}
+      {view === 'coverage' ? (
+        <CoveragePanel />
+      ) : isLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <PageHelp pageKey="slate" variant="onGradient" />
-          {view === 'videos' && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-white/90 text-foreground border-white/40 hover:bg-white"
-              onClick={async () => {
-                setIsManualRefetching(true)
-                await refetch()
-                setIsManualRefetching(false)
-              }}
-              disabled={isManualRefetching}
-            >
-              {isManualRefetching
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <RefreshCw className="h-3.5 w-3.5" />
-              }
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-sm text-destructive font-medium">Failed to load videos</p>
+          <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+        </div>
+      ) : visibleVideos.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center rounded-xl border-2 border-dashed border-border">
+          <Film className="h-10 w-10 text-muted-foreground" />
+          <div>
+            <p className="font-semibold text-base">
+              {view === 'in_progress' ? 'No clips in progress' : 'No source videos yet'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+              {view === 'in_progress'
+                ? 'Cut a clip from a source video to see it here.'
+                : 'Upload videos via Capture or the Library. Once a video is in your library, it appears here for clipping.'}
+            </p>
+          </div>
+          {view !== 'in_progress' && (
+            <Button size="sm" variant="outline" onClick={() => navigate('/library')}>
+              Go to Library
             </Button>
           )}
         </div>
-      </div>
-
-      {/* View tabs — status-based per mockup */}
-      <div className="flex items-center gap-1 border-b border-border">
-        {[
-          { key: 'needs_cutting', label: 'Needs cutting', filter: (a) => !a.clip_count },
-          { key: 'in_progress',   label: 'In progress',   filter: (a) => !!a.clip_count },
-          { key: 'coverage',      label: 'Coverage',      filter: null },
-        ].map(({ key, label, filter }) => {
-          const count = filter && !isLoading ? sourceVideos.filter(filter).length : null
-          return (
-            <button
-              key={key}
-              onClick={() => setView(key)}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
-                view === key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {key === 'coverage'
-                ? <><BarChart3 className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />Coverage</>
-                : <><Film className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />{label}</>
-              }
-              {count !== null && (
-                <span className="ml-2 text-2xs font-bold opacity-70">{count}</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {view === 'coverage' ? (
-        <CoveragePanel />
       ) : (
-        <>
-          {/* Search + staff filter — shared across needs_cutting / in_progress */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="search"
-                placeholder="Search videos…"
-                value={searchQ}
-                onChange={(e) => setSearchQ(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
-
-            {activeStaffIds.length > 1 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => setActiveStaffId(null)}
-                  className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-colors ${
-                    activeStaffId === null
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'border-border text-muted-foreground hover:border-primary/40'
-                  }`}
-                >
-                  All staff
-                </button>
-                {activeStaffIds.map((sid) => (
-                  <button
-                    key={sid}
-                    onClick={() => setActiveStaffId(sid === activeStaffId ? null : sid)}
-                    className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-colors ${
-                      activeStaffId === sid
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'border-border text-muted-foreground hover:border-primary/40'
-                    }`}
-                  >
-                    {staffMap[sid] || 'Unknown'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Video grid */}
-          {isLoading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-              <AlertCircle className="h-8 w-8 text-destructive" />
-              <p className="text-sm text-destructive font-medium">Failed to load videos</p>
-              <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
-            </div>
-          ) : sourceVideos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-center rounded-xl border-2 border-dashed border-border">
-              <Film className="h-10 w-10 text-muted-foreground" />
-              <div>
-                <p className="font-semibold text-base">No source videos yet</p>
-                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                  Upload videos via Capture or the Library. Once a video is in your library,
-                  it appears here for clipping.
-                </p>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => navigate('/library')}>
-                Go to Library
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-              {sourceVideos
-                .filter((a) => view === 'in_progress' ? !!a.clip_count : !a.clip_count)
-                .map((asset) => (
-                  <SourceVideoCard
-                    key={asset.id}
-                    asset={asset}
-                    staffName={staffMap[asset.staff_id]}
-                    onEdit={(id) => navigate(`/slate/clip/${id}`)}
-                  />
-                ))}
-            </div>
-          )}
-        </>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {visibleVideos.map((asset) => (
+            <VideoCard
+              key={asset.id}
+              asset={asset}
+              staffName={staffMap[asset.staff_id]}
+              onEdit={(id) => navigate(`/slate/clip/${id}`)}
+            />
+          ))}
+        </div>
       )}
     </div>
   )
