@@ -1688,6 +1688,19 @@ export default function InterviewSession() {
                 ? `Your words made up ${completionData.voicePct}% of this draft.`
                 : 'Voice-faithful draft complete.'}
             </p>
+            {/* Platform chips — show what got drafted */}
+            {Array.isArray(runtimeWorkspace?.enabled_outputs) && runtimeWorkspace.enabled_outputs.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">We drafted pieces for</p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {runtimeWorkspace.enabled_outputs.slice(0, 6).map((ch) => (
+                    <span key={ch} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-0.5 text-2xs font-medium text-muted-foreground capitalize">
+                      {ch.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Primary handoff — leads with the reason they did the interview.
                 Video attach is the small optional link below, never a gate. */}
             <Button

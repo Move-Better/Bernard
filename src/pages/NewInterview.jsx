@@ -314,9 +314,9 @@ export default function NewInterview() {
               style={{ background: 'hsl(var(--primary))' }}
               aria-hidden="true"
             />
-            New Interview
+            Start an interview
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Set up and start in one screen</p>
+          <p className="text-sm text-muted-foreground mt-1">Answer two things and start talking. Everything else you shape later, in your own words.</p>
         </div>
       </div>
 
@@ -330,16 +330,70 @@ export default function NewInterview() {
           <CardDescription>Topic is the only required field.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Staff member */}
+          {/* Staff member — avatar pill picker */}
           <div className="space-y-1.5">
-            <Label htmlFor="staff">Staff member</Label>
-            <Input
-              id="staff"
-              placeholder="e.g. Dr. Quasney"
-              value={staffName}
-              onChange={(e) => setStaffName(e.target.value)}
-              autoComplete="name"
-            />
+            <Label>Who&apos;s talking?</Label>
+            <p className="text-2xs text-muted-foreground">Sets the voice and pulls in what this person has said before.</p>
+            {staffLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading staff…
+              </div>
+            ) : staffForSuggestions.length > 0 ? (
+              <div className="flex flex-wrap gap-2 items-center">
+                {staffForSuggestions.map((s) => {
+                  const isSelected = staffName.trim().toLowerCase() === s.name.trim().toLowerCase()
+                  const initials = s.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setStaffName(s.name)}
+                      className={`inline-flex items-center gap-2 rounded-full border-2 pl-1 pr-3 py-1 transition-all ${
+                        isSelected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <span className={`h-6 w-6 rounded-full text-2xs flex items-center justify-center font-semibold shrink-0 ${
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {initials}
+                      </span>
+                      <span className={`text-sm font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {s.name.split(' ')[0]}
+                      </span>
+                    </button>
+                  )
+                })}
+                {/* Text input appears only when staffName doesn't match an existing row */}
+                {!staffForSuggestions.some((s) => s.name.trim().toLowerCase() === staffName.trim().toLowerCase()) && (
+                  <Input
+                    placeholder="Other name…"
+                    value={staffName}
+                    onChange={(e) => setStaffName(e.target.value)}
+                    autoComplete="name"
+                    className="h-8 w-36 text-xs rounded-full"
+                  />
+                )}
+                {staffForSuggestions.some((s) => s.name.trim().toLowerCase() === staffName.trim().toLowerCase()) && (
+                  <button
+                    type="button"
+                    onClick={() => setStaffName('')}
+                    className="text-xs text-muted-foreground hover:text-foreground rounded-full border border-dashed px-3 py-1 hover:border-primary/40"
+                  >
+                    Other…
+                  </button>
+                )}
+              </div>
+            ) : (
+              <Input
+                id="staff"
+                placeholder="e.g. Dr. Quasney"
+                value={staffName}
+                onChange={(e) => setStaffName(e.target.value)}
+                autoComplete="name"
+              />
+            )}
           </div>
 
           {/* Topic */}

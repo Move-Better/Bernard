@@ -21,6 +21,15 @@ const STAGES = [
   { key: 'published', label: 'Published' },
 ]
 
+// Quick-filter pills shown above the advanced selects — maps to the mockup's
+// "All / Needs words / Ready for media / Published / Mine" row.
+const QUICK_FILTERS = [
+  { key: '',            label: 'All' },
+  { key: 'needs_words', label: 'Needs words',     stages: ['capture', 'drafting'] },
+  { key: 'ready',       label: 'Ready for media', stages: ['review'] },
+  { key: 'published',   label: 'Published',        stages: ['published'] },
+]
+
 const SELECT_CLS =
   'shrink-0 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground ' +
   'cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-colors ' +
@@ -145,7 +154,55 @@ export default function Stories() {
           </div>
         </div>
 
-        {/* Filter bar — horizontal scroll on mobile so chips do not wrap
+        {/* Quick-filter pill row — All / Needs words / Ready for media / Published / Mine */}
+        <div className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {QUICK_FILTERS.map((qf) => {
+            const isActive = qf.key === ''
+              ? !stageFilter && !mineOnly
+              : qf.stages
+                ? qf.stages.includes(stageFilter)
+                : false
+            return (
+              <button
+                key={qf.key}
+                type="button"
+                onClick={() => {
+                  if (qf.key === '') {
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev)
+                      next.delete('stage')
+                      next.delete('owner')
+                      return next
+                    }, { replace: true })
+                  } else if (qf.stages) {
+                    setParam('stage', qf.stages[0])
+                  }
+                }}
+                className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/40 bg-white'
+                }`}
+              >
+                {qf.label}
+              </button>
+            )
+          })}
+          {/* Mine toggle */}
+          <button
+            type="button"
+            onClick={() => mineOnly ? clearOwner() : setParam('owner', 'me')}
+            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              mineOnly
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'border-border text-muted-foreground hover:border-primary/40 bg-white'
+            }`}
+          >
+            Mine
+          </button>
+        </div>
+
+        {/* Advanced filter bar — horizontal scroll on mobile so chips do not wrap
             into 3+ rows and crowd the sticky header. */}
         <div className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Owner — "Mine only" active chip. No selector form because the only

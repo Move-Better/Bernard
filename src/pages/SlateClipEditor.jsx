@@ -228,12 +228,12 @@ export default function SlateClipEditor() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate('/slate')} className="gap-1.5">
           <ChevronLeft className="h-4 w-4" />
-          Slate
+          Back to workshop
         </Button>
         <div className="h-4 w-px bg-border" />
         <div className="flex items-center gap-2">
@@ -264,172 +264,181 @@ export default function SlateClipEditor() {
         </div>
       )}
 
-      {/* Video preview */}
-      <div className="rounded-xl overflow-hidden bg-black aspect-video relative">
-        {asset.blob_url ? (
-          <>
-            <video
-              ref={videoRef}
-              src={asset.blob_url}
-              className="w-full h-full object-contain"
-              onLoadedMetadata={(e) => setVideoDuration(e.target.duration)}
-              onTimeUpdate={() => {}}
-              onPlay={() => setPlaying(true)}
-              onPause={() => setPlaying(false)}
-              onEnded={() => setPlaying(false)}
-              playsInline
-            />
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="absolute inset-0 flex items-center justify-center group"
-              aria-label={playing ? 'Pause' : 'Play'}
-            >
-              <div className={`rounded-full bg-black/50 p-4 transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
-                {playing
-                  ? <Pause className="h-8 w-8 text-white" />
-                  : <Play  className="h-8 w-8 text-white" />
-                }
+      {/* Two-column layout: left = video + trim, right = caption + outputs */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+
+        {/* LEFT — video preview + trim */}
+        <div className="flex flex-col gap-4">
+          {/* Video with caption-band overlay */}
+          <div className="rounded-xl overflow-hidden bg-black aspect-video relative">
+            {asset.blob_url ? (
+              <>
+                <video
+                  ref={videoRef}
+                  src={asset.blob_url}
+                  className="w-full h-full object-contain"
+                  onLoadedMetadata={(e) => setVideoDuration(e.target.duration)}
+                  onTimeUpdate={() => {}}
+                  onPlay={() => setPlaying(true)}
+                  onPause={() => setPlaying(false)}
+                  onEnded={() => setPlaying(false)}
+                  playsInline
+                />
+                {/* Caption band preview — fixed at bottom, matches render output */}
+                {captionText && (
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[85%] pointer-events-none">
+                    <div className="bg-foreground/85 text-white text-center text-sm font-bold px-3 py-2 rounded-md leading-snug">
+                      {captionText}
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  className="absolute inset-0 flex items-center justify-center group"
+                  aria-label={playing ? 'Pause' : 'Play'}
+                >
+                  <div className={`rounded-full bg-black/50 p-4 transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                    {playing
+                      ? <Pause className="h-8 w-8 text-white" />
+                      : <Play  className="h-8 w-8 text-white" />
+                    }
+                  </div>
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                No video URL
               </div>
-            </button>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            No video URL
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Trim controls */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
-        <p className="text-sm font-semibold">Trim clip</p>
-
-        <div className="flex items-center gap-3">
-          <label className="text-xs text-muted-foreground w-16 shrink-0">Start</label>
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, videoDuration - 1)}
-            step={0.5}
-            value={startSec}
-            onChange={(e) => {
-              const v = Number(e.target.value)
-              setStartSec(v)
-              if (v + durationSec > videoDuration) {
-                setDurationSec(Math.max(1, videoDuration - v))
-              }
-              if (videoRef.current) videoRef.current.currentTime = v
-            }}
-            className="flex-1 accent-primary"
-            disabled={videoDuration === 0}
-          />
-          <span className="text-xs font-mono w-12 text-right">{formatTime(startSec)}</span>
+          {/* Trim controls */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+            <p className="text-sm font-semibold">Trim clip</p>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-muted-foreground w-16 shrink-0">Start</label>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, videoDuration - 1)}
+                step={0.5}
+                value={startSec}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setStartSec(v)
+                  if (v + durationSec > videoDuration) {
+                    setDurationSec(Math.max(1, videoDuration - v))
+                  }
+                  if (videoRef.current) videoRef.current.currentTime = v
+                }}
+                className="flex-1 accent-primary"
+                disabled={videoDuration === 0}
+              />
+              <span className="text-xs font-mono w-12 text-right">{formatTime(startSec)}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-muted-foreground w-16 shrink-0">Duration</label>
+              <input
+                type="range"
+                min={1}
+                max={Math.min(60, Math.max(1, videoDuration - startSec))}
+                step={0.5}
+                value={durationSec}
+                onChange={(e) => setDurationSec(Number(e.target.value))}
+                className="flex-1 accent-primary"
+                disabled={videoDuration === 0}
+              />
+              <span className="text-xs font-mono w-12 text-right">{formatTime(durationSec)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Clip: {formatTime(startSec)} → {formatTime(endSec)} ({formatTime(durationSec)})
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="text-xs text-muted-foreground w-16 shrink-0">Duration</label>
-          <input
-            type="range"
-            min={1}
-            max={Math.min(60, Math.max(1, videoDuration - startSec))}
-            step={0.5}
-            value={durationSec}
-            onChange={(e) => setDurationSec(Number(e.target.value))}
-            className="flex-1 accent-primary"
-            disabled={videoDuration === 0}
-          />
-          <span className="text-xs font-mono w-12 text-right">{formatTime(durationSec)}</span>
-        </div>
+        {/* RIGHT — caption band + output */}
+        <div className="flex flex-col gap-4">
+          {/* Caption band text */}
+          <div className="flex flex-col gap-2 rounded-xl border border-border p-4">
+            <label className="text-sm font-semibold">Caption band</label>
+            <p className="text-2xs text-muted-foreground">Text overlaid on the clip — previewed on the video.</p>
+            <Textarea
+              value={captionText}
+              onChange={(e) => {
+                setCaptionText(e.target.value)
+                setRenderedBlobUrl(null)
+              }}
+              placeholder="Text overlaid on the clip…"
+              rows={3}
+              maxLength={500}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-right">{captionText.length}/500</p>
+          </div>
 
-        <p className="text-xs text-muted-foreground">
-          Clip: {formatTime(startSec)} → {formatTime(endSec)} ({formatTime(durationSec)})
-        </p>
-      </div>
-
-      {/* Caption band text */}
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold">Caption band</label>
-        <Textarea
-          value={captionText}
-          onChange={(e) => {
-            setCaptionText(e.target.value)
-            setRenderedBlobUrl(null)  // invalidate prior render when caption changes
-          }}
-          placeholder="Text overlaid on the clip…"
-          rows={3}
-          maxLength={500}
-          className="resize-none"
-        />
-        <p className="text-xs text-muted-foreground text-right">{captionText.length}/500</p>
-      </div>
-
-      {/* Output buttons */}
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-semibold">Send to…</p>
-
-        {/* Platform picker for "As a post" */}
-        <div className="flex flex-wrap gap-2">
-          {POST_PLATFORMS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setPlatform(p.id)}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-colors ${
-                platform === p.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/40'
-              }`}
+          {/* Auto-suggest */}
+          <div className="flex flex-col gap-1">
+            <Button
+              variant="ghost"
+              className="w-full gap-2 text-muted-foreground border border-dashed border-muted-foreground/30 hover:border-primary/40 hover:text-foreground"
+              onClick={applyTopSuggestion}
+              disabled={busy || suggestionsLoading}
             >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-3 flex-wrap">
-          {/* As a post */}
-          <Button
-            className="flex-1 min-w-40 bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow gap-2"
-            onClick={() => asPostMutation.mutate()}
-            disabled={busy || consentBlocked}
-          >
-            {asPostMutation.isPending || (rendering && !brollMutation.isPending) ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> {rendering ? 'Rendering…' : 'Creating draft…'}</>
-            ) : (
-              <><Film className="h-4 w-4" /> As a post</>
+              {suggestionsLoading
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Checking for suggestions…</>
+                : <><Sparkles className="h-4 w-4" /> Auto-suggest a post</>
+              }
+            </Button>
+            {suggestNote && (
+              <p className="text-xs text-muted-foreground text-center">{suggestNote}</p>
             )}
-          </Button>
+          </div>
 
-          {/* Library b-roll */}
-          <Button
-            variant="outline"
-            className="flex-1 min-w-40 font-semibold gap-2"
-            onClick={() => brollMutation.mutate()}
-            disabled={busy || consentBlocked}
-          >
-            {brollMutation.isPending || (rendering && !asPostMutation.isPending) ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> {rendering ? 'Rendering…' : 'Saving…'}</>
-            ) : (
-              <><BookOpen className="h-4 w-4" /> Library b-roll</>
-            )}
-          </Button>
-        </div>
-
-        {/* Auto-suggest — pre-fills caption + trim from the top content_piece for this asset */}
-        <div className="flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            className="w-full gap-2 text-muted-foreground border border-dashed border-muted-foreground/30 hover:border-primary/40 hover:text-foreground"
-            onClick={applyTopSuggestion}
-            disabled={busy || suggestionsLoading}
-          >
-            {suggestionsLoading
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> Checking for suggestions…</>
-              : <><Sparkles className="h-4 w-4" /> Auto-suggest a post</>
-            }
-          </Button>
-          {suggestNote && (
-            <p className="text-xs text-muted-foreground text-center">{suggestNote}</p>
-          )}
+          {/* Output — platform + buttons */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+            <p className="text-sm font-semibold">Output this clip as</p>
+            {/* Platform picker */}
+            <div className="flex flex-wrap gap-1.5">
+              {POST_PLATFORMS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPlatform(p.id)}
+                  className={`text-xs px-2.5 py-1 rounded-full font-medium border transition-colors ${
+                    platform === p.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/40'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <Button
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-2"
+              onClick={() => asPostMutation.mutate()}
+              disabled={busy || consentBlocked}
+            >
+              {asPostMutation.isPending || (rendering && !brollMutation.isPending) ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> {rendering ? 'Rendering…' : 'Creating draft…'}</>
+              ) : (
+                <><Film className="h-4 w-4" /> A post</>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full font-semibold gap-2"
+              onClick={() => brollMutation.mutate()}
+              disabled={busy || consentBlocked}
+            >
+              {brollMutation.isPending || (rendering && !asPostMutation.isPending) ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> {rendering ? 'Rendering…' : 'Saving…'}</>
+              ) : (
+                <><BookOpen className="h-4 w-4" /> Library b-roll</>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
