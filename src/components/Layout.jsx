@@ -155,13 +155,13 @@ export default function Layout({ children }) {
           </div>
         )}
 
-        {/* New Interview — primary action at top of sidebar */}
+        {/* Create — primary action at top of sidebar */}
         {hasCapability(CAP_INTERVIEW_START) && (
           <div className={`px-2 pt-2 pb-1 ${collapsed ? 'flex justify-center' : ''}`}>
             <Button asChild size="sm" className={collapsed ? 'h-9 w-9 p-0' : 'w-full justify-start gap-2'}>
-              <Link to="/new" aria-label="New Interview">
+              <Link to="/new" aria-label="Create">
                 <Plus className="h-4 w-4 shrink-0" />
-                {!collapsed && 'New Interview'}
+                {!collapsed && 'Create'}
               </Link>
             </Button>
           </div>
@@ -260,8 +260,8 @@ export default function Layout({ children }) {
             <Button asChild size="sm">
               <Link to="/new">
                 <Plus className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">New Interview</span>
-                <span className="sr-only sm:hidden">New Interview</span>
+                <span className="hidden sm:inline">Create</span>
+                <span className="sr-only sm:hidden">Create</span>
               </Link>
             </Button>
           )}
