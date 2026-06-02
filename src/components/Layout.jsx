@@ -121,7 +121,7 @@ export default function Layout({ children }) {
   // edge-to-edge inside the sidebar offset (just gutter padding), so the grid
   // can grow to more columns and the preview/controls split stays balanced on
   // wide screens. Every other page keeps the comfortable reading-width cap.
-  const fullBleed = location.pathname.startsWith('/storyboard')
+  const fullBleed = true
 
   return (
     <div className="min-h-screen bg-background flex">
