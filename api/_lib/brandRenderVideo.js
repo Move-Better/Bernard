@@ -196,7 +196,9 @@ function runFfmpeg(args) {
  *                                         opt-in there (PR4 toggle). Brand overlay still burns regardless.
  * @returns {Promise<{buffer: Buffer, width: number, height: number, channel: string, hadSubtitles: boolean}>}
  */
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true }) {
+const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
+
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -287,10 +289,13 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // must carry its own font.
     const { buffer: fontBuffer } = await getBrandFont(workspace).catch(() => ({ buffer: null }))
 
+    const effectiveCaptionPos = overlayPosition ?? spec.captionPos
+    const captionSizeScale = OVERLAY_SIZE_SCALE[overlaySize] ?? 1.0
+
     const overlaySvg = buildBrandOverlaySvg({
       width:         spec.width,
       height:        spec.height,
-      captionPos:    spec.captionPos,
+      captionPos:    effectiveCaptionPos,
       captionText:   captionText || '',
       staffName: staffName || '',
       workspaceName: workspace?.display_name || '',
@@ -298,6 +303,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       accentColor,
       fontBuffer,
       captionOpacity,
+      captionSizeScale,
     })
     const overlayPng = await sharp(overlaySvg).png().toBuffer()
     await writeFileP(tmpOverlay, overlayPng)
@@ -335,7 +341,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       const subtitleFontSize = Math.round(
         (workspace?.brand_style?.subtitle_font_size ?? 10) * (1080 / spec.height)
       )
-      const marginV = spec.captionPos === 'bottom' ? 220 : 120
+      const marginV = effectiveCaptionPos === 'bottom' ? 220 : effectiveCaptionPos === 'center' ? 160 : 120
       filterComplex.push(
         `[branded]subtitles=${tmpSrt}:force_style='PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H80000000,Bold=1,FontSize=${subtitleFontSize},Outline=1,Shadow=0,MarginV=${marginV}'[vout]`,
       )
