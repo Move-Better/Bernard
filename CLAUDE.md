@@ -20,6 +20,18 @@ Before scoping a change to an "existing" feature, confirm it's actually wired. P
 
 Rule: before estimating a change, grep for callers of the core function(s) and confirm the path is live end-to-end (UI → API → prompt → model). "Function exists" ≠ "Function runs." A 5-minute `grep -rn '<funcName>' src/ api/` saves hours of building against a dead path. If you find the wiring is broken, surface that as part of the scope before coding.
 
+## Re-verify a reported bug still reproduces before you fix it
+
+An observation made earlier in a session (or in a screenshot, or "last night") can be **stale** — this repo runs parallel sessions with auto-merge to `main`, so a "broken" feature may have been fixed by another context *since you saw it*. 2026-06-02: an overnight "fix Slate (empty video grid)" task was nearly a from-scratch rebuild — the exact fix (`mediaData.assets` shape mismatch + missing `staff_id` SELECT field) had already shipped as #1146 and **was already live on prod**. It was caught only by the worktree re-read rule (an 87-line diff between the stale branch and `origin/main`) plus checking prod's deployed SHA.
+
+Rule: before diagnosing or building a fix for an "it's broken" report, confirm it STILL reproduces on **current `origin/main`** and on **live prod**. Cheap checks: `git fetch && git log --oneline -8 origin/main -- <suspect file>` (did someone just touch it?) and `curl -s https://narraterx.ai/version.json` vs `git rev-parse origin/main` (is the fix already deployed?). Grounding the diagnosis in the prod DB (Supabase MCP) is still worth doing even if the fix already exists — it validates the premise rather than wasting it.
+
+## You CAN audit/verify the live authenticated app — Q logs in, you drive the tab
+
+The "Clerk prod keys are domain-locked, so you can't smoke the authed app" belief (`memory/feedback_local_dev_smoke_unavailable.md`) is only half true: you can't *authenticate as Claude*, but you don't need to. The Clerk **session cookie is shared across the whole Chrome profile**, so once Q logs into `<slug>.narraterx.ai` in Chrome, Claude drives the already-authenticated session via the **Claude-in-Chrome MCP** (`list_connected_browsers` → `select_browser` → `tabs_context_mcp` → `navigate`/`computer`) — even in a fresh tab. This is how the 2026-06-02 live UX audit and the Slate-fix verification ran against real prod data.
+
+Rule: to verify a UI change or audit live prod, ask Q to log in once, then drive the authed tab **read-only** (navigate by URL, screenshot, score — never click publish/delete/send). Don't try to auth as Claude, and don't conclude "can't test on prod." Note: workspace subdomains use the **full slug** (`movebetter-people`), not the brand short-name (`people` → "Unknown workspace").
+
 ## A preview is not the published artifact
 
 When a feature renders something to a `<canvas>` (or any in-memory/preview-only surface) and the user can *see* it, that is NOT evidence the same artifact ships at publish/export. The render and the publish are different code paths. This codebase has several preview-vs-output surfaces — carousel on-screen text (`renderFreeformSlide`), the email-template iframe, image/video overlays — and they're easy to get wrong in the same way: the preview looks perfect, the live output is raw.
