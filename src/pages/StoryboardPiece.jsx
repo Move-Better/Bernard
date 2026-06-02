@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, ImagePlus, Sparkles, Images, Video, ImageIcon } from 'lucide-react'
+import {
+  ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Pen, Sliders,
+  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PipelineStepper from '@/components/PipelineStepper'
 import BackLink from '@/components/ui/BackLink'
@@ -9,12 +12,14 @@ import { pieceLabel } from '@/lib/pieceLabel'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import MediaPicker from '@/components/MediaPicker'
-import DraftContextPanel from '@/components/storyboard/DraftContextPanel'
 import CandidateCard from '@/components/storyboard/CandidateCard'
 import MediaPreviewDialog from '@/components/storyboard/MediaPreviewDialog'
-import { useContentItem, useContentItems, useMediaSuggestions, useUpdateContentItem } from '@/lib/queries'
+import {
+  useContentItem, useContentItems, useInterview, useMediaSuggestions, useUpdateContentItem,
+} from '@/lib/queries'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
 import { mediaKindForPlatform, mediaKindLabel, isKindMismatch } from '@/lib/platformMediaKind'
+import { PLATFORM_META } from '@/lib/contentMeta'
 import { toast } from '@/lib/toast'
 
 const KIND_TABS = [
@@ -26,11 +31,10 @@ const KIND_TABS = [
 const NEEDS_MEDIA = (p) => !Array.isArray(p?.media_urls) || p.media_urls.length === 0
 
 /**
- * StoryboardPiece — the focused, full-size media-approval surface for one
- * draft. Left: the draft context (what message we're matching to). Right:
- * ranked candidates as large cards; click one to play/inspect it at full size,
- * then attach. Platform-aware (a video-only channel won't be shown — or let you
- * attach — photos) plus a manual Library browse fallback.
+ * StoryboardPiece — visual-hero single-post editor. Left: the post preview
+ * (platform badge + media area + editable caption strip). Right: campaign
+ * band (if applicable), Change-the-look chips (Phase 4 AI), Adjust-by-hand
+ * controls, per-post schedule CTA.
  */
 export default function StoryboardPiece() {
   const { pieceId } = useParams()
@@ -38,16 +42,27 @@ export default function StoryboardPiece() {
 
   const { data: piece, isLoading, isError } = useContentItem(pieceId)
 
-  // What kind of media this platform can actually publish ('video' | 'photo' |
-  // null = either). Drives both the default filter and whether the producer is
-  // even offered the photo/video toggle: on a video-only channel (YouTube,
-  // TikTok) the toggle is hidden and the kind is locked, because attaching a
-  // photo there just breaks at publish.
-  const platformKind = piece ? mediaKindForPlatform(piece.platform) : null
+  // Interview — needed for campaign band. Only fetched when piece has an interview.
+  const { data: interview } = useInterview(piece?.interview_id, { enabled: !!piece?.interview_id })
 
-  // Kind filter, seeded from the platform once the draft loads, overridable
-  // only when the platform takes either kind. `null` until seeded so we don't
-  // fire a Both query then immediately re-fire a Video one.
+  // Caption edit state — seeded from piece.content once loaded.
+  const [caption, setCaption] = useState('')
+  const captionSeeded = useRef(false)
+  useEffect(() => {
+    if (captionSeeded.current || !piece) return
+    captionSeeded.current = true
+    setCaption(typeof piece.content === 'string' ? piece.content : '')
+  }, [piece])
+
+  // Manual-controls collapsible
+  const [manualOpen, setManualOpen] = useState(false)
+
+  // Platform kind (video | photo | null = either)
+  const platformKind = piece ? mediaKindForPlatform(piece.platform) : null
+  const meta = PLATFORM_META[piece?.platform] || { label: piece?.platform || '—' }
+  const PlatformIcon = meta.icon
+
+  // Kind filter, seeded from the platform once the draft loads.
   const [kind, setKind] = useState(null)
   const seeded = useRef(false)
   useEffect(() => {
@@ -100,9 +115,6 @@ export default function StoryboardPiece() {
   const handlePicked = (assets) => {
     setPickerOpen(false)
     const incoming = (Array.isArray(assets) ? assets : [assets]).filter(Boolean).map(pickerItemToMediaEntry)
-    // Guard the manual path the same way the suggestions are filtered: a
-    // video-only channel can't publish a photo. Skip mismatched picks and tell
-    // the producer why, rather than silently attaching media that breaks later.
     const mismatched = incoming.filter((e) => isKindMismatch(piece.platform, e.type))
     if (mismatched.length > 0) {
       toast.warning(
@@ -119,9 +131,7 @@ export default function StoryboardPiece() {
       .catch((e) => toast.error('Could not attach', { description: e?.message }))
   }
 
-  // "Next draft" — the next still-needs-media piece in the worklist, so a
-  // producer can work the queue down without bouncing back to the list. Show
-  // the remaining count so the batch has a visible finish line.
+  // "Next draft" — next still-needs-media piece in the worklist.
   const { data: worklist = [] } = useContentItems({ status: 'draft,in_review' })
   const remainingNeedsMedia = useMemo(
     () => worklist.filter((p) => p.id !== pieceId && NEEDS_MEDIA(p)),
@@ -141,21 +151,25 @@ export default function StoryboardPiece() {
 
   const clips = (sugg?.clips || []).filter((c) => !attachedKeys.has(c.assetId))
   const showKindToggle = platformKind === null
+  const campaignName = interview?.campaign?.name ?? null
+
+  // Primary attached media entry (for preview card)
+  const primaryMedia = media[0] ?? null
+  const primaryIsVideo = primaryMedia?.type === 'video' || primaryMedia?.kind === 'video'
+  const primaryThumb = primaryMedia?.thumbnailUrl || (!primaryIsVideo ? primaryMedia?.url : null)
 
   return (
     <div className="space-y-5 py-6">
       <PipelineStepper current="media" />
-      {/* Page name — stage + piece, so this screen can be referenced precisely.
-          This IS the choose-media step. */}
       <Breadcrumb
         items={[
           { label: 'Storyboard', to: '/storyboard' },
           { label: pieceLabel(piece), to: `/storyboard/${piece.id}` },
-          { label: 'Choose media' },
+          { label: 'Edit post' },
         ]}
       />
 
-      {/* Header */}
+      {/* Header nav */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BackLink to="/storyboard">Back to Storyboard</BackLink>
         <div className="flex items-center gap-2">
@@ -173,10 +187,6 @@ export default function StoryboardPiece() {
               Next draft ({remainingNeedsMedia.length} left) <ArrowRight className="ml-1 h-3.5 w-3.5" />
             </Button>
           )}
-          {/* Forward to the final step — gated on at least one attachment, since
-              the whole job of this page is to give the draft media before it
-              moves on. Compose (carousel/overlay/theme), preview and publish all
-              live on the publish page. */}
           <Button
             size="sm"
             disabled={!hasMedia}
@@ -188,91 +198,342 @@ export default function StoryboardPiece() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:[grid-template-columns:minmax(0,360px)_minmax(0,1fr)]">
-        {/* Left — draft context */}
-        <DraftContextPanel piece={piece} onRemoveMedia={removeEntry} removingKey={removingKey} />
+      {/* Campaign band — shown only when this piece came from a campaign interview */}
+      {campaignName && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-card px-4 py-2.5">
+          <Flag className="h-4 w-4 shrink-0 text-primary" />
+          <span className="text-sm font-semibold">{campaignName}</span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary">
+            driving this post
+          </span>
+        </div>
+      )}
 
-        {/* Right — candidates */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <Sparkles className="h-4 w-4 text-primary" /> Suggested media
-              {hasMedia && (
-                <span className="ml-1 text-xs font-normal text-muted-foreground">· {media.length} attached</span>
+      {/* Two-column hero layout */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+
+        {/* ── LEFT: post preview is the hero ── */}
+        <div className="lg:col-span-7">
+          <p className="mb-2 text-2xs font-bold uppercase tracking-widest text-muted-foreground">
+            The post <span className="font-normal normal-case tracking-normal">· this is what publishes</span>
+          </p>
+
+          <div className="mx-auto max-w-[520px] overflow-hidden rounded-xl border bg-card">
+            {/* Platform header */}
+            <div className="flex items-center gap-2 border-b px-4 py-2.5">
+              <div className={`flex h-7 w-7 items-center justify-center rounded-full ${meta.bg ?? 'bg-muted'}`}>
+                {PlatformIcon && <PlatformIcon className={`h-4 w-4 ${meta.color ?? 'text-muted-foreground'}`} />}
+              </div>
+              <span className="text-sm font-semibold">{meta.label}</span>
+              {piece.staff_name && (
+                <span className="text-xs text-muted-foreground">· {piece.staff_name}</span>
               )}
-            </p>
-            <div className="flex items-center gap-2">
-              {showKindToggle ? (
-                <div className="inline-flex rounded-md border p-0.5">
-                  {KIND_TABS.map((t) => (
-                    <button
-                      key={t.key}
-                      type="button"
-                      onClick={() => setKind(t.key)}
-                      className={`rounded px-2 py-1 text-2xs font-medium transition-colors ${
-                        kind === t.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+            </div>
+
+            {/* Media area */}
+            <div className="relative aspect-[4/5] bg-muted">
+              {primaryMedia ? (
+                primaryThumb ? (
+                  <img
+                    src={primaryThumb}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <Play className="h-8 w-8" />
+                  </div>
+                )
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
-                  {platformKind === 'video' ? <Video className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}
-                  {mediaKindLabel(platformKind)} for this channel
-                </span>
+                /* Thin library fallback */
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                  <p className="text-center text-sm font-medium text-foreground">
+                    No media attached yet
+                  </p>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Pick from the Library below or choose a fallback to get started.
+                  </p>
+                  {/* Thin-library quick-pick */}
+                  <div className="mt-1 grid w-full max-w-[280px] grid-cols-3 gap-2 text-center text-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="rounded-lg border-2 border-primary bg-primary/5 p-2"
+                    >
+                      <div className="mb-1 flex aspect-square items-center justify-center rounded bg-gradient-to-br from-orange-200 to-amber-100 text-accent-foreground">
+                        <Pen className="h-4 w-4" />
+                      </div>
+                      Text template
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (piece.interview_id) navigate(`/stories/${piece.interview_id}?piece=${piece.id}`)
+                      }}
+                      className="rounded-lg border border-border p-2 hover:border-primary"
+                    >
+                      <div className="mb-1 flex aspect-square items-center justify-center rounded bg-gradient-to-br from-slate-700 to-slate-500 text-white">
+                        <Video className="h-4 w-4" />
+                      </div>
+                      Interview frame
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="rounded-lg border border-border p-2 hover:border-primary"
+                    >
+                      <div className="mb-1 flex aspect-square items-center justify-center rounded bg-muted text-muted-foreground">
+                        <Upload className="h-4 w-4" />
+                      </div>
+                      Upload
+                    </button>
+                  </div>
+                </div>
               )}
-              <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
-                <Images className="mr-1.5 h-3.5 w-3.5" /> Browse Library
-              </Button>
+
+              {/* Attached-media badge / swap strip */}
+              {hasMedia && (
+                <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-black/40 px-3 py-1.5 backdrop-blur-sm">
+                  {media.map((m, i) => {
+                    const isVid = m.type === 'video' || m.kind === 'video'
+                    const thumb = m.thumbnailUrl || (!isVid ? m.url : null)
+                    const key = mediaEntryKey(m)
+                    return (
+                      <div
+                        key={key}
+                        className="group relative h-8 w-8 shrink-0 overflow-hidden rounded border border-white/30"
+                      >
+                        {thumb ? (
+                          <img src={thumb} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-white/60">
+                            {isVid ? <Play className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(m)}
+                          disabled={removingKey === key}
+                          className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
+                          title="Remove"
+                          aria-label="Remove attached media"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        {i === 0 && <span className="sr-only">Primary media</span>}
+                      </div>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="ml-auto flex items-center gap-1 rounded border border-white/30 bg-white/10 px-2 py-1 text-2xs text-white hover:bg-white/20"
+                  >
+                    <Images className="h-3 w-3" /> Change
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Caption strip — always editable */}
+            <div className="px-4 py-3">
+              <div className="mb-1 flex items-center gap-1.5">
+                <Pen className="h-3 w-3 text-muted-foreground" />
+                <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Caption
+                </span>
+                <span className="text-3xs text-muted-foreground">
+                  · from your approved blog — edit if needed
+                </span>
+              </div>
+              <textarea
+                rows={3}
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                className="w-full resize-none bg-transparent text-xs leading-snug text-foreground/85 outline-none"
+                placeholder="Caption will appear here once you've approved the blog post…"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── RIGHT: controls ── */}
+        <div className="space-y-3 lg:col-span-5">
+
+          {/* Change the look — UI chips only (Phase 4 wires AI) */}
+          <div className="overflow-hidden rounded-xl border border-primary/40 bg-card">
+            <div className="flex items-center gap-2 border-b bg-primary/5 px-4 py-2.5">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Change the look</span>
+              <span className="text-2xs text-muted-foreground">· just ask, like talking to a designer</span>
+            </div>
+            <div className="px-3 pb-3 pt-3">
+              <div className="mb-2 flex flex-wrap gap-1.5 text-2xs">
+                <button
+                  type="button"
+                  className="rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
+                >
+                  Bigger headline
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
+                >
+                  Use brand navy
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
+                >
+                  Brighter photo
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
+                >
+                  <Book className="h-3 w-3" /> Match brand book
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. 'make the headline pop more' or 'warmer background'…"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-xs outline-none"
+                disabled
+                title="AI styling coming in a future update"
+              />
             </div>
           </div>
 
-          {suggLoading || kind === null ? (
-            <CandidateGridSkeleton />
-          ) : suggError ? (
-            <div className="rounded-lg border bg-muted/20 py-10 text-center text-sm text-muted-foreground">
-              Couldn’t load suggestions.{' '}
-              <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>.
-            </div>
-          ) : clips.length === 0 ? (
-            <div className="rounded-lg border bg-muted/20 py-10 text-center">
-              <ImagePlus className="mx-auto h-7 w-7 text-muted-foreground" />
-              <p className="mt-2 text-sm text-foreground">
-                No strong {kind === 'video' ? 'video' : kind === 'photo' ? 'photo' : ''} matches in your Library.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {showKindToggle ? 'Try a different type above, or ' : ''}
-                <button type="button" onClick={() => setPickerOpen(true)} className="text-primary hover:underline">browse the Library</button>.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {clips.map((clip) => (
-                <CandidateCard
-                  key={clip.chunkId || clip.assetId}
-                  clip={clip}
-                  attached={attachedKeys.has(clip.assetId)}
-                  attaching={attachingKey === clip.assetId}
-                  onPreview={() => setPreviewClip(clip)}
-                  onAttach={() => attachEntry(clipToMediaEntry(clip))}
-                />
-              ))}
-            </div>
-          )}
-          {isFetching && !suggLoading && <p className="text-2xs text-muted-foreground">Refreshing…</p>}
+          {/* Adjust by hand — collapsible */}
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <button
+              type="button"
+              onClick={() => setManualOpen((o) => !o)}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
+            >
+              <Sliders className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Adjust by hand</span>
+              <span className="text-2xs text-muted-foreground">· same knobs the AI turns</span>
+              <ChevronDown
+                className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {manualOpen && (
+              <div className="space-y-3 border-t px-4 pb-3 pt-3 text-xs">
+                {/* Media browse */}
+                <div className="flex items-center gap-2">
+                  <span className="w-16 text-muted-foreground">Media</span>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary"
+                  >
+                    <Images className="h-3 w-3" /> Browse Library
+                  </button>
+                  {showKindToggle && (
+                    <div className="inline-flex rounded-md border p-0.5">
+                      {KIND_TABS.map((t) => (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => setKind(t.key)}
+                          className={`rounded px-2 py-0.5 text-3xs font-medium transition-colors ${
+                            kind === t.key
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!showKindToggle && (
+                    <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-3xs text-muted-foreground">
+                      {platformKind === 'video'
+                        ? <Video className="h-3 w-3" />
+                        : <ImageIcon className="h-3 w-3" />}
+                      {mediaKindLabel(platformKind)}
+                    </span>
+                  )}
+                </div>
 
-          {/* Bottom forward CTA — appears once media is attached, right where the
-              producer just finished working, so they don't have to scroll back
-              up to the header to advance. */}
-          {hasMedia && (
-            <div className="flex justify-end pt-1">
-              <Button size="sm" onClick={() => navigate(`/storyboard/${piece.id}/publish`)}>
-                Continue to publish <ArrowRight className="ml-1 h-3.5 w-3.5" />
-              </Button>
+                {/* Suggestions grid when manual open */}
+                {suggLoading || kind === null ? (
+                  <CandidateGridSkeleton compact />
+                ) : suggError ? (
+                  <p className="text-xs text-muted-foreground">
+                    Couldn&apos;t load suggestions.{' '}
+                    <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>
+                  </p>
+                ) : clips.length === 0 ? (
+                  <div className="rounded-lg border bg-muted/20 py-6 text-center">
+                    <ImagePlus className="mx-auto h-6 w-6 text-muted-foreground" />
+                    <p className="mt-1.5 text-sm text-foreground">
+                      No strong {kind === 'video' ? 'video' : kind === 'photo' ? 'photo' : ''} matches.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="mt-1 text-xs text-primary hover:underline"
+                    >
+                      Browse the Library
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {clips.slice(0, 6).map((clip) => (
+                      <CandidateCard
+                        key={clip.chunkId || clip.assetId}
+                        clip={clip}
+                        attached={attachedKeys.has(clip.assetId)}
+                        attaching={attachingKey === clip.assetId}
+                        onPreview={() => setPreviewClip(clip)}
+                        onAttach={() => attachEntry(clipToMediaEntry(clip))}
+                      />
+                    ))}
+                  </div>
+                )}
+                {isFetching && !suggLoading && (
+                  <p className="text-2xs text-muted-foreground">Refreshing…</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Per-post schedule CTA */}
+          <div className="rounded-xl border bg-card p-3">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Schedule this post</span>
+              <span className="ml-auto text-3xs text-muted-foreground">one at a time</span>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Button
+                className="flex-1"
+                disabled={!hasMedia}
+                title={hasMedia ? undefined : 'Attach media before scheduling'}
+                onClick={() => navigate(`/storyboard/${piece.id}/publish`)}
+              >
+                <Calendar className="mr-1.5 h-4 w-4" />
+                Schedule this post
+              </Button>
+              {nextPieceId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/storyboard/${nextPieceId}`)}
+                  className="flex items-center gap-1"
+                >
+                  Next <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <p className="mt-1.5 text-3xs text-muted-foreground">
+              Each post gets its own look · no &ldquo;publish all&rdquo; unless you trust every one.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -292,12 +553,15 @@ export default function StoryboardPiece() {
   )
 }
 
-// Skeleton grid shown while suggestions load — preserves the layout rhythm so
-// the page doesn't jump from a centered spinner to a full grid.
-function CandidateGridSkeleton() {
+// Compact skeleton grid shown while suggestions load.
+function CandidateGridSkeleton({ compact = false }) {
+  const count = compact ? 6 : 10
+  const cols = compact
+    ? 'grid grid-cols-3 gap-2'
+    : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {Array.from({ length: 10 }).map((_, i) => (
+    <div className={cols}>
+      {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="space-y-1.5">
           <div className="aspect-[4/3] animate-pulse rounded-lg bg-muted" />
           <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
