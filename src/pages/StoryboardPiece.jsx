@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Pen, Sliders,
-  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown,
+  ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Loader2, Pen, Sliders,
+  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PipelineStepper from '@/components/PipelineStepper'
@@ -21,6 +21,7 @@ import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/m
 import { mediaKindForPlatform, mediaKindLabel, isKindMismatch } from '@/lib/platformMediaKind'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { toast } from '@/lib/toast'
+import { apiFetch } from '@/lib/api'
 
 const KIND_TABS = [
   { key: 'both', label: 'Photos & video' },
@@ -56,6 +57,35 @@ export default function StoryboardPiece() {
 
   // Manual-controls collapsible
   const [manualOpen, setManualOpen] = useState(false)
+
+  // Change the look — AI restyle state
+  const [restyleLoading, setRestyleLoading] = useState(false)
+  const [restyleInput, setRestyleInput] = useState('')
+
+  async function fireRestyle(instruction) {
+    if (!instruction.trim() || restyleLoading) return
+    setRestyleLoading(true)
+    try {
+      const result = await apiFetch('/api/editorial/restyle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'post',
+          instruction: instruction.trim(),
+          content: caption,
+          staffId: piece?.staff_id || undefined,
+        }),
+      })
+      if (result?.changes?.content) {
+        setCaption(result.changes.content)
+      }
+      toast.success(result?.explanation || 'Done!')
+    } catch (e) {
+      toast.error(e?.message || 'Could not apply change')
+    } finally {
+      setRestyleLoading(false)
+    }
+  }
 
   // Platform kind (video | photo | null = either)
   const platformKind = piece ? mediaKindForPlatform(piece.platform) : null
@@ -361,47 +391,53 @@ export default function StoryboardPiece() {
         {/* ── RIGHT: controls ── */}
         <div className="space-y-3 lg:col-span-5">
 
-          {/* Change the look — UI chips only (Phase 4 wires AI) */}
+          {/* Change the look — AI conversation (Phase 4) */}
           <div className="overflow-hidden rounded-xl border border-primary/40 bg-card">
             <div className="flex items-center gap-2 border-b bg-primary/5 px-4 py-2.5">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Change the look</span>
               <span className="text-2xs text-muted-foreground">· just ask, like talking to a designer</span>
+              {restyleLoading && <Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />}
             </div>
             <div className="px-3 pb-3 pt-3">
               <div className="mb-2 flex flex-wrap gap-1.5 text-2xs">
+                {['Punchier caption', 'Use brand navy', 'Brighter photo', 'Match brand book'].map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={restyleLoading}
+                    onClick={() => fireRestyle(label)}
+                    className="flex items-center gap-1 rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {label === 'Match brand book' && <Book className="h-3 w-3" />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={restyleInput}
+                  onChange={(e) => setRestyleInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && restyleInput.trim()) {
+                      fireRestyle(restyleInput)
+                      setRestyleInput('')
+                    }
+                  }}
+                  placeholder="e.g. 'make the caption warmer' or 'brighter photo'…"
+                  className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/50"
+                  disabled={restyleLoading}
+                />
                 <button
                   type="button"
-                  className="rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
+                  disabled={restyleLoading || !restyleInput.trim()}
+                  onClick={() => { fireRestyle(restyleInput); setRestyleInput('') }}
+                  className="flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Bigger headline
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
-                >
-                  Use brand navy
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
-                >
-                  Brighter photo
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-1 rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary"
-                >
-                  <Book className="h-3 w-3" /> Match brand book
+                  <CornerDownLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <input
-                type="text"
-                placeholder="e.g. 'make the headline pop more' or 'warmer background'…"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-xs outline-none"
-                disabled
-                title="AI styling coming in a future update"
-              />
             </div>
           </div>
 
