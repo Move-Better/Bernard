@@ -98,7 +98,7 @@ export default function Slate() {
     [staff]
   )
 
-  const [view, setView] = useState('videos')  // 'videos' | 'coverage'
+  const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'in_progress' | 'coverage'
   const [searchQ, setSearchQ] = useState('')
   const [activeStaffId, setActiveStaffId] = useState(null)
   const [isManualRefetching, setIsManualRefetching] = useState(false)
@@ -171,7 +171,7 @@ export default function Slate() {
           <p className="text-sm opacity-80 mt-0.5">
             {view === 'coverage'
               ? 'Per-staff capture activity and topic coverage gaps'
-              : 'Pick a source video, trim a clip, and send it to a post or Library'}
+              : 'Turn raw video into clips. Each clip becomes a post or reusable b-roll — both feed the one pipeline.'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -197,38 +197,41 @@ export default function Slate() {
         </div>
       </div>
 
-      {/* View tabs */}
+      {/* View tabs — status-based per mockup */}
       <div className="flex items-center gap-1 border-b border-border">
-        <button
-          onClick={() => setView('videos')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
-            view === 'videos'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Film className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />
-          Source videos
-          {!isLoading && <span className="ml-2 text-2xs font-bold opacity-70">{sourceVideos.length}</span>}
-        </button>
-        <button
-          onClick={() => setView('coverage')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
-            view === 'coverage'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <BarChart3 className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />
-          Coverage
-        </button>
+        {[
+          { key: 'needs_cutting', label: 'Needs cutting', filter: (a) => !a.clip_count },
+          { key: 'in_progress',   label: 'In progress',   filter: (a) => !!a.clip_count },
+          { key: 'coverage',      label: 'Coverage',      filter: null },
+        ].map(({ key, label, filter }) => {
+          const count = filter && !isLoading ? sourceVideos.filter(filter).length : null
+          return (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                view === key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {key === 'coverage'
+                ? <><BarChart3 className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />Coverage</>
+                : <><Film className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />{label}</>
+              }
+              {count !== null && (
+                <span className="ml-2 text-2xs font-bold opacity-70">{count}</span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {view === 'coverage' ? (
         <CoveragePanel />
       ) : (
         <>
-          {/* Search + staff filter */}
+          {/* Search + staff filter — shared across needs_cutting / in_progress */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-48">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -297,14 +300,16 @@ export default function Slate() {
             </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-              {sourceVideos.map((asset) => (
-                <SourceVideoCard
-                  key={asset.id}
-                  asset={asset}
-                  staffName={staffMap[asset.staff_id]}
-                  onEdit={(id) => navigate(`/slate/clip/${id}`)}
-                />
-              ))}
+              {sourceVideos
+                .filter((a) => view === 'in_progress' ? !!a.clip_count : !a.clip_count)
+                .map((asset) => (
+                  <SourceVideoCard
+                    key={asset.id}
+                    asset={asset}
+                    staffName={staffMap[asset.staff_id]}
+                    onEdit={(id) => navigate(`/slate/clip/${id}`)}
+                  />
+                ))}
             </div>
           )}
         </>

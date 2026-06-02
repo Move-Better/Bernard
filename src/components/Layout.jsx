@@ -73,7 +73,7 @@ const NAV_SECTIONS = [
       // Slate — the video→content tool. Only when the workspace opts into the
       // video pipeline.
       { to: '/slate',     label: 'Slate',     match: (p) => p.startsWith('/slate'),     icon: Scissors,
-        showWhen: (ws) => ws?.video_pipeline_enabled === true },
+        showWhen: (ws) => ws?.video_pipeline_enabled === true, badge: 'new' },
     ],
   },
 ]
@@ -186,6 +186,7 @@ export default function Layout({ children }) {
                     to={item.to}
                     label={item.label}
                     hint={item.hint}
+                    badge={item.badge}
                     active={item.match(location.pathname)}
                     icon={item.icon}
                     collapsed={collapsed}
@@ -487,7 +488,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
 // Vertical sidebar nav link. When collapsed, shows only the icon with a
 // hover tooltip to the right (overflow-visible on the parent nav prevents
 // clipping of the absolute-positioned tooltip).
-function SidebarNavLink({ to, label, hint, active, icon: Icon, collapsed }) {
+function SidebarNavLink({ to, label, hint, badge, active, icon: Icon, collapsed }) {
   const base = `flex items-center rounded-md text-sm font-medium transition-colors group relative
     ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'}`
 
@@ -499,6 +500,7 @@ function SidebarNavLink({ to, label, hint, active, icon: Icon, collapsed }) {
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
       {!collapsed && hint && <span className="text-3xs text-muted-foreground/60 shrink-0">{hint}</span>}
+      {!collapsed && badge && <span className="text-3xs font-semibold bg-warning/20 text-warning px-1.5 py-0.5 rounded-full shrink-0">{badge}</span>}
       {collapsed && (
         <span className="absolute left-full ml-2 px-2 py-1 text-xs font-medium bg-popover border border-border text-popover-foreground rounded-md shadow-md
                          invisible group-hover:visible opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[200]
