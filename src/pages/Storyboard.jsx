@@ -6,7 +6,7 @@ import { useContentItems } from '@/lib/queries'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { mediaKindForPlatform, mediaKindLabel } from '@/lib/platformMediaKind'
 
-// "Needs media" = no media attached. Empty array or null both count. Kept in
+// "Draft" (needs media) = no media attached. Empty array or null both count. Kept in
 // one place so the count and the list always agree.
 const NEEDS_MEDIA = (p) => !Array.isArray(p?.media_urls) || p.media_urls.length === 0
 
@@ -103,11 +103,11 @@ export default function Storyboard() {
         </div>
       ) : (
         <div className="space-y-8">
-          {/* Needs media — the work queue. */}
+          {/* Draft — the work queue. Pieces that still need media attached. */}
           {rows.length > 0 && (
             <section className="space-y-3">
               <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Needs media · {rows.length}
+                Draft · {rows.length}
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {rows.map((piece) => (
@@ -117,12 +117,12 @@ export default function Storyboard() {
             </section>
           )}
 
-          {/* Ready to publish — has media, not yet published. The home for a
+          {/* Ready to Distribute — has media, not yet published. The home for a
               piece after you attach media, so it never disappears on you. */}
           {ready.length > 0 && (
             <section className="space-y-3">
               <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Ready to publish · {ready.length}
+                Ready to distribute · {ready.length}
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {ready.map((piece) => (

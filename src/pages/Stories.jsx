@@ -21,13 +21,15 @@ const STAGES = [
   { key: 'published', label: 'Published' },
 ]
 
-// Quick-filter pills shown above the advanced selects — maps to the mockup's
-// "All / Needs words / Ready for media / Published / Mine" row.
+// Quick-filter pills shown above the advanced selects.
+// Labels match the canonical pipeline vocabulary used by the Overview kanban
+// (contentStatusTokens.js) and Storyboard section headers so one mental model
+// spans all three surfaces.
 const QUICK_FILTERS = [
   { key: '',            label: 'All' },
-  { key: 'needs_words', label: 'Needs words',     stages: ['capture', 'drafting'] },
-  { key: 'ready',       label: 'Ready for media', stages: ['review'] },
-  { key: 'published',   label: 'Published',        stages: ['published'] },
+  { key: 'needs_words', label: 'Draft',                stages: ['capture', 'drafting'] },
+  { key: 'ready',       label: 'Ready to Distribute',  stages: ['review'] },
+  { key: 'published',   label: 'Published',             stages: ['published'] },
 ]
 
 const SELECT_CLS =
@@ -154,7 +156,7 @@ export default function Stories() {
           </div>
         </div>
 
-        {/* Quick-filter pill row — All / Needs words / Ready for media / Published / Mine */}
+        {/* Quick-filter pill row — All / Draft / Ready to Distribute / Published / Mine */}
         <div className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {QUICK_FILTERS.map((qf) => {
             const isActive = qf.key === ''
