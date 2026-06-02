@@ -221,12 +221,25 @@ export default async function handler(req, res) {
       body: JSON.stringify({ status: 'rendering' }),
     }).catch(() => {})
 
-    // Render each off the request path; ClipFinder polls segments to completion.
+    // Render off the request path with bounded concurrency. Rendering serially
+    // blew the 300s function wall on a 3-clip batch (the 3rd reel never finished
+    // and its segment stranded in 'rendering'); a small pool finishes a typical
+    // batch well inside the budget without N concurrent ffmpeg procs OOMing the
+    // 1GB function. ClipFinder polls segments to completion; any segment still
+    // 'rendering' if the wall is hit on a large batch self-heals on re-detect.
+    const RENDER_CONCURRENCY = 3
     waitUntil(
       (async () => {
-        for (const { seg, asset } of toRender) {
-          await renderSegmentToBroll({ ws, seg, asset, staffName: staffNames[seg.staff_id] || '' })
+        let next = 0
+        async function worker() {
+          while (next < toRender.length) {
+            const { seg, asset } = toRender[next++]
+            await renderSegmentToBroll({ ws, seg, asset, staffName: staffNames[seg.staff_id] || '' })
+          }
         }
+        await Promise.all(
+          Array.from({ length: Math.min(RENDER_CONCURRENCY, toRender.length) }, worker),
+        )
       })(),
     )
 
