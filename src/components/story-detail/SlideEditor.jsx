@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Move } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Move, Maximize, Wand2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUpdateContentItem, useCarouselThemes } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -473,6 +473,265 @@ function SlideCard({
   )
 }
 
+// ── Slide filmstrip (compact thumbnail strip) ────────────────────────────────
+
+function SlideFilmstrip({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
+  return (
+    <div className="rounded-md border bg-card p-2.5">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span>
+        <span className="text-2xs text-muted-foreground">· click to edit</span>
+        <span className="ml-auto text-2xs text-muted-foreground">{slides.length} slide{slides.length === 1 ? '' : 's'}</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {slides.map((slide, idx) => {
+          const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
+            ? mediaUrls[slide.photo_idx].url
+            : null
+          const isActive = idx === activeIdx
+          const primaryRole = slide.blocks?.[0]?.role
+          const roleMeta = primaryRole ? (ROLE_META[primaryRole] || null) : null
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => onSelect(idx)}
+              className={`shrink-0 w-[60px] rounded border text-left transition-all ${
+                isActive
+                  ? 'border-primary ring-1 ring-primary/40'
+                  : 'border-border hover:border-primary/40'
+              }`}
+            >
+              <div className="aspect-[4/5] relative overflow-hidden rounded-sm bg-muted flex items-center justify-center">
+                {photoUrl
+                  ? <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-500" />
+                }
+                <div className="absolute inset-0 bg-black/20" />
+                {roleMeta && (
+                  <span className={`absolute top-0.5 left-0.5 text-3xs font-semibold uppercase tracking-wide px-1 py-0.5 rounded ${roleMeta.chip}`}>
+                    {roleMeta.label}
+                  </span>
+                )}
+                <span className="absolute bottom-0.5 right-0.5 text-3xs text-white/70 font-medium">
+                  {idx + 1}
+                </span>
+              </div>
+            </button>
+          )
+        })}
+        <button
+          type="button"
+          onClick={onAdd}
+          className="shrink-0 w-[60px] aspect-[4/5] rounded border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="text-3xs mt-0.5">Add</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Full edge-to-edge preview overlay ────────────────────────────────────────
+
+function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
+  // Keyboard navigation + ESC
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowRight') onNav(1)
+      if (e.key === 'ArrowLeft') onNav(-1)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose, onNav])
+
+  const slide = slides[activeIdx]
+  if (!slide) return null
+
+  const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
+    ? mediaUrls[slide.photo_idx].url
+    : null
+  const primaryBlock = slide.blocks?.[0]
+  const primaryRole = primaryBlock?.role
+  const roleMeta = primaryRole ? (ROLE_META[primaryRole] || null) : null
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+      {/* Top bar */}
+      <div className="absolute top-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3">
+        <Layers className="h-4 w-4 text-white/70" />
+        <span className="text-sm font-medium text-white/90">Full preview</span>
+        <span className="text-xs text-white/50">
+          {activeIdx + 1} / {slides.length}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-auto h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+          title="Close (Esc)"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Main slide area */}
+      <div className="flex-1 relative flex items-center justify-center">
+        {/* Background photo */}
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-70"
+          />
+        )}
+        {!photoUrl && (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-600" />
+        )}
+        <div className="absolute inset-0 bg-black/40" />
+
+        {/* Prev / next */}
+        <button
+          type="button"
+          onClick={() => onNav(-1)}
+          disabled={activeIdx === 0}
+          className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-30 transition-colors"
+        >
+          <ChevronLeft className="h-7 w-7" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onNav(1)}
+          disabled={activeIdx === slides.length - 1}
+          className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-30 transition-colors"
+        >
+          <ChevronRight className="h-7 w-7" />
+        </button>
+
+        {/* Slide role badge */}
+        {roleMeta && (
+          <span className="absolute top-16 left-1/2 -translate-x-1/2 text-xs uppercase tracking-widest font-semibold px-3 py-1 rounded-full bg-white/15 text-white/90">
+            {roleMeta.label}
+          </span>
+        )}
+
+        {/* Text blocks */}
+        <div className="relative z-10 text-center px-12 max-w-3xl w-full space-y-3">
+          {slide.blocks?.length > 0
+            ? slide.blocks.map((block, bi) => (
+                <p
+                  key={bi}
+                  className={`font-semibold leading-tight text-white ${
+                    bi === 0 ? 'text-4xl md:text-5xl' : 'text-lg md:text-xl opacity-90'
+                  }`}
+                >
+                  {block.text || <span className="opacity-40 italic">No text</span>}
+                </p>
+              ))
+            : <p className="text-2xl text-white/50 italic">Slide {activeIdx + 1}</p>
+          }
+        </div>
+      </div>
+
+      {/* Bottom: dots */}
+      <div className="shrink-0 px-5 pb-6 pt-3 flex flex-col items-center gap-2">
+        <div className="flex gap-2">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onNav(i - activeIdx)}
+              className={`rounded-full transition-all ${
+                i === activeIdx
+                  ? 'w-5 h-2 bg-white'
+                  : 'w-2 h-2 bg-white/40 hover:bg-white/60'
+              }`}
+            />
+          ))}
+        </div>
+        <p className="text-xs text-white/40">← → to navigate · Esc to close</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Change the look panel (collapsed accordion) ───────────────────────────────
+
+const CHANGE_THE_LOOK_CHIPS = [
+  { id: 'bigger', label: 'Bigger headlines' },
+  { id: 'pages', label: 'Add page numbers' },
+  { id: 'tighten', label: 'Tighten to 4 slides' },
+  { id: 'brand', label: 'Match brand book' },
+]
+
+function ChangeTheLookPanel() {
+  const [open, setOpen] = useState(false)
+  const [input, setInput] = useState('')
+
+  return (
+    <div className="rounded-md border border-primary/30 bg-card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2.5 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
+      >
+        <Wand2 className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="text-xs font-semibold text-foreground">Change the look</span>
+        <span className="text-2xs text-muted-foreground">· works across all slides</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 pt-2 space-y-2 border-t border-border/50">
+          <div className="flex flex-wrap gap-1.5">
+            {CHANGE_THE_LOOK_CHIPS.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => toast.info(`"${chip.label}" — AI wiring coming in Phase 4`)}
+                className="px-2.5 py-1 rounded-full border border-border text-2xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && input.trim()) {
+                  toast.info(`"${input.trim()}" — AI wiring coming in Phase 4`)
+                  setInput('')
+                }
+              }}
+              placeholder="e.g. make slide 3 the proof point"
+              className="flex-1 px-2.5 py-1.5 rounded-md border border-input bg-background text-xs outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (input.trim()) {
+                  toast.info(`"${input.trim()}" — AI wiring coming in Phase 4`)
+                  setInput('')
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0"
+            >
+              Ask
+            </button>
+          </div>
+          <p className="text-2xs text-muted-foreground italic">
+            AI suggestions — wired in Phase 4. Chips log intent for now.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
 
 export default function SlideEditor({ piece }) {
@@ -491,6 +750,8 @@ export default function SlideEditor({ piece }) {
   const [slides, setSlides] = useState(seedSlides)
   const [savedSlidesJson, setSavedSlidesJson] = useState(() => JSON.stringify(seedSlides()))
   const [themeId, setThemeId] = useState(() => piece?.carousel_theme_id || null)
+  const [activeSlideIdx, setActiveSlideIdx] = useState(0)
+  const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
 
   useEffect(() => {
     const next = seedSlides()
@@ -523,7 +784,9 @@ export default function SlideEditor({ piece }) {
     setSlides(out)
   }
   function removeSlide(idx) {
-    setSlides(slides.filter((_, i) => i !== idx))
+    const next = slides.filter((_, i) => i !== idx)
+    setSlides(next)
+    setActiveSlideIdx((prev) => Math.min(prev, Math.max(0, next.length - 1)))
   }
   function addSlide() {
     // New slide binds to the first un-bound photo, falling back to last photo
@@ -593,6 +856,18 @@ export default function SlideEditor({ piece }) {
 
   return (
     <div className="space-y-3 rounded-md border bg-card p-3">
+      {/* Full preview overlay — rendered outside the normal flow */}
+      {fullPreviewOpen && (
+        <FullPreviewOverlay
+          slides={slides}
+          activeIdx={activeSlideIdx}
+          mediaUrls={mediaUrls}
+          onClose={() => setFullPreviewOpen(false)}
+          onNav={(delta) => setActiveSlideIdx((prev) => Math.max(0, Math.min(slides.length - 1, prev + delta)))}
+        />
+      )}
+
+      {/* Header row */}
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -602,17 +877,40 @@ export default function SlideEditor({ piece }) {
             Each slide is one photo + freeform text blocks. Pick a role, drag-position, and bind a photo per slide.
           </p>
         </div>
-        {dirty && (
-          <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
-            <Button size="sm" onClick={handleSave} disabled={busy} loading={busy}>
-              {rendering ? 'Rendering…' : updateItem.isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFullPreviewOpen(true)}
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-2xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            title="Open full-screen preview"
+          >
+            <Maximize className="h-3 w-3" />
+            Full preview
+          </button>
+          {dirty && (
+            <>
+              <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
+              <Button size="sm" onClick={handleSave} disabled={busy} loading={busy}>
+                {rendering ? 'Rendering…' : updateItem.isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Theme picker */}
+      {/* 1. SLIDES FILMSTRIP — always at the top of the editing rail */}
+      <SlideFilmstrip
+        slides={slides}
+        activeIdx={activeSlideIdx}
+        mediaUrls={mediaUrls}
+        onSelect={(idx) => setActiveSlideIdx(idx)}
+        onAdd={addSlide}
+      />
+
+      {/* 2. CHANGE THE LOOK — collapsed accordion */}
+      <ChangeTheLookPanel />
+
+      {/* 3. Theme picker */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Theme</span>
         {allThemes.map((t) => {
@@ -634,6 +932,7 @@ export default function SlideEditor({ piece }) {
         })}
       </div>
 
+      {/* 4. Per-slide editor cards */}
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-3 min-w-max pr-2">
           {slides.map((slide, idx) => {
