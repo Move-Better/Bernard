@@ -562,7 +562,7 @@ export default function OnboardingInterview() {
 
   if (role && role !== 'admin') {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12">
+      <div className="px-4 py-12">
         <Card>
           <CardContent className="pt-6 text-center space-y-2">
             <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground" />
@@ -578,7 +578,7 @@ export default function OnboardingInterview() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12 flex items-center justify-center">
+      <div className="px-4 py-12 flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -586,7 +586,7 @@ export default function OnboardingInterview() {
 
   if (error && messages.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12">
+      <div className="px-4 py-12">
         <Card>
           <CardContent className="pt-6 text-center space-y-3">
             <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
@@ -607,7 +607,7 @@ export default function OnboardingInterview() {
   // ── Main UI ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+    <div className="px-4 py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
       {dryRun && (
         <div className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 flex items-center gap-2 text-sm">
           <FlaskConical className="h-4 w-4 text-warning shrink-0" />

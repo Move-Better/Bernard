@@ -277,7 +277,7 @@ export default function Capture() {
   }
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-6">
+    <div className="py-6">
       <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="w-4 h-4 mr-1" /> Home
       </Link>

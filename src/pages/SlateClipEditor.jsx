@@ -234,7 +234,7 @@ export default function SlateClipEditor() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate('/slate')} className="gap-1.5">

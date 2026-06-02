@@ -724,14 +724,14 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   // state so subsequent refetches don't blank the page.
   if (isLoading && !mockup) {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-[40vh]">
+      <div className="p-6 flex items-center justify-center min-h-[40vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
   if (error && !mockup) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="p-6">
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           Failed to load brand kit: {error.message || 'unknown error'}
         </div>
@@ -745,7 +745,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   // "Looks good" to advance, or "Let me adjust" to expand into the full panel.
   if (isOnboarding && confirmStrip) {
     return (
-      <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <div className="p-6 space-y-4">
         <div className="text-center space-y-2">
           <Sparkles className="h-8 w-8 text-primary mx-auto" />
           <h1 className="text-xl font-semibold">We picked these for your workspace</h1>
@@ -780,7 +780,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
 
   // ---- Default render -----------------------------------------------------
   return (
-    <div className={`${isOnboarding ? 'max-w-4xl mx-auto p-6' : 'max-w-6xl mx-auto p-6'} space-y-6`}>
+    <div className="p-6 space-y-6">
       {isOnboarding && (
         <div className="text-center space-y-1">
           <h1 className="text-xl font-semibold">Add your brand assets</h1>

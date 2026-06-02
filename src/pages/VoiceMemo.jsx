@@ -227,7 +227,7 @@ export default function VoiceMemo() {
   const uploading = state === 'uploading'
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
           <Link to="/new">

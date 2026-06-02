@@ -237,7 +237,7 @@ export default function MicCheck({ onContinue, ttsSettings }) {
     : "Let's confirm your microphone is working before we begin."
 
   return (
-    <div className="max-w-xl mx-auto py-4">
+    <div className="py-4">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>

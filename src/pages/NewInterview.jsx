@@ -272,7 +272,7 @@ export default function NewInterview() {
   // created. Passing it calls createAndStart(); backing out leaves no DB trace.
   if (step === 'miccheck') {
     return (
-      <div className="max-w-xl mx-auto space-y-3">
+      <div className="space-y-3">
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">{error}</div>
         )}
@@ -299,7 +299,7 @@ export default function NewInterview() {
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-5">
+    <div className="space-y-5">
       <PipelineStepper current="interview" />
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>

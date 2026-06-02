@@ -1329,7 +1329,7 @@ export default function InterviewSession() {
 
   if (showInstructions) {
     return (
-      <div className="max-w-xl mx-auto py-4">
+      <div className="py-4">
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" asChild>
             <Link to="/new"><ArrowLeft className="h-4 w-4" /></Link>
@@ -1402,7 +1402,7 @@ export default function InterviewSession() {
 
   return (
     <div
-      className="flex flex-col h-[calc(100dvh-7.5rem)] max-w-2xl mx-auto"
+      className="flex flex-col h-[calc(100dvh-7.5rem)]"
       style={vvHeight ? { height: `calc(${vvHeight}px - 7.5rem)` } : undefined}
     >
       <div className="flex flex-col min-w-0 flex-1">
