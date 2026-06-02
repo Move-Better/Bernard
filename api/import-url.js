@@ -89,6 +89,7 @@ export default async function handler(req, res) {
   // markdown of the main content — navigation, ads, and boilerplate stripped.
   let extractedText
   let extractedTitle = ''
+  let extractedPublishedAt = null
   try {
     const jinaRes = await fetch(`${JINA_BASE}${encodeURIComponent(cleanUrl)}`, {
       headers: {
@@ -124,6 +125,15 @@ export default async function handler(req, res) {
     const header = markerIdx !== -1 ? body.slice(0, markerIdx) : ''
     const titleMatch = header.match(/^Title:\s*(.+?)\s*$/m)
     extractedTitle = titleMatch ? titleMatch[1].trim() : ''
+
+    // Parse original publish date from Jina's metadata header so we can
+    // backdate the content_item to when the post was actually published.
+    // Jina emits: "Published Time: 2021-03-26T00:00:00.000Z" (ISO 8601).
+    const pubTimeMatch = header.match(/^Published Time:\s*(.+?)\s*$/m)
+    if (pubTimeMatch) {
+      const d = new Date(pubTimeMatch[1].trim())
+      if (!Number.isNaN(d.getTime())) extractedPublishedAt = d.toISOString()
+    }
 
     // Strip the metadata header — it's noise when the imported text is used
     // as the keystone piece (or as input to LLM generation).
@@ -204,8 +214,9 @@ export default async function handler(req, res) {
       topic,
       status:           'in_progress',
       capture_mode:     'text_import',
-      source_audio_url: cleanUrl,   // repurposed as source_url for provenance
-      messages:         [{ role: 'user', content: extractedText }],
+      source_audio_url:     cleanUrl,   // repurposed as source_url for provenance
+      source_published_at:  extractedPublishedAt,  // original blog publish date (may be null)
+      messages:             [{ role: 'user', content: extractedText }],
       tone:             defaultTone,
       voice_mode:       'personal',
       generation_style: 'blog_post',

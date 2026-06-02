@@ -224,7 +224,7 @@ export default async function handler(req, res) {
     // already saved before this branch ran — we never want any of the
     // enrichment paths to bubble up and 500 the PATCH.
     if (body.outputs && body.status === 'completed') {
-      const { staff_id, topic, location_id, capture_mode, source_audio_url } = rows[0]
+      const { staff_id, topic, location_id, capture_mode, source_audio_url, source_published_at } = rows[0]
       const o = body.outputs
       // URL-import keystone is already-published content (the source URL is
       // the live post). Mark the blog content_item as published with the
@@ -286,7 +286,9 @@ export default async function handler(req, res) {
                 // Voice-memory snapshot — never overwritten on edit
                 ai_original_content: o[key],
                 status:         isImportedBlog ? 'published' : 'draft',
-                published_at:   isImportedBlog ? nowIso : null,
+                // Use original publish date from source if Jina surfaced it;
+                // fall back to import time so the field is always set.
+                published_at:   isImportedBlog ? (source_published_at ?? nowIso) : null,
                 resolved_url:   isImportedBlog ? source_audio_url : null,
                 media_urls:     [],
                 location_id:    location_id ?? null,
