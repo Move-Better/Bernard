@@ -61,7 +61,7 @@ export const OWNER_ONLY_CAPABILITIES = new Set([
 export const CAPABILITY_GROUPS = [
   { label: 'Interviews',          caps: [CAP_INTERVIEW_START, CAP_INTERVIEW_EDIT_OTHERS] },
   { label: 'Content',             caps: [CAP_CONTENT_APPROVE, CAP_CONTENT_PUBLISH] },
-  { label: 'Story Slate',         caps: [CAP_SLATE_GENERATE, CAP_SLATE_APPROVE] },
+  { label: 'Slate',               caps: [CAP_SLATE_GENERATE, CAP_SLATE_APPROVE] },
   { label: 'Brand & Campaigns',   caps: [CAP_BRAND_KIT_EDIT, CAP_CAMPAIGNS_EDIT, CAP_INTEGRATIONS_CONNECT] },
   { label: 'Workspace & Billing', caps: [CAP_SETTINGS_VIEW, CAP_SETTINGS_EDIT, CAP_BILLING_VIEW, CAP_BILLING_EDIT, CAP_MEMBERS_INVITE] },
 ]
@@ -137,7 +137,7 @@ export function capabilityLabel(cap) {
     [CAP_INTERVIEW_EDIT_OTHERS]:'Edit others’ interviews',
     [CAP_CONTENT_APPROVE]:      'Approve content drafts',
     [CAP_CONTENT_PUBLISH]:      'Publish content',
-    [CAP_SLATE_GENERATE]:       'Generate Story Slate',
+    [CAP_SLATE_GENERATE]:       'Generate Slate',
     [CAP_SLATE_APPROVE]:        'Approve Slate packages',
     [CAP_CAMPAIGNS_EDIT]:       'Plan tentpole campaigns',
   }[cap] || cap

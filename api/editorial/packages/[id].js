@@ -2,7 +2,7 @@
 //
 // Update a single story package. Supports:
 //   - status transitions (skip / cancel)
-//   - caption_text edits (inline edit from Story Slate)
+//   - caption_text edits (inline edit from Slate)
 //
 // Body (PATCH):
 //   { status?: 'skipped' | 'complete' | 'canceled' }

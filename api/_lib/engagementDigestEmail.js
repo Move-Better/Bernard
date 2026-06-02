@@ -2,7 +2,7 @@
 //
 // Renders a self-contained HTML email summarizing a workspace's last 7 days:
 //   • Published content (top 5 by platform variety)
-//   • Story Slate stats (generated / approved / skipped / failed)
+//   • Slate stats (generated / approved / skipped / failed)
 //   • Triage queue at time-of-send (failed + low-confidence + stale)
 //   • What's queued — complete packages awaiting approval
 //

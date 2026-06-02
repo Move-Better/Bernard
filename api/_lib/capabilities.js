@@ -41,7 +41,7 @@ export const CAP_INTERVIEW_EDIT_OTHERS   = 'interview.edit_others'
 export const CAP_CONTENT_APPROVE         = 'content.approve'
 export const CAP_CONTENT_PUBLISH         = 'content.publish'
 
-// Story Slate (Phase 3)
+// Slate (Phase 3)
 export const CAP_SLATE_GENERATE = 'slate.generate'
 export const CAP_SLATE_APPROVE  = 'slate.approve'
 

@@ -27,11 +27,11 @@ export default function RepurposeAction({ asset, canEdit }) {
           action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
         })
       } else if (clipsSkipped) {
-        toast('Full video is rendering (track it in the Story Slate). Clip detection could not start this time — try "Find clips" below.', {
+        toast('Full video is rendering (track it in Slate). Clip detection could not start this time — try "Find clips" below.', {
           action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
         })
       } else {
-        toast('Repurposing — rendering the full video and finding social clips, all grouped under one campaign. Track the full video in the Story Slate; review clips below.', {
+        toast('Repurposing — rendering the full video and finding social clips, all grouped under one campaign. Track the full video in Slate; review clips below.', {
           action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
         })
       }

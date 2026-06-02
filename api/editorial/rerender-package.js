@@ -1,7 +1,7 @@
 // POST /api/editorial/rerender-package
 //
 // Phase 3 PR 3: Re-render a story package's channel outputs with an updated caption.
-// Used by the inline edit flow on the Story Slate when the clinician changes the caption
+// Used by the inline edit flow on the Slate when the clinician changes the caption
 // and wants the visual renders updated to match.
 //
 // Body:
