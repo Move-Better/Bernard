@@ -43,9 +43,9 @@ test('interview create flow + integrations page', async ({ page }) => {
   await expect(page).toHaveURL(/\/new$/)
 
   // Picker: click the Interview card. The card is a <button> wrapping a
-  // <Card>; its accessible name starts with "Start Interview" followed by
-  // the descriptive text, so a substring match is enough.
-  await page.getByRole('button', { name: /start interview/i }).first().click()
+  // <Card>; its accessible name starts with "Interview" followed by the
+  // descriptive text, so a substring match is enough.
+  await page.getByRole('button', { name: /^interview/i }).first().click()
   await expect(page).toHaveURL(/\/new\/interview/)
 
   await page.getByLabel(/^staff member$/i).fill(FIXTURE_STAFF)

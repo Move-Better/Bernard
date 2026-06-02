@@ -6,7 +6,7 @@ import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
-  Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, Camera, GalleryHorizontalEnd,
+  Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, GalleryHorizontalEnd,
   LayoutDashboard, Newspaper, FolderOpen, LayoutGrid,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,6 @@ const NAV_SECTIONS = [
     label: 'Library',
     items: [
       { to: '/library', label: 'Library', match: (p) => p.startsWith('/library'), icon: FolderOpen },
-      { to: '/capture', label: 'Capture', match: (p) => p.startsWith('/capture'), icon: Camera },
     ],
   },
   {
