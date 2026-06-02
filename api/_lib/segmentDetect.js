@@ -269,8 +269,11 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
 
     const segments = normalizeSegments(object.segments || [], maxSegments, durationSec)
 
-    // Replace any prior proposals (re-run support); leave human-touched rows.
-    await sb(`video_segments?source_asset_id=eq.${asset.id}&workspace_id=eq.${ws.id}&status=eq.proposed`, {
+    // Replace any prior proposals (re-run support); leave human-touched rows
+    // (kept/discarded/rendered). Also clear stale 'rendering' rows — a render
+    // hard-killed at the 300s wall never leaves 'rendering', so a re-detect is
+    // the clinician's self-heal path for a clip that's stuck in flight.
+    await sb(`video_segments?source_asset_id=eq.${asset.id}&workspace_id=eq.${ws.id}&status=in.(proposed,rendering)`, {
       method: 'DELETE',
     })
 

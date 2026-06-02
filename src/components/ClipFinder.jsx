@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/lib/toast'
 import { findClips, getSegments, updateSegment, renderSegments } from '@/lib/clipsLib'
 
-// Multi-clip video v1 (Phase 3). Embedded in the MediaDetail drawer for video
-// sources: "Find clips" transcribes the source and proposes standalone ≤60s
-// moments; the clinician keeps/discards and renders the kept ones into their own
-// story packages (which then flow through the normal Slate review/approve loop).
+// Multi-clip video v1. Embedded in the MediaDetail drawer for video sources:
+// "Find clips" transcribes the source and proposes standalone ≤60s moments; the
+// clinician keeps/discards and renders the kept ones into media_assets b-roll
+// clips (parent_asset_id = source). The finished clips land in the Library and
+// bump the source's "clips cut" count on the Slate — the same media_asset model
+// the manual Slate clip workshop produces.
 
 function mmss(sec) {
   const s = Math.max(0, Math.round(Number(sec) || 0))
@@ -37,9 +39,13 @@ export default function ClipFinder({ asset, canEdit }) {
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['video-segments', assetId],
     queryFn: () => getSegments(assetId),
-    // Poll while detection runs; stop once ready/failed/idle, or after the hard cap.
+    // Poll while detection runs OR any segment is still rendering into a clip;
+    // stop once everything settles, or after the hard cap.
     refetchInterval: (q) => {
-      if (q.state.data?.status !== 'detecting') return false
+      const d = q.state.data
+      const detecting = d?.status === 'detecting'
+      const renderingNow = (d?.segments || []).some((s) => s.status === 'rendering')
+      if (!detecting && !renderingNow) return false
       if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
       if (Date.now() - pollStartRef.current.at > POLL_CAP_MS) return false
       return POLL_INTERVAL_MS
@@ -51,12 +57,14 @@ export default function ClipFinder({ asset, canEdit }) {
   const note = data?.error || null
   const segments = data?.segments || []
   const proposed = segments.filter((s) => s.status === 'proposed')
+  const renderingSegs = segments.filter((s) => s.status === 'rendering')
   const rendered = segments.filter((s) => s.status === 'rendered')
 
-  // Reset the poll cap whenever detection stops, so a later re-run gets a fresh window.
+  // Reset the poll cap whenever both detection and rendering are idle, so a
+  // later re-run (detect or create-clips) gets a fresh capped window.
   useEffect(() => {
-    if (status !== 'detecting') pollStartRef.current = { at: 0 }
-  }, [status])
+    if (status !== 'detecting' && renderingSegs.length === 0) pollStartRef.current = { at: 0 }
+  }, [status, renderingSegs.length])
 
   // Default-select every proposed segment when a fresh detection batch lands.
   useEffect(() => {
@@ -107,9 +115,9 @@ export default function ClipFinder({ asset, canEdit }) {
     setRendering(true)
     try {
       const res = await renderSegments(ids)
-      const n = res?.packages?.length || 0
+      const n = res?.clips?.length || 0
       toast(n > 0
-        ? `Rendering ${n} clip${n !== 1 ? 's' : ''} — track them in the Story Slate.`
+        ? `Rendering ${n} clip${n !== 1 ? 's' : ''} — they'll land in your Library when ready.`
         : 'No clips were queued.')
       setSelected(new Set())
       refetch()
@@ -175,7 +183,7 @@ export default function ClipFinder({ asset, canEdit }) {
       )}
 
       {/* Empty-ready */}
-      {status === 'ready' && proposed.length === 0 && rendered.length === 0 && (
+      {status === 'ready' && proposed.length === 0 && renderingSegs.length === 0 && rendered.length === 0 && (
         <div className="text-2xs text-muted-foreground bg-muted/40 rounded px-2.5 py-2">
           No standalone moments stood out in this source. Try a longer or more content-rich recording.
         </div>
@@ -244,7 +252,25 @@ export default function ClipFinder({ asset, canEdit }) {
         </div>
       )}
 
-      {/* Rendered segments — already turned into story packages */}
+      {/* Rendering segments — clips in flight (off the request path) */}
+      {renderingSegs.length > 0 && (
+        <div className="pt-1">
+          <div className="text-3xs uppercase tracking-wide font-medium text-muted-foreground mb-1">
+            Rendering ({renderingSegs.length})
+          </div>
+          <ul className="space-y-1">
+            {renderingSegs.map((s) => (
+              <li key={s.id} className="flex items-center gap-1.5 text-2xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
+                <span className="truncate" title={s.hook}>{s.hook || 'Clip'}</span>
+                <span className="text-3xs">· {mmss(s.start_sec)}–{mmss(s.end_sec)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Rendered segments — saved as Library b-roll clips */}
       {rendered.length > 0 && (
         <div className="pt-1">
           <div className="text-3xs uppercase tracking-wide font-medium text-muted-foreground mb-1">
@@ -259,8 +285,8 @@ export default function ClipFinder({ asset, canEdit }) {
               </li>
             ))}
           </ul>
-          <a href="/slate" className="text-2xs text-primary underline underline-offset-2 hover:opacity-80 inline-block mt-1">
-            Review in Story Slate →
+          <a href="/library" className="text-2xs text-primary underline underline-offset-2 hover:opacity-80 inline-block mt-1">
+            View clips in Library →
           </a>
         </div>
       )}

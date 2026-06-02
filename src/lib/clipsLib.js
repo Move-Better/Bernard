@@ -46,8 +46,11 @@ export function updateSegment(segmentId, status) {
 }
 
 /**
- * Render the given segments into story packages (one per segment). Returns 202
- * with { packages, skipped }; the Slate polls story_packages for completion.
+ * Render the given segments into media_assets b-roll clips (one per segment,
+ * parent_asset_id = source video). Returns 202 with { clips, skipped }; the
+ * segments flip to status='rendering' then 'rendered' (poll getSegments). The
+ * finished clips land in the Library and bump the source's "clips cut" count on
+ * the Slate.
  * @param {string[]} segmentIds
  */
 export function renderSegments(segmentIds) {
