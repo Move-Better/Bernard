@@ -39,6 +39,8 @@ const CAMPAIGN_FIELDS = [
   // Phase 4 Tentpole PR A — multi-campaign fields.
   'start_at', 'end_at', 'event_at', 'theme_notes', 'content_style',
   'cta_url', 'cta_label', 'cta_pitch',
+  // Phase 7 outcome loop — AI tune state.
+  'ai_tune_state', 'ai_tuned_at',
   'created_at', 'updated_at',
 ].join(',')
 

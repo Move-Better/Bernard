@@ -22,6 +22,7 @@ import { mediaKindForPlatform, mediaKindLabel, isKindMismatch } from '@/lib/plat
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { toast } from '@/lib/toast'
 import { apiFetch } from '@/lib/api'
+import { formatRelativeDate } from '@/lib/utils'
 
 const KIND_TABS = [
   { key: 'both', label: 'Photos & video' },
@@ -61,6 +62,28 @@ export default function StoryboardPiece() {
   // Change the look — AI restyle state
   const [restyleLoading, setRestyleLoading] = useState(false)
   const [restyleInput, setRestyleInput] = useState('')
+
+  // Campaign spin — AI re-tunes which angles/platforms to prioritize
+  const [spinLoading, setSpinLoading] = useState(false)
+  const [spinResult, setSpinResult] = useState(null)
+
+  async function runSpin() {
+    if (!piece?.campaign_id || spinLoading) return
+    setSpinLoading(true)
+    try {
+      const result = await apiFetch('/api/editorial/campaign-spin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaign_id: piece.campaign_id }),
+      })
+      setSpinResult(result)
+      toast.success('Campaign re-tuned: ' + (result.explanation?.slice(0, 80) || 'Done'))
+    } catch (_e) {
+      toast.error('Could not tune campaign')
+    } finally {
+      setSpinLoading(false)
+    }
+  }
 
   async function fireRestyle(instruction) {
     if (!instruction.trim() || restyleLoading) return
@@ -230,12 +253,50 @@ export default function StoryboardPiece() {
 
       {/* Campaign band — shown only when this piece came from a campaign interview */}
       {campaignName && (
-        <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-card px-4 py-2.5">
-          <Flag className="h-4 w-4 shrink-0 text-primary" />
-          <span className="text-sm font-semibold">{campaignName}</span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary">
-            driving this post
-          </span>
+        <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-card px-4 py-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Flag className="h-4 w-4 shrink-0 text-primary" />
+            <span className="text-sm font-semibold">{campaignName}</span>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary">
+              driving this post
+            </span>
+            {/* "Run the numbers" / spin button */}
+            {piece.campaign_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-auto h-7 gap-1.5 text-xs"
+                onClick={runSpin}
+                disabled={spinLoading}
+              >
+                {spinLoading
+                  ? <><Loader2 className="h-3 w-3 animate-spin" /> Tuning…</>
+                  : <><Sparkles className="h-3 w-3" /> Run the numbers</>}
+              </Button>
+            )}
+            {/* Last spin timestamp */}
+            {(() => {
+              const tunedAt = spinResult?.ai_tuned_at ?? interview?.campaign?.ai_tuned_at ?? null
+              return tunedAt
+                ? <span className="text-2xs text-muted-foreground">last spin {formatRelativeDate(tunedAt)}</span>
+                : null
+            })()}
+          </div>
+          {/* AI recommendations chip row */}
+          {(() => {
+            const angles = spinResult?.ai_tune_state?.priority_angles
+            if (!Array.isArray(angles) || angles.length === 0) return null
+            return (
+              <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                <span className="text-2xs font-semibold text-primary/80">AI recommends:</span>
+                {angles.map((a) => (
+                  <span key={a} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary border border-primary/20">
+                    {a}
+                  </span>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
 
