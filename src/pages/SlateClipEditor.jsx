@@ -459,8 +459,8 @@ export default function SlateClipEditor() {
           </div>
 
           {/* Polish this clip — AI conversation */}
-          <div className="bg-card border border-primary/40 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-primary/5 border-b border-border flex items-center gap-2">
+          <div className="flex-1 min-h-0 bg-card border border-primary/40 rounded-xl overflow-hidden flex flex-col">
+            <div className="px-4 py-2.5 bg-primary/5 border-b border-border flex items-center gap-2 shrink-0">
               <Wand2 className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Polish this clip</span>
               <span className="text-2xs text-muted-foreground">· just ask</span>
@@ -472,7 +472,7 @@ export default function SlateClipEditor() {
             {/* Chat log */}
             <div
               ref={chatLogRef}
-              className="px-4 py-3 space-y-2 text-xs max-h-[110px] overflow-y-auto"
+              className="px-4 py-3 space-y-2 text-xs flex-1 min-h-[80px] overflow-y-auto"
             >
               {chatLog.map((msg, i) => (
                 msg.role === 'user' ? (
@@ -493,7 +493,7 @@ export default function SlateClipEditor() {
             </div>
 
             {/* Suggestion chips */}
-            <div className="px-3 pb-3">
+            <div className="px-3 pb-3 shrink-0">
               <div className="flex flex-wrap gap-1.5 mb-2 text-2xs">
                 <button
                   type="button"
