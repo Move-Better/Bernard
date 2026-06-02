@@ -22,11 +22,6 @@ export default function CapturePicker() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const workspace = useWorkspace()
-  // Live Interview lane (formerly "Phone Call") is gated on the per-workspace
-  // realtime_voice_enabled flag. Default false — only workspaces explicitly
-  // onboarded to the Phase 5 spike see the tile. Avoids the $5/call surprise
-  // for tenants who haven't asked.
-  const liveInterviewEnabled = workspace?.realtime_voice_enabled === true
   // Patient handouts lane (Phase 5 Feature 4) — gated on per-workspace
   // patient_handouts_enabled flag. Default false; on for workspaces
   // actively dogfooding the in-clinic handout workflow.
@@ -135,7 +130,6 @@ export default function CapturePicker() {
             as "Phone Call" — renamed 2026-05-24 because "live interview"
             better matches what users called it and avoids confusion with
             actual telephony. */}
-        {liveInterviewEnabled && (
         <button
           type="button"
           onClick={() => go('/new/live-interview')}
@@ -161,7 +155,6 @@ export default function CapturePicker() {
             </CardContent>
           </Card>
         </button>
-        )}
 
         {/* Patient handout — Phase 5 Feature 4. Gated on
             workspace.patient_handouts_enabled. Hidden entirely for
