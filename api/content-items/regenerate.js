@@ -131,17 +131,43 @@ export default async function handler(req, res) {
       })
     : ''
 
-  // Look up the content_plan_atom that owns this piece. Required — non-atom
-  // pieces other than blog (which is guarded above) shouldn't exist today.
+  // Video platforms are rendered assets, not text atoms — regeneration via
+  // this endpoint doesn't apply to them.
+  const VIDEO_PLATFORMS = new Set(['youtube', 'youtube_short', 'tiktok', 'reels', 'instagram_reel'])
+  if (VIDEO_PLATFORMS.has(item.platform)) {
+    return err(res, `Regeneration is not available for video content (${item.platform})`, 422)
+  }
+
+  // Default angles per platform — used when no atom row is linked (e.g. legacy
+  // items created before the atom system, or atom whose content_piece_id was cleared).
+  const DEFAULT_ANGLE = {
+    instagram: 'hook',
+    linkedin:  'clinical_perspective',
+    facebook:  'community',
+    gbp:       'local_authority',
+    pinterest: 'pin_batch',
+    tiktok:    'myth_buster',
+    twitter:   'take',
+    threads:   'community_take',
+    bluesky:   'clinical_share',
+    mastodon:  'educational',
+  }
+
+  // Look up the content_plan_atom that owns this piece. Fall back to a
+  // synthetic atom using item.platform + the default angle when none is found
+  // (legacy items, or atoms whose content_piece_id was cleared).
   const atomRes = await sb(
     `content_plan_atoms?content_piece_id=eq.${id}&${wsFilter}&select=*&limit=1`,
   )
   const atomRows = atomRes.ok ? await atomRes.json() : []
-  const atom = atomRows[0] ?? null
-  if (!atom) {
+  const atom = atomRows[0] ?? {
+    platform: item.platform,
+    angle:    DEFAULT_ANGLE[item.platform] ?? null,
+  }
+  if (!atom.angle) {
     return err(
       res,
-      `Regeneration not supported for platform "${item.platform}" — no source atom found`,
+      `Regeneration not supported for platform "${item.platform}"`,
       422,
     )
   }
