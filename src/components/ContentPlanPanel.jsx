@@ -100,12 +100,18 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
   }))
 
   // Determine two-act state:
-  // Act 1 (blog-first): keystone is 'drafted' (not yet approved) and no atoms drafted
-  // Switch visible: keystone is approved or published
+  // Act 1 (blog-first): keystone still needs validation (not yet approved or
+  //   published) and no atoms drafted yet → the clinician's only job is the blog.
+  // Switch visible: keystone is approved or published.
+  // NOTE: the keystone is a blog content_item, whose status enum is
+  //   'draft' | 'in_review' | 'approved' | 'scheduled' | 'published' — NOT the
+  //   atom-level 'drafted'. Gate on "validated yet?" so the framing is robust
+  //   regardless of which pre-approval status the blog carries.
   const keystoneStatus = keystone?.status
+  const keystoneValidated = keystoneStatus === 'approved' || keystoneStatus === 'published'
   const anyAtomDrafted = atoms.some((a) => a.status === 'drafted')
-  const showAct1Framing = keystoneStatus === 'drafted' && !anyAtomDrafted
-  const showValidatedSwitch = keystoneStatus === 'approved' || keystoneStatus === 'published'
+  const showAct1Framing = !!keystone && !keystoneValidated && !anyAtomDrafted
+  const showValidatedSwitch = keystoneValidated
 
   return (
     <div className="space-y-4">

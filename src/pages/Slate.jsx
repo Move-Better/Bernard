@@ -24,6 +24,23 @@ function consentOk(asset) {
   return s !== 'pending' && s !== 'revoked'
 }
 
+// Display-only label for a source video. Prefers a real human title when the
+// asset carries one (linked interview topic / caption); otherwise prettifies
+// the raw upload filename (drop extension, normalize separators) so the grid
+// doesn't read as a list of camera-roll filenames. Never fabricates — a bare
+// "Capture 2026-06-02" stays as-is, just cleaned up.
+function videoLabel(asset) {
+  const real = asset?.title || asset?.topic || asset?.caption
+  if (real && real.trim()) return real.trim()
+  const name = asset?.filename
+  if (!name || !name.trim()) return 'Untitled video'
+  return name
+    .replace(/\.[a-z0-9]{2,4}$/i, '')   // drop extension
+    .replace(/[_-]+/g, ' ')              // separators → spaces
+    .replace(/\s+/g, ' ')
+    .trim() || 'Untitled video'
+}
+
 function VideoCard({ asset, staffName, onEdit }) {
   const ok = consentOk(asset)
   const clips = clipCount(asset)
@@ -59,8 +76,8 @@ function VideoCard({ asset, staffName, onEdit }) {
 
       {/* Body */}
       <div className="p-3 flex flex-col gap-1.5 flex-1">
-        <p className="text-sm font-medium leading-snug line-clamp-2">
-          {asset.filename || 'Untitled video'}
+        <p className="text-sm font-medium leading-snug line-clamp-2 min-h-[2.5rem]">
+          {videoLabel(asset)}
         </p>
         <div className="flex items-center gap-2 text-2xs text-muted-foreground">
           {staffName && <span>{staffName}</span>}

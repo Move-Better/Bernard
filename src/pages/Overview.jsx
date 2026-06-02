@@ -1,13 +1,13 @@
 import { Link, useSearchParams, Navigate } from 'react-router-dom'
 import { CheckCircle, Inbox, LayoutGrid, Shield } from 'lucide-react'
-import { useStories, useOnboardingProgress } from '@/lib/queries'
+import { useStories } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermissionTier } from '@/lib/usePermissionTier'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import StoriesPipelineView from '@/components/stories/StoriesPipelineView'
+import StoriesCardsView from '@/components/stories/StoriesCardsView'
 import StoriesCalendarView from '@/components/stories/StoriesCalendarView'
-import StoriesThemesView from '@/components/stories/StoriesThemesView'
-import UsageGate from '@/components/billing/UsageGate'
+import StoriesCampaignsView from '@/components/stories/StoriesCampaignsView'
 import PageHelp from '@/components/PageHelp'
 
 // The clinic-wide, top-down board — separate from Home (which is personal) and
@@ -19,8 +19,9 @@ import PageHelp from '@/components/PageHelp'
 // clinician just uses Home + their work and never sees this surface.
 const LENSES = [
   ['pipeline', 'Pipeline'],
+  ['cards', 'Cards'],
   ['calendar', 'Calendar'],
-  ['themes', 'Themes'],
+  ['campaigns', 'Campaigns'],
 ]
 
 export default function Overview() {
@@ -31,8 +32,6 @@ export default function Overview() {
   const view = searchParams.get('view') || 'pipeline'
 
   const { data: stories = [], isLoading } = useStories()
-  const { data: progress } = useOnboardingProgress()
-  const currentPlan = progress?.plan
 
   // Role gate — individual clinicians don't get the clinic-wide board. Wait for
   // the role to resolve before deciding so we don't bounce an editor mid-load.
@@ -74,7 +73,7 @@ export default function Overview() {
           <PageHelp pageKey="overview" variant="default" />
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
             <Shield className="h-3 w-3" aria-hidden="true" />
-            Owner · Producer view
+            Publisher view
           </span>
         </div>
       </div>
@@ -96,7 +95,7 @@ export default function Overview() {
             to="/storyboard"
             className="shrink-0 inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
-            Work the queue →
+            Work the inbox →
           </Link>
         </div>
       )}
@@ -138,12 +137,12 @@ export default function Overview() {
 
       {/* Lens dispatch — same data + the same view components Stories used to
           host, so the board stays consistent with the producer's surfaces. */}
-      {view === 'calendar' ? (
+      {view === 'cards' ? (
+        <StoriesCardsView stories={stories} isLoading={isLoading} />
+      ) : view === 'calendar' ? (
         <StoriesCalendarView stories={stories} isLoading={isLoading} />
-      ) : view === 'themes' ? (
-        <UsageGate feature="cross_staff_synthesis" currentPlan={currentPlan}>
-          <StoriesThemesView stories={stories} isLoading={isLoading} />
-        </UsageGate>
+      ) : view === 'campaigns' ? (
+        <StoriesCampaignsView stories={stories} isLoading={isLoading} />
       ) : (
         <StoriesPipelineView stories={stories} isLoading={isLoading} />
       )}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Loader2, Pen, Sliders,
-  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft,
+  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft, Repeat,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PipelineStepper from '@/components/PipelineStepper'
@@ -58,6 +58,12 @@ export default function StoryboardPiece() {
 
   // Manual-controls collapsible
   const [manualOpen, setManualOpen] = useState(false)
+
+  // "Adjust by hand" look knobs (mockup-faithful). Editor-local: Reframe
+  // changes the preview aspect ratio live; Headline/Captions are placeholders
+  // for baked-text template posts (no-op on a real photo, by design for now).
+  const [look, setLook] = useState({ ar: '9:16', size: 'md', captions: true })
+  const AR_CLASS = { '9:16': 'aspect-[9/16]', '4:5': 'aspect-[4/5]', '1:1': 'aspect-square' }
 
   // Change the look — AI restyle state
   const [restyleLoading, setRestyleLoading] = useState(false)
@@ -122,6 +128,7 @@ export default function StoryboardPiece() {
     if (seeded.current || !piece) return
     seeded.current = true
     setKind(platformKind === 'video' ? 'video' : platformKind === 'photo' ? 'photo' : 'both')
+    setLook((l) => ({ ...l, ar: platformKind === 'photo' ? '4:5' : '9:16' }))
   }, [piece, platformKind])
 
   const effectiveKind = kind === 'photo' ? 'photo' : kind === 'video' ? 'video' : undefined
@@ -260,6 +267,9 @@ export default function StoryboardPiece() {
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary">
               driving this post
             </span>
+            <span className="hidden text-xs text-muted-foreground md:inline">
+              — AI is working the goal in the background: it picked the media, shaped the caption, and tuned the angle.
+            </span>
             {/* "Run the numbers" / spin button */}
             {piece.campaign_id && (
               <Button
@@ -274,11 +284,16 @@ export default function StoryboardPiece() {
                   : <><Sparkles className="h-3 w-3" /> Run the numbers</>}
               </Button>
             )}
+            {/* Live AI-tuning indicator */}
+            <span className={`flex shrink-0 items-center gap-1.5 text-2xs text-info ${piece.campaign_id ? '' : 'ml-auto'}`}>
+              <span className="h-2 w-2 animate-pulse rounded-full bg-info" />
+              AI tuning · live
+            </span>
             {/* Last spin timestamp */}
             {(() => {
               const tunedAt = spinResult?.ai_tuned_at ?? interview?.campaign?.ai_tuned_at ?? null
               return tunedAt
-                ? <span className="text-2xs text-muted-foreground">last spin {formatRelativeDate(tunedAt)}</span>
+                ? <span className="w-full text-2xs text-muted-foreground md:w-auto">last spin {formatRelativeDate(tunedAt)}</span>
                 : null
             })()}
           </div>
@@ -319,10 +334,13 @@ export default function StoryboardPiece() {
               {piece.staff_name && (
                 <span className="text-xs text-muted-foreground">· {piece.staff_name}</span>
               )}
+              <span className="ml-auto text-3xs text-muted-foreground">
+                {look.ar} · captions {look.captions ? 'on' : 'off'}
+              </span>
             </div>
 
             {/* Media area */}
-            <div className="relative aspect-[4/5] bg-muted">
+            <div className={`relative bg-muted ${AR_CLASS[look.ar] || 'aspect-[4/5]'}`}>
               {primaryMedia ? (
                 primaryThumb ? (
                   <img
@@ -382,49 +400,6 @@ export default function StoryboardPiece() {
                   </div>
                 </div>
               )}
-
-              {/* Attached-media badge / swap strip */}
-              {hasMedia && (
-                <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-black/40 px-3 py-1.5 backdrop-blur-sm">
-                  {media.map((m, i) => {
-                    const isVid = m.type === 'video' || m.kind === 'video'
-                    const thumb = m.thumbnailUrl || (!isVid ? m.url : null)
-                    const key = mediaEntryKey(m)
-                    return (
-                      <div
-                        key={key}
-                        className="group relative h-8 w-8 shrink-0 overflow-hidden rounded border border-white/30"
-                      >
-                        {thumb ? (
-                          <img src={thumb} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-white/60">
-                            {isVid ? <Play className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeEntry(m)}
-                          disabled={removingKey === key}
-                          className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
-                          title="Remove"
-                          aria-label="Remove attached media"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                        {i === 0 && <span className="sr-only">Primary media</span>}
-                      </div>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="ml-auto flex items-center gap-1 rounded border border-white/30 bg-white/10 px-2 py-1 text-2xs text-white hover:bg-white/20"
-                  >
-                    <Images className="h-3 w-3" /> Change
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Caption strip — always editable */}
@@ -460,9 +435,18 @@ export default function StoryboardPiece() {
               <span className="text-2xs text-muted-foreground">· just ask, like talking to a designer</span>
               {restyleLoading && <Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />}
             </div>
+            {/* AI greeting — sets the conversational frame */}
+            <div className="flex gap-2 px-4 pt-3 text-xs">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles className="h-3 w-3 text-primary" />
+              </span>
+              <p className="text-muted-foreground">
+                I matched your brand book and picked the media. Want anything different? Try a suggestion, or just type.
+              </p>
+            </div>
             <div className="px-3 pb-3 pt-3">
               <div className="mb-2 flex flex-wrap gap-1.5 text-2xs">
-                {['Punchier caption', 'Use brand navy', 'Brighter photo', 'Match brand book'].map((label) => (
+                {['Bigger headline', 'Use brand navy', 'Brighter photo', 'Match brand book'].map((label) => (
                   <button
                     key={label}
                     type="button"
@@ -486,7 +470,7 @@ export default function StoryboardPiece() {
                       setRestyleInput('')
                     }
                   }}
-                  placeholder="e.g. 'make the caption warmer' or 'brighter photo'…"
+                  placeholder="e.g. 'make the headline pop more' or 'warmer background'…"
                   className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/50"
                   disabled={restyleLoading}
                 />
@@ -517,86 +501,189 @@ export default function StoryboardPiece() {
               />
             </button>
             {manualOpen && (
-              <div className="space-y-3 border-t px-4 pb-3 pt-3 text-xs">
-                {/* Media browse */}
+              <div className="space-y-2.5 border-t px-4 pb-3 pt-3 text-xs">
+                {/* Media */}
                 <div className="flex items-center gap-2">
-                  <span className="w-16 text-muted-foreground">Media</span>
+                  <span className="w-16 shrink-0 text-muted-foreground">Media</span>
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary"
+                    className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/5"
                   >
-                    <Images className="h-3 w-3" /> Browse Library
+                    <Repeat className="h-3 w-3" /> Change / swap
                   </button>
-                  {showKindToggle && (
-                    <div className="inline-flex rounded-md border p-0.5">
-                      {KIND_TABS.map((t) => (
-                        <button
-                          key={t.key}
-                          type="button"
-                          onClick={() => setKind(t.key)}
-                          className={`rounded px-2 py-0.5 text-3xs font-medium transition-colors ${
-                            kind === t.key
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {!showKindToggle && (
-                    <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-3xs text-muted-foreground">
-                      {platformKind === 'video'
-                        ? <Video className="h-3 w-3" />
-                        : <ImageIcon className="h-3 w-3" />}
-                      {mediaKindLabel(platformKind)}
-                    </span>
-                  )}
                 </div>
-
-                {/* Suggestions grid when manual open */}
-                {suggLoading || kind === null ? (
-                  <CandidateGridSkeleton compact />
-                ) : suggError ? (
-                  <p className="text-xs text-muted-foreground">
-                    Couldn&apos;t load suggestions.{' '}
-                    <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>
-                  </p>
-                ) : clips.length === 0 ? (
-                  <div className="rounded-lg border bg-muted/20 py-6 text-center">
-                    <ImagePlus className="mx-auto h-6 w-6 text-muted-foreground" />
-                    <p className="mt-1.5 text-sm text-foreground">
-                      No strong {kind === 'video' ? 'video' : kind === 'photo' ? 'photo' : ''} matches.
-                    </p>
+                {/* Reframe */}
+                <div className="flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-muted-foreground">Reframe</span>
+                  {['9:16', '4:5', '1:1'].map((ar) => (
                     <button
+                      key={ar}
                       type="button"
-                      onClick={() => setPickerOpen(true)}
-                      className="mt-1 text-xs text-primary hover:underline"
+                      onClick={() => setLook((l) => ({ ...l, ar }))}
+                      className={`rounded-lg border px-2 py-1 text-2xs transition-colors ${
+                        look.ar === ar ? 'border-primary bg-primary/10 text-primary' : 'hover:border-primary'
+                      }`}
                     >
-                      Browse the Library
+                      {ar}
                     </button>
+                  ))}
+                </div>
+                {/* Headline size */}
+                <div className="flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-muted-foreground">Headline</span>
+                  {[['sm', 'S'], ['md', 'M'], ['lg', 'L']].map(([s, lbl]) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setLook((l) => ({ ...l, size: s }))}
+                      className={`rounded-lg border px-2 py-1 text-2xs transition-colors ${
+                        look.size === s ? 'border-primary bg-primary/10 text-primary' : 'hover:border-primary'
+                      }`}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                {/* Trim — video only */}
+                {(platformKind === 'video' || primaryIsVideo) && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-16 shrink-0 text-muted-foreground">Trim</span>
+                    <div className="relative h-6 flex-1 rounded bg-muted">
+                      <div className="absolute inset-y-0 left-[10%] right-[35%] rounded border-x-2 border-primary bg-primary/30" />
+                    </div>
+                    <span className="text-3xs text-muted-foreground">:12</span>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {clips.slice(0, 6).map((clip) => (
-                      <CandidateCard
-                        key={clip.chunkId || clip.assetId}
-                        clip={clip}
-                        attached={attachedKeys.has(clip.assetId)}
-                        attaching={attachingKey === clip.assetId}
-                        onPreview={() => setPreviewClip(clip)}
-                        onAttach={() => attachEntry(clipToMediaEntry(clip))}
-                      />
+                )}
+                {/* Captions */}
+                <div className="flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-muted-foreground">Captions</span>
+                  <label className="flex items-center gap-1.5 text-2xs">
+                    <input
+                      type="checkbox"
+                      checked={look.captions}
+                      onChange={(e) => setLook((l) => ({ ...l, captions: e.target.checked }))}
+                      className="accent-primary"
+                    />
+                    burned in · lower-third
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Media — attached + AI picks (all media management lives here, upper-right) */}
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <div className="flex items-center gap-2 border-b px-4 py-2.5">
+              <Images className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Media</span>
+              <span className="text-2xs text-muted-foreground">· {media.length} attached</span>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="ml-auto flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/5"
+              >
+                <Repeat className="h-3 w-3" /> Change / swap
+              </button>
+            </div>
+            <div className="space-y-3 px-4 py-3">
+              {/* Attached thumbnails */}
+              {hasMedia && (
+                <div className="flex flex-wrap gap-1.5">
+                  {media.map((m) => {
+                    const isVid = m.type === 'video' || m.kind === 'video'
+                    const thumb = m.thumbnailUrl || (!isVid ? m.url : null)
+                    const key = mediaEntryKey(m)
+                    return (
+                      <div key={key} className="group relative h-12 w-12 shrink-0 overflow-hidden rounded border">
+                        {thumb ? (
+                          <img src={thumb} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+                            {isVid ? <Play className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(m)}
+                          disabled={removingKey === key}
+                          className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
+                          title="Remove"
+                          aria-label="Remove attached media"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {/* AI picks header + kind toggle */}
+              <div className="flex items-center gap-2">
+                <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">AI picks</span>
+                {showKindToggle && (
+                  <div className="ml-auto inline-flex rounded-md border p-0.5">
+                    {KIND_TABS.map((t) => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setKind(t.key)}
+                        className={`rounded px-2 py-0.5 text-3xs font-medium transition-colors ${
+                          kind === t.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
                     ))}
                   </div>
                 )}
-                {isFetching && !suggLoading && (
-                  <p className="text-2xs text-muted-foreground">Refreshing…</p>
+                {!showKindToggle && (
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-3xs text-muted-foreground">
+                    {platformKind === 'video' ? <Video className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}
+                    {mediaKindLabel(platformKind)}
+                  </span>
                 )}
               </div>
-            )}
+              {/* Suggestions grid */}
+              {suggLoading || kind === null ? (
+                <CandidateGridSkeleton compact />
+              ) : suggError ? (
+                <p className="text-xs text-muted-foreground">
+                  Couldn&apos;t load suggestions.{' '}
+                  <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>
+                </p>
+              ) : clips.length === 0 ? (
+                <div className="rounded-lg border bg-muted/20 py-6 text-center">
+                  <ImagePlus className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="mt-1.5 text-sm text-foreground">
+                    No strong {kind === 'video' ? 'video' : kind === 'photo' ? 'photo' : ''} matches.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="mt-1 text-xs text-primary hover:underline"
+                  >
+                    Browse the Library
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {clips.slice(0, 6).map((clip) => (
+                    <CandidateCard
+                      key={clip.chunkId || clip.assetId}
+                      clip={clip}
+                      attached={attachedKeys.has(clip.assetId)}
+                      attaching={attachingKey === clip.assetId}
+                      onPreview={() => setPreviewClip(clip)}
+                      onAttach={() => attachEntry(clipToMediaEntry(clip))}
+                    />
+                  ))}
+                </div>
+              )}
+              {isFetching && !suggLoading && (
+                <p className="text-2xs text-muted-foreground">Refreshing…</p>
+              )}
+            </div>
           </div>
 
           {/* Per-post schedule CTA */}
