@@ -166,7 +166,10 @@ export default async function handler(req, res) {
   const segRes = await sb(
     `video_segments?id=in.(${inList})&workspace_id=eq.${ws.id}` +
       `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,status,rendered_asset_id,` +
-      `source_asset:media_assets(id,kind,blob_url,filename,archived_at,consent_status)`,
+      // Disambiguate the embed: video_segments has TWO FKs to media_assets
+      // (source_asset_id + rendered_asset_id from migration 113), so PostgREST
+      // needs the explicit FK constraint or it 500s with PGRST201 (ambiguous).
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status)`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()
