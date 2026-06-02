@@ -113,7 +113,7 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
       {showAct1Framing && (
         <div className="pb-1">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60 flex items-center gap-1">
+            <span className="text-2xs font-semibold uppercase tracking-wider text-foreground/60 flex items-center gap-1">
               <IconPrim as={Check} size="xs" />
               Your one job
             </span>
