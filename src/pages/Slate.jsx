@@ -37,7 +37,7 @@ function SourceVideoCard({ asset, staffName, onEdit }) {
       {/* Thumbnail */}
       <div className="aspect-video bg-muted relative overflow-hidden">
         {thumbUrl ? (
-          <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
+          <img src={thumbUrl} alt="" className="w-full h-full object-contain" />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <Film className="h-10 w-10 opacity-30" />
