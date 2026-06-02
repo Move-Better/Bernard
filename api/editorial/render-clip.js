@@ -98,11 +98,14 @@ export default async function handler(req, res) {
   if (!asset) return res.status(404).json({ error: 'asset_not_found' })
   if (asset.archived_at) return res.status(404).json({ error: 'asset_archived' })
 
-  // Consent gate — must be granted before rendering
-  if (asset.consent_status !== 'granted' && asset.consent_status != null) {
+  // Consent gate — block only unresolved/withdrawn consent.
+  // Allowed consent vocabulary (media_assets CHECK): not_required | pending | obtained | revoked.
+  // 'granted' is NOT a valid value, so the old `!== 'granted'` gate 403'd every real asset.
+  // Matches the sibling handlers (render-segments / clip-to-broll / clip-to-post).
+  if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') {
     return res.status(403).json({
       error: 'consent_not_granted',
-      message: `Asset consent is '${asset.consent_status}'. Consent must be granted before rendering.`,
+      message: `Asset consent is '${asset.consent_status}'. Consent must be resolved before rendering.`,
     })
   }
   if (!asset.blob_url) return res.status(500).json({ error: 'asset_missing_blob_url' })
