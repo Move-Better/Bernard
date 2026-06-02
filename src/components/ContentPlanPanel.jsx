@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Loader2, Sparkles, SkipForward, RotateCcw, ExternalLink, CheckCircle2, ChevronDown, ChevronUp, Star, ArrowDown, X, Plus } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Loader2, Sparkles, SkipForward, RotateCcw, ExternalLink, CheckCircle2, ChevronDown, ChevronUp, Star, ArrowDown, X, Plus, Check, PenLine, Rocket, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import IconPrim from '@/components/ui/Icon'
@@ -99,30 +99,56 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
     count: list.length,
   }))
 
+  // Determine two-act state:
+  // Act 1 (blog-first): keystone is 'drafted' (not yet approved) and no atoms drafted
+  // Switch visible: keystone is approved or published
+  const keystoneStatus = keystone?.status
+  const anyAtomDrafted = atoms.some((a) => a.status === 'drafted')
+  const showAct1Framing = keystoneStatus === 'drafted' && !anyAtomDrafted
+  const showValidatedSwitch = keystoneStatus === 'approved' || keystoneStatus === 'published'
+
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold">Content Plan</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {keystone ? '1 keystone + ' : ''}{totalAtoms} posts across {Object.keys(byPlatform).length} platforms — drafts auto-schedule to the week shown so they trickle out over 4 weeks.
+      {/* Act 1 framing: "Validate your words" heading shown when blog is the only job */}
+      {showAct1Framing && (
+        <div className="pb-1">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60 flex items-center gap-1">
+              <IconPrim as={Check} size="xs" />
+              Your one job
+            </span>
+          </div>
+          <h2 className="text-xl font-semibold tracking-tight">Validate your words</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            AI turned your conversation into a whole piece. Read it. If it sounds like you, approve it — everything else is built from this.
           </p>
         </div>
-        <div className="flex gap-2 text-xs text-muted-foreground shrink-0">
-          {publishedCount > 0 && <span className="text-blue-700 font-medium">{publishedCount} published</span>}
-          {scheduledCount > 0 && <span className="text-orange-600 font-medium">{scheduledCount} scheduled</span>}
-          {approvedCount > 0 && <span className="text-primary font-medium">{approvedCount} approved</span>}
-          {draftedCount > 0 && <span className="text-green-700 font-medium">{draftedCount} drafted</span>}
-          {pendingCount > 0 && <span>{pendingCount} pending</span>}
-          {skippedCount > 0 && <span className="text-muted-foreground">{skippedCount} skipped</span>}
+      )}
+
+      {/* Header (standard view when not in Act 1 framing) */}
+      {!showAct1Framing && (
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold">Content Plan</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {keystone ? '1 keystone + ' : ''}{totalAtoms} posts across {Object.keys(byPlatform).length} platforms — drafts auto-schedule to the week shown so they trickle out over 4 weeks.
+            </p>
+          </div>
+          <div className="flex gap-2 text-xs text-muted-foreground shrink-0">
+            {publishedCount > 0 && <span className="text-blue-700 font-medium">{publishedCount} published</span>}
+            {scheduledCount > 0 && <span className="text-orange-600 font-medium">{scheduledCount} scheduled</span>}
+            {approvedCount > 0 && <span className="text-primary font-medium">{approvedCount} approved</span>}
+            {draftedCount > 0 && <span className="text-green-700 font-medium">{draftedCount} drafted</span>}
+            {pendingCount > 0 && <span>{pendingCount} pending</span>}
+            {skippedCount > 0 && <span className="text-muted-foreground">{skippedCount} skipped</span>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Channels in this plan — per-story output control. Toggle a channel off
           to remove its posts from this plan (published posts stay); toggle it
           back on to restore them. */}
-      {planPlatforms.length > 0 && (
+      {!showAct1Framing && planPlatforms.length > 0 && (
         <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-xs font-medium text-foreground/80">Channels in this plan</span>
@@ -173,14 +199,23 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
         </div>
       )}
 
-      {/* Keystone hero — the long-form blog the atoms derive from. */}
+      {/* Keystone hero — the long-form blog the atoms derive from.
+          In Act 1 framing, give it extra vertical breathing room. */}
       {keystone && (
-        <KeystoneHeroCard
-          keystone={keystone}
-          derivedCounts={platformDerivedCounts}
-          interviewId={interviewId}
-          onSelectPiece={onSelectPiece}
-        />
+        <div className={showAct1Framing ? 'mt-2' : ''}>
+          <KeystoneHeroCard
+            keystone={keystone}
+            derivedCounts={showAct1Framing ? [] : platformDerivedCounts}
+            interviewId={interviewId}
+            onSelectPiece={onSelectPiece}
+            act1={showAct1Framing}
+          />
+        </div>
+      )}
+
+      {/* Words Validated Switch — shown after keystone is approved or published */}
+      {showValidatedSwitch && keystone && (
+        <WordsValidatedSwitch keystoneTitle={keystone.topic} />
       )}
 
       {/* Platform groups */}
@@ -252,7 +287,7 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
   )
 }
 
-function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece }) {
+function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece, act1 = false }) {
   const isPublished = keystone.status === 'published' && !!keystone.published_at
   const isApproved  = !isPublished && keystone.status === 'approved'
   const publishedDateLabel = keystone.published_at
@@ -265,7 +300,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece 
   const actionLabel = isPublished ? 'View post' : 'View draft'
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/5 shadow-[0_8px_24px_-12px_rgba(47,95,255,0.25)] overflow-hidden">
+    <div className={`rounded-xl border border-primary/30 bg-primary/5 overflow-hidden ${act1 ? 'shadow-[0_12px_32px_-8px_hsl(20_76%_52%_/_0.18)]' : 'shadow-[0_8px_24px_-12px_rgba(47,95,255,0.25)]'}`}>
       {/* Header band */}
       <div className="px-5 pt-4 pb-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -289,7 +324,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece 
       </div>
 
       {/* Body */}
-      <div className="px-5 pb-4 flex items-end justify-between gap-4">
+      <div className={`px-5 flex items-end justify-between gap-4 ${act1 ? 'pb-6' : 'pb-4'}`}>
         <div className="min-w-0 flex-1">
           <h3 className="text-lg font-semibold leading-snug">{keystone.topic || 'Untitled blog post'}</h3>
           {previewText && (
@@ -339,6 +374,68 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece 
       <div className="px-5 pb-3 -mt-1 flex items-center gap-1.5 text-2xs text-primary/80">
         <IconPrim as={ArrowDown} size="xs" />
         Feeds the posts below
+      </div>
+    </div>
+  )
+}
+
+// ─── WordsValidatedSwitch ────────────────────────────────────────────────────
+// Full-width celebration/transition card shown after the keystone blog is
+// approved. Signals the gear-shift from "Validate your words" → "Out the door".
+function WordsValidatedSwitch({ keystoneTitle }) {
+  const navigate = useNavigate()
+  return (
+    <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      <div className="px-6 py-10 text-center flex flex-col items-center">
+        {/* Check mark */}
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-foreground text-background mb-5 shadow-lg">
+          <Check className="w-8 h-8" strokeWidth={2.5} />
+        </div>
+
+        {/* Validated label */}
+        <div className="text-xs font-semibold uppercase tracking-widest text-foreground/60 mb-1">
+          Your words are validated
+        </div>
+
+        {/* Blog title locked in */}
+        {keystoneTitle && (
+          <h3 className="text-2xl font-semibold tracking-tight leading-tight max-w-md">
+            &ldquo;{keystoneTitle}&rdquo;
+            <br />
+            <span className="text-lg font-normal text-muted-foreground">is locked in.</span>
+          </h3>
+        )}
+
+        {/* Transition copy */}
+        <p className="text-sm text-muted-foreground mt-3 max-w-sm">
+          That blog + your interview is now the source of truth for the message. Time to change gears.
+        </p>
+
+        {/* Gear-shift chip row */}
+        <div className="my-7 flex items-center justify-center gap-3 text-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/8 text-foreground font-medium">
+            <PenLine className="w-4 h-4" />
+            Words: done
+          </span>
+          <ArrowRight className="w-5 h-5 text-[hsl(20_76%_52%)]" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(20_60%_95%)] text-[hsl(20_76%_38%)] font-semibold">
+            <Rocket className="w-4 h-4" />
+            Distribution: next
+          </span>
+        </div>
+
+        {/* Primary CTA */}
+        <button
+          type="button"
+          onClick={() => navigate('/storyboard')}
+          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-[hsl(20_76%_52%)] text-white text-sm font-semibold shadow-[0_4px_16px_hsl(20_76%_52%_/_0.3)] hover:bg-[hsl(20_76%_46%)] transition-colors"
+        >
+          Let&apos;s get this out the door
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <p className="text-xs text-muted-foreground mt-2.5">
+          Great-looking posts, aimed at the right people, sent wherever you want.
+        </p>
       </div>
     </div>
   )
