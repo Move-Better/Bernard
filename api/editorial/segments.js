@@ -16,7 +16,9 @@
 //     error: string|null,                                 // note on ready, error on failed
 //     detectedAt: string|null,
 //     segments: [{ id, start_sec, end_sec, hook, why_it_stands_alone,
-//                  transcript_excerpt, order_index, status, story_package_id }]
+//                  transcript_excerpt, order_index, status, story_package_id,
+//                  rendered_asset_id }]   // status 'rendering' → in flight;
+//                  'rendered' → rendered_asset_id is the media_assets b-roll clip
 //   }
 //   400 / 401 / 403 / 404 / 500
 
@@ -74,7 +76,7 @@ export default async function handler(req, res) {
   const segRes = await sb(
     `video_segments?source_asset_id=eq.${assetId}&workspace_id=eq.${ws.id}` +
       `&order=order_index.asc` +
-      `&select=id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,order_index,status,story_package_id`,
+      `&select=id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,order_index,status,story_package_id,rendered_asset_id`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()

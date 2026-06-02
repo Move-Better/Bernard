@@ -1,12 +1,21 @@
 // POST /api/editorial/render-segments
 //
-// Multi-clip video v1 (Phase 2). Turns kept proposed segments into rendered
-// story packages. For each requested segment: create a story_packages row
-// (status='generating'), link it back to the segment (status='rendered',
-// story_package_id), and render the ≤60s clip window off the request path via
-// the existing capped pipeline (ffmpeg -ss <start> -t <len>). The Slate polls
-// story_packages until each flips complete/failed — identical to the
-// generate-package flow.
+// Slate clip workshop — AI "Find clips" output (Option 2).
+//
+// Turns kept proposed segments into rendered media_assets b-roll clips — one
+// media_assets row per segment, parent_asset_id set to the source video, exactly
+// the shape the manual "Library b-roll" path produces (saveSlateBroll). This is
+// what the reworked Slate surfaces: source-video cards with an "X clips cut"
+// badge (api/editorial/clip-counts counts media_assets with parent_asset_id) and
+// the Library b-roll pool. The old story_packages output was invisible on the
+// new Slate; this path no longer creates packages.
+//
+// Per segment: render the ≤60s window into an instagram_reel MP4 (voice-faithful
+// caption burned in, Whisper subtitles), upload to Blob, insert a media_assets
+// b-roll row, and link the segment (status='rendered', rendered_asset_id). The
+// render runs OFF the request path (waitUntil + 202) because a batch of reels
+// would race the 300s function ceiling; the ClipFinder drawer polls
+// /api/editorial/segments while segments sit in status='rendering'.
 //
 // Body:
 //   { segmentIds: string[] }   // 1..12 video_segments ids to render
@@ -14,22 +23,26 @@
 // Auth: Clerk JWT + workspace org-id + video_pipeline_enabled.
 //
 // Responses:
-//   202 { packages: [{ segmentId, packageId, status: 'generating' }], skipped: [...] }
+//   202 { clips: [{ segmentId, status: 'rendering' }], skipped: [...] }
 //   400 / 401 / 403 / 404 / 500
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
+import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
-import { renderAndPatchPackage } from '../_lib/renderPackageChannels.js'
+import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
 import { generateCaption } from '../_lib/captionGen.js'
+import { saveSlateBroll } from '../_lib/saveSlateBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-const DEFAULT_VIDEO_CHANNELS = ['linkedin_video', 'instagram_reel', 'blog_hero_video']
+// One clip → one reel-format b-roll asset. Mirrors SlateClipEditor's
+// DEFAULT_CHANNEL so the AI path and the manual workshop produce the same shape.
+const CLIP_CHANNEL = 'instagram_reel'
 
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -42,6 +55,85 @@ async function sb(path, init = {}) {
       ...init.headers,
     },
   })
+}
+
+/**
+ * Render one kept segment into a media_assets b-roll clip, off the request path.
+ * Never throws — on failure the segment is reset to 'proposed' so the clinician
+ * can re-select and retry, and the error is logged. (video_segments has no
+ * per-row error column; reverting to 'proposed' keeps the suggestion intact and
+ * re-renderable. A hard-killed render leaves the row stuck in 'rendering';
+ * segmentDetect clears stale 'rendering' rows on the next detect.)
+ */
+async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
+  const startSec = Number(seg.start_sec) || 0
+  const durationSec = Math.max(1, (Number(seg.end_sec) || 0) - startSec)
+  const hook = String(seg.hook || '').slice(0, 500)
+  const transcriptExcerpt = String(seg.transcript_excerpt || '').trim()
+
+  try {
+    // Voice-faithful caption from the segment's OWN transcript + the staff
+    // member's voice phrases. Best-effort: fall back to the hook so a clip never
+    // fails to render because captioning hiccuped.
+    let captionText = hook
+    try {
+      const generated = await generateCaption({
+        topic: hook || 'Clip',
+        clip: {},
+        workspace: ws,
+        staffId: seg.staff_id || null,
+        clipTranscript: transcriptExcerpt,
+      })
+      if (generated && generated.trim()) captionText = generated.trim().slice(0, 500)
+    } catch (e) {
+      console.error('[render-segments] caption gen failed, using hook:', e?.stack || e?.message)
+    }
+
+    // Render the ≤60s window as a reel-format clip with the caption burned in.
+    const { buffer, width, height } = await renderVideoChannel({
+      videoUrl: asset.blob_url,
+      channel: CLIP_CHANNEL,
+      captionText,
+      workspace: ws,
+      staffName,
+      startSec,
+      durationSec,
+      subtitles: true,
+    })
+
+    const safeFilename = (asset.filename || 'clip')
+      .replace(/[^\w.-]/g, '_')
+      .replace(/\.\w+$/, '')
+    // Key by segment id so multiple segments off one source never clobber.
+    const pathname = `media/clips/${ws.id}/${asset.id}/${seg.id}-${safeFilename}.mp4`
+    const blob = await blobPut(pathname, buffer, {
+      access: 'public',
+      contentType: 'video/mp4',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    })
+
+    // Insert the b-roll media_assets row (parent_asset_id = source) + index it.
+    const saved = await saveSlateBroll({
+      ws,
+      renders: [{ blobUrl: blob.url, width, height, sizeBytes: buffer.length }],
+      staffId: seg.staff_id || null,
+      notes: `Slate AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
+      parentAssetId: asset.id,
+    })
+    const newAssetId = saved?.[0]?.id || null
+
+    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'rendered', rendered_asset_id: newAssetId }),
+    }).catch(() => {})
+  } catch (e) {
+    console.error('[render-segments] render failed for segment', seg.id, e?.stack || e?.message)
+    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'proposed' }),
+    }).catch(() => {})
+  }
 }
 
 export default async function handler(req, res) {
@@ -68,19 +160,20 @@ export default async function handler(req, res) {
   if (segmentIds.length > 12) return res.status(400).json({ error: 'too_many_segments', max: 12 })
 
   // Fetch the requested segments (workspace-scoped) + their source asset so we
-  // have the blob url + filename + clinician for the render.
+  // have the blob url + filename + staff for the render. Consent is enforced on
+  // the source asset — a pending/revoked source can't be turned into clips.
   const inList = segmentIds.map((id) => `"${id}"`).join(',')
   const segRes = await sb(
     `video_segments?id=in.(${inList})&workspace_id=eq.${ws.id}` +
-      `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,status,story_package_id,campaign_id,` +
-      `source_asset:media_assets(id,kind,blob_url,filename,archived_at)`,
+      `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,status,rendered_asset_id,` +
+      `source_asset:media_assets(id,kind,blob_url,filename,archived_at,consent_status)`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()
 
   if (!segments.length) return res.status(404).json({ error: 'no_segments_found' })
 
-  // Resolve clinician names once (best-effort) for lower-third overlays.
+  // Resolve staff names once (best-effort) for lower-third overlays.
   const staffIds = [...new Set(segments.map((s) => s.staff_id).filter(Boolean))]
   const staffNames = {}
   if (staffIds.length) {
@@ -91,115 +184,51 @@ export default async function handler(req, res) {
     }
   }
 
-  const packages = []
+  const clips = []
   const skipped = []
+  const toRender = []
 
   for (const seg of segments) {
     const asset = seg.source_asset
-    // Skip invalid sources or segments already turned into a package.
     if (!asset || asset.kind !== 'video' || !asset.blob_url || asset.archived_at) {
       skipped.push({ segmentId: seg.id, reason: 'invalid_source' })
       continue
     }
-    if (seg.story_package_id) {
-      skipped.push({ segmentId: seg.id, reason: 'already_rendered', packageId: seg.story_package_id })
+    if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') {
+      skipped.push({ segmentId: seg.id, reason: `consent_${asset.consent_status}` })
       continue
     }
-
-    const startSec = Number(seg.start_sec) || 0
-    const durationSec = Math.max(1, (Number(seg.end_sec) || 0) - startSec)
-    const hook = String(seg.hook || '').slice(0, 500)
-    const transcriptExcerpt = String(seg.transcript_excerpt || '').trim()
-    // Placeholder caption seeded on insert; the real voice-faithful caption is
-    // generated off the request path (below) from the segment's own transcript +
-    // the clinician's voice phrases, then PATCHed before render. Using the hook
-    // here means the Slate card never shows an empty caption while it generates.
-    const captionText = hook
-    const staffName = staffNames[seg.staff_id] || ''
-
-    // Create the story package row (status='generating') so the Slate card
-    // appears immediately with a spinner. topic = the segment hook.
-    // campaign_id is threaded from the video_segments row (set by repurpose-video.js
-    // when clips are part of a Repurpose campaign; null for standalone clip renders).
-    const insRes = await sb('story_packages', {
-      method: 'POST',
-      body: JSON.stringify({
-        workspace_id: ws.id,
-        staff_id: seg.staff_id || null,
-        source_asset_id: asset.id,
-        topic: captionText || 'Clip',
-        caption_text: captionText,
-        similarity: null,
-        channels: DEFAULT_VIDEO_CHANNELS,
-        renders: [],
-        status: 'generating',
-        ...(seg.campaign_id ? { campaign_id: seg.campaign_id } : {}),
-      }),
-    })
-    if (!insRes.ok) {
-      const errText = await insRes.text().catch(() => '')
-      console.error('[render-segments] package insert failed:', insRes.status, errText)
-      skipped.push({ segmentId: seg.id, reason: 'db_insert_failed' })
+    if (seg.status === 'rendered' || seg.rendered_asset_id) {
+      skipped.push({ segmentId: seg.id, reason: 'already_rendered', assetId: seg.rendered_asset_id })
       continue
     }
-    const packageId = (await insRes.json())?.[0]?.id
-    if (!packageId) {
-      skipped.push({ segmentId: seg.id, reason: 'insert_no_id' })
+    if (seg.status === 'rendering') {
+      skipped.push({ segmentId: seg.id, reason: 'already_rendering' })
       continue
     }
+    toRender.push({ seg, asset })
+  }
 
-    // Link the segment to its package + mark rendered (workspace-scoped).
-    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
+  if (toRender.length) {
+    // Mark all selected segments 'rendering' up front so the drawer shows them
+    // in flight immediately and a re-submit can't double-render them.
+    const renderIds = toRender.map(({ seg }) => `"${seg.id}"`).join(',')
+    await sb(`video_segments?id=in.(${renderIds})&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: 'rendered', story_package_id: packageId }),
+      body: JSON.stringify({ status: 'rendering' }),
     }).catch(() => {})
 
-    // Off the request path: (1) generate the voice-faithful caption from the
-    // segment's OWN transcript + the clinician's voice phrases, (2) PATCH it onto
-    // the row so the Slate shows it, (3) render the ≤60s window with that caption
-    // burned in. Caption generation is best-effort — on any failure we keep the
-    // hook so a clip never fails to render just because captioning hiccuped.
+    // Render each off the request path; ClipFinder polls segments to completion.
     waitUntil(
       (async () => {
-        let finalCaption = hook
-        try {
-          const generated = await generateCaption({
-            topic: hook || 'Clip',
-            clip: {},
-            workspace: ws,
-            staffId: seg.staff_id || null,
-            clipTranscript: transcriptExcerpt,
-          })
-          if (generated && generated.trim()) {
-            finalCaption = generated.trim().slice(0, 500)
-            await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ caption_text: finalCaption }),
-            }).catch(() => {})
-          }
-        } catch (e) {
-          console.error('[render-segments] caption gen failed, using hook:', e?.stack || e?.message)
+        for (const { seg, asset } of toRender) {
+          await renderSegmentToBroll({ ws, seg, asset, staffName: staffNames[seg.staff_id] || '' })
         }
-        return renderAndPatchPackage({
-          workspace: ws,
-          packageId,
-          sourceUrl: asset.blob_url,
-          sourceAssetId: asset.id,
-          kind: 'video',
-          channels: DEFAULT_VIDEO_CHANNELS,
-          captionText: finalCaption,
-          staffName,
-          filename: asset.filename,
-          topic: hook || finalCaption,
-          staffId: seg.staff_id || null,
-          startSec,
-          durationSec,
-        })
       })(),
     )
 
-    packages.push({ segmentId: seg.id, packageId, status: 'generating' })
+    for (const { seg } of toRender) clips.push({ segmentId: seg.id, status: 'rendering' })
   }
 
-  return res.status(202).json({ packages, skipped })
+  return res.status(202).json({ clips, skipped })
 }
