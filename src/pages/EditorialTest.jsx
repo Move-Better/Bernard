@@ -185,7 +185,7 @@ export default function EditorialTest() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
+    <div className="py-8">
       <Link to="/" className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900 mb-4">
         <ArrowLeft className="w-4 h-4 mr-1" /> Back
       </Link>

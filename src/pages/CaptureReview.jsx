@@ -186,7 +186,7 @@ export default function CaptureReview() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto flex items-center justify-center py-24">
+      <div className="flex items-center justify-center py-24">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -194,7 +194,7 @@ export default function CaptureReview() {
 
   if (ivError || !interview) {
     return (
-      <div className="max-w-lg mx-auto py-16 text-center space-y-3">
+      <div className="py-16 text-center space-y-3">
         <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
         <p className="text-sm text-muted-foreground">Could not load the interview — it may have been deleted.</p>
         <Button variant="ghost" asChild><Link to="/">← Home</Link></Button>
@@ -210,7 +210,7 @@ export default function CaptureReview() {
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>

@@ -316,7 +316,7 @@ export default function VoiceTraining() {
   const meetsMin = elapsed >= MIN_DURATION_SEC
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 space-y-6">
+    <div className="py-6 space-y-6">
       <Link
         to={staffId ? `/staff/${staffId}?tab=voice` : '/'}
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"

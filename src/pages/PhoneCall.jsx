@@ -1099,7 +1099,7 @@ export default function PhoneCall() {
 
   if (phase === 'setup') {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
         <Header />
         {audioEl}
         <Card>
@@ -1165,7 +1165,7 @@ export default function PhoneCall() {
 
   if (phase === 'starting') {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
         <Header />
         {audioEl}
         <Card>
@@ -1182,7 +1182,7 @@ export default function PhoneCall() {
 
   if (phase === 'error') {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
         <Header />
         {audioEl}
         <Card>
