@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Scissors, Loader2, AlertCircle, BarChart3, Film, ShieldAlert,
-  ShieldCheck, PlayCircle, Search,
+  ShieldCheck, PlayCircle, Search, Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -44,6 +44,7 @@ function videoLabel(asset) {
 function VideoCard({ asset, staffName, onEdit }) {
   const ok = consentOk(asset)
   const clips = clipCount(asset)
+  const proposals = typeof asset.proposal_count === 'number' ? asset.proposal_count : null
   const thumbUrl = asset.thumbnail_url || null
   const durationLabel = asset.duration_s
     ? (() => {
@@ -67,7 +68,12 @@ function VideoCard({ asset, staffName, onEdit }) {
             {durationLabel}
           </span>
         )}
-        {clips !== null && clips > 0 && (
+        {proposals !== null && proposals > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-3xs bg-primary text-primary-foreground rounded px-1.5 py-0.5 font-medium flex items-center gap-1">
+            <Sparkles className="h-2.5 w-2.5" />{proposals} clip{proposals !== 1 ? 's' : ''} proposed
+          </span>
+        )}
+        {(proposals === null || proposals === 0) && clips !== null && clips > 0 && (
           <span className="absolute top-1.5 left-1.5 text-3xs bg-white/90 text-foreground rounded px-1.5 py-0.5 font-medium">
             {clips} clip{clips !== 1 ? 's' : ''} cut
           </span>
@@ -103,8 +109,10 @@ function VideoCard({ asset, staffName, onEdit }) {
           }`}
           title={!ok ? 'Resolve consent before cutting clips' : undefined}
         >
-          <Scissors className="h-3.5 w-3.5" />
-          Cut a clip
+          {proposals !== null && proposals > 0
+            ? <><Sparkles className="h-3.5 w-3.5" />Review {proposals} clip{proposals !== 1 ? 's' : ''}</>
+            : <><Scissors className="h-3.5 w-3.5" />Cut a clip</>
+          }
         </button>
       </div>
     </div>
@@ -122,7 +130,7 @@ export default function Slate() {
     [staff]
   )
 
-  const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'in_progress' | 'coverage'
+  const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'clips_to_review' | 'in_progress' | 'coverage'
   const [searchQ, setSearchQ] = useState('')
 
   // Source videos (kind=video, not archived)
@@ -139,7 +147,7 @@ export default function Slate() {
     refetchOnWindowFocus: false,
   })
 
-  // Clip counts per source asset
+  // Clip counts per source asset (rendered clips already cut from this source)
   const { data: clipCounts } = useQuery({
     queryKey: ['slate-clip-counts'],
     queryFn: () => apiFetch('/api/editorial/clip-counts'),
@@ -148,14 +156,33 @@ export default function Slate() {
     refetchOnWindowFocus: false,
   })
 
+  // Unreviewed proposal counts per source asset (video_segments status='proposed')
+  const { data: proposalCounts } = useQuery({
+    queryKey: ['slate-proposal-counts'],
+    queryFn: () => apiFetch('/api/editorial/proposal-counts'),
+    enabled: ws?.video_pipeline_enabled === true,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+  })
+
   const sourceVideos = useMemo(() => {
     const assets = Array.isArray(mediaData) ? mediaData : []
     const counts = clipCounts?.counts || {}
-    return assets.map((a) => ({ ...a, clip_count: counts[a.id] ?? null }))
-  }, [mediaData, clipCounts])
+    const proposals = proposalCounts?.counts || {}
+    return assets.map((a) => ({
+      ...a,
+      clip_count: counts[a.id] ?? null,
+      proposal_count: proposals[a.id] ?? null,
+    }))
+  }, [mediaData, clipCounts, proposalCounts])
 
   const needsCuttingVideos = useMemo(
-    () => sourceVideos.filter((a) => !a.clip_count),
+    () => sourceVideos.filter((a) => !a.clip_count && !a.proposal_count),
+    [sourceVideos]
+  )
+  // Videos that have AI-proposed clips waiting for keep/discard review.
+  const clipsToReviewVideos = useMemo(
+    () => sourceVideos.filter((a) => !!a.proposal_count),
     [sourceVideos]
   )
   const inProgressVideos = useMemo(
@@ -163,7 +190,11 @@ export default function Slate() {
     [sourceVideos]
   )
 
-  const visibleVideos = view === 'in_progress' ? inProgressVideos : needsCuttingVideos
+  const visibleVideos = useMemo(() => {
+    if (view === 'in_progress') return inProgressVideos
+    if (view === 'clips_to_review') return clipsToReviewVideos
+    return needsCuttingVideos
+  }, [view, needsCuttingVideos, clipsToReviewVideos, inProgressVideos])
 
   if (!ws?.video_pipeline_enabled) {
     return (
@@ -209,6 +240,21 @@ export default function Slate() {
             <span className="opacity-70">{needsCuttingVideos.length}</span>
           )}
         </button>
+        {clipsToReviewVideos.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setView('clips_to_review')}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              view === 'clips_to_review'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Clips to review{' '}
+            <span className="opacity-70">{clipsToReviewVideos.length}</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setView('in_progress')}
