@@ -104,6 +104,27 @@ const INTEGRATIONS = [
     ],
     docsUrl: 'https://developers.beehiiv.com/',
   },
+  {
+    id: 'ga4',
+    label: 'Google Analytics (GA4)',
+    description:
+      'Read-only. Connects your website analytics so NarrateRx can see which published posts actually drew traffic — fueling the “What’s working” signal, smarter topic suggestions, and outcome-aware campaign aiming. NarrateRx only reads aggregate page metrics; it never writes to or changes your analytics.',
+    platforms: ['Website analytics'],
+    secretLabel: 'Service-account JSON',
+    secretIsTextarea: true,
+    secretPlaceholder: '{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…", … }',
+    fields: [
+      { key: 'property_id', label: 'GA4 Property ID (numeric — not the G-XXXX measurement ID)', placeholder: '412345678' },
+    ],
+    setupSteps: [
+      'In Google Analytics (analytics.google.com) → Admin → Property details, copy the numeric Property ID (e.g. 412345678) — NOT the “G-XXXXXXX” measurement ID.',
+      'In Google Cloud Console (console.cloud.google.com), pick or create a project and enable the “Google Analytics Data API” under APIs & Services → Library.',
+      'Under IAM & Admin → Service Accounts, create a service account (e.g. “narraterx-ga4-reader”), then open it → Keys → Add key → Create new key → JSON. Save the downloaded file.',
+      'Back in GA4 → Admin → Property Access Management, add the service account’s email (client_email from the JSON) with the Viewer role.',
+      'Paste the Property ID above and the full JSON file contents below, then Save. Click Test connection to confirm NarrateRx can read your pageviews.',
+    ],
+    docsUrl: 'https://developers.google.com/analytics/devguides/reporting/data/v1',
+  },
 ]
 
 const EMAIL_MERGE_TAGS = [

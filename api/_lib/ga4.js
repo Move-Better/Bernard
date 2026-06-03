@@ -125,6 +125,42 @@ export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePath
   return out
 }
 
+// Test-connection probe: verify a service-account JSON can actually read a
+// GA4 property. Exchanges the JWT for a token (proves the JSON is valid) and
+// runs a minimal property-wide totals report over the last 7 days (proves the
+// service account has been granted Viewer on THIS property). Returns the
+// pageview total so the admin sees real data in the "Test connection" result.
+// Throws with a human-readable message on any failure.
+export async function testGA4Access({ serviceAccountJson, propertyId }) {
+  if (!propertyId) throw new Error('GA4 Property ID is required (the numeric ID, not the G-XXXX measurement ID).')
+  const token = await getAccessToken(serviceAccountJson)
+  const r = await fetch(REPORT_URL(propertyId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+      metrics: [{ name: 'screenPageViews' }],
+      limit: '1',
+    }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    if (r.status === 403) {
+      throw new Error(`GA4 denied access to property ${propertyId} (403). Grant the service account "Viewer" in GA4 → Admin → Property Access Management.`)
+    }
+    if (r.status === 400 || r.status === 404) {
+      throw new Error(`GA4 rejected property ${propertyId} (${r.status}). Check the numeric Property ID — ${text.slice(0, 160)}`)
+    }
+    throw new Error(`GA4 runReport failed (${r.status}) — ${text.slice(0, 200)}`)
+  }
+  const data = await r.json().catch(() => ({}))
+  const pageviews = Number(data?.rows?.[0]?.metricValues?.[0]?.value) || 0
+  return { propertyId: String(propertyId), pageviews }
+}
+
 // Convenience: turn a stored content_items.resolved_url into the pagePath
 // shape GA4 reports on (no protocol, no host, leading slash, no query/hash).
 // GA4's pagePath dimension is the pathname only — so a URL like

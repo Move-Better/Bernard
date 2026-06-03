@@ -25,6 +25,7 @@ import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../_lib/capabilities.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { getCredential } from '../../_lib/getCredential.js'
+import { testGA4Access } from '../../_lib/ga4.js'
 
 const TIMEOUT_MS = 8000
 
@@ -140,12 +141,26 @@ async function testBeehiiv({ config, secret }) {
   return { ok: true, info: { publication: name } }
 }
 
+async function testGA4({ config, secret }) {
+  const propertyId = config?.property_id
+  if (!propertyId) return { ok: false, error: 'Missing GA4 Property ID (the numeric ID from GA4 → Admin → Property details).' }
+  try {
+    const { pageviews } = await testGA4Access({ serviceAccountJson: secret, propertyId })
+    // Reuse the existing `endpoint` info slot so the shared "Verified · …"
+    // renderer in CredentialForm shows the result without special-casing.
+    return { ok: true, info: { endpoint: `Property ${propertyId} · ${pageviews.toLocaleString()} pageviews (7d)` } }
+  } catch (e) {
+    return { ok: false, error: e?.message || 'GA4 test failed.' }
+  }
+}
+
 const TESTERS = {
   buffer:       ({ secret }) => testBuffer(secret),
   wordpress:    testWordPress,
   astro_github: testBearerEndpoint,
   website:      testBearerEndpoint,
   beehiiv:      testBeehiiv,
+  ga4:          testGA4,
 }
 
 async function handler(req, res) {
