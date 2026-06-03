@@ -110,7 +110,8 @@ export default async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const filename = url.searchParams.get('filename') || `capture-${Date.now()}.bin`
   const capturedAtParam = url.searchParams.get('capturedAt')
-  const capturedAt = capturedAtParam ? new Date(capturedAtParam).toISOString() : new Date().toISOString()
+  const d = capturedAtParam ? new Date(capturedAtParam) : null
+  const capturedAt = d && Number.isFinite(d.getTime()) ? d.toISOString() : new Date().toISOString()
   const locationHint = url.searchParams.get('locationHint') || null
   const caption = url.searchParams.get('caption') || null
 

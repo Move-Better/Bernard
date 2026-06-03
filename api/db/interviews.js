@@ -82,7 +82,8 @@ export default async function handler(req, res) {
     const excludeId = searchParams.get('excludeId')
     if (!topic) return err(res, 'Missing id or topic')
 
-    let qs = `interviews?${wsFilter}&topic=ilike.${encodeURIComponent(topic)}&status=eq.completed`
+    const topicEscaped = topic.replace(/%/g, '\\%').replace(/_/g, '\\_')
+    let qs = `interviews?${wsFilter}&topic=ilike.${encodeURIComponent(topicEscaped)}&status=eq.completed`
     qs += `&select=id,topic,messages,created_at,staff(name)`
     if (excludeId) qs += `&id=neq.${excludeId}`
     qs += `&order=created_at.desc&limit=3`
@@ -173,7 +174,7 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
 
-    const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,staff_id,topic,location_id,capture_mode,source_audio_url,selected_outputs`)
+    const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,staff_id,topic,location_id,capture_mode,source_audio_url,selected_outputs,source_published_at,created_at`)
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
