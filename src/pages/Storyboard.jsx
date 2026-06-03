@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send } from 'lucide-react'
+import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { useContentItems } from '@/lib/queries'
+import { useContentItems, useDeleteContentItem } from '@/lib/queries'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { mediaKindForPlatform, mediaKindLabel } from '@/lib/platformMediaKind'
 
@@ -197,41 +197,53 @@ function NeedsMediaCard({ piece }) {
   const days = daysSince(piece.created_at)
   const age = ageLabel(days)
   const stale = days != null && days >= STALE_DAYS
+  const { mutate: deletePiece, isPending: deleting } = useDeleteContentItem()
   return (
-    <Link
-      to={`/storyboard/${piece.id}`}
-      className="group rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 hover:shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <Badge variant="outline" className="gap-1 text-2xs">
-          {Icon && <Icon className="h-3 w-3" />}{meta.label}
-        </Badge>
-        {age && (
-          <span className={`shrink-0 text-2xs font-medium ${stale ? 'text-warning' : 'text-muted-foreground'}`}>
-            {age}
+    <div className="relative group">
+      <Link
+        to={`/storyboard/${piece.id}`}
+        className="block rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 hover:shadow-sm"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <Badge variant="outline" className="gap-1 text-2xs">
+            {Icon && <Icon className="h-3 w-3" />}{meta.label}
+          </Badge>
+          {age && (
+            <span className={`shrink-0 text-2xs font-medium pr-5 ${stale ? 'text-warning' : 'text-muted-foreground'}`}>
+              {age}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-sm font-medium leading-snug text-foreground">{title}</p>
+        <div className="mt-2 flex items-center gap-2 text-2xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            {kind === 'video' && <Video className="h-3 w-3" />}
+            {kind === 'photo' && <ImageIcon className="h-3 w-3" />}
+            {kindLabel}
           </span>
-        )}
-      </div>
-      <p className="mt-2 text-sm font-medium leading-snug text-foreground">{title}</p>
-      <div className="mt-2 flex items-center gap-2 text-2xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          {kind === 'video' && <Video className="h-3 w-3" />}
-          {kind === 'photo' && <ImageIcon className="h-3 w-3" />}
-          {kindLabel}
-        </span>
-        {piece.staff_name && (
-          <>
-            <span aria-hidden>·</span>
-            <span className="truncate">{piece.staff_name}</span>
-          </>
-        )}
-      </div>
-      <div className="mt-3 flex items-center justify-end">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-          Add media <ArrowRight className="h-3.5 w-3.5" />
-        </span>
-      </div>
-    </Link>
+          {piece.staff_name && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="truncate">{piece.staff_name}</span>
+            </>
+          )}
+        </div>
+        <div className="mt-3 flex items-center justify-end">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            Add media <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+      </Link>
+      <button
+        type="button"
+        disabled={deleting}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deletePiece(piece.id) }}
+        className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:border-destructive/50 hover:text-destructive disabled:pointer-events-none"
+        aria-label="Remove draft"
+      >
+        {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      </button>
+    </div>
   )
 }
 
@@ -243,34 +255,46 @@ function ReadyCard({ piece }) {
   const Icon = meta.icon
   const title = piece.topic || firstHeading(piece.content) || 'Untitled draft'
   const count = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
+  const { mutate: deletePiece, isPending: deleting } = useDeleteContentItem()
   return (
-    <Link
-      to={`/storyboard/${piece.id}/publish`}
-      className="group rounded-lg border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(227,101,37,0.3)] hover:-translate-y-0.5"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <Badge variant="outline" className="gap-1 text-2xs">
-          {Icon && <Icon className="h-3 w-3" />}{meta.label}
-        </Badge>
-        <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-muted-foreground">
-          <ImageIcon className="h-3 w-3" /> {count}
-        </span>
-      </div>
-      <p className="mt-2 text-sm font-medium leading-snug text-foreground">{title}</p>
-      <div className="mt-2 flex items-center gap-2 text-2xs text-muted-foreground">
-        <span>{count} media attached</span>
-        {piece.staff_name && (
-          <>
-            <span aria-hidden>·</span>
-            <span className="truncate">{piece.staff_name}</span>
-          </>
-        )}
-      </div>
-      <div className="mt-3 flex items-center justify-end">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline underline-offset-2">
-          Compose &amp; publish <ArrowRight className="h-3.5 w-3.5" />
-        </span>
-      </div>
-    </Link>
+    <div className="relative group">
+      <Link
+        to={`/storyboard/${piece.id}/publish`}
+        className="block rounded-lg border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(227,101,37,0.3)] hover:-translate-y-0.5"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <Badge variant="outline" className="gap-1 text-2xs">
+            {Icon && <Icon className="h-3 w-3" />}{meta.label}
+          </Badge>
+          <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-muted-foreground pr-5">
+            <ImageIcon className="h-3 w-3" /> {count}
+          </span>
+        </div>
+        <p className="mt-2 text-sm font-medium leading-snug text-foreground">{title}</p>
+        <div className="mt-2 flex items-center gap-2 text-2xs text-muted-foreground">
+          <span>{count} media attached</span>
+          {piece.staff_name && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="truncate">{piece.staff_name}</span>
+            </>
+          )}
+        </div>
+        <div className="mt-3 flex items-center justify-end">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline underline-offset-2">
+            Compose &amp; publish <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+      </Link>
+      <button
+        type="button"
+        disabled={deleting}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deletePiece(piece.id) }}
+        className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:border-destructive/50 hover:text-destructive disabled:pointer-events-none"
+        aria-label="Remove draft"
+      >
+        {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      </button>
+    </div>
   )
 }
