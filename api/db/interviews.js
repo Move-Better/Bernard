@@ -192,8 +192,9 @@ export default async function handler(req, res) {
     // creation time in POST, but pre-fix interviews + workspaces that added
     // new slots after the fact need a way to backfill them on completed
     // rows. Empty string is treated as null so the editor can "clear" a slot.
-    if (body.audience !== undefined)  patch.audience   = body.audience   || null
-    if (body.storyType !== undefined) patch.story_type = body.storyType || null
+    if (body.audience !== undefined)   patch.audience    = body.audience    || null
+    if (body.storyType !== undefined)  patch.story_type  = body.storyType  || null
+    if (body.campaignId !== undefined) patch.campaign_id = body.campaignId || null
     // topic — story title. Trim and reject empty strings (a story must
     // always have a title visible in the header / lists). Length-capped to
     // 300 chars to keep the header layout sane on long entries.
