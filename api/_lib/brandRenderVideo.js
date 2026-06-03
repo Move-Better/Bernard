@@ -69,6 +69,17 @@ async function acquireSourceFile({ videoUrl, declaredLen, clipStart, clipDur, id
 
   entry.promise = (async () => {
     if (!isLarge) {
+      // ORIENTATION (read before touching any render ffmpeg call): this raw copy
+      // preserves the source's rotation flag — iPhone/Sony portrait capture stores
+      // landscape pixels + a 90/270° displaymatrix. The downstream
+      // `-filter_complex [0:v]…` render comes out upright ONLY because ffmpeg
+      // auto-rotates filtergraph inputs by default. Do NOT add `-noautorotate` to
+      // any render step (and do NOT route a `-c copy` source through a
+      // filter_complex) without also prepending an explicit `transpose` keyed off
+      // a rotation probe — otherwise small portrait clips publish sideways.
+      // Verified upright across both the large (re-encode) and small (raw-copy)
+      // paths on 2026-06-03; a fixtured per-channel rotation regression test is the
+      // tracked follow-up before making orientation explicit here.
       const fetchRes = await fetch(videoUrl)
       if (!fetchRes.ok) throw new Error(`Source video fetch failed: ${fetchRes.status}`)
       await pipeline(Readable.fromWeb(fetchRes.body), createWriteStream(tmpPath))
