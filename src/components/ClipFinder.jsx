@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Scissors, Check, X, AlertCircle, Film } from 'lucide-react'
+import { Loader2, Scissors, Check, X, AlertCircle, Film, Play, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/lib/toast'
@@ -8,10 +8,10 @@ import { findClips, getSegments, updateSegment, renderSegments } from '@/lib/cli
 
 // Multi-clip video v1. Embedded in the MediaDetail drawer for video sources:
 // "Find clips" transcribes the source and proposes standalone ≤60s moments; the
-// clinician keeps/discards and renders the kept ones into media_assets b-roll
-// clips (parent_asset_id = source). The finished clips land in the Library and
-// bump the source's "clips cut" count on the Slate — the same media_asset model
-// the manual Slate workflow produces.
+// clinician taps a clip's thumbnail to preview that exact window in the source
+// video (seeks to start_sec, auto-pauses at end_sec), then keeps or discards.
+// Kept segments render into media_assets b-roll clips (parent_asset_id = source).
+// Clips land in the Library and bump the source's "clips cut" count on the Slate.
 
 function mmss(sec) {
   const s = Math.max(0, Math.round(Number(sec) || 0))
@@ -20,16 +20,187 @@ function mmss(sec) {
 }
 
 const POLL_INTERVAL_MS = 3000
-// Hard cap so a hard-killed detection (segmentDetect.js hitting the 300s wall —
-// its catch never runs, so segment_status stays 'detecting' forever) can't keep
-// the drawer polling 3 req/s until the tab closes. Mirrors Book.jsx's cap.
+// Hard cap so a hard-killed detection (segmentDetect.js hitting the 300s wall)
+// can't keep the drawer polling indefinitely. Mirrors Book.jsx's cap.
 const POLL_CAP_MS = 5 * 60 * 1000
+
+// One inline video player shared across all proposals for a given source asset.
+// Re-seeks to the active clip window whenever activeClip changes.
+function ClipPreviewPlayer({ blobUrl, thumbnailUrl, activeClip, onClose }) {
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el || !activeClip) return
+    el.currentTime = activeClip.startSec
+    el.play().catch(() => {})
+    function onTimeUpdate() {
+      if (el.currentTime >= activeClip.endSec) el.pause()
+    }
+    el.addEventListener('timeupdate', onTimeUpdate)
+    return () => el.removeEventListener('timeupdate', onTimeUpdate)
+  }, [activeClip])
+
+  if (!activeClip) return null
+
+  const dur = Math.round(activeClip.endSec - activeClip.startSec)
+  // Aspect ratio from the asset if available; fall back to 16:9 for landscape,
+  // 9:16 for portrait based on the thumbnail dimensions (runtime measure).
+  // The <video> uses object-contain so any aspect mismatch just letterboxes.
+
+  return (
+    <div className="px-3 pb-3 space-y-1.5">
+      <div
+        className="rounded-lg overflow-hidden bg-black w-full"
+        style={{ maxHeight: '320px', aspectRatio: activeClip.aspectRatio || '16 / 9' }}
+      >
+        <video
+          ref={videoRef}
+          src={blobUrl}
+          poster={thumbnailUrl || undefined}
+          className="w-full h-full object-contain"
+          controls
+          playsInline
+          preload="metadata"
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-2xs text-muted-foreground">
+          {mmss(activeClip.startSec)}–{mmss(activeClip.endSec)} · {dur}s of source
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-2xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <ChevronUp className="h-3 w-3" />Close preview
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Individual proposal row with thumbnail play button.
+function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview, onToggleSelect, onDiscard }) {
+  const startSec = Number(s.start_sec) || 0
+  const endSec   = Number(s.end_sec) || 0
+  const dur = Math.round(endSec - startSec)
+
+  return (
+    <li key={s.id} className="border-t">
+      {/* Main row */}
+      <div className="px-3 py-2 flex items-start gap-2">
+        {/* Thumbnail play button — tapping toggles the shared inline player */}
+        <button
+          type="button"
+          onClick={() => onTogglePreview(s)}
+          className="shrink-0 relative rounded-md overflow-hidden bg-muted mt-0.5 group"
+          style={{ width: 64, height: 64 }}
+          title={`Preview: ${mmss(startSec)}–${mmss(endSec)}`}
+          aria-pressed={isActive}
+        >
+          {asset.thumbnail_url ? (
+            <img
+              src={asset.thumbnail_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-slate-800" />
+          )}
+          {/* Overlay: Play icon, or an "active" indicator when this clip is showing */}
+          <div className={`absolute inset-0 flex items-center justify-center transition-colors ${
+            isActive
+              ? 'bg-primary/30'
+              : 'bg-black/40 group-hover:bg-black/20'
+          }`}>
+            {isActive ? (
+              <div className="h-6 w-6 rounded-full bg-primary/80 flex items-center justify-center">
+                <ChevronUp className="h-3.5 w-3.5 text-white" />
+              </div>
+            ) : (
+              <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
+                <Play className="h-3 w-3 text-white ml-0.5" />
+              </div>
+            )}
+          </div>
+        </button>
+
+        <div className="min-w-0 flex-1 text-xs">
+          <div className="font-medium leading-snug" title={s.hook}>
+            {s.hook || 'Untitled clip'}
+          </div>
+          <div className="text-2xs text-muted-foreground mt-0.5">
+            {mmss(startSec)}–{mmss(endSec)} · {dur}s
+          </div>
+          {s.why_it_stands_alone && (
+            <div className="text-2xs text-muted-foreground mt-0.5 leading-snug">
+              {s.why_it_stands_alone}
+            </div>
+          )}
+          {s.transcript_excerpt && (
+            <details className="mt-1">
+              <summary className="text-3xs text-muted-foreground cursor-pointer hover:text-foreground">
+                Transcript
+              </summary>
+              <p className="text-2xs text-foreground mt-0.5 whitespace-pre-wrap">
+                {s.transcript_excerpt}
+              </p>
+            </details>
+          )}
+        </div>
+
+        <div className="flex items-center gap-0.5 shrink-0">
+          {canEdit && (
+            <>
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => onToggleSelect(s.id)}
+                className="h-3.5 w-3.5 accent-primary"
+                title="Include when creating clips"
+              />
+              <button
+                type="button"
+                onClick={() => onDiscard(s.id)}
+                title="Discard this suggestion"
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Inline preview player — only for the active clip */}
+      {isActive && (
+        <ClipPreviewPlayer
+          blobUrl={asset.blob_url}
+          thumbnailUrl={asset.thumbnail_url}
+          activeClip={{ startSec, endSec, aspectRatio: aspectRatioFor(asset) }}
+          onClose={() => onTogglePreview(s)}
+        />
+      )}
+    </li>
+  )
+}
+
+// Derive a CSS aspect-ratio string from the asset's stored dims.
+// Falls back to 16/9 (safe for any unknown source).
+function aspectRatioFor(asset) {
+  const w = asset.width, h = asset.height
+  if (w && h) return `${w} / ${h}`
+  return '16 / 9'
+}
 
 export default function ClipFinder({ asset, canEdit }) {
   const assetId = asset.id
   const [finding, setFinding] = useState(false)
   const [rendering, setRendering] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
+  // activePreviewId: which proposal's inline player is open (null = none).
+  const [activePreviewId, setActivePreviewId] = useState(null)
   // Track which detection batch we've already seeded the default selection for,
   // so a poll round-trip doesn't re-check boxes the user just unchecked.
   const seededRef = useRef(null)
@@ -75,8 +246,12 @@ export default function ClipFinder({ asset, canEdit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, data?.detectedAt, proposed.length])
 
+  // Close the preview when proposals change (e.g. after re-detect).
+  useEffect(() => { setActivePreviewId(null) }, [data?.detectedAt])
+
   async function handleFind() {
     setFinding(true)
+    setActivePreviewId(null)
     pollStartRef.current = { at: Date.now() }
     try {
       await findClips(assetId)
@@ -98,8 +273,12 @@ export default function ClipFinder({ asset, canEdit }) {
     })
   }
 
+  function togglePreview(s) {
+    setActivePreviewId((prev) => prev === s.id ? null : s.id)
+  }
+
   async function handleDiscard(id) {
-    // Optimistic: drop from selection, then persist + refetch.
+    if (activePreviewId === id) setActivePreviewId(null)
     setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
     try {
       await updateSegment(id, 'discarded')
@@ -113,6 +292,7 @@ export default function ClipFinder({ asset, canEdit }) {
     const ids = [...selected]
     if (!ids.length) return
     setRendering(true)
+    setActivePreviewId(null)
     try {
       const res = await renderSegments(ids)
       const n = res?.clips?.length || 0
@@ -143,7 +323,7 @@ export default function ClipFinder({ asset, canEdit }) {
             )}
           </div>
           <div className="text-2xs text-muted-foreground">
-            Turn this long source into several short, standalone clips.
+            Tap a clip to preview it in the source — keep or discard before creating.
           </div>
         </div>
         {canEdit && (
@@ -173,7 +353,7 @@ export default function ClipFinder({ asset, canEdit }) {
       {failed && (
         <div className="flex items-start gap-2 text-2xs text-destructive bg-destructive/10 rounded px-2.5 py-2">
           <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>{note || 'Clip detection failed.'} {canEdit && 'Try “Find clips” again.'}</span>
+          <span>{note || 'Clip detection failed.'} {canEdit && 'Try "Find clips" again.'}</span>
         </div>
       )}
 
@@ -189,52 +369,22 @@ export default function ClipFinder({ asset, canEdit }) {
         </div>
       )}
 
-      {/* Proposed segments — keep/discard + select for rendering */}
+      {/* Proposed segments — thumbnail preview + keep/discard */}
       {proposed.length > 0 && (
         <ul className="divide-y -mx-3 border-t">
-          {proposed.map((s) => {
-            const isSel = selected.has(s.id)
-            const len = Math.round((Number(s.end_sec) || 0) - (Number(s.start_sec) || 0))
-            return (
-              <li key={s.id} className="px-3 py-2 flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  checked={isSel}
-                  onChange={() => toggle(s.id)}
-                  disabled={!canEdit}
-                  className="mt-1 h-3.5 w-3.5 accent-primary shrink-0"
-                  title="Include this clip when you create clips"
-                />
-                <div className="min-w-0 flex-1 text-xs">
-                  <div className="font-medium truncate" title={s.hook}>{s.hook || 'Untitled clip'}</div>
-                  <div className="text-2xs text-muted-foreground">
-                    {mmss(s.start_sec)}–{mmss(s.end_sec)} · {len}s
-                  </div>
-                  {s.why_it_stands_alone && (
-                    <div className="text-2xs text-muted-foreground mt-0.5">{s.why_it_stands_alone}</div>
-                  )}
-                  {s.transcript_excerpt && (
-                    <details className="mt-1">
-                      <summary className="text-3xs text-muted-foreground cursor-pointer hover:text-foreground">
-                        Transcript
-                      </summary>
-                      <p className="text-2xs text-foreground mt-0.5 whitespace-pre-wrap">{s.transcript_excerpt}</p>
-                    </details>
-                  )}
-                </div>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => handleDiscard(s.id)}
-                    title="Discard this suggestion"
-                    className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </li>
-            )
-          })}
+          {proposed.map((s) => (
+            <ProposalRow
+              key={s.id}
+              s={s}
+              asset={asset}
+              isActive={activePreviewId === s.id}
+              isSelected={selected.has(s.id)}
+              canEdit={canEdit}
+              onTogglePreview={togglePreview}
+              onToggleSelect={toggle}
+              onDiscard={handleDiscard}
+            />
+          ))}
         </ul>
       )}
 
