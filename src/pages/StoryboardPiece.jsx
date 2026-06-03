@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Loader2, Pen, Sliders,
-  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft, Repeat,
+  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft, Repeat, Type,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PipelineStepper from '@/components/PipelineStepper'
@@ -12,6 +12,8 @@ import { pieceLabel } from '@/lib/pieceLabel'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import MediaPicker from '@/components/MediaPicker'
+import TextPostStudio from '@/components/TextPostStudio'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 import CandidateCard from '@/components/storyboard/CandidateCard'
 import MediaPreviewDialog from '@/components/storyboard/MediaPreviewDialog'
 import {
@@ -43,9 +45,15 @@ export default function StoryboardPiece() {
   const navigate = useNavigate()
 
   const { data: piece, isLoading, isError } = useContentItem(pieceId)
+  const workspace = useWorkspace()
+  const brandStyle = workspace?.brand_style || null
+  const workspaceName = workspace?.display_name || workspace?.name || ''
 
   // Interview — needed for campaign band. Only fetched when piece has an interview.
   const { data: interview } = useInterview(piece?.interview_id, { enabled: !!piece?.interview_id })
+
+  // Text post studio (Option B) — branded text-only card when there's no clip.
+  const [studioOpen, setStudioOpen] = useState(false)
 
   // Caption edit state — seeded from piece.content once loaded.
   const [caption, setCaption] = useState('')
@@ -367,7 +375,7 @@ export default function StoryboardPiece() {
                   <div className="mt-1 grid w-full max-w-[280px] grid-cols-3 gap-2 text-center text-2xs">
                     <button
                       type="button"
-                      onClick={() => setPickerOpen(true)}
+                      onClick={() => setStudioOpen(true)}
                       className="rounded-lg border-2 border-primary bg-primary/5 p-2"
                     >
                       <div className="mb-1 flex aspect-square items-center justify-center rounded bg-gradient-to-br from-orange-200 to-amber-100 text-accent-foreground">
@@ -578,13 +586,22 @@ export default function StoryboardPiece() {
               <Images className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Media</span>
               <span className="text-2xs text-muted-foreground">· {media.length} attached</span>
-              <button
-                type="button"
-                onClick={() => setPickerOpen(true)}
-                className="ml-auto flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/5"
-              >
-                <Repeat className="h-3 w-3" /> Change / swap
-              </button>
+              <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setStudioOpen(true)}
+                  className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-2xs font-medium hover:border-primary hover:text-primary"
+                >
+                  <Type className="h-3 w-3" /> {piece.text_card ? 'Edit text post' : 'Text post'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/5"
+                >
+                  <Repeat className="h-3 w-3" /> Change / swap
+                </button>
+              </div>
             </div>
             <div className="space-y-3 px-4 py-3">
               {/* Attached thumbnails */}
@@ -732,6 +749,24 @@ export default function StoryboardPiece() {
 
       {pickerOpen && (
         <MediaPicker multi onClose={() => setPickerOpen(false)} onSelect={handlePicked} />
+      )}
+
+      {studioOpen && (
+        <TextPostStudio
+          pieceId={pieceId}
+          initialState={piece.text_card || undefined}
+          brandStyle={brandStyle}
+          workspaceName={workspaceName}
+          onClose={() => setStudioOpen(false)}
+          onUse={async ({ state, url }) => {
+            await updateItem.mutateAsync({
+              id: pieceId,
+              patch: { mediaUrls: [...media, { url, type: 'photo' }], textCard: state },
+            })
+            toast.success('Text post created & attached')
+            setStudioOpen(false)
+          }}
+        />
       )}
     </div>
   )
