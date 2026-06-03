@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { useStory, useUpdateInterview, useDeleteInterview } from '@/lib/queries'
+import { useStory, useUpdateInterview, useDeleteInterview, useCampaigns } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { getStageToken } from '@/lib/stageTokens'
@@ -224,6 +224,7 @@ export default function StoryDetail() {
   const { canPurge: isWorkspaceAdmin } = useUserRole()
   const updateInterview = useUpdateInterview()
   const deleteInterview = useDeleteInterview()
+  const { data: campaigns = [] } = useCampaigns()
 
   async function handleDelete() {
     if (!story?.id || !user?.id) return
@@ -336,6 +337,9 @@ export default function StoryDetail() {
               // Defense: resolveAudienceSlot / resolveStoryTypeSlot return null
               // for unknown keys, but our editable pill uses the option array
               // directly so a key not present in options just shows as "Add audience".
+              const activeCampaignOptions = campaigns
+                .filter((c) => c.status === 'active' || c.id === story.campaign_id)
+                .map((c) => ({ key: c.id, label: c.name }))
               return (
                 <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                   <EditablePill
@@ -362,6 +366,20 @@ export default function StoryDetail() {
                       })
                     }
                   />
+                  {activeCampaignOptions.length > 0 && (
+                    <EditablePill
+                      value={story.campaign_id || null}
+                      options={activeCampaignOptions}
+                      placeholder="Add campaign"
+                      disabled={updateInterview.isPending || !user?.id}
+                      onChange={(next) =>
+                        updateInterview.mutate({
+                          id: story.id,
+                          patch: { campaignId: next },
+                        })
+                      }
+                    />
+                  )}
                   {cleanupSlot && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
                       <span className="text-2xs">{cleanupSlot.emoji}</span>
