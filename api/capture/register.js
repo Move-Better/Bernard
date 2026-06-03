@@ -91,9 +91,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'blob_url_construction_failed' })
   }
 
-  const capturedAtIso = capturedAt
-    ? new Date(capturedAt).toISOString()
-    : new Date().toISOString()
+  const d = new Date(capturedAt)
+  const capturedAtIso = Number.isFinite(d.getTime()) ? d.toISOString() : new Date().toISOString()
 
   // The Shortcut sends a generic "capture.mov" for every file type — even
   // photos, which come with contentType=image/jpeg but filename=capture.mov.

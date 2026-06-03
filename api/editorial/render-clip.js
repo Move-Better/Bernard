@@ -78,6 +78,8 @@ export default async function handler(req, res) {
   const captionText = String(body.captionText || '').slice(0, 500)
   const startSec = body.startSec != null ? Number(body.startSec) : undefined
   const durationSec = body.durationSec != null ? Number(body.durationSec) : undefined
+  if (startSec !== undefined && !Number.isFinite(startSec)) return res.status(400).json({ error: 'startSec must be a number' })
+  if (durationSec !== undefined && !Number.isFinite(durationSec)) return res.status(400).json({ error: 'durationSec must be a number' })
   const subtitles = body.subtitles !== undefined ? Boolean(body.subtitles) : undefined
   const VALID_OVERLAY_POSITIONS = ['top', 'center', 'bottom']
   const VALID_OVERLAY_SIZES = ['small', 'medium', 'large']
