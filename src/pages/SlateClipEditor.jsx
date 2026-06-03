@@ -56,8 +56,7 @@ export default function SlateClipEditor() {
     if (top.ai_caption)        setCaptionText(top.ai_caption)
     if (top.source_trim_start != null) setStartSec(top.source_trim_start)
     if (top.source_trim_start != null && top.source_trim_end != null) {
-      const dur = Math.min(top.source_trim_end - top.source_trim_start, 60)
-      setDurationSec(Math.max(1, dur))
+      setEndSec(Math.min(top.source_trim_end, top.source_trim_start + 60))
     }
     setRenderedBlobUrl(null)
   }
@@ -74,16 +73,20 @@ export default function SlateClipEditor() {
   }
 
   // --- Trim state ---
+  // startSec and endSec are both direct positions in the source; the render
+  // API receives durationSec = endSec - startSec (capped at 60s server-side).
   const [startSec, setStartSec] = useState(0)
-  const [durationSec, setDurationSec] = useState(60)
+  const [endSec, setEndSec] = useState(60)
 
+  // When video metadata loads, snap the end handle to min(duration, 60s).
   useEffect(() => {
     if (videoDuration > 0) {
-      setDurationSec(Math.min(videoDuration, 60))
+      setEndSec(Math.min(videoDuration, 60))
     }
   }, [videoDuration])
 
-  const endSec = Math.min(startSec + durationSec, videoDuration || Infinity)
+  // Derived duration — what gets sent to the render API.
+  const durationSec = Math.max(1, endSec - startSec)
 
   // --- Caption text ---
   const [captionText, setCaptionText] = useState('')
@@ -398,19 +401,18 @@ export default function SlateClipEditor() {
               <p className="text-3xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">Trim</p>
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-center gap-3">
-                  <label className="text-2xs text-muted-foreground w-14 shrink-0">Start</label>
+                  <label className="text-2xs text-muted-foreground w-10 shrink-0">Start</label>
                   <input
                     type="range"
                     min={0}
-                    max={Math.max(0, videoDuration - 1)}
+                    max={Math.max(0, endSec - 1)}
                     step={0.5}
                     value={startSec}
                     onChange={(e) => {
                       const v = Number(e.target.value)
                       setStartSec(v)
-                      if (v + durationSec > videoDuration) {
-                        setDurationSec(Math.max(1, videoDuration - v))
-                      }
+                      // Push end forward if start would cross it, keeping min 1s clip.
+                      if (v >= endSec) setEndSec(Math.min(v + 1, videoDuration || v + 1))
                       if (videoRef.current) videoRef.current.currentTime = v
                     }}
                     className="flex-1 accent-primary"
@@ -419,24 +421,28 @@ export default function SlateClipEditor() {
                   <span className="text-3xs font-mono w-10 text-right text-muted-foreground">{formatTime(startSec)}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <label className="text-2xs text-muted-foreground w-14 shrink-0">Duration</label>
+                  <label className="text-2xs text-muted-foreground w-10 shrink-0">End</label>
                   <input
                     type="range"
-                    min={1}
-                    max={Math.min(60, Math.max(1, videoDuration - startSec))}
+                    min={Math.min(startSec + 1, videoDuration || startSec + 1)}
+                    max={Math.min(startSec + 60, videoDuration || startSec + 60)}
                     step={0.5}
-                    value={durationSec}
-                    onChange={(e) => setDurationSec(Number(e.target.value))}
+                    value={endSec}
+                    onChange={(e) => {
+                      const v = Number(e.target.value)
+                      setEndSec(v)
+                      if (videoRef.current) videoRef.current.currentTime = v
+                    }}
                     className="flex-1 accent-primary"
                     disabled={videoDuration === 0}
                   />
-                  <span className="text-3xs font-mono w-10 text-right text-muted-foreground">{formatTime(durationSec)}</span>
+                  <span className="text-3xs font-mono w-10 text-right text-muted-foreground">{formatTime(endSec)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between text-3xs text-muted-foreground mt-1.5">
                 <span>{formatTime(startSec)}</span>
                 <span className="text-primary font-medium">clip {formatTime(durationSec)}</span>
-                <span>{formatTime(videoDuration)}</span>
+                <span>{formatTime(endSec)} / {formatTime(videoDuration)}</span>
               </div>
             </div>
           </div>
