@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdtemp, open, readFile, rm, stat } from 'node:fs/promises'
 import { createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -181,6 +181,32 @@ export async function generateThumbnailFromPath(videoPath, asset, scope) {
 
 // Extract + upload + PATCH. Returns the new thumbnail_url, or null if the
 // asset is not a video / has no source blob to read from.
+// Reads the first 12 bytes of a downloaded file and verifies it looks like
+// a video container. Catches the case where the blob URL served an HTML error
+// page or an empty body with HTTP 200 — ffmpeg's "Invalid data found" error
+// is then swapped for a clear user-facing message before the slow ffmpeg spawn.
+async function assertVideoBytes(filePath) {
+  const s = await stat(filePath).catch(() => null)
+  if (!s || s.size < 8) {
+    throw new Error('Downloaded file is empty or too small — the upload may be corrupt. Try re-uploading the video.')
+  }
+  const fh = await open(filePath, 'r')
+  const buf = Buffer.alloc(12)
+  try {
+    await fh.read(buf, 0, 12, 0)
+  } finally {
+    await fh.close()
+  }
+  // MOV/MP4 containers: bytes 4–7 are a 4-char box type. Common first boxes:
+  // ftyp (most), moov, mdat, wide, free, pnot, skip. The first 4 bytes are the
+  // box size (big-endian uint32, usually 8–32 for ftyp). Just check for the
+  // ASCII box-type range and rule out obvious non-video (HTML starts with '<').
+  const firstByte = buf[0]
+  if (firstByte === 0x3c /* '<' HTML */ || firstByte === 0x7b /* '{' JSON */) {
+    throw new Error('Downloaded file is not a video — the blob URL may have returned an error page. Try re-uploading the video.')
+  }
+}
+
 export async function generateAndPersistThumbnail(asset, scope) {
   if (!asset || asset.kind !== 'video') return null
   if (!asset.blob_url) return null
@@ -194,6 +220,7 @@ export async function generateAndPersistThumbnail(asset, scope) {
     // Stream to disk instead of buffering — videos can be 500MB+ and
     // arrayBuffer() materializes the whole file in RAM, OOMing the function.
     await pipeline(Readable.fromWeb(res.body), createWriteStream(inPath))
+    await assertVideoBytes(inPath)
     return await generateThumbnailFromPath(inPath, asset, scope)
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {})
