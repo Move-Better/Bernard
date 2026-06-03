@@ -27,7 +27,12 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 //   so the standard GET/DELETE paths can read/remove the row uniformly.
 // 'beehiiv' newsletter publish via api/publish/beehiiv.js (creates drafts;
 //   tenant finishes scheduling + audience picker inside Beehiiv).
-const KNOWN_SERVICES = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'tdc', 'drive', 'beehiiv'])
+// 'ga4' is read-only analytics (Google Analytics Data API), not a publish
+//   target — its credential (service-account JSON) + property ID fuel the
+//   engagement/outcome loop (refresh-engagement cron → engagement_snapshots).
+//   The numeric property ID is mirrored to workspaces.ga4_property_id on save
+//   because the cron reads it from the workspace row.
+const KNOWN_SERVICES = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'tdc', 'drive', 'beehiiv', 'ga4'])
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -113,6 +118,25 @@ async function handler(req, res) {
       console.error('[credentials PUT] supabase error:', r.status, text)
       return res.status(500).json({ error: 'db-error' })
     }
+
+    // GA4: mirror the numeric property ID onto the workspace row — the
+    // refresh-engagement cron reads workspaces.ga4_property_id (not the
+    // credential config) to decide whether to walk GA4 for this workspace.
+    if (service === 'ga4') {
+      const propertyId = String(safeConfig.property_id ?? '').trim()
+      const wr = await sb(`workspaces?id=eq.${workspace.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ ga4_property_id: propertyId || null }),
+      })
+      if (!wr.ok) {
+        const text = await wr.text().catch(() => '')
+        console.error('[credentials PUT] ga4_property_id mirror failed:', wr.status, text)
+        // The credential row saved; surface a soft warning so the admin knows
+        // the cron won't pick it up until the property ID lands.
+        return res.status(200).json({ ok: true, service, warning: 'property-id-mirror-failed' })
+      }
+    }
+
     return res.status(200).json({ ok: true, service })
   }
 
@@ -127,6 +151,16 @@ async function handler(req, res) {
       { method: 'DELETE' },
     )
     if (!r.ok) return res.status(500).json({ error: 'db-error' })
+
+    // GA4: clear the mirrored property ID so the cron stops walking GA4 for
+    // this workspace once the credential is removed.
+    if (service === 'ga4') {
+      await sb(`workspaces?id=eq.${workspace.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ ga4_property_id: null }),
+      }).catch(() => {})
+    }
+
     return res.status(200).json({ ok: true })
   }
 
