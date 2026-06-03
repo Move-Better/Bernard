@@ -30,6 +30,59 @@ function brandAccent(brandStyle, fallback = FALLBACK_ACCENT) {
   return brandStyle?.accent_color || fallback
 }
 
+// Darken (amt < 0) or lighten (amt > 0) a #rrggbb hex by a fraction. Used to
+// derive a gradient end-stop from the brand accent. Returns input unchanged if
+// it isn't a 6-digit hex.
+function shadeHex(hex, amt) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '')
+  if (!m) return hex
+  const n = parseInt(m[1], 16)
+  const f = amt < 0 ? 1 + amt : 1 - amt
+  const add = amt > 0 ? Math.round(255 * amt) : 0
+  const r = Math.min(255, Math.round(((n >> 16) & 255) * f) + add)
+  const g = Math.min(255, Math.round(((n >> 8) & 255) * f) + add)
+  const b = Math.min(255, Math.round((n & 255) * f) + add)
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
+
+// Paint a non-photo background for text-only cards (Text Post Studio). `bg` is:
+//   { preset: 'brand'|'warm'|'light'|'white' }  — named, brand-aware
+//   { type: 'solid', color }                    — explicit solid
+//   { type: 'gradient', from, to }              — explicit vertical gradient
+// 'brand' derives a vertical gradient from the workspace accent color.
+function paintCardBackground(ctx, bg, brandStyle) {
+  let solid = null
+  let from = null
+  let to = null
+  if (bg.preset) {
+    const accent = brandAccent(brandStyle)
+    switch (bg.preset) {
+      case 'brand': from = accent; to = shadeHex(accent, -0.4); break
+      case 'warm':  from = '#c2570f'; to = '#e8852e'; break
+      case 'light': from = '#fde9d2'; to = '#f6dcc0'; break
+      case 'white': solid = '#ffffff'; break
+      default:      from = '#475569'; to = '#1e293b'
+    }
+  } else if (bg.type === 'solid') {
+    solid = bg.color || '#1e293b'
+  } else if (bg.type === 'gradient') {
+    from = bg.from || '#475569'
+    to = bg.to || '#1e293b'
+  } else {
+    from = '#475569'; to = '#1e293b'
+  }
+  if (solid) {
+    ctx.fillStyle = solid
+    ctx.fillRect(0, 0, SIZE, SIZE)
+    return
+  }
+  const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
+  grad.addColorStop(0, from)
+  grad.addColorStop(1, to)
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, SIZE, SIZE)
+}
+
 function wrapLines(ctx, text, maxWidth, maxLines) {
   const words = text.split(' ')
   const lines = []
@@ -584,7 +637,7 @@ export const TEMPLATE_DEFAULT_POSITIONS = {
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
 // canvas so callers can either display it directly (DOM canvas preview) or
 // call toBlob() to produce a baked PNG.
-export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas, theme }) {
+export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas, theme, background }) {
   const target = canvas || document.createElement('canvas')
   target.width  = SIZE
   target.height = SIZE
@@ -593,6 +646,9 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   if (sourceUrl) {
     const img = await loadImage(sourceUrl)
     drawCover(ctx, img, 0, 0, SIZE, SIZE)
+  } else if (background) {
+    // Text-only card (Text Post Studio): paint a brand-aware background.
+    paintCardBackground(ctx, background, brandStyle)
   } else {
     // No photo bound — render a neutral placeholder so text is still legible
     const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
@@ -602,9 +658,11 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     ctx.fillRect(0, 0, SIZE, SIZE)
   }
 
-  // Light vignette so any-position text stays legible regardless of photo
+  // Light vignette so any-position text stays legible over a PHOTO. A solid /
+  // brand-color card background shouldn't be darkened at the edges, so skip it
+  // when there's no photo.
   const blocks = Array.isArray(slide?.blocks) ? slide.blocks : []
-  if (blocks.length > 0) {
+  if (sourceUrl && blocks.length > 0) {
     const vignette = ctx.createRadialGradient(SIZE / 2, SIZE / 2, SIZE * 0.35, SIZE / 2, SIZE / 2, SIZE * 0.75)
     vignette.addColorStop(0, 'rgba(0,0,0,0)')
     vignette.addColorStop(1, 'rgba(0,0,0,0.45)')
