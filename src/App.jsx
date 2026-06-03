@@ -32,8 +32,7 @@ const MediaHub = lazy(() => import('@/pages/MediaHub'))
 const Integrations = lazy(() => import('@/pages/Integrations'))
 const WorkspaceSettings = lazy(() => import('@/pages/WorkspaceSettings'))
 const VoiceTonePage = lazy(() => import('@/pages/settings/VoiceTonePage'))
-const PatientsTopicsPage = lazy(() => import('@/pages/settings/PatientsTopicsPage'))
-const InterviewDefaultsPage = lazy(() => import('@/pages/settings/InterviewDefaultsPage'))
+const InterviewSetupPage = lazy(() => import('@/pages/settings/InterviewSetupPage'))
 const ChannelsSettings = lazy(() => import('@/pages/settings/ChannelsSettings'))
 const LocationsSettings = lazy(() => import('@/pages/settings/LocationsSettings'))
 const BillingSettings = lazy(() => import('@/pages/settings/BillingSettings'))
@@ -560,8 +559,10 @@ function AppRoutes() {
             <Route element={<SettingsLayout />}>
               <Route path="/settings/workspace" element={guarded(<WorkspaceSettings />)} />
               <Route path="/settings/workspace/voice" element={guarded(<VoiceTonePage />)} />
-              <Route path="/settings/workspace/patients" element={guarded(<PatientsTopicsPage />)} />
-              <Route path="/settings/workspace/interview-defaults" element={guarded(<InterviewDefaultsPage />)} />
+              <Route path="/settings/workspace/interview" element={guarded(<InterviewSetupPage />)} />
+              {/* Legacy redirects — old three-page structure */}
+              <Route path="/settings/workspace/patients" element={<Navigate to="/settings/workspace/voice" replace />} />
+              <Route path="/settings/workspace/interview-defaults" element={<Navigate to="/settings/workspace/interview" replace />} />
               <Route path="/settings/workspace/locations" element={guarded(<LocationsSettings />)} />
               <Route path="/settings/workspace/channels" element={guarded(<ChannelsSettings />)} />
               <Route path="/settings/workspace/billing" element={guarded(<BillingSettings />)} />
