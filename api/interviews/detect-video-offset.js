@@ -28,6 +28,7 @@ import { pipeline }          from 'node:stream/promises'
 
 import ffmpegStaticPath from 'ffmpeg-static'
 import { workspaceContext }  from '../_lib/workspaceContext.js'
+import { requireRole }       from '../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -89,6 +90,11 @@ export default async function handler(req, res) {
   const scope = await workspaceContext(req)
   if (!scope) return res.status(401).json({ error: 'Unauthorized' })
 
+  const auth = await requireRole(req, null, { orgId: scope.clerk_org_id })
+  if (!auth.ok) {
+    return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  }
+
   const { interviewId, assetId } = req.body || {}
   if (!interviewId || !assetId) {
     return res.status(400).json({ error: 'interviewId and assetId are required' })
@@ -128,7 +134,7 @@ export default async function handler(req, res) {
     const offsetSeconds = await detectSpeechOnset(inPath)
 
     // Persist both the asset link and the detected offset in one PATCH
-    const patchRes = await sb(`interviews?id=eq.${interviewId}`, {
+    const patchRes = await sb(`interviews?id=eq.${interviewId}&workspace_id=eq.${scope.id}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body:    JSON.stringify({
