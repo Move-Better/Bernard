@@ -58,7 +58,7 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
     if (platformFilter || stageFilter || campaignFilter) {
       return (
         <EmptyState
-          icon={BookOpen}
+          icon={<BookOpen className="h-5 w-5" />}
           title="No stories match"
           description="No stories match the current filters. Try clearing a filter."
         />
