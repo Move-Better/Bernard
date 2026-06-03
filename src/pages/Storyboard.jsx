@@ -166,7 +166,7 @@ export default function Storyboard() {
               <div className="flex items-center gap-2">
                 <span className="inline-block w-1 h-4 rounded-full shrink-0 bg-primary" aria-hidden="true" />
                 <Send className="h-3.5 w-3.5 text-primary" />
-                <p className="text-sm font-bold text-[#7a3a14] tracking-tight">
+                <p className="text-sm font-bold text-primary tracking-tight">
                   Ready to distribute
                 </p>
                 <span className="text-3xs font-bold rounded-full px-2 py-0.5 bg-primary text-primary-foreground">

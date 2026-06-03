@@ -1454,7 +1454,7 @@ export default function InterviewSession() {
           </span>
         )}
         {interviewComplete
-          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" />Interview complete</span>
+          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><CheckCircle2 className="h-4 w-4" />Interview complete</span>
           : isOwner && (
             // Desktop header keeps the action buttons. On mobile they live
             // in the bottom dock so they're within thumb reach next to the
@@ -1579,29 +1579,6 @@ export default function InterviewSession() {
             </div>
           )}
 
-          {interviewComplete && !isStreaming && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 flex flex-col gap-3 mt-2">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden="true" />
-                <p className="font-semibold text-sm text-emerald-900">
-                  {staffMember.name ? `Great conversation, ${staffMember.name}.` : 'Great conversation.'}
-                </p>
-              </div>
-              <p className="text-sm text-emerald-800/80 leading-relaxed">
-                Your story is being turned into content.
-              </p>
-              {interview?.outputs?.blogPost && (
-                <Button
-                  size="sm"
-                  className="self-start bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
-                  onClick={() => navigate(`/stories/${interviewId}`)}
-                >
-                  See your content →
-                </Button>
-              )}
-            </div>
-          )}
-
           <div ref={bottomRef} />
         </div>
         </ScrollArea>
@@ -1655,11 +1632,11 @@ export default function InterviewSession() {
                   : 'Turning your interview into a full blog post. We\'ll open the story view when it\'s ready — social, video, and marketing content will generate on demand from there.'}
               </p>
               {coveredSummary && (
-                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3.5 py-3">
-                  <p className="text-2xs font-bold uppercase tracking-widest text-emerald-700 mb-1.5">
+                <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3">
+                  <p className="text-2xs font-bold uppercase tracking-widest text-success mb-1.5">
                     What you covered
                   </p>
-                  <div className="text-sm text-emerald-900/90 leading-relaxed whitespace-pre-line">
+                  <div className="text-sm text-success/90 leading-relaxed whitespace-pre-line">
                     {coveredSummary}
                   </div>
                 </div>
@@ -1672,8 +1649,8 @@ export default function InterviewSession() {
       {completionData && !isGenerating && !showVideoPrompt && (
         <div className="flex-1 flex items-center justify-center py-6">
           <div className="rounded-xl border bg-card p-6 max-w-md w-full text-center space-y-4">
-            <div className="mx-auto h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-emerald-600" aria-hidden="true" />
+            <div className="mx-auto h-14 w-14 rounded-full bg-success/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-success" aria-hidden="true" />
             </div>
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">

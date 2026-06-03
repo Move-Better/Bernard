@@ -1646,8 +1646,8 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           rests here and shows an unmistakable primary "Add media in Storyboard →"
           CTA (plus Undo), matching the Words-screen redesign. */}
       {!isPublish && piece.status === 'approved' && canReview && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
+        <div className="rounded-lg border border-success/30 bg-success/10 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="inline-flex items-center gap-2 text-sm font-medium text-success">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             Words approved — ready for media
           </p>
