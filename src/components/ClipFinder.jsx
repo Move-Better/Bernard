@@ -429,7 +429,7 @@ export default function ClipFinder({ asset, canEdit }) {
           <ul className="space-y-1">
             {rendered.map((s) => (
               <li key={s.id} className="flex items-center gap-1.5 text-2xs text-muted-foreground">
-                <Check className="h-3 w-3 text-emerald-600 shrink-0" />
+                <Check className="h-3 w-3 text-success shrink-0" />
                 <span className="truncate" title={s.hook}>{s.hook || 'Clip'}</span>
                 <span className="text-3xs">· {mmss(s.start_sec)}–{mmss(s.end_sec)}</span>
               </li>

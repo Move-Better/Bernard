@@ -413,11 +413,11 @@ export default function StoryDetail() {
           on outputs.coveredSummary. Reappears here so the clinician sees the
           mirror of what they said alongside the resulting content. */}
       {story?.outputs?.coveredSummary && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-          <p className="text-2xs font-bold uppercase tracking-widest text-emerald-700 mb-1.5">
+        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3">
+          <p className="text-2xs font-bold uppercase tracking-widest text-success mb-1.5">
             What you covered
           </p>
-          <div className="text-sm text-emerald-900/90 leading-relaxed whitespace-pre-line">
+          <div className="text-sm text-success/90 leading-relaxed whitespace-pre-line">
             {story.outputs.coveredSummary}
           </div>
         </div>

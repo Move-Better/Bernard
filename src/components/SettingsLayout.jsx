@@ -23,6 +23,7 @@ const MOBILE_NAV = [
   { to: '/settings/brand-kit',               label: 'Brand kit',         icon: Palette },
   { to: '/settings/carousel-themes',         label: 'Carousel themes',   icon: LayoutGrid },
   { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
+  { to: '/settings/access',                  label: 'Access matrix',     icon: Shield },
   { to: '/settings/workspace/billing',       label: 'Plan & billing',    icon: CreditCard },
 ]
 

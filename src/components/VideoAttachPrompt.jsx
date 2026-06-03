@@ -160,8 +160,8 @@ export default function VideoAttachPrompt({ interviewId, staffName, onDone }) {
   if (step === 'done') {
     return (
       <div className="flex flex-col items-center gap-4 py-8 px-4 max-w-sm mx-auto text-center">
-        <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
+          <CheckCircle2 className="h-5 w-5 text-success" />
         </div>
         <p className="text-sm font-medium">Video attached</p>
       </div>

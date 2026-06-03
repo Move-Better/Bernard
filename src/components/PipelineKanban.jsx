@@ -57,7 +57,7 @@ function Lane({ lane, items, isPublisherInbox }) {
             aria-hidden="true"
           />
           <Icon className={`h-3.5 w-3.5 ${isPublisherInbox ? 'text-primary' : 'text-muted-foreground'}`} />
-          <span className={`text-sm font-bold tracking-tight ${isPublisherInbox ? 'text-[#7a3a14]' : 'text-foreground'}`}>
+          <span className={`text-sm font-bold tracking-tight ${isPublisherInbox ? 'text-primary' : 'text-foreground'}`}>
             {token.label}
           </span>
           {isPublisherInbox && items.length > 0 && (

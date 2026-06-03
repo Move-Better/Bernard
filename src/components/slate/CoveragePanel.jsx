@@ -67,7 +67,7 @@ function TopicRow({ t }) {
     <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors">
       <div className="shrink-0">
         {hasCoverage
-          ? <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          ? <CheckCircle2 className="h-4 w-4 text-success" />
           : priority === 'high'
             ? <TrendingDown className="h-4 w-4 text-destructive" />
             : <Lightbulb className="h-4 w-4 text-amber-600" />}

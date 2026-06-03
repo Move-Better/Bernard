@@ -250,8 +250,10 @@ export default function Home() {
           has no stories yet so onboarding stays focused. */}
       {stories.length > 0 ? <HomeStats stories={stories} /> : null}
 
-      {/* Main content: task buckets left, right rail right */}
-      <div className="flex gap-6">
+      {/* Main content: task buckets left, right rail right. Stacks to a single
+          column below lg (rail drops under the buckets with a separator);
+          becomes a two-column row at lg+ where the rail is a fixed sidebar. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         <div className="flex flex-col gap-4 flex-1 min-w-0">
           {myRecentInterviews.length > 0 && (
             <TaskBucketCard
@@ -381,8 +383,15 @@ export default function Home() {
           />
         </div>
 
-        {/* Right rail — hidden on smaller viewports */}
-        <div className="w-72 flex-shrink-0 hidden lg:block">
+        {/* Right rail — fixed sidebar at lg+, stacks full-width below the
+            buckets on smaller viewports with a labelled separator so it reads
+            as its own section rather than running straight into the buckets. */}
+        <div className="w-full lg:w-72 lg:flex-shrink-0">
+          <div className="lg:hidden mb-4 pt-2 border-t border-border/60">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70 pt-3">
+              Your week at a glance
+            </h2>
+          </div>
           <HomeRightRail stories={stories} isAdmin={role === 'admin'} />
         </div>
       </div>
