@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -14,6 +14,20 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import CoveragePanel from '@/components/slate/CoveragePanel'
 
 const REFETCH_INTERVAL_MS = 30_000
+// Hard cap on every Slate poll loop. Detection of a long seminar can run for
+// minutes (see api/_lib/segmentDetect.js), so the ceiling sits well above a
+// single job; its job is to stop a row stuck in 'detecting' from polling
+// forever once the tab is left open.
+const POLL_CEILING_MS = 5 * 60_000
+
+// True when any source video is mid-detection. This is the only background
+// job-state the Slate page can observe — auto-detect flips segment_status
+// null → 'detecting' → 'ready' | 'failed'. The proposal/clip count maps carry
+// no state of their own, but they only change while a detection (or its
+// follow-on render) is in flight, so all three poll loops gate on this.
+function anyDetecting(assets) {
+  return Array.isArray(assets) && assets.some((a) => a?.segment_status === 'detecting')
+}
 
 function clipCount(asset) {
   return typeof asset.clip_count === 'number' ? asset.clip_count : null
@@ -133,6 +147,12 @@ export default function Slate() {
   const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'clips_to_review' | 'in_progress' | 'coverage'
   const [searchQ, setSearchQ] = useState('')
 
+  // Track when the current poll window started, so the refetch loops below can
+  // hard-cap even if a detection job silently stalls in 'detecting'. Reset when
+  // detection (re)starts (effect below) so a video ingested long after mount
+  // still gets fresh polling rather than being permanently past the cap.
+  const pollStartRef = useRef(Date.now())
+
   // Source videos (kind=video, not archived)
   const {
     data: mediaData,
@@ -143,7 +163,13 @@ export default function Slate() {
     queryKey: ['slate-source-videos', searchQ],
     queryFn: () => listMedia({ kind: 'video', limit: 100, q: searchQ || undefined }),
     enabled: ws?.video_pipeline_enabled === true,
-    refetchInterval: REFETCH_INTERVAL_MS,
+    refetchInterval: (q) => {
+      // Only poll while a source video is mid-detection; hard-cap at 5 min so a
+      // stuck 'detecting' row can't poll for the life of the tab.
+      if (!anyDetecting(q.state.data)) return false
+      if (Date.now() - pollStartRef.current > POLL_CEILING_MS) return false
+      return REFETCH_INTERVAL_MS
+    },
     refetchOnWindowFocus: false,
   })
 
@@ -152,7 +178,14 @@ export default function Slate() {
     queryKey: ['slate-clip-counts'],
     queryFn: () => apiFetch('/api/editorial/clip-counts'),
     enabled: ws?.video_pipeline_enabled === true,
-    refetchInterval: 60_000,
+    refetchInterval: () => {
+      // The count map has no job-state of its own; gate on the source videos'
+      // detection state (counts only change while detection or its follow-on
+      // render is in flight) and hard-cap at 5 min.
+      if (!anyDetecting(mediaData)) return false
+      if (Date.now() - pollStartRef.current > POLL_CEILING_MS) return false
+      return 60_000
+    },
     refetchOnWindowFocus: false,
   })
 
@@ -161,9 +194,25 @@ export default function Slate() {
     queryKey: ['slate-proposal-counts'],
     queryFn: () => apiFetch('/api/editorial/proposal-counts'),
     enabled: ws?.video_pipeline_enabled === true,
-    refetchInterval: 60_000,
+    refetchInterval: () => {
+      // Same gating as clip counts: proposals appear when detection lands, so
+      // poll only while a source video is detecting, capped at 5 min.
+      if (!anyDetecting(mediaData)) return false
+      if (Date.now() - pollStartRef.current > POLL_CEILING_MS) return false
+      return 60_000
+    },
     refetchOnWindowFocus: false,
   })
+
+  // Restart the poll-cap window each time detection (re)starts so a video
+  // ingested well after mount still polls, instead of being stuck past a cap
+  // anchored at mount.
+  const isDetecting = anyDetecting(mediaData)
+  const wasDetectingRef = useRef(isDetecting)
+  useEffect(() => {
+    if (isDetecting && !wasDetectingRef.current) pollStartRef.current = Date.now()
+    wasDetectingRef.current = isDetecting
+  }, [isDetecting])
 
   const sourceVideos = useMemo(() => {
     const assets = Array.isArray(mediaData) ? mediaData : []
