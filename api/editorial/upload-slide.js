@@ -23,6 +23,21 @@ import { requireRole } from '../_lib/auth.js'
 import { EDITOR_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+function sb(path, init = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+  })
+}
+
 // 1080×1080 JPEG renders run ~150–500KB; base64 inflates ~33%. Cap generously
 // below the Node function body limit so a malformed/huge payload is rejected
 // cleanly instead of crashing the function.
@@ -63,10 +78,22 @@ export default async function handler(req, res) {
   if (!buffer.length) return res.status(400).json({ error: 'invalid_payload', message: 'empty image' })
   if (buffer.length > MAX_BYTES) return res.status(413).json({ error: 'too_large', message: 'rendered slide exceeds size limit' })
 
-  // Path keyed by piece + slide index + content signature. addRandomSuffix:false
-  // + allowOverwrite so re-rendering an unchanged slide is idempotent and a
-  // changed slide (new sig) writes a fresh object.
-  const pathname = `media/slides/${ws.slug}/${pieceId}/${idx}-${sig}.jpg`
+  // Verify the piece belongs to this workspace before keying a blob path on its
+  // id — prevents a caller from writing slides into another tenant's piece
+  // namespace (defense-in-depth alongside the workspace_id blob prefix below).
+  const pieceRes = await sb(
+    `content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}&select=id`
+  )
+  if (!pieceRes.ok) return res.status(500).json({ error: 'db_error' })
+  const pieces = await pieceRes.json()
+  if (!pieces?.[0]) return res.status(404).json({ error: 'piece_not_found' })
+
+  // Path keyed by piece + slide index + content signature, namespaced by the
+  // immutable workspace UUID (NOT the mutable slug — a rename would orphan
+  // previously-uploaded slides and a slug-reuse window risks a cross-workspace
+  // collision). addRandomSuffix:false + allowOverwrite so re-rendering an
+  // unchanged slide is idempotent and a changed slide (new sig) writes fresh.
+  const pathname = `media/slides/${ws.id}/${pieceId}/${idx}-${sig}.jpg`
 
   try {
     const { url } = await blobPut(pathname, buffer, {
