@@ -1,13 +1,13 @@
-// Lean Voice & tone settings page — first of the three pages that replace
-// the legacy fat VoiceSettings.jsx (see .claude/mockups/voice-settings-
-// redesign-mapping.md). Owns the fields that shape Bernard's voice + tone:
+// "Your voice" settings page — how this clinic sounds and who it serves.
+// Owns the fields the AI reads before writing anything:
 //
 //   clinic_context, brand_voice
 //   audience_short, audience_description, activity_context
 //   tone_modifiers (active / clinical / warm / smart)
+//   patient_context (archetypes, summary blurb, prior-provider pain points)
 //
-// Patient archetypes, topic suggestions, slot editors, and per-clinician
-// voice memory live on sibling pages (PRs #3 + #4).
+// Topic catalog, interview pickers, and condition bank live on the sibling
+// "Interview setup" page (/settings/workspace/interview).
 
 import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
@@ -23,10 +23,15 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { apiFetch } from '@/lib/api'
 import { ToneModifierCards } from '@/components/settings/ToneCard'
+import { ArchetypeCardsSection } from '@/components/settings/PatientArchetypes'
+import { PatientContextEditor } from '@/components/settings/PatientContextEditor'
 
-// Pull only the fields this page owns from a workspace row. PATCH covers
-// the same keys so saving here never accidentally clears archetypes,
-// topics, or slot lists owned by sibling pages.
+function tryParseJson(text, fallback) {
+  if (!text || !text.trim()) return { ok: true, value: fallback }
+  try { return { ok: true, value: JSON.parse(text) } }
+  catch (e) { return { ok: false, error: e.message } }
+}
+
 function formFromWorkspace(ws) {
   return {
     clinic_context:       ws.clinic_context       ?? '',
@@ -38,10 +43,12 @@ function formFromWorkspace(ws) {
     tone_clinical:        ws.tone_modifiers?.clinical ?? '',
     tone_warm:            ws.tone_modifiers?.warm     ?? '',
     tone_smart:           ws.tone_modifiers?.smart    ?? '',
+    patient_context_json: JSON.stringify(ws.patient_context ?? {}, null, 2),
   }
 }
 
 function formToPatch(form) {
+  const pc = tryParseJson(form.patient_context_json, {})
   return {
     clinic_context:       form.clinic_context,
     brand_voice:          form.brand_voice,
@@ -54,11 +61,12 @@ function formToPatch(form) {
       warm:     form.tone_warm     ?? '',
       smart:    form.tone_smart    ?? '',
     },
+    ...(pc.ok ? { patient_context: pc.value } : {}),
   }
 }
 
 export default function VoiceTonePage() {
-  useDocumentTitle('Settings — Voice & tone')
+  useDocumentTitle('Settings — Your voice')
   const runtimeWs = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
   const { has } = usePermission()
@@ -92,6 +100,8 @@ export default function VoiceTonePage() {
 
   async function handleSave() {
     setSaving(true); setError(null); setSaved(false)
+    const pc = tryParseJson(form.patient_context_json, {})
+    if (!pc.ok) { setError(`Patient context JSON: ${pc.error}`); setSaving(false); return }
     try {
       const updated = await apiFetch('/api/workspace/me', {
         method: 'PATCH',
@@ -133,13 +143,13 @@ export default function VoiceTonePage() {
       <div>
         <div className="flex items-center justify-between">
           <p className="text-2xs text-muted-foreground/80">
-            Settings · {interviewerName} · Voice &amp; tone
+            Settings · {interviewerName} · Your voice
           </p>
           <Link
-            to="/settings/workspace/patients"
+            to="/settings/workspace/interview"
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            Next: Patients &amp; topics
+            Next: Interview setup
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -149,10 +159,10 @@ export default function VoiceTonePage() {
             style={{ background: 'hsl(var(--primary))' }}
             aria-hidden="true"
           />
-          How {clinicName} sounds
+          Your voice
         </h1>
         <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">
-          The brief {interviewerName} reads before every draft. Tone modes shift register when a clinician asks.
+          Everything {interviewerName} reads before writing — how {clinicName} sounds, who it serves, and who its patients are.
         </p>
       </div>
 
@@ -204,6 +214,24 @@ export default function VoiceTonePage() {
             value={form.activity_context}
             onChange={set('activity_context')}
             hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
+          />
+        </Section>
+
+        {/* Patient archetypes — span both columns */}
+        <Section
+          title="Patient archetypes"
+          description={`The types of patients ${clinicName} serves. ${interviewerName} sharpens questions toward the archetype chosen at interview start.`}
+          className="lg:col-span-2"
+        >
+          <ArchetypeCardsSection
+            value={form.patient_context_json}
+            onChange={set('patient_context_json')}
+            interviewerName={interviewerName}
+          />
+          <PatientContextEditor
+            value={form.patient_context_json}
+            onChange={set('patient_context_json')}
+            interviewerName={interviewerName}
           />
         </Section>
 

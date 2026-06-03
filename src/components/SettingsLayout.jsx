@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   Settings, Mic2, Radio, Puzzle, Palette, Users, CreditCard, MapPin,
-  Sliders, Stethoscope, Target, Zap, LayoutGrid, Shield,
+  Sliders, Target, Zap, LayoutGrid, Shield,
 } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -13,17 +13,17 @@ import { LoadingState } from '@/components/ui/LoadingState'
 // Children of "Bernard" are inlined here since the mobile rail has no
 // hierarchy.
 const MOBILE_NAV = [
-  { to: '/settings/workspace',                    label: 'General',            icon: Settings,   exact: true },
-  { to: '/settings/workspace/voice',              label: 'Voice & tone',       icon: Mic2 },
-  { to: '/settings/workspace/patients',           label: 'Patients & topics',  icon: Stethoscope },
-  { to: '/settings/workspace/interview-defaults', label: 'Interview defaults', icon: Sliders },
-  { to: '/settings/workspace/locations',          label: 'Locations',          icon: MapPin },
-  { to: '/settings/workspace/channels',           label: 'Output channels',    icon: Radio },
-  { to: '/settings/integrations',                 label: 'Integrations',       icon: Puzzle },
-  { to: '/settings/brand-kit',                    label: 'Brand kit',          icon: Palette },
-  { to: '/settings/carousel-themes',              label: 'Carousel themes',    icon: LayoutGrid },
-  { to: '/settings/members',                      label: 'Members & roles',    icon: Users },
-  { to: '/settings/workspace/billing',            label: 'Plan & billing',     icon: CreditCard },
+  { to: '/settings/workspace',                label: 'General',          icon: Settings,   exact: true },
+  { to: '/settings/workspace/voice',          label: 'Your voice',       icon: Mic2 },
+  { to: '/settings/workspace/interview',      label: 'Interview setup',  icon: Sliders },
+  { to: '/settings/workspace/locations',      label: 'Locations',        icon: MapPin },
+  { to: '/settings/workspace/channels',       label: 'Output channels',  icon: Radio },
+  { to: '/settings/campaigns',               label: 'Campaigns',         icon: Target },
+  { to: '/settings/integrations',            label: 'Integrations',      icon: Puzzle },
+  { to: '/settings/brand-kit',               label: 'Brand kit',         icon: Palette },
+  { to: '/settings/carousel-themes',         label: 'Carousel themes',   icon: LayoutGrid },
+  { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
+  { to: '/settings/workspace/billing',       label: 'Plan & billing',    icon: CreditCard },
 ]
 
 const GROUPS = [
@@ -35,9 +35,8 @@ const GROUPS = [
         label: 'AI Interviewer',
         icon: Mic2,
         children: [
-          { to: '/settings/workspace/voice',              label: 'Voice & tone' },
-          { to: '/settings/workspace/patients',           label: 'Patients & topics' },
-          { to: '/settings/workspace/interview-defaults', label: 'Interview defaults' },
+          { to: '/settings/workspace/voice',      label: 'Your voice' },
+          { to: '/settings/workspace/interview',  label: 'Interview setup' },
         ],
       },
       { to: '/settings/workspace/locations', label: 'Locations',          icon: MapPin },
