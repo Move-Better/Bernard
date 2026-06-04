@@ -124,9 +124,13 @@ function detectTemplate(instruction) {
   for (const r of TEMPLATE_RULES) {
     if (r.patterns.some((p) => p.test(instruction))) { changes.templateId = r.id; matched = true; break }
   }
-  const accentM = instruction.match(/(?:highlight|accent|emphasi[sz]e)\s+(?:the\s+words?\s+)?["'“](.+?)["'”]/i)
-    || instruction.match(/make\s+["'“](.+?)["'”]\s+orange/i)
-  if (accentM) { changes.accentText = accentM[1]; matched = true }
+  // Double/curly quotes: non-greedy. Straight/curly SINGLE quotes: greedy to the
+  // last quote, so an inner apostrophe (e.g. 'isn't tight') doesn't truncate it.
+  const accentM = instruction.match(/(?:highlight|accent|emphasi[sz]e)\s+(?:the\s+words?\s+)?[“"](.+?)[”"]/i)
+    || instruction.match(/(?:highlight|accent|emphasi[sz]e)\s+(?:the\s+words?\s+)?[‘'](.+)[’']/i)
+    || instruction.match(/make\s+[“"](.+?)[”"]\s+orange/i)
+    || instruction.match(/make\s+[‘'](.+)[’']\s+orange/i)
+  if (accentM) { changes.accentText = accentM[1].trim(); matched = true }
   const labelM = instruction.match(/label\s+(?:it\s+)?["'“](.+?)["'”]/i)
     || instruction.match(/label\s+(?:it\s+)?(?:to\s+|as\s+)?([A-Za-z][\w\s]{0,28})$/i)
   if (labelM) { changes.label = labelM[1].trim(); matched = true }
