@@ -26,8 +26,14 @@
 
 import { useRef, useState, useCallback } from 'react'
 import { upload } from '@vercel/blob/client'
+import { createSession, appendChunk, patchSession, deleteSession } from '@/lib/audioCaptureDb'
 
 const AUDIO_UPLOAD_URL = '/api/interviews/audio'
+
+function uid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  return `iv-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
+}
 
 // Prefer Opus/WebM (best compression for speech, widely supported).
 // Fall back gracefully on Safari which uses MP4/AAC.
@@ -56,6 +62,7 @@ export function useInterviewAudioCapture() {
   const streamRef     = useRef(null)
   const mimeTypeRef   = useRef('')
   const uploadedRef   = useRef(false)   // guard: only upload once per session
+  const sessionIdRef  = useRef(null)    // IndexedDB crash-safe session id
   const [isCapturing, setIsCapturing] = useState(false)
 
   const startCapture = useCallback(async () => {
@@ -75,8 +82,19 @@ export function useInterviewAudioCapture() {
       recorderRef.current = recorder
       chunksRef.current   = []
 
+      // Crash-safe session: persist each chunk to IndexedDB so a killed tab
+      // doesn't lose the voice-clone take. Non-fatal — the interview is primary.
+      const sessionId = uid()
+      sessionIdRef.current = sessionId
+      uploadedRef.current = false
+      createSession({ id: sessionId, source: 'interview', mimeType: mimeType || 'audio/webm', filename: `interview-${sessionId}.${extFromMime(mimeType || 'audio/webm')}` })
+        .catch((e) => console.warn('[audioCapture] createSession failed (non-fatal):', e?.message))
+
       recorder.ondataavailable = (e) => {
-        if (e.data?.size > 0) chunksRef.current.push(e.data)
+        if (e.data?.size > 0) {
+          chunksRef.current.push(e.data)
+          appendChunk(sessionId, e.data).catch(() => {})
+        }
       }
 
       recorder.onerror = (e) => {
@@ -99,6 +117,7 @@ export function useInterviewAudioCapture() {
     if (!interviewId) return
 
     uploadedRef.current = true   // prevent double-upload on StrictMode double-fire
+    const sessionId = sessionIdRef.current
 
     return new Promise((resolve) => {
       recorder.onstop = async () => {
@@ -107,7 +126,10 @@ export function useInterviewAudioCapture() {
         setIsCapturing(false)
 
         const chunks = chunksRef.current
-        if (chunks.length === 0) { resolve(); return }
+        if (chunks.length === 0) {
+          if (sessionId) deleteSession(sessionId).catch(() => {})
+          resolve(); return
+        }
 
         const mime = mimeTypeRef.current || 'audio/webm'
         const blob = new Blob(chunks, { type: mime })
@@ -117,6 +139,7 @@ export function useInterviewAudioCapture() {
         // roughly 240KB; we use 200KB as the floor to stay conservative.
         if (blob.size < 200_000) {
           console.info(`[audioCapture] interview too short (${blob.size} bytes) — skipping upload`)
+          if (sessionId) deleteSession(sessionId).catch(() => {})
           resolve()
           return
         }
@@ -134,8 +157,11 @@ export function useInterviewAudioCapture() {
             clientPayload:   JSON.stringify({ interviewId }),
           })
           console.info(`[audioCapture] uploaded: ${pathname}`)
+          if (sessionId) deleteSession(sessionId).catch(() => {})
         } catch (e) {
           console.warn('[audioCapture] upload failed (non-fatal):', e?.message)
+          // Leave the session in IDB (marked failed) so the audio isn't lost.
+          if (sessionId) patchSession(sessionId, { status: 'failed', interviewId }).catch(() => {})
         }
       }
 
