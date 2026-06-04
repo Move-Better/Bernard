@@ -316,16 +316,18 @@ export function fetchStaffMemberRecentContent(staffId, limit = 3) {
 }
 
 /**
- * @param {{ staffId: string, topic: string, ownerEmail: string, tone?: string, voiceMode?: string, prototypeId?: string, locationId?: string, audience?: string, storyType?: string, cleanupLevel?: string, topicBacklogId?: string }} opts
+ * @param {{ staffId: string, topic: string, ownerEmail: string, tone?: string, voiceMode?: string, prototypeId?: string, locationId?: string, audience?: string, storyType?: string, cleanupLevel?: string, topicBacklogId?: string, campaignId?: string, selectedOutputs?: string[] }} opts
  * @returns {Promise<unknown>}
  */
-export function createInterview({ staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId }) {
+export function createInterview({ staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId, campaignId, selectedOutputs }) {
   // owner_id is derived from the verified Clerk token server-side, never sent
   // from the client. (Fixed 2026-05-21 audit P0 #4.)
+  // campaignId + selectedOutputs power the goal-steered "Write a newsletter"
+  // flow; both are optional and omitted by the regular interview create path.
   return apiFetch('/api/db/interviews', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId }),
+    body: JSON.stringify({ staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId, campaignId, selectedOutputs }),
   })
 }
 

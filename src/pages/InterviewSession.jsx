@@ -9,10 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { apiFetch, fetchSimilarInterviews, fetchStaffMember, fetchStaffMemberRecentContent, updateInterview, cleanupTranscript, populateContentItemProvenance, runVoiceAuditForInterview } from '@/lib/api'
 import { buildOwnHistoryBlock, pickPriorInterviews } from '@/lib/practiceMemory'
 import { extractProvenanceBlock } from '@/lib/provenance'
-import { useStaffMember, useInterview, queryKeys } from '@/lib/queries'
+import { useStaffMember, useInterview, useCampaigns, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { streamMessage } from '@/lib/claude'
-import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
+import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getNewsletterSystemPrompt, buildCampaignGoalBlock, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
 import { resolveAudienceSlot, resolveStoryTypeSlot } from '@/lib/interviewOptionsCatalog'
 import { detectEmotionalState, getEmotionPromptInjection } from '@/lib/emotionDetection'
 import { getInitials } from '@/lib/utils'
@@ -200,6 +200,10 @@ export default function InterviewSession() {
   const qc = useQueryClient()
   const { data: staffData } = useStaffMember(staffId)
   const { data: interviewData, isLoading: interviewLoading } = useInterview(interviewId)
+  // Campaign goals (Settings → Campaigns) — used only by the goal-steered
+  // "Write a newsletter" flow to resolve the bound campaign_id into a steering
+  // block. Returns [] for everyone else; never blocks the interview.
+  const { data: campaignsList = [] } = useCampaigns()
   const staffMember = staffData ?? null
   const [interview, setInterview] = useState(null)
   const loading = interviewLoading || !staffMember || !interview
@@ -286,6 +290,12 @@ export default function InterviewSession() {
   // + recent approved content). Built once when clinician + content fetch
   // resolve; injected into every system prompt for the session.
   const ownHistoryBlockRef = useRef('')
+  // Goal-steered "Write a newsletter" flow. When the interview is bound to a
+  // campaign_id, goalBlockRef holds the steering block injected into every
+  // interview turn, and campaignRef holds the campaign for newsletter
+  // generation. Both stay empty for a regular interview.
+  const goalBlockRef = useRef('')
+  const campaignRef = useRef(null)
   // Neural-TTS player (ElevenLabs) with speechSynthesis fallback. Constructed
   // lazily so SSR / no-window environments don't blow up. See src/lib/tts.js.
   const ttsRef = useRef(null)
@@ -552,6 +562,26 @@ export default function InterviewSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewLoading, interviewData, interviewId, navigate, staffId])
 
+  // Resolve the bound campaign goal (newsletter flow) into the steering block
+  // injected into each interview turn. Non-reactive refs so the live turn
+  // handler (sendToAI) reads the latest without re-rendering. No-ops to empty
+  // when there's no campaign_id — a regular interview is unaffected.
+  useEffect(() => {
+    if (!interview?.campaign_id || !staffMember) {
+      goalBlockRef.current = ''
+      campaignRef.current = null
+      return
+    }
+    const campaign = campaignsList.find((c) => c.id === interview.campaign_id)
+    if (!campaign) return
+    campaignRef.current = campaign
+    goalBlockRef.current = buildCampaignGoalBlock(
+      campaign,
+      staffMember.name,
+      runtimeWorkspace?.display_name || workspace?.display_name,
+    )
+  }, [interview?.campaign_id, campaignsList, staffMember, runtimeWorkspace])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingText])
@@ -668,6 +698,7 @@ export default function InterviewSession() {
         isFirstMessage,
         shallowReprobe: shouldReprobe,
         ownHistoryBlock: ownHistoryBlockRef.current,
+        goalBlock: goalBlockRef.current,
         conceptBlock:   conceptBlockRef.current,
         agreementBlock: agreementBlockRef.current,
         gapBlock:       gapBlockRef.current,
@@ -1191,8 +1222,20 @@ export default function InterviewSession() {
         console.warn('[interview] voice phrase fetch failed:', e?.message)
       }
 
-      const isMinimal = generationStyle === 'minimal_edits'
-      const systemPrompt = isMinimal
+      // Goal-steered newsletter interviews (selected_outputs=['email']) generate
+      // an email draft via getNewsletterSystemPrompt instead of a blog. The
+      // blog/minimal-edits ladder is unchanged for every other interview.
+      const isNewsletter = Array.isArray(interview.selected_outputs) && interview.selected_outputs.includes('email')
+      const isMinimal = !isNewsletter && generationStyle === 'minimal_edits'
+      const systemPrompt = isNewsletter
+        ? getNewsletterSystemPrompt(
+            overlaidWorkspace, staffMember.name, interview.topic, voiceMode,
+            staffMember.voice_notes || '',
+            voicePhrases,
+            campaignRef.current,
+            ownHistoryBlockRef.current,
+          )
+        : isMinimal
         ? getMinimalEditSystemPrompt(staffMember.name, voiceMode, staffMember.voice_notes || '', voicePhrases)
         : getBlogPostSystemPrompt(
             overlaidWorkspace, staffMember.name, interview.topic, tone, voiceMode, interview.prototype_id,
@@ -1208,7 +1251,9 @@ export default function InterviewSession() {
         ...apiMessages,
         {
           role: 'user',
-          content: isMinimal
+          content: isNewsletter
+            ? 'Please write the newsletter now based on our interview, using the exact section format.'
+            : isMinimal
             ? 'Please clean up the transcript now using minimal edits only.'
             : 'Please write the blog post now based on our interview.',
         },
@@ -1222,14 +1267,18 @@ export default function InterviewSession() {
       // content body. The trailer (if present) is the model's per-paragraph
       // source attribution; the server validates it against the content +
       // transcript and falls back to algorithmic matching if validation fails.
-      const { content: blogPost, provenanceJson } = extractProvenanceBlock(blogStreamingTextRef.current)
-      if (!blogPost.trim()) throw new Error('No content returned from generation')
+      const { content: generated, provenanceJson } = extractProvenanceBlock(blogStreamingTextRef.current)
+      if (!generated.trim()) throw new Error('No content returned from generation')
 
-      // The recap started in parallel at the top; by now (after a 60-120s blog
+      // The recap started in parallel at the top; by now (after a 60-120s
       // stream) it's long resolved. Await defensively so it persists with the
-      // blog. Non-fatal: '' if it failed.
+      // draft. Non-fatal: '' if it failed.
       const recap = await summaryPromise.catch(() => '')
-      const outputs = { blogPost, generatedAt: new Date().toISOString() }
+      // Newsletter interviews write outputs.emailNewsletter (→ platform='email'
+      // content_item via the PATCH cascade); everything else writes blogPost.
+      const outputs = isNewsletter
+        ? { emailNewsletter: generated, generatedAt: new Date().toISOString() }
+        : { blogPost: generated, generatedAt: new Date().toISOString() }
       if (recap) outputs.coveredSummary = recap
       // Clear session_state: completed interviews don't need resume capability.
       await updateInterview(interviewId, { outputs, status: 'completed', session_state: null, paused_at: null })
@@ -1245,7 +1294,7 @@ export default function InterviewSession() {
       // stores either `model_emit_validated` or `algorithmic_fallback`. The
       // UI does not wait for this — it lands within a second or two and
       // shows up on next Story Detail fetch.
-      populateContentItemProvenance(interviewId, provenanceJson || '', 'blog').catch((err) => {
+      populateContentItemProvenance(interviewId, provenanceJson || '', isNewsletter ? 'email' : 'blog').catch((err) => {
         console.warn('[interview] provenance population failed:', err?.message)
       })
       // Fire-and-forget: run the two-pass voice-fidelity audit (PR 3) on the
@@ -1253,7 +1302,7 @@ export default function InterviewSession() {
       // transcript + voice profile (+ practice memory for We-lane) and stores
       // voice_fidelity_score + voice_audit. The UI doesn't wait — Story Detail
       // shows the score/flags on next fetch once it lands.
-      runVoiceAuditForInterview(interviewId, 'blog').catch((err) => {
+      runVoiceAuditForInterview(interviewId, isNewsletter ? 'email' : 'blog').catch((err) => {
         // 401 here means Clerk session expired mid-interview. The auto-publish
         // gate treats voice_fidelity_score=null as "unscored — hold" so the
         // package won't ship without a score. User can re-trigger from Story Detail.
@@ -1277,7 +1326,7 @@ export default function InterviewSession() {
       // authoritative pct later; this is just a first impression for the card.
       const voicePct = deriveVoicePct(provenanceJson || '')
       setIsGenerating(false)
-      setCompletionData({ voicePct, staffName: staffMember.name, topic: interview.topic })
+      setCompletionData({ voicePct, staffName: staffMember.name, topic: interview.topic, isNewsletter })
       // The completion card now rests here as the primary "See your story →"
       // handoff. Video attach is an optional link on that card, never an
       // auto-advancing gate — so no timer pushes the user into it.
@@ -1305,7 +1354,7 @@ export default function InterviewSession() {
     if (autoGenFiredRef.current) return
     if (isGenerating) return
     if (!interview || !staffMember || !user?.id) return
-    if (interview.outputs?.blogPost) return
+    if (interview.outputs?.blogPost || interview.outputs?.emailNewsletter) return
     if (user.id !== interview.owner_id) return
     autoGenFiredRef.current = true
     handleGenerateContent()
@@ -1326,6 +1375,9 @@ export default function InterviewSession() {
   if (!staffMember || !interview) return null
 
   const isOwner = user?.id === interview.owner_id
+  // Goal-steered newsletter interview — changes the generating/completion copy
+  // and the post-generate chips/handoff to speak about the newsletter draft.
+  const isNewsletterInterview = Array.isArray(interview.selected_outputs) && interview.selected_outputs.includes('email')
 
   if (showInstructions) {
     return (
@@ -1627,7 +1679,9 @@ export default function InterviewSession() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                {generationStyle === 'minimal_edits'
+                {isNewsletterInterview
+                  ? 'Writing your newsletter from this conversation. We\'ll open the draft when it\'s ready — in your TrustDrivenCare email template, ready to review and send.'
+                  : generationStyle === 'minimal_edits'
                   ? 'Removing filler words while preserving your exact phrasing. We\'ll open the story view when it\'s ready.'
                   : 'Turning your interview into a full blog post. We\'ll open the story view when it\'s ready — social, video, and marketing content will generate on demand from there.'}
               </p>
@@ -1665,8 +1719,19 @@ export default function InterviewSession() {
                 ? `Your words made up ${completionData.voicePct}% of this draft.`
                 : 'Voice-faithful draft complete.'}
             </p>
-            {/* Platform chips — show what got drafted */}
-            {Array.isArray(runtimeWorkspace?.enabled_outputs) && runtimeWorkspace.enabled_outputs.length > 0 && (
+            {/* Platform chips — show what got drafted. A newsletter interview
+                produces just the email draft, so don't advertise the full
+                channel set. */}
+            {completionData.isNewsletter ? (
+              <div className="space-y-1.5">
+                <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">We drafted your</p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-0.5 text-2xs font-medium text-muted-foreground">
+                    Newsletter
+                  </span>
+                </div>
+              </div>
+            ) : Array.isArray(runtimeWorkspace?.enabled_outputs) && runtimeWorkspace.enabled_outputs.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">We drafted pieces for</p>
                 <div className="flex flex-wrap justify-center gap-1.5">
@@ -1685,7 +1750,7 @@ export default function InterviewSession() {
               size="lg"
               onClick={() => navigate(`/stories/${interviewId}`, { replace: true })}
             >
-              See your story
+              {completionData.isNewsletter ? 'See your newsletter' : 'See your story'}
               <ArrowRight className="h-4 w-4 ml-1.5" />
             </Button>
             <button

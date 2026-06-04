@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon, FileText, Camera, Zap } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -70,6 +70,28 @@ export default function CapturePicker() {
                 <p className="text-sm text-muted-foreground mt-1">
                   AI-led conversation. Best when you want to think out loud
                   about a topic and let prompts surface your thinking.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+
+        {/* Write a newsletter — goal-steered conversation → email draft */}
+        <button
+          type="button"
+          onClick={() => go('/new/newsletter')}
+          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+        >
+          <Card className="h-full transition hover:border-primary hover:shadow-sm">
+            <CardContent className="p-5 space-y-3">
+              <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Write a newsletter</div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Pick a goal, talk it through, and we&apos;ll write the newsletter
+                  in your voice — ready for your email template.
                 </p>
               </div>
             </CardContent>
