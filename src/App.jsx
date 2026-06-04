@@ -49,6 +49,7 @@ const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
 const Overview = lazy(() => import('@/pages/Overview'))
+const ReviewInbox = lazy(() => import('@/pages/ReviewInbox'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const Storyboard = lazy(() => import('@/pages/Storyboard'))
@@ -525,6 +526,10 @@ function AppRoutes() {
             <Route path="/staff/:staffId" element={guarded(<StaffProfile />)} />
             <Route path="/clinician/:staffId" element={<LegacyStaffRedirect />} />
             <Route path="/stories" element={guarded(<Stories />)} />
+            {/* Review Inbox — the producer's single review→schedule queue (P4).
+                Self-guards to editors (owner/producer/director) and redirects
+                individual clinicians home, same as Overview. */}
+            <Route path="/review-inbox" element={guarded(<ReviewInbox />)} />
             {/* Overview — clinic-wide board (Pipeline/Calendar/Themes). The
                 page self-guards to editors (owner/producer/director) and
                 redirects individual clinicians home. */}
