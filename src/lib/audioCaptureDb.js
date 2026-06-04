@@ -62,9 +62,21 @@ function openDb() {
   return _dbPromise
 }
 
-// Run a transaction over one or more stores. `fn(stores, tx)` where `stores` is
-// keyed by store name. Resolves with whatever `fn` returns (after tx.oncomplete).
-function tx(storeNames, mode, fn) {
+// Run a transaction over one or more stores.
+//
+// CRITICAL: `fn(stores, setResult)` MUST be synchronous and MUST chain any
+// dependent IndexedDB requests via their `onsuccess` handlers — never via
+// `await`. Safari < 15.4 (and the iOS 14.5–15.3 range that is the MediaRecorder
+// minimum) uses the legacy IDB auto-commit model: a readwrite transaction
+// commits as soon as the JS task stack unwinds with no pending request. An
+// `await` between two requests yields a microtask boundary, the stack unwinds,
+// the transaction commits, and every subsequent request throws
+// `TransactionInactiveError`. Issuing the next request from inside the prior
+// request's `onsuccess` keeps the transaction alive on every engine.
+//
+// `fn` reports its return value by calling `setResult(value)`; the promise
+// resolves with that value once the transaction actually commits (oncomplete).
+function runTx(storeNames, mode, fn) {
   const names = Array.isArray(storeNames) ? storeNames : [storeNames]
   return openDb().then(
     (db) => new Promise((resolve, reject) => {
@@ -74,17 +86,15 @@ function tx(storeNames, mode, fn) {
       let result
       t.oncomplete = () => resolve(result)
       t.onerror    = () => reject(t.error)
-      t.onabort    = () => reject(t.error)
-      Promise.resolve(fn(stores, t)).then((r) => { result = r }, reject)
+      t.onabort    = () => reject(t.error || new Error('IDB transaction aborted'))
+      try {
+        fn(stores, (r) => { result = r })
+      } catch (e) {
+        try { t.abort() } catch { /* already inactive */ }
+        reject(e)
+      }
     }),
   )
-}
-
-function reqToPromise(req) {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result)
-    req.onerror   = () => reject(req.error)
-  })
 }
 
 /**
@@ -107,7 +117,7 @@ export async function createSession({ id, source, mimeType, filename, staffId = 
     createdAt: now,
     updatedAt: now,
   }
-  await tx(SESSIONS, 'readwrite', (s) => reqToPromise(s[SESSIONS].put(record)))
+  await runTx(SESSIONS, 'readwrite', (s) => { s[SESSIONS].put(record) })
   return record
 }
 
@@ -118,35 +128,49 @@ export async function createSession({ id, source, mimeType, filename, staffId = 
  */
 export async function appendChunk(sessionId, blob, { durationSec } = {}) {
   if (!blob || !blob.size) return
-  return tx([SESSIONS, CHUNKS], 'readwrite', async (s) => {
-    const session = await reqToPromise(s[SESSIONS].get(sessionId))
-    if (!session) return // discarded — drop the chunk
-    const seq = session.chunkCount
-    await reqToPromise(s[CHUNKS].put({ key: `${sessionId}:${seq}`, sessionId, seq, blob }))
-    session.chunkCount = seq + 1
-    if (typeof durationSec === 'number') session.durationSec = durationSec
-    session.updatedAt = Date.now()
-    await reqToPromise(s[SESSIONS].put(session))
+  // Single transaction, requests chained via onsuccess (no await between them)
+  // so the tx stays active on Safari < 15.4's legacy auto-commit model.
+  return runTx([SESSIONS, CHUNKS], 'readwrite', (s) => {
+    const getReq = s[SESSIONS].get(sessionId)
+    getReq.onsuccess = () => {
+      const session = getReq.result
+      if (!session) return // discarded — drop the chunk; tx still commits
+      const seq = session.chunkCount
+      s[CHUNKS].put({ key: `${sessionId}:${seq}`, sessionId, seq, blob })
+      session.chunkCount = seq + 1
+      if (typeof durationSec === 'number') session.durationSec = durationSec
+      session.updatedAt = Date.now()
+      s[SESSIONS].put(session)
+    }
   })
 }
 
 /** Patch a subset of session fields (e.g. status transitions). */
 export async function patchSession(sessionId, patch) {
-  return tx(SESSIONS, 'readwrite', async (s) => {
-    const existing = await reqToPromise(s[SESSIONS].get(sessionId))
-    if (!existing) return null
-    const next = { ...existing, ...patch, updatedAt: Date.now() }
-    await reqToPromise(s[SESSIONS].put(next))
-    return next
+  return runTx(SESSIONS, 'readwrite', (s, setResult) => {
+    const getReq = s[SESSIONS].get(sessionId)
+    getReq.onsuccess = () => {
+      const existing = getReq.result
+      if (!existing) { setResult(null); return }
+      const next = { ...existing, ...patch, updatedAt: Date.now() }
+      s[SESSIONS].put(next)
+      setResult(next)
+    }
   })
 }
 
 export async function getSession(sessionId) {
-  return tx(SESSIONS, 'readonly', (s) => reqToPromise(s[SESSIONS].get(sessionId))).then((r) => r || null)
+  return runTx(SESSIONS, 'readonly', (s, setResult) => {
+    const req = s[SESSIONS].get(sessionId)
+    req.onsuccess = () => setResult(req.result || null)
+  })
 }
 
 export async function listSessions() {
-  return tx(SESSIONS, 'readonly', (s) => reqToPromise(s[SESSIONS].getAll())).then((r) => r || [])
+  return runTx(SESSIONS, 'readonly', (s, setResult) => {
+    const req = s[SESSIONS].getAll()
+    req.onsuccess = () => setResult(req.result || [])
+  })
 }
 
 /**
@@ -156,9 +180,10 @@ export async function listSessions() {
 export async function assembleBlob(sessionId) {
   const session = await getSession(sessionId)
   if (!session) return null
-  const chunks = await tx(CHUNKS, 'readonly', (s) =>
-    reqToPromise(s[CHUNKS].index('sessionId').getAll(sessionId)),
-  )
+  const chunks = await runTx(CHUNKS, 'readonly', (s, setResult) => {
+    const req = s[CHUNKS].index('sessionId').getAll(sessionId)
+    req.onsuccess = () => setResult(req.result || [])
+  })
   if (!chunks || !chunks.length) return null
   chunks.sort((a, b) => a.seq - b.seq)
   return new Blob(chunks.map((c) => c.blob), { type: session.mimeType || 'audio/webm' })
@@ -166,10 +191,12 @@ export async function assembleBlob(sessionId) {
 
 /** Delete a session and all of its chunks. Call on successful upload or discard. */
 export async function deleteSession(sessionId) {
-  return tx([SESSIONS, CHUNKS], 'readwrite', async (s) => {
-    await reqToPromise(s[SESSIONS].delete(sessionId))
-    const keys = await reqToPromise(s[CHUNKS].index('sessionId').getAllKeys(sessionId))
-    for (const k of keys) s[CHUNKS].delete(k)
+  return runTx([SESSIONS, CHUNKS], 'readwrite', (s) => {
+    s[SESSIONS].delete(sessionId)
+    const keysReq = s[CHUNKS].index('sessionId').getAllKeys(sessionId)
+    keysReq.onsuccess = () => {
+      for (const k of keysReq.result || []) s[CHUNKS].delete(k)
+    }
   })
 }
 
