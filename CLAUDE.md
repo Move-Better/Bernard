@@ -236,6 +236,10 @@ If the column is missing, paste the relevant `ALTER TABLE ... ADD COLUMN IF NOT 
 
 Local migration runs require an unredacted `MULTITENANT_DATABASE_URL` in `.env.local`. `vercel env pull` replaces Sensitive vars with `*****REDACTED*****`, which silently breaks the apply script (`TypeError: Invalid URL`). After any `vercel env pull`, restore `MULTITENANT_DATABASE_URL` from 1Password (NarrateRx vault) before running migrations locally.
 
+**Status columns have CHECK constraints.** Any new status value needs a migration — symptom is a generic `db_error`/500. Before adding a new status value, grep `<table>_status_check` in `supabase/multitenant/migrations/` to find the constraint, then add an `ALTER TABLE … DROP CONSTRAINT / ADD CONSTRAINT` in the same migration as the code that uses it. Never assume a text column accepts any value.
+
+**`content_items.media_urls` canonical shape is `[{url, type, kind, …}]` objects** — never bare strings. A bare string URL → the video publisher can't determine type → ships as a broken image. Every writer must use the object shape. Use `clipToMediaEntry()` / `pickerItemToMediaEntry()` from `src/lib/mediaEntry.js` to construct entries.
+
 ## Deleting or merging a `staff` row — repoint FKs first (5 of 12 cascade)
 
 `staff.id` is a foreign key in **12 tables**, and **5 are `ON DELETE CASCADE`** — `content_items`, `interviews`, `practice_memory_chunks`, `staff_recipes`, `staff_voice_phrases`. There is also a denormalized, non-FK reference: `campaigns.target_staff_ids` (`uuid[]`). Deleting a staff row that still has cascade children **silently destroys that learning** (interviews, voice phrases, memory chunks) — no error, it just vanishes.
