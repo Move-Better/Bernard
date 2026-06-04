@@ -100,6 +100,48 @@ function applyVisualRule(instruction, slideCount) {
   return null
 }
 
+// ── WHOOP template detection (post surface only) ─────────────────────────────
+// Deterministic: lets the chat pick a template, accent word, label, or badge
+// figure — e.g. "make it a dark badge card and highlight 'isn't tight'".
+
+const TEMPLATE_RULES = [
+  { id: 'dark-badge',  patterns: [/dark\s+badge/i, /dark\s+metric/i] },
+  { id: 'light-badge', patterns: [/light\s+badge/i, /bright\s+badge/i, /white\s+badge/i] },
+  { id: 'dark-split',  patterns: [/dark\s+split/i, /navy\s+split/i] },
+  { id: 'light-split', patterns: [/light\s+split/i, /sage\s+split/i] },
+  { id: 'dark-claim',  patterns: [/dark\s+(?:claim|stat|card|template)/i] },
+  { id: 'light-claim', patterns: [/light\s+(?:claim|stat|card|template)/i, /paper\s+(?:card|claim|template)/i] },
+  { id: 'editorial',   patterns: [/editorial(?:\s+template)?/i, /photo\s+with\s+caption/i, /classic\s+template/i] },
+  // Generic (no light/dark qualifier) → default to the dark variant.
+  { id: 'dark-badge',  patterns: [/\bbadge\b/i, /metric\s+card/i] },
+  { id: 'dark-split',  patterns: [/split\s+(?:panel|template|card)/i] },
+  { id: 'dark-claim',  patterns: [/claim\s+card/i, /stat\s+card/i] },
+]
+
+function detectTemplate(instruction) {
+  const changes = {}
+  let matched = false
+  for (const r of TEMPLATE_RULES) {
+    if (r.patterns.some((p) => p.test(instruction))) { changes.templateId = r.id; matched = true; break }
+  }
+  const accentM = instruction.match(/(?:highlight|accent|emphasi[sz]e)\s+(?:the\s+words?\s+)?["'“](.+?)["'”]/i)
+    || instruction.match(/make\s+["'“](.+?)["'”]\s+orange/i)
+  if (accentM) { changes.accentText = accentM[1]; matched = true }
+  const labelM = instruction.match(/label\s+(?:it\s+)?["'“](.+?)["'”]/i)
+    || instruction.match(/label\s+(?:it\s+)?(?:to\s+|as\s+)?([A-Za-z][\w\s]{0,28})$/i)
+  if (labelM) { changes.label = labelM[1].trim(); matched = true }
+  const figM = instruction.match(/(?:badge|figure|metric)\s+(\d+)\s*([A-Za-z%]+)?/i)
+    || instruction.match(/(\d+)[-\s]?(min|sec|day|days|week|weeks|month|months|%|x)\b/i)
+  if (figM) { changes.figure = figM[1]; if (figM[2]) changes.figureUnit = figM[2]; matched = true }
+  if (!matched) return null
+  const parts = []
+  if (changes.templateId) parts.push(`${changes.templateId.replace('-', ' ')} template`)
+  if (changes.accentText) parts.push(`highlighting “${changes.accentText}”`)
+  if (changes.label) parts.push(`label “${changes.label}”`)
+  if (changes.figure) parts.push(`badge ${changes.figure}${changes.figureUnit || ''}`)
+  return { changes, explanation: `Applied the ${parts.join(', ')}.` }
+}
+
 /**
  * Use AI to classify an ambiguous instruction and optionally rewrite content.
  * For visual: returns classification JSON.
@@ -198,6 +240,12 @@ export default async function handler(req, res) {
   const localType = classifyLocally(instruction)
 
   try {
+    // Fast path: WHOOP template / accent / label / badge-figure request (post).
+    if (surface === 'post') {
+      const tpl = detectTemplate(instruction)
+      if (tpl) return res.status(200).json({ changes: tpl.changes, explanation: tpl.explanation })
+    }
+
     // Fast path: clear visual match — no AI needed
     if (localType === 'visual') {
       const result = applyVisualRule(instruction, slideCount)
