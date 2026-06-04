@@ -1,11 +1,16 @@
 import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Loader2, CalendarDays } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, CalendarDays, CalendarPlus, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { isOptimalSlot, isOptimalDay } from '@/lib/scheduleHeuristics'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+
+// A piece "has media" when at least one entry is attached — drives the
+// unscheduled rail's "Schedule" target (Publish if media is on, else the
+// media picker). Mirrors the Storyboard / Review Inbox predicate.
+const HAS_MEDIA = (p) => Array.isArray(p?.media_urls) && p.media_urls.length > 0
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -37,6 +42,7 @@ export default function StoriesCalendarView({ stories, isLoading }) {
   const [weekAnchor, setWeekAnchor] = useState(startOfWeek(today))
 
   // Flatten all scheduled pieces across stories, annotated with topic + story id
+  // + staff name (so chips can attribute the post to who it's from).
   const scheduledPieces = useMemo(() => {
     if (!Array.isArray(stories)) return []
     return stories.flatMap((story) =>
@@ -46,9 +52,39 @@ export default function StoriesCalendarView({ stories, isLoading }) {
           ...p,
           topic: story.topic,
           storyId: story.id,
+          staffName: p.staff_name || story.staff_name,
         })),
     )
   }, [stories])
+
+  // Approved but NOT yet scheduled — the producer's "still needs a go-live time"
+  // list. Surfaced beside the grid so an approved piece never falls through the
+  // gap between "approved" and "on the calendar." Newest first.
+  const unscheduledApproved = useMemo(() => {
+    if (!Array.isArray(stories)) return []
+    return stories
+      .flatMap((story) =>
+        (story.pieces ?? [])
+          .filter((p) => p.status === 'approved' && !p.scheduled_at)
+          .map((p) => ({
+            ...p,
+            topic: story.topic,
+            storyId: story.id,
+            staffName: p.staff_name || story.staff_name,
+          })),
+      )
+      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
+  }, [stories])
+
+  // Distinct channels present across the board — drives the colour legend so the
+  // chips' per-platform tints are decodable at a glance.
+  const channelsPresent = useMemo(() => {
+    const seen = new Set()
+    for (const p of [...scheduledPieces, ...unscheduledApproved]) {
+      if (p.platform && PLATFORM_META[p.platform]) seen.add(p.platform)
+    }
+    return [...seen]
+  }, [scheduledPieces, unscheduledApproved])
 
   if (isLoading) {
     return (
@@ -58,66 +94,146 @@ export default function StoriesCalendarView({ stories, isLoading }) {
     )
   }
 
+  // Two-column layout once there's an unscheduled-approved backlog: the grid on
+  // the left, the "needs a slot" rail on the right. Falls back to full width
+  // (the original layout) when the backlog is empty so nothing shifts for the
+  // common case.
+  const hasRail = unscheduledApproved.length > 0
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center bg-muted rounded-md p-0.5">
-          <button
-            type="button"
-            onClick={() => setView('plan')}
-            className={`px-2 py-1 text-xs rounded ${view === 'plan' ? 'bg-background shadow' : 'text-muted-foreground'}`}
-          >
-            Plan
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('month')}
-            className={`px-2 py-1 text-xs rounded ${view === 'month' ? 'bg-background shadow' : 'text-muted-foreground'}`}
-          >
-            Month
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('week')}
-            className={`px-2 py-1 text-xs rounded ${view === 'week' ? 'bg-background shadow' : 'text-muted-foreground'}`}
-          >
-            Week
-          </button>
+    <div className={hasRail ? 'grid gap-5 lg:grid-cols-[1fr_280px]' : ''}>
+      <div className="space-y-4 min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center bg-muted rounded-md p-0.5">
+            <button
+              type="button"
+              onClick={() => setView('plan')}
+              className={`px-2 py-1 text-xs rounded ${view === 'plan' ? 'bg-background shadow' : 'text-muted-foreground'}`}
+            >
+              Plan
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('month')}
+              className={`px-2 py-1 text-xs rounded ${view === 'month' ? 'bg-background shadow' : 'text-muted-foreground'}`}
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('week')}
+              className={`px-2 py-1 text-xs rounded ${view === 'week' ? 'bg-background shadow' : 'text-muted-foreground'}`}
+            >
+              Week
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {view === 'plan' ? 'Content trickles out across the next 4 weeks' : 'Tinted cells = high-engagement windows'}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {view === 'plan' ? 'Content trickles out across the next 4 weeks' : 'Tinted cells = high-engagement windows'}
-        </p>
+
+        {/* Channel legend — decode the per-platform chip tints. */}
+        {channelsPresent.length > 0 && <ChannelLegend channels={channelsPresent} />}
+
+        {view === 'plan' ? (
+          <PlanView today={today} items={scheduledPieces} />
+        ) : view === 'month' ? (
+          <MonthView
+            current={current}
+            today={today}
+            items={scheduledPieces}
+            onPrev={() => setCurrent(new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+            onNext={() => setCurrent(new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+          />
+        ) : (
+          <WeekView
+            anchor={weekAnchor}
+            today={today}
+            items={scheduledPieces}
+            onPrev={() => setWeekAnchor(new Date(weekAnchor.getFullYear(), weekAnchor.getMonth(), weekAnchor.getDate() - 7))}
+            onNext={() => setWeekAnchor(new Date(weekAnchor.getFullYear(), weekAnchor.getMonth(), weekAnchor.getDate() + 7))}
+          />
+        )}
+
+        {view !== 'plan' && scheduledPieces.length === 0 && (
+          <EmptyState
+            icon={<CalendarDays className="h-5 w-5" />}
+            title="Nothing scheduled yet"
+            description="Schedule an approved piece from the list on the right to see it land here."
+            size="sm"
+          />
+        )}
       </div>
 
-      {view === 'plan' ? (
-        <PlanView today={today} items={scheduledPieces} />
-      ) : view === 'month' ? (
-        <MonthView
-          current={current}
-          today={today}
-          items={scheduledPieces}
-          onPrev={() => setCurrent(new Date(current.getFullYear(), current.getMonth() - 1, 1))}
-          onNext={() => setCurrent(new Date(current.getFullYear(), current.getMonth() + 1, 1))}
-        />
-      ) : (
-        <WeekView
-          anchor={weekAnchor}
-          today={today}
-          items={scheduledPieces}
-          onPrev={() => setWeekAnchor(new Date(weekAnchor.getFullYear(), weekAnchor.getMonth(), weekAnchor.getDate() - 7))}
-          onNext={() => setWeekAnchor(new Date(weekAnchor.getFullYear(), weekAnchor.getMonth(), weekAnchor.getDate() + 7))}
-        />
-      )}
-
-      {view !== 'plan' && scheduledPieces.length === 0 && (
-        <EmptyState
-          icon={<CalendarDays className="h-5 w-5" />}
-          title="Nothing scheduled yet"
-          description="Schedule content from a story to see it appear here."
-          size="sm"
-        />
-      )}
+      {hasRail && <UnscheduledRail items={unscheduledApproved} />}
     </div>
+  )
+}
+
+// Per-channel colour legend. Reuses each platform's icon + brand text colour so
+// the swatch matches the EventChip tint exactly.
+function ChannelLegend({ channels }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      {channels.map((p) => {
+        const pm = PLATFORM_META[p]
+        const Icon = pm?.icon
+        return (
+          <span key={p} className="inline-flex items-center gap-1 text-3xs text-muted-foreground">
+            {Icon && <Icon className={`h-3 w-3 ${pm?.color || ''}`} />}
+            {pm?.label || p}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+// "Approved · unscheduled" rail — the producer's backlog of pieces that have
+// been signed off but have no go-live time yet. Each links to the schedule flow
+// (Publish if media is attached, else the media picker). Read-only here; the
+// bulk auto-space scheduler is the paired follow-up.
+function UnscheduledRail({ items }) {
+  return (
+    <aside className="space-y-2 lg:border-l lg:pl-5">
+      <div className="flex items-center gap-1.5">
+        <CalendarPlus className="h-3.5 w-3.5 text-primary" />
+        <p className="text-2xs font-bold uppercase tracking-wide text-primary">
+          Approved · unscheduled · {items.length}
+        </p>
+      </div>
+      <p className="text-3xs text-muted-foreground">Signed off, waiting on a go-live time.</p>
+      <div className="space-y-2 pt-1">
+        {items.map((item) => {
+          const pm = PLATFORM_META[item.platform]
+          const Icon = pm?.icon
+          const to = HAS_MEDIA(item)
+            ? `/storyboard/${item.id}/publish`
+            : `/storyboard/${item.id}`
+          return (
+            <Link
+              key={item.id}
+              to={to}
+              className="group block rounded-lg border bg-card px-3 py-2 transition-colors hover:border-primary/40"
+            >
+              <span className="inline-flex items-center gap-1 text-3xs font-semibold">
+                {Icon && <Icon className={`h-3 w-3 ${pm?.color || ''}`} />}
+                {pm?.label || item.platform}
+              </span>
+              <p className="mt-1 truncate text-2xs font-medium text-foreground">{item.topic}</p>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                {item.staffName ? (
+                  <span className="truncate text-3xs text-muted-foreground">{item.staffName}</span>
+                ) : <span />}
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-3xs font-medium text-primary">
+                  Schedule <ArrowRight className="h-3 w-3" />
+                </span>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    </aside>
   )
 }
 
@@ -170,11 +286,14 @@ function PlanRow({ item }) {
   return (
     <Link
       to={`/stories/${item.storyId}`}
-      title={`${pm?.label || item.platform} · ${item.topic}`}
+      title={`${pm?.label || item.platform} · ${item.topic}${item.staffName ? ` · ${item.staffName}` : ''}`}
       className="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition-colors hover:border-primary"
     >
       {Icon && <Icon className={`h-3 w-3 shrink-0 ${pm?.color || 'text-muted-foreground'}`} />}
-      <span className="flex-1 truncate">{item.topic}</span>
+      <span className="flex-1 truncate">
+        {item.topic}
+        {item.staffName ? <span className="text-muted-foreground"> · {item.staffName}</span> : null}
+      </span>
       <span className="shrink-0 text-3xs text-muted-foreground">{DAY_NAMES[t.getDay()]} {t.getDate()}</span>
     </Link>
   )
@@ -308,7 +427,7 @@ function EventChip({ item }) {
   return (
     <Link
       to={`/stories/${item.storyId}`}
-      title={`${pm?.label || item.platform} · ${item.topic}`}
+      title={`${pm?.label || item.platform} · ${item.topic}${item.staffName ? ` · ${item.staffName}` : ''}`}
       className={`block text-3xs px-1.5 py-0.5 rounded truncate ${pm?.bg || 'bg-muted'} ${pm?.color || ''} hover:opacity-80 transition-opacity`}
     >
       {pm?.label || item.platform} · {item.topic}
