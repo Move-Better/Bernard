@@ -8,6 +8,7 @@ import StoriesPipelineView from '@/components/stories/StoriesPipelineView'
 import StoriesCardsView from '@/components/stories/StoriesCardsView'
 import StoriesCalendarView from '@/components/stories/StoriesCalendarView'
 import StoriesCampaignsView from '@/components/stories/StoriesCampaignsView'
+import WeeklyRecapPanel from '@/components/overview/WeeklyRecapPanel'
 import PageHelp from '@/components/PageHelp'
 
 // The clinic-wide, top-down board — separate from Home (which is personal) and
@@ -118,6 +119,11 @@ export default function Overview() {
           </Link>
         </div>
       )}
+
+      {/* Weekly all-staff recap — workspace-wide "this week" snapshot, team
+          cadence, and estimated run-cost. Pinned above the lenses so it's the
+          first thing on screen when the board is shared in the staff meeting. */}
+      <WeeklyRecapPanel stories={stories} />
 
       {/* Lens toggle — Pipeline / Calendar / Themes, persisted in ?view= */}
       <div className="inline-flex rounded-md border p-0.5 text-xs font-medium">
