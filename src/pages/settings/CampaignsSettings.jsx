@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { apiFetch } from '@/lib/api'
-import { useStaffSummaries } from '@/lib/queries'
+import { useStaffSummaries, useLocations } from '@/lib/queries'
 import { toast } from '@/lib/toast'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
@@ -322,8 +322,10 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
     cta_label:      initial?.cta_label || '',
     cta_pitch:      initial?.cta_pitch || '',
     target_staff_ids: Array.isArray(initial?.target_staff_ids) ? initial.target_staff_ids : [],
+    target_location_id: initial?.target_location_id || '',
   }))
   const [saving, setSaving] = useState(false)
+  const { data: locations = [] } = useLocations()
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -350,6 +352,7 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
         cta_label:     form.cta_label.trim() || null,
         cta_pitch:     form.cta_pitch.trim() || null,
         target_staff_ids: form.target_staff_ids || [],
+        target_location_id: form.target_location_id || null,
       }
       const saved = await apiFetch('/api/campaigns/upsert', {
         method: 'POST',
@@ -440,6 +443,27 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
           ))}
         </div>
       </Field>
+
+      {locations.length > 0 && (
+        <Field
+          label="Promote location"
+          hint="Steer every channel (Instagram, Facebook, blog, email, Google) toward driving people to one clinic — e.g. a newly opened location. Leave on “None” for a brand-wide campaign."
+        >
+          <select
+            value={form.target_location_id || ''}
+            onChange={(e) => set('target_location_id', e.target.value)}
+            className="text-sm border border-border rounded-md px-2 py-2 bg-card w-full"
+          >
+            <option value="">None — brand-wide</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.label || loc.city}
+                {loc.region ? ` (${loc.city}, ${loc.region})` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       <StaffTargetPicker
         selected={form.target_staff_ids}

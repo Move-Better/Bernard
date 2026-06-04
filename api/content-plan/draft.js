@@ -127,7 +127,7 @@ export default async function handler(req, res) {
     // a campaign with non-empty target_staff_ids only applies to atoms
     // produced for clinicians on its target list.
     const activeCampaign = await loadCurrentTentpole(ws.id, interview.staff_id || null)
-    const campaignContext = getTentpolePromptContext(activeCampaign, ws)
+    const campaignContext = await getTentpolePromptContext(activeCampaign, ws)
 
     // Phase 5 Feature 2 — this clinician's prior thinking block, shared
     // across the canonical atom call below AND any per-location GBP variant

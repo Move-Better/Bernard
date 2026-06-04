@@ -13,6 +13,40 @@
 //     can concatenate safely.
 
 import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
+import { applyLocationOverlay } from '../../src/lib/locationOverlay.js'
+
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+/**
+ * Fetch a single workspace_locations row for a campaign's target location.
+ * Workspace-scoped so a stale/cross-tenant location id can't bleed in.
+ * Returns null on any miss/failure — the campaign focus block then renders
+ * brand-wide, exactly as it did before A1.
+ */
+async function loadCampaignLocation(workspaceId, locationId) {
+  if (!workspaceId || !locationId || !SUPABASE_URL || !SUPABASE_KEY) return null
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/workspace_locations` +
+        `?id=eq.${encodeURIComponent(locationId)}` +
+        `&workspace_id=eq.${encodeURIComponent(workspaceId)}` +
+        `&status=eq.active` +
+        `&select=id,label,city,region,location_keyword,location_hashtag,visit_url` +
+        `&limit=1`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    )
+    if (!r.ok) {
+      console.error('[tentpoleCampaignContext] location fetch failed:', r.status)
+      return null
+    }
+    const rows = await r.json().catch(() => [])
+    return Array.isArray(rows) ? (rows[0] ?? null) : null
+  } catch (e) {
+    console.error('[tentpoleCampaignContext] location fetch error:', e?.message)
+    return null
+  }
+}
 
 function formatEventDate(iso) {
   if (!iso) return null
@@ -76,29 +110,78 @@ export async function loadCurrentTentpole(workspaceId, staffId = null) {
  *
  * @param {object|null} campaign  — campaigns row or null. Null → ''.
  * @param {object}      workspace — used for grounding (display name, location).
- * @returns {string} The block, including a leading newline, or '' if no
+ * @returns {Promise<string>} The block, including a leading newline, or '' if no
  *                   override applies (null campaign OR clinical content_style).
+ *
+ * Async because a campaign with target_location_id (A1 — location aim) fetches
+ * the target workspace_locations row and overlays its city/keyword/hashtag/
+ * visit_url so ALL channels lean toward that clinic's CTA.
  */
-export function getTentpolePromptContext(campaign, workspace = {}) {
+export async function getTentpolePromptContext(campaign, workspace = {}) {
   if (!campaign) return ''
   // Clinical campaigns are the default voice — no override needed. Callers
   // get their default per-platform CTAs (book a visit / link in bio).
   if (campaign.content_style === 'clinical') return ''
 
-  const wsName   = workspace.app_name || workspace.display_name || workspace.name || 'the clinic'
-  const location = workspace.location || workspace.location_keyword || ''
+  // A1 — campaign location aim. When the campaign targets a location, overlay
+  // it onto the workspace so the style builders below interpolate the target
+  // city/keyword/hashtag instead of the umbrella, then append an explicit
+  // "PROMOTE LOCATION" steer. Falls back to brand-wide when the location is
+  // missing/archived.
+  let ws = workspace || {}
+  let targetLocation = null
+  if (campaign.target_location_id) {
+    targetLocation = await loadCampaignLocation(ws.id, campaign.target_location_id)
+    if (targetLocation) ws = applyLocationOverlay(ws, targetLocation)
+  }
+
+  const wsName   = ws.app_name || ws.display_name || ws.name || 'the clinic'
+  const location = ws.location || ws.location_keyword || ''
   const eventDate = formatEventDate(campaign.event_at)
 
+  let block
   switch (campaign.content_style) {
     case 'promotional':
-      return buildPromotional({ campaign, wsName, location, eventDate })
+      block = buildPromotional({ campaign, wsName, location, eventDate })
+      break
     case 'referral':
-      return buildReferral({ campaign, wsName, location })
+      block = buildReferral({ campaign, wsName, location })
+      break
     case 'relationship':
-      return buildRelationship({ campaign, wsName, location })
+      block = buildRelationship({ campaign, wsName, location })
+      break
     default:
       return ''
   }
+
+  if (targetLocation) block += buildLocationFocus({ location: targetLocation, wsName })
+  return block
+}
+
+/**
+ * Append an explicit location-promotion steer to the campaign focus block.
+ * Drives every channel toward the target clinic's CTA without per-channel
+ * branching (A1 — the broad, cheap part; GBP cross-promo split is A2).
+ */
+function buildLocationFocus({ location, wsName }) {
+  const city = (location.city || location.label || '').trim()
+  const region = (location.region || '').trim()
+  const place = city && region ? `${city}, ${region}` : (city || location.label || '')
+  const lines = [
+    '',
+    `PROMOTE LOCATION — ${(location.label || city || 'target clinic').toUpperCase()}:`,
+    `This campaign is steering attention toward ${wsName}'s ${place || 'target'} location. Anchor any "visit us" / neighborhood / location reference to ${place || city} — this is the clinic we want people to come to.`,
+  ]
+  if (location.location_keyword) {
+    lines.push(`Use the local keyword "${location.location_keyword}" where it reads naturally.`)
+  }
+  if (location.location_hashtag) {
+    lines.push(`Include the location hashtag ${location.location_hashtag} where a hashtag fits the platform.`)
+  }
+  if (location.visit_url) {
+    lines.push(`Location page: ${location.visit_url} — use this as the visit/CTA link target when the campaign has no more specific Action URL.`)
+  }
+  return lines.join('\n')
 }
 
 // ─── Style-specific builders ─────────────────────────────────────────────────

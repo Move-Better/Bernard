@@ -118,6 +118,19 @@ export default async function handler(req, res) {
   const cta_label     = coerceText(body.cta_label, 80)
   const cta_pitch     = coerceText(body.cta_pitch, 500)
 
+  // A1 — campaign location aim. uuid or null; same 'leave-alone' sentinel so
+  // omitting it from a PATCH body doesn't clobber an existing target.
+  let target_location_id = 'leave-alone'
+  if (body.target_location_id !== undefined) {
+    if (body.target_location_id === null || body.target_location_id === '') {
+      target_location_id = null
+    } else if (/^[0-9a-f-]{8,}$/i.test(String(body.target_location_id))) {
+      target_location_id = String(body.target_location_id)
+    } else {
+      return res.status(400).json({ error: 'invalid target_location_id' })
+    }
+  }
+
   if (start_at === 'invalid') return res.status(400).json({ error: 'invalid start_at' })
   if (end_at === 'invalid')   return res.status(400).json({ error: 'invalid end_at' })
   if (event_at === 'invalid') return res.status(400).json({ error: 'invalid event_at' })
@@ -147,6 +160,7 @@ export default async function handler(req, res) {
     if (cta_label !== 'leave-alone') target.cta_label = cta_label
     if (cta_pitch !== 'leave-alone') target.cta_pitch = cta_pitch
     if (content_style !== 'leave-alone') target.content_style = content_style
+    if (target_location_id !== 'leave-alone') target.target_location_id = target_location_id
   }
 
   if (id) {
