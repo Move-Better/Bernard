@@ -135,27 +135,117 @@ export async function getTentpolePromptContext(campaign, workspace = {}) {
     if (targetLocation) ws = applyLocationOverlay(ws, targetLocation)
   }
 
-  const wsName   = ws.app_name || ws.display_name || ws.name || 'the clinic'
-  const location = ws.location || ws.location_keyword || ''
-  const eventDate = formatEventDate(campaign.event_at)
+  let block = buildCampaignStyleBlock(campaign, ws)
+  if (!block) return ''
+  if (targetLocation) block += buildLocationFocus({ location: targetLocation, wsName: resolveWsName(ws) })
+  return block
+}
 
-  let block
+function resolveWsName(ws = {}) {
+  return ws.app_name || ws.display_name || ws.name || 'the clinic'
+}
+
+/**
+ * Build the style-specific "CAMPAIGN FOCUS —" block from a campaign + a
+ * (possibly location-overlaid) workspace. Shared by the all-channel path
+ * (getTentpolePromptContext) and the GBP per-listing path
+ * (buildTentpoleGbpLocationBlock). Returns '' for clinical / unknown styles.
+ */
+function buildCampaignStyleBlock(campaign, ws = {}) {
+  const wsName    = resolveWsName(ws)
+  const location  = ws.location || ws.location_keyword || ''
+  const eventDate = formatEventDate(campaign.event_at)
   switch (campaign.content_style) {
-    case 'promotional':
-      block = buildPromotional({ campaign, wsName, location, eventDate })
-      break
-    case 'referral':
-      block = buildReferral({ campaign, wsName, location })
-      break
-    case 'relationship':
-      block = buildRelationship({ campaign, wsName, location })
-      break
-    default:
-      return ''
+    case 'promotional': return buildPromotional({ campaign, wsName, location, eventDate })
+    case 'referral':    return buildReferral({ campaign, wsName, location })
+    case 'relationship':return buildRelationship({ campaign, wsName, location })
+    default:            return ''
+  }
+}
+
+/**
+ * A2 — resolve the workspace_locations row a campaign's location aim points at
+ * (or null). Exported so the GBP per-listing generator (api/content-plan/draft.js)
+ * can fetch the subject location ONCE before its per-listing loop, then pass it
+ * into buildTentpoleGbpLocationBlock for each listing (avoids an N+1 fetch).
+ */
+export async function resolveCampaignSubjectLocation(campaign, workspace = {}) {
+  if (!campaign?.target_location_id) return null
+  return loadCampaignLocation(workspace?.id, campaign.target_location_id)
+}
+
+/**
+ * A2 — GBP cross-promo split. Build the campaign focus block tailored for ONE
+ * Google listing, distinguishing the publishing location (where the post goes)
+ * from the subject location (the campaign's promoted clinic).
+ *
+ *   • No subject location  → standard workspace-wide style block (no cross-promo).
+ *   • Publishing IS subject → "we're here / come in" primary copy (same steer as
+ *     the all-channel PROMOTE LOCATION block).
+ *   • Publishing ≠ subject  → cross-promote the new sister clinic while keeping
+ *     this listing's own local identity primary; carries the subject's hashtag +
+ *     visit_url inline. Bounded by the campaign window (the caller only invokes
+ *     this for an active campaign, so out-of-window listings revert to local).
+ *
+ * Sync — the subject location is resolved once by the caller and passed in.
+ *
+ * @param {object}      campaign           campaigns row (must be active).
+ * @param {object}      workspace          workspace context.
+ * @param {object|null} publishingLocation the listing this post publishes to.
+ * @param {object|null} subjectLocation    the campaign's promoted location.
+ * @returns {string} The focus block, or '' for clinical / unknown styles.
+ */
+export function buildTentpoleGbpLocationBlock({ campaign, workspace = {}, publishingLocation = null, subjectLocation = null }) {
+  if (!campaign || campaign.content_style === 'clinical') return ''
+
+  // No location aim → behave like the workspace-wide style block.
+  if (!subjectLocation) return buildCampaignStyleBlock(campaign, workspace) || ''
+
+  const isSubjectListing = publishingLocation
+    && String(publishingLocation.id) === String(subjectLocation.id)
+
+  if (isSubjectListing) {
+    // This listing IS the promoted clinic → "we're here / come in".
+    const ws = applyLocationOverlay(workspace, subjectLocation)
+    let block = buildCampaignStyleBlock(campaign, ws)
+    if (!block) return ''
+    block += buildLocationFocus({ location: subjectLocation, wsName: resolveWsName(ws) })
+    return block
   }
 
-  if (targetLocation) block += buildLocationFocus({ location: targetLocation, wsName })
+  // A different listing → cross-promote the sister clinic, keep local identity.
+  let block = buildCampaignStyleBlock(campaign, workspace)
+  if (!block) return ''
+  block += buildLocationCrossPromo({
+    subject: subjectLocation,
+    publishing: publishingLocation,
+    wsName: resolveWsName(workspace),
+  })
   return block
+}
+
+/**
+ * Cross-promo steer for a NON-subject GBP listing: announce the new sister
+ * clinic as community news without telling local patients to switch clinics.
+ */
+function buildLocationCrossPromo({ subject, publishing, wsName }) {
+  const subjCity   = (subject.city || subject.label || '').trim()
+  const subjRegion = (subject.region || '').trim()
+  const subjPlace  = subjCity && subjRegion ? `${subjCity}, ${subjRegion}` : (subjCity || subject.label || 'a new location')
+  const pubCity    = (publishing?.city || publishing?.label || '').trim() || 'this'
+  const lines = [
+    '',
+    `CROSS-PROMOTE SISTER LOCATION — ${(subject.label || subjCity || 'new clinic').toUpperCase()}:`,
+    `This post publishes to the ${pubCity} listing, but ${wsName} is now also in ${subjPlace}. Share it as exciting news for the wider community — "our new sister clinic in ${subjCity}" — as a SECONDARY beat. Do NOT tell ${pubCity} patients to switch clinics; this listing's own local identity stays primary.`,
+  ]
+  if (subject.location_hashtag) {
+    lines.push(`Include the hashtag ${subject.location_hashtag} for the ${subjCity} mention where a hashtag fits.`)
+  }
+  if (subject.visit_url) {
+    lines.push(`New location page (use as the link target for the ${subjCity} mention): ${subject.visit_url}`)
+  }
+  lines.push('Bounded by the campaign window — outside it, this listing returns to purely local content.')
+  return lines.join('\n')
 }
 
 /**

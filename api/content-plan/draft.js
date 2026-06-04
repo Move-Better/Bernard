@@ -12,7 +12,12 @@ import { enforceLimit } from '../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../_lib/atomPrompts.js'
 import { getContextBlock } from '../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../_lib/practiceMemory.js'
-import { loadCurrentTentpole, getTentpolePromptContext } from '../_lib/tentpoleCampaignContext.js'
+import {
+  loadCurrentTentpole,
+  getTentpolePromptContext,
+  resolveCampaignSubjectLocation,
+  buildTentpoleGbpLocationBlock,
+} from '../_lib/tentpoleCampaignContext.js'
 import { extractProvenanceBlock } from '../../src/lib/provenance.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -128,6 +133,13 @@ export default async function handler(req, res) {
     // produced for clinicians on its target list.
     const activeCampaign = await loadCurrentTentpole(ws.id, interview.staff_id || null)
     const campaignContext = await getTentpolePromptContext(activeCampaign, ws)
+
+    // A2 — GBP cross-promo. Resolve the active campaign's subject location ONCE
+    // so the per-listing GBP loop below can tailor each Google listing
+    // (we're-here vs sister-clinic cross-promo) without an N+1 fetch. Null when
+    // the campaign has no location aim → the GBP loop keeps today's per-listing
+    // local copy.
+    const gbpSubjectLocation = await resolveCampaignSubjectLocation(activeCampaign, ws)
 
     // Phase 5 Feature 2 — this clinician's prior thinking block, shared
     // across the canonical atom call below AND any per-location GBP variant
@@ -273,6 +285,19 @@ export default async function handler(req, res) {
           locations.map(async (loc) => {
             try {
               const locWs = { ...ws, location_keyword: loc.location_keyword ?? loc.city }
+              // A2 — tailor the campaign focus block for THIS listing when the
+              // active campaign promotes a location: the subject's own listing
+              // gets "we're here" copy, every other listing cross-promotes the
+              // sister clinic. Falls back to the shared workspace-wide block
+              // when there's no location aim.
+              const locCampaignContext = gbpSubjectLocation
+                ? buildTentpoleGbpLocationBlock({
+                    campaign: activeCampaign,
+                    workspace: ws,
+                    publishingLocation: loc,
+                    subjectLocation: gbpSubjectLocation,
+                  })
+                : campaignContext
               const locPrompt = getAtomSystemPrompt(
                 locWs,
                 staffName,
@@ -286,7 +311,7 @@ export default async function handler(req, res) {
                 voicePhrases,
                 audienceLabel,
                 storyTypeLabel,
-                campaignContext,
+                locCampaignContext,
                 ownHistoryBlock,
               )
               if (!locPrompt) return null
