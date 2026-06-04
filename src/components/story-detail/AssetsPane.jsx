@@ -1455,7 +1455,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               : 'Sending to Buffer…',
             success: usingQueue ? 'Added to Buffer queue'
               : effectiveScheduledAt ? 'Scheduled on Buffer'
-              : 'Sent to Buffer',
+              : '🎉 It’s live! Your story is out in the world.',
             error: (e) => ({ message: 'Publish failed', description: e.message }),
           },
         )
