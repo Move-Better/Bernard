@@ -40,6 +40,7 @@ export function buildCostView(cost = {}) {
   const prev = estimateWindow(cost.prev_week)
   const mtd  = estimateWindow(cost.mtd)
   const ytd  = estimateWindow(cost.ytd)
+  const all  = estimateWindow(cost.all)
 
   let wowPct = null
   if (prev.total > 0) wowPct = Math.round(((week.total - prev.total) / prev.total) * 100)
@@ -52,6 +53,7 @@ export function buildCostView(cost = {}) {
     weekTotal: week.total,
     mtdTotal: mtd.total,
     ytdTotal: ytd.total,
+    allTotal: all.total,
     wowPct,
     perPost,
     units: cost?.this_week || EMPTY,
