@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { FileText, Clock, Loader2, RefreshCw, ChevronRight, Send, BookOpen } from 'lucide-react'
+import { FileText, Clock, Loader2, RefreshCw, ChevronRight, Send } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
 import { Button } from '@/components/ui/button'
 import { useStories, useStaffSummaries } from '@/lib/queries'
@@ -18,12 +18,13 @@ import HomeStats from '@/components/home/HomeStats'
 import ResumeStrip from '@/components/home/ResumeStrip'
 import PlanNextInterview from '@/components/home/PlanNextInterview'
 import TaskBucketCard from '@/components/home/TaskBucketCard'
+import PostsLiveCard from '@/components/home/PostsLiveCard'
+import MyWorkCard from '@/components/home/MyWorkCard'
 import HomeRightRail from '@/components/home/HomeRightRail'
 import PageHelp from '@/components/PageHelp'
 import InstallBanner from '@/components/home/InstallBanner'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
-const MY_STORIES_LIMIT = 5
 
 export default function Home() {
   useDocumentTitle('Home')
@@ -74,18 +75,6 @@ export default function Home() {
           i.owner_id === user?.id
       )
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-  }, [allInterviews, user])
-
-  // My recent completed interviews — quick-access for the logged-in clinician
-  // to navigate back to their own stories. Surfaces the N most-recently-updated
-  // completed interviews owned by the current user. Hidden when empty so it
-  // doesn't show for pure-admin accounts that have no owned interviews.
-  const myRecentInterviews = useMemo(() => {
-    if (!user?.id) return []
-    return allInterviews
-      .filter((i) => i.owner_id === user.id && i.status === 'completed')
-      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-      .slice(0, MY_STORIES_LIMIT)
   }, [allInterviews, user])
 
   // Derive from stories (already loaded) — each story maps 1:1 to an interview
@@ -189,7 +178,6 @@ export default function Home() {
   // PipelineKanban lane palette so the same semantics carry across pages.
   // primary orange flags the "do this now" surface (Awaiting review).
   const ACCENT = {
-    myStories:    '#64748b', // slate — reference surface, not an action queue
     ready:        '#d97706', // amber  — drafting needed
     review:       '#e36525', // primary orange — your action queue
     distribute:   '#e36525', // primary orange — "act now" publisher surface (was emerald; green read as "done")
@@ -221,6 +209,11 @@ export default function Home() {
       </div>
 
       <InstallBanner />
+
+      {/* "Close the loop" reward — the clinician's own pieces that went live
+          this week. Sits high so the payoff lands before the to-do surfaces.
+          Self-hides when the user has nothing live this week. */}
+      <PostsLiveCard stories={stories} userId={user?.id} />
 
       {/* "Finish onboarding" card. Self-gated (admin + workspace not yet
           onboarded + not snoozed) — renders nothing for the 99% case. Sits
@@ -255,41 +248,11 @@ export default function Home() {
           becomes a two-column row at lg+ where the rail is a fixed sidebar. */}
       <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         <div className="flex flex-col gap-4 flex-1 min-w-0">
-          {myRecentInterviews.length > 0 && (
-            <TaskBucketCard
-              id="my-stories"
-              title="My recent stories"
-              icon={<BookOpen className="h-4 w-4" />}
-              accent={ACCENT.myStories}
-              items={myRecentInterviews}
-              emptyMessage=""
-              renderItem={(i) => (
-                <Link
-                  key={i.id}
-                  to={`/stories/${i.id}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{i.topic}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {new Date(i.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-0.5">
-                    Open <ChevronRight className="h-3 w-3" />
-                  </span>
-                </Link>
-              )}
-              footer={
-                <Link
-                  to="/stories?owner=me"
-                  className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-0.5"
-                >
-                  See all my stories <ChevronRight className="h-3 w-3" />
-                </Link>
-              }
-            />
-          )}
+          {/* "My work & where it stands" — the clinician's own pieces with
+              their pipeline stage + next action. Replaces the old thin
+              "My recent stories" list so a busy clinician sees status, not
+              just topics. Self-hides for accounts with no owned stories. */}
+          <MyWorkCard stories={stories} userId={user?.id} />
 
           {/* Drafts ready for review — others' work needing your action.
               Sits above "Ready for content" so the most-urgent action
