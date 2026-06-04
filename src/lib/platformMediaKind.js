@@ -15,6 +15,19 @@
 const VIDEO_ONLY = new Set(['youtube', 'youtube_short', 'tiktok', 'instagram_reel'])
 const IMAGE_ONLY = new Set(['blog', 'landing_page', 'google_ads'])
 
+// Platforms whose published output is text-dominant — an email renders via the
+// TrustDrivenCare template, a blog/landing page is long-form copy with a hero.
+// Aspect-ratio framing (9:16 / 4:5 / 1:1) and burned-in lower-third captions are
+// social/video concepts that don't apply to these, so the Storyboard editor
+// hides those "look" affordances for them.
+const TEXT_ONLY = new Set(['email', 'blog', 'landing_page'])
+
+// True when the platform's output has no aspect ratio / caption concept.
+export function isTextOnlyPlatform(platform) {
+  if (!platform) return false
+  return TEXT_ONLY.has(String(platform).toLowerCase())
+}
+
 // 'video' | 'photo' | null
 export function mediaKindForPlatform(platform) {
   if (!platform) return null
