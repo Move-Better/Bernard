@@ -25,6 +25,10 @@ import { EDITOR_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { renderEditorialPhoto } from '../_lib/brandRender.js'
+import { renderWhoopPhoto, WHOOP_TEMPLATE_IDS } from '../_lib/whoopTemplates.js'
+
+// Templates that render a full card without a source photo.
+const NO_PHOTO_TEMPLATES = new Set(['dark-claim', 'light-claim'])
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -82,19 +86,26 @@ export default async function handler(req, res) {
   const item = itemRows?.[0]
   if (!item) return res.status(404).json({ error: 'piece_not_found' })
 
+  const templateId = String(treatment.templateId || 'editorial')
+  const isWhoop = WHOOP_TEMPLATE_IDS.includes(templateId)
+  const needsPhoto = !NO_PHOTO_TEMPLATES.has(templateId)
+
   const mediaUrls = Array.isArray(item.media_urls) ? item.media_urls : []
   const primaryIdx = mediaUrls.findIndex(isImageEntry)
-  if (primaryIdx === -1) {
-    return res.status(400).json({ error: 'no_photo', message: 'This post has no photo to compose.' })
-  }
-  const primary = mediaUrls[primaryIdx]
+  const primary = primaryIdx >= 0 ? mediaUrls[primaryIdx] : null
 
-  // Always render from the ORIGINAL photo, never a prior composite.
+  if (needsPhoto && !primary) {
+    return res.status(400).json({ error: 'no_photo', message: 'This template needs a photo. Attach one or use a claim card.' })
+  }
+
+  // Always render from the ORIGINAL photo, never a prior composite. May be
+  // undefined for a no-photo claim card.
   const sourceUrl = treatment.sourceUrl
     || item.photo_treatment?.sourceUrl
-    || primary.sourceUrl
-    || primary.url
-  if (!sourceUrl) return res.status(400).json({ error: 'no_source_url' })
+    || primary?.sourceUrl
+    || primary?.url
+    || null
+  if (needsPhoto && !sourceUrl) return res.status(400).json({ error: 'no_source_url' })
 
   // Resolve author name for the lower rule.
   let staffName = ''
@@ -110,7 +121,9 @@ export default async function handler(req, res) {
 
   let render
   try {
-    render = await renderEditorialPhoto({ photoUrl: sourceUrl, treatment: fullTreatment, workspace: ws, staffName })
+    render = isWhoop
+      ? await renderWhoopPhoto({ photoUrl: sourceUrl || undefined, treatment: fullTreatment, workspace: ws, staffName })
+      : await renderEditorialPhoto({ photoUrl: sourceUrl, treatment: fullTreatment, workspace: ws, staffName })
   } catch (e) {
     console.error('[compose-photo] render failed:', e?.stack || e?.message || e)
     return res.status(500).json({ error: 'render_failed', message: e?.message || 'unknown' })
@@ -133,16 +146,19 @@ export default async function handler(req, res) {
   }
 
   // Write the composite back into media_urls (preserve the original source) so
-  // the publish path ships the baked image with no further changes.
+  // the publish path ships the baked image with no further changes. For a
+  // no-photo claim card on a post with no media, push a fresh image entry.
   const nextMedia = mediaUrls.slice()
-  nextMedia[primaryIdx] = {
-    ...primary,
+  const composedEntry = {
+    ...(primary || { type: 'image', kind: 'image', name: 'composite.jpg' }),
     url: blob.url,
     sourceUrl,
     composed: true,
     width: render.width,
     height: render.height,
   }
+  if (primaryIdx >= 0) nextMedia[primaryIdx] = composedEntry
+  else nextMedia.unshift(composedEntry)
 
   const patchRes = await sb(`content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
