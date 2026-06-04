@@ -86,6 +86,10 @@ export const queryKeys = {
     all: ['workspace'],
     me:  ['workspace', 'me'],
   },
+  recap: {
+    all: ['recap'],
+    workspace: () => ['recap', 'workspace'],
+  },
   media: {
     all:  ['media'],
     list: (filters = {}) => ['media', 'list', filters],
@@ -139,6 +143,19 @@ export function useLocations() {
     queryKey: queryKeys.locations.list(),
     queryFn: () => apiFetch('/api/db/locations').catch(() => []),
     staleTime: 1000 * 60 * 5,
+  })
+}
+
+// Workspace weekly-recap aggregate (team all-time/streak + cost usage units).
+// Powers the Overview "This week" recap. Editor-only surface, so this is only
+// mounted there. Tolerant default so a transient failure doesn't blank the page.
+export function useWorkspaceRecap(options = {}) {
+  return useQuery({
+    queryKey: queryKeys.recap.workspace(),
+    queryFn: () =>
+      apiFetch('/api/db/workspace-recap').catch(() => ({ team: [], team_all_time_total: 0, cost: {} })),
+    staleTime: 1000 * 60 * 5,
+    ...options,
   })
 }
 
