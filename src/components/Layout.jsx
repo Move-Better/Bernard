@@ -7,7 +7,7 @@ import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, GalleryHorizontalEnd,
-  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid,
+  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,6 +40,9 @@ const NAV_SECTIONS = [
       // Overview — the clinic-wide board. Role-gated to editors (owner /
       // producer / director); individual clinicians never see it.
       { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: LayoutGrid,
+        requiresEditor: true },
+      // Analytics — per-asset performance dashboard. Editor-gated like Overview.
+      { to: '/analytics', label: 'Analytics', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
         requiresEditor: true },
     ],
   },
