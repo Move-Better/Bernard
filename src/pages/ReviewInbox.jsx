@@ -59,7 +59,10 @@ export default function ReviewInbox() {
 
   // Both stages of the producer's queue in one fetch: words awaiting sign-off
   // (in_review) and approved pieces waiting to be scheduled (approved).
-  const { data: items = [], isLoading } = useContentItems({ status: 'in_review,approved' })
+  const { data: items = [], isLoading } = useContentItems(
+    { status: 'in_review,approved' },
+    { enabled: !roleLoading && isEditor },
+  )
 
   const needsReview = useMemo(
     () =>
@@ -149,9 +152,14 @@ export default function ReviewInbox() {
   }
 
   // Role gate — wait for the role to resolve before deciding so we don't bounce
-  // an editor mid-load (same pattern as Overview.jsx). Placed after all hooks so
+  // an editor mid-load (same pattern as Overview.jsx), AND so a non-editor never
+  // sees producer content during the ~300–1000ms role resolution on a warm Clerk
+  // session. The data query is also gated on `enabled: !roleLoading && isEditor`
+  // so unauthorized users never trigger the fetch. Placed after all hooks so
   // hook order stays stable across renders.
-  if (!roleLoading && !isEditor) return <Navigate to="/" replace />
+  if (roleLoading) return <LoadingState />
+
+  if (!isEditor) return <Navigate to="/" replace />
 
   if (isLoading) return <LoadingState />
 
