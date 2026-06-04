@@ -152,7 +152,12 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
       onDragStart={(e) => handleDragStart(e, asset)}
       title={`${asset.filename} — click to open, or drag into another browser tab to upload it there`}
       aria-label={`${asset.filename}, ${statusMeta.label.toLowerCase()}`}
-      className={`relative rounded-lg overflow-hidden border-2 aspect-square transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+      style={asset.kind === 'video' && asset.width && asset.height
+        ? { aspectRatio: `${asset.width} / ${asset.height}` }
+        : undefined}
+      className={`relative rounded-lg overflow-hidden border-2 ${
+        !(asset.kind === 'video' && asset.width && asset.height) ? 'aspect-square' : ''
+      } transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
         isSelected ? 'border-primary' : 'border-transparent hover:border-muted-foreground/30'
       }`}
     >
