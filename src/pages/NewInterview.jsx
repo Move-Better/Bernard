@@ -61,7 +61,6 @@ export default function NewInterview() {
   const [tone, setTone] = useState('smart')
   const [voiceMode, setVoiceMode] = useState('practice')
   const [prototype, setPrototype] = useState(null)
-  const [locationId, setLocationId] = useState(null)
   const [cleanupLevel, setCleanupLevel] = useState(DEFAULT_CLEANUP_LEVEL)
 
   // Recipe state — selectedRecipeId tracks which saved recipe is "active";
@@ -79,11 +78,6 @@ export default function NewInterview() {
     if (name && !staffName) setStaffName(name)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.unsafeMetadata?.display_name, user?.fullName])
-
-  const activeLocations = Array.isArray(workspace?.locations)
-    ? workspace.locations.filter(l => l.status === 'active')
-    : []
-  const showLocationPicker = activeLocations.length > 1
 
   // Resolve typed clinician name → existing clinician row (case-insensitive)
   // so we can fetch their recipes. If they don't exist yet (first interview),
@@ -198,7 +192,6 @@ export default function NewInterview() {
         tone,
         voiceMode,
         prototypeId: prototype,
-        locationId,
         cleanupLevel,
         topicBacklogId: searchParams.get('topicBacklogId') || undefined,
       })
@@ -491,13 +484,6 @@ export default function NewInterview() {
                   value={prototype}
                   onChange={(v) => { setPrototype(v); markDrift() }}
                   idKey="id"
-                />
-              )}
-              {showLocationPicker && (
-                <LocationPicker
-                  locations={activeLocations}
-                  value={locationId}
-                  onChange={(v) => { setLocationId(v); markDrift() }}
                 />
               )}
             </div>
@@ -833,51 +819,6 @@ function SimpleSlotPicker({ label, options, value, onChange, idKey = 'id' }) {
               {opt.description && (
                 <p className="text-2xs text-muted-foreground mt-0.5 leading-tight">{opt.description}</p>
               )}
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function LocationPicker({ locations, value, onChange }) {
-  return (
-    <div className="space-y-2">
-      <Label className="text-sm">Location</Label>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className={`flex items-start gap-2 rounded-lg border p-2.5 text-left transition-all ${
-            value === null
-              ? 'border-primary bg-primary/5 ring-1 ring-primary'
-              : 'border-input hover:border-primary/40 hover:bg-accent/30'
-          }`}
-        >
-          <span className="text-base shrink-0 mt-0.5">🌐</span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold leading-tight">All locations</p>
-            <p className="text-2xs text-muted-foreground mt-0.5 leading-tight">Generic copy</p>
-          </div>
-        </button>
-        {locations.map((loc) => (
-          <button
-            key={loc.id}
-            type="button"
-            onClick={() => onChange(loc.id)}
-            className={`flex items-start gap-2 rounded-lg border p-2.5 text-left transition-all ${
-              value === loc.id
-                ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                : 'border-input hover:border-primary/40 hover:bg-accent/30'
-            }`}
-          >
-            <span className="text-base shrink-0 mt-0.5">📍</span>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold leading-tight">{loc.label || loc.city}</p>
-              <p className="text-2xs text-muted-foreground mt-0.5 leading-tight truncate">
-                {[loc.city, loc.region].filter(Boolean).join(', ')}
-              </p>
             </div>
           </button>
         ))}

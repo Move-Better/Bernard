@@ -29,7 +29,7 @@ const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 export default function Home() {
   useDocumentTitle('Home')
   const { user } = useUser()
-  const { canReview, role, isEditor } = useUserRole()
+  const { canReview, isEditor } = useUserRole()
   const runtimeWorkspace = useWorkspace()
   const [searchParams] = useSearchParams()
 
@@ -355,7 +355,7 @@ export default function Home() {
               Your week at a glance
             </h2>
           </div>
-          <HomeRightRail stories={stories} isAdmin={role === 'admin'} />
+          <HomeRightRail stories={stories} />
         </div>
       </div>
 

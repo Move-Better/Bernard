@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarClock, Sparkles, Bot, RefreshCw, MapPin, TrendingUp } from 'lucide-react'
+import { CalendarClock, Sparkles, Bot, RefreshCw, TrendingUp } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useTopicSuggestions, useLocations, useTopPerformers, queryKeys } from '@/lib/queries'
+import { useTopicSuggestions, useTopPerformers, queryKeys } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 
@@ -38,15 +38,12 @@ function SuggestionSkeleton() {
 // Right rail for the Home page.
 // Props:
 //   stories  — array from useStories() — we filter to upcoming scheduled pieces
-//   isAdmin  — boolean; shows the Locations overview card when true
-export default function HomeRightRail({ stories = [], isAdmin = false }) {
+export default function HomeRightRail({ stories = [] }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [refreshing, setRefreshing] = useState(false)
   const { data, isLoading, isFetching } = useTopicSuggestions()
   const { data: topPerformers = [] } = useTopPerformers()
-
-  const { data: locations = [] } = useLocations()
 
   const now = Date.now()
   const in7Days = now + 7 * 24 * 60 * 60 * 1000
@@ -210,42 +207,6 @@ export default function HomeRightRail({ stories = [], isAdmin = false }) {
           </ul>
         )}
       </div>
-
-      {/* Locations overview — admin only, 2+ locations */}
-      {isAdmin && locations.length > 1 && (
-        <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-            <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#94a3b8' }} aria-hidden="true" />
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-base font-bold tracking-tight flex-1">Locations</h2>
-          </div>
-          <ul className="divide-y">
-            {locations.map((loc) => {
-              const locStories = stories.filter((s) => s.location_id === loc.id)
-              const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-              const thisMonth = locStories.filter(
-                (s) => s.updated_at && new Date(s.updated_at) >= monthStart
-              ).length
-              return (
-                <li key={loc.id} className="flex items-center justify-between gap-2 px-4 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium truncate">{loc.label || loc.city}</p>
-                    {loc.city && loc.region && (
-                      <p className="text-3xs text-muted-foreground">{loc.city}, {loc.region}</p>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold tabular-nums">{locStories.length}</p>
-                    {thisMonth > 0 && (
-                      <p className="text-3xs text-muted-foreground">+{thisMonth} mo</p>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
 
       {/* Bernard nudge — stub */}
       <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
