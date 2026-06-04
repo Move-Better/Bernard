@@ -54,9 +54,18 @@ function sb(path, init = {}) {
   })
 }
 
-async function setStatus(interviewId, transcribe_status, extra = {}) {
+// Write a terminal/intermediate status. Once the worker has resolved the row's
+// workspace_id, every write is scoped by it (defense-in-depth — interviewId
+// arrives in the worker request body, so we never trust it to point at our
+// tenant alone). `onlyIfProcessing` adds the cooperative-cancel guard so a late
+// failure can't clobber a row a manual change or the stuck-sweep already moved.
+async function setStatus(interviewId, transcribe_status, extra = {}, opts = {}) {
+  const { workspaceId, onlyIfProcessing } = opts
+  let path = `interviews?id=eq.${interviewId}`
+  if (workspaceId) path += `&workspace_id=eq.${workspaceId}`
+  if (onlyIfProcessing) path += `&transcribe_status=eq.processing`
   try {
-    await sb(`interviews?id=eq.${interviewId}`, {
+    await sb(path, {
       method: 'PATCH',
       body: JSON.stringify({ transcribe_status, ...extra }),
     })
@@ -132,10 +141,16 @@ async function transcribeChunk(filePath) {
   form.append('file', new Blob([buf], { type: 'audio/mpeg' }), filePath.split('/').pop())
   form.append('model', 'whisper-1')
   form.append('response_format', 'text')
+  // Hard timeout on the OpenAI call. Without it, a hung Whisper request would
+  // hold the worker slot until the 300s Vercel wall SIGKILLs the instance — and
+  // a SIGKILL does NOT run our `finally`/catch, so the interview would strand at
+  // transcribe_status='processing' forever with no terminal write. Aborting at
+  // 120s surfaces a normal error → the catch flips the row to 'failed'.
   const res = await fetch(WHISPER_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${OPENAI_KEY}` },
     body: form,
+    signal: AbortSignal.timeout(120_000),
   })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -177,18 +192,28 @@ export async function transcribeSeminar({ interviewId }) {
     return { ok: false, error: 'OPENAI_API_KEY not set' }
   }
 
-  // Resolve the audio URL.
+  // Resolve the audio URL AND the row's workspace_id. We capture workspace_id
+  // here and scope every subsequent write by it — interviewId comes from the
+  // worker request body, so per the tenant-isolation rule no DB op trusts it
+  // alone (CRON_SECRET-gated today, but every tenant-table query stays scoped).
   let audioUrl
+  let workspaceId
   try {
-    const r = await sb(`interviews?id=eq.${interviewId}&select=id,source_audio_url`)
+    const r = await sb(`interviews?id=eq.${interviewId}&select=id,workspace_id,source_audio_url`)
     const rows = r.ok ? await r.json() : []
     audioUrl = rows[0]?.source_audio_url
+    workspaceId = rows[0]?.workspace_id
   } catch (e) {
     await setStatus(interviewId, 'failed')
     return { ok: false, error: `interview read failed: ${e?.message}` }
   }
-  if (!audioUrl) {
+  if (!workspaceId) {
+    // Row not found (or no workspace) — nothing safe to scope a write to.
     await setStatus(interviewId, 'failed')
+    return { ok: false, error: 'interview not found' }
+  }
+  if (!audioUrl) {
+    await setStatus(interviewId, 'failed', {}, { workspaceId, onlyIfProcessing: true })
     return { ok: false, error: 'interview has no source_audio_url' }
   }
 
@@ -204,22 +229,36 @@ export async function transcribeSeminar({ interviewId }) {
     const transcript = parts.map((p) => (p || '').trim()).filter(Boolean).join('\n\n').trim()
     if (!transcript) throw new Error('all segments produced empty transcripts')
 
-    const patch = await sb(`interviews?id=eq.${interviewId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: transcript }],
-        transcribe_status: 'ready',
-        status: 'in_progress',
-      }),
-    })
+    // Guard the success write on the row STILL being 'processing' (and our
+    // workspace). If a manual edit, a double-run, or the stuck-sweep already
+    // moved it, this matches zero rows — PostgREST returns 200 with an empty
+    // body — so a late finish can't clobber another owner's state (the
+    // cooperative-cancel pattern from api/_lib/packageStatus.js).
+    const patch = await sb(
+      `interviews?id=eq.${interviewId}&workspace_id=eq.${workspaceId}&transcribe_status=eq.processing`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: transcript }],
+          transcribe_status: 'ready',
+          status: 'in_progress',
+        }),
+      }
+    )
     if (!patch.ok) {
       const body = await patch.text().catch(() => '')
       throw new Error(`interview PATCH failed ${patch.status}: ${body.slice(0, 200)}`)
     }
+    // return=representation → the body is the array of updated rows. Zero rows
+    // means the guard didn't match: the row is no longer ours to complete.
+    const updated = await patch.json().catch(() => [])
+    if (!Array.isArray(updated) || updated.length === 0) {
+      return { ok: false, error: 'interview no longer processing (canceled or already finished)' }
+    }
     return { ok: true, chars: transcript.length, segments: segments.length }
   } catch (e) {
     console.error(`[seminarTranscribe] failed for interview=${interviewId}: ${e?.stack || e?.message}`)
-    await setStatus(interviewId, 'failed')
+    await setStatus(interviewId, 'failed', {}, { workspaceId, onlyIfProcessing: true })
     return { ok: false, error: e?.message || 'transcription failed' }
   } finally {
     try { await rm(workDir, { recursive: true, force: true }) } catch { /* noop */ }

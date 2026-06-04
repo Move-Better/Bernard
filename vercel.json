@@ -52,7 +52,8 @@
     { "path": "/api/cron/resume-longform-renders", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/sync-buffer-published", "schedule": "0 * * * *" },
     { "path": "/api/cron/campaign-tune", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/auto-detect-clips", "schedule": "5-59/10 * * * *" }
+    { "path": "/api/cron/auto-detect-clips", "schedule": "5-59/10 * * * *" },
+    { "path": "/api/cron/sweep-stuck-seminars", "schedule": "*/5 * * * *" }
   ],
   "functions": {
     "api/media/upload.js": {
