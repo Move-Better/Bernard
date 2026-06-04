@@ -7,7 +7,7 @@ import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, GalleryHorizontalEnd,
-  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3,
+  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, Inbox,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,6 +49,10 @@ const NAV_SECTIONS = [
   {
     label: 'Produce',
     items: [
+      // Review Inbox — the producer's single review→schedule queue (P4).
+      // Editor-gated like Overview; individual clinicians never see it.
+      { to: '/review-inbox', label: 'Review Inbox', hint: 'Approve & schedule', match: (p) => p.startsWith('/review-inbox'), icon: Inbox,
+        requiresEditor: true },
       { to: '/stories',    label: 'Stories',    hint: 'Words',           match: (p) => p.startsWith('/stories'),  icon: Newspaper,
         requiresCapability: CAP_INTERVIEW_START },
       // Storyboard — the content→media stage (Media · Publish). Ungated like
