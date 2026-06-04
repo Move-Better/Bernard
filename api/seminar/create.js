@@ -173,9 +173,15 @@ export default async function handler(req, res) {
   if (!interview?.id) return res.status(500).json({ error: 'Interview created but no ID returned' })
 
   // ── Kick the background transcription worker ──────────────────────────────
-  const proto = req.headers['x-forwarded-proto'] || 'https'
-  const host = req.headers.host
-  const baseUrl = host ? `${proto}://${host}` : null
+  // Derive the worker origin from Vercel's own deployment URL, NOT the
+  // user-controllable Host header. This is a browser-facing POST, so trusting
+  // `Host` would let a caller redirect the CRON_SECRET-bearing worker fetch at a
+  // host they control. VERCEL_URL is injected by the platform at runtime; fall
+  // back to the Host header only for local dev where it's unset.
+  const vercelHost = process.env.VERCEL_URL
+  const baseUrl = vercelHost
+    ? `https://${vercelHost}`
+    : (req.headers.host ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}` : null)
   const kicked = await kickWorker(baseUrl, interview.id)
   if (!kicked) {
     // The row exists with transcribe_status='processing'; without a worker it
