@@ -3,14 +3,21 @@ import { Link, Navigate } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import {
   Inbox, Eye, Send, Check, CheckCheck, ChevronRight, Loader2, Image as ImageIcon, Shield,
+  CalendarClock,
 } from 'lucide-react'
-import { useContentItems, useUpdateContentItemStatus } from '@/lib/queries'
+import {
+  useContentItems, useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes,
+} from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
+import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { toast } from '@/lib/toast'
 import LoadingState from '@/components/LoadingState'
 import PageHelp from '@/components/PageHelp'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 // A piece "has media" when at least one entry is attached. Mirrors the
 // Storyboard NEEDS_MEDIA predicate so the "Open" target stays honest: a piece
@@ -54,8 +61,15 @@ export default function ReviewInbox() {
   useDocumentTitle('Review Inbox')
   const { user } = useUser()
   const { isEditor, isLoading: roleLoading } = useUserRole()
+  const workspace = useWorkspace()
   const updateStatus = useUpdateContentItemStatus()
+  const updateItem = useUpdateContentItem()
+  const { data: allThemes = [] } = useCarouselThemes()
   const [selected, setSelected] = useState(() => new Set())
+  // Bulk-schedule is real outbound (Buffer) — gate it behind an explicit
+  // confirm and a busy flag so a producer can't double-fire the batch.
+  const [scheduleConfirmOpen, setScheduleConfirmOpen] = useState(false)
+  const [scheduling, setScheduling] = useState(false)
 
   // Both stages of the producer's queue in one fetch: words awaiting sign-off
   // (in_review) and approved pieces waiting to be scheduled (approved).
@@ -107,6 +121,21 @@ export default function ReviewInbox() {
     [needsReview, selected],
   )
 
+  // Pieces in the selection that can be sent to the Buffer queue: approved,
+  // a Buffer-eligible channel (blog/email publish elsewhere), and with media
+  // attached (the single-piece path warns on no-media; bulk plays it safe and
+  // simply skips those — the producer schedules them individually).
+  const selectedSchedulable = useMemo(
+    () =>
+      readyToSchedule.filter(
+        (p) =>
+          selected.has(p.id) &&
+          BUFFER_DISPATCH_PLATFORMS.includes(p.platform) &&
+          HAS_MEDIA(p),
+      ),
+    [readyToSchedule, selected],
+  )
+
   async function bulkApprove() {
     if (selectedReviewable.length === 0) return
     const n = selectedReviewable.length
@@ -152,6 +181,48 @@ export default function ReviewInbox() {
   // an editor mid-load (same pattern as Overview.jsx). Placed after all hooks so
   // hook order stays stable across renders.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
+
+  // Bulk "Add to Buffer queue" — loops the SHARED publishPieceToBuffer helper
+  // (same path the single-piece ApprovalPanel uses, incl. carousel slide-baking)
+  // with useQueue:true so Buffer assigns each slot. Real outbound: confirmed
+  // first, sequential to keep attribution clean, and resilient (one failure
+  // doesn't abort the batch).
+  async function bulkSchedule() {
+    if (selectedSchedulable.length === 0) return
+    setScheduling(true)
+    let ok = 0
+    let fail = 0
+    for (const piece of selectedSchedulable) {
+      try {
+        const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
+          useQueue: true,
+          userEmail,
+          workspace,
+          themes: allThemes,
+        })
+        if (renderedSlides) {
+          try {
+            await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } })
+          } catch { /* non-fatal: publish already used the rendered URLs */ }
+        }
+        await updateStatus.mutateAsync({
+          id: piece.id,
+          status: 'scheduled',
+          approvedBy: userEmail,
+          approvedAt: new Date().toISOString(),
+          scheduledAt,
+        })
+        ok++
+      } catch {
+        fail++
+      }
+    }
+    setScheduling(false)
+    setScheduleConfirmOpen(false)
+    if (ok) toast.success(`Added ${ok} post${ok === 1 ? '' : 's'} to the Buffer queue`)
+    if (fail) toast.error(`${fail} couldn’t be queued`, { description: 'Open them individually to retry.' })
+    clearSel()
+  }
 
   if (isLoading) return <LoadingState />
 
@@ -209,11 +280,20 @@ export default function ReviewInbox() {
                 )}
                 Approve{selectedReviewable.length > 0 ? ` ${selectedReviewable.length}` : ''}
               </button>
-              {/* Bulk schedule lands in Phase 2 alongside the shared calendar
-                  (scheduling shows up on the Overview calendar). */}
-              <span className="text-2xs text-muted-foreground hidden sm:inline">
-                Bulk scheduling arrives with the shared calendar (next).
-              </span>
+              {/* Bulk schedule → Buffer queue. Real outbound, so it opens a
+                  confirm first. Only counts the schedulable selection (approved
+                  + Buffer-eligible + has media). */}
+              {selectedSchedulable.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setScheduleConfirmOpen(true)}
+                  disabled={scheduling}
+                  className="inline-flex items-center gap-1.5 bg-primary text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  Add {selectedSchedulable.length} to Buffer queue
+                </button>
+              )}
               <button
                 type="button"
                 onClick={clearSel}
@@ -280,6 +360,17 @@ export default function ReviewInbox() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={scheduleConfirmOpen}
+        onOpenChange={setScheduleConfirmOpen}
+        title={`Add ${selectedSchedulable.length} post${selectedSchedulable.length === 1 ? '' : 's'} to the Buffer queue?`}
+        description="Each goes into its channel’s Buffer queue — Buffer picks the slot from your posting schedule. You can still reschedule or cancel in Buffer."
+        confirmLabel="Add to queue"
+        destructive={false}
+        loading={scheduling}
+        onConfirm={bulkSchedule}
+      />
     </div>
   )
 }
