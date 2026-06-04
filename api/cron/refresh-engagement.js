@@ -140,6 +140,15 @@ async function processWorkspace(ws, summary) {
     }
     const stats = await fetchBufferStats(token, item.buffer_update_id, item.platform)
     if (!stats) continue
+    // Buffer's API does not expose per-post engagement yet (analytics are
+    // dashboard-only; "API for Post Analytics" is In Progress on Buffer's
+    // roadmap — confirmed 2026-06-04 via schema introspection + docs, see
+    // api/_lib/bufferPostStats.js). So `stats.statistics` is always empty
+    // today. Skip writing the snapshot rather than accumulating hollow rows
+    // that score 0 and read as fake zeros downstream. When Buffer ships the
+    // metrics field (wired in bufferPostStats.js), these inserts resume
+    // automatically.
+    if (!stats.statistics || Object.keys(stats.statistics).length === 0) continue
     const ins = await sb('engagement_snapshots', {
       method: 'POST',
       body: JSON.stringify({

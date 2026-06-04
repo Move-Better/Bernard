@@ -9,19 +9,30 @@
 //   - Query.post requires `input: PostInput!` (not `id: String!`). Buffer's
 //     schema validator rejects the bare id argument with
 //     "Field 'post' argument 'input' of type 'PostInput!' is required".
-//   - The Post type does NOT expose a `statistics` field — the assumed name
-//     in PR #609 was wrong, and Buffer's schema validator reports it. The
-//     correct field name needs introspection with a real token; until then
-//     this helper returns `statistics: {}` so the caller's `?? {}` fallback
-//     keeps the analytics UI rendering (with zeroed metrics) instead of 502.
 //
-// TODO(buffer-analytics): introspect Buffer's schema to find the actual
-// metrics field name on Post (likely `metrics`, `analytics`, or `insights`)
-// and re-enable per-post stats. Verify with:
-//   curl -X POST https://api.buffer.com/graphql \
-//     -H "Authorization: Bearer $BUFFER_TOKEN" \
-//     -H "Content-Type: application/json" \
-//     -d '{"query":"{__type(name:\"Post\"){fields{name type{name kind ofType{name}}}}}"}'
+// ENGAGEMENT METRICS — NOT AVAILABLE VIA THE API YET (confirmed 2026-06-04):
+//   Buffer's GraphQL API does not expose per-post engagement (reach, likes,
+//   comments, impressions). Verified two ways:
+//     1. Schema introspection (scripts/buffer-schema-probe.mjs): the `Post`
+//        type has NO metrics/analytics/insights/statistics field, and there
+//        is NO metric-named type anywhere in the schema.
+//     2. Buffer's own developer roadmap (https://developers.buffer.com/roadmap.html):
+//        "API for Post Analytics" is listed In Progress, and "Expose Post
+//        Engagement Metrics via the API" is in Exploring — analytics are
+//        Buffer Analyze (dashboard) only for now.
+//   This is "not yet," not "never" — it's actively on Buffer's roadmap.
+//
+//   So this helper fetches only the real, available fields (id/status/sentAt),
+//   which sync-buffer-published.js relies on. `statistics` is returned as an
+//   empty object purely so legacy callers' `?? {}` paths don't crash. The
+//   daily engagement cron now SKIPS writing snapshots when statistics is
+//   empty (api/cron/refresh-engagement.js), so we no longer accumulate hollow
+//   rows. Social engagement is meanwhile partly covered by GA4 referral
+//   attribution (social → site clicks).
+//
+// WHEN BUFFER SHIPS IT: add the metrics field to the `post(input:)` query
+// below (re-run scripts/buffer-schema-probe.mjs to find its name) and populate
+// `statistics` from it — the cron + analytics paths light up automatically.
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 
