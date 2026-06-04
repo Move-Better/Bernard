@@ -70,8 +70,17 @@ function VideoCard({ asset, staffName, onEdit }) {
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 hover:-translate-y-px transition-all">
-      {/* Thumbnail */}
-      <div className="aspect-video bg-muted relative overflow-hidden flex items-center justify-center">
+      {/* Thumbnail — sized to the video's native aspect ratio (like the
+          Library grid) so portrait clips aren't cropped/zoomed into 16:9.
+          Falls back to aspect-video only when dimensions are unknown. */}
+      <div
+        style={asset.width && asset.height
+          ? { aspectRatio: `${asset.width} / ${asset.height}` }
+          : undefined}
+        className={`bg-muted relative overflow-hidden flex items-center justify-center ${
+          asset.width && asset.height ? '' : 'aspect-video'
+        }`}
+      >
         {thumbUrl ? (
           <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
         ) : (
