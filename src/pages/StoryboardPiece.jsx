@@ -20,7 +20,7 @@ import {
   useContentItem, useContentItems, useInterview, useMediaSuggestions, useUpdateContentItem,
 } from '@/lib/queries'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
-import { mediaKindForPlatform, mediaKindLabel, isKindMismatch } from '@/lib/platformMediaKind'
+import { mediaKindForPlatform, mediaKindLabel, isKindMismatch, isTextOnlyPlatform } from '@/lib/platformMediaKind'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { toast } from '@/lib/toast'
 import { apiFetch } from '@/lib/api'
@@ -202,6 +202,9 @@ export default function StoryboardPiece() {
 
   // Platform kind (video | photo | null = either)
   const platformKind = piece ? mediaKindForPlatform(piece.platform) : null
+  // Text-only output (email / blog / landing page) has no aspect ratio or
+  // caption concept — hide those "look" affordances below.
+  const textOnly = piece ? isTextOnlyPlatform(piece.platform) : false
   const meta = PLATFORM_META[piece?.platform] || { label: piece?.platform || '—' }
   const PlatformIcon = meta.icon
 
@@ -436,9 +439,11 @@ export default function StoryboardPiece() {
               {piece.staff_name && (
                 <span className="text-xs text-muted-foreground">· {piece.staff_name}</span>
               )}
-              <span className="ml-auto text-3xs text-muted-foreground">
-                {look.ar} · captions {look.captions ? 'on' : 'off'}
-              </span>
+              {!textOnly && (
+                <span className="ml-auto text-3xs text-muted-foreground">
+                  {look.ar} · captions {look.captions ? 'on' : 'off'}
+                </span>
+              )}
             </div>
 
             {/* Media area */}
@@ -804,22 +809,24 @@ export default function StoryboardPiece() {
                     <Repeat className="h-3 w-3" /> Change / swap
                   </button>
                 </div>
-                {/* Reframe */}
-                <div className="flex items-center gap-2">
-                  <span className="w-16 shrink-0 text-muted-foreground">Reframe</span>
-                  {['9:16', '4:5', '1:1'].map((ar) => (
-                    <button
-                      key={ar}
-                      type="button"
-                      onClick={() => setLook((l) => ({ ...l, ar }))}
-                      className={`rounded-lg border px-2 py-1 text-2xs transition-colors ${
-                        look.ar === ar ? 'border-primary bg-primary/10 text-primary' : 'hover:border-primary'
-                      }`}
-                    >
-                      {ar}
-                    </button>
-                  ))}
-                </div>
+                {/* Reframe — aspect ratio is a visual/social concept; hide for text-only output */}
+                {!textOnly && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-16 shrink-0 text-muted-foreground">Reframe</span>
+                    {['9:16', '4:5', '1:1'].map((ar) => (
+                      <button
+                        key={ar}
+                        type="button"
+                        onClick={() => setLook((l) => ({ ...l, ar }))}
+                        className={`rounded-lg border px-2 py-1 text-2xs transition-colors ${
+                          look.ar === ar ? 'border-primary bg-primary/10 text-primary' : 'hover:border-primary'
+                        }`}
+                      >
+                        {ar}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {/* Headline size */}
                 <div className="flex items-center gap-2">
                   <span className="w-16 shrink-0 text-muted-foreground">Headline</span>
@@ -846,19 +853,21 @@ export default function StoryboardPiece() {
                     <span className="text-3xs text-muted-foreground">:12</span>
                   </div>
                 )}
-                {/* Captions */}
-                <div className="flex items-center gap-2">
-                  <span className="w-16 shrink-0 text-muted-foreground">Captions</span>
-                  <label className="flex items-center gap-1.5 text-2xs">
-                    <input
-                      type="checkbox"
-                      checked={look.captions}
-                      onChange={(e) => setLook((l) => ({ ...l, captions: e.target.checked }))}
-                      className="accent-primary"
-                    />
-                    burned in · lower-third
-                  </label>
-                </div>
+                {/* Captions — burned-in lower-thirds are a video/social concept; hide for text-only output */}
+                {!textOnly && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-16 shrink-0 text-muted-foreground">Captions</span>
+                    <label className="flex items-center gap-1.5 text-2xs">
+                      <input
+                        type="checkbox"
+                        checked={look.captions}
+                        onChange={(e) => setLook((l) => ({ ...l, captions: e.target.checked }))}
+                        className="accent-primary"
+                      />
+                      burned in · lower-third
+                    </label>
+                  </div>
+                )}
               </div>
             )}
           </div>
