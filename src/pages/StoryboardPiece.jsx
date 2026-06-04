@@ -76,7 +76,7 @@ export default function StoryboardPiece() {
   // ── Photo compositor (P1) ──────────────────────────────────────────────
   // treatment = the spec the server bakes onto the photo (grade + scrim +
   // brand-font headline). composedUrl = the last baked image (== what ships).
-  const [treatment, setTreatment] = useState({ headline: '', headlineSize: 'm', grade: 40, aspect: '4:5', scrim: 'navy' })
+  const [treatment, setTreatment] = useState({ templateId: 'editorial', headline: '', headlineSize: 'm', grade: 40, aspect: '4:5', scrim: 'navy', label: '', accentText: '' })
   const [composedUrl, setComposedUrl] = useState(null)
   const [composing, setComposing] = useState(false)
   const treatmentSeeded = useRef(false)
@@ -596,6 +596,75 @@ export default function StoryboardPiece() {
               {/* Manual knobs — same treatment the AI bakes. Photo posts only. */}
               {primaryMedia && !primaryIsVideo && (
                 <div className="mt-3 space-y-2 border-t pt-3 text-xs">
+                  {/* Template picker (P2 — WHOOP direction). Selecting bakes immediately. */}
+                  <div>
+                    <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Template</span>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {[
+                        ['editorial', 'Editorial'],
+                        ['dark-claim', 'Dark claim'], ['light-claim', 'Light claim'],
+                        ['dark-badge', 'Dark badge'], ['light-badge', 'Light badge'],
+                        ['dark-split', 'Dark split'], ['light-split', 'Light split'],
+                      ].map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          disabled={composing}
+                          onClick={() => compose({ templateId: id })}
+                          className={`rounded border px-2 py-1 text-2xs disabled:opacity-50 ${(treatment.templateId || 'editorial') === id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Slots — fill, then Bake. */}
+                  <div className="flex items-start gap-2">
+                    <span className="w-14 shrink-0 pt-1 text-muted-foreground">Headline</span>
+                    <textarea
+                      rows={2}
+                      value={treatment.headline || ''}
+                      onChange={(e) => setTreatment((t) => ({ ...t, headline: e.target.value }))}
+                      placeholder="Defaults to your caption's first line…"
+                      className="flex-1 resize-none rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary/40"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 shrink-0 text-muted-foreground">Accent</span>
+                    <input
+                      value={treatment.accentText || ''}
+                      onChange={(e) => setTreatment((t) => ({ ...t, accentText: e.target.value }))}
+                      placeholder="word(s) to highlight orange — e.g. 'isn't tight'"
+                      className="flex-1 rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary/40"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 shrink-0 text-muted-foreground">Label</span>
+                    <input
+                      value={treatment.label || ''}
+                      onChange={(e) => setTreatment((t) => ({ ...t, label: e.target.value }))}
+                      placeholder="THE SCIENCE"
+                      className="flex-1 rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary/40"
+                    />
+                  </div>
+                  {String(treatment.templateId || '').includes('badge') && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-14 shrink-0 text-muted-foreground">Badge</span>
+                      <input
+                        value={treatment.figure || ''}
+                        onChange={(e) => setTreatment((t) => ({ ...t, figure: e.target.value }))}
+                        placeholder="2"
+                        className="w-12 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:ring-1 focus:ring-primary/40"
+                      />
+                      <input
+                        value={treatment.figureUnit || ''}
+                        onChange={(e) => setTreatment((t) => ({ ...t, figureUnit: e.target.value }))}
+                        placeholder="min"
+                        className="w-16 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:ring-1 focus:ring-primary/40"
+                      />
+                      <span className="text-3xs text-muted-foreground">the ring figure</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 text-muted-foreground">Grade</span>
                     <input
