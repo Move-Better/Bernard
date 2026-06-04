@@ -1670,7 +1670,7 @@ export default function InterviewSession() {
             <Loader2 className="h-5 w-5 text-primary animate-spin shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-base font-semibold">
-                {generationStyle === 'minimal_edits' ? 'Cleaning transcript…' : 'Writing your blog post…'}
+                {isNewsletterInterview ? 'Writing your newsletter…' : generationStyle === 'minimal_edits' ? 'Cleaning transcript…' : 'Writing your blog post…'}
               </p>
               <div className="mt-2 h-1.5 w-full rounded-full bg-muted-foreground/20 overflow-hidden">
                 <div
