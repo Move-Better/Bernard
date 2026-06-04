@@ -19,6 +19,7 @@ import { getPendingAnnouncement } from '@/lib/announcements'
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
+const NewNewsletter = lazy(() => import('@/pages/NewNewsletter'))
 const VoiceMemo = lazy(() => import('@/pages/VoiceMemo'))
 const HandoutCapture = lazy(() => import('@/pages/HandoutCapture'))
 const VoiceTraining = lazy(() => import('@/pages/VoiceTraining'))
@@ -508,6 +509,7 @@ function AppRoutes() {
             <Route path="/" element={guarded(<HomeOrSlateForProducer />)} />
             <Route path="/new" element={guarded(<CapturePicker />)} />
             <Route path="/new/interview" element={guarded(<NewInterview />)} />
+            <Route path="/new/newsletter" element={guarded(<NewNewsletter />)} />
             <Route path="/new/voice-memo" element={guarded(<VoiceMemo />)} />
             <Route path="/new/handout" element={guarded(<HandoutCapture />)} />
             <Route path="/settings/voice-training" element={guarded(<VoiceTraining />)} />

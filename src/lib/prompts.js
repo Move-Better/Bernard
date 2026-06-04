@@ -385,6 +385,10 @@ export function getInterviewSystemPrompt(workspace, staffName, condition, pastIn
     gapBlock       = '',
     audienceSlot   = null,
     storyTypeSlot  = null,
+    // Goal-steered "Write a newsletter" flow: a formatted block describing the
+    // campaign goal this conversation is building toward. Empty for a regular
+    // interview, so the prompt is byte-identical when absent.
+    goalBlock      = '',
   } = opts
 
   const interviewerName = workspace?.interviewer_name || 'Bernard'
@@ -444,7 +448,7 @@ VOICE & PERSONA — sound like a real person named ${interviewerName}, not a sur
 - When you probe, it should feel like genuine curiosity, not an interrogation — "Can you walk me through what that looks like?" beats "Provide a specific example."
 
 ${personaIntro}
-${pieceDirectionBlock}${formatInterviewContextForPrompt(workspace, condition)}${pastContext}
+${goalBlock}${pieceDirectionBlock}${formatInterviewContextForPrompt(workspace, condition)}${pastContext}
 ${workspace.display_name} context: ${workspace.clinic_context}
 
 ${formatPatientContextForPrompt(workspace, prototypeId)}
@@ -642,6 +646,109 @@ HEADLINE: write one compelling, specific headline. Never include ${staffName}'s 
 FORMAT: Markdown. Use ## headings only where the content actually shifts thread. No fixed section count.
 
 ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words, but voice fidelity beats length. If the interview only has 500 words of real material, write 500. Never pad.')}${PROVENANCE_INSTRUCTION}`
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Newsletter — goal-steered "Write a newsletter" flow.
+//
+// A user picks a campaign "goal" (Settings → Campaigns), then has a normal voice
+// interview that's STEERED toward that goal by buildCampaignGoalBlock (injected
+// into getInterviewSystemPrompt). On completion, getNewsletterSystemPrompt turns
+// the transcript into an email draft in the exact `---SECTION---` shape that
+// PostPreview.jsx's parseEmailSections + fillTemplate consume (SUBJECT LINE /
+// PREVIEW TEXT / HEADLINE / PULL QUOTE / BODY PARAGRAPH 1-3 / CTA TEXT / CTA URL
+// / PS). The section markers are load-bearing: any other shape (JSON, markdown
+// headings) trips the "this email needs to be regenerated" fallback.
+// ──────────────────────────────────────────────────────────────────────────────
+
+const NEWSLETTER_STYLE_TONE = {
+  relationship: 'warm and community-minded — real people and genuine connection, not a sales push',
+  promotional:  'inviting and upbeat — there is a clear offer or event, framed as something the reader will be glad to know about',
+  referral:     'professional and peer-to-peer — speaking to other providers about why and when to refer',
+  clinical:     'educational and trustworthy — teaching the reader something genuinely useful about their health',
+}
+
+// Returns the goal-steering block injected into getInterviewSystemPrompt for a
+// newsletter interview. Empty string when there's no campaign, so a regular
+// interview is unaffected.
+export function buildCampaignGoalBlock(campaign, staffName = 'you', workspaceName = 'the practice') {
+  if (!campaign) return ''
+  const about = (campaign.theme_notes || campaign.description || '').trim()
+  const styleLine = NEWSLETTER_STYLE_TONE[campaign.content_style] || ''
+  const ctaParts = []
+  if (campaign.cta_label) ctaParts.push(`the reader's next step is "${campaign.cta_label}"`)
+  if (campaign.cta_pitch) ctaParts.push(String(campaign.cta_pitch).trim())
+  const ctaLine = ctaParts.join(' — ')
+  return `
+NEWSLETTER GOAL — this conversation is building ONE newsletter, not a general interview. Steer every question toward this goal:
+- Goal: ${campaign.name}${about ? `\n- What it's about: ${about}` : ''}${styleLine ? `\n- Tone for this newsletter: ${styleLine}` : ''}${ctaLine ? `\n- The ask (CTA): ${ctaLine}` : ''}
+
+Gather exactly what this newsletter needs: who or what to feature, the specific human story behind it, why it matters to ${staffName} and ${workspaceName}, and a natural, in-their-own-words way to make the ask. Don't run the full clinical-topic checklist — stay on this goal. As the conversation nears its end, make sure you've drawn out how ${staffName} wants to invite the reader to act on the CTA. Keep it concrete: real events, real causes, real details and feeling (the writer anonymizes patients later).
+`
+}
+
+export function getNewsletterSystemPrompt(workspace, staffName, condition, voiceMode = 'practice', voiceNotes = '', voicePhrases = [], campaign = null, ownHistoryBlock = '') {
+  const isPersonal = voiceMode === 'personal'
+  const goalName  = campaign?.name || condition
+  const goalAbout = (campaign?.theme_notes || campaign?.description || '').trim()
+  const ctaLabel  = (campaign?.cta_label || '').trim()
+  const ctaPitch  = (campaign?.cta_pitch || '').trim()
+  const ctaUrl    = (campaign?.cta_url || workspace.booking_url || '').trim()
+  const styleLine = NEWSLETTER_STYLE_TONE[campaign?.content_style] || ''
+
+  const goalLines = [
+    `This newsletter is for: ${goalName}`,
+    goalAbout ? `What it's about: ${goalAbout}` : '',
+    styleLine ? `Tone: ${styleLine}` : '',
+    ctaPitch  ? `The ask: ${ctaPitch}` : '',
+  ].filter(Boolean).join('\n')
+
+  return `You are a writer turning a recorded interview with ${staffName} (a clinician at ${workspace.display_name} in ${workspace.location}) into an email NEWSLETTER for ${workspace.display_name}'s subscriber list.
+
+GOAL OF THIS NEWSLETTER:
+${goalLines}
+
+VOICE FIDELITY IS THE ONLY GOAL.
+The interview is rambling and conversational. ORGANIZE it into the sections below — never translate it into a different voice.
+
+Hard rules:
+- Lead with ${staffName}'s actual phrasing. Quote verbatim wherever the meaning fits. Never smooth a real sentence into a generic one.
+- This is a warm, personal email to people who already know ${workspace.display_name} — not a marketing blast and not a clinical article. Write like ${staffName} is writing to their own community.
+- Preserve every strong claim or feeling at full strength. No hedging, no corporate filler.
+- Keep people/patient details concrete but anonymize patients (no last names, no identifying specifics a stranger could use). Real names of events, causes, and public-facing community partners are fine.
+${isPersonal
+  ? `- First-person throughout: "I", "my", "me".`
+  : `- Use "we" / "our team" for ${workspace.display_name}; only claim things ${staffName} actually said the team does.`}
+
+${getFramingRule(workspace, { voiceMode, staffName, assetType: 'email' })}
+${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}${ownHistoryBlock}
+${workspace.display_name.toUpperCase()} BRAND VOICE:
+${workspace.brand_voice}
+
+OUTPUT FORMAT — emit EXACTLY these sections, each marker alone on its own line. Put each section's content on the line(s) AFTER its marker. Use ONLY these \`---\` markers — no markdown headings, no JSON, no commentary before the first marker:
+
+---SUBJECT LINE---
+A short, human inbox subject line that makes a subscriber want to open it. No clickbait, no emojis (unless ${staffName} truly would). This is an inbox line, not the headline.
+---PREVIEW TEXT---
+50–90 characters that complete the hook from the subject (the gray preview snippet next to the subject in the inbox).
+---HEADLINE---
+The headline at the top of the email body. Specific to this story. Never include ${staffName}'s name.
+---PULL QUOTE---
+The single most compelling line from the interview, in ${staffName}'s own words — one sentence, styled as a callout.
+---BODY PARAGRAPH 1---
+The opening hook — pull the reader into the human story right away. 2–4 sentences.
+---BODY PARAGRAPH 2---
+The ${workspace.display_name} perspective — why this matters to the team and what it connects to. 2–4 sentences.
+---BODY PARAGRAPH 3---
+The bridge to action — land the story and lead naturally into the ask. 2–4 sentences.
+---CTA TEXT---
+${ctaLabel ? `Use this exact button label: ${ctaLabel}` : "A short button label, 2–4 words, for the reader's next step."}
+---CTA URL---
+${ctaUrl || '#'}
+---PS---
+A short, warm postscript in ${staffName}'s voice — the kind of line they'd actually add at the end.
+
+Keep it tight — this is an email, not an essay. Voice fidelity beats length.`
 }
 
 /**

@@ -70,7 +70,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     if (id) {
       const r = await sb(
-        `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,created_at,updated_at`
+        `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,campaign_id,created_at,updated_at`
       )
       if (!r.ok) return dbErr(res, r)
       const data = await r.json()
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     if (!(await enforceLimit(req, res, 'media'))) return
 
-    const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId } = req.body || {}
+    const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
     if (!topic?.trim()) return err(res, 'Topic required')
 
@@ -123,6 +123,13 @@ export default async function handler(req, res) {
         story_type: storyType || null,
         cleanup_level: cleanupLevel || null,
         generation_style: generationStyle === 'minimal_edits' ? 'minimal_edits' : 'blog_post',
+        // Goal-steered newsletter flow (Write a newsletter): the interview is
+        // bound to a campaign goal at creation, and selected_outputs=['email']
+        // marks it as a newsletter so InterviewSession generates the email
+        // draft (not a blog) on completion. Both default null → the regular
+        // interview create path is byte-identical.
+        campaign_id: campaignId || null,
+        selected_outputs: Array.isArray(selectedOutputs) && selectedOutputs.length ? selectedOutputs : null,
       }),
     })
     if (!r.ok) return dbErr(res, r, 'Create failed')
