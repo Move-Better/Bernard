@@ -1,11 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, useUser } from '@clerk/react'
-import { ArrowLeft, Mic, Square, Trash2, Upload, Loader2, Play, Pause } from 'lucide-react'
+import { ArrowLeft, Mic, Square, Trash2, Upload, Loader2, Play, Pause, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
+import {
+  createSession,
+  appendChunk,
+  patchSession,
+  deleteSession,
+  assembleBlob,
+  listRecoverable,
+} from '@/lib/audioCaptureDb'
 
 /**
  * VoiceMemo — capture a voice memo via live recording or file upload, then
@@ -43,6 +51,29 @@ function formatTime(sec) {
   return `${mm}:${ss}`
 }
 
+function uid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  return `vm-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
+}
+
+// Upload with exponential backoff. A single cellular blip shouldn't lose the
+// recording; the IndexedDB session stays put until one attempt succeeds.
+async function uploadWithRetry(doUpload, { attempts = 3, baseDelayMs = 1200 } = {}) {
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await doUpload()
+    } catch (e) {
+      lastErr = e
+      if (e?.permanent) throw e // 4xx — retrying won't help
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** i))
+      }
+    }
+  }
+  throw lastErr
+}
+
 export default function VoiceMemo() {
   useDocumentTitle('Voice memo')
   const navigate = useNavigate()
@@ -58,6 +89,8 @@ export default function VoiceMemo() {
   const [filename, setFilename] = useState('')
   const [mimeType, setMimeType] = useState('')
   const [isPlaying, setIsPlaying] = useState(false)
+  // Recovered (unfinished) recordings surfaced from IndexedDB on mount.
+  const [recoverable, setRecoverable] = useState([])
 
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
@@ -66,6 +99,14 @@ export default function VoiceMemo() {
   const startTimeRef = useRef(0)
   const audioRef = useRef(null)
   const fileInputRef = useRef(null)
+  // Crash-safe capture: each recording gets an IndexedDB session id so chunks
+  // survive a backgrounded/killed tab (P3). wakeLockRef holds the screen-wake
+  // sentinel while recording so iOS is slower to background the tab.
+  const sessionIdRef = useRef(null)
+  const wakeLockRef = useRef(null)
+  // The session id of a recovered take, so a successful upload clears the right
+  // IndexedDB record (a recovered blob has no live MediaRecorder session).
+  const recoveredSessionIdRef = useRef(null)
 
   // Release object URL when blob changes / unmounts so we don't leak.
   useEffect(() => {
@@ -75,6 +116,7 @@ export default function VoiceMemo() {
         streamRef.current.getTracks().forEach((t) => t.stop())
       }
       if (timerRef.current) clearInterval(timerRef.current)
+      try { wakeLockRef.current?.release?.() } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -91,6 +133,56 @@ export default function VoiceMemo() {
     return () => URL.revokeObjectURL(url)
   }, [blob])
 
+  // ── Crash-safe capture plumbing ───────────────────────────────────────────
+  const acquireWakeLock = useCallback(async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen')
+      }
+    } catch { /* non-fatal — screen may sleep, recording still persists to IDB */ }
+  }, [])
+
+  const releaseWakeLock = useCallback(() => {
+    try { wakeLockRef.current?.release?.() } catch { /* ignore */ }
+    wakeLockRef.current = null
+  }, [])
+
+  // On mount, surface any recording that never finished uploading so the user
+  // can recover it (the iPhone-killed-tab case). Stale ones are auto-pruned.
+  useEffect(() => {
+    let cancelled = false
+    listRecoverable()
+      .then((rows) => { if (!cancelled) setRecoverable(rows) })
+      .catch(() => { /* IDB unavailable — recovery just isn't offered */ })
+    return () => { cancelled = true }
+  }, [])
+
+  // While recording, force a final chunk flush the instant the tab is hidden
+  // (iOS fires visibilitychange/pagehide before suspending). requestData()
+  // triggers ondataavailable synchronously, so the last few seconds land in
+  // IndexedDB even if the tab never wakes again.
+  useEffect(() => {
+    function flushChunk() {
+      const rec = mediaRecorderRef.current
+      if (rec && rec.state === 'recording') {
+        try { rec.requestData() } catch { /* ignore */ }
+      }
+    }
+    function onVisibility() {
+      if (document.visibilityState === 'hidden') {
+        flushChunk()
+      } else if (mediaRecorderRef.current?.state === 'recording') {
+        acquireWakeLock() // wake lock auto-releases on hide — re-arm on return
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flushChunk)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flushChunk)
+    }
+  }, [acquireWakeLock])
+
   const startRecording = useCallback(async () => {
     setError('')
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -106,15 +198,35 @@ export default function VoiceMemo() {
       const rec = new MediaRecorder(stream, opts)
       mediaRecorderRef.current = rec
       chunksRef.current = []
+
+      // Crash-safe session: persist each chunk to IndexedDB as it arrives so a
+      // backgrounded/killed tab can recover the recording on next open.
+      const finalType = mt || 'audio/webm'
+      const fname = `voice-memo-${new Date().toISOString().replace(/[:.]/g, '-')}.${finalType.includes('mp4') ? 'm4a' : finalType.includes('mpeg') ? 'mp3' : 'webm'}`
+      const sessionId = uid()
+      sessionIdRef.current = sessionId
+      recoveredSessionIdRef.current = null
+      createSession({ id: sessionId, source: 'voice_memo', mimeType: finalType, filename: fname })
+        .catch((e) => console.warn('[VoiceMemo] createSession failed (non-fatal):', e?.message))
+
       rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data)
+          const dur = (Date.now() - startTimeRef.current) / 1000
+          appendChunk(sessionId, e.data, { durationSec: dur })
+            .catch((err) => console.warn('[VoiceMemo] appendChunk failed (non-fatal):', err?.message))
+        }
       }
       rec.onstop = () => {
-        const finalType = rec.mimeType || mt || 'audio/webm'
-        const fullBlob = new Blob(chunksRef.current, { type: finalType })
+        const type = rec.mimeType || mt || 'audio/webm'
+        const fullBlob = new Blob(chunksRef.current, { type })
         setBlob(fullBlob)
-        setMimeType(finalType)
-        setFilename(`voice-memo-${new Date().toISOString().replace(/[:.]/g, '-')}.${finalType.includes('mp4') ? 'm4a' : finalType.includes('mpeg') ? 'mp3' : 'webm'}`)
+        setMimeType(type)
+        setFilename(fname)
+        // Mark the session done-recording; it stays in IDB until upload succeeds.
+        patchSession(sessionId, { status: 'stopped', durationSec: (Date.now() - startTimeRef.current) / 1000 })
+          .catch(() => {})
+        releaseWakeLock()
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((t) => t.stop())
           streamRef.current = null
@@ -125,9 +237,10 @@ export default function VoiceMemo() {
         }
         setState('recorded')
       }
-      rec.start(1000) // collect chunks every 1s; helps with very long captures
+      rec.start(4000) // flush a chunk every 4s — bounds worst-case loss on a kill
       startTimeRef.current = Date.now()
       setElapsed(0)
+      acquireWakeLock()
       timerRef.current = setInterval(() => {
         setElapsed((Date.now() - startTimeRef.current) / 1000)
       }, 250)
@@ -136,7 +249,7 @@ export default function VoiceMemo() {
       setError(e?.message || 'Microphone access denied.')
       setState('idle')
     }
-  }, [])
+  }, [acquireWakeLock, releaseWakeLock])
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -145,6 +258,11 @@ export default function VoiceMemo() {
   }, [])
 
   const discard = useCallback(() => {
+    // Drop the persisted session too — the user explicitly threw this take away.
+    const sid = recoveredSessionIdRef.current || sessionIdRef.current
+    if (sid) deleteSession(sid).catch(() => {})
+    sessionIdRef.current = null
+    recoveredSessionIdRef.current = null
     setBlob(null)
     setMimeType('')
     setFilename('')
@@ -152,6 +270,37 @@ export default function VoiceMemo() {
     setIsPlaying(false)
     setError('')
     setState('idle')
+  }, [])
+
+  // Recover an unfinished recording surfaced on mount: rebuild the blob from its
+  // persisted chunks and drop the user straight into the "recorded" review state.
+  const recoverSession = useCallback(async (session) => {
+    try {
+      const recovered = await assembleBlob(session.id)
+      if (!recovered || !recovered.size) {
+        toast.error('That recording could not be recovered — its audio was empty.')
+        await deleteSession(session.id).catch(() => {})
+        setRecoverable((rows) => rows.filter((r) => r.id !== session.id))
+        return
+      }
+      recoveredSessionIdRef.current = session.id
+      sessionIdRef.current = null
+      setBlob(recovered)
+      setMimeType(session.mimeType || recovered.type || 'audio/webm')
+      setFilename(session.filename || 'recovered-voice-memo.webm')
+      setElapsed(session.durationSec || 0)
+      setError('')
+      setRecoverable((rows) => rows.filter((r) => r.id !== session.id))
+      setState('recorded')
+      toast.success('Recording recovered — review and upload it.')
+    } catch (e) {
+      toast.error(`Could not recover recording: ${e?.message || 'unknown error'}`)
+    }
+  }, [])
+
+  const discardRecoverable = useCallback(async (session) => {
+    await deleteSession(session.id).catch(() => {})
+    setRecoverable((rows) => rows.filter((r) => r.id !== session.id))
   }, [])
 
   const onFilePicked = useCallback((e) => {
@@ -188,35 +337,51 @@ export default function VoiceMemo() {
     if (!blob) return
     setError('')
     setState('uploading')
+    const sid = recoveredSessionIdRef.current || sessionIdRef.current
+    if (sid) patchSession(sid, { status: 'uploading' }).catch(() => {})
     try {
-      const token = await getToken()
-      // Send the audio as a raw binary body so the server can pipe it straight
-      // to Vercel Blob without a multipart parser. Metadata travels via query
-      // params (filename, durationSec) and the Content-Type header.
-      const safeFilename = encodeURIComponent(filename || 'voice-memo.webm')
-      const safeDuration = Math.round(elapsed)
-      const r = await fetch(
-        `/api/voice-memo?filename=${safeFilename}&durationSec=${safeDuration}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': mimeType || blob.type || 'audio/webm',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: blob,
+      // Retry transient failures (a cellular blip mid-upload shouldn't lose the
+      // recording). The IndexedDB session stays put until an attempt succeeds.
+      const data = await uploadWithRetry(async () => {
+        const token = await getToken()
+        // Send the audio as a raw binary body so the server can pipe it straight
+        // to Vercel Blob without a multipart parser. Metadata travels via query
+        // params (filename, durationSec) and the Content-Type header.
+        const safeFilename = encodeURIComponent(filename || 'voice-memo.webm')
+        const safeDuration = Math.round(elapsed)
+        const r = await fetch(
+          `/api/voice-memo?filename=${safeFilename}&durationSec=${safeDuration}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': mimeType || blob.type || 'audio/webm',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: blob,
+          }
+        )
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '')
+          // 4xx (413 too-large, 401/403 auth) won't recover on retry — fail fast.
+          const err = new Error(txt || `Upload failed (${r.status})`)
+          err.permanent = r.status >= 400 && r.status < 500
+          throw err
         }
-      )
-      if (!r.ok) {
-        const txt = await r.text().catch(() => '')
-        throw new Error(txt || `Upload failed (${r.status})`)
-      }
-      const data = await r.json()
+        return r.json()
+      }, { attempts: 3 })
+
       const { staffId, interviewId } = data
       if (!interviewId) throw new Error('Upload succeeded but no interview id returned.')
+      // Server has it now — drop the durable copy.
+      if (sid) deleteSession(sid).catch(() => {})
+      sessionIdRef.current = null
+      recoveredSessionIdRef.current = null
       toast.success('Voice memo captured — review the transcript next.')
       navigate(`/capture/${staffId}/${interviewId}/review`)
     } catch (e) {
-      setError(e?.message || 'Upload failed.')
+      // Keep the IndexedDB session as 'failed' so it reappears in recovery.
+      if (sid) patchSession(sid, { status: 'failed' }).catch(() => {})
+      setError(e?.message || 'Upload failed. Your recording is saved — try again.')
       setState('recorded')
     }
   }, [blob, filename, mimeType, elapsed, getToken, navigate])
@@ -241,6 +406,43 @@ export default function VoiceMemo() {
           </p>
         </div>
       </div>
+
+      {/* Recovered recordings — captures that never finished uploading (e.g. the
+          tab was backgrounded/killed mid-record on a phone). Surfaced from
+          IndexedDB on mount so the audio is never silently lost. */}
+      {recoverable.length > 0 && !recording && !recorded && !uploading && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <RotateCcw className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="text-sm">
+                <span className="font-medium">We saved {recoverable.length === 1 ? 'a recording' : `${recoverable.length} recordings`} that didn&apos;t finish uploading.</span>{' '}
+                <span className="text-muted-foreground">Recover and send {recoverable.length === 1 ? 'it' : 'them'}, or discard.</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {recoverable.map((s) => (
+                <div key={s.id} className="flex items-center gap-2 rounded-md bg-background/60 border border-amber-500/20 px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{s.filename || 'voice memo'}</div>
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      {formatTime(s.durationSec || 0)}
+                      {s.status === 'failed' ? ' · upload failed' : ' · unfinished'}
+                      {s.createdAt ? ` · ${new Date(s.createdAt).toLocaleString()}` : ''}
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" onClick={() => recoverSession(s)}>
+                    Recover
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => discardRecoverable(s)} aria-label="Discard recovered recording">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-6 space-y-5">
