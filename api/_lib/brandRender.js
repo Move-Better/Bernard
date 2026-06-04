@@ -245,6 +245,146 @@ export async function renderPhotoChannel({ photoUrl, channel, captionText, works
   return { buffer: out, width: spec.width, height: spec.height, channel }
 }
 
+// ── Editorial photo compositor (Photo Compositor P1) ────────────────────────
+//
+// The "above-middle" look: a graded photo + a bottom gradient scrim + a baked
+// headline in the brand heading font + a thin accent rule and the author name.
+// Distinct from renderPhotoChannel's solid caption band — this is the editorial
+// template the StoryboardPiece compositor drives. Reuses the same Sharp + SVG +
+// embedded-font pipeline (no fontconfig dependency).
+
+const EDITORIAL_ASPECTS = {
+  '4:5':  [1080, 1350],
+  '9:16': [1080, 1920],
+  '1:1':  [1080, 1080],
+}
+const HEADLINE_SIZE_FACTOR = { s: 0.058, m: 0.070, l: 0.084 }
+const DEFAULT_SCRIM = '#10243f' // brand navy
+
+/**
+ * Build the editorial overlay SVG: bottom scrim gradient (guarantees the
+ * headline is legible over any photo — the P1 "contrast-aware" guarantee),
+ * a left-aligned wrapped headline in the brand font, and an accent rule +
+ * author/workspace name row pinned to the bottom.
+ */
+export function buildEditorialOverlaySvg({
+  width,
+  height,
+  headline,
+  headlineSize = 'm',
+  staffName,
+  workspaceName,
+  accentColor,
+  scrimColor = DEFAULT_SCRIM,
+  fontBuffer,
+}) {
+  const baseDim = Math.min(width, height)
+  const pad = Math.round(width * 0.06)
+
+  const fontFamily = fontBuffer ? 'BrandFont' : 'sans-serif'
+  const fontFaceCss = fontBuffer
+    ? `<style>@font-face { font-family: 'BrandFont'; src: url(data:font/ttf;base64,${fontBuffer.toString('base64')}) format('truetype'); }</style>`
+    : ''
+
+  // Bottom name row.
+  const nameFontSize = Math.round(baseDim * 0.026)
+  const bottomMargin = Math.round(height * 0.055)
+  const nameBaseline = height - bottomMargin
+  const ruleW = Math.round(width * 0.045)
+  const ruleH = Math.max(3, Math.round(baseDim * 0.005))
+  const ruleY = Math.round(nameBaseline - nameFontSize * 0.55) - ruleH
+  const nameX = pad + ruleW + Math.round(width * 0.018)
+  const nameRow = (staffName || workspaceName)
+    ? `<rect x="${pad}" y="${ruleY}" width="${ruleW}" height="${ruleH}" rx="${Math.round(ruleH / 2)}" fill="${accentColor}" />
+  <text x="${nameX}" y="${nameBaseline}" font-size="${nameFontSize}" fill="#FFFFFF" font-family="${fontFamily}" font-weight="600">${svgEscape(staffName || '')}</text>
+  ${staffName && workspaceName ? `<text x="${nameX + Math.round(width * 0.012) + (staffName.length * nameFontSize * 0.5)}" y="${nameBaseline}" font-size="${nameFontSize}" fill="rgba(255,255,255,0.72)" font-family="${fontFamily}" font-weight="400">· ${svgEscape(workspaceName)}</text>` : (workspaceName && !staffName ? `<text x="${nameX}" y="${nameBaseline}" font-size="${nameFontSize}" fill="rgba(255,255,255,0.85)" font-family="${fontFamily}" font-weight="500">${svgEscape(workspaceName)}</text>` : '')}`
+    : ''
+
+  // Headline block, stacked up from just above the name row.
+  const fs = Math.round(width * (HEADLINE_SIZE_FACTOR[headlineSize] || HEADLINE_SIZE_FACTOR.m))
+  const lineHeight = Math.round(fs * 1.12)
+  const maxChars = Math.max(12, Math.round((width - 2 * pad) / (fs * 0.52)))
+  const lines = wrapLines(headline, maxChars, 3)
+  const blockBottom = nameBaseline - nameFontSize - Math.round(height * 0.03)
+  const firstBaseline = blockBottom - (lines.length - 1) * lineHeight
+  const headlineTspans = lines.map((line, i) =>
+    `<text x="${pad}" y="${firstBaseline + i * lineHeight}" font-size="${fs}" fill="#FFFFFF" font-family="${fontFamily}" font-weight="800" letter-spacing="-0.5">${svgEscape(line)}</text>`,
+  ).join('\n  ')
+
+  // Scrim covers roughly the bottom 55% so it reads as intentional, not a bar.
+  const scrimStart = 0.42
+
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>${fontFaceCss}
+    <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="${scrimStart}" stop-color="${scrimColor}" stop-opacity="0" />
+      <stop offset="0.78" stop-color="${scrimColor}" stop-opacity="0.55" />
+      <stop offset="1" stop-color="${scrimColor}" stop-opacity="0.86" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="${width}" height="${height}" fill="url(#scrim)" />
+  ${lines.length ? headlineTspans : ''}
+  ${nameRow}
+</svg>`)
+}
+
+/**
+ * Render one editorial composite from a source photo + treatment spec.
+ * Applies a subtle grade (brightness/saturation) and a subject-aware ("smart")
+ * crop, then composites the editorial overlay.
+ *
+ * @param {Object} params
+ * @param {string} params.photoUrl
+ * @param {Object} params.treatment  — { headline, headlineSize, grade (0-100), aspect, scrim }
+ * @param {Object} params.workspace
+ * @param {string} [params.staffName]
+ * @returns {Promise<{ buffer: Buffer, width: number, height: number }>}
+ */
+export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace, staffName }) {
+  await ensureFontconfig()
+
+  const [width, height] = EDITORIAL_ASPECTS[treatment.aspect] || EDITORIAL_ASPECTS['4:5']
+
+  const response = await fetch(photoUrl)
+  if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
+  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
+  if (contentLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${contentLength} bytes`)
+  const buffer = Buffer.from(await response.arrayBuffer())
+
+  // Grade: map 0-100 onto a restrained brightness/saturation lift. The default
+  // (40) is a gentle, on-brand normalization, not a heavy filter.
+  const g = Math.min(Math.max(Number(treatment.grade ?? 40), 0), 100) / 100
+
+  const photoLayer = await sharp(buffer)
+    .rotate() // honor EXIF orientation
+    .resize(width, height, { fit: 'cover', position: 'attention' }) // subject-aware crop
+    .modulate({ brightness: 1 + g * 0.12, saturation: 1 + g * 0.18 })
+    .jpeg({ quality: 90 })
+    .toBuffer()
+
+  const { primaryColor, accentColor } = resolveBrandColors(workspace)
+  const { buffer: fontBuffer } = await getBrandFont(workspace).catch(() => ({ buffer: null }))
+
+  const overlaySvg = buildEditorialOverlaySvg({
+    width,
+    height,
+    headline: treatment.headline || '',
+    headlineSize: treatment.headlineSize || 'm',
+    staffName,
+    workspaceName: workspace?.display_name || '',
+    accentColor,
+    scrimColor: treatment.scrim === 'brand' ? primaryColor : DEFAULT_SCRIM,
+    fontBuffer,
+  })
+
+  const out = await sharp(photoLayer)
+    .composite([{ input: overlaySvg, top: 0, left: 0 }])
+    .jpeg({ quality: 90, progressive: true })
+    .toBuffer()
+
+  return { buffer: out, width, height }
+}
+
 // Helper to convert a Web ReadableStream → Node Readable (for streamed
 // uploads to Blob if we ever need to switch from Buffer to stream).
 export function bufferToNodeStream(buffer) {

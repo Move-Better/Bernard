@@ -1,0 +1,167 @@
+// POST /api/editorial/compose-photo
+//
+// Photo Compositor P1. Bakes an editorial treatment (graded photo + scrim +
+// brand-font headline + author rule) onto a content item's primary photo, on
+// the SAME server renderer that publish uses — so preview == publish.
+//
+// The baked image is written back into content_items.media_urls (the primary
+// image entry's url → composite; original preserved as entry.sourceUrl), and
+// the treatment spec is persisted so the editor can re-render from the original.
+// Because publish ships media_urls as-is, the composite ships automatically.
+//
+// Body:
+//   { pieceId: string, treatment: { headline, headlineSize, grade, aspect, scrim, sourceUrl? } }
+//
+// Auth: Clerk JWT + workspace org-id check + EDITOR_ROLES.
+//
+// Response 200: { url, width, height, treatment }
+// Errors: 400 / 401 / 403 / 404 / 500.
+
+export const config = { runtime: 'nodejs', maxDuration: 60 }
+
+import { put as blobPut } from '@vercel/blob'
+import { requireRole } from '../_lib/auth.js'
+import { EDITOR_ROLES } from '../_lib/roles.js'
+import { workspaceContext } from '../_lib/workspaceContext.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
+import { renderEditorialPhoto } from '../_lib/brandRender.js'
+
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+async function sb(path, init = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...init.headers,
+    },
+  })
+}
+
+function isImageEntry(m) {
+  if (!m || typeof m !== 'object') return false
+  const t = (m.type || m.kind || '').toLowerCase()
+  return !t.startsWith('video')
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'method_not_allowed' })
+  }
+
+  const ws = await workspaceContext(req)
+  if (!ws) return res.status(404).json({ error: 'no_workspace' })
+
+  const auth = await requireRole(req, EDITOR_ROLES, { orgId: ws.clerk_org_id })
+  if (!auth.ok) {
+    return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  }
+
+  if (!(await enforceLimit(req, res, 'ai'))) return
+
+  const body = req.body || {}
+  const pieceId = String(body.pieceId || '').trim()
+  if (!pieceId) return res.status(400).json({ error: 'pieceId_required' })
+
+  const treatment = (body.treatment && typeof body.treatment === 'object') ? body.treatment : {}
+
+  // Load the content item, scoped to this workspace.
+  const itemRes = await sb(
+    `content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}&select=id,media_urls,staff_id,photo_treatment`,
+  )
+  if (!itemRes.ok) {
+    const txt = await itemRes.text().catch(() => '')
+    console.error('[compose-photo] item load failed:', itemRes.status, txt)
+    return res.status(500).json({ error: 'db_error' })
+  }
+  const itemRows = await itemRes.json()
+  const item = itemRows?.[0]
+  if (!item) return res.status(404).json({ error: 'piece_not_found' })
+
+  const mediaUrls = Array.isArray(item.media_urls) ? item.media_urls : []
+  const primaryIdx = mediaUrls.findIndex(isImageEntry)
+  if (primaryIdx === -1) {
+    return res.status(400).json({ error: 'no_photo', message: 'This post has no photo to compose.' })
+  }
+  const primary = mediaUrls[primaryIdx]
+
+  // Always render from the ORIGINAL photo, never a prior composite.
+  const sourceUrl = treatment.sourceUrl
+    || item.photo_treatment?.sourceUrl
+    || primary.sourceUrl
+    || primary.url
+  if (!sourceUrl) return res.status(400).json({ error: 'no_source_url' })
+
+  // Resolve author name for the lower rule.
+  let staffName = ''
+  if (item.staff_id) {
+    const cRes = await sb(`staff?id=eq.${item.staff_id}&workspace_id=eq.${ws.id}&select=name`)
+    if (cRes.ok) {
+      const cRows = await cRes.json().catch(() => [])
+      staffName = cRows?.[0]?.name || ''
+    }
+  }
+
+  const fullTreatment = { ...treatment, sourceUrl }
+
+  let render
+  try {
+    render = await renderEditorialPhoto({ photoUrl: sourceUrl, treatment: fullTreatment, workspace: ws, staffName })
+  } catch (e) {
+    console.error('[compose-photo] render failed:', e?.stack || e?.message || e)
+    return res.status(500).json({ error: 'render_failed', message: e?.message || 'unknown' })
+  }
+
+  // Upload — ws.id (immutable) namespace; timestamp suffix busts the CDN cache
+  // so a re-render is visible immediately rather than serving a stale object.
+  const pathname = `media/composites/${ws.id}/${pieceId}-${Date.now()}.jpg`
+  let blob
+  try {
+    blob = await blobPut(pathname, render.buffer, {
+      access: 'public',
+      contentType: 'image/jpeg',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    })
+  } catch (e) {
+    console.error('[compose-photo] blob upload failed:', e?.stack || e?.message || e)
+    return res.status(500).json({ error: 'upload_failed', message: e?.message || 'unknown' })
+  }
+
+  // Write the composite back into media_urls (preserve the original source) so
+  // the publish path ships the baked image with no further changes.
+  const nextMedia = mediaUrls.slice()
+  nextMedia[primaryIdx] = {
+    ...primary,
+    url: blob.url,
+    sourceUrl,
+    composed: true,
+    width: render.width,
+    height: render.height,
+  }
+
+  const patchRes = await sb(`content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      media_urls: nextMedia,
+      photo_treatment: fullTreatment,
+      photo_composite_url: blob.url,
+    }),
+  })
+  if (!patchRes.ok) {
+    const txt = await patchRes.text().catch(() => '')
+    console.error('[compose-photo] patch failed:', patchRes.status, txt)
+    return res.status(500).json({ error: 'db_error' })
+  }
+
+  return res.status(200).json({
+    url: blob.url,
+    width: render.width,
+    height: render.height,
+    treatment: fullTreatment,
+  })
+}
