@@ -203,11 +203,17 @@ export async function renderPhotoChannel({ photoUrl, channel, captionText, works
   if (!response.ok) {
     throw new Error(`Source fetch failed: ${response.status}`)
   }
+  // Cheap early-out on the declared size, but Content-Length is often absent on
+  // chunked Blob/CDN responses (fresh uploads), so the header check alone lets a
+  // huge body through. Enforce the real size after materializing.
   const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
   if (contentLength > 50 * 1024 * 1024) {
     throw new Error(`Source too large: ${contentLength} bytes`)
   }
   const arrayBuf = await response.arrayBuffer()
+  if (arrayBuf.byteLength > 50 * 1024 * 1024) {
+    throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
+  }
   const buffer = Buffer.from(arrayBuf)
 
   // Resize + crop the source to the channel aspect (cover fit, centered).
@@ -347,9 +353,13 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
 
   const response = await fetch(photoUrl)
   if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
+  // Header check is a cheap early-out; Content-Length is often null on chunked
+  // Blob/CDN responses, so re-check the actual byte length post-download.
   const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
   if (contentLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${contentLength} bytes`)
-  const buffer = Buffer.from(await response.arrayBuffer())
+  const arrayBuf = await response.arrayBuffer()
+  if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
+  const buffer = Buffer.from(arrayBuf)
 
   // Grade: map 0-100 onto a restrained brightness/saturation lift. The default
   // (40) is a gentle, on-brand normalization, not a heavy filter.
