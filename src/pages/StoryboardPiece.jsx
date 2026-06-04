@@ -73,6 +73,46 @@ export default function StoryboardPiece() {
   const [look, setLook] = useState({ ar: '9:16', size: 'md', captions: true })
   const AR_CLASS = { '9:16': 'aspect-[9/16]', '4:5': 'aspect-[4/5]', '1:1': 'aspect-square' }
 
+  // ── Photo compositor (P1) ──────────────────────────────────────────────
+  // treatment = the spec the server bakes onto the photo (grade + scrim +
+  // brand-font headline). composedUrl = the last baked image (== what ships).
+  const [treatment, setTreatment] = useState({ headline: '', headlineSize: 'm', grade: 40, aspect: '4:5', scrim: 'navy' })
+  const [composedUrl, setComposedUrl] = useState(null)
+  const [composing, setComposing] = useState(false)
+  const treatmentSeeded = useRef(false)
+  useEffect(() => {
+    if (treatmentSeeded.current || !piece) return
+    treatmentSeeded.current = true
+    if (piece.photo_composite_url) setComposedUrl(piece.photo_composite_url)
+    if (piece.photo_treatment && typeof piece.photo_treatment === 'object') {
+      setTreatment((t) => ({ ...t, ...piece.photo_treatment }))
+    }
+  }, [piece])
+
+  // Bake the current treatment onto the photo, server-side (preview == publish).
+  async function compose(patch) {
+    const next = { ...treatment, ...(patch || {}) }
+    if (!next.headline) {
+      next.headline = String(caption || '').split(/(?<=[.!?])\s/)[0]?.slice(0, 140) || ''
+    }
+    setTreatment(next)
+    setComposing(true)
+    try {
+      const r = await apiFetch('/api/editorial/compose-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pieceId, treatment: next }),
+      })
+      if (r?.url) setComposedUrl(r.url)
+      return r
+    } catch (e) {
+      toast.error('Could not update the image', { description: e?.message })
+      return null
+    } finally {
+      setComposing(false)
+    }
+  }
+
   // Change the look — AI restyle state
   const [restyleLoading, setRestyleLoading] = useState(false)
   const [restyleInput, setRestyleInput] = useState('')
@@ -113,10 +153,31 @@ export default function StoryboardPiece() {
           staffId: piece?.staff_id || undefined,
         }),
       })
-      if (result?.changes?.content) {
-        setCaption(result.changes.content)
+      const ch = result?.changes || {}
+      const next = {}
+      if (ch.content) next.headline = String(ch.content)
+      if (typeof ch.fontSizeStep === 'number') {
+        const order = ['s', 'm', 'l']
+        const i = Math.max(0, order.indexOf(treatment.headlineSize))
+        next.headlineSize = order[Math.max(0, Math.min(2, i + ch.fontSizeStep))]
       }
-      toast.success(result?.explanation || 'Done!')
+      if (typeof ch.brightness === 'number') {
+        next.grade = Math.round(Math.min(100, Math.max(0, ((ch.brightness - 0.8) / 0.45) * 100)))
+      }
+      if (ch.themeId) next.scrim = ch.themeId === 'brand' ? 'brand' : 'navy'
+
+      if (Object.keys(next).length > 0) {
+        await compose(next)
+        toast.success(result?.explanation || 'Updated the image.')
+      } else {
+        // Honesty: the restyle returned a change this photo surface can't apply
+        // (e.g. carousel-only page numbers / slide count). Don't fake success.
+        toast(
+          result?.explanation
+            ? `${result.explanation} — but that change isn't available on a photo post yet.`
+            : "I can't make that change to a photo post yet — try 'punchier headline', 'bigger text', or 'brighter'.",
+        )
+      }
     } catch (e) {
       toast.error(e?.message || 'Could not apply change')
     } finally {
@@ -350,12 +411,45 @@ export default function StoryboardPiece() {
             {/* Media area */}
             <div className={`relative bg-muted ${AR_CLASS[look.ar] || 'aspect-[4/5]'}`}>
               {primaryMedia ? (
-                primaryThumb ? (
-                  <img
-                    src={primaryThumb}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                composedUrl ? (
+                  /* Baked composite — exactly what publishes */
+                  <img src={composedUrl} alt="" className="h-full w-full object-cover" />
+                ) : primaryThumb ? (
+                  /* Live preview of the treatment; baked server-side on apply/publish */
+                  <>
+                    <img
+                      src={primaryThumb}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      style={{ filter: `brightness(${(1 + (treatment.grade / 100) * 0.12).toFixed(3)}) saturate(${(1 + (treatment.grade / 100) * 0.18).toFixed(3)})` }}
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || '#10243f') : '#10243f')}e0 100%)` }}
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
+                      <div
+                        className="font-extrabold leading-tight tracking-tight text-white"
+                        style={{
+                          fontFamily: `${brandStyle?.heading_font || 'inherit'}, ui-sans-serif, system-ui, sans-serif`,
+                          fontSize: treatment.headlineSize === 'l' ? 28 : treatment.headlineSize === 's' ? 20 : 24,
+                          maxWidth: '92%',
+                          textShadow: '0 1px 8px rgba(0,0,0,0.35)',
+                        }}
+                      >
+                        {treatment.headline || String(caption || '').split(/(?<=[.!?])\s/)[0] || 'Your headline appears here'}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="h-[3px] w-7 rounded-full" style={{ background: brandStyle?.accent_color || '#E36525' }} />
+                        <span className="text-xs font-semibold text-white/95">{piece.staff_name || workspaceName}</span>
+                      </div>
+                    </div>
+                    {composing && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     <Play className="h-8 w-8" />
@@ -491,6 +585,47 @@ export default function StoryboardPiece() {
                   <CornerDownLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
+
+              {/* Manual knobs — same treatment the AI bakes. Photo posts only. */}
+              {primaryMedia && !primaryIsVideo && (
+                <div className="mt-3 space-y-2 border-t pt-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 shrink-0 text-muted-foreground">Grade</span>
+                    <input
+                      type="range" min={0} max={100} value={treatment.grade}
+                      onChange={(e) => setTreatment((t) => ({ ...t, grade: Number(e.target.value) }))}
+                      className="flex-1 accent-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 shrink-0 text-muted-foreground">Headline</span>
+                    <div className="flex gap-1">
+                      {[['s', 'S'], ['m', 'M'], ['l', 'L']].map(([v, label]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setTreatment((t) => ({ ...t, headlineSize: v }))}
+                          className={`rounded border px-2 py-1 ${treatment.headlineSize === v ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={composing}
+                      onClick={() => compose()}
+                      className="ml-auto flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {composing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                      {composedUrl ? 'Re-bake' : 'Bake to image'}
+                    </button>
+                  </div>
+                  <p className="text-3xs text-muted-foreground">
+                    Smart crop + contrast-aware text. The baked image is exactly what publishes.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
