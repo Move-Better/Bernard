@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CalendarDays, Users, Receipt, Mic, Sparkles,
-  Video, Volume2, Presentation, X, Image, Play, Flame,
+  Video, Volume2, Presentation, X, Image, Play, Flame, Infinity as InfinityIcon,
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { useWorkspaceRecap } from '@/lib/queries'
@@ -185,7 +185,40 @@ function MemberCard({ m }) {
   )
 }
 
-function TeamBlock({ team, total }) {
+// ── Block 1.5: all-time summary — the lifetime counterpart to "this week" ─────
+function AllTimeStat({ value, label, color }) {
+  return (
+    <div className="p-4 text-center">
+      <p className="text-3xl font-extrabold" style={{ color }}>{value}</p>
+      <p className="text-xs opacity-70 mt-0.5">{label}</p>
+    </div>
+  )
+}
+
+function AllTimeBlock({ published, captured, contributors, costTotal }) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden border border-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)]"
+      style={{ background: 'linear-gradient(120deg,#1e293b 0%,#334155 100%)' }}
+    >
+      <div className="px-6 py-3.5 flex items-center gap-3 text-white border-b border-white/10">
+        <InfinityIcon className="h-5 w-5 opacity-90" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <h2 className="text-base font-extrabold leading-tight">All time</h2>
+          <p className="text-2xs opacity-70">the whole story so far</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
+        <AllTimeStat value={published.toLocaleString()} label="posts published" color="#34d399" />
+        <AllTimeStat value={captured.toLocaleString()} label="stories captured" color="#38bdf8" />
+        <AllTimeStat value={contributors.toLocaleString()} label="teammates contributing" color="#fdba74" />
+        <AllTimeStat value={`≈ ${fmtUsd(costTotal)}`} label="total run cost · est." color="#ffffff" />
+      </div>
+    </div>
+  )
+}
+
+function TeamBlock({ team }) {
   const sorted = sortTeam(team)
   return (
     <div className="rounded-2xl border border-border bg-white overflow-hidden">
@@ -193,13 +226,7 @@ function TeamBlock({ team, total }) {
         <Users className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 className="text-base font-bold">The team</h3>
         <span className="nx-pill nx-pill-ink">streaks reward showing up, not posting most</span>
-        <div className="ml-auto flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-1.5">
-          <span className="text-2xl font-extrabold text-emerald-700 leading-none">{total.toLocaleString()}</span>
-          <div className="leading-tight">
-            <p className="text-2xs font-bold uppercase tracking-wide text-emerald-700">stories shared</p>
-            <p className="text-2xs text-emerald-600">all time · as a team</p>
-          </div>
-        </div>
+        <span className="ml-auto text-2xs text-muted-foreground">who&rsquo;s been captured recently · who&rsquo;s due</span>
       </div>
       {sorted.length === 0 ? (
         <p className="p-5 text-sm text-muted-foreground">No team members yet.</p>
@@ -275,11 +302,19 @@ export default function WeeklyRecapPanel({ stories = [] }) {
   const team = data?.team || []
   const total = data?.team_all_time_total || 0
   const cost = data?.cost || {}
+  const allTime = data?.all_time || {}
+  const costView = buildCostView(cost)
 
   const blocks = (
     <div className="space-y-6">
       <RecapBlock recap={recap} />
-      <TeamBlock team={team} total={total} />
+      <AllTimeBlock
+        published={total}
+        captured={allTime.captured || 0}
+        contributors={allTime.contributors || 0}
+        costTotal={costView.allTotal || 0}
+      />
+      <TeamBlock team={team} />
       <CostBlock cost={cost} />
     </div>
   )
