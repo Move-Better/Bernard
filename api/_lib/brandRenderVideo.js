@@ -163,6 +163,54 @@ export const VIDEO_CHANNEL_SPECS = {
 }
 
 /**
+ * Probe a local media file for a DECODABLE audio stream.
+ *
+ * `-map 0:a?` only guards against a source with ZERO audio streams. Some iPhone
+ * `.mov` captures carry an audio track whose codec ffmpeg classifies as `none`
+ * (no decoder) — `-map 0:a?` still selects it, then `-c:a aac` tries to transcode
+ * a stream it can't decode and ffmpeg aborts the whole render with
+ * "Decoding requested, but no decoder found for: none" → exit 234 (prod, IMG_4272.mov).
+ *
+ * We parse ffmpeg's input-dump stderr for `Audio: <codec>` and treat `none`/
+ * `unknown` (or no audio line at all) as "render video-only". Operates on the
+ * already-downloaded /tmp file, so it's a fast header read with no network.
+ *
+ * @param {string} filePath — local path to probe
+ * @returns {Promise<boolean>} true iff a decodable audio stream is present
+ */
+function probeHasUsableAudio(filePath) {
+  return new Promise((resolve) => {
+    let proc
+    try {
+      proc = spawn(ffmpegPath, ['-hide_banner', '-i', filePath], {
+        stdio: ['ignore', 'ignore', 'pipe'],
+      })
+    } catch {
+      return resolve(false)
+    }
+    let stderr = ''
+    proc.stderr.on('data', (c) => {
+      stderr += c.toString('utf8')
+      if (stderr.length > 64 * 1024) { try { proc.kill('SIGKILL') } catch { /* noop */ } }
+    })
+    const timer = setTimeout(() => { try { proc.kill('SIGKILL') } catch { /* noop */ } }, 30_000)
+    const finish = () => {
+      clearTimeout(timer)
+      // Match every audio stream line and capture its codec token.
+      // Usable iff at least one codec is a real decoder (not none/unknown).
+      const matches = [...stderr.matchAll(/Stream #\d+:\d+[^\n]*: Audio:\s*([A-Za-z0-9_]+)/g)]
+      const usable = matches.some((m) => {
+        const codec = (m[1] || '').toLowerCase()
+        return codec && codec !== 'none' && codec !== 'unknown'
+      })
+      resolve(usable)
+    }
+    proc.on('close', finish)
+    proc.on('error', () => { clearTimeout(timer); resolve(false) })
+  })
+}
+
+/**
  * Run ffmpeg with the given args. Resolves on exit-0, rejects with the last
  * few stderr lines on non-zero exit (ffmpeg always writes progress to stderr
  * even on success, so we don't surface stderr on clean exit).
@@ -256,14 +304,20 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       throw new Error(`Source video too large to render: ${Math.round(actualSize / 1e6)}MB after downscale`)
     }
 
+    // Probe for a decodable audio stream. A present-but-undecodable track
+    // (iPhone .mov `Audio: none`) must NOT be mapped/transcoded, or ffmpeg aborts
+    // the whole render (exit 234). Drives both the Whisper extract and the final map.
+    const hasAudio = await probeHasUsableAudio(tmpInput)
+
     // ── 2. Whisper transcription (best-effort, opt-out) ──────────────────────
     // ALWAYS extract audio to MP3 first — sidesteps the Whisper "Invalid file format"
     // error we saw in prod 2026-05-27 when sending MP4 directly. MP3 is well-tested,
     // smaller to upload, and works for any input size.
     // When subtitles=false (keep-whole long-form default) the whole pass is
     // skipped — no audio extract, no Whisper — and only the brand overlay burns.
+    // No usable audio → nothing to transcribe; skip straight to the silent render.
     let hadSubtitles = false
-    if (subtitles) {
+    if (subtitles && hasAudio) {
       try {
         const audioArgs = []
         if (downstreamStart > 0) audioArgs.push('-ss', String(downstreamStart))
@@ -371,13 +425,24 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       '-i', tmpOverlay,
       '-filter_complex', filterComplex.join(';'),
       '-map', finalOutput,
-      '-map', '0:a?',                    // include audio if present; ? = optional
+    )
+    // Map + transcode audio ONLY when a decodable stream exists. A present-but-
+    // undecodable track (Audio: none) would otherwise abort the render at exit 234,
+    // so we render the clip silently instead of failing the whole hand-off.
+    if (hasAudio) {
+      ffmpegArgs.push(
+        '-map', '0:a?',                  // include audio if present; ? = optional
+        '-c:a', 'aac',
+        '-b:a', '128k',
+      )
+    } else {
+      ffmpegArgs.push('-an')             // no usable audio — render video-only
+    }
+    ffmpegArgs.push(
       '-c:v', 'libx264',
       '-preset', 'fast',
       '-crf', '23',                      // perceptually lossless quality for clinic content
       '-pix_fmt', 'yuv420p',             // required for broad compatibility (LinkedIn, etc.)
-      '-c:a', 'aac',
-      '-b:a', '128k',
       '-movflags', '+faststart',         // moov atom at start for streaming
       '-t', String(clipDur),             // cap clip length; bounds render time vs the 300s budget
       '-y',                              // overwrite if exists
