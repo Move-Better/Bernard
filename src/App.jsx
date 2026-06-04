@@ -49,6 +49,7 @@ const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
 const Overview = lazy(() => import('@/pages/Overview'))
+const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const Storyboard = lazy(() => import('@/pages/Storyboard'))
 const StoryboardPiece = lazy(() => import('@/pages/StoryboardPiece'))
@@ -528,6 +529,9 @@ function AppRoutes() {
                 page self-guards to editors (owner/producer/director) and
                 redirects individual clinicians home. */}
             <Route path="/overview" element={guarded(<Overview />)} />
+            {/* Analytics — per-asset performance dashboard (website / bookings /
+                social / content). Self-guards to editors; clinicians redirect home. */}
+            <Route path="/analytics" element={guarded(<AnalyticsPage />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
             <Route path="/synthesis" element={guarded(<Synthesis />)} />
             <Route path="/write" element={guarded(<AuthorMode />)} />
