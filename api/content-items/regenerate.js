@@ -197,7 +197,7 @@ export default async function handler(req, res) {
     // api/content-plan/draft.js for the same pattern. Empty string when
     // no campaign is active. Clinician scope honors per-clinician targeting.
     const activeCampaign = await loadCurrentTentpole(ws.id, interview.staff_id || null)
-    const campaignContext = getTentpolePromptContext(activeCampaign, ws)
+    const campaignContext = await getTentpolePromptContext(activeCampaign, ws)
     const systemPrompt = getAtomSystemPrompt(
       ws,
       staffName,

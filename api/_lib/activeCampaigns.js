@@ -20,6 +20,9 @@ const CAMPAIGN_FIELDS = [
   'start_at', 'end_at', 'event_at',
   'theme_notes', 'content_style',
   'cta_url', 'cta_label', 'cta_pitch',
+  // A1 — campaign location aim. Carried through loadCurrentTentpole so the
+  // CAMPAIGN FOCUS block can overlay the target location's CTA on all channels.
+  'target_location_id',
 ].join(',')
 
 /**
