@@ -79,6 +79,8 @@ export default function StoryboardPiece() {
   const [treatment, setTreatment] = useState({ templateId: 'editorial', headline: '', headlineSize: 'm', grade: 40, aspect: '4:5', scrim: 'navy', label: '', accentText: '' })
   const [composedUrl, setComposedUrl] = useState(null)
   const [composing, setComposing] = useState(false)
+  // Which IMAGE entry (carousel index) the compositor targets.
+  const [composeTargetIdx, setComposeTargetIdx] = useState(0)
   const treatmentSeeded = useRef(false)
   useEffect(() => {
     if (treatmentSeeded.current || !piece) return
@@ -108,7 +110,7 @@ export default function StoryboardPiece() {
       const r = await apiFetch('/api/editorial/compose-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pieceId, treatment: next }),
+        body: JSON.stringify({ pieceId, treatment: next, imageIndex: composeTargetIdx }),
       })
       if (r?.url) setComposedUrl(r.url)
       return r
@@ -222,6 +224,24 @@ export default function StoryboardPiece() {
   const media = useMemo(() => (Array.isArray(piece?.media_urls) ? piece.media_urls : []), [piece])
   const attachedKeys = useMemo(() => new Set(media.map(mediaEntryKey)), [media])
   const hasMedia = media.length > 0
+
+  // Image entries the compositor can target (carousel support).
+  const imageIdxs = useMemo(
+    () => media.map((m, i) => ((m?.type === 'video' || m?.kind === 'video') ? -1 : i)).filter((i) => i >= 0),
+    [media],
+  )
+  const targetMediaIdx = imageIdxs[composeTargetIdx] ?? imageIdxs[0] ?? -1
+  const targetEntry = targetMediaIdx >= 0 ? media[targetMediaIdx] : null
+  const targetThumb = targetEntry?.thumbnailUrl || targetEntry?.url || null
+
+  // Switch which carousel image the compositor edits — load that entry's
+  // baked result + its own saved treatment.
+  function selectComposeTarget(k) {
+    setComposeTargetIdx(k)
+    const e = media[imageIdxs[k]]
+    setComposedUrl(e?.composed ? e.url : null)
+    if (e?.treatment && typeof e.treatment === 'object') setTreatment((t) => ({ ...t, ...e.treatment }))
+  }
 
   const [attachingKey, setAttachingKey] = useState(null)
   const [removingKey, setRemovingKey] = useState(null)
@@ -427,11 +447,11 @@ export default function StoryboardPiece() {
                 composedUrl ? (
                   /* Baked composite — exactly what publishes */
                   <img src={composedUrl} alt="" className="h-full w-full object-cover" />
-                ) : primaryThumb ? (
+                ) : (targetThumb || primaryThumb) ? (
                   /* Live preview of the treatment; baked server-side on apply/publish */
                   <>
                     <img
-                      src={primaryThumb}
+                      src={targetThumb || primaryThumb}
                       alt=""
                       className="h-full w-full object-cover"
                       style={{ filter: `brightness(${(1 + (treatment.grade / 100) * 0.12).toFixed(3)}) saturate(${(1 + (treatment.grade / 100) * 0.18).toFixed(3)})` }}
@@ -614,8 +634,35 @@ export default function StoryboardPiece() {
               </div>
 
               {/* Manual knobs — same treatment the AI bakes. Photo posts only. */}
-              {primaryMedia && !primaryIsVideo && (
+              {targetEntry && (
                 <div className="mt-3 space-y-2 border-t pt-3 text-xs">
+                  {/* Carousel: pick which image to compose. */}
+                  {imageIdxs.length > 1 && (
+                    <div>
+                      <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Editing photo {composeTargetIdx + 1} of {imageIdxs.length}
+                      </span>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {imageIdxs.map((mi, k) => {
+                          const e = media[mi]
+                          const thumb = e?.thumbnailUrl || e?.url
+                          return (
+                            <button
+                              key={mediaEntryKey(e) || k}
+                              type="button"
+                              disabled={composing}
+                              onClick={() => selectComposeTarget(k)}
+                              className={`relative h-12 w-12 overflow-hidden rounded border-2 disabled:opacity-50 ${composeTargetIdx === k ? 'border-primary' : 'border-border'}`}
+                              title={`Photo ${k + 1}`}
+                            >
+                              {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" /> : null}
+                              {e?.composed && <span className="absolute bottom-0 right-0 bg-primary px-0.5 text-3xs font-bold leading-none text-primary-foreground">✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {/* Template picker (P2 — WHOOP direction). Selecting bakes immediately. */}
                   <div>
                     <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Template</span>

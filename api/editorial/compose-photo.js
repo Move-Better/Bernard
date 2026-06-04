@@ -91,17 +91,20 @@ export default async function handler(req, res) {
   const needsPhoto = !NO_PHOTO_TEMPLATES.has(templateId)
 
   const mediaUrls = Array.isArray(item.media_urls) ? item.media_urls : []
-  const primaryIdx = mediaUrls.findIndex(isImageEntry)
+  // Target a specific IMAGE entry (carousel support). imageIndex counts only
+  // image entries and defaults to the first.
+  const imageIdxs = mediaUrls.map((m, i) => (isImageEntry(m) ? i : -1)).filter((i) => i >= 0)
+  const wantIdx = Number.isInteger(body.imageIndex) ? body.imageIndex : 0
+  const primaryIdx = imageIdxs[wantIdx] ?? imageIdxs[0] ?? -1
   const primary = primaryIdx >= 0 ? mediaUrls[primaryIdx] : null
 
   if (needsPhoto && !primary) {
     return res.status(400).json({ error: 'no_photo', message: 'This template needs a photo. Attach one or use a claim card.' })
   }
 
-  // Always render from the ORIGINAL photo, never a prior composite. May be
-  // undefined for a no-photo claim card.
+  // Always render from the ORIGINAL photo of THIS entry, never a prior composite.
+  // May be undefined for a no-photo claim card.
   const sourceUrl = treatment.sourceUrl
-    || item.photo_treatment?.sourceUrl
     || primary?.sourceUrl
     || primary?.url
     || null
@@ -156,6 +159,7 @@ export default async function handler(req, res) {
     composed: true,
     width: render.width,
     height: render.height,
+    treatment: fullTreatment, // per-entry, so each carousel image remembers its own
   }
   if (primaryIdx >= 0) nextMedia[primaryIdx] = composedEntry
   else nextMedia.unshift(composedEntry)
