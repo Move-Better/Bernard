@@ -89,9 +89,16 @@ export default function StoryboardPiece() {
     }
   }, [piece])
 
+  // Keep treatment.aspect in sync with the card's displayed aspect ratio so the
+  // baked image never gets clipped by object-cover on a mismatched container.
+  useEffect(() => {
+    if (look.ar) setTreatment((t) => ({ ...t, aspect: look.ar }))
+  }, [look.ar])
+
   // Bake the current treatment onto the photo, server-side (preview == publish).
   async function compose(patch) {
-    const next = { ...treatment, ...(patch || {}) }
+    // Always bake at the aspect the card displays — prevents object-cover clipping.
+    const next = { ...treatment, ...(patch || {}), aspect: look.ar || treatment.aspect }
     if (!next.headline) {
       next.headline = String(caption || '').split(/(?<=[.!?])\s/)[0]?.slice(0, 140) || ''
     }
