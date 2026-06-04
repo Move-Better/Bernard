@@ -133,9 +133,13 @@ function badgeSvg(cx, cy, r, stroke, figure, unit, sublabel, orange, innerColor,
 async function fetchPhotoBuffer(photoUrl) {
   const response = await fetch(photoUrl)
   if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
+  // Header check is a cheap early-out; Content-Length is often null on chunked
+  // Blob/CDN responses, so re-check the actual byte length post-download.
   const len = parseInt(response.headers.get('content-length') || '0', 10)
   if (len > 50 * 1024 * 1024) throw new Error(`Source too large: ${len} bytes`)
-  return Buffer.from(await response.arrayBuffer())
+  const arrayBuf = await response.arrayBuffer()
+  if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
+  return Buffer.from(arrayBuf)
 }
 
 async function processPhoto(buf, w, h, mode) {
