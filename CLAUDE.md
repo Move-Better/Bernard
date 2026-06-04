@@ -1,5 +1,16 @@
 # NarrateRx — Project Notes
 
+## Verifying authed pages — use Q's logged-in Chrome (on PROD), don't stop at the Clerk lock
+
+Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (`mcp__Claude_in_Chrome__*`): `list_connected_browsers` → `select_browser` (device "DrQ") → `tabs_context_mcp` → `navigate` to the real page on `https://*.narraterx.ai` → `computer` screenshot / `read_page`. That session is already past the Clerk gate, so any authed surface (Slate, Library, Storyboard, Settings, …) can be visually verified directly against prod data. Default to this for "does this UI change look right?" instead of declaring it blocked by auth.
+
+**The one catch — it only works against PROD (`narraterx.ai`), so the code must be deployed first.** Authed verification cannot be done on localhost or a vercel.app preview:
+- localhost dev server fails with `Missing VITE_CLERK_PUBLISHABLE_KEY` (it's a Sensitive var stripped from the worktree `.env.local` by `vercel env pull`), and even with the key, prod `pk_live` Clerk is domain-locked and rejects the `localhost`/`*.vercel.app` origin.
+- So the workflow for a UI fix is: merge → GitHub-integration auto-deploys to prod (~2 min) → confirm the live SHA (`curl -s https://narraterx.ai/version.json | grep sha`) → THEN open the page in Q's Chrome and screenshot. It's post-deploy verification, but it's real and doesn't require Q to look manually.
+- Pure render/transform code (Sharp/SVG compositors) is the exception — verify those locally with a node harness, no browser needed (see the WHOOP note below).
+
+(Q confirmed 2026-06-04 — "this keeps happening.")
+
 ## Session Focus
 At the start of EVERY new conversation, before doing anything else, ask:
 "What are we working on today?" then confirm it fits one of these session types:
