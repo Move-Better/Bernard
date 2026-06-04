@@ -13,6 +13,21 @@
 
 ---
 
+## ⏱ 2026-06-02 update
+
+**Shipped (verified):**
+- **Slate ↔ Library reconnect — SHIPPED + browser-verified (#1146).** Source videos now flow into the clip workshop (was empty despite 254 videos: a `mediaData.assets` shape bug + missing `staff_id` SELECT field). People shows **99 cuttable + 1 in-progress**. This is a "USE THE BRAIN" join win — footage can now reach clipping. *Still unverified: the Cut-a-clip → render produce-flow end-to-end.*
+- **Pipeline stage vocabulary unified across Stories/Storyboard/Overview (#1147)** — resolves the "three stage languages" IA confusion found in the 2026-06-02 live UX audit.
+
+**Strategic lens added (2026-06-01/02 conversation) — now the build filter:**
+- **Bet against slop.** Output (good-looking photo/video) is the **FLOOR** everyone pays (rent the muscle — ffmpeg now, Remotion only when "make it look produced" is real; **never build a render engine**). The **WEDGE** is the **outcome loop** (content → patients/community → fed back into *selection*). Voice stays **fixed and real** (a library of actual words); outcome tunes the **AIM, not the voice**. UX should be **instruction-first**, not a manual editor.
+- **Two filters on every bet:** (1) plumbing or product? (2) deepens the real-voice library / outcome loop, or table-stakes parity? Full reasoning: `.claude/ux-current-state.md`.
+- **Voice scores read low ≈ not a grader bug** (Q's call) — content-gen guidelines changed; fix is **regenerating old content against current guidelines** (sign-off required, deferred — not auto-run).
+
+**Next (gated, need Q):** (a) verify Slate produce-flow; (b) **instruction-first Studio consolidation mockup** (mockup-first rule); (c) Library indexed **by meaning, not filename** (P2 — also where the real-voice-library moat compounds); (d) **narraterx.ai website refresh** from the new positioning brief (`.claude/narraterx-positioning-brief.md`) — *spawned as a background task*.
+
+---
+
 ## The one-sentence problem
 
 > **Capturing photo/video and getting *relevant media attached to words* efficiently is
