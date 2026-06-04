@@ -172,6 +172,12 @@ export default function StoryboardPiece() {
         next.grade = Math.round(Math.min(100, Math.max(0, ((ch.brightness - 0.8) / 0.45) * 100)))
       }
       if (ch.themeId) next.scrim = ch.themeId === 'brand' ? 'brand' : 'navy'
+      // WHOOP template / accent / label / badge-figure the chat can now set.
+      if (ch.templateId) next.templateId = String(ch.templateId)
+      if (ch.accentText) next.accentText = String(ch.accentText)
+      if (ch.label) next.label = String(ch.label)
+      if (ch.figure) next.figure = String(ch.figure)
+      if (ch.figureUnit) next.figureUnit = String(ch.figureUnit)
 
       if (Object.keys(next).length > 0) {
         await compose(next)
@@ -430,27 +436,41 @@ export default function StoryboardPiece() {
                       className="h-full w-full object-cover"
                       style={{ filter: `brightness(${(1 + (treatment.grade / 100) * 0.12).toFixed(3)}) saturate(${(1 + (treatment.grade / 100) * 0.18).toFixed(3)})` }}
                     />
-                    <div
-                      className="pointer-events-none absolute inset-0"
-                      style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || '#10243f') : '#10243f')}e0 100%)` }}
-                    />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
-                      <div
-                        className="font-extrabold leading-tight tracking-tight text-white"
-                        style={{
-                          fontFamily: `${brandStyle?.heading_font || 'inherit'}, ui-sans-serif, system-ui, sans-serif`,
-                          fontSize: treatment.headlineSize === 'l' ? 28 : treatment.headlineSize === 's' ? 20 : 24,
-                          maxWidth: '92%',
-                          textShadow: '0 1px 8px rgba(0,0,0,0.35)',
-                        }}
-                      >
-                        {treatment.headline || String(caption || '').split(/(?<=[.!?])\s/)[0] || 'Your headline appears here'}
+                    {/* The editorial template previews live in the DOM. The WHOOP
+                        templates render too differently to fake in the DOM, so we
+                        show the raw photo + a "Bake to preview" hint and let the
+                        real server composite (composedUrl) be the preview. */}
+                    {(treatment.templateId || 'editorial') === 'editorial' ? (
+                      <>
+                        <div
+                          className="pointer-events-none absolute inset-0"
+                          style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || '#10243f') : '#10243f')}e0 100%)` }}
+                        />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
+                          <div
+                            className="font-extrabold leading-tight tracking-tight text-white"
+                            style={{
+                              fontFamily: `${brandStyle?.heading_font || 'inherit'}, ui-sans-serif, system-ui, sans-serif`,
+                              fontSize: treatment.headlineSize === 'l' ? 28 : treatment.headlineSize === 's' ? 20 : 24,
+                              maxWidth: '92%',
+                              textShadow: '0 1px 8px rgba(0,0,0,0.35)',
+                            }}
+                          >
+                            {treatment.headline || String(caption || '').split(/(?<=[.!?])\s/)[0] || 'Your headline appears here'}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="h-[3px] w-7 rounded-full" style={{ background: brandStyle?.accent_color || '#E36525' }} />
+                            <span className="text-xs font-semibold text-white/95">{piece.staff_name || workspaceName}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3">
+                        <span className="rounded-full bg-black/60 px-3 py-1 text-2xs font-medium text-white">
+                          {`${(treatment.templateId || '').replace('-', ' ')} — hit Bake to preview`}
+                        </span>
                       </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="h-[3px] w-7 rounded-full" style={{ background: brandStyle?.accent_color || '#E36525' }} />
-                        <span className="text-xs font-semibold text-white/95">{piece.staff_name || workspaceName}</span>
-                      </div>
-                    </div>
+                    )}
                     {composing && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/25">
                         <Loader2 className="h-6 w-6 animate-spin text-white" />
@@ -610,7 +630,12 @@ export default function StoryboardPiece() {
                           key={id}
                           type="button"
                           disabled={composing}
-                          onClick={() => compose({ templateId: id })}
+                          onClick={() => {
+                            // Badge templates need a figure first — just select, let
+                            // the user fill the figure, then Bake. Others bake on select.
+                            if (String(id).includes('badge')) setTreatment((t) => ({ ...t, templateId: id }))
+                            else compose({ templateId: id })
+                          }}
                           className={`rounded border px-2 py-1 text-2xs disabled:opacity-50 ${(treatment.templateId || 'editorial') === id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
                         >
                           {label}

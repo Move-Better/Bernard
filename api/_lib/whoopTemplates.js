@@ -119,8 +119,13 @@ function badgeSvg(cx, cy, r, stroke, figure, unit, sublabel, orange, innerColor,
   <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="${stroke}" />
   <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${orange}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${arc} ${circ}" transform="rotate(-90 ${cx} ${cy})" />
   <circle cx="${cx}" cy="${cy}" r="${innerR}" fill="${innerColor}" />
-  <text x="${cx}" y="${cy + figSize * 0.15}" font-size="${figSize}" font-family="${fontFamily}" font-weight="700" fill="${textColor}" text-anchor="middle">${svgEscape(String(figure || ''))}<tspan font-size="${unitSize}">${svgEscape(unit || '')}</tspan></text>
+  ${figure
+    // With a figure: big number (+ unit) and the sublabel underneath.
+    ? `<text x="${cx}" y="${cy + figSize * 0.15}" font-size="${figSize}" font-family="${fontFamily}" font-weight="700" fill="${textColor}" text-anchor="middle">${svgEscape(String(figure))}<tspan font-size="${unitSize}">${svgEscape(unit || '')}</tspan></text>
   ${sublabel ? `<text x="${cx}" y="${cy + figSize * 0.15 + subSize * 1.6}" font-size="${subSize}" font-family="${fontFamily}" font-weight="600" letter-spacing="1.5" fill="${subColor}" text-anchor="middle">${svgEscape(String(sublabel).toUpperCase())}</text>` : ''}`
+    // No figure: center the sublabel alone so the ring never looks empty.
+    : (sublabel ? `<text x="${cx}" y="${cy + subSize * 0.5}" font-size="${Math.round(subSize * 1.4)}" font-family="${fontFamily}" font-weight="700" letter-spacing="1.5" fill="${textColor}" text-anchor="middle">${svgEscape(String(sublabel).toUpperCase())}</text>` : '')
+  }`
 }
 
 // ── Source-photo helpers ────────────────────────────────────────────────────
