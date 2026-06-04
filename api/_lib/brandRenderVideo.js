@@ -84,14 +84,29 @@ async function acquireSourceFile({ videoUrl, declaredLen, clipStart, clipDur, id
       if (!fetchRes.ok) throw new Error(`Source video fetch failed: ${fetchRes.status}`)
       await pipeline(Readable.fromWeb(fetchRes.body), createWriteStream(tmpPath))
     } else {
+      // Probe the remote source for the first DECODABLE audio stream BEFORE the
+      // downscale re-encode. ffmpeg's default stream selection picks the audio
+      // track with the most channels — on an iPhone spatial-audio source that's
+      // the undecodable `apac` track (4ch) over the real `aac` stereo (2ch), so a
+      // bare `-c:a aac` would crash this ingest with exit 234 before the proxy is
+      // ever written (same class as the render-step bug, #1208). Map video + the
+      // one good audio stream explicitly (or `-an` when none decodes) so the proxy
+      // the render step later probes is always clean.
+      //
+      // ORIENTATION: `-map 0:v:0` + simple `-vf` does NOT disable autorotation
+      // (that's `-noautorotate`, which we never add) — the filtergraph input is
+      // still auto-rotated, so portrait sources stay upright exactly as before.
+      const ingestAudioMap = await probeUsableAudioMap(videoUrl)
       const ingestArgs = []
       if (clipStart > 0) ingestArgs.push('-ss', String(clipStart))
       ingestArgs.push(
         '-t', String(clipDur),
         '-i', videoUrl,
+        '-map', '0:v:0',                                     // first video stream (then -vf applies)
+        ...(ingestAudioMap ? ['-map', ingestAudioMap] : []), // the one decodable audio stream, if any
         '-vf', 'scale=w=1920:h=1920:force_original_aspect_ratio=decrease:flags=lanczos',
         '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
-        '-c:a', 'aac', '-b:a', '128k',
+        ...(ingestAudioMap ? ['-c:a', 'aac', '-b:a', '128k'] : ['-an']),
         '-movflags', '+faststart',
         '-y', tmpPath,
       )
