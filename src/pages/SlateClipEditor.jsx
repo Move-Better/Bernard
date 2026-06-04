@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Scissors, Loader2, AlertCircle, ShieldAlert, ShieldCheck, ArrowLeft,
   Play, Pause, Film, Sparkles, Wand2, Quote, SlidersHorizontal,
-  ChevronDown, FileText, FolderOpen, Maximize, CornerDownLeft, Book,
+  ChevronDown, FileText, FolderOpen, Maximize, CornerDownLeft,
   ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -145,19 +145,32 @@ export default function SlateClipEditor() {
           transcript: asset?.transcript_excerpt || '',
         }),
       })
-      if (result?.changes?.content) {
-        setCaptionText(result.changes.content)
+      const ch = result?.changes || {}
+      let applied = false
+      if (ch.content) {
+        setCaptionText(ch.content)
         setRenderedBlobUrl(null)
+        applied = true
       }
-      if (typeof result?.changes?.fontSizeStep === 'number') {
+      if (typeof ch.fontSizeStep === 'number') {
         setOverlaySize((prev) => {
           const sizes = ['small', 'medium', 'large']
           const idx = sizes.indexOf(prev)
-          const next = Math.max(0, Math.min(sizes.length - 1, idx + result.changes.fontSizeStep))
-          return sizes[next]
+          return sizes[Math.max(0, Math.min(sizes.length - 1, idx + ch.fontSizeStep))]
+        })
+        setRenderedBlobUrl(null) // invalidate the cached render so the new size re-bakes
+        applied = true
+      }
+      if (applied) {
+        appendChat({ role: 'assistant', text: result?.explanation || 'Done!' })
+      } else {
+        // Honesty: themes / colors / brightness don't apply to a video caption.
+        // Don't claim a change we didn't make (was the "Brand book" no-op bug).
+        appendChat({
+          role: 'assistant',
+          text: "On a clip I can tighten the caption wording or change its size — themes and colors don't apply to a video caption. Try 'punchier caption' or 'bigger text'.",
         })
       }
-      appendChat({ role: 'assistant', text: result?.explanation || 'Done!' })
     } catch (e) {
       appendChat({ role: 'assistant', text: `Could not apply: ${e?.message || 'unknown error'}` })
     } finally {
@@ -525,14 +538,6 @@ export default function SlateClipEditor() {
                   className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Bigger caption
-                </button>
-                <button
-                  type="button"
-                  disabled={chatLoading}
-                  onClick={() => fireChip('Brand book')}
-                  className="px-2 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Book className="h-3 w-3" />Brand book
                 </button>
               </div>
               <div className="flex items-center gap-2">
