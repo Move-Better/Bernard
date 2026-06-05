@@ -78,14 +78,6 @@ export const ATOM_DEFINITIONS = {
       description: 'What recovery looks like — condition-specific results framing',
     },
   ],
-  pinterest: [
-    {
-      slot: 1,
-      angle: 'pin_batch',
-      label: '3 Pin Variations',
-      description: '3 keyword-optimized pins with titles, descriptions, and board suggestions',
-    },
-  ],
   tiktok: [
     {
       slot: 1,
@@ -136,7 +128,7 @@ export const ATOM_DEFINITIONS = {
 
 // Map a workspace enabled_outputs channel id (from src/lib/outputChannels.js)
 // to the ATOM_DEFINITIONS platform key it corresponds to. Most channel ids
-// match an atom platform 1:1 (facebook, linkedin, gbp, pinterest, tiktok,
+// match an atom platform 1:1 (facebook, linkedin, gbp, tiktok,
 // twitter, threads, bluesky, mastodon). Instagram is the exception: the
 // registry splits it into instagram_post and instagram_reel for the settings
 // UI, but the atom plan keys both under `instagram` (they share the same

@@ -72,7 +72,7 @@ export default function HomeStats({ stories = [] }) {
         const plat = String(p.platform || '').toLowerCase()
         if (plat === 'blog' || plat === 'wordpress' || plat === 'landing_page') breakdown.blog += 1
         else if (plat === 'email') breakdown.email += 1
-        else if (plat === 'instagram' || plat === 'facebook' || plat === 'linkedin' || plat === 'twitter' || plat === 'tiktok' || plat === 'youtube' || plat === 'pinterest' || plat === 'gbp') breakdown.social += 1
+        else if (plat === 'instagram' || plat === 'facebook' || plat === 'linkedin' || plat === 'twitter' || plat === 'tiktok' || plat === 'youtube' || plat === 'gbp') breakdown.social += 1
         else breakdown.other += 1
       }
     }

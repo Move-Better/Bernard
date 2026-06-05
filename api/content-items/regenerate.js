@@ -145,7 +145,6 @@ export default async function handler(req, res) {
     linkedin:  'clinical_perspective',
     facebook:  'community',
     gbp:       'local_authority',
-    pinterest: 'pin_batch',
     tiktok:    'myth_buster',
     twitter:   'take',
     threads:   'community_take',

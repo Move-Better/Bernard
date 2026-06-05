@@ -2,7 +2,7 @@
 // Used for UI rendering (labels, descriptions, icons, slot badges).
 // Keep in sync with the server-side file when adding new platforms/angles.
 
-import { Instagram, Linkedin, Facebook, MapPin, Pin, Music2, Twitter, AtSign, Cloud, Hash } from 'lucide-react'
+import { Instagram, Linkedin, Facebook, MapPin, Music2, Twitter, AtSign, Cloud, Hash } from 'lucide-react'
 
 export const ATOM_DEFINITIONS = {
   instagram: [
@@ -23,9 +23,6 @@ export const ATOM_DEFINITIONS = {
   gbp: [
     { slot: 1, angle: 'local_authority', label: 'Local Authority',  description: 'Local keywords, what makes us different, strong book CTA' },
     { slot: 2, angle: 'patient_outcome', label: 'Patient Outcome',  description: 'What recovery looks like — condition-specific results framing' },
-  ],
-  pinterest: [
-    { slot: 1, angle: 'pin_batch', label: '3 Pin Variations', description: '3 keyword-optimized pins with titles, descriptions, and board suggestions' },
   ],
   tiktok: [
     { slot: 1, angle: 'myth_buster', label: 'Myth-Buster Script', description: '45–60 second script leading with a counterintuitive claim' },
@@ -50,7 +47,6 @@ export const PLATFORM_UI = {
   linkedin:  { label: 'LinkedIn',          icon: Linkedin,  color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200',     dot: 'bg-sky-600'     },
   facebook:  { label: 'Facebook',          icon: Facebook,  color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    dot: 'bg-blue-600'    },
   gbp:       { label: 'Google Business',   icon: MapPin,    color: 'text-green-700',   bg: 'bg-green-50',   border: 'border-green-200',   dot: 'bg-green-600'   },
-  pinterest: { label: 'Pinterest',         icon: Pin,       color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-red-200',     dot: 'bg-red-500'     },
   tiktok:    { label: 'TikTok / Reels',    icon: Music2,    color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', dot: 'bg-fuchsia-600' },
   twitter:   { label: 'X / Twitter',       icon: Twitter,   color: 'text-slate-700',   bg: 'bg-slate-50',   border: 'border-slate-200',   dot: 'bg-slate-700'   },
   threads:   { label: 'Threads',           icon: AtSign,    color: 'text-zinc-700',    bg: 'bg-zinc-50',    border: 'border-zinc-200',    dot: 'bg-zinc-700'    },

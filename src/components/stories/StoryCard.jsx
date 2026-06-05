@@ -20,7 +20,6 @@ const PLATFORM_SHORT = {
   youtube:       'YT',
   tiktok:        'TT',
   email:         'Email',
-  pinterest:     'Pin',
 }
 
 // Platform chip colors (dot accent).
@@ -36,7 +35,6 @@ const PLATFORM_DOT = {
   youtube:       'bg-red-500',
   tiktok:        'bg-fuchsia-500',
   email:         'bg-teal-500',
-  pinterest:     'bg-red-400',
 }
 
 /**

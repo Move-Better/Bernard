@@ -44,7 +44,7 @@ export const EXPORT_SHAPES = Object.freeze({
 
 export const PUBLISH_MODES = Object.freeze({
   // Buffer is the universal social + local path: IG, FB, LinkedIn, X/Twitter,
-  // Pinterest, TikTok, YouTube Shorts, Threads, Bluesky, Mastodon, GBP. Adding
+  // TikTok, YouTube Shorts, Threads, Bluesky, Mastodon, GBP. Adding
   // a new Buffer-supported platform = (1) entry here in the registry with this
   // mode, (2) entry in PLATFORM_TO_SERVICE in api/publish/buffer.js, (3) prompt
   // generator in src/lib/prompts.js. No new credential card, no OAuth flow.
@@ -120,12 +120,6 @@ export const OUTPUT_CHANNELS = Object.freeze({
   youtube: {
     id: 'youtube',
     label: 'YouTube video',   // long-form, landscape (keep-whole lane)
-    exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
-  },
-  pinterest: {
-    id: 'pinterest',
-    label: 'Pinterest pin',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
     publishMode: PUBLISH_MODES.BUFFER,
   },

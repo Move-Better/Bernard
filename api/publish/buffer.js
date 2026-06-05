@@ -28,7 +28,6 @@ const PLATFORM_TO_SERVICE = {
   instagram:     'instagram',
   facebook:      'facebook',
   linkedin:      'linkedin',
-  pinterest:     'pinterest',
   twitter:       'twitter',
   tiktok:        'tiktok',
   threads:       'threads',
