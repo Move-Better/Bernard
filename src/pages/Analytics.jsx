@@ -1,20 +1,26 @@
 import { Link, Navigate } from 'react-router-dom'
 import {
-  BarChart3, Globe, CalendarCheck, Heart, FileText, Plug, Link2,
-  AlertTriangle, Clock, Layers, Users, TrendingUp,
+  Sparkles, MessageSquareText, TrendingUp, CalendarClock, Activity,
+  BarChart3, Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
+  Search, LogIn, TimerOff, PenLine,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { useStories, useTopPerformers } from '@/lib/queries'
+import { useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { deriveInsights, totalReach, sumField } from '@/lib/insightsReads'
+import { buildCostView, fmtUsd } from '@/lib/costEstimate'
 
-// Per-asset analytics dashboard. One per workspace ("asset") — Equine is the
-// standalone template; People/Animals reuse it (and share the Jane booking
-// property for their Bookings tile). Four input tiles, each rendering in one of
-// two states: CONNECTED (live numbers) or ATTACH (a connect CTA when the source
-// isn't wired yet). The structure ships complete and empty; sources attach over
-// time. Today only Content is connected — GA4 traffic/bookings and Buffer social
-// light up as those inputs come online. Spec: .claude/mockups/equine-dashboard.html.
+// ── Insights advisor ──────────────────────────────────────────────────────────
+//
+// Narrate reading the workspace's performance like a content expert: plain-
+// language "reads" + a next action, a small legible "receipts" summary, the
+// content-aiming loop that already runs (topic suggestions), and a website
+// tune-up section (GA4 / Search Console reads light up as those inputs connect).
+//
+// Phase 1: everything that works on data we already have — content + Buffer/GA4
+// engagement snapshots. No fabricated numbers; when signal is thin the reads say
+// so. The page-by-page website scan + GA4 landing reads land as those connect.
 
 const PLATFORM_LABELS = {
   facebook: 'Facebook', instagram: 'Instagram', linkedin: 'LinkedIn',
@@ -22,220 +28,268 @@ const PLATFORM_LABELS = {
   blog: 'Blog', email: 'Email', youtube: 'YouTube', tiktok: 'TikTok',
 }
 
-function StatePill({ tone = 'muted', children }) {
-  const tones = {
-    muted: 'bg-muted text-muted-foreground',
-    success: 'bg-success/15 text-success',
-    warning: 'bg-warning/15 text-[hsl(38_92%_35%)]',
-  }
-  return (
-    <span className={`text-2xs uppercase tracking-wide px-2 py-0.5 rounded-full font-medium ${tones[tone]}`}>
-      {children}
-    </span>
-  )
+const READ_ICONS = {
+  'trending-up': TrendingUp,
+  'calendar-clock': CalendarClock,
+  activity: Activity,
+  sparkles: Sparkles,
 }
 
-function Kpi({ icon: Icon, label, value, sub }) {
+const TONE = {
+  good: { ring: 'bg-success/10', icon: 'text-success', card: 'border-border bg-card' },
+  warn: { ring: 'bg-warning/15', icon: 'text-warning', card: 'border-[hsl(28_80%_85%)] bg-[hsl(28_90%_97%)]' },
+  muted: { ring: 'bg-muted', icon: 'text-muted-foreground', card: 'border-border bg-card' },
+}
+
+function ReadCard({ read }) {
+  const Icon = READ_ICONS[read.icon] || Sparkles
+  const tone = TONE[read.tone] || TONE.muted
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5" /> {label}
+    <div className={`rounded-2xl border p-5 ${tone.card}`}>
+      <div className="flex items-start gap-3">
+        <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${tone.ring}`}>
+          <Icon className={`h-4 w-4 ${tone.icon}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm leading-relaxed">
+            <span className="font-semibold">{read.title}</span>{' '}
+            <span className="text-muted-foreground">{read.body}</span>
+          </p>
+          {read.action && (
+            <div className="mt-3">
+              <Link
+                to={read.action.to}
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Mic className="h-4 w-4" /> {read.action.label}
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="text-2xl font-bold mt-1 tabular-nums">{value}</div>
-      <div className="text-xs text-muted-foreground mt-1">{sub}</div>
     </div>
   )
 }
 
-function Tile({ icon: Icon, iconClass, title, pill, children, footer }) {
+// One "unlocks when connected" preview row in the website section.
+function PendingRead({ icon: Icon, badge, children }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Icon className={`h-4 w-4 ${iconClass}`} /> {title}
-        </h2>
-        {pill}
+    <div className="rounded-2xl border border-border bg-card p-5 opacity-90">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4 text-info" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+            {badge}
+          </span>
+          <p className="text-sm leading-relaxed mt-2 text-muted-foreground">{children}</p>
+        </div>
       </div>
-      <div className="mt-4">{children}</div>
-      {footer && <p className="text-2xs text-muted-foreground mt-3">{footer}</p>}
-    </section>
-  )
-}
-
-// Reusable empty/connect state for an unwired input.
-function AttachState({ icon: Icon, iconClass = 'text-muted-foreground', title, body, cta }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center">
-      <Icon className={`h-6 w-6 mx-auto ${iconClass}`} />
-      <p className="text-sm font-medium mt-2">{title}</p>
-      <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">{body}</p>
-      {cta}
     </div>
   )
 }
 
 export default function Analytics() {
-  useDocumentTitle('Analytics')
+  useDocumentTitle('Insights')
   const ws = useWorkspace()
   const { isEditor, isLoading: roleLoading } = useUserRole()
   const { data: stories = [] } = useStories()
-  const { data: topPerformers = [] } = useTopPerformers()
+  const { data: performers = [] } = useTopPerformers()
+  const { data: recap } = useWorkspaceRecap()
+  const { data: topics } = useTopicSuggestions()
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
 
   const assetName = ws?.display_name || 'This asset'
 
-  // ── Content tile: live, derived from real pieces (no fabricated data) ──
-  const pieces = stories.flatMap((s) => s.pieces || [])
-  const published = pieces.filter((p) => p.status === 'published')
-  const performedWell = pieces.filter((p) => p.performed_well).length
-  const voiceScores = pieces
-    .map((p) => p.voice_fidelity_score)
-    .filter((v) => typeof v === 'number' && v > 0)
-  const avgVoice = voiceScores.length
-    ? Math.round(voiceScores.reduce((a, b) => a + b, 0) / voiceScores.length)
-    : null
-  const recentPublished = [...published]
-    .sort((a, b) => new Date(b.published_at || b.updated_at || 0) - new Date(a.published_at || a.updated_at || 0))
-    .slice(0, 4)
+  const { reads, facts } = deriveInsights({ stories, performers })
+
+  // ── Receipts (all real; deltas only where we can truly compute them) ──
+  const reach = totalReach(performers)
+  const engagement = sumField(performers, 'engagement')
+  const top3 = performers.slice(0, 3)
+  const cost = buildCostView(recap?.cost || {})
+
+  const suggestions = (topics?.suggestions || []).slice(0, 3)
+
+  const fmtNum = (n) => Number(n || 0).toLocaleString()
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-5xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" aria-hidden="true" />
-            {assetName} — Analytics
+            <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+            {assetName} — Insights
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            This asset&rsquo;s performance across website, bookings, social, and content. Attach each
-            input as it comes online — the structure is here and ready.
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Narrate reads your performance like a content expert and tells you what&rsquo;s working and what
+            to do next — in plain language, with the numbers behind it if you want them.
           </p>
+        </div>
+        <div className="text-2xs text-muted-foreground flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5">
+          <RefreshCw className="h-3 w-3" /> Updates as your posts gather data
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
-        <Kpi icon={Users} label="Website users" value="—" sub="Attach GA4 to populate" />
-        <Kpi icon={CalendarCheck} label="Bookings" value="—" sub="Attach booking source" />
-        <Kpi icon={Heart} label="Social engagement" value="—" sub="Attach Buffer" />
-        <Kpi icon={FileText} label="Posts published" value={published.length} sub="NarrateRx · connected" />
+      {/* GA4 pending banner */}
+      <div className="rounded-xl border border-dashed border-primary/40 bg-accent/40 px-4 py-3 mt-5 flex items-start gap-3">
+        <Globe className="h-4 w-4 mt-0.5 shrink-0 text-info" aria-hidden="true" />
+        <p className="text-sm">
+          <span className="font-medium">Website traffic connects soon.</span>{' '}
+          <span className="text-muted-foreground">
+            Right now these reads use your social reach and content data. The moment Google finishes
+            connecting GA4, site visits fold in automatically — same screen, sharper picture. No setup on your end.
+          </span>
+        </p>
       </div>
 
-      {/* Tiles */}
-      <div className="grid lg:grid-cols-2 gap-4 mt-4">
-        {/* 1. Website traffic (GA4) */}
-        <Tile
-          icon={Globe} iconClass="text-info" title="Website traffic"
-          pill={<StatePill>GA4 · not connected</StatePill>}
-          footer="When connected: users · sessions · pageviews · top pages · top sources · month-over-month"
-        >
-          <AttachState
-            icon={Link2}
-            title="Attach a GA4 property"
-            body={`Connect this asset's Google Analytics so its website traffic shows here. Each asset uses its own GA4 property.`}
-            cta={
-              <Link to="/settings/integrations" className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm px-3 py-1.5 rounded-lg mt-3 hover:opacity-90 transition-opacity">
-                <Plug className="h-4 w-4" /> Connect GA4
-              </Link>
-            }
-          />
-        </Tile>
+      {/* SECTION 1 — the read */}
+      <div className="flex items-center gap-2 mt-7 mb-3">
+        <MessageSquareText className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h2 className="font-semibold">What&rsquo;s working — and what to do next</h2>
+      </div>
+      <div className="space-y-3">
+        {reads.map((r) => <ReadCard key={r.id} read={r} />)}
+      </div>
 
-        {/* 2. Bookings (GA4 key events) */}
-        <Tile
-          icon={CalendarCheck} iconClass="text-primary" title="Bookings"
-          pill={<StatePill>key events · not connected</StatePill>}
-          footer="When connected: booking starts · completions · conversion rate · month-over-month"
-        >
-          <AttachState
-            icon={Link2}
-            title="Attach a booking source"
-            body="Booking starts and completions from this asset's GA4 key events — the bottom-of-funnel outcome."
-            cta={
-              <Link to="/settings/integrations" className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm px-3 py-1.5 rounded-lg mt-3 hover:opacity-90 transition-opacity">
-                <Plug className="h-4 w-4" /> Connect bookings
-              </Link>
-            }
-          />
-        </Tile>
-
-        {/* 3. Social (Buffer) */}
-        <Tile
-          icon={Heart} iconClass="text-destructive" title="Social engagement"
-          pill={<StatePill tone="warning">Buffer · needs fix</StatePill>}
-          footer="When connected: reach · likes · comments · shares, per platform · month-over-month"
-        >
-          <AttachState
-            icon={AlertTriangle} iconClass="text-warning"
-            title="Buffer stats not yet available"
-            body="Buffer's per-post metrics return empty today (a known API gap). This tile is structured and ready — it lights up once the Buffer fix lands."
-            cta={
-              <span className="inline-flex items-center gap-2 border border-border bg-card text-muted-foreground text-sm px-3 py-1.5 rounded-lg mt-3">
-                <Clock className="h-4 w-4" /> Pending Buffer fix
+      {/* SECTION 2 — the receipts */}
+      <div className="flex items-center gap-2 mt-8 mb-3 flex-wrap">
+        <BarChart3 className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h2 className="font-semibold">The numbers behind it</h2>
+        <span className="text-2xs text-muted-foreground">— just enough to trust the read</span>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* This week vs last */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> This week
+          </h3>
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Posts published</span>
+              <span className="font-semibold tabular-nums">
+                {facts.thisWeek}
+                {facts.publishedDelta !== 0 && (
+                  <span className={facts.publishedDelta > 0 ? 'text-success' : 'text-muted-foreground'}>
+                    {' '}{facts.publishedDelta > 0 ? '▲' : '▼'} {facts.publishedDelta > 0 ? '+' : ''}{facts.publishedDelta} vs last
+                  </span>
+                )}
               </span>
-            }
-          />
-        </Tile>
-
-        {/* 4. Content performance (NarrateRx) — connected */}
-        <Tile
-          icon={FileText} iconClass="text-success" title="Content performance"
-          pill={<StatePill tone="success">NarrateRx · connected</StatePill>}
-          footer="Ties published content → the outcome it drove (joins to GA4 once the website input is attached)"
-        >
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <div className="text-xl font-bold tabular-nums">{published.length}</div>
-              <div className="text-2xs text-muted-foreground">published</div>
             </div>
-            <div>
-              <div className="text-xl font-bold tabular-nums">{avgVoice != null ? `${avgVoice}%` : '—'}</div>
-              <div className="text-2xs text-muted-foreground">avg voice fidelity</div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Social reach (recent posts)</span>
+              <span className="font-semibold tabular-nums">{facts.hasReachData ? fmtNum(reach) : '—'}</span>
             </div>
-            <div>
-              <div className="text-xl font-bold tabular-nums">{performedWell}</div>
-              <div className="text-2xs text-muted-foreground">flagged &ldquo;performed well&rdquo;</div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Engagement (likes + comments + shares)</span>
+              <span className="font-semibold tabular-nums">{facts.hasReachData ? fmtNum(engagement) : '—'}</span>
             </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-2xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <TrendingUp className="h-3 w-3" /> Recently published
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Website visits</span>
+              <span className="font-semibold tabular-nums text-muted-foreground">— soon</span>
             </div>
-            {recentPublished.length === 0 ? (
-              <p className="text-sm text-muted-foreground mt-2">Nothing published yet.</p>
-            ) : (
-              <ul className="mt-1">
-                {recentPublished.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between text-sm border-t border-border pt-2 mt-2">
-                    <span className="truncate">{p.topic || 'Untitled'}</span>
-                    <span className="text-muted-foreground shrink-0 ml-3 text-xs">
-                      {PLATFORM_LABELS[p.platform] || p.platform || ''}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {topPerformers.length === 0 && (
-              <p className="text-2xs text-muted-foreground mt-3">
-                Engagement ranking lights up once the GA4 input is attached and traffic accrues.
+            {cost.weekTotal > 0 && (
+              <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
+                Estimated run cost this week: {fmtUsd(cost.weekTotal)}
+                {cost.perPost != null && <> (≈ {fmtUsd(cost.perPost)}/post)</>}
               </p>
             )}
           </div>
-        </Tile>
+        </div>
+
+        {/* Top 3 */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Award className="h-4 w-4 text-primary" /> Your top {top3.length || 3} right now
+          </h3>
+          {top3.length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-3">
+              Engagement ranking fills in as your posts gather reach (and the moment GA4 connects, website pages join the list).
+            </p>
+          ) : (
+            <ul className="mt-3 text-sm">
+              {top3.map((p) => {
+                const value = Number(p.reach ?? p.pageviews ?? 0)
+                const unit = p.source === 'ga4' ? 'visits' : 'reach'
+                return (
+                  <li key={p.id} className="flex items-center justify-between border-t border-border pt-3 mt-3 first:border-0 first:pt-0 first:mt-0">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{p.topic || 'Untitled'}</div>
+                      <div className="text-2xs text-muted-foreground">{PLATFORM_LABELS[p.platform] || p.platform || ''}</div>
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      <div className="font-semibold tabular-nums">{fmtNum(value)}</div>
+                      <div className="text-2xs text-muted-foreground">{unit}</div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </div>
 
-      {/* Cross-asset note */}
-      <div className="rounded-2xl border border-border bg-card p-4 mt-4 flex items-start gap-3">
-        <Layers className="h-4 w-4 mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">
-          This four-tile structure is every asset&rsquo;s dashboard. Each asset attaches its own
-          inputs; the layout stays identical so the whole of Move Better reads the same way.
-        </p>
+      {/* SECTION 3 — tune up the website */}
+      <div className="flex items-center gap-2 mt-8 mb-1">
+        <Globe className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h2 className="font-semibold">Tune up the website</h2>
       </div>
+      <p className="text-sm text-muted-foreground mb-3 max-w-2xl">
+        Not &ldquo;make more content&rdquo; — the actual changes to make on the site so visitors do something
+        once they land. Narrate spots them; you make them. These reads light up as each input connects.
+      </p>
+      <div className="space-y-3">
+        <PendingRead icon={LogIn} badge="Unlocks when GA4 connects">
+          <span className="font-semibold text-foreground">Coming:</span>{' '}
+          which pages people land on first and whether they go on to book — the literal{' '}
+          <span className="italic">&ldquo;is the website landing well?&rdquo;</span> read, with the specific fix to make.
+        </PendingRead>
+        <PendingRead icon={TimerOff} badge="Unlocks when GA4 connects">
+          <span className="font-semibold text-foreground">Coming:</span>{' '}
+          pages where visitors leave fast (and why) — so you can fix the one that&rsquo;s leaking the most traffic.
+        </PendingRead>
+        <PendingRead icon={Search} badge="Unlocks with Search Console · a separate connect">
+          <span className="font-semibold text-foreground">Coming:</span>{' '}
+          what people type into Google to find you — and the easy searches you&rsquo;re missing a post for.
+          <span className="inline-flex items-center gap-1.5 text-2xs text-muted-foreground ml-1">
+            <PenLine className="h-3 w-3" /> with a suggested post to close the gap
+          </span>
+        </PendingRead>
+      </div>
+
+      {/* SECTION 4 — what Narrate already did */}
+      {suggestions.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 mt-8 mb-3">
+            <GitBranch className="h-4 w-4 text-primary" aria-hidden="true" />
+            <h2 className="font-semibold">What Narrate already did with this</h2>
+          </div>
+          <div className="rounded-2xl border border-success/15 bg-success/10 p-5">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+              <div className="text-sm leading-relaxed">
+                <p>
+                  You don&rsquo;t have to act on every note yourself — Narrate&rsquo;s already using this in the
+                  background. Based on what&rsquo;s resonating, it lined up follow-up topics for your next interview:
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {suggestions.map((s, i) => (
+                    <span key={i} className="text-2xs bg-card border border-border rounded-full px-3 py-1">{s}</span>
+                  ))}
+                </div>
+                <p className="text-2xs text-muted-foreground mt-3">
+                  Working today: your results decide <span className="font-medium">what to make next</span>.{' '}
+                  Coming: using your best posts as the model for <span className="font-medium">how the next ones are written</span> too.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
