@@ -9,7 +9,11 @@ Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (
 - So the workflow for a UI fix is: merge → GitHub-integration auto-deploys to prod (~2 min) → confirm the live SHA (`curl -s https://narraterx.ai/version.json | grep sha`) → THEN open the page in Q's Chrome and screenshot. It's post-deploy verification, but it's real and doesn't require Q to look manually.
 - Pure render/transform code (Sharp/SVG compositors) is the exception — verify those locally with a node harness, no browser needed (see the WHOOP note below).
 
-(Q confirmed 2026-06-04 — "this keeps happening.")
+**This is THE standard verification procedure — not a fallback.** For any change to an authed surface, the default is: deploy → confirm live SHA → drive Q's Chrome and screenshot. Do NOT declare a UI change "verified" off a localhost render, a preview URL, or a green build alone, and do NOT report an authed surface as "blocked by Clerk" — the logged-in Chrome session is past the gate and is the way to look. Only skip the browser when the change is pure render/transform code (verify with a node harness) or has no observable surface.
+
+**Relationship to the Playwright e2e suite (they are complementary, not redundant):** Chrome-tab is *interactive* verification — it proves the specific change you're working on, but only when someone actively drives it. The post-deploy e2e smoke is an *unattended regression net* that fires on every merge to `main` and catches breakage on the 5 covered routes when no one is looking. Chrome-tab structurally cannot replace it (it needs an agent in the loop). Policy: keep the e2e suite thin (the existing 5 routes) as a post-deploy tripwire, do NOT expand it to cover deep authed flows (that is Chrome-tab's job and where Clerk fights automation), and carry all "does this work / look right" verification through Q's Chrome.
+
+(Q confirmed 2026-06-04 — "this keeps happening." Chrome-tab-as-standard + keep-e2e-thin confirmed 2026-06-04.)
 
 ## Session Focus
 At the start of EVERY new conversation, before doing anything else, ask:
