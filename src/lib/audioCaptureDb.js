@@ -204,8 +204,14 @@ export async function deleteSession(sessionId) {
  * Recoverable sessions for the current host: anything that never finished
  * uploading (recording/stopped/failed), newest first, excluding stale ones.
  * Also opportunistically prunes stale sessions so the store self-cleans.
+ *
+ * Pass `source` ('voice_memo' | 'interview') to return only that capture lane.
+ * VoiceMemo recovers its own takes; the interview hook recovers its own. Without
+ * the filter the two lanes cross-surface — an orphaned interview take would show
+ * up in VoiceMemo's recovery card as if it were a voice memo. Stale pruning stays
+ * source-agnostic so the store self-cleans regardless of the filter.
  */
-export async function listRecoverable() {
+export async function listRecoverable(source = null) {
   const all = await listSessions()
   const host = typeof window !== 'undefined' ? window.location.host : ''
   const now = Date.now()
@@ -214,6 +220,7 @@ export async function listRecoverable() {
   for (const s of all) {
     if (now - (s.createdAt || 0) > STALE_MS) { stale.push(s); continue }
     if (s.workspaceHost && host && s.workspaceHost !== host) continue // tenant confinement
+    if (source && s.source !== source) continue // lane confinement (voice_memo vs interview)
     if (['recording', 'stopped', 'failed'].includes(s.status)) live.push(s)
   }
   // Fire-and-forget prune; don't block the caller.

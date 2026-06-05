@@ -151,7 +151,9 @@ export default function VoiceMemo() {
   // can recover it (the iPhone-killed-tab case). Stale ones are auto-pruned.
   useEffect(() => {
     let cancelled = false
-    listRecoverable()
+    // Only this lane's takes — an orphaned interview recording is recovered by
+    // InterviewSession, not surfaced here as if it were a voice memo.
+    listRecoverable('voice_memo')
       .then((rows) => { if (!cancelled) setRecoverable(rows) })
       .catch(() => { /* IDB unavailable — recovery just isn't offered */ })
     return () => { cancelled = true }
