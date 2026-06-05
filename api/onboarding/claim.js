@@ -55,6 +55,37 @@ async function uploadDefaultOrgLogo(orgId, userId) {
   }
 }
 
+// Idempotency guard against orphan Clerk orgs. A claim that creates the org but
+// is abandoned before the workspace insert (slow request → user re-submits →
+// browser cancels the in-flight fetch → Vercel tears the function down after
+// createOrganization but before the insert/rollback) leaves a Clerk org with no
+// workspace behind it. On retry, reuse that orphan instead of minting a second.
+// We only reuse an org that (a) the user already belongs to, (b) matches the
+// intended display name, and (c) has NO workspace bound to it — so we can never
+// hijack an org that's actively serving a workspace.
+async function findReusableOrg(userId, displayName) {
+  let memberships
+  try {
+    const r = await clerk().users.getOrganizationMembershipList({ userId, limit: 100 })
+    memberships = r?.data || []
+  } catch (e) {
+    console.warn('[claim] reusable-org lookup failed:', e?.message)
+    return null
+  }
+  const candidates = memberships
+    .map(m => m.organization)
+    .filter(o => o && o.name === displayName)
+  for (const org of candidates) {
+    try {
+      const r = await sb(`workspaces?clerk_org_id=eq.${encodeURIComponent(org.id)}&select=id&limit=1`)
+      if (!r.ok) continue
+      const rows = await r.json().catch(() => null)
+      if (Array.isArray(rows) && rows.length === 0) return org // orphan — safe to reuse
+    } catch { /* try the next candidate */ }
+  }
+  return null
+}
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -279,19 +310,25 @@ async function handler(req, res) {
     : null
   const location_keyword = primary?.city || null
 
-  // 2. Create Clerk Organization (creator becomes admin automatically).
-  let org
-  try {
-    // Clerk org slug is auto-generated; we don't tie it to the workspace slug
-    // because Clerk slugs live in a separate uniqueness namespace and we don't
-    // need them to match (the workspace slug is what users see in the URL).
-    org = await clerk().organizations.createOrganization({
-      name: display_name,
-      createdBy: userId,
-    })
-  } catch (e) {
-    console.error('[claim] createOrganization failed:', e?.message)
-    return res.status(500).json({ error: 'org-create-failed', detail: e?.message })
+  // 2. Get-or-create the Clerk Organization (creator becomes admin
+  // automatically). Reuse an orphan org from an abandoned prior attempt so a
+  // retry never mints a duplicate (see findReusableOrg).
+  let org = await findReusableOrg(userId, display_name)
+  if (org) {
+    console.info(`[claim] reusing orphan org=${org.id} for user=${userId} name="${display_name}"`)
+  } else {
+    try {
+      // Clerk org slug is auto-generated; we don't tie it to the workspace slug
+      // because Clerk slugs live in a separate uniqueness namespace and we don't
+      // need them to match (the workspace slug is what users see in the URL).
+      org = await clerk().organizations.createOrganization({
+        name: display_name,
+        createdBy: userId,
+      })
+    } catch (e) {
+      console.error('[claim] createOrganization failed:', e?.message)
+      return res.status(500).json({ error: 'org-create-failed', detail: e?.message })
+    }
   }
 
   // 2a. Replace the generic Clerk org avatar with the NarrateRx mark.
