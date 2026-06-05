@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { SignIn, SignUp, useAuth, useUser, useOrganizationList } from '@clerk/react'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1020,6 +1020,26 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
     })
   }
   const ok = form.enabled_outputs.length > 0
+  // Per-channel icon for the graphic picker grid. Keyed by OUTPUT_CHANNELS id.
+  const CHANNEL_ICON = {
+    blog: FileText,
+    email: Mail,
+    gbp: MapPin,
+    instagram_post: Instagram,
+    instagram_reel: Film,
+    facebook: Facebook,
+    linkedin: Linkedin,
+    tiktok: Music2,
+    youtube_short: Youtube,
+    youtube: Youtube,
+    twitter: Twitter,
+    threads: AtSign,
+    bluesky: Cloud,
+    mastodon: Globe,
+    google_ads: Megaphone,
+    ig_ads: Megaphone,
+    landing_page: LayoutTemplate,
+  }
   // Human label for the export affordance each channel produces by default.
   const EXPORT_LABEL = {
     markdown: 'Copy & paste anywhere',
@@ -1045,29 +1065,32 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
       <div className="rounded-lg border border-input bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
         Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.
       </div>
-      <div className="space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {Object.values(OUTPUT_CHANNELS).map(channel => {
           const checked = form.enabled_outputs.includes(channel.id)
           const upgrade = channel.publishMode ? UPGRADE_HINT[channel.publishMode] : null
+          const Icon = CHANNEL_ICON[channel.id] || Globe
           return (
-            <label
+            <button
+              type="button"
               key={channel.id}
-              className="flex items-start gap-2.5 rounded-md border border-input p-2.5 cursor-pointer hover:bg-accent/30"
+              onClick={() => toggle(channel.id)}
+              aria-pressed={checked}
+              title={`${EXPORT_LABEL[channel.exportShape] || 'Copy & paste anywhere'}${upgrade ? ` · ${upgrade}` : ''}`}
+              className={`group relative flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition ${
+                checked
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                  : 'border-input hover:border-primary/40 hover:bg-accent/30'
+              }`}
             >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => toggle(channel.id)}
-                className="mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium leading-tight">{channel.label}</div>
-                <div className="text-2xs text-muted-foreground mt-0.5">
-                  {EXPORT_LABEL[channel.exportShape] || 'Copy & paste anywhere'}
-                  {upgrade ? ` · ${upgrade}` : ''}
-                </div>
-              </div>
-            </label>
+              {checked && (
+                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="h-3 w-3" />
+                </span>
+              )}
+              <Icon className={`h-6 w-6 ${checked ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+              <span className="text-xs font-medium leading-tight">{channel.label}</span>
+            </button>
           )
         })}
       </div>
