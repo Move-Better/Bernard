@@ -100,6 +100,20 @@ async function authUploadHeaders() {
   }
 }
 
+// Explicit audio contentType for the upload. @vercel/blob/client upload() infers
+// contentType from the pathname EXTENSION, not the Blob's type — and `.webm` maps
+// to `video/webm`, which /api/interviews/audio rejects (its allowlist is audio-only).
+// Without this, the upload is typed video/webm and 400s ("Content type mismatch")
+// — for the completion path too, not just recovery. Returns a value guaranteed to
+// be in the endpoint's ALLOWED_AUDIO_MIME list.
+function audioContentType(mime) {
+  const m = (mime || '').toLowerCase()
+  if (m.includes('mp4'))  return 'audio/mp4'
+  if (m.includes('ogg'))  return 'audio/ogg'
+  if (m.includes('mpeg') || m.includes('mp3')) return 'audio/mpeg'
+  return 'audio/webm'
+}
+
 export function useInterviewAudioCapture() {
   const recorderRef   = useRef(null)
   const chunksRef     = useRef([])
@@ -269,6 +283,7 @@ export function useInterviewAudioCapture() {
             access:          'public',
             handleUploadUrl: AUDIO_UPLOAD_URL,
             clientPayload:   JSON.stringify({ interviewId }),
+            contentType:     audioContentType(mime),
             headers:         await authUploadHeaders(),
           })
           console.info(`[audioCapture] uploaded: ${pathname}`)
@@ -324,6 +339,7 @@ export function useInterviewAudioCapture() {
           access:          'public',
           handleUploadUrl: AUDIO_UPLOAD_URL,
           clientPayload:   JSON.stringify({ interviewId }),
+          contentType:     audioContentType(s.mimeType || blob.type),
           headers:         await authUploadHeaders(),
         })
         await deleteSession(s.id).catch(() => {})
