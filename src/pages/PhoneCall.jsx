@@ -17,6 +17,7 @@ import {
   fetchStaffMember,
 } from '@/lib/api'
 import { getInterviewSystemPrompt } from '@/lib/prompts'
+import { saveLocalMessages } from '@/lib/interviewLocalBackup'
 
 const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 
@@ -854,6 +855,10 @@ export default function PhoneCall() {
         .filter((t) => !t.partial && t.content?.trim())
         .map((t) => ({ role: t.role, content: t.content }))
       if (snapshot.length === 0) return
+      // Mirror to localStorage BEFORE the PATCH so a failed/backgrounded-and-killed
+      // request doesn't lose turns — InterviewSession's restore (same key) recovers
+      // them on the next open of this interview.
+      saveLocalMessages(interviewIdRef.current, snapshot)
       updateInterview(interviewIdRef.current, { messages: snapshot }).catch((err) => {
         console.warn('[phone-call] persist failed', err?.status, err?.message)
       })
@@ -872,6 +877,7 @@ export default function PhoneCall() {
     const snapshot = turnsRef.current
       .filter((t) => !t.partial && t.content?.trim())
       .map((t) => ({ role: t.role, content: t.content }))
+    saveLocalMessages(interviewIdRef.current, snapshot) // mirror final turns (survives a failed final PATCH)
     try {
       await updateInterview(interviewIdRef.current, {
         messages: snapshot,
@@ -1073,6 +1079,7 @@ export default function PhoneCall() {
       })
     }
 
+    if (snapshot.length) saveLocalMessages(interviewIdRef.current, snapshot) // mirror token-appended snapshot
     const persistP = snapshot.length
       ? updateInterview(interviewIdRef.current, { messages: snapshot }).catch(() => {})
       : Promise.resolve()

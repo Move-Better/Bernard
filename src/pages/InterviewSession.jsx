@@ -26,6 +26,7 @@ import VideoAttachPrompt from '@/components/VideoAttachPrompt'
 import { createTtsPlayer, primeAudioPlayback, onAudioPlaybackFailure } from '@/lib/tts'
 import { useRegisterBusy } from '@/lib/appBusy'
 import { useInterviewAudioCapture } from '@/hooks/useInterviewAudioCapture'
+import { loadLocalMessages, saveLocalMessages, clearLocalMessages, loadDraft, saveDraft, clearDraft } from '@/lib/interviewLocalBackup'
 
 // Concrete noun list for shallow-answer detection (Feature 2)
 const CONCRETE_NOUNS = ['patient', 'person', 'name', 'case', 'example', 'time', 'moment', 'client', 'athlete', 'runner', 'worker']
@@ -66,47 +67,6 @@ function stripGapToken(text) { return text.replace(/\[GAP\]/g, '').trim() }
 function hasGapSignal(text)  { return text.includes('[GAP]') }
 
 const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
-
-// Per-interview localStorage key for the messages backup. The DB save can
-// fail silently — network blip, expired Clerk token, iOS WebKit dropping the
-// PATCH on background — and the only previous safety net was React state in
-// memory. A clinician 20 minutes deep who refreshes the tab then sees the AI
-// restart at question 1 because the DB row still has `messages: []`. The
-// local backup is the rescue: on resume, if the DB has fewer messages than
-// the local copy, we restore from local and push it back up.
-function lsKey(interviewId) {
-  return `narraterx:interview:${interviewId}:messages`
-}
-
-function loadLocalMessages(interviewId) {
-  if (typeof window === 'undefined' || !interviewId) return null
-  try {
-    const raw = window.localStorage.getItem(lsKey(interviewId))
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed?.messages)) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-function saveLocalMessages(interviewId, messages) {
-  if (typeof window === 'undefined' || !interviewId) return
-  try {
-    window.localStorage.setItem(lsKey(interviewId), JSON.stringify({
-      messages,
-      savedAt: new Date().toISOString(),
-    }))
-  } catch {
-    // Quota or private-mode failure — non-fatal
-  }
-}
-
-function clearLocalMessages(interviewId) {
-  if (typeof window === 'undefined' || !interviewId) return
-  try { window.localStorage.removeItem(lsKey(interviewId)) } catch { /* ignore */ }
-}
 
 // Session-end phrases — matched at end of utterance to signal interview completion.
 // "next question" and "move on" are intentionally excluded here: they're opt-out
@@ -511,6 +471,13 @@ export default function InterviewSession() {
       // Resuming an existing interview — skip instructions and mic check
       setShowInstructions(false)
       setMicCheckPassed(true)
+      // Restore an in-flight answer the user was typing but hadn't sent (Gap B),
+      // unless the interview already wrapped. Only the typed dock renders it; voice
+      // users don't type, so this is empty for them.
+      if (!hasCompleteToken && !wrapFromRealtime) {
+        const savedDraft = loadDraft(interviewId)
+        if (savedDraft) setTypedAnswer(savedDraft)
+      }
       // Show a brief "Resuming…" banner if we're restoring saved state
       if (savedState?.messages?.length) {
         setShowResumeBanner(true)
@@ -773,7 +740,7 @@ export default function InterviewSession() {
       // Once the AI declares the interview complete, the local backup has
       // served its purpose. Drop it so a future load doesn't accidentally
       // re-hydrate stale messages.
-      if (isComplete) clearLocalMessages(interviewId)
+      if (isComplete) { clearLocalMessages(interviewId); clearDraft(interviewId) }
     }
 
     if (isComplete) setInterviewComplete(true)
@@ -986,6 +953,7 @@ export default function InterviewSession() {
     setTranscript('')
     transcriptRef.current = ''
     setTypedAnswer('')
+    clearDraft(interviewId) // answer submitted — drop the saved in-flight draft
 
     const userMessage = { role: 'user', content: text }
     const updated = [...messagesRef.current, userMessage]
@@ -1930,7 +1898,12 @@ export default function InterviewSession() {
           <div className="flex items-end gap-2">
             <textarea
               value={typedAnswer}
-              onChange={(e) => setTypedAnswer(e.target.value)}
+              onChange={(e) => {
+                // Mirror the in-flight answer to localStorage on every keystroke so
+                // a tab-kill before Send doesn't lose it (Gap B). Restored on resume.
+                setTypedAnswer(e.target.value)
+                saveDraft(interviewId, e.target.value)
+              }}
               onKeyDown={(e) => {
                 // Cmd/Ctrl+Enter sends; plain Enter inserts newline so users
                 // can write multi-paragraph answers.
