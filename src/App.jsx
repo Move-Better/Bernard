@@ -146,19 +146,49 @@ function OrgGate({ clerkOrgId, children }) {
     liveSession?.lastActiveOrganizationId ?? session?.lastActiveOrganizationId ?? null
   const isActive = match && activeOrgId === clerkOrgId
 
-  // Force a re-render while we're waiting for the session to flip, so a late
-  // in-place mutation of lastActiveOrganizationId (which does NOT trigger a
-  // useSession re-render — see above) is still observed and unblocks the gate
-  // without a manual reload. Capped at 30s so a genuinely-wedged session falls
-  // back to the manual Reload button rather than polling forever. Stops the
-  // moment isActive flips true (deps change → cleanup runs).
-  const [, setActiveOrgPollTick] = useState(0)
+  // Authoritative readiness signal, decoupled from Clerk's React reactivity.
+  //
+  // Diagnosed live on movebetter-equine.narraterx.ai 2026-06-05: a tenant
+  // subdomain could wedge on the "Reload page" card permanently even though the
+  // live Clerk state was completely correct — window.Clerk.session active on
+  // the right org, lastActiveOrganizationId === clerkOrgId, AND both the cached
+  // and fresh JWTs carrying the right org_id. Forcing a Clerk resource update
+  // (setActive) re-rendered the component but it STILL evaluated the loading
+  // condition true, which means one of the derived booleans it gates on
+  // (`match` from useOrganizationList's separately-paginated userMemberships,
+  // or `tokenReady`) was persistently out of sync with reality. Fighting that
+  // state machine has cost many PRs; instead we gate on the one thing that
+  // actually determines whether children can safely call the API — does the
+  // issued JWT carry clerkOrgId — by polling the live session token directly.
+  //
+  // When verified, sessionVerified short-circuits the render to children (see
+  // below), bypassing the frozen match/isActive/tokenReady booleans. Bounded at
+  // 20s; resets when clerkOrgId changes (workspace switch) so it re-verifies.
+  const [sessionVerified, setSessionVerified] = useState(false)
   useEffect(() => {
-    if (!match || isActive) return
-    const id = setInterval(() => setActiveOrgPollTick(t => t + 1), 400)
-    const cap = setTimeout(() => clearInterval(id), 30000)
-    return () => { clearInterval(id); clearTimeout(cap) }
-  }, [match, isActive])
+    setSessionVerified(false)
+    if (!clerkOrgId || typeof window === 'undefined') return
+    let stopped = false
+    let elapsed = 0
+    const tick = async () => {
+      if (stopped) return
+      try {
+        const s = window.Clerk?.session
+        if (s?.lastActiveOrganizationId === clerkOrgId) {
+          const tok = await s.getToken()
+          if (!stopped && tok) {
+            const orgId = JSON.parse(atob(tok.split('.')[1]))?.org_id
+            if (orgId === clerkOrgId) { setSessionVerified(true); return }
+          }
+        }
+      } catch { /* keep polling */ }
+      if (stopped) return
+      elapsed += 500
+      if (elapsed < 20000) setTimeout(tick, 500)
+    }
+    tick()
+    return () => { stopped = true }
+  }, [clerkOrgId])
 
   // Track whether we've been stuck at "waiting to activate" long enough to
   // show the user something other than a blank screen. Reported 2026-05-25
@@ -360,6 +390,13 @@ function OrgGate({ clerkOrgId, children }) {
     checkToken()
     return () => { cancelled = true }
   }, [isActive, clerkOrgId, getToken])
+
+  // Authoritative fast-path: the live session token carries the right org_id,
+  // so it is safe to render the app regardless of whatever Clerk's React hooks
+  // (match/isActive/tokenReady) currently report. This is the escape hatch for
+  // the wedged-but-actually-fine state diagnosed 2026-06-05 (see sessionVerified
+  // effect above) where the gate would otherwise loop on "Reload page" forever.
+  if (sessionVerified) return children
 
   // Still loading org list, org switch pending, or token hasn't refreshed yet.
   // Returns a loading state instead of blank to avoid the "white screen until
