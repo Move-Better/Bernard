@@ -35,21 +35,46 @@ gh pr status
 
 ## 3. Production — confirm what actually shipped
 
-Only if something merged to `main` this session.
+**This is the step the user cares about most — "did it actually reach production?" is a recurring failure here. Do NOT end the session leaving a merged PR un-deployed. This step is a blocking gate, not a one-shot check.**
+
+Runs whenever **anything merged to `main` this session** — including a PR you opened earlier in this same `/wrap` run that has since auto-merged. Re-check `gh pr status` first; a PR that was "pending" in step 2 may now be merged, which means it falls into this gate.
+
+### a. Establish the target SHA
 
 ```
-git fetch origin main -q && echo "origin/main: $(git rev-parse --short origin/main)" && curl -s "https://narraterx.ai/version.json" | grep -o '"sha":"[^"]*"'
+git fetch origin main -q && echo "origin/main HEAD: $(git rev-parse --short origin/main)"
 ```
 
-- SHAs **match** → shipped, confirmed live.
-- SHAs **don't match** → the GitHub→Vercel auto-deploy may have been skipped (the rapid-back-to-back-merge coalescing bug). Check for an in-progress deploy: `gh api "repos/Move-Better/NarrateRx/deployments?environment=Production&per_page=1"` (adjust repo slug if needed). If no deploy record exists for HEAD, flag it — the next push carries it, or it needs a manual `npm run deploy:prod` from the project root (which requires **explicit confirmation** at that step).
-- Do **not** declare anything "live" until `version.json` confirms the SHA.
+That short SHA is what MUST be live on prod before the session can close.
+
+### b. Poll prod until it matches — don't check once and move on
+
+```
+curl -s "https://narraterx.ai/version.json" | grep -o '"sha":"[^"]*"'
+```
+
+- **Matches `origin/main`** → confirmed live. Done with this step.
+- **Doesn't match** → a deploy is either in flight or was skipped. Distinguish:
+
+  ```
+  gh api "repos/Move-Better/NarrateRx/deployments?environment=Production&per_page=2" --jq '.[].sha' 2>/dev/null
+  ```
+
+  - **A deploy record exists for the target SHA** → it's building (~2 min). **Poll, don't abandon.** Re-curl `version.json` every ~60–90s until it flips, up to ~5 minutes. Use `ScheduleWakeup` (60–90s) or a short `sleep`+re-curl loop rather than declaring "should be live shortly" and walking away. Report only once it's confirmed.
+  - **NO deploy record for the target SHA** → the GitHub→Vercel auto-deploy was **skipped** (the rapid-back-to-back-merge coalescing bug — `~/.claude/CLAUDE.md`). This is the exact failure the user is worried about. It will NOT self-heal until the next push to `main`. Recover it:
+    1. Tell the user prod is stuck one commit behind and why.
+    2. Offer to ship it: from the **project root** (`/Users/qbook/Claude Projects/NarrateRx`), on `main`, synced — `cd "/Users/qbook/Claude Projects/NarrateRx" && git pull && npm run deploy:prod`. A prod deploy needs **explicit confirmation at that step** (Mechanical execution policy) — present the command, get the go-ahead, then run it.
+    3. After it deploys, re-curl `version.json` and confirm the SHA matches before calling it done.
+
+### c. The gate
+
+Do **not** write "shipped / live" in the report, and do **not** clean up the worktree in step 4, until `version.json` returns the `origin/main` SHA. If the user wants to leave before a confirmed deploy, say so explicitly in **Loose ends** as `⚠️ PROD NOT CONFIRMED — origin/main is <sha>, prod is <sha>` so it can't be missed.
 
 ## 4. Worktree cleanup
 
 Only if running inside a session worktree (`git rev-parse --git-common-dir` differs from `.git`, or the path is under `.claude/worktrees/` or `NarrateRx-worktrees/`).
 
-- **This session's PR is merged + nothing unaccounted-for in the tree** → remove it as routine cleanup (the user has standing authorization for the *session's own* merged worktree): `git worktree remove <path>`. Use `--force` only when the sole blocker is confirmed-regenerable scratch.
+- **This session's PR is merged, prod is confirmed live (step 3 gate passed), + nothing unaccounted-for in the tree** → remove it as routine cleanup (the user has standing authorization for the *session's own* merged worktree): `git worktree remove <path>`. Use `--force` only when the sole blocker is confirmed-regenerable scratch.
 - **Unmerged commits, uncommitted work you can't account for, or a `locked` worktree** → do NOT remove. Flag it for the user.
 - **Never** remove another session's worktree.
 - The project root (`/Users/qbook/Claude Projects/NarrateRx`) is not a worktree — never "clean it up."
