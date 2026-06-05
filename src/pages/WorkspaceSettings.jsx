@@ -105,8 +105,21 @@ export default function WorkspaceSettings() {
     // Authenticated load — needs the bearer token to get the full row.
     // A tokenless fetch returns the slim branding shape (display_name/logo
     // only), which left every other field on this tab blank on load.
+    //
+    // IMPORTANT: the slim shape is also returned with HTTP 200 when the bearer
+    // token is present but scoped to the wrong org / stale (cross-subdomain
+    // Clerk session). apiFetch can't retry it because it's a 200, not a 401.
+    // If we seeded the form from that slim payload, every Content-strings /
+    // Web-presence field would bind to '' and the next Save would PATCH those
+    // empties over real data — exactly how these fields got silently wiped.
+    // So: NEVER seed the form from a slim response. Treat it as a load failure.
     apiFetch('/api/workspace/me')
       .then(data => {
+        if (data && data.slim_branding) {
+          console.warn('[WorkspaceSettings] slim branding shape on load — refusing to seed form (stale/wrong-org token)')
+          setWs(null)
+          return
+        }
         setWs(data)
         if (data) {
           const initial = formFromWorkspace(data)
@@ -127,13 +140,23 @@ export default function WorkspaceSettings() {
     setSaved(false)
     try {
       const token = await getToken()
+      // Dirty-only patch: send ONLY fields whose value changed vs. the pristine
+      // load. A field the user never touched is never PATCHed, so it can't be
+      // overwritten with an empty string it never genuinely loaded. Belt-and-
+      // suspenders with the slim-shape load guard above.
+      const next = formToPatch(form)
+      const base = pristineForm ? formToPatch(pristineForm) : {}
+      const patch = {}
+      for (const k of Object.keys(next)) {
+        if (JSON.stringify(next[k]) !== JSON.stringify(base[k])) patch[k] = next[k]
+      }
       const r = await fetch('/api/workspace/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formToPatch(form)),
+        body: JSON.stringify(patch),
       })
       if (!r.ok) {
         const err = await r.json().catch(() => ({}))
