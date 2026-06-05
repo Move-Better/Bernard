@@ -3,7 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
   Loader2, FileText, Mail, MapPin, Instagram, Facebook, Linkedin,
-  Youtube, Twitter, Pin, Music2, MessageCircle, Cloud, Megaphone,
+  Youtube, Twitter, Music2, MessageCircle, Cloud, Megaphone,
   LayoutTemplate, Radio, Film, Puzzle,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -30,7 +30,6 @@ const CHANNEL_ICONS = {
   tiktok:         Music2,
   youtube_short:  Youtube,
   youtube:        Youtube,
-  pinterest:      Pin,
   twitter:        Twitter,
   threads:        MessageCircle,
   bluesky:        Cloud,
@@ -57,7 +56,7 @@ const MODE_LABEL = {
 const GROUPS = [
   { id: 'long', label: 'Long-form',  members: ['blog', 'email'] },
   { id: 'local', label: 'Local',      members: ['gbp'] },
-  { id: 'social', label: 'Social',    members: ['instagram_post', 'facebook', 'linkedin', 'twitter', 'threads', 'bluesky', 'mastodon', 'pinterest'] },
+  { id: 'social', label: 'Social',    members: ['instagram_post', 'facebook', 'linkedin', 'twitter', 'threads', 'bluesky', 'mastodon'] },
   { id: 'video',  label: 'Video',       members: ['instagram_reel', 'tiktok', 'youtube_short', 'youtube'] },
   { id: 'paid',   label: 'Paid',     members: ['google_ads', 'ig_ads'] },
   { id: 'web',    label: 'Web',      members: ['landing_page'] },

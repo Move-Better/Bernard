@@ -1072,7 +1072,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
         })}
       </div>
       <p className="text-xs text-muted-foreground">
-        Pick at least one. Buffer fans social posts out to Instagram, Facebook, LinkedIn, Twitter/X, Threads, Pinterest, and more. You don&apos;t need any of this set up to start — export works immediately.
+        Pick at least one. Buffer fans social posts out to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
       </p>
       <div className="flex items-center justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>← Back</Button>

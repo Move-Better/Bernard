@@ -118,10 +118,6 @@ STRENGTH & REHAB:
     signatureSystemName: 'Movement Paradigm Scoring',
     signatureSystemUrl: 'https://www.movebetter.co/mps/',
 
-    // Pinterest board names suggested for pin-batching.
-    pinterestBoards:
-      'Pain Relief & Recovery / Portland Wellness / Movement & Fitness / Chiropractic Care',
-
     // Hashtags / spoken brand handle used by the video script prompt.
     locationKeyword: 'Portland',
     locationHashtag: '#PortlandChiropractor',
@@ -223,9 +219,6 @@ BLOG POSTS:
     // for null and omits the relevant sentences when these are absent.
     signatureSystemName: null,
     signatureSystemUrl: null,
-
-    pinterestBoards:
-      'Equine Wellness / Sport Horse Care / Horse Health / Pacific Northwest Equestrian',
 
     locationKeyword: 'Southwest Washington',
     locationHashtag: '#PNWEquestrian',
@@ -336,9 +329,6 @@ BLOG POSTS:
     // are absent — same behavior as EQUINE.
     signatureSystemName: null,
     signatureSystemUrl: null,
-
-    pinterestBoards:
-      'Dog Health & Wellness / Cat Health / Senior Pet Care / Pet Mobility / Pacific Northwest Pets',
 
     locationKeyword: 'Portland',
     locationHashtag: '#PortlandPets',

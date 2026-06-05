@@ -155,13 +155,6 @@ Close with 1–2 sentences that connect the outcome above to the next step — n
 No hashtags. Conversational, results-focused.`,
     },
 
-    pinterest: {
-      pin_batch: `Create 3 Pinterest pin variations for ${workspace.display_name} about ${condition}. For each:
-PIN TITLE: (max 100 characters, include keywords naturally — brand as ${workspace.display_name})
-PIN DESCRIPTION: (200–400 characters, keyword-rich natural language, include ${workspace.website})
-BOARD: (${workspace.pinterest_boards ?? 'Health & Wellness'})`,
-    },
-
     tiktok: {
       myth_buster: `Write a 45–60 second TikTok / Instagram Reels script (~130 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Lead with the most counterintuitive claim from the conversation. First 3 seconds must stop the scroll.

@@ -12,7 +12,7 @@ import {
   Instagram, Facebook, Linkedin, FileText, Mail,
   MapPin, Clock, CheckCircle2, Send, CalendarDays,
   MousePointer2, LayoutTemplate, Youtube, Music2, Megaphone,
-  Pin, Archive,
+  Archive,
 } from 'lucide-react'
 
 export const PLATFORM_META = {
@@ -27,7 +27,6 @@ export const PLATFORM_META = {
   youtube:      { label: 'YouTube',         icon: Youtube,       color: 'text-red-600',    bg: 'bg-red-50' },
   tiktok:       { label: 'TikTok / Reels', icon: Music2,        color: 'text-fuchsia-600', bg: 'bg-fuchsia-50' },
   email:        { label: 'Email',           icon: Mail,       color: 'text-teal-600',   bg: 'bg-teal-50' },
-  pinterest:    { label: 'Pinterest',       icon: Pin,        color: 'text-red-500',    bg: 'bg-red-50' },
 }
 
 // See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders and different labels — "Ready to Distribute" vs "Approved").
@@ -61,7 +60,7 @@ const PLATFORM_TO_FAMILY = {
   blog: 'blog', landing_page: 'blog',
   email: 'email',
   instagram: 'social', facebook: 'social', linkedin: 'social',
-  tiktok: 'social', youtube: 'social', pinterest: 'social', twitter: 'social',
+  tiktok: 'social', youtube: 'social', twitter: 'social',
   gbp: 'local',
 }
 
@@ -84,6 +83,6 @@ export const PLATFORM_GROUPS = [
   ['instagram', 'facebook', 'linkedin', 'gbp'],
   ['instagram_ads'],
   ['google_ads', 'landing_page'],
-  ['youtube', 'tiktok', 'pinterest'],
+  ['youtube', 'tiktok'],
   ['email'],
 ]

@@ -8,7 +8,7 @@
 //
 // Service names are stable strings the publish endpoints know about:
 //   'buffer'        — Buffer queue (universal social + local path: IG / FB /
-//                     LinkedIn / X / Pinterest / TikTok / YouTube Shorts /
+//                     LinkedIn / X / TikTok / YouTube Shorts /
 //                     Threads / Bluesky / Mastodon / GBP) { secret: access_token }
 //   'wordpress'     — WordPress REST publish (equine)
 //                     { config: { site_url, user }, secret: app_password }

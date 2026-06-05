@@ -266,7 +266,7 @@ export default async function handler(req, res) {
 
         if (existsRows.length === 0) {
           // Platforms covered by the on-demand content plan (instagram,
-          // facebook, linkedin, gbp, pinterest, tiktok) are intentionally
+          // facebook, linkedin, gbp, tiktok) are intentionally
           // NOT in this map — the Plan tab handles those via content_plan_atoms.
           const platformMap = [
             { key: 'blogPost',        platform: 'blog' },

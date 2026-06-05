@@ -37,7 +37,6 @@ function formFromWorkspace(ws) {
     internal_links_markdown: ws.internal_links_markdown ?? '',
     signature_system_name:   ws.signature_system_name   ?? '',
     signature_system_url:    ws.signature_system_url    ?? '',
-    pinterest_boards:        ws.pinterest_boards        ?? '',
     brand_hashtag:           ws.brand_hashtag           ?? '',
     spoken_url:              ws.spoken_url              ?? '',
     skip_review:             !!ws.skip_review,
@@ -64,7 +63,6 @@ function formToPatch(form) {
     internal_links_markdown: form.internal_links_markdown,
     signature_system_name:   form.signature_system_name || null,
     signature_system_url:    form.signature_system_url  || null,
-    pinterest_boards:        form.pinterest_boards,
     brand_hashtag:           form.brand_hashtag,
     spoken_url:              form.spoken_url,
     skip_review:             !!form.skip_review,
@@ -380,9 +378,6 @@ export default function WorkspaceSettings() {
             value={form.signature_system_url} onChange={set('signature_system_url')}
             placeholder="https://..." />
         </Grid>
-        <Field label="Pinterest board names"
-          value={form.pinterest_boards} onChange={set('pinterest_boards')}
-          hint="Slash-separated — e.g. “Home tips / Recovery / Mobility”." />
         <Grid>
           <Field label="Brand hashtag"
             value={form.brand_hashtag} onChange={set('brand_hashtag')}

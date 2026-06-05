@@ -32,7 +32,6 @@ const STATIC_AS_ROW = {
   booking_url: STATIC.prompt.bookingUrl,
   signature_system_name: STATIC.prompt.signatureSystemName,
   signature_system_url: STATIC.prompt.signatureSystemUrl,
-  pinterest_boards: STATIC.prompt.pinterestBoards,
   location_keyword: STATIC.prompt.locationKeyword,
   location_hashtag: STATIC.prompt.locationHashtag,
   brand_hashtag: STATIC.prompt.brandHashtag,

@@ -17,7 +17,7 @@ import { runWithToast } from '@/lib/toast'
 // newsletter) are kept here so historic briefs still render their target.
 const PLATFORMS = [
   'instagram', 'facebook', 'linkedin', 'twitter', 'threads',
-  'tiktok', 'youtube_short', 'pinterest', 'bluesky', 'mastodon',
+  'tiktok', 'youtube_short', 'bluesky', 'mastodon',
   'gbp',
   'newsletter',
 ]

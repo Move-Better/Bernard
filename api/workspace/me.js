@@ -28,7 +28,7 @@ const PATCHABLE_FIELDS = new Set([
   'social',
   'app_name', 'region_short', 'website_hostname', 'link_preview_blurb',
   'audience_description', 'activity_context',
-  'pinterest_boards', 'location_keyword', 'location_hashtag', 'brand_hashtag',
+  'location_keyword', 'location_hashtag', 'brand_hashtag',
   'spoken_url',
   'enabled_outputs',
   'logo', 'colors', 'brandbook',
