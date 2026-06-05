@@ -129,8 +129,36 @@ function OrgGate({ clerkOrgId, children }) {
   // wrong-org. Re-running until the session reflects the expected org closes
   // that gap. Children only render once the active org matches AND the token
   // confirms the switch.
-  const activeOrgId = session?.lastActiveOrganizationId ?? null
+  //
+  // Read the active org from the LIVE Clerk singleton, not only the useSession
+  // snapshot. Diagnosed 2026-06-05 on movebetter-equine.narraterx.ai: after the
+  // setActive retry loop below gives up, Clerk mutates
+  // session.lastActiveOrganizationId to the correct org IN PLACE,
+  // asynchronously, WITHOUT notifying useSession subscribers — so the hook's
+  // snapshot stays stale, isActive stays false, and OrgGate freezes forever on
+  // the stuckLevel-2 "Reload page" card even though the session (and the JWT)
+  // have actually flipped to the right org. Clicking Reload just restarts the
+  // same race. Reading window.Clerk.session directly sees the in-place flip;
+  // the poll effect below forces the re-render that observes it.
+  const liveSession =
+    (typeof window !== 'undefined' && window.Clerk?.session) || session
+  const activeOrgId =
+    liveSession?.lastActiveOrganizationId ?? session?.lastActiveOrganizationId ?? null
   const isActive = match && activeOrgId === clerkOrgId
+
+  // Force a re-render while we're waiting for the session to flip, so a late
+  // in-place mutation of lastActiveOrganizationId (which does NOT trigger a
+  // useSession re-render — see above) is still observed and unblocks the gate
+  // without a manual reload. Capped at 30s so a genuinely-wedged session falls
+  // back to the manual Reload button rather than polling forever. Stops the
+  // moment isActive flips true (deps change → cleanup runs).
+  const [, setActiveOrgPollTick] = useState(0)
+  useEffect(() => {
+    if (!match || isActive) return
+    const id = setInterval(() => setActiveOrgPollTick(t => t + 1), 400)
+    const cap = setTimeout(() => clearInterval(id), 30000)
+    return () => { clearInterval(id); clearTimeout(cap) }
+  }, [match, isActive])
 
   // Track whether we've been stuck at "waiting to activate" long enough to
   // show the user something other than a blank screen. Reported 2026-05-25
@@ -194,12 +222,14 @@ function OrgGate({ clerkOrgId, children }) {
   // Despite #842 retrying setActive 10x at 500ms intervals, prod testing
   // confirmed Clerk's session sometimes refuses to flip the active org no
   // matter how many times setActive is called — only a fresh page load
-  // rehydrates it correctly. So at the 2s mark we reload automatically
-  // (initially 5s in #843, dropped to 2s after the user confirmed setActive
-  // retries provide no benefit in the wedged-session case — the wait was
-  // just delaying the inevitable reload). 2s is the floor: shorter risks
-  // pre-empting a legitimately-slow happy-path render, since Clerk hydration
-  // can take up to ~1s on cold loads.
+  // rehydrates it correctly. The reload is the LAST resort, not the first
+  // response: the setActive retry loop runs ~5s and Clerk frequently lands the
+  // flip late (the live-session poll above now observes it and unblocks the
+  // gate without any reload). Firing the reload too early (it was dropped to 2s
+  // in #843) just throws away an in-flight flip and restarts the same ~5-8s
+  // race on the next load, which is exactly the never-converging loop reported
+  // 2026-06-05 on movebetter-equine.narraterx.ai. So we wait 7s — past the 5s
+  // setActive window plus headroom for the late flip — before reloading once.
   //
   // Loop guard: sessionStorage flag ensures only ONE auto-reload per arrival.
   // If the reload also doesn't fix it, we leave the manual "Reload page"
@@ -220,14 +250,14 @@ function OrgGate({ clerkOrgId, children }) {
           const key = 'narraterx:orggate-stuck-reloaded'
           if (!sessionStorage.getItem(key)) {
             sessionStorage.setItem(key, '1')
-            console.warn('[OrgGate] session failed to activate within 2s; auto-reloading once')
+            console.warn('[OrgGate] session failed to activate within 7s; auto-reloading once')
             window.location.reload()
           } else {
             console.error('[OrgGate] still stuck after auto-reload; surfacing manual Reload button')
           }
         } catch { /* sessionStorage disabled — show the button */ }
       }
-    }, 2000)
+    }, 7000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [isLoaded, match, isActive, tokenReady])
 
