@@ -50,7 +50,7 @@ That short SHA is what MUST be live on prod before the session can close.
 ### b. Poll prod until it matches — don't check once and move on
 
 ```
-curl -s "https://narraterx.ai/version.json" | grep -o '"sha":"[^"]*"'
+curl -s "https://narraterx.ai/version.json" | grep -oE '"sha": *"[^"]*"'
 ```
 
 - **Matches `origin/main`** → confirmed live. Done with this step.
