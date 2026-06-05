@@ -2,10 +2,10 @@ import { Link, Navigate } from 'react-router-dom'
 import {
   Sparkles, MessageSquareText, TrendingUp, CalendarClock, Activity,
   BarChart3, Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
-  Search, LogIn, TimerOff, PenLine,
+  Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions } from '@/lib/queries'
+import { useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions, useWebsiteHealth } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights, totalReach, sumField } from '@/lib/insightsReads'
@@ -98,6 +98,7 @@ export default function Analytics() {
   const { data: performers = [] } = useTopPerformers()
   const { data: recap } = useWorkspaceRecap()
   const { data: topics } = useTopicSuggestions()
+  const { data: health } = useWebsiteHealth()
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
@@ -243,6 +244,55 @@ export default function Analytics() {
         once they land. Narrate spots them; you make them. These reads light up as each input connects.
       </p>
       <div className="space-y-3">
+        {/* Live-now: page-health check (no GA4 needed) */}
+        {health && health.checked > 0 && (
+          health.issues.length === 0 ? (
+            <div className="rounded-2xl border border-success/15 bg-success/10 p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+                <p className="text-sm">
+                  <span className="font-semibold">All {health.checked} of your published pages are loading fine.</span>{' '}
+                  <span className="text-muted-foreground">No broken links to fix right now — we&rsquo;ll flag any page that stops loading.</span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[hsl(28_80%_85%)] bg-[hsl(28_90%_97%)] p-5">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-2xs uppercase tracking-wide bg-success/15 text-success px-2 py-0.5 rounded-full font-medium">
+                    Live now · no GA4 needed
+                  </span>
+                  <p className="text-sm leading-relaxed mt-2">
+                    <span className="font-semibold">
+                      {health.issues.length} published {health.issues.length === 1 ? 'page isn’t' : 'pages aren’t'} loading.
+                    </span>{' '}
+                    <span className="text-muted-foreground">Readers who click through hit a dead end — worth fixing first.</span>
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {health.issues.map((it) => (
+                      <li key={it.contentItemId} className="text-sm rounded-lg border border-border bg-card px-3 py-2">
+                        <div className="font-medium truncate">{it.topic}</div>
+                        <div className="text-2xs text-muted-foreground mt-0.5">{it.issue}</div>
+                        <a
+                          href={it.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-2xs text-primary mt-1.5 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" /> Open the page
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )
+        )}
         <PendingRead icon={LogIn} badge="Unlocks when GA4 connects">
           <span className="font-semibold text-foreground">Coming:</span>{' '}
           which pages people land on first and whether they go on to book — the literal{' '}

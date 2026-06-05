@@ -108,6 +108,7 @@ export const queryKeys = {
   },
   topicSuggestions: ['topic-suggestions'],
   topPerformers:    ['top-performers'],
+  websiteHealth:    ['website-health'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   locations: {
     all:  ['locations'],
@@ -714,6 +715,22 @@ export function useTopPerformers() {
       return data?.performers ?? []
     },
     staleTime: 1000 * 60 * 60, // 1h
+  })
+}
+
+// ── Website health (Insights) ─────────────────────────────────────────────────
+//
+// Checks that this workspace's published website/blog posts actually load.
+// The endpoint fans out live fetches, so this is slower than a DB read — cache
+// generously (30 min) and tolerate failure with an empty/neutral default.
+
+export function useWebsiteHealth() {
+  return useQuery({
+    queryKey: queryKeys.websiteHealth,
+    queryFn: () =>
+      apiFetch('/api/insights/website-health').catch(() => ({ checked: 0, healthy: 0, issues: [] })),
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
   })
 }
 
