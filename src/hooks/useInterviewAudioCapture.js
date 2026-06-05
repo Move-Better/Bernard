@@ -57,6 +57,14 @@ const AUDIO_UPLOAD_URL = '/api/interviews/audio'
 // 200KB as a conservative floor. Applied to both the live upload and recovery.
 const MIN_UPLOAD_BYTES = 200_000
 
+// In-flight recovery guard — module-level so it dedupes across component remounts
+// and multiple tabs of the same page (a hook-instance ref cannot). Holds the
+// interviewIds with a recovery currently running; a second concurrent attempt for
+// the same interview is skipped. Without this, a recovery effect that fires more
+// than once would upload the same take to two URLs (Blob's addRandomSuffix),
+// leaving an unreferenced blob.
+const _recoveringInterviews = new Set()
+
 function uid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
   return `iv-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
@@ -313,41 +321,50 @@ export function useInterviewAudioCapture() {
   // never the current live session.
   const recoverOrphanedAudio = useCallback(async (interviewId) => {
     if (!interviewId) return
-    let rows = []
+    // Skip if a recovery for this interview is already running (a remount or a React
+    // re-render race can fire the recovery effect more than once). The mount-level
+    // recoveredOrphanRef guards a single mount; this guards across mounts/tabs.
+    if (_recoveringInterviews.has(interviewId)) return
+    _recoveringInterviews.add(interviewId)
     try {
-      rows = await listRecoverable('interview')
-    } catch { return }
-    const orphans = rows.filter(
-      (s) => s.interviewId === interviewId && s.id !== sessionIdRef.current,
-    )
-    for (const s of orphans) {
+      let rows = []
       try {
-        const blob = await assembleBlob(s.id)
-        if (!blob || blob.size < MIN_UPLOAD_BYTES) {
-          // Empty or too-short to be useful — drop it so it doesn't linger.
+        rows = await listRecoverable('interview')
+      } catch { return }
+      const orphans = rows.filter(
+        (s) => s.interviewId === interviewId && s.id !== sessionIdRef.current,
+      )
+      for (const s of orphans) {
+        try {
+          const blob = await assembleBlob(s.id)
+          if (!blob || blob.size < MIN_UPLOAD_BYTES) {
+            // Empty or too-short to be useful — drop it so it doesn't linger.
+            await deleteSession(s.id).catch(() => {})
+            continue
+          }
+          // Deliberately do NOT flip status to 'uploading' here: 'uploading' is not
+          // in the listRecoverable() filter, so a tab-kill mid-recovery would strand
+          // the take in a status that never reappears. Leaving the prior status
+          // ('recording' | 'stopped' | 'failed' — all recoverable) means a killed
+          // recovery is simply retried on the next visit.
+          const ext      = extFromMime(s.mimeType || blob.type || 'audio/webm')
+          const pathname = `interviews/audio/${interviewId}.${ext}`
+          await upload(pathname, blob, {
+            access:          'public',
+            handleUploadUrl: AUDIO_UPLOAD_URL,
+            clientPayload:   JSON.stringify({ interviewId }),
+            contentType:     audioContentType(s.mimeType || blob.type),
+            headers:         await authUploadHeaders(),
+          })
           await deleteSession(s.id).catch(() => {})
-          continue
+          console.info(`[audioCapture] recovered + re-uploaded orphaned take for interview ${interviewId}`)
+        } catch (e) {
+          console.warn('[audioCapture] orphan recovery failed (non-fatal):', e?.message)
+          await patchSession(s.id, { status: 'failed', interviewId }).catch(() => {})
         }
-        // Deliberately do NOT flip status to 'uploading' here: 'uploading' is not
-        // in the listRecoverable() filter, so a tab-kill mid-recovery would strand
-        // the take in a status that never reappears. Leaving the prior status
-        // ('recording' | 'stopped' | 'failed' — all recoverable) means a killed
-        // recovery is simply retried on the next visit.
-        const ext      = extFromMime(s.mimeType || blob.type || 'audio/webm')
-        const pathname = `interviews/audio/${interviewId}.${ext}`
-        await upload(pathname, blob, {
-          access:          'public',
-          handleUploadUrl: AUDIO_UPLOAD_URL,
-          clientPayload:   JSON.stringify({ interviewId }),
-          contentType:     audioContentType(s.mimeType || blob.type),
-          headers:         await authUploadHeaders(),
-        })
-        await deleteSession(s.id).catch(() => {})
-        console.info(`[audioCapture] recovered + re-uploaded orphaned take for interview ${interviewId}`)
-      } catch (e) {
-        console.warn('[audioCapture] orphan recovery failed (non-fatal):', e?.message)
-        await patchSession(s.id, { status: 'failed', interviewId }).catch(() => {})
       }
+    } finally {
+      _recoveringInterviews.delete(interviewId)
     }
   }, [])
 
