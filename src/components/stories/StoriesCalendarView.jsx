@@ -6,6 +6,7 @@ import EmptyState from '@/components/EmptyState'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { isOptimalSlot, isOptimalDay } from '@/lib/scheduleHeuristics'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { useContentItems } from '@/lib/queries'
 
 // A piece "has media" when at least one entry is attached — drives the
 // unscheduled rail's "Schedule" target (Publish if media is on, else the
@@ -58,23 +59,21 @@ export default function StoriesCalendarView({ stories, isLoading }) {
   }, [stories])
 
   // Approved but NOT yet scheduled — the producer's "still needs a go-live time"
-  // list. Surfaced beside the grid so an approved piece never falls through the
-  // gap between "approved" and "on the calendar." Newest first.
-  const unscheduledApproved = useMemo(() => {
-    if (!Array.isArray(stories)) return []
-    return stories
-      .flatMap((story) =>
-        (story.pieces ?? [])
-          .filter((p) => p.status === 'approved' && !p.scheduled_at)
-          .map((p) => ({
-            ...p,
-            topic: story.topic,
-            storyId: story.id,
-            staffName: p.staff_name || story.staff_name,
-          })),
-      )
-      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
-  }, [stories])
+  // list. Sourced from the SAME content query the Review Inbox uses, NOT the
+  // interview-grouped `stories` prop, so the two surfaces always agree about
+  // what's "approved & unscheduled." Deriving from `stories` silently dropped
+  // pieces here: buildStories skips any content_item with no interview_id, and
+  // summarizePiece strips media_urls (breaking the rail's HAS_MEDIA link target).
+  // The full content rows carry topic / staff_name / media_urls directly.
+  const { data: approvedItems = [] } = useContentItems({ status: 'approved' })
+  const unscheduledApproved = useMemo(
+    () =>
+      approvedItems
+        .filter((p) => !p.scheduled_at)
+        .map((p) => ({ ...p, staffName: p.staff_name }))
+        .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)),
+    [approvedItems],
+  )
 
   // Distinct channels present across the board — drives the colour legend so the
   // chips' per-platform tints are decodable at a glance.
