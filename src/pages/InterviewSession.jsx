@@ -191,7 +191,7 @@ export default function InterviewSession() {
 
   const runtimeWorkspace = useWorkspace()
   const VOICE_MODES = getVoiceModes(runtimeWorkspace)
-  const { startCapture, stopAndUpload } = useInterviewAudioCapture()
+  const { startCapture, stopAndUpload, recoverOrphanedAudio } = useInterviewAudioCapture()
   const PATIENT_PROTOTYPES_UI = getPatientPrototypesUi(runtimeWorkspace)
 
   // Initial fetches go through the shared query cache. Cache hits when the
@@ -319,13 +319,18 @@ export default function InterviewSession() {
   // question 1.
   const hasSeededRef = useRef(false)
   const seededForIdRef = useRef(null)
-  // Reset the guard when the interview id changes so navigating between
-  // interviews still re-seeds the new one correctly. This runs synchronously
-  // during render — that's intentional: by the time the seeding effect
-  // below reads hasSeededRef, the flag must already be cleared for the new id.
+  // One-shot guard for orphaned-audio recovery (P3) — declared here with the
+  // other per-interview guards so it resets on interview-id change too.
+  const recoveredOrphanRef = useRef(false)
+  // Reset the guards when the interview id changes so navigating between
+  // interviews still re-seeds (and re-checks recovery for) the new one
+  // correctly. This runs synchronously during render — that's intentional: by
+  // the time the seeding effect below reads hasSeededRef, the flag must already
+  // be cleared for the new id.
   if (seededForIdRef.current !== interviewId) {
     seededForIdRef.current = interviewId
     hasSeededRef.current = false
+    recoveredOrphanRef.current = false
   }
 
   function saveMessages(interviewId, patch) {
@@ -790,7 +795,8 @@ export default function InterviewSession() {
     hasStarted.current = true
     // Start recording the clinician's mic for voice clone training.
     // Non-blocking + non-fatal — interview continues even if capture fails.
-    startCapture()
+    // Pass interviewId so a killed take is recoverable + re-uploadable (P3).
+    startCapture(interviewId)
     if (messages.length === 0) {
       sendToAI([])
     } else {
@@ -803,6 +809,23 @@ export default function InterviewSession() {
     // hasStarted guard, harmless but wasteful) or fight the guard pattern.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staffMember, interview, showInstructions, micCheckPassed])
+
+  // Recover a voice-clone take that was persisted to IndexedDB but never finished
+  // uploading because the tab was killed/backgrounded mid-interview (P3). The audio
+  // is a background training asset (not user-facing content — the transcript is
+  // protected separately), so this re-uploads silently with no recovery card.
+  // One-shot per interview, owner only (recoveredOrphanRef is declared up top so
+  // it resets on interview-id change). recoverOrphanedAudio skips the live session
+  // and only touches takes tagged with this interview id.
+  useEffect(() => {
+    if (recoveredOrphanRef.current) return
+    if (!interviewId || !user?.id || !interview) return
+    if (user.id !== interview.owner_id) return
+    recoveredOrphanRef.current = true
+    recoverOrphanedAudio(interviewId).catch(() => {})
+    // recoverOrphanedAudio is stable (useCallback []); one-shot via the ref above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interviewId, user?.id, interview])
 
   function startListening({ preserveTranscript = false } = {}) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition

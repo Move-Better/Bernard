@@ -4,6 +4,18 @@
 // The captured audio is uploaded to Vercel Blob at completion and stored on
 // interviews.audio_recording_url for later ElevenLabs voice clone re-training.
 //
+// Crash-safety (P3 "bulletproof capture"): each MediaRecorder chunk is persisted
+// to IndexedDB the instant it arrives (audioCaptureDb), a screen wake lock keeps
+// iOS slower to background the tab, and the recorder is flushed on
+// visibilitychange/pagehide — so an iPhone that backgrounds or kills the tab
+// mid-interview doesn't silently lose the voice-clone take. A take that never
+// finished uploading is a recoverable "orphan": recoverOrphanedAudio() re-uploads
+// it the next time the same interview is opened. The re-upload is silent (no
+// recovery card) because this audio is a background training asset, not
+// user-facing content — the interview transcript is protected separately
+// (localStorage mirror + session_state flush in InterviewSession). Mirrors the
+// VoiceMemo lane shipped in #1200.
+//
 // Design constraints:
 //   - NEVER breaks the interview if capture fails — all errors are swallowed
 //     silently (logged to console only). The interview is the primary product.
@@ -16,19 +28,34 @@
 //     is dispatched; the interview can navigate away without waiting.
 //
 // Usage:
-//   const { startCapture, stopAndUpload, isCapturing } = useInterviewAudioCapture()
+//   const { startCapture, stopAndUpload, recoverOrphanedAudio, isCapturing } = useInterviewAudioCapture()
 //
-//   // Start after mic check passes:
-//   useEffect(() => { if (micCheckPassed) startCapture() }, [micCheckPassed])
+//   // Recover an orphaned take from a prior killed session for this interview:
+//   useEffect(() => { recoverOrphanedAudio(interviewId) }, [interviewId])
+//
+//   // Start after mic check passes (tag the take with the interview id):
+//   useEffect(() => { if (micCheckPassed) startCapture(interviewId) }, [micCheckPassed])
 //
 //   // Upload before navigating away on completion:
 //   await stopAndUpload(interviewId)  // non-blocking — returns immediately after dispatch
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
-import { createSession, appendChunk, patchSession, deleteSession } from '@/lib/audioCaptureDb'
+import {
+  createSession,
+  appendChunk,
+  patchSession,
+  deleteSession,
+  assembleBlob,
+  listRecoverable,
+} from '@/lib/audioCaptureDb'
 
 const AUDIO_UPLOAD_URL = '/api/interviews/audio'
+
+// Minimum threshold: skip uploads under ~30 seconds of audio to avoid polluting
+// the training set with aborted sessions. At 64kbps that's roughly 240KB; we use
+// 200KB as a conservative floor. Applied to both the live upload and recovery.
+const MIN_UPLOAD_BYTES = 200_000
 
 function uid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -63,9 +90,71 @@ export function useInterviewAudioCapture() {
   const mimeTypeRef   = useRef('')
   const uploadedRef   = useRef(false)   // guard: only upload once per session
   const sessionIdRef  = useRef(null)    // IndexedDB crash-safe session id
+  const wakeLockRef   = useRef(null)    // screen wake sentinel held while capturing
   const [isCapturing, setIsCapturing] = useState(false)
 
-  const startCapture = useCallback(async () => {
+  // ── Wake lock — keep the screen on while recording so iOS is slower to
+  // background/suspend the tab. The lock auto-releases when the tab hides; we
+  // re-arm it on return (see the visibility handler below). Non-fatal everywhere.
+  const acquireWakeLock = useCallback(async () => {
+    try {
+      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen')
+      }
+    } catch { /* non-fatal — screen may sleep; chunks still persist to IDB */ }
+  }, [])
+
+  const releaseWakeLock = useCallback(() => {
+    try { wakeLockRef.current?.release?.() } catch { /* ignore */ }
+    wakeLockRef.current = null
+  }, [])
+
+  // ── Flush-on-hide. iOS fires visibilitychange/pagehide before suspending a
+  // backgrounded tab. requestData() forces a final ondataavailable synchronously,
+  // so the last few seconds land in IndexedDB even if the tab never wakes again.
+  // Registered once; no-ops unless a recording is live. Re-arms the wake lock on
+  // return (it auto-releases on hide).
+  useEffect(() => {
+    function flushChunk() {
+      const rec = recorderRef.current
+      if (rec && rec.state === 'recording') {
+        try { rec.requestData() } catch { /* ignore */ }
+      }
+    }
+    function onVisibility() {
+      if (document.visibilityState === 'hidden') {
+        flushChunk()
+      } else if (recorderRef.current?.state === 'recording') {
+        acquireWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flushChunk)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flushChunk)
+    }
+  }, [acquireWakeLock])
+
+  // ── Unmount cleanup. A Pause/navigate-away unmounts InterviewSession without
+  // calling stopAndUpload: flush the tail to IDB, release the wake lock, and stop
+  // the mic so the recording indicator clears. Any persisted chunks survive as a
+  // recoverable orphan, re-uploaded on the next visit via recoverOrphanedAudio.
+  useEffect(() => {
+    return () => {
+      // Only flush if still recording — requestData() throws InvalidStateError
+      // on an inactive recorder, which the normal completion path (stopAndUpload)
+      // has already stopped by the time this unmount fires.
+      const rec = recorderRef.current
+      if (rec && rec.state === 'recording') {
+        try { rec.requestData() } catch { /* ignore */ }
+      }
+      releaseWakeLock()
+      try { streamRef.current?.getTracks().forEach((t) => t.stop()) } catch { /* ignore */ }
+    }
+  }, [releaseWakeLock])
+
+  const startCapture = useCallback(async (interviewId = null) => {
     // No-op if already capturing, or in a non-browser environment.
     if (recorderRef.current) return
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
@@ -83,12 +172,18 @@ export function useInterviewAudioCapture() {
       chunksRef.current   = []
 
       // Crash-safe session: persist each chunk to IndexedDB so a killed tab
-      // doesn't lose the voice-clone take. Non-fatal — the interview is primary.
+      // doesn't lose the voice-clone take. Tagged with interviewId so a recovered
+      // orphan knows which interview to re-upload to. Non-fatal — interview is primary.
       const sessionId = uid()
       sessionIdRef.current = sessionId
       uploadedRef.current = false
-      createSession({ id: sessionId, source: 'interview', mimeType: mimeType || 'audio/webm', filename: `interview-${sessionId}.${extFromMime(mimeType || 'audio/webm')}` })
-        .catch((e) => console.warn('[audioCapture] createSession failed (non-fatal):', e?.message))
+      createSession({
+        id: sessionId,
+        source: 'interview',
+        mimeType: mimeType || 'audio/webm',
+        filename: `interview-${sessionId}.${extFromMime(mimeType || 'audio/webm')}`,
+        interviewId,
+      }).catch((e) => console.warn('[audioCapture] createSession failed (non-fatal):', e?.message))
 
       recorder.ondataavailable = (e) => {
         if (e.data?.size > 0) {
@@ -101,15 +196,18 @@ export function useInterviewAudioCapture() {
         console.warn('[audioCapture] MediaRecorder error:', e?.error?.message)
       }
 
-      // Collect a chunk every 10 seconds so we don't lose everything on a crash.
-      recorder.start(10_000)
+      // 4-second slices (matching the VoiceMemo lane) so a hard kill that never
+      // fires visibilitychange loses at most the last few seconds. The flush-on-hide
+      // handler above covers the ordinary iOS-background case immediately.
+      recorder.start(4000)
+      acquireWakeLock()
       setIsCapturing(true)
     } catch (e) {
       // Permission denied, NotFoundError, or any other getUserMedia failure.
       // Log and continue — the interview must not be affected.
       console.warn('[audioCapture] startCapture failed (non-fatal):', e?.message)
     }
-  }, [])
+  }, [acquireWakeLock])
 
   const stopAndUpload = useCallback(async (interviewId) => {
     const recorder = recorderRef.current
@@ -123,6 +221,7 @@ export function useInterviewAudioCapture() {
       recorder.onstop = async () => {
         // Stop mic track so the browser recording indicator clears immediately.
         streamRef.current?.getTracks().forEach((t) => t.stop())
+        releaseWakeLock()
         setIsCapturing(false)
 
         const chunks = chunksRef.current
@@ -134,10 +233,8 @@ export function useInterviewAudioCapture() {
         const mime = mimeTypeRef.current || 'audio/webm'
         const blob = new Blob(chunks, { type: mime })
 
-        // Minimum threshold: skip uploads under ~30 seconds of audio to avoid
-        // polluting the training set with aborted sessions. At 64kbps that's
-        // roughly 240KB; we use 200KB as the floor to stay conservative.
-        if (blob.size < 200_000) {
+        // Skip uploads below the floor to avoid polluting the training set.
+        if (blob.size < MIN_UPLOAD_BYTES) {
           console.info(`[audioCapture] interview too short (${blob.size} bytes) — skipping upload`)
           if (sessionId) deleteSession(sessionId).catch(() => {})
           resolve()
@@ -160,7 +257,8 @@ export function useInterviewAudioCapture() {
           if (sessionId) deleteSession(sessionId).catch(() => {})
         } catch (e) {
           console.warn('[audioCapture] upload failed (non-fatal):', e?.message)
-          // Leave the session in IDB (marked failed) so the audio isn't lost.
+          // Leave the session in IDB (marked failed) so the audio isn't lost —
+          // recoverOrphanedAudio re-uploads it next time the interview is opened.
           if (sessionId) patchSession(sessionId, { status: 'failed', interviewId }).catch(() => {})
         }
       }
@@ -172,7 +270,51 @@ export function useInterviewAudioCapture() {
         recorder.onstop()
       }
     })
+  }, [releaseWakeLock])
+
+  // Re-upload an interview-audio take that was persisted to IndexedDB but never
+  // finished uploading (the tab was killed/backgrounded mid-interview, or the
+  // completion upload failed). Silent + fire-and-forget, matching the rest of this
+  // hook — the audio is a background voice-clone asset, not user-facing content, so
+  // there's no recovery card. Only touches takes tagged with THIS interview id, and
+  // never the current live session.
+  const recoverOrphanedAudio = useCallback(async (interviewId) => {
+    if (!interviewId) return
+    let rows = []
+    try {
+      rows = await listRecoverable('interview')
+    } catch { return }
+    const orphans = rows.filter(
+      (s) => s.interviewId === interviewId && s.id !== sessionIdRef.current,
+    )
+    for (const s of orphans) {
+      try {
+        const blob = await assembleBlob(s.id)
+        if (!blob || blob.size < MIN_UPLOAD_BYTES) {
+          // Empty or too-short to be useful — drop it so it doesn't linger.
+          await deleteSession(s.id).catch(() => {})
+          continue
+        }
+        // Deliberately do NOT flip status to 'uploading' here: 'uploading' is not
+        // in the listRecoverable() filter, so a tab-kill mid-recovery would strand
+        // the take in a status that never reappears. Leaving the prior status
+        // ('recording' | 'stopped' | 'failed' — all recoverable) means a killed
+        // recovery is simply retried on the next visit.
+        const ext      = extFromMime(s.mimeType || blob.type || 'audio/webm')
+        const pathname = `interviews/audio/${interviewId}.${ext}`
+        await upload(pathname, blob, {
+          access:          'public',
+          handleUploadUrl: AUDIO_UPLOAD_URL,
+          clientPayload:   JSON.stringify({ interviewId }),
+        })
+        await deleteSession(s.id).catch(() => {})
+        console.info(`[audioCapture] recovered + re-uploaded orphaned take for interview ${interviewId}`)
+      } catch (e) {
+        console.warn('[audioCapture] orphan recovery failed (non-fatal):', e?.message)
+        await patchSession(s.id, { status: 'failed', interviewId }).catch(() => {})
+      }
+    }
   }, [])
 
-  return { startCapture, stopAndUpload, isCapturing }
+  return { startCapture, stopAndUpload, recoverOrphanedAudio, isCapturing }
 }
