@@ -82,6 +82,15 @@ async function handler(req, res) {
   let errored = false
   const sendError = (message) => {
     errored = true
+    // Log server-side so mid-stream failures are visible in Vercel logs.
+    // Without this, the request logs as a clean 200 (headers/status were
+    // already flushed before streaming began) and the failure is invisible —
+    // we were blind to how often the gateway→Anthropic upstream blips mid-turn.
+    // Tagged [stream] so it can be grep'd / filtered to error level.
+    console.error('[stream] mid-stream error', {
+      model: gatewayModel,
+      message: message || 'Stream error',
+    })
     const payload = JSON.stringify({
       type: 'error',
       error: { message: message || 'Stream error' },

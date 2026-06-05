@@ -60,6 +60,17 @@ function detectAndStripStopPhrase(transcript) {
   return null
 }
 
+// Is a stream failure worth auto-retrying? Auth (401/403) and rate-limit (429)
+// won't recover on retry; everything else (gateway→Anthropic upstream blips
+// surfaced as "A network error occurred", 5xx, timeouts, generic fetch aborts)
+// is transient and safe to re-run the turn for.
+function isTransientStreamError(e) {
+  const status = e?.status
+  if (status === 401 || status === 403 || status === 429) return false
+  if (typeof status === 'number' && status >= 400 && status < 500) return false
+  return true
+}
+
 // Detect and strip the completion marker from a streaming assistant message.
 function detectComplete(raw) {
   if (!raw.includes(COMPLETE_TOKEN)) return { text: raw, complete: false }
@@ -129,6 +140,9 @@ export default function OnboardingInterview() {
   const seededRef = useRef(false)
   // Kickoff guard — prevents the first-message effect from retrying on error.
   const kickedOffRef = useRef(false)
+  // Last assistant turn's input, so the inline "Try again" button can re-run it
+  // in place after a transient stream failure (no full page reload).
+  const lastTurnRef = useRef(null)
   const scrollRef = useRef(null)
   const founderName = (user?.fullName || user?.firstName || '').trim() || 'there'
 
@@ -272,6 +286,9 @@ export default function OnboardingInterview() {
   // ── Stream the next assistant turn ───────────────────────────────────────
   const runAssistantTurn = useCallback(async (currentMessages, { isFirstMessage }) => {
     if (!workspace) return
+    // Remember the turn so the inline "Try again" button can re-run it in place
+    // (without a full page reload) after a transient failure.
+    lastTurnRef.current = { currentMessages, isFirstMessage }
     setStreaming(true)
     setStreamingText('')
     setError(null)
@@ -284,17 +301,43 @@ export default function OnboardingInterview() {
       ? [{ role: 'user', content: 'Please begin the onboarding interview.' }]
       : currentMessages
 
+    // The gateway→Anthropic upstream occasionally blips mid-stream — the AI SDK
+    // surfaces it as an error part that our /api/stream handler writes into the
+    // (already-200) SSE body, and the client throws "A network error occurred".
+    // That is NOT the user's network. A single transient blip should never end
+    // the interview, so auto-retry the whole turn a couple of times before
+    // surfacing the error. Auth/rate-limit errors (4xx) are not retried.
     let buffer = ''
-    try {
-      for await (const delta of streamMessage(streamInput, systemPrompt, { model: 'claude-sonnet-4-6', maxOutputTokens: 1024 })) {
-        buffer += delta
-        const { text } = detectComplete(buffer)
-        setStreamingText(text)
+    const MAX_ATTEMPTS = 3
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      buffer = ''
+      try {
+        for await (const delta of streamMessage(streamInput, systemPrompt, { model: 'claude-sonnet-4-6', maxOutputTokens: 1024 })) {
+          buffer += delta
+          const { text } = detectComplete(buffer)
+          setStreamingText(text)
+        }
+        break // success
+      } catch (e) {
+        const status = e?.status
+        const retriable = isTransientStreamError(e)
+        if (retriable && attempt < MAX_ATTEMPTS) {
+          // Exponential-ish backoff: 600ms, 1500ms. Reset the partial buffer.
+          setStreamingText('')
+          await new Promise((r) => { setTimeout(r, attempt === 1 ? 600 : 1500) })
+          continue
+        }
+        setStreaming(false)
+        setStreamingText('')
+        setError(
+          retriable
+            ? 'The interviewer lost connection for a moment. Tap "Try again" to continue — your answers are saved.'
+            : (e?.message || 'Stream failed'),
+        )
+        // 4xx auth errors won't recover on retry; surface the raw message.
+        if (status === 401 || status === 403) setError(e?.message || 'Session expired — reload to continue.')
+        return
       }
-    } catch (e) {
-      setStreaming(false)
-      setError(e?.message || 'Stream failed')
-      return
     }
 
     const { text, complete: hasCompleteMarker } = detectComplete(buffer)
@@ -723,9 +766,24 @@ export default function OnboardingInterview() {
           )}
 
           {error && (
-            <p className="text-sm text-destructive flex items-center gap-2 mb-2">
-              <AlertCircle className="h-4 w-4" /> {error}
-            </p>
+            <div className="mb-2 flex items-center gap-3">
+              <p className="text-sm text-destructive flex items-center gap-2 flex-1 min-w-0">
+                <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+              </p>
+              {lastTurnRef.current && !streaming && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => {
+                    const t = lastTurnRef.current
+                    if (t) runAssistantTurn(t.currentMessages, { isFirstMessage: t.isFirstMessage })
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+                </Button>
+              )}
+            </div>
           )}
 
           {/* Progress strip — gives the founder a sense of how far they've
