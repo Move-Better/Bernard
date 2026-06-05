@@ -1159,6 +1159,14 @@ function CaptureScreen({ form, setField, onBack, onContinue }) {
 
 function ReviewScreen({ form, submitting, submitError, onBack, onSubmit }) {
   const { getToken } = useAuth()
+  // `submitting` (parent state) only flips inside onSubmit, which runs AFTER the
+  // `await getToken()` below — leaving a window where the button is still
+  // enabled. A second click in that window fires a second /claim, which is how
+  // onboarding minted two Clerk orgs. Gate the whole handler on a local ref so
+  // it can fire at most once until the parent resets (on error) or unmounts.
+  const startingRef = useRef(false)
+  const [starting, setStarting] = useState(false)
+  const busy = submitting || starting
   return (
     <Card
       title="Review and create"
@@ -1191,15 +1199,25 @@ function ReviewScreen({ form, submitting, submitError, onBack, onSubmit }) {
         </div>
       )}
       <div className="flex items-center justify-between pt-2">
-        <Button variant="ghost" onClick={onBack} disabled={submitting}>← Back</Button>
+        <Button variant="ghost" onClick={onBack} disabled={busy}>← Back</Button>
         <Button
           onClick={async () => {
-            const token = await getToken()
-            onSubmit(token)
+            if (startingRef.current || submitting) return
+            startingRef.current = true
+            setStarting(true)
+            try {
+              const token = await getToken()
+              onSubmit(token)
+            } finally {
+              // On success the parent advances to 'launching' and unmounts us;
+              // on error it resets `submitting` and we re-enable for a retry.
+              startingRef.current = false
+              setStarting(false)
+            }
           }}
-          disabled={submitting}
+          disabled={busy}
         >
-          {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+          {busy && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
           Create my workspace <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
