@@ -118,7 +118,7 @@ export default function Analytics() {
   const fmtNum = (n) => Number(n || 0).toLocaleString()
 
   return (
-    <div className="max-w-5xl">
+    <div>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
