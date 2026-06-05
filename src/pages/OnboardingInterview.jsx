@@ -13,6 +13,7 @@ import { useUser } from '@clerk/react'
 import {
   Loader2, Send, CheckCircle2, AlertCircle, Sparkles, FlaskConical,
   Mic, MicOff, Volume2, RefreshCw, Keyboard,
+  Clock, PauseCircle, MessagesSquare, Lightbulb, Coffee,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -98,6 +99,10 @@ export default function OnboardingInterview() {
   // (mic permission + TTS speaker check). Only required on a fresh interview;
   // resumed interviews skip it (the user already passed it once).
   const [micCheckPassed, setMicCheckPassed] = useState(false)
+  // primerSeen gates the "what to expect" primer that runs before MicCheck on
+  // a fresh interview. Like MicCheck, resumed/completed interviews skip it —
+  // the founder has already read it once.
+  const [primerSeen, setPrimerSeen] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -171,8 +176,9 @@ export default function OnboardingInterview() {
         setMessages(Array.isArray(row?.messages) ? row.messages : [])
         if (row?.status === 'completed' || row?.status === 'synthesized') {
           setCompleted(true)
-          // Resumed/completed interviews skip MicCheck — they've already
-          // gone through the chat once.
+          // Resumed/completed interviews skip the primer + MicCheck — they've
+          // already gone through the chat once.
+          setPrimerSeen(true)
           setMicCheckPassed(true)
         }
         if (row?.status === 'synthesized' && !dryRun) {
@@ -182,6 +188,7 @@ export default function OnboardingInterview() {
         // passed it on their first session and we want to drop them back
         // into the conversation without a re-test.
         if (Array.isArray(row?.messages) && row.messages.length > 0) {
+          setPrimerSeen(true)
           setMicCheckPassed(true)
         }
       } catch (e) {
@@ -495,6 +502,25 @@ export default function OnboardingInterview() {
     await persist(messages, 'completed')
   }, [completed, streaming, canFinish, messages, persist])
 
+  // ── Pause — "save and finish later" ──────────────────────────────────────
+  // Every answered turn is already PATCHed to the server (see persist), so the
+  // transcript is durable the moment Bernard replies. Pause just cleanly stops
+  // the audio/mic and sends the founder home; returning to this page reloads
+  // the saved messages and drops them straight back into the conversation
+  // (the bootstrap skips primer + MicCheck once messages exist). We re-persist
+  // first as a belt-and-suspenders flush.
+  const handlePause = useCallback(async () => {
+    try { ttsRef.current?.cancel() } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
+    userAnswerActiveRef.current = false
+    clearTimeout(restartTimerRef.current)
+    try { recognitionRef.current?.stop() } catch { /* ignore */ }
+    setIsSpeaking(false)
+    setIsListening(false)
+    if (messages.length > 0) await persist(messages)
+    navigate('/')
+  }, [messages, persist, navigate])
+
   // Auto-listen after TTS playback ends — 700ms gives iOS time to release
   // the audio session before the mic engine tries to claim it.
   useEffect(() => {
@@ -598,6 +624,18 @@ export default function OnboardingInterview() {
     )
   }
 
+  // Primer gate — "what to expect" before the audio test. Sets the founder up
+  // for thought-provoking questions, the open-ended pace, and the fact they
+  // can pause and return. Fresh interviews only; resumed sessions skip it.
+  if (!primerSeen) {
+    return (
+      <InterviewPrimer
+        workspace={workspace}
+        onContinue={() => setPrimerSeen(true)}
+      />
+    )
+  }
+
   // MicCheck gate — pre-interview audio test. Only required for a fresh
   // interview (no messages yet, not completed). Resumed sessions skip it.
   if (!micCheckPassed) {
@@ -627,7 +665,7 @@ export default function OnboardingInterview() {
             Tell NarrateRx about {workspace?.display_name || 'your practice'}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            About 15 minutes. Once we have your voice, every piece NarrateRx generates from here on will sound like you — not a template.
+            Take all the time you need — there&rsquo;s no clock, and you can pause and come back. Once we have your voice, every piece NarrateRx generates from here on will sound like you — not a template.
           </p>
         </CardHeader>
       </Card>
@@ -697,21 +735,35 @@ export default function OnboardingInterview() {
           <div className="flex items-center justify-between gap-3 mb-2 px-1">
             <p className="text-xs text-muted-foreground">
               {userTurnCount === 0
-                ? 'About 15 minutes total. Just answer naturally.'
+                ? 'Answer naturally — take your time, and pause whenever you need to.'
                 : <>Turn {userTurnCount} · {finishHelper || 'Finish whenever you feel you’ve covered enough.'}</>}
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleFinish}
-              disabled={!canFinish || streaming || completed}
-              title={canFinish ? 'End the interview and synthesize your voice' : finishHelper || undefined}
-              aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
-              className="gap-1.5 shrink-0"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Finish
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handlePause}
+                disabled={streaming || completed}
+                title="Save your progress and come back later — nothing is lost"
+                aria-label="Pause and finish later"
+                className="gap-1.5 text-muted-foreground"
+              >
+                <PauseCircle className="h-3.5 w-3.5" />
+                Pause
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleFinish}
+                disabled={!canFinish || streaming || completed}
+                title={canFinish ? 'End the interview and synthesize your voice' : finishHelper || undefined}
+                aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+                className="gap-1.5 shrink-0"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Finish
+              </Button>
+            </div>
           </div>
 
           {/* Bottom dock — mic for SpeechRecognition browsers, textarea for
@@ -803,6 +855,74 @@ export default function OnboardingInterview() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+// ── Pre-interview primer ─────────────────────────────────────────────────
+// Sets the founder up before the audio test: what this is, that the questions
+// go deep, that pauses and thinking are normal (and a good sign), and that
+// they can stop and come back. Copy is written to be spoken as well as read —
+// the interviewer (Bernard) opens on similar ground.
+function InterviewPrimer({ workspace, onContinue }) {
+  const interviewer = workspace?.interviewer_name || 'Bernard'
+  const practice = workspace?.display_name || 'your practice'
+  return (
+    <div className="px-4 py-8 max-w-xl mx-auto">
+      <div className="space-y-1 mb-6">
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          Before we begin
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          A real conversation with {interviewer} about {practice} — this is how NarrateRx learns your voice.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <PrimerCard
+          icon={<MessagesSquare className="h-4 w-4 text-primary" />}
+          title="It’s a conversation, not a form"
+          body={`${interviewer} will ask about your practice, your patients, and why you do this work. Just talk the way you would with a colleague — there are no wrong answers, and nothing is published from this.`}
+        />
+        <PrimerCard
+          icon={<Lightbulb className="h-4 w-4 text-primary" />}
+          title="Some questions go deep"
+          body="A few of these are genuinely thought-provoking — the kind you may not have put into words before. Most people find their first interview surprisingly striking. If a question stops you in your tracks, that’s exactly the point."
+        />
+        <PrimerCard
+          icon={<Coffee className="h-4 w-4 text-primary" />}
+          title="Pausing and thinking is welcome"
+          body="Long pauses are normal and good. Take a breath, think it through, sit with it. There’s no timer running and no rush — the best answers usually come after a moment of reflection."
+        />
+        <PrimerCard
+          icon={<Clock className="h-4 w-4 text-primary" />}
+          title="There’s no clock"
+          body="It can take as little as five minutes, but in real life most people go longer — and that’s a sign it’s working. You can stop anytime with Pause and pick up right where you left off."
+        />
+      </div>
+
+      <Button onClick={onContinue} size="lg" className="w-full mt-6 gap-2">
+        <Mic className="h-4 w-4" />
+        I&rsquo;m ready — let&rsquo;s set up audio
+      </Button>
+      <p className="text-xs text-muted-foreground text-center mt-3">
+        Next we&rsquo;ll do a quick microphone and speaker check.
+      </p>
+    </div>
+  )
+}
+
+function PrimerCard({ icon, title, body }) {
+  return (
+    <div className="flex gap-4 rounded-xl border bg-card p-4">
+      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+        {icon}
+      </div>
+      <div>
+        <p className="font-semibold text-sm mb-1">{title}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
+      </div>
     </div>
   )
 }
