@@ -95,6 +95,17 @@ function detectAndStripStopPhrase(transcript) {
   return null
 }
 
+// Is a stream failure worth auto-retrying? Auth (401/403) and rate-limit (429)
+// won't recover on retry; everything else (gateway→Anthropic upstream blips
+// surfaced as "A network error occurred", 5xx, timeouts, generic fetch aborts)
+// is transient and safe to re-run the turn for.
+function isTransientStreamError(e) {
+  const status = e?.status
+  if (status === 401 || status === 403 || status === 429) return false
+  if (typeof status === 'number' && status >= 400 && status < 500) return false
+  return true
+}
+
 // Derive rough "clinician's voice %" from the raw provenanceJson blocks string.
 // verbatim + close_paraphrase blocks = paragraphs that came from the clinician's
 // own words. Returns 0–100 or null when data is absent / unparseable.
@@ -214,6 +225,9 @@ export default function InterviewSession() {
 
   const bottomRef = useRef(null)
   const hasStarted = useRef(false)
+  // Last assistant turn's input, so the inline "Try again" button can re-run it
+  // in place after a transient stream failure (no full page reload).
+  const lastTurnRef = useRef(null)
   const recognitionRef = useRef(null)
   const messagesRef = useRef([])
   const transcriptRef = useRef('')
@@ -637,6 +651,9 @@ export default function InterviewSession() {
 
   const sendToAI = useCallback(async (currentMessages) => {
     if (!staffMember || !interviewRef.current) return
+    // Remember the turn so the inline "Try again" button can re-run it in place
+    // (without a full page reload) after a transient failure.
+    lastTurnRef.current = { currentMessages }
     setIsStreaming(true)
     setStreamingText('')
     setError('')
@@ -710,16 +727,42 @@ export default function InterviewSession() {
       apiMessages = [{ role: 'user', content: 'Please begin the interview.' }]
     }
 
+    // The gateway→Anthropic upstream occasionally blips mid-stream — the AI SDK
+    // surfaces it as an error part that our /api/stream handler writes into the
+    // (already-200) SSE body, and the client throws "A network error occurred".
+    // That is NOT the user's network. A single transient blip should never end
+    // the interview turn, so auto-retry the whole turn a couple of times before
+    // surfacing the error. Auth/rate-limit errors (4xx) are not retried.
     let fullText = ''
-    try {
-      for await (const chunk of streamMessage(apiMessages, systemPrompt)) {
-        fullText += chunk
-        setStreamingText(fullText)
+    const MAX_ATTEMPTS = 3
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      fullText = ''
+      try {
+        for await (const chunk of streamMessage(apiMessages, systemPrompt)) {
+          fullText += chunk
+          setStreamingText(fullText)
+        }
+        break // success
+      } catch (err) {
+        const status = err?.status
+        const retriable = isTransientStreamError(err)
+        if (retriable && attempt < MAX_ATTEMPTS) {
+          // Exponential-ish backoff: 600ms, 1500ms. Reset the partial buffer.
+          setStreamingText('')
+          await new Promise((r) => { setTimeout(r, attempt === 1 ? 600 : 1500) })
+          continue
+        }
+        setIsStreaming(false)
+        setStreamingText('')
+        setError(
+          retriable
+            ? 'The interviewer lost connection for a moment. Tap "Try again" to continue — your answers are saved.'
+            : `Error: ${err.message}`,
+        )
+        // 4xx auth errors won't recover on retry; surface a clearer message.
+        if (status === 401 || status === 403) setError(err?.message || 'Session expired — reload to continue.')
+        return
       }
-    } catch (err) {
-      setError(`Error: ${err.message}`)
-      setIsStreaming(false)
-      return
     }
 
     const isComplete = fullText.includes(COMPLETE_TOKEN)
@@ -1616,9 +1659,22 @@ export default function InterviewSession() {
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+            <div className="flex items-center gap-3 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
+              <span className="flex-1 min-w-0">{error}</span>
+              {lastTurnRef.current && !isStreaming && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => {
+                    const t = lastTurnRef.current
+                    if (t) sendToAI(t.currentMessages)
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+                </Button>
+              )}
             </div>
           )}
 
