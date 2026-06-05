@@ -83,6 +83,23 @@ function extFromMime(mime) {
   return 'webm'
 }
 
+// Auth header for the @vercel/blob/client token handshake. /api/interviews/audio
+// authenticates via requireRole, which is BEARER-ONLY (it does not read the Clerk
+// session cookie), and upload()'s handshake POST carries no Authorization header
+// by default — so without this every voice-clone upload 401s ("Unauthorized" →
+// "Failed to retrieve the client token") and the take orphans. Every other upload
+// caller (brandKitLib, media, seminar) passes this; the interview-audio path had
+// been omitting it since it was written. Returns undefined if no session so the
+// shape still matches brandKitLib's pattern.
+async function authUploadHeaders() {
+  try {
+    const token = await window.Clerk?.session?.getToken?.()
+    return token ? { Authorization: `Bearer ${token}` } : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function useInterviewAudioCapture() {
   const recorderRef   = useRef(null)
   const chunksRef     = useRef([])
@@ -252,6 +269,7 @@ export function useInterviewAudioCapture() {
             access:          'public',
             handleUploadUrl: AUDIO_UPLOAD_URL,
             clientPayload:   JSON.stringify({ interviewId }),
+            headers:         await authUploadHeaders(),
           })
           console.info(`[audioCapture] uploaded: ${pathname}`)
           if (sessionId) deleteSession(sessionId).catch(() => {})
@@ -306,6 +324,7 @@ export function useInterviewAudioCapture() {
           access:          'public',
           handleUploadUrl: AUDIO_UPLOAD_URL,
           clientPayload:   JSON.stringify({ interviewId }),
+          headers:         await authUploadHeaders(),
         })
         await deleteSession(s.id).catch(() => {})
         console.info(`[audioCapture] recovered + re-uploaded orphaned take for interview ${interviewId}`)
