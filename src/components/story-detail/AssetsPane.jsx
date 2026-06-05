@@ -32,13 +32,11 @@ import {
   useCarouselThemes,
   queryKeys,
 } from '@/lib/queries'
-import { resolveTheme } from '@/lib/carouselThemes'
-import { ensureRenderedSlides } from '@/lib/renderSlides'
-import { publishAndTrack, publishBlogToWebsite, sendBlogToBeehiiv, cancelBufferPost } from '@/lib/publish'
+import { publishBlogToWebsite, sendBlogToBeehiiv, cancelBufferPost } from '@/lib/publish'
+import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { suggestScheduleTime, explainPlatformSlot, findScheduleConflict } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { extractProvenanceBlock } from '@/lib/provenance'
-import { isInstagramReel } from '@/lib/mediaEntry'
 import { toast, runWithToast } from '@/lib/toast'
 import { apiFetch } from '@/lib/api'
 import BufferMetricsRow from './BufferMetricsRow'
@@ -1394,61 +1392,19 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           resolvedUrl: result.postUrl || undefined,
         })
       } else {
-        const scheduling = !!effectiveScheduledAt || usingQueue
-
-        // Carousel pieces with per-slide on-screen text must publish the BAKED
-        // slide images (photo + text), not the raw photos. SlideEditor renders
-        // these eagerly on save; this is the fallback for slides saved before
-        // that (or edited without re-saving) so the overlay always ships.
-        //
-        // BUT a Reel (Instagram piece with a video attached) must publish the
-        // VIDEO, never baked photo-slides. ensureRenderedSlides' publishMediaUrls
-        // is photos-only, so running it on a piece that has a video would silently
-        // drop the video and publish stale photo-slides instead — the preview
-        // would show a Reel while the live post is photos. Skip slide-baking
-        // whenever a video is present. (Mixed photo+video in one post isn't
-        // supported by our publisher anyway — see .claude/ideas.md.)
-        let mediaUrls = piece.media_urls || []
-        const reelHasVideo = isInstagramReel(piece.media_urls)
-        if (!reelHasVideo && Array.isArray(piece.slides) && piece.slides.length) {
-          const customThemes = allThemes.filter((t) => t.custom)
-          const theme = resolveTheme(piece.carousel_theme_id || null, customThemes)
-          const { slides: renderedSlides, publishMediaUrls, changed } = await runWithToast(
-            ensureRenderedSlides({
-              slides:    piece.slides,
-              mediaUrls: piece.media_urls,
-              brandStyle: workspace?.brand_style || {},
-              theme,
-              themeId:   piece.carousel_theme_id || null,
-              pieceId:   piece.id,
-            }),
-            {
-              loading: 'Rendering on-screen text…',
-              success: 'On-screen text rendered',
-              error: (e) => ({ message: 'Could not render slide text', description: e.message }),
-            },
-          )
-          if (publishMediaUrls.length) mediaUrls = publishMediaUrls
-          // Persist freshly-baked URLs so the next publish reuses them.
-          if (changed) {
-            try {
-              await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } })
-            } catch { /* non-fatal: publish proceeds with the rendered URLs in hand */ }
-          }
-        }
-
-        const result = await runWithToast(
-          publishAndTrack(
-            {
-              id: piece.id,
-              platform: piece.platform,
-              content: markdown,
-              mediaUrls,
-              scheduledAt: effectiveScheduledAt,
-              useQueue: usingQueue,
-            },
+        // Social publish runs through the shared publishPieceToBuffer helper —
+        // the single source of truth for the Buffer path (incl. carousel
+        // slide-baking) so the per-piece path here and the Review Inbox bulk
+        // scheduler can never diverge. The helper dispatches + PATCHes status;
+        // we own the toast, the baked-slide persist, and the approver audit.
+        const { scheduling, scheduledAt: finalScheduledAt, renderedSlides } = await runWithToast(
+          publishPieceToBuffer(piece, {
+            scheduledAt: effectiveScheduledAt,
+            useQueue: usingQueue,
             userEmail,
-          ),
+            workspace,
+            themes: allThemes,
+          }),
           {
             loading: usingQueue ? 'Adding to Buffer queue…'
               : effectiveScheduledAt ? 'Scheduling on Buffer…'
@@ -1459,18 +1415,22 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             error: (e) => ({ message: 'Publish failed', description: e.message }),
           },
         )
+        // Persist freshly-baked slide URLs so the next publish reuses them.
+        if (renderedSlides) {
+          try {
+            await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } })
+          } catch { /* non-fatal: publish already used the rendered URLs */ }
+        }
         // publishAndTrack already set status + publishedAt; this pass writes the
         // approver audit trail and (for scheduled posts) persists the chosen
         // scheduled_at on the row so the calendar/header reflect the new time.
-        // In queue mode, Buffer returns the assigned dueAt — use that.
-        const queueDueAt = result?.buffer?.scheduledAt || null
         await updateStatus.mutateAsync({
           id: piece.id,
           status: scheduling ? 'scheduled' : 'published',
           approvedBy: userEmail,
           approvedAt: new Date().toISOString(),
           publishedAt: scheduling ? null : new Date().toISOString(),
-          scheduledAt: scheduling ? (effectiveScheduledAt || queueDueAt) : null,
+          scheduledAt: scheduling ? finalScheduledAt : null,
         })
         qc.invalidateQueries({ queryKey: queryKeys.stories.detail(piece.interview_id) })
       }
