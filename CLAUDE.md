@@ -350,6 +350,17 @@ The untracked `.claude/` directory mixes two kinds of files; do NOT bulk-delete 
 
 These are untracked, so `rm` is unrecoverable (see ~/.claude/CLAUDE.md "Deleting files — untracked means unrecoverable"). When in doubt, leave it or ask — the cost of keeping a stale scratch file is zero; the cost of deleting a spec is the whole document.
 
+## Auto-memory index hygiene (MEMORY.md)
+
+The per-project auto-memory **index** (`~/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/MEMORY.md`) is auto-loaded into context at the start of every session and has a hard **~24KB cap** — once over, the tail entries silently truncate and that recall is lost. It ballooned to 27KB+ (2026-06-05, had to be run through `/consolidate-memory` almost daily) because entries were written as multi-line paragraphs and shipped work was never archived. Keep it lean so this stops recurring:
+
+- **One line per entry, <150 chars**: `- [Title](topic-file.md) — one-line hook`. ALL detail goes in the linked topic file, never in the index line. If you're writing a second sentence in the index, move it into the file.
+- **Archive shipped work**: once a `project_*` item is SHIPPED / COMPLETE / LIVE, collapse its index line into the "ARCHIVE — shipped & stable" rollup at the bottom (list its file stem for `grep`, drop the per-line hook). Don't carry done projects as live entries.
+- **Never delete topic files** to reclaim space — they're untracked and unrecoverable; archive the *index line*, keep the file on disk.
+- **Verify after any index rewrite**: extract the `](*.md)` link set before and after and diff — the only links that should disappear are ones you intentionally archived; zero accidental drops.
+
+A weekly launchd job (`com.narraterx.memory-maintenance` → `scripts/memory-maintenance.sh`) backs up the index and runs `/consolidate-memory` headlessly when it crosses ~22KB (backup-first, auto-restores on a suspicious mass link-drop). If you notice the index near cap mid-session, trim the fattest entries rather than appending to it.
+
 ## Definition of Done
 Every PR must satisfy this checklist before merging. The triage on 2026-05-14 traced 12+ bugs to exactly these gaps being skipped.
 
