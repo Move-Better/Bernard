@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
+import { useWakeLock } from '../hooks/useWakeLock'
 import { ArrowLeft, ArrowRight, Loader2, Sparkles, AlertCircle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight, CheckCircle2, Circle, Check, RefreshCw, Send, Keyboard, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -182,6 +183,9 @@ export default function InterviewSession() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [interviewComplete, setInterviewComplete] = useState(false)
+  // Keep the screen awake while the interview is live so a laptop/phone
+  // doesn't dim or sleep mid-conversation.
+  useWakeLock(!!interview && !interviewComplete)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationStyle, setGenerationStyle] = useState('blog_post')
   const [error, setError] = useState('')
