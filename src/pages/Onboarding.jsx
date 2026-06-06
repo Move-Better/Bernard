@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { SignIn, SignUp, useAuth, useUser, useOrganizationList } from '@clerk/react'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -352,13 +352,17 @@ function AuthScreen({ capacity, onSignedIn }) {
         <>
         {/* "What you'll need" pre-screen so brand-new users don't bail mid-flow.
             Shown only to signed-out users — returning users skip it. */}
-        <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1.5">
-          <div className="font-semibold text-foreground">Before you start</div>
-          <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-            <li>About 5 minutes to fill in your business + voice setup</li>
-            <li>Your website URL (we&apos;ll auto-extract what we can)</li>
-            <li>A subdomain you want (e.g. <code className="px-1 py-0.5 rounded bg-background border text-3xs">yourclinic</code>.narraterx.ai)</li>
-            <li>Logo + brand colors come later — not blocking</li>
+        {/* Read-only checklist — left-rule note, not a bordered card, so it
+            reads as passive guidance rather than a tappable surface. */}
+        <div className="border-l-2 border-primary/50 pl-3.5 py-0.5 text-xs space-y-1.5">
+          <div className="font-semibold text-foreground inline-flex items-center gap-1.5">
+            <Info className="h-3.5 w-3.5 text-primary" /> Before you start
+          </div>
+          <ul className="text-muted-foreground space-y-1">
+            <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> About 5 minutes to fill in your business + voice setup</li>
+            <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> Your website URL (we&apos;ll auto-extract what we can)</li>
+            <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> A subdomain you want (e.g. <code className="px-1 py-0.5 rounded bg-background border text-3xs">yourclinic</code>.narraterx.ai)</li>
+            <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> Logo + brand colors come later — not blocking</li>
           </ul>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -1059,11 +1063,15 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
       title="Pick your channels"
       subtitle="Where should your content go? Pick the formats this workspace should create — each interview drafts the ones you choose here so you're never staring at a blank page. You can change this any time in settings."
     >
-      <div className="rounded-lg border border-orange-200 bg-orange-50 px-3.5 py-2.5 text-xs text-orange-900 leading-relaxed">
-        Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Later, you can connect a <strong>social scheduling tool</strong> (we use one called Buffer) and those channels upgrade to one-click publishing.
+      {/* Read-only notes — left-rule treatment, no full border box, so they're
+          clearly passive and don't compete with the tappable channel toggles below. */}
+      <div className="flex gap-2.5 border-l-2 border-primary/50 pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
+        <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+        <span>Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Later, you can connect a <strong>social scheduling tool</strong> (we use one called Buffer) and those channels upgrade to one-click publishing.</span>
       </div>
-      <div className="rounded-lg border border-input bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
-        Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.
+      <div className="flex gap-2.5 border-l-2 border-border pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
+        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <span>Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {Object.values(OUTPUT_CHANNELS).map(channel => {
@@ -1127,22 +1135,28 @@ function CaptureScreen({ form, setField, onBack, onContinue }) {
         </p>
       </div>
 
-      {/* Feature bullets */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {[
-          { icon: Smartphone, label: 'Capture', body: 'Add NarrateRx to your iPhone home screen via Safari — it opens straight to the camera.' },
-          { icon: Clapperboard, label: 'Drafts', body: 'Your clips turn into ready-to-review draft posts you can check each morning.' },
-          { icon: CheckCircle2, label: 'Approval', body: 'Nothing publishes without your sign-off. Auto-publish is opt-in, channel by channel.' },
-          { icon: Sparkles, label: 'Your voice', body: 'Drafts keep your words, your views, and your tone — and point out anything that doesn\'t sound like you before it goes out.' },
-        ].map(({ icon: Icon, label, body }) => (
-          <div key={label} className="flex gap-3 rounded-lg border bg-muted/30 p-3">
-            <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium leading-snug">{label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{body}</p>
-            </div>
-          </div>
-        ))}
+      {/* How-it-works — informational, NOT interactive. Rendered as a plain
+          icon+text list inside one soft panel (no per-item border) so these
+          read-only steps can't be mistaken for tappable cards on the iPhone
+          capture screen, where there's no hover to disambiguate. */}
+      <div className="rounded-lg bg-muted/30 px-4 py-3.5">
+        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">How it works</p>
+        <ul className="space-y-3.5">
+          {[
+            { icon: Smartphone, label: 'Capture', body: 'Add NarrateRx to your iPhone home screen via Safari — it opens straight to the camera.' },
+            { icon: Clapperboard, label: 'Drafts', body: 'Your clips turn into ready-to-review draft posts you can check each morning.' },
+            { icon: CheckCircle2, label: 'Approval', body: 'Nothing publishes without your sign-off. Auto-publish is opt-in, channel by channel.' },
+            { icon: Sparkles, label: 'Your voice', body: 'Drafts keep your words, your views, and your tone — and point out anything that doesn\'t sound like you before it goes out.' },
+          ].map(({ icon: Icon, label, body }) => (
+            <li key={label} className="flex gap-3">
+              <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium leading-snug">{label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Capture name */}
