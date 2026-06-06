@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { SignIn, SignUp, useAuth, useUser, useOrganizationList } from '@clerk/react'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3 } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,6 +49,10 @@ export default function Onboarding() {
     clinic_context: '',
     audience_short: '',
     brand_voice: '',
+    // social: handles per platform, collected from the website scan, the
+    // "find my profiles" lookup, or typed by hand. Bare handles (no @, no URL);
+    // written to workspaces.social at claim time. Empty string = not set.
+    social: { instagram: '', facebook: '', linkedin: '', youtube: '', tiktok: '', twitter: '' },
     slug: '',
     // publish_intent: answers to the "How do you publish today?" step (runs
     // BEFORE channels). Tailors which integrations are surfaced later and which
@@ -63,6 +67,10 @@ export default function Onboarding() {
     capture_name: '',
   })
   const [scanState, setScanState] = useState({ status: 'idle', error: null, sources: [], recent_topics: [], services: [] })
+  // socialLookup: results of the AI "find my profiles" lookup for platforms the
+  // website scan didn't surface. status: idle|searching|done|error; candidates
+  // is { platform: [{handle, url, confidence}] } the user confirms (never auto-saved).
+  const [socialLookup, setSocialLookup] = useState({ status: 'idle', error: null, candidates: {} })
   const [slugCheck, setSlugCheck] = useState({ status: 'idle', available: null, reason: null })
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
@@ -87,6 +95,65 @@ export default function Onboarding() {
 
   const setField = useCallback((key) => (val) => setForm(f => ({ ...f, [key]: val })), [])
 
+  // Merge website-scan results into the form. Scan values fill blanks and
+  // override the voice fields (the user reviews them on the Voice step), but
+  // detected social handles only fill EMPTY slots so a hand-typed handle is
+  // never clobbered by a re-scan.
+  const applyScan = useCallback((scan) => setForm(f => {
+    const services = Array.isArray(scan.services) ? scan.services : []
+    const base = scan.clinic_context || f.clinic_context
+    const ctx = services.length ? `${base}\n\nServices: ${services.join(', ')}`.trim() : base
+    const scannedSocial = (scan.social && typeof scan.social === 'object') ? scan.social : {}
+    const social = { ...f.social }
+    for (const [platform, handle] of Object.entries(scannedSocial)) {
+      if (platform in social && !social[platform] && typeof handle === 'string' && handle.trim()) {
+        social[platform] = handle.trim()
+      }
+    }
+    return {
+      ...f,
+      display_name: scan.display_name || f.display_name,
+      clinic_context: ctx,
+      audience_short: scan.audience_short || f.audience_short,
+      brand_voice: scan.brand_voice || f.brand_voice,
+      social,
+    }
+  }), [])
+
+  // Run the website scan against form.website. Shared by the ScanScreen (first
+  // step) and the BusinessScreen re-scan affordance. Resets any prior social
+  // lookup so stale "is this you?" candidates don't linger across a re-scan.
+  const runScan = useCallback(async () => {
+    setScanState({ status: 'scanning', error: null, sources: [], recent_topics: [], services: [] })
+    setSocialLookup({ status: 'idle', error: null, candidates: {} })
+    try {
+      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public onboarding scan; rate-limited, not auth-gated (api/onboarding/scan-website.js)
+      const r = await fetch('/api/onboarding/scan-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.website }),
+      })
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        setScanState({ status: 'error', error: err.error || 'scan-failed', sources: [], recent_topics: [], services: [] })
+        return false
+      }
+      const data = await r.json()
+      applyScan(data)
+      setScanState({
+        status: 'done',
+        error: null,
+        sources: data.source_pages || [],
+        recent_topics: Array.isArray(data.recent_topics) ? data.recent_topics : [],
+        services: Array.isArray(data.services) ? data.services : [],
+      })
+      return true
+    } catch {
+      setScanState({ status: 'error', error: 'network-error', sources: [], recent_topics: [], services: [] })
+      return false
+    }
+  }, [form.website, applyScan])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -102,7 +169,17 @@ export default function Onboarding() {
         {step === 'auth' && (
           <AuthScreen
             capacity={capacity}
-            onSignedIn={() => setStep('business')}
+            onSignedIn={() => setStep('scan')}
+          />
+        )}
+
+        {step === 'scan' && (
+          <ScanScreen
+            form={form}
+            setField={setField}
+            scanState={scanState}
+            runScan={runScan}
+            onContinue={() => setStep('business')}
           />
         )}
 
@@ -112,21 +189,10 @@ export default function Onboarding() {
             setForm={setForm}
             setField={setField}
             scanState={scanState}
-            setScanState={setScanState}
-            applyScan={(scan) => setForm(f => {
-              const services = Array.isArray(scan.services) ? scan.services : []
-              const base = scan.clinic_context || f.clinic_context
-              const ctx = services.length
-                ? `${base}\n\nServices: ${services.join(', ')}`.trim()
-                : base
-              return {
-                ...f,
-                display_name: scan.display_name || f.display_name,
-                clinic_context: ctx,
-                audience_short: scan.audience_short || f.audience_short,
-                brand_voice: scan.brand_voice || f.brand_voice,
-              }
-            })}
+            runScan={runScan}
+            socialLookup={socialLookup}
+            setSocialLookup={setSocialLookup}
+            onBack={() => setStep('scan')}
             onContinue={() => setStep('voice')}
           />
         )}
@@ -209,6 +275,9 @@ export default function Onboarding() {
                     clinic_context: form.clinic_context,
                     audience_short: form.audience_short,
                     brand_voice: form.brand_voice,
+                    social: Object.fromEntries(
+                      Object.entries(form.social || {}).filter(([, v]) => v && v.trim())
+                    ),
                     enabled_outputs: form.enabled_outputs,
                     publish_intent: form.publish_intent,
                     capture_name: form.capture_name || form.display_name,
@@ -261,6 +330,7 @@ const STEP_LABELS = {
   loading: 'Loading',
   'capacity-full': 'Waitlist',
   auth: 'Sign in',
+  scan: 'Scan your site',
   business: 'Your business',
   voice: 'Brand voice',
   subdomain: 'Choose subdomain',
@@ -270,7 +340,7 @@ const STEP_LABELS = {
   review: 'Review',
   launching: 'Setting up',
 }
-const VISIBLE_STEPS = ['business', 'voice', 'subdomain', 'publish', 'channels', 'capture', 'review']
+const VISIBLE_STEPS = ['scan', 'business', 'voice', 'subdomain', 'publish', 'channels', 'capture', 'review']
 
 function ProgressBar({ step }) {
   if (!VISIBLE_STEPS.includes(step)) return null
@@ -603,7 +673,7 @@ function SignedInPrompt({ onContinue }) {
   )
 }
 
-// ── 2. Business basics + scan ────────────────────────────────────────────────
+// ── 1.5 Website scan (first real step) ───────────────────────────────────────
 
 const SCAN_STATUS_MESSAGES = [
   'Fetching your home page…',
@@ -611,38 +681,290 @@ const SCAN_STATUS_MESSAGES = [
   'Reading your about and approach pages…',
   'Pulling recent blog posts and articles…',
   'Studying your voice and vocabulary…',
+  'Finding your social profiles…',
   'Drafting your starter brand context…',
   'Almost done — finalizing suggestions…',
 ]
 
-function BusinessScreen({ form, setForm, setField, scanState, setScanState, applyScan, onContinue }) {
-  const isScanning = scanState.status === 'scanning'
-  const canContinue = form.display_name.trim().length > 0
-    && form.locations.length > 0 && form.locations[0].city.trim().length > 0
-    && !isScanning
-  const canScan = /^https?:\/\/.+\..+/.test(form.website.trim()) || /^[^\s]+\.[^\s]+/.test(form.website.trim())
-
-  // Cycle through informational status messages while scanning. The scan is
-  // a single round-trip (we can't get true progress) but we know roughly what
-  // it's doing in what order, so we tick through messages on a timer to make
-  // the wait feel grounded.
-  const [scanMessageIdx, setScanMessageIdx] = useState(0)
-  const [scanElapsed, setScanElapsed] = useState(0)
+// Shared scanning indicator — owns its own elapsed/message timer so both the
+// dedicated ScanScreen and the BusinessScreen re-scan affordance can reuse it.
+function ScanningIndicator() {
+  const [idx, setIdx] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
-    if (!isScanning) {
-      setScanMessageIdx(0)
-      setScanElapsed(0)
-      return
-    }
     const started = Date.now()
     const tick = setInterval(() => {
       const sec = Math.floor((Date.now() - started) / 1000)
-      setScanElapsed(sec)
-      // ~5s per message, capped at the last one
-      setScanMessageIdx(Math.min(Math.floor(sec / 5), SCAN_STATUS_MESSAGES.length - 1))
+      setElapsed(sec)
+      setIdx(Math.min(Math.floor(sec / 5), SCAN_STATUS_MESSAGES.length - 1))
     }, 500)
     return () => clearInterval(tick)
-  }, [isScanning])
+  }, [])
+  return (
+    <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2.5 space-y-2">
+      <div className="flex items-start gap-2">
+        <Loader2 className="h-4 w-4 animate-spin text-orange-600 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-orange-900">{SCAN_STATUS_MESSAGES[idx]}</p>
+          <p className="text-2xs text-orange-700 mt-0.5">
+            This usually takes 20–60 seconds. We&apos;re reading up to 15 pages from your site.
+            {elapsed > 0 && ` (${elapsed}s elapsed)`}
+          </p>
+        </div>
+      </div>
+      <div className="h-1 w-full overflow-hidden rounded-full bg-orange-100">
+        <div className="h-full w-1/3 animate-pulse bg-orange-500 rounded-full" />
+      </div>
+    </div>
+  )
+}
+
+const URL_LIKE = (s) => /^https?:\/\/.+\..+/.test(s.trim()) || /^[^\s]+\.[^\s]+/.test(s.trim())
+
+// The opening step: paste a website, we scan it, and everything downstream comes
+// in pre-filled. A "no website" path skips straight to the manual form. The scan
+// endpoint is public, so this runs before any workspace exists.
+function ScanScreen({ form, setField, scanState, runScan, onContinue }) {
+  const isScanning = scanState.status === 'scanning'
+  const canScan = URL_LIKE(form.website) && !isScanning
+
+  async function handleScan() {
+    const ok = await runScan()
+    if (ok) onContinue()
+  }
+
+  return (
+    <Card
+      title="Let's start with your website"
+      subtitle="Paste your site and we'll read it for you — your services, who you serve, how you write, and your social profiles — then pre-fill the rest of setup so you're mostly reviewing, not typing. Don't have a site yet? Skip it and fill in a few lines by hand."
+    >
+      <FieldRow label="Your website" hint="We read your home, services, about, and a few blog pages.">
+        <div className="flex gap-2">
+          <Input
+            type="url"
+            value={form.website}
+            onChange={e => setField('website')(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && canScan) handleScan() }}
+            placeholder="https://yourpractice.com"
+            autoComplete="url"
+            autoFocus
+          />
+          <Button type="button" onClick={handleScan} disabled={!canScan} className="shrink-0">
+            {isScanning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+            {isScanning ? 'Scanning…' : 'Scan'}
+          </Button>
+        </div>
+      </FieldRow>
+
+      <div className="flex gap-2.5 border-l-2 border-primary/50 pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
+        <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+        <span>
+          The scan only drafts <strong className="text-foreground font-medium">starting points</strong> — you review and edit
+          everything on the next few steps. Nothing is published or saved until you finish setup.
+        </span>
+      </div>
+
+      {isScanning && <ScanningIndicator />}
+
+      {scanState.status === 'error' && (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            {scanState.error === 'fetch-failed' || scanState.error === 'invalid-url'
+              ? "We couldn't load that URL. Double-check it, or skip and fill in the basics by hand."
+              : 'The scan ran into a problem. You can try again, or skip and continue manually.'}
+          </span>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          onClick={onContinue}
+          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+        >
+          I don&apos;t have a website — skip
+        </button>
+        <Button onClick={handleScan} disabled={!canScan}>
+          {isScanning ? 'Scanning…' : 'Scan & continue'} <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+// ── 2. Business basics ───────────────────────────────────────────────────────
+
+// Platform metadata for the social-handles section: icon, label, the URL prefix
+// we build a profile link from (handles round-trip — linkedin/youtube keep their
+// path prefix), and the manual-entry placeholder.
+const SOCIAL_META = {
+  instagram: { label: 'Instagram', Icon: Instagram, base: 'https://instagram.com/', ph: 'yourhandle' },
+  facebook:  { label: 'Facebook',  Icon: Facebook,  base: 'https://facebook.com/', ph: 'YourPage' },
+  linkedin:  { label: 'LinkedIn',  Icon: Linkedin,  base: 'https://linkedin.com/', ph: 'company/your-practice' },
+  youtube:   { label: 'YouTube',   Icon: Youtube,   base: 'https://youtube.com/', ph: '@yourchannel' },
+  tiktok:    { label: 'TikTok',    Icon: Music2,    base: 'https://tiktok.com/@', ph: 'yourhandle' },
+  twitter:   { label: 'X / Twitter', Icon: Twitter, base: 'https://x.com/', ph: 'yourhandle' },
+}
+const SOCIAL_ORDER = ['instagram', 'facebook', 'linkedin', 'youtube', 'tiktok', 'twitter']
+
+function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) {
+  const setHandle = (platform, val) =>
+    setForm(f => ({ ...f, social: { ...f.social, [platform]: val } }))
+
+  const detectedCount = SOCIAL_ORDER.filter(p => (form.social[p] || '').trim()).length
+  const missing = SOCIAL_ORDER.filter(p => !(form.social[p] || '').trim())
+  const isSearching = socialLookup.status === 'searching'
+  // We can only look profiles up if we have a name to search for.
+  const canLookup = !isSearching && missing.length > 0 && form.display_name.trim().length > 1
+
+  async function runSocialLookup() {
+    setSocialLookup({ status: 'searching', error: null, candidates: {} })
+    try {
+      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public onboarding lookup; rate-limited, not auth-gated (api/onboarding/find-socials.js)
+      const r = await fetch('/api/onboarding/find-socials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: form.display_name,
+          website: form.website,
+          location: form.locations?.[0]
+            ? [form.locations[0].city, form.locations[0].region].filter(Boolean).join(', ')
+            : '',
+          missing,
+        }),
+      })
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        setSocialLookup({ status: 'error', error: err.error || 'lookup-failed', candidates: {} })
+        return
+      }
+      const data = await r.json()
+      setSocialLookup({ status: 'done', error: null, candidates: data.candidates || {} })
+    } catch {
+      setSocialLookup({ status: 'error', error: 'network-error', candidates: {} })
+    }
+  }
+
+  function acceptCandidate(platform, handle) {
+    setHandle(platform, handle)
+    // Drop the accepted platform's candidates so the prompt collapses.
+    setSocialLookup(s => {
+      const next = { ...s.candidates }
+      delete next[platform]
+      return { ...s, candidates: next }
+    })
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs">Your social profiles</Label>
+        {detectedCount > 0 && (
+          <span className="text-2xs text-green-600 inline-flex items-center gap-1">
+            <CheckCircle2 className="h-3.5 w-3.5" /> {detectedCount} found on your site
+          </span>
+        )}
+      </div>
+      <p className="text-2xs text-muted-foreground">
+        We auto-fill any we found linked on your website. Add or fix the rest — just the handle is fine
+        (no full URL needed). These let you connect one-click posting later.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {SOCIAL_ORDER.map(platform => {
+          const meta = SOCIAL_META[platform]
+          const { Icon } = meta
+          const val = form.social[platform] || ''
+          return (
+            <div key={platform} className="flex items-center gap-2 rounded-md border border-input px-2.5 py-1.5">
+              <Icon className={`h-4 w-4 shrink-0 ${val ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className="text-2xs text-muted-foreground w-16 shrink-0">{meta.label}</span>
+              <input
+                value={val}
+                onChange={e => setHandle(platform, e.target.value)}
+                placeholder={meta.ph}
+                className="flex-1 min-w-0 bg-transparent text-xs outline-none"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck="false"
+              />
+            </div>
+          )
+        })}
+      </div>
+
+      {/* "Find my profiles" — for clinics whose handles aren't linked on their
+          site. Surfaces AI-found candidates to CONFIRM; never auto-saves. */}
+      {missing.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={runSocialLookup} disabled={!canLookup}>
+              {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Search className="h-3.5 w-3.5 mr-1.5" />}
+              {isSearching ? 'Searching…' : 'Find my missing profiles'}
+            </Button>
+            {!canLookup && missing.length > 0 && form.display_name.trim().length <= 1 && (
+              <span className="text-2xs text-muted-foreground">Add your business name first</span>
+            )}
+            {socialLookup.status === 'error' && (
+              <span className="text-2xs text-destructive inline-flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5" /> Couldn&apos;t search — add handles by hand
+              </span>
+            )}
+          </div>
+
+          {socialLookup.status === 'done' && Object.keys(socialLookup.candidates).length === 0 && (
+            <p className="text-2xs text-muted-foreground">
+              No confident matches found — add any handles by hand above.
+            </p>
+          )}
+
+          {Object.entries(socialLookup.candidates).map(([platform, list]) => {
+            if (!Array.isArray(list) || !list.length) return null
+            const meta = SOCIAL_META[platform]
+            if (!meta) return null
+            const { Icon } = meta
+            return (
+              <div key={platform} className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 space-y-1.5">
+                <p className="text-2xs font-medium text-orange-900 inline-flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" /> Is this your {meta.label}?
+                </p>
+                {list.slice(0, 3).map((c, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2">
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-2xs text-orange-900 underline truncate min-w-0"
+                      title={c.url}
+                    >
+                      {c.handle}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => acceptCandidate(platform, c.handle)}
+                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white border border-orange-300 px-2 py-0.5 text-2xs font-medium text-orange-800 hover:bg-orange-100"
+                    >
+                      <Check className="h-3 w-3" /> Yes, that&apos;s me
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLookup, setSocialLookup, onBack, onContinue }) {
+  const isScanning = scanState.status === 'scanning'
+  const scanned = scanState.status === 'done'
+  const canContinue = form.display_name.trim().length > 0
+    && form.locations.length > 0 && form.locations[0].city.trim().length > 0
+    && !isScanning
+  const canScan = URL_LIKE(form.website) && !isScanning
 
   function updateLocation(idx, key, value) {
     setForm(f => ({
@@ -660,45 +982,34 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
     }))
   }
 
-  async function runScan() {
-    setScanState({ status: 'scanning', error: null, sources: [], recent_topics: [], services: [] })
-    try {
-      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public onboarding scan; rate-limited, not auth-gated (api/onboarding/scan-website.js)
-      const r = await fetch('/api/onboarding/scan-website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: form.website }),
-      })
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}))
-        setScanState({ status: 'error', error: err.error || 'scan-failed', sources: [], recent_topics: [], services: [] })
-        return
-      }
-      const data = await r.json()
-      applyScan(data)
-      setScanState({
-        status: 'done',
-        error: null,
-        sources: data.source_pages || [],
-        recent_topics: Array.isArray(data.recent_topics) ? data.recent_topics : [],
-        services: Array.isArray(data.services) ? data.services : [],
-      })
-    } catch {
-      setScanState({ status: 'error', error: 'network-error', sources: [], recent_topics: [], services: [] })
-    }
-  }
-
   return (
     <Card
       title="Tell us about your business"
-      subtitle="First, a few basics — we use these to set up your workspace and make your content sound like it's genuinely from your practice, not generic AI. Nothing here is locked in; you can edit all of it later in settings."
+      subtitle={scanned
+        ? "We pre-filled what we could from your website — give it a quick once-over and fix anything that's off. Nothing is locked in; you can edit all of it later in settings."
+        : "A few basics — we use these to set up your workspace and make your content sound like it's genuinely from your practice, not generic AI. Nothing here is locked in; you can edit all of it later in settings."}
     >
+      {scanned && (
+        <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          <span>Read {scanState.sources.length} page{scanState.sources.length === 1 ? '' : 's'} from your site and pre-filled the fields below.</span>
+        </div>
+      )}
+
       <FieldRow label="Business name *" hint="What you'd put on a sign.">
         <Input value={form.display_name} onChange={e => setField('display_name')(e.target.value)} placeholder="Acme Movement" autoComplete="organization" />
       </FieldRow>
-      <FieldRow label="Website" hint="We can scan it to draft your brand voice — optional but recommended.">
-        <Input type="url" value={form.website} onChange={e => setField('website')(e.target.value)} placeholder="https://yourpractice.com" autoComplete="url" />
+      <FieldRow label="Website" hint="Used to draft your voice and find your social profiles.">
+        <div className="flex gap-2">
+          <Input type="url" value={form.website} onChange={e => setField('website')(e.target.value)} placeholder="https://yourpractice.com" autoComplete="url" />
+          <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={runScan} disabled={!canScan}>
+            {isScanning && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+            {isScanning ? 'Scanning…' : scanned ? 'Re-scan' : 'Scan'}
+          </Button>
+        </div>
       </FieldRow>
+      {isScanning && <ScanningIndicator />}
+
       <div className="space-y-2">
         <Label className="text-xs">Where is your practice? *</Label>
         <p className="text-2xs text-muted-foreground">
@@ -766,74 +1077,15 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
         </button>
       </div>
 
-      {/* Scan block — the explanatory copy is read-only, so it gets the left-rule
-          note treatment (no full card border, which would read as tappable). The
-          only interactive element is the explicit "Scan my website" button, which
-          carries the persistent button affordance. Matches the PR #1246 convention. */}
-      <div className="space-y-2.5">
-        <div className="flex gap-2.5 border-l-2 border-primary/50 pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
-          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-          <span>
-            <strong className="text-foreground font-medium">Scan your website to draft your voice.</strong>{' '}
-            We&apos;ll read your home page, your services / treatments / programs
-            pages, your about page, and a few blog posts if you have them — then
-            propose starter brand voice context grounded in what you actually
-            offer and how you actually write. You&apos;ll review and edit on the next
-            step.
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={runScan}
-            disabled={!canScan || isScanning}
-          >
-            {isScanning && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-            {isScanning ? 'Scanning…' : scanState.status === 'done' ? 'Re-scan' : 'Scan my website'}
-          </Button>
-          {scanState.status === 'done' && (
-            <span className="text-xs text-green-600 inline-flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Read {scanState.sources.length} page{scanState.sources.length === 1 ? '' : 's'}
-            </span>
-          )}
-          {scanState.status === 'error' && (
-            <span className="text-xs text-destructive inline-flex items-center gap-1">
-              <AlertCircle className="h-3.5 w-3.5" />
-              {scanState.error === 'fetch-failed' ? 'Could not load that URL' : scanState.error}
-            </span>
-          )}
-        </div>
+      <SocialHandlesSection
+        form={form}
+        setForm={setForm}
+        socialLookup={socialLookup}
+        setSocialLookup={setSocialLookup}
+      />
 
-        {isScanning && (
-          <div className="mt-1 rounded-md border border-orange-200 bg-orange-50 px-3 py-2.5 space-y-2">
-            <div className="flex items-start gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-orange-600 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-orange-900">
-                  {SCAN_STATUS_MESSAGES[scanMessageIdx]}
-                </p>
-                <p className="text-2xs text-orange-700 mt-0.5">
-                  This usually takes 20–60 seconds. We&apos;re reading up to 15 pages from your site.
-                  {scanElapsed > 0 && ` (${scanElapsed}s elapsed)`}
-                </p>
-              </div>
-            </div>
-            <div className="h-1 w-full overflow-hidden rounded-full bg-orange-100">
-              <div className="h-full w-1/3 animate-pulse bg-orange-500 rounded-full" />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-end gap-3 pt-2">
-        {isScanning && (
-          <span className="text-xs text-muted-foreground">
-            Hang on — finishing the scan before you continue.
-          </span>
-        )}
+      <div className="flex items-center justify-between pt-2">
+        <Button variant="ghost" onClick={onBack}>← Back</Button>
         <Button onClick={onContinue} disabled={!canContinue}>
           Continue <ArrowRight className="h-4 w-4 ml-1" />
         </Button>

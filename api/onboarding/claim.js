@@ -145,6 +145,42 @@ const PUBLIC_EMAIL_DOMAINS = new Set([
   'pm.me', 'gmx.com', 'zoho.com', 'fastmail.com',
 ])
 
+// Social handles collected during onboarding (detected from the website scan,
+// confirmed via the "is this you?" lookup, or typed manually). Stored on
+// workspaces.social as a flat { platform: handle } map. We accept a bare handle
+// or a full profile URL and normalize to a bare handle; unknown platforms and
+// empty values are dropped. LinkedIn/YouTube keep their prefix segment
+// (company/<x>, in/<x>, @<x>, channel/<x>) so the handle round-trips to a URL.
+const SOCIAL_PLATFORMS = new Set(['instagram', 'facebook', 'linkedin', 'youtube', 'tiktok', 'twitter'])
+const SOCIAL_HOST_PREFIX = /^(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|facebook\.com|fb\.com|linkedin\.com|youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com)\//i
+
+function sanitizeSocialHandle(v) {
+  if (typeof v !== 'string') return null
+  let s = v.trim()
+  if (!s) return null
+  // If they pasted a full URL, keep only the path portion as the handle.
+  if (SOCIAL_HOST_PREFIX.test(s)) {
+    s = s.replace(SOCIAL_HOST_PREFIX, '').split(/[?#]/)[0].replace(/\/+$/, '')
+  }
+  s = s.replace(/^@/, '').trim()
+  // Allow word chars, dot, underscore, hyphen, and a single internal slash
+  // (for linkedin company/<x>, youtube channel/<x>). Strip anything else.
+  s = s.replace(/[^A-Za-z0-9._/-]/g, '')
+  if (!s || s.length > 120) return null
+  return s
+}
+
+function sanitizeSocial(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const out = {}
+  for (const [platform, raw] of Object.entries(v)) {
+    if (!SOCIAL_PLATFORMS.has(platform)) continue
+    const handle = sanitizeSocialHandle(raw)
+    if (handle) out[platform] = handle
+  }
+  return Object.keys(out).length ? out : null
+}
+
 function pickEnabledOutputs(arr) {
   if (!Array.isArray(arr)) return []
   const valid = new Set(Object.keys(OUTPUT_CHANNELS))
@@ -247,6 +283,7 @@ async function handler(req, res) {
   // capture_name — the founding clinician's display name for the Capture Companion.
   // Falls back to display_name so the seed row is never blank.
   const capture_name     = sanitizeStr(body.capture_name, 80) || display_name
+  const social           = sanitizeSocial(body.social)
   let website_hostname = null
   if (website) {
     try { website_hostname = new URL(website).hostname } catch { /* noop */ }
@@ -355,6 +392,7 @@ async function handler(req, res) {
     clinic_context,
     audience_short,
     brand_voice,
+    ...(social ? { social } : {}),
     capabilities: {},
     enabled_outputs,
     publish_intent,

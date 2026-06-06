@@ -7,7 +7,8 @@ export const config = { runtime: 'nodejs' }
 //
 // Body: { url }
 // Response: { display_name, audience_short, brand_voice, clinic_context,
-//             services: string[], recent_topics: string[], source_pages: string[] }
+//             services: string[], recent_topics: string[], source_pages: string[],
+//             social: { instagram?, facebook?, linkedin?, youtube?, tiktok?, twitter? } }
 //
 // Fetches the user's home page, discovers candidate service / about / blog
 // pages from its links, fetches a handful of them, extracts the visible copy,
@@ -200,6 +201,118 @@ function discoverLinks(html, origin) {
   return candidates
 }
 
+// Deterministically pull social-profile handles out of the fetched HTML by
+// scanning every <a href> (and a couple of common non-anchor spots) for known
+// social-platform URLs. This is regex over the real markup — NOT an AI guess —
+// so a handle we return is one the site actually links to. We parse the bare
+// username from the URL path and reject non-profile URLs (post permalinks,
+// share/intent dialogs, sharer endpoints, generic landing pages).
+//
+// Returns a partial map keyed by platform; only platforms we actually found
+// are present. First match wins per platform (footers usually carry the canonical
+// links and we scan home first).
+const SOCIAL_MATCHERS = [
+  {
+    platform: 'instagram',
+    host: /(^|\.)instagram\.com$/i,
+    // /<handle> or /<handle>/ — reject reserved/section paths.
+    reserved: new Set(['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'accounts', 'about', 'directory', 'share']),
+  },
+  {
+    platform: 'facebook',
+    host: /(^|\.)(facebook\.com|fb\.com|fb\.me)$/i,
+    reserved: new Set(['sharer', 'sharer.php', 'share', 'dialog', 'plugins', 'tr', 'events', 'groups', 'watch', 'marketplace', 'gaming', 'login', 'profile.php', 'people', 'pages', 'photo', 'story.php', 'permalink.php']),
+  },
+  {
+    platform: 'linkedin',
+    host: /(^|\.)linkedin\.com$/i,
+    // LinkedIn handles live under /company/<x> or /in/<x>; capture the segment.
+    keepPrefix: new Set(['company', 'in', 'school']),
+    reserved: new Set(['sharing', 'shareArticle', 'sharearticle', 'cws', 'feed', 'jobs', 'pulse', 'posts', 'login', 'uas']),
+  },
+  {
+    platform: 'youtube',
+    host: /(^|\.)(youtube\.com|youtu\.be)$/i,
+    // @handle, /c/<x>, /channel/<x>, /user/<x>.
+    reserved: new Set(['watch', 'embed', 'results', 'playlist', 'shorts', 'feed', 'hashtag', 'about']),
+  },
+  {
+    platform: 'tiktok',
+    host: /(^|\.)tiktok\.com$/i,
+    // Profiles are /@handle.
+    reserved: new Set(['tag', 'music', 'video', 'discover', 'foryou', 'following', 'explore', 'live']),
+  },
+  {
+    platform: 'twitter',
+    host: /(^|\.)(twitter\.com|x\.com)$/i,
+    reserved: new Set(['intent', 'share', 'home', 'hashtag', 'search', 'i', 'compose', 'messages', 'explore', 'settings', 'notifications', 'login', 'signup']),
+  },
+]
+
+function parseSocialUrl(rawUrl) {
+  let u
+  try { u = new URL(rawUrl) } catch { return null }
+  if (!['http:', 'https:'].includes(u.protocol)) return null
+  const segs = u.pathname.split('/').map(s => s.trim()).filter(Boolean)
+  if (!segs.length) return null
+
+  for (const m of SOCIAL_MATCHERS) {
+    if (!m.host.test(u.hostname)) continue
+
+    // LinkedIn-style: handle lives under a known prefix segment.
+    if (m.keepPrefix) {
+      const prefix = segs[0].toLowerCase()
+      if (!m.keepPrefix.has(prefix) || !segs[1]) return null
+      const handle = decodeURIComponent(segs[1]).replace(/[^A-Za-z0-9._-]/g, '')
+      if (!handle || m.reserved.has(handle.toLowerCase())) return null
+      return { platform: m.platform, handle: `${prefix}/${handle}` }
+    }
+
+    // YouTube @handle or /c|channel|user/<x>.
+    if (m.platform === 'youtube') {
+      const first = decodeURIComponent(segs[0])
+      if (first.startsWith('@')) {
+        const h = first.replace(/[^A-Za-z0-9._@-]/g, '')
+        return h.length > 1 ? { platform: m.platform, handle: h } : null
+      }
+      if (['c', 'channel', 'user'].includes(first.toLowerCase()) && segs[1]) {
+        const h = decodeURIComponent(segs[1]).replace(/[^A-Za-z0-9._-]/g, '')
+        return h ? { platform: m.platform, handle: `${first.toLowerCase()}/${h}` } : null
+      }
+      return null
+    }
+
+    // Default: first path segment is the handle (strip a leading @ for TikTok).
+    let handle = decodeURIComponent(segs[0]).replace(/^@/, '')
+    handle = handle.replace(/[^A-Za-z0-9._-]/g, '')
+    if (!handle || m.reserved.has(handle.toLowerCase())) return null
+    // A bare username should not look like a file or contain a dot-extension.
+    if (/\.(php|html?|aspx?)$/i.test(segs[0])) return null
+    return { platform: m.platform, handle }
+  }
+  return null
+}
+
+function extractSocialLinks(htmls, origin) {
+  const found = {}
+  const hrefRe = /(?:href|content)=["']([^"']+)["']/gi
+  for (const html of htmls) {
+    if (!html) continue
+    let m
+    while ((m = hrefRe.exec(html)) !== null) {
+      let href = m[1].trim()
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) continue
+      let abs
+      try { abs = new URL(href, origin).toString() } catch { continue }
+      const parsed = parseSocialUrl(abs)
+      if (parsed && !found[parsed.platform]) {
+        found[parsed.platform] = parsed.handle
+      }
+    }
+  }
+  return found
+}
+
 function scorePath(path) {
   // Higher = more interesting. Negative would mean "skip".
   // Penalize obvious noise.
@@ -360,6 +473,10 @@ async function handler(req, res) {
     corpus.push(extractText(html, pageUrl, MAX_TEXT_CHARS_SECONDARY))
   })
 
+  // Deterministically harvest social-profile handles from every fetched page's
+  // raw HTML (footers + headers usually carry them). Independent of the AI call.
+  const social = extractSocialLinks([homeHtml, ...secondaryHtmls], u.origin)
+
   let object
   try {
     const result = await generateObject({
@@ -386,7 +503,11 @@ async function handler(req, res) {
     services: Array.isArray(object.services) ? object.services.filter(s => typeof s === 'string' && s.trim()) : [],
     recent_topics: Array.isArray(object.recent_topics) ? object.recent_topics.filter(s => typeof s === 'string' && s.trim()) : [],
     source_pages: sourcePages,
+    social,
   })
 }
 
 export default withSentry(handler)
+
+// Exported for unit testing the deterministic social-handle parser (pure, no I/O).
+export { parseSocialUrl, extractSocialLinks }
