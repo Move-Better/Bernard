@@ -110,6 +110,11 @@ async function handler(req, res) {
   }
   const website = sanitizeStr(body.website, 500)
   const location = sanitizeStr(body.location, 200)
+  // context: what the business does (from the website scan's clinic_context).
+  // Critical for disambiguating generic names — "Move Better" matches dozens of
+  // accounts, but "Move Better, a movement/chiropractic clinic in Portland that
+  // treats the root cause of pain" pins the search to the right one.
+  const context = sanitizeStr(body.context, 600)
   const missing = Array.isArray(body.missing)
     ? body.missing.filter(p => PLATFORMS.includes(p))
     : PLATFORMS.slice()
@@ -119,6 +124,7 @@ async function handler(req, res) {
     `Business name: ${displayName}`,
     website ? `Website: ${website}` : null,
     location ? `Location: ${location}` : null,
+    context ? `What the business does: ${context}` : null,
     `Platforms to find: ${missing.join(', ')}`,
   ].filter(Boolean).join('\n')
 

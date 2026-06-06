@@ -831,6 +831,9 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
           location: form.locations?.[0]
             ? [form.locations[0].city, form.locations[0].region].filter(Boolean).join(', ')
             : '',
+          // Disambiguates generic names — the scan's "what you do" pins the
+          // search to the right account among similarly-named ones.
+          context: form.clinic_context || '',
           missing,
         }),
       })
