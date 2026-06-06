@@ -22,12 +22,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { SignIn, SignUp, useAuth, useUser, useOrganizationList } from '@clerk/react'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
+import {
+  OUTPUT_CHANNELS,
+  DEFAULT_PUBLISH_INTENT,
+  channelOneClickReadyForIntent,
+  channelHiddenForIntent,
+} from '@/lib/outputChannels'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 export default function Onboarding() {
@@ -45,6 +50,11 @@ export default function Onboarding() {
     audience_short: '',
     brand_voice: '',
     slug: '',
+    // publish_intent: answers to the "How do you publish today?" step (runs
+    // BEFORE channels). Tailors which integrations are surfaced later and which
+    // channels show a one-click-ready badge. Pre-filled with the recommended
+    // path. See src/lib/outputChannels.js for the shape + semantics.
+    publish_intent: { ...DEFAULT_PUBLISH_INTENT },
     enabled_outputs: [],
     // capture_name: the founding user's display name for content — seeds the
     // clinicians row at claim time. Defaults to their Clerk firstName + lastName;
@@ -138,6 +148,15 @@ export default function Onboarding() {
             slugCheck={slugCheck}
             setSlugCheck={setSlugCheck}
             onBack={() => setStep('voice')}
+            onContinue={() => setStep('publish')}
+          />
+        )}
+
+        {step === 'publish' && (
+          <PublishIntentScreen
+            form={form}
+            setForm={setForm}
+            onBack={() => setStep('subdomain')}
             onContinue={() => setStep('channels')}
           />
         )}
@@ -146,7 +165,7 @@ export default function Onboarding() {
           <ChannelsScreen
             form={form}
             setForm={setForm}
-            onBack={() => setStep('subdomain')}
+            onBack={() => setStep('publish')}
             onContinue={() => setStep('capture')}
           />
         )}
@@ -191,6 +210,7 @@ export default function Onboarding() {
                     audience_short: form.audience_short,
                     brand_voice: form.brand_voice,
                     enabled_outputs: form.enabled_outputs,
+                    publish_intent: form.publish_intent,
                     capture_name: form.capture_name || form.display_name,
                   }),
                 })
@@ -244,12 +264,13 @@ const STEP_LABELS = {
   business: 'Your business',
   voice: 'Brand voice',
   subdomain: 'Choose subdomain',
+  publish: 'How you publish',
   channels: 'Pick channels',
   capture: 'Capture setup',
   review: 'Review',
   launching: 'Setting up',
 }
-const VISIBLE_STEPS = ['business', 'voice', 'subdomain', 'channels', 'capture', 'review']
+const VISIBLE_STEPS = ['business', 'voice', 'subdomain', 'publish', 'channels', 'capture', 'review']
 
 function ProgressBar({ step }) {
   if (!VISIBLE_STEPS.includes(step)) return null
@@ -1009,7 +1030,98 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
   )
 }
 
-// ── 5. Channels ──────────────────────────────────────────────────────────────
+// ── 5. How you publish ───────────────────────────────────────────────────────
+//
+// Runs BEFORE Pick Channels. Plain-language "what tools do you already use?"
+// The answers (a) tailor which integration connect-options show in onboarding +
+// /settings/integrations and (b) annotate the channel picker with one-click
+// badges. Nothing here blocks anyone — every group has a "not yet / I'll paste
+// myself" path, and every channel still works as a clean export regardless.
+
+function IntentOption({ selected, title, body, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex flex-col items-start gap-0.5 rounded-lg border p-3 text-left transition ${
+        selected
+          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+          : 'border-input hover:border-primary/40 hover:bg-accent/30'
+      }`}
+    >
+      <span className="text-sm font-medium leading-snug">{title}</span>
+      <span className="text-xs text-muted-foreground leading-snug">{body}</span>
+    </button>
+  )
+}
+
+function IntentGroup({ icon: Icon, title, colsClass, children }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-orange-600" />
+        <h3 className="text-sm font-semibold">{title}</h3>
+      </div>
+      <div className={`grid grid-cols-1 ${colsClass} gap-2.5`}>{children}</div>
+    </div>
+  )
+}
+
+function PublishIntentScreen({ form, setForm, onBack, onContinue }) {
+  const intent = form.publish_intent || {}
+  const set = (key, val) =>
+    setForm(f => ({ ...f, publish_intent: { ...(f.publish_intent || {}), [key]: val } }))
+
+  return (
+    <Card
+      title="How do you publish today?"
+      subtitle="NarrateRx works as a clean copy-and-paste export from day one — you never need any of this. But if you tell us the tools you already use, we'll skip the ones you don't and show you exactly how to connect the ones you do. You can change all of this later in settings."
+    >
+      <IntentGroup icon={Globe} title="Your website — where blog posts go" colsClass="sm:grid-cols-3">
+        <IntentOption selected={intent.website === 'wordpress'} onClick={() => set('website', 'wordpress')}
+          title="WordPress" body="Connect via an application password." />
+        <IntentOption selected={intent.website === 'astro'} onClick={() => set('website', 'astro')}
+          title="Custom / Astro / static site" body="Connect via a publish webhook." />
+        <IntentOption selected={intent.website === 'none'} onClick={() => set('website', 'none')}
+          title="No site yet / not sure" body="Fine — blog posts still export as clean text." />
+      </IntentGroup>
+
+      <IntentGroup icon={Share2} title="Social media — Instagram, Facebook, LinkedIn, GBP…" colsClass="sm:grid-cols-2">
+        <IntentOption selected={intent.social === 'buffer'} onClick={() => set('social', 'buffer')}
+          title="Yes — set up one-click posting" body="We use a free tool called Buffer that posts to all your accounts at once." />
+        <IntentOption selected={intent.social === 'manual'} onClick={() => set('social', 'manual')}
+          title="I'll copy & paste myself for now" body="You can switch on one-click any time later." />
+      </IntentGroup>
+
+      <IntentGroup icon={Mail} title="Email newsletter" colsClass="sm:grid-cols-3">
+        <IntentOption selected={intent.newsletter === 'beehiiv'} onClick={() => set('newsletter', 'beehiiv')}
+          title="I use Beehiiv" body="Push drafts straight into Beehiiv." />
+        <IntentOption selected={intent.newsletter === 'other'} onClick={() => set('newsletter', 'other')}
+          title="Another tool / Mailchimp / none" body="Newsletters export as ready-to-send HTML to paste anywhere." />
+        <IntentOption selected={intent.newsletter === 'skip'} onClick={() => set('newsletter', 'skip')}
+          title="No newsletter" body="We'll hide the newsletter channel." />
+      </IntentGroup>
+
+      <div className="flex items-start gap-3 rounded-lg border border-input bg-accent/40 px-3.5 py-2.5">
+        <BarChart3 className="h-4 w-4 text-info shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Optional:</strong> Connect Google Analytics later so NarrateRx can see which
+          posts actually drew traffic and aim future content at what&apos;s working. Read-only — set it up in settings whenever you&apos;re ready.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between pt-2">
+        <Button variant="ghost" onClick={onBack}>← Back</Button>
+        <Button onClick={onContinue}>
+          Continue <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+// ── 6. Channels ──────────────────────────────────────────────────────────────
 
 function ChannelsScreen({ form, setForm, onBack, onContinue }) {
   function toggle(id) {
@@ -1058,6 +1170,23 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
     website: 'Publishes to your site once connected',
     tdc: 'Sends via your newsletter once connected',
   }
+  // Tailor the picker to the "How you publish" answers: hide the newsletter
+  // tile if they said "no newsletter", and badge each channel whose tool they
+  // told us they use as one-click-ready. No channel is hidden for lacking an
+  // integration — export always works.
+  const intent = form.publish_intent || {}
+  const visibleChannels = Object.values(OUTPUT_CHANNELS).filter(
+    c => !channelHiddenForIntent(c.id, intent)
+  )
+  // If they came back and a now-hidden channel is still selected, prune it so
+  // we never silently enable something they opted out of.
+  useEffect(() => {
+    setForm(f => {
+      const next = f.enabled_outputs.filter(id => !channelHiddenForIntent(id, intent))
+      return next.length === f.enabled_outputs.length ? f : { ...f, enabled_outputs: next }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intent.newsletter])
   return (
     <Card
       title="Pick your channels"
@@ -1074,17 +1203,18 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
         <span>Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-        {Object.values(OUTPUT_CHANNELS).map(channel => {
+        {visibleChannels.map(channel => {
           const checked = form.enabled_outputs.includes(channel.id)
           const upgrade = channel.publishMode ? UPGRADE_HINT[channel.publishMode] : null
           const Icon = CHANNEL_ICON[channel.id] || Globe
+          const ready = channelOneClickReadyForIntent(channel.id, intent)
           return (
             <button
               type="button"
               key={channel.id}
               onClick={() => toggle(channel.id)}
               aria-pressed={checked}
-              title={`${EXPORT_LABEL[channel.exportShape] || 'Copy & paste anywhere'}${upgrade ? ` · ${upgrade}` : ''}`}
+              title={`${EXPORT_LABEL[channel.exportShape] || 'Copy & paste anywhere'}${upgrade ? ` · ${upgrade}` : ''}${ready ? ' · one-click ready with your connected tools' : ''}`}
               className={`group flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition ${
                 checked
                   ? 'border-primary bg-primary/5 ring-1 ring-primary'
@@ -1093,6 +1223,9 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
             >
               <Icon className={`h-4 w-4 shrink-0 ${checked ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
               <span className="flex-1 min-w-0 truncate text-xs font-medium leading-tight">{channel.label}</span>
+              {ready && (
+                <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-2xs font-semibold leading-none text-primary">1-click</span>
+              )}
               {checked && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
             </button>
           )

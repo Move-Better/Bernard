@@ -20,7 +20,7 @@ import { createClerkClient, verifyToken } from '@clerk/backend'
 import { validateSlug, FOUNDING_CAP, SEED_SLUGS } from '../_lib/onboardingValidation.js'
 import { addProjectDomain, vercelDomainConfigured, VercelDomainError } from '../_lib/vercelDomains.js'
 import { sendAdminNotification } from '../_lib/notifyAdmin.js'
-import { OUTPUT_CHANNELS } from '../../src/lib/outputChannels.js'
+import { OUTPUT_CHANNELS, sanitizePublishIntent } from '../../src/lib/outputChannels.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -181,6 +181,11 @@ async function handler(req, res) {
   // Validate enabled_outputs — must pick at least one
   const enabled_outputs = pickEnabledOutputs(body.enabled_outputs)
   if (enabled_outputs.length === 0) return res.status(400).json({ error: 'no-channels-selected' })
+
+  // publish_intent — answers to the "How do you publish today?" step. Tailors
+  // which integrations are surfaced post-onboarding; never gates a channel.
+  // Coerced to a valid shape (unknown values fall back to defaults).
+  const publish_intent = sanitizePublishIntent(body.publish_intent)
 
   // Capacity check (founding cap).
   //
@@ -352,6 +357,7 @@ async function handler(req, res) {
     brand_voice,
     capabilities: {},
     enabled_outputs,
+    publish_intent,
     video_pipeline_enabled: true,
     clerk_org_id: org.id,
     is_founding: true,

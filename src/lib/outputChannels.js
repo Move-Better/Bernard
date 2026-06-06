@@ -257,3 +257,91 @@ export function exportShapeForPlatform(platform) {
   const channel = channelId ? OUTPUT_CHANNELS[channelId] : null
   return channel?.exportShape || EXPORT_SHAPES.SOCIAL_COMPOSE
 }
+
+// ── Publish intent (onboarding "How do you publish today?" step) ─────────────
+//
+// Captured in the onboarding wizard BEFORE the channel picker and stored on
+// workspaces.publish_intent. It does NOT gate anything — every channel always
+// exports (the export-first scope decision is preserved). Intent only:
+//   1. tailors which integration connect-options are surfaced (hide WordPress
+//      for an Astro shop, hide Buffer for a paste-it-myself user), and
+//   2. annotates the channel picker with one-click-ready badges.
+// The single exception that hides a channel is an explicit "no newsletter".
+//
+// This module is the ONE shared source of truth, imported by the onboarding
+// wizard (src/pages/Onboarding.jsx), the integrations settings page
+// (src/pages/Integrations.jsx), and the claim handler (api/onboarding/claim.js).
+export const PUBLISH_INTENT_OPTIONS = Object.freeze({
+  website:    ['wordpress', 'astro', 'none'],
+  social:     ['buffer', 'manual'],
+  newsletter: ['beehiiv', 'other', 'skip'],
+})
+
+// Defaults match the recommended path: no website yet, social one-click on
+// (Buffer is recommended), newsletter via export. Used to pre-fill the wizard
+// and as the fallback when a stored value is malformed.
+export const DEFAULT_PUBLISH_INTENT = Object.freeze({
+  website: 'none',
+  social: 'buffer',
+  newsletter: 'other',
+})
+
+// Coerce an arbitrary value into a valid publish_intent. Unknown keys/values
+// are dropped to the default for that key. Safe to run on request bodies.
+export function sanitizePublishIntent(value) {
+  const out = { ...DEFAULT_PUBLISH_INTENT }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out
+  for (const key of Object.keys(PUBLISH_INTENT_OPTIONS)) {
+    const v = value[key]
+    if (typeof v === 'string' && PUBLISH_INTENT_OPTIONS[key].includes(v)) out[key] = v
+  }
+  if (typeof value.analytics === 'boolean') out.analytics = value.analytics
+  return out
+}
+
+// True once the workspace has actually answered the publish-intent step. A bare
+// {} (every pre-existing workspace) is treated as "not captured" so the
+// integrations UI falls back to showing everything (back-compat).
+export function hasPublishIntent(intent) {
+  return Boolean(
+    intent && typeof intent === 'object' && !Array.isArray(intent) &&
+    (intent.website || intent.social || intent.newsletter)
+  )
+}
+
+// Which integration `service` ids each intent answer makes relevant — drives
+// the "hide integrations only" filter in onboarding + /settings/integrations.
+// No intent captured → returns true for everything (back-compat). Callers must
+// still OR this with "already connected" so a live credential is never hidden.
+export function isIntegrationRelevantForIntent(serviceId, intent) {
+  if (!hasPublishIntent(intent)) return true
+  switch (serviceId) {
+    case 'wordpress':    return intent.website === 'wordpress'
+    case 'astro_github': return intent.website === 'astro'
+    case 'website':      return intent.website === 'wordpress' || intent.website === 'astro'
+    case 'buffer':       return intent.social === 'buffer'
+    case 'beehiiv':      return intent.newsletter === 'beehiiv'
+    case 'ga4':          return true   // analytics is always offerable
+    default:             return true   // unknown services are never hidden by intent
+  }
+}
+
+// True when, given the stated intent, connecting the matching integration would
+// upgrade this channel to one-click publishing — drives the picker badge.
+export function channelOneClickReadyForIntent(channelId, intent) {
+  const channel = OUTPUT_CHANNELS[channelId]
+  if (!channel || !channel.publishMode) return false
+  switch (channel.publishMode) {
+    case PUBLISH_MODES.BUFFER:  return intent?.social === 'buffer'
+    case PUBLISH_MODES.WEBSITE: return intent?.website === 'wordpress' || intent?.website === 'astro'
+    case PUBLISH_MODES.TDC:     return intent?.newsletter === 'beehiiv'
+    default:                    return false
+  }
+}
+
+// The ONLY channel an intent answer may hide: the newsletter tile, and only
+// when the user explicitly says they run no newsletter. Everything else always
+// stays visible (export-first).
+export function channelHiddenForIntent(channelId, intent) {
+  return channelId === 'email' && intent?.newsletter === 'skip'
+}
