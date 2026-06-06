@@ -789,9 +789,13 @@ export default function InterviewSession() {
 
     if (user?.id) {
       const patch = { messages: updated }
-      if (isComplete) patch.status = 'in_progress'
       // Clear session_state when the AI signals completion — the interview
       // is done and the resume banner should not appear on next visit.
+      // NOTE: do NOT write status here. Status transitions to 'completed' only
+      // via the updateInterview call after blog generation (~60-120s later).
+      // Writing 'in_progress' here was wrong (same value it already has) and
+      // created a race where the fire-and-forget saveMessages could overwrite
+      // the 'completed' status set by the generation PATCH.
       if (isComplete) { patch.session_state = null; patch.paused_at = null }
       saveMessages(interviewId, patch)
       // Once the AI declares the interview complete, the local backup has
