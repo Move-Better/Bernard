@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
+import { useWakeLock } from '../hooks/useWakeLock'
 import {
   Loader2, Send, CheckCircle2, AlertCircle, Sparkles, FlaskConical,
   Mic, MicOff, Volume2, RefreshCw, Keyboard,
@@ -91,6 +92,8 @@ export default function OnboardingInterview() {
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [completed, setCompleted] = useState(false)
+  // Keep the screen awake while the onboarding interview is live.
+  useWakeLock(!completed)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [synthesisStatus, setSynthesisStatus] = useState('idle')

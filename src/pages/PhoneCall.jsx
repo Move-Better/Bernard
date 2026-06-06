@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
+import { useWakeLock } from '../hooks/useWakeLock'
 import { ArrowLeft, Phone, PhoneOff, Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -86,6 +87,8 @@ export default function PhoneCall() {
   const [phase, setPhase] = useState('setup')
   const [errorMsg, setErrorMsg] = useState(null)
   const [connState, setConnState] = useState('idle') // idle | connecting | connected | ending
+  // Keep the screen awake for the duration of the call.
+  useWakeLock(connState === 'connecting' || connState === 'connected')
   const [paused, setPaused] = useState(false)
   /**
    * Live connection-quality reading from RTCPeerConnection.getStats(). null
