@@ -1250,6 +1250,9 @@ export default function InterviewSession() {
   // Completion card — the finish screen. Rests on a primary "See your story →"
   // handoff; the user controls when to leave (no auto-nav).
   const [completionData, setCompletionData] = useState(null)
+  // True when handleGenerateContent's catch fires — shows a dedicated recovery
+  // card instead of leaving the user in a silent dead-end.
+  const [generationError, setGenerationError] = useState(false)
   // Optional video-attach prompt, opened from the completion card's optional
   // link. No longer an auto-advancing gate on the finish screen.
   const [showVideoPrompt, setShowVideoPrompt] = useState(false)
@@ -1296,6 +1299,7 @@ export default function InterviewSession() {
   async function handleGenerateContent() {
     setIsGenerating(true)
     setError('')
+    setGenerationError(false)
     blogStreamingTextRef.current = ''
     setCoveredSummary('')
     ttsRef.current?.cancel()
@@ -1457,6 +1461,7 @@ export default function InterviewSession() {
       // handoff. Video attach is an optional link on that card, never an
       // auto-advancing gate — so no timer pushes the user into it.
     } catch (err) {
+      setGenerationError(true)
       setError(`Failed to generate content: ${err.message}`)
       setIsGenerating(false)
     }
@@ -1704,7 +1709,7 @@ export default function InterviewSession() {
         ref={conversationRef}
         onMouseUp={handleSelectionUp}
         onTouchEnd={handleSelectionUp}
-        className={`flex-1 relative pr-4 -mr-4 overflow-hidden ${isGenerating || completionData ? 'hidden' : ''}`}
+        className={`flex-1 relative pr-4 -mr-4 overflow-hidden ${isGenerating || completionData || generationError ? 'hidden' : ''}`}
       >
         {selectionTip && (
           <button
@@ -1915,6 +1920,40 @@ export default function InterviewSession() {
               staffName={completionData.staffName}
               onDone={() => navigate(`/stories/${interviewId}`, { replace: true })}
             />
+          </div>
+        </div>
+      )}
+
+      {interviewComplete && !isGenerating && !completionData && generationError && (
+        <div className="flex-1 flex items-center justify-center py-6">
+          <div className="rounded-xl border bg-card p-6 max-w-md w-full text-center space-y-4">
+            <div className="mx-auto h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertCircle className="h-7 w-7 text-destructive" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">Generation didn&apos;t finish</h2>
+              <p className="text-sm text-muted-foreground">
+                {error || 'Something went wrong during content generation.'}
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Your interview is saved — you can try again or view what&apos;s in your story.
+            </p>
+            <Button
+              className="w-full"
+              onClick={handleGenerateContent}
+            >
+              <RefreshCw className="h-4 w-4 mr-1.5" />
+              Try again
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate(`/stories/${interviewId}`, { replace: true })}
+            >
+              View story anyway
+              <ArrowRight className="h-4 w-4 ml-1.5" />
+            </Button>
           </div>
         </div>
       )}
