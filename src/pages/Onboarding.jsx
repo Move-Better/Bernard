@@ -1050,7 +1050,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
   // integration is connected (Buffer for social/GBP, WordPress/Astro for blog,
   // newsletter for email). null publishMode = export-only by design.
   const UPGRADE_HINT = {
-    buffer: 'Publishes via Buffer once connected',
+    buffer: 'Auto-posts once a scheduler is connected',
     website: 'Publishes to your site once connected',
     tdc: 'Sends via your newsletter once connected',
   }
@@ -1060,7 +1060,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
       subtitle="Where should your content go? Pick the formats this workspace should create — each interview drafts the ones you choose here so you're never staring at a blank page. You can change this any time in settings."
     >
       <div className="rounded-lg border border-orange-200 bg-orange-50 px-3.5 py-2.5 text-xs text-orange-900 leading-relaxed">
-        Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Connect an integration later (starting with <strong>Buffer</strong>) and those channels upgrade to one-click publishing.
+        Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Later, you can connect a <strong>social scheduling tool</strong> (we use one called Buffer) and those channels upgrade to one-click publishing.
       </div>
       <div className="rounded-lg border border-input bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
         Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.
@@ -1095,7 +1095,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
         })}
       </div>
       <p className="text-xs text-muted-foreground">
-        Pick at least one. Buffer fans social posts out to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
+        Pick at least one. Once connected, a social scheduling tool (we use Buffer — a free service that posts to all your social accounts at once) can fan your posts out to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
       </p>
       <div className="flex items-center justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>← Back</Button>
