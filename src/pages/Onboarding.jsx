@@ -765,18 +765,22 @@ function BusinessScreen({ form, setForm, setField, scanState, setScanState, appl
         </button>
       </div>
 
-      <div className="border rounded-md p-3 bg-muted/30 space-y-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-orange-600" />
-          <p className="text-sm font-medium">Scan your website to draft your voice</p>
+      {/* Scan block — the explanatory copy is read-only, so it gets the left-rule
+          note treatment (no full card border, which would read as tappable). The
+          only interactive element is the explicit "Scan my website" button, which
+          carries the persistent button affordance. Matches the PR #1246 convention. */}
+      <div className="space-y-2.5">
+        <div className="flex gap-2.5 border-l-2 border-primary/50 pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
+          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+          <span>
+            <strong className="text-foreground font-medium">Scan your website to draft your voice.</strong>{' '}
+            We&apos;ll read your home page, your services / treatments / programs
+            pages, your about page, and a few blog posts if you have them — then
+            propose starter brand voice context grounded in what you actually
+            offer and how you actually write. You&apos;ll review and edit on the next
+            step.
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          We&apos;ll read your home page, your services / treatments / programs
-          pages, your about page, and a few blog posts if you have them — then
-          propose starter brand voice context grounded in what you actually
-          offer and how you actually write. You&apos;ll review and edit on the next
-          step.
-        </p>
         <div className="flex items-center gap-2">
           <Button
             type="button"
