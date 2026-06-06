@@ -109,8 +109,6 @@ For Supabase REST failures, the `dbErr(res, r, msg)` helper in each `api/db/*.js
 
 **Reading `responseStatusCode` in Vercel logs**: a value of `0` means the function crashed or timed out before returning any response — it's NOT an HTTP status code. A value of `200` means the handler returned successfully, even if the response body has `{error: ...}` and the client toasts it as a failure. When triaging prod errors, filter on `responseStatusCode=0` to find crashes, then read the `logs` array on that entry for the actual stack. Always log `e.stack` (not just `e.message`) in catch blocks that capture failures into a response `errors[]` array — Sharp / ffmpeg / native module crashes often have empty `.message` and only a useful `.stack`. Related: a warm function instance can return `200` on code that crashes on cold start (fontconfig init, lazy module load, etc.); "works in prod right now" ≠ "ships safely." Exercise the cold-start path before declaring an SVG-rendering / native-dep feature done.
 
-**Streaming SSE handlers commit their status BEFORE the body — a `200` is not proof the stream succeeded.** `api/stream.js` calls `res.flushHeaders()` to send the 200 + SSE headers *before* relaying a single token, then streams the Vercel AI Gateway → Anthropic upstream. If that upstream blips mid-stream, the AI SDK emits an error part that the handler writes *into* the already-200 response body (`data: {type:'error'}`) and the client re-throws it (the browser shows the gateway's literal "A network error occurred" — which describes the gateway↔Anthropic hop, NOT the user's network). Consequence: **every `/api/stream` request logs in Vercel as a clean `200`, including the failures** — they're invisible by status. Two rules: (1) any mid-stream `sendError`-style path MUST `console.error` (tagged, e.g. `[stream]`) so the failure surfaces as an error-level log — without it you're blind to frequency. (2) Client callers of `streamMessage` MUST auto-retry transient stream errors (retry everything except 401/403/429/other 4xx) before surfacing — a single transient upstream blip should never end an interview turn. Reference: `runAssistantTurn` in `src/pages/OnboardingInterview.jsx` + `isTransientStreamError` (PR #1240).
-
 ### Bundle smoke test
 CI runs `npm run verify-bundles` (= `node scripts/verify-function-bundles.mjs`) after `npm run build`. The script dynamically imports every `api/**/*.js` handler from the project root and fails if any throws at module-load time — the same failure mode as `ERR_INTERNAL_ASSERTION` from a native dep like `sharp` with the wrong conditional-export resolution, or a static import of a name the target module doesn't export. This is the bundle-time complement to the `narraterx/api-handler-shape` ESLint rule.
 
@@ -219,6 +217,20 @@ The shared `/api/stream` endpoint and its client wrapper `streamMessage()` in `s
    ```
 
    On error, the user gets the error card with a "Try again" action that page-reloads (resetting the ref). No silent auto-retry. PR #731 fixed both bugs after they hit prod.
+
+## Custom ESLint rules to know before writing JSX
+
+Two project-specific rules bite hard if you don't know them:
+
+- **`narraterx/no-arbitrary-text-size`** — prohibits `text-[10px]`, `text-[11px]`, etc. Use the semantic tokens instead: `text-3xs` (10px) or `text-2xs` (11px). Lint will error at 0-warnings-allowed; the fix is a global replace before committing.
+- **`narraterx/no-raw-use-mutation`** — use `useAppMutation` not raw TanStack `useMutation`.
+- **`narraterx/no-raw-api-fetch`** — use `apiFetch`/`apiFetchResponse`, never bare `fetch('/api/...')`.
+
+## Template literal backticks in `src/lib/prompts.js`
+
+All system-prompt functions in `prompts.js` return template literal strings (backtick-delimited). **Any backtick character inside the return value terminates the string and causes an ESLint parse error** (error message: `Parsing error: Unexpected token :`). This includes markdown code formatting: writing `` `[STAGE:n]` `` inside a prompt causes the failure even though it looks like documentation.
+
+Rule: when editing prompt functions in `prompts.js`, use single quotes `'value'`, `[brackets]`, or plain text for any value you'd normally set in backtick-fenced formatting. Never use raw `` ` `` inside a template literal prompt unless you escape it as `` \` ``.
 
 ## Lint ratchet
 The `npm run lint` script enforces a `--max-warnings <N>` ceiling (currently **0** — the ratchet has been driven all the way down from 152 at the pre-launch audit). The ratchet should drift **down** over time, not up. Rule:
