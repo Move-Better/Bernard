@@ -223,10 +223,11 @@ export default function OnboardingInterview() {
     return () => { cancelled = true }
   }, [workspace?.id, user?.id, founderName, dryRun])
 
-  // Auto-scroll to the latest message.
+  // Newest content renders at the top; pin the view there so the latest turn
+  // stays visible and older turns scroll off below.
   useEffect(() => {
     if (!scrollRef.current) return
-    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' })
   }, [messages, streamingText])
 
   // ── Persist messages + status to the server ──────────────────────────────
@@ -721,9 +722,7 @@ export default function OnboardingInterview() {
         className="flex-1 overflow-y-auto space-y-4 pb-4 px-1"
         style={{ minHeight: '300px' }}
       >
-        {messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} content={m.content} />
-        ))}
+        {/* Newest-first: latest turn renders at the top, older turns flow down. */}
         {streaming && streamingText && (
           <MessageBubble role="assistant" content={streamingText} streaming />
         )}
@@ -733,6 +732,10 @@ export default function OnboardingInterview() {
             <span>{workspace?.interviewer_name || 'Bernard'} is thinking…</span>
           </div>
         )}
+        {messages.slice().reverse().map((m, ri) => {
+          const i = messages.length - 1 - ri
+          return <MessageBubble key={i} role={m.role} content={m.content} />
+        })}
       </div>
 
       {completed ? (

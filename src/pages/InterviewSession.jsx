@@ -227,7 +227,7 @@ export default function InterviewSession() {
   const [selectionTip, setSelectionTip] = useState(null)
   const conversationRef = useRef(null)
 
-  const bottomRef = useRef(null)
+  const topRef = useRef(null)
   const hasStarted = useRef(false)
   // Last assistant turn's input, so the inline "Try again" button can re-run it
   // in place after a transient stream failure (no full page reload).
@@ -572,8 +572,10 @@ export default function InterviewSession() {
     )
   }, [interview?.campaign_id, campaignsList, staffMember, runtimeWorkspace])
 
+  // Newest content renders at the top; keep the view pinned there so the
+  // latest question/answer stays visible and older turns scroll off below.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [messages, streamingText])
 
   useEffect(() => {
@@ -1634,10 +1636,29 @@ export default function InterviewSession() {
           </button>
         )}
         <ScrollArea className="h-full pr-4 -mr-4">
+          {/* Newest-first: latest turn renders at the top, older turns flow down. */}
           <div className="space-y-4 pb-4">
-          {displayMessages.map((msg, i) => (
-            <MessageBubble key={i} message={msg} staffName={firstNameOnly} />
-          ))}
+          <div ref={topRef} />
+
+          {error && (
+            <div className="flex items-center gap-3 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="flex-1 min-w-0">{error}</span>
+              {lastTurnRef.current && !isStreaming && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => {
+                    const t = lastTurnRef.current
+                    if (t) sendToAI(t.currentMessages)
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+                </Button>
+              )}
+            </div>
+          )}
 
           {isStreaming && streamingText && (
             <MessageBubble
@@ -1662,27 +1683,10 @@ export default function InterviewSession() {
             </div>
           )}
 
-          {error && (
-            <div className="flex items-center gap-3 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span className="flex-1 min-w-0">{error}</span>
-              {lastTurnRef.current && !isStreaming && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0"
-                  onClick={() => {
-                    const t = lastTurnRef.current
-                    if (t) sendToAI(t.currentMessages)
-                  }}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
-                </Button>
-              )}
-            </div>
-          )}
-
-          <div ref={bottomRef} />
+          {displayMessages.slice().reverse().map((msg, ri) => {
+            const i = displayMessages.length - 1 - ri
+            return <MessageBubble key={i} message={msg} staffName={firstNameOnly} />
+          })}
         </div>
         </ScrollArea>
       </div>
