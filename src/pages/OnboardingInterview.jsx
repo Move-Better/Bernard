@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -32,12 +32,10 @@ const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 
 // Cap consecutive silent SpeechRecognition auto-resumes within a single user
 // turn. Without a cap, a stuck mic can spin forever (especially on iOS).
-// Matches the value used in InterviewSession.
 const RESTART_CAP = 30
 
 // End-of-turn phrases — matched at the end of a final transcript so the user
-// can say "done" / "that's all" instead of tapping the mic. Lifted from
-// InterviewSession; the same vocabulary works for any voice interview.
+// can say "done" / "that's all" instead of tapping the mic.
 const STOP_PHRASES = [
   "that's all",
   "that's it",
@@ -48,6 +46,9 @@ const STOP_PHRASES = [
   "submit",
   "done",
 ]
+
+// The five interview areas used for the stage progress rail.
+const STAGE_NAMES = ['Origin', 'Who you serve', 'Philosophy', 'Voice & tone', 'Topic seeds']
 
 function detectAndStripStopPhrase(transcript) {
   const normalized = transcript.trimEnd().toLowerCase()
@@ -62,9 +63,8 @@ function detectAndStripStopPhrase(transcript) {
 }
 
 // Is a stream failure worth auto-retrying? Auth (401/403) and rate-limit (429)
-// won't recover on retry; everything else (gateway→Anthropic upstream blips
-// surfaced as "A network error occurred", 5xx, timeouts, generic fetch aborts)
-// is transient and safe to re-run the turn for.
+// won't recover on retry; everything else (gateway blips, 5xx, timeouts) is
+// transient and safe to re-run the turn for.
 function isTransientStreamError(e) {
   const status = e?.status
   if (status === 401 || status === 403 || status === 429) return false
@@ -79,6 +79,16 @@ function detectComplete(raw) {
   return { text: cleaned, complete: true }
 }
 
+// Detect and strip the [STAGE:n] UI signal Bernard emits at the start of each
+// response. Strips before display/speech; drives the 5-stage progress rail.
+function detectStageTag(raw) {
+  const match = raw.match(/\[STAGE:([1-5])\]/)
+  if (!match) return { text: raw, stage: null }
+  const stage = parseInt(match[1], 10)
+  const cleaned = raw.replace(/\[STAGE:[1-5]\]\s*/g, '')
+  return { text: cleaned, stage }
+}
+
 export default function OnboardingInterview() {
   useDocumentTitle('Onboarding interview')
   const navigate = useNavigate()
@@ -86,7 +96,7 @@ export default function OnboardingInterview() {
   const { user } = useUser()
   const { role } = useUserRole()
 
-  // ── Existing interview state ─────────────────────────────────────────────
+  // ── Interview state ──────────────────────────────────────────────────────
   const [interview, setInterview] = useState(null)
   const [messages, setMessages] = useState([])
   const [streaming, setStreaming] = useState(false)
@@ -101,21 +111,21 @@ export default function OnboardingInterview() {
   const [synthesisCounts, setSynthesisCounts] = useState(null)
   const [synthesisResult, setSynthesisResult] = useState(null)
 
-  // ── Voice state (new in P2b) ─────────────────────────────────────────────
-  // SpeechRecognition feature detection. iOS Safari → false, falls back to
-  // typed-answer textarea automatically.
+  // currentStage (1–5) tracks which interview area Bernard is in.
+  // Driven by [STAGE:n] tokens emitted by the model; stripped before display.
+  const [currentStage, setCurrentStage] = useState(1)
+
+  // retryCount re-triggers the bootstrap effect for in-place error recovery.
+  const [retryCount, setRetryCount] = useState(0)
+
+  // ── Voice state ──────────────────────────────────────────────────────────
   const hasSpeechRecognition = useMemo(() => (
     typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   ), [])
 
-  // micCheckPassed gates the chat UI behind the pre-interview audio test
-  // (mic permission + TTS speaker check). Only required on a fresh interview;
-  // resumed interviews skip it (the user already passed it once).
+  // primerSeen gates the "what to expect" screen before MicCheck. Fresh only.
   const [micCheckPassed, setMicCheckPassed] = useState(false)
-  // primerSeen gates the "what to expect" primer that runs before MicCheck on
-  // a fresh interview. Like MicCheck, resumed/completed interviews skip it —
-  // the founder has already read it once.
   const [primerSeen, setPrimerSeen] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -123,9 +133,7 @@ export default function OnboardingInterview() {
   const [typedAnswer, setTypedAnswer] = useState('')
   const [audioInterrupted, setAudioInterrupted] = useState(false)
 
-  // Voice refs — all the SpeechRecognition machinery for keeping the mic
-  // open through thinking pauses. See InterviewSession startListening for
-  // the canonical comments.
+  // Voice refs — SpeechRecognition machinery
   const ttsRef = useRef(null)
   const recognitionRef = useRef(null)
   const userAnswerActiveRef = useRef(false)
@@ -137,44 +145,42 @@ export default function OnboardingInterview() {
   const autoListenRef = useRef(false)
   const messagesRef = useRef([])
 
-  // Bootstrap seed-once guard. Distinct from the kickoff guard below: this
-  // is for the GET-or-POST interview row, which must only fire once even on
-  // tab refocus / refetch.
+  // Waveform visualization refs — parallel getUserMedia stream for mic level.
+  // SpeechRecognition doesn't expose audio data; second stream is viz-only.
+  const waveformRef = useRef(null)
+  const analyserRef = useRef(null)
+  const animFrameRef = useRef(null)
+  const vizStreamRef = useRef(null)
+  const vizCtxRef = useRef(null)
+
+  // Bootstrap seed-once guard — prevents duplicate POST on concurrent renders.
   const seededRef = useRef(false)
   // Kickoff guard — prevents the first-message effect from retrying on error.
   const kickedOffRef = useRef(false)
-  // Last assistant turn's input, so the inline "Try again" button can re-run it
-  // in place after a transient stream failure (no full page reload).
+  // Last assistant turn input — lets the inline "Try again" re-run the turn.
   const lastTurnRef = useRef(null)
-  const scrollRef = useRef(null)
+
   const founderName = (user?.fullName || user?.firstName || '').trim() || 'there'
 
-  // Dry-run mode — append ?dryRun=1 to the URL. Synthesis runs end-to-end
-  // but no writes happen. Used during P5 prompt tuning.
+  // Dry-run mode — append ?dryRun=1 to the URL.
   const [searchParams] = useSearchParams()
   const dryRun = useMemo(() => {
     const v = searchParams.get('dryRun')
     return v === '1' || v === 'true'
   }, [searchParams])
 
-  // Keep messagesRef in sync — handleRestoreAudio reads it inside a non-
-  // React callback to find the last assistant message.
   useEffect(() => { messagesRef.current = messages }, [messages])
 
-  // Lazy-create the TTS player. Reusing one instance means iOS gesture
-  // priming sticks across all utterances (per the shared-audio-element
-  // memory). Don't ever new Audio() per utterance.
+  // Lazy-create the TTS player. Reusing one instance keeps iOS gesture priming.
   const getTts = useCallback(() => {
     if (!ttsRef.current) ttsRef.current = createTtsPlayer()
     return ttsRef.current
   }, [])
 
   // ── Bootstrap — fetch existing or create new interview row ───────────────
+  // retryCount included so in-place retry re-triggers without page reload.
   useEffect(() => {
     if (!workspace?.id || !user?.id || seededRef.current) return
-    // Set synchronously before any await so concurrent effect firings (caused
-    // by Clerk re-rendering user/founderName during session hydration) don't
-    // both pass the seededRef guard and race to POST a second interview row.
     seededRef.current = true
 
     let cancelled = false
@@ -193,25 +199,18 @@ export default function OnboardingInterview() {
         setMessages(Array.isArray(row?.messages) ? row.messages : [])
         if (row?.status === 'completed' || row?.status === 'synthesized') {
           setCompleted(true)
-          // Resumed/completed interviews skip the primer + MicCheck — they've
-          // already gone through the chat once.
           setPrimerSeen(true)
           setMicCheckPassed(true)
         }
         if (row?.status === 'synthesized' && !dryRun) {
           setSynthesisStatus('already')
         }
-        // Resumed in-progress interviews also skip MicCheck — the user
-        // passed it on their first session and we want to drop them back
-        // into the conversation without a re-test.
         if (Array.isArray(row?.messages) && row.messages.length > 0) {
           setPrimerSeen(true)
           setMicCheckPassed(true)
         }
       } catch (e) {
         if (!cancelled) {
-          // Reset the guard on failure so a full page reload can retry.
-          // We don't reset on cancel (unmount) — the effect already fired.
           seededRef.current = false
           setError(e?.message || 'Failed to start interview')
         }
@@ -221,14 +220,13 @@ export default function OnboardingInterview() {
     })()
 
     return () => { cancelled = true }
-  }, [workspace?.id, user?.id, founderName, dryRun])
+  }, [workspace?.id, user?.id, founderName, dryRun, retryCount])
 
-  // Newest content renders at the top; pin the view there so the latest turn
-  // stays visible and older turns scroll off below.
+  // ── Audio failure subscription ───────────────────────────────────────────
   useEffect(() => {
-    if (!scrollRef.current) return
-    scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [messages, streamingText])
+    const unsubscribe = onAudioPlaybackFailure(() => setAudioInterrupted(true))
+    return unsubscribe
+  }, [])
 
   // ── Persist messages + status to the server ──────────────────────────────
   const interviewId = interview?.id
@@ -250,15 +248,6 @@ export default function OnboardingInterview() {
     }
   }, [interviewId])
 
-  // ── Audio failure subscription ───────────────────────────────────────────
-  // Fires on iOS route change, BT disconnect, audio session interruption.
-  // We surface a "Restore audio" button instead of letting the interview
-  // silently fail to play.
-  useEffect(() => {
-    const unsubscribe = onAudioPlaybackFailure(() => setAudioInterrupted(true))
-    return unsubscribe
-  }, [])
-
   // ── TTS: speak the assistant turn ────────────────────────────────────────
   const speak = useCallback((text) => {
     if (!text) return
@@ -267,9 +256,6 @@ export default function OnboardingInterview() {
       onStart: () => setIsSpeaking(true),
       onEnd: () => {
         setIsSpeaking(false)
-        // Flag to the auto-listen effect that the next render should fire
-        // startListening. Effect-based dispatch avoids racing the React
-        // state batcher between setIsSpeaking and the effect re-eval.
         autoListenRef.current = true
       },
       onError: () => setIsSpeaking(false),
@@ -277,7 +263,6 @@ export default function OnboardingInterview() {
   }, [getTts])
 
   // Re-prime + replay the last assistant message after an audio interruption.
-  // Must run inside a user gesture (the click on the restore button).
   const handleRestoreAudio = useCallback(() => {
     primeAudioPlayback()
     setAudioInterrupted(false)
@@ -290,8 +275,6 @@ export default function OnboardingInterview() {
   // ── Stream the next assistant turn ───────────────────────────────────────
   const runAssistantTurn = useCallback(async (currentMessages, { isFirstMessage }) => {
     if (!workspace) return
-    // Remember the turn so the inline "Try again" button can re-run it in place
-    // (without a full page reload) after a transient failure.
     lastTurnRef.current = { currentMessages, isFirstMessage }
     setStreaming(true)
     setStreamingText('')
@@ -299,18 +282,11 @@ export default function OnboardingInterview() {
 
     const systemPrompt = getOnboardingInterviewSystemPrompt(workspace, founderName, { isFirstMessage })
 
-    // Claude API / Vercel AI Gateway require >=1 message — system-only
-    // requests return AI_InvalidPromptError. Silent starter pattern.
     const streamInput = currentMessages.length === 0
       ? [{ role: 'user', content: 'Please begin the onboarding interview.' }]
       : currentMessages
 
-    // The gateway→Anthropic upstream occasionally blips mid-stream — the AI SDK
-    // surfaces it as an error part that our /api/stream handler writes into the
-    // (already-200) SSE body, and the client throws "A network error occurred".
-    // That is NOT the user's network. A single transient blip should never end
-    // the interview, so auto-retry the whole turn a couple of times before
-    // surfacing the error. Auth/rate-limit errors (4xx) are not retried.
+    // Auto-retry transient blips up to 3 times before surfacing to the user.
     let buffer = ''
     const MAX_ATTEMPTS = 3
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -318,15 +294,15 @@ export default function OnboardingInterview() {
       try {
         for await (const delta of streamMessage(streamInput, systemPrompt, { model: 'claude-sonnet-4-6', maxOutputTokens: 1024 })) {
           buffer += delta
-          const { text } = detectComplete(buffer)
+          const { text: noComplete } = detectComplete(buffer)
+          const { text, stage } = detectStageTag(noComplete)
+          if (stage) setCurrentStage(stage)
           setStreamingText(text)
         }
         break // success
       } catch (e) {
-        const status = e?.status
         const retriable = isTransientStreamError(e)
         if (retriable && attempt < MAX_ATTEMPTS) {
-          // Exponential-ish backoff: 600ms, 1500ms. Reset the partial buffer.
           setStreamingText('')
           await new Promise((r) => { setTimeout(r, attempt === 1 ? 600 : 1500) })
           continue
@@ -335,17 +311,19 @@ export default function OnboardingInterview() {
         setStreamingText('')
         setError(
           retriable
-            ? 'The interviewer lost connection for a moment. Tap "Try again" to continue — your answers are saved.'
+            ? 'The interviewer lost connection for a moment. Tap "Try again" — your answers are saved.'
             : (e?.message || 'Stream failed'),
         )
-        // 4xx auth errors won't recover on retry; surface the raw message.
-        if (status === 401 || status === 403) setError(e?.message || 'Session expired — reload to continue.')
+        if (e?.status === 401 || e?.status === 403) setError(e?.message || 'Session expired — reload to continue.')
         return
       }
     }
 
-    const { text, complete: hasCompleteMarker } = detectComplete(buffer)
-    const finalText = text.trim()
+    const { text: noComplete, complete: hasCompleteMarker } = detectComplete(buffer)
+    const { text: withoutStage, stage: finalStage } = detectStageTag(noComplete)
+    if (finalStage) setCurrentStage(finalStage)
+    const finalText = withoutStage.trim()
+
     if (!finalText) {
       setStreaming(false)
       setStreamingText('')
@@ -363,8 +341,6 @@ export default function OnboardingInterview() {
       await persist(nextMessages, 'completed')
     } else {
       await persist(nextMessages)
-      // Speak the assistant's message after persistence so the audio doesn't
-      // start before the message is durable.
       speak(finalText)
     }
   }, [workspace, founderName, persist, speak])
@@ -378,13 +354,82 @@ export default function OnboardingInterview() {
     runAssistantTurn([], { isFirstMessage: true })
   }, [loading, completed, streaming, interview, micCheckPassed, messages.length, runAssistantTurn])
 
+  // ── Waveform visualization via Web Audio ─────────────────────────────────
+  // Parallel getUserMedia stream for level data. Falls back to sine idle
+  // breathing so the waveform is always visibly moving, never "glitched."
+  useEffect(() => {
+    if (!hasSpeechRecognition || !isListening) {
+      cancelAnimationFrame(animFrameRef.current)
+      if (vizStreamRef.current) {
+        vizStreamRef.current.getTracks().forEach(t => t.stop())
+        vizStreamRef.current = null
+      }
+      if (vizCtxRef.current) {
+        vizCtxRef.current.close().catch(() => {})
+        vizCtxRef.current = null
+      }
+      analyserRef.current = null
+      if (waveformRef.current) {
+        Array.from(waveformRef.current.children).forEach(bar => {
+          bar.style.transform = ''
+        })
+      }
+      return
+    }
+
+    let rafId
+    function draw() {
+      rafId = requestAnimationFrame(draw)
+      const bars = waveformRef.current ? Array.from(waveformRef.current.children) : []
+      if (!bars.length) return
+      if (analyserRef.current) {
+        const data = new Uint8Array(analyserRef.current.frequencyBinCount)
+        analyserRef.current.getByteFrequencyData(data)
+        bars.forEach((bar, i) => {
+          const idx = Math.floor((i / bars.length) * data.length)
+          const val = data[idx] / 255
+          bar.style.transform = `scaleY(${Math.max(0.12, val * 0.9 + 0.08)})`
+        })
+      } else {
+        // Sine idle breathing — visible and alive during silence
+        const t = Date.now() / 1000
+        bars.forEach((bar, i) => {
+          const s = 0.14 + 0.28 * (0.5 + 0.5 * Math.sin(t * 1.3 + i * 0.48))
+          bar.style.transform = `scaleY(${s})`
+        })
+      }
+    }
+    animFrameRef.current = rafId
+    draw()
+
+    let active = true
+    ;(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        if (!active) { stream.getTracks().forEach(t => t.stop()); return }
+        vizStreamRef.current = stream
+        const ctx = new AudioContext()
+        vizCtxRef.current = ctx
+        const source = ctx.createMediaStreamSource(stream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 64
+        source.connect(analyser)
+        analyserRef.current = analyser
+      } catch {
+        // getUserMedia denied — sine idle continues
+      }
+    })()
+
+    return () => {
+      active = false
+      cancelAnimationFrame(rafId)
+    }
+  }, [hasSpeechRecognition, isListening])
+
   // ── SpeechRecognition: start / stop ──────────────────────────────────────
-  // Plain function (not useCallback) — startListening is recursive via
-  // maybeAutoResume, and React Compiler's manual-memoization lint can't
-  // verify that. Same pattern as InterviewSession.jsx.
   function startListening({ preserveTranscript = false } = {}) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) return  // iOS Safari → typed-answer fallback handles input
+    if (!SR) return
     if (isListening) return
 
     ttsRef.current?.cancel()
@@ -432,9 +477,6 @@ export default function OnboardingInterview() {
       }
     }
 
-    // Schedule a silent restart so the user can keep their turn through a
-    // thinking pause. Returns true if scheduled, false if we've hit the
-    // cap or the user is no longer mid-answer.
     function maybeAutoResume(delayMs) {
       if (!userAnswerActiveRef.current) return false
       if (completed || streaming) return false
@@ -463,8 +505,6 @@ export default function OnboardingInterview() {
         setIsListening(false)
         return
       }
-      // iOS Chrome 'aborted' usually means TTS still holds the audio session.
-      // Retry once with a longer delay.
       if (e.error === 'aborted') {
         setIsListening(false)
         if (autoListenAbortRetryRef.current < 1 && !completed && !streaming && !isSpeaking) {
@@ -502,7 +542,7 @@ export default function OnboardingInterview() {
     recognitionRef.current?.stop()
   }
 
-  // ── submitUserText — shared path for voice (auto on listen-end) + typed ──
+  // ── submitUserText — shared path for voice + typed ──────────────────────
   const submitUserText = useCallback(async (rawText) => {
     const text = (rawText || '').trim()
     if (!text || streaming || completed) return
@@ -516,25 +556,16 @@ export default function OnboardingInterview() {
     await runAssistantTurn(next, { isFirstMessage: false })
   }, [streaming, completed, messages, runAssistantTurn])
 
-  // ── Finish — explicit "I'm done" button override ─────────────────────────
-  // Bernard only emits INTERVIEW_COMPLETE when the founder signals done in
-  // their answer. The button gives a deterministic exit when the founder
-  // feels they've covered enough — important UX for the external-tenant
-  // proof-of-concept where "say 'I'm done' to the voice agent" is fragile.
-  //
-  // Gated below MIN_TURNS_TO_FINISH so users don't end on turn 2 by accident.
-  // Synthesis quality on too-short transcripts is bad; the gate is a soft
-  // guardrail. We use TURN_PAIRS (assistant + user = 1 pair) for the count.
+  // ── Finish — explicit "I'm done" button ──────────────────────────────────
   const MIN_TURNS_TO_FINISH = 6
   const userTurnCount = messages.filter((m) => m.role === 'user').length
   const canFinish = userTurnCount >= MIN_TURNS_TO_FINISH
   const finishHelper = canFinish
     ? null
-    : `Keep going — Finish unlocks after ${MIN_TURNS_TO_FINISH - userTurnCount} more answer${MIN_TURNS_TO_FINISH - userTurnCount === 1 ? '' : 's'}.`
+    : `${MIN_TURNS_TO_FINISH - userTurnCount} more answer${MIN_TURNS_TO_FINISH - userTurnCount === 1 ? '' : 's'} to unlock Finish`
 
   const handleFinish = useCallback(async () => {
     if (completed || streaming || !canFinish) return
-    // Cancel any in-flight TTS / mic so we don't fight the synthesis flow.
     try { ttsRef.current?.cancel() } catch { /* ignore */ }
     try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
     userAnswerActiveRef.current = false
@@ -544,18 +575,10 @@ export default function OnboardingInterview() {
     setIsSpeaking(false)
     setIsListening(false)
     setCompleted(true)
-    // Persist the existing transcript with status='completed'. The synthesis
-    // effect fires off `completed`, so this single PATCH triggers the rest.
     await persist(messages, 'completed')
   }, [completed, streaming, canFinish, messages, persist])
 
-  // ── Pause — "save and finish later" ──────────────────────────────────────
-  // Every answered turn is already PATCHed to the server (see persist), so the
-  // transcript is durable the moment Bernard replies. Pause just cleanly stops
-  // the audio/mic and sends the founder home; returning to this page reloads
-  // the saved messages and drops them straight back into the conversation
-  // (the bootstrap skips primer + MicCheck once messages exist). We re-persist
-  // first as a belt-and-suspenders flush.
+  // ── Pause — save progress and come back later ────────────────────────────
   const handlePause = useCallback(async () => {
     try { ttsRef.current?.cancel() } catch { /* ignore */ }
     try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
@@ -577,8 +600,6 @@ export default function OnboardingInterview() {
       const timer = setTimeout(() => startListening(), 700)
       return () => clearTimeout(timer)
     }
-    // startListening is a stable scope-level function; listing it would
-    // re-fire the effect needlessly on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSpeechRecognition, isSpeaking, streaming, completed])
 
@@ -587,8 +608,6 @@ export default function OnboardingInterview() {
     if (isListening) return
     if (!transcriptRef.current.trim()) return
     submitUserText(transcriptRef.current)
-    // submitUserText is a stable scope-level helper (useCallback with a
-    // stable transitive dep chain). Listing it would churn this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening])
 
@@ -622,7 +641,7 @@ export default function OnboardingInterview() {
     runSynthesis()
   }, [completed, interviewId, synthesisStatus, runSynthesis])
 
-  // Stop any in-flight TTS / mic on unmount.
+  // Stop TTS / mic on unmount.
   useEffect(() => () => {
     ttsRef.current?.cancel()
     window.speechSynthesis?.cancel()
@@ -657,6 +676,7 @@ export default function OnboardingInterview() {
     )
   }
 
+  // In-place error recovery — no window.location.reload().
   if (error && messages.length === 0) {
     return (
       <div className="px-4 py-12">
@@ -664,35 +684,41 @@ export default function OnboardingInterview() {
           <CardContent className="pt-6 text-center space-y-3">
             <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
             <p className="text-sm">{error}</p>
-            <Button onClick={() => window.location.reload()}>Try again</Button>
+            <Button onClick={() => {
+              setError(null)
+              setLoading(true)
+              seededRef.current = false
+              setRetryCount(c => c + 1)
+            }}>
+              Try again
+            </Button>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  // Primer gate — "what to expect" before the audio test. Sets the founder up
-  // for thought-provoking questions, the open-ended pace, and the fact they
-  // can pause and return. Fresh interviews only; resumed sessions skip it.
+  // Primer gate — "what to expect" before the audio test. Fresh interviews only.
   if (!primerSeen) {
-    return (
-      <InterviewPrimer
-        workspace={workspace}
-        onContinue={() => setPrimerSeen(true)}
-      />
-    )
+    return <InterviewPrimer workspace={workspace} onContinue={() => setPrimerSeen(true)} />
   }
 
-  // MicCheck gate — pre-interview audio test. Only required for a fresh
-  // interview (no messages yet, not completed). Resumed sessions skip it.
+  // MicCheck gate — pre-interview audio test. Resumed sessions skip it.
   if (!micCheckPassed) {
     return <MicCheck onContinue={() => setMicCheckPassed(true)} />
   }
 
-  // ── Main UI ──────────────────────────────────────────────────────────────
+  // ── Derived display values ────────────────────────────────────────────────
+  const lastAssistantIdx = messages.reduce((acc, m, i) => m.role === 'assistant' ? i : acc, -1)
+  const currentQuestion = lastAssistantIdx >= 0 ? messages[lastAssistantIdx].content : null
+  const priorMessages = messages.filter((_, i) => i !== lastAssistantIdx)
+  const userAnswerCount = messages.filter(m => m.role === 'user').length
+  const interviewerName = workspace?.interviewer_name || 'Bernard'
+  const focusText = streaming ? (streamingText || null) : currentQuestion
 
+  // ── Main UI ──────────────────────────────────────────────────────────────
   return (
-    <div className="px-4 py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+    <div className="px-4 py-5 flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
       {dryRun && (
         <div className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 flex items-center gap-2 text-sm">
           <FlaskConical className="h-4 w-4 text-warning shrink-0" />
@@ -705,38 +731,6 @@ export default function OnboardingInterview() {
           </span>
         </div>
       )}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Tell NarrateRx about {workspace?.display_name || 'your practice'}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Take all the time you need — there&rsquo;s no clock, and you can pause and come back. Once we have your voice, every piece NarrateRx generates from here on will sound like you — not a template.
-          </p>
-        </CardHeader>
-      </Card>
-
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto space-y-4 pb-4 px-1"
-        style={{ minHeight: '300px' }}
-      >
-        {/* Newest-first: latest turn renders at the top, older turns flow down. */}
-        {streaming && streamingText && (
-          <MessageBubble role="assistant" content={streamingText} streaming />
-        )}
-        {streaming && !streamingText && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground pl-1">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>{workspace?.interviewer_name || 'Bernard'} is thinking…</span>
-          </div>
-        )}
-        {messages.slice().reverse().map((m, ri) => {
-          const i = messages.length - 1 - ri
-          return <MessageBubble key={i} role={m.role} content={m.content} />
-        })}
-      </div>
 
       {completed ? (
         <SynthesisStateCard
@@ -750,8 +744,138 @@ export default function OnboardingInterview() {
         />
       ) : (
         <>
-          {/* Audio-interrupted recovery banner — iOS BT/CarPlay routing changes
-              fire this; the click is the user gesture we need to re-prime. */}
+          {/* ── 5-stage progress rail ──────────────────────────────────── */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2.5">
+              <h1 className="text-sm font-semibold flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Tell NarrateRx about {workspace?.display_name || 'your practice'}
+              </h1>
+              <span className="text-xs text-muted-foreground">~15 min</span>
+            </div>
+            <div className="flex items-end gap-1.5">
+              {STAGE_NAMES.map((name, i) => {
+                const n = i + 1
+                const done = n < currentStage
+                const active = n === currentStage
+                return (
+                  <div key={n} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                    <div
+                      className="h-1.5 w-full rounded-full"
+                      style={{
+                        background: done
+                          ? 'hsl(var(--primary))'
+                          : active
+                          ? 'linear-gradient(90deg, hsl(var(--primary)) 60%, hsl(var(--muted)) 60%)'
+                          : 'hsl(var(--muted))',
+                      }}
+                    />
+                    <span
+                      className={`text-3xs truncate w-full text-center ${
+                        active ? 'text-primary font-medium' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              <span className="font-medium text-primary">
+                Stage {currentStage} of 5 · {STAGE_NAMES[currentStage - 1]}
+              </span>
+              {userAnswerCount > 0 && ` — ${userAnswerCount} answer${userAnswerCount === 1 ? '' : 's'} so far`}
+            </p>
+          </div>
+
+          {/* ── Collapsible: conversation so far ──────────────────────── */}
+          {priorMessages.length > 0 && (
+            <details className="mb-3 rounded-xl border border-border bg-card text-sm">
+              <summary className="cursor-pointer select-none px-4 py-2.5 font-medium text-muted-foreground flex items-center gap-2 list-none [&::-webkit-details-marker]:hidden">
+                <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                Conversation so far ({userAnswerCount} answer{userAnswerCount === 1 ? '' : 's'}) — tap to review
+              </summary>
+              <div className="px-4 pb-3 pt-1 space-y-2 max-h-56 overflow-y-auto">
+                {priorMessages.map((m, i) => (
+                  <div key={i}>
+                    <span className={`font-medium ${m.role === 'user' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {m.role === 'user' ? 'You' : interviewerName}:
+                    </span>{' '}
+                    <span className={`line-clamp-2 ${m.role === 'user' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {m.content}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {/* ── Focused current question card ──────────────────────────── */}
+          <div className="flex-1 flex flex-col justify-center py-3">
+            <div className="rounded-2xl border border-border bg-card shadow-sm px-6 py-7">
+              {/* Turn tag */}
+              <div className="flex justify-center mb-4">
+                {streaming && !streamingText ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-accent text-accent-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {interviewerName} is thinking…
+                  </span>
+                ) : (streaming && streamingText) || isSpeaking ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700">
+                    <Volume2 className="h-3.5 w-3.5" />
+                    {interviewerName} is asking
+                  </span>
+                ) : isListening ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-accent text-accent-foreground">
+                    <Mic className="h-3.5 w-3.5" />
+                    Your turn
+                  </span>
+                ) : focusText ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-accent text-accent-foreground">
+                    <Mic className="h-3.5 w-3.5" />
+                    Tap mic to answer
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-muted text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Starting…
+                  </span>
+                )}
+              </div>
+
+              {/* Question text */}
+              {streaming && !streamingText ? (
+                <div className="flex justify-center py-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-pulse" />
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '0.4s' }} />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-lg leading-relaxed font-medium text-center text-foreground">
+                  {focusText || (messages.length === 0 ? 'Starting your interview…' : '')}
+                  {streaming && streamingText && (
+                    <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-primary animate-pulse" />
+                  )}
+                </p>
+              )}
+
+              {/* Live transcript builds inside the card as the user speaks */}
+              {isListening && transcript && (
+                <div
+                  aria-live="polite"
+                  className="mt-5 rounded-xl bg-muted px-4 py-3 text-sm text-foreground/80 italic min-h-[48px]"
+                >
+                  &ldquo;{transcript}&rdquo;
+                  <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-primary/60 animate-pulse" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Audio interrupted banner ─────────────────────────────── */}
           {audioInterrupted && (
             <button
               type="button"
@@ -771,151 +895,67 @@ export default function OnboardingInterview() {
             </button>
           )}
 
+          {/* ── In-place error (no reload) ──────────────────────────── */}
           {error && (
-            <div className="mb-2 flex items-center gap-3">
-              <p className="text-sm text-destructive flex items-center gap-2 flex-1 min-w-0">
-                <AlertCircle className="h-4 w-4 shrink-0" /> {error}
-              </p>
-              {lastTurnRef.current && !streaming && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0"
-                  onClick={() => {
-                    const t = lastTurnRef.current
-                    if (t) runAssistantTurn(t.currentMessages, { isFirstMessage: t.isFirstMessage })
-                  }}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
-                </Button>
-              )}
+            <div
+              className="mb-3 rounded-xl border px-4 py-3"
+              style={{ borderColor: 'hsl(var(--destructive) / 0.35)', background: 'hsl(var(--destructive) / 0.06)' }}
+            >
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
+                <div className="flex-1 text-sm min-w-0">
+                  <p className="font-medium">That didn&apos;t go through.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+                </div>
+                {lastTurnRef.current && !streaming && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      const t = lastTurnRef.current
+                      if (t) runAssistantTurn(t.currentMessages, { isFirstMessage: t.isFirstMessage })
+                    }}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Progress strip — gives the founder a sense of how far they've
-              come and a deterministic exit (Finish) instead of needing to
-              say "I'm done" to Bernard. Important for the external-tenant
-              proof-of-concept; "talk to a voice agent to end" is fragile UX. */}
-          <div className="flex items-center justify-between gap-3 mb-2 px-1">
-            <p className="text-xs text-muted-foreground">
-              {userTurnCount === 0
-                ? 'Answer naturally — take your time, and pause whenever you need to.'
-                : <>Turn {userTurnCount} · {finishHelper || 'Finish whenever you feel you’ve covered enough.'}</>}
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handlePause}
-                disabled={streaming || completed}
-                title="Save your progress and come back later — nothing is lost"
-                aria-label="Pause and finish later"
-                className="gap-1.5 text-muted-foreground"
-              >
-                <PauseCircle className="h-3.5 w-3.5" />
-                Pause
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleFinish}
-                disabled={!canFinish || streaming || completed}
-                title={canFinish ? 'End the interview and synthesize your voice' : finishHelper || undefined}
-                aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
-                className="gap-1.5 shrink-0"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Finish
-              </Button>
-            </div>
-          </div>
-
-          {/* Bottom dock — mic for SpeechRecognition browsers, textarea for
-              iOS Safari et al. Same visual surface either way. */}
+          {/* ── Permanent mic dock ────────────────────────────────────── */}
           {hasSpeechRecognition ? (
-            <div className="border-t pt-4 flex flex-col items-center gap-3">
-              {transcript && (
-                <div
-                  aria-live="polite"
-                  aria-label="Transcript"
-                  className="w-full rounded-xl bg-muted px-4 py-3 text-sm text-foreground/80 italic min-h-[44px]"
-                >
-                  &quot;{transcript}&quot;
-                </div>
-              )}
-              <p
-                role="status"
-                aria-live="polite"
-                className="text-xs text-muted-foreground h-4"
-              >
-                {streaming ? '' : isSpeaking ? (
-                  <span className="flex items-center gap-1.5">
-                    <Volume2 className="h-3 w-3 animate-pulse" aria-hidden="true" /> Speaking…
-                  </span>
-                ) : isListening ? (
-                  <span className="flex items-center gap-1.5 text-red-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" /> Listening — take your time. Say &quot;done&quot; or tap mic to send.
-                  </span>
-                ) : 'Tap to speak'}
-              </p>
-              <button
-                onClick={isListening ? stopListening : () => startListening()}
-                disabled={streaming || isSpeaking}
-                aria-label={isListening ? 'Stop recording' : 'Start recording'}
-                aria-pressed={isListening}
-                className={`h-16 w-16 rounded-full flex items-center justify-center transition-all shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                  ${isListening
-                    ? 'bg-red-500 text-white scale-110'
-                    : 'bg-primary text-primary-foreground hover:opacity-90 active:scale-95'
-                  } disabled:opacity-30 disabled:cursor-not-allowed disabled:scale-100`}
-              >
-                {isListening
-                  ? <MicOff className="h-6 w-6" aria-hidden="true" />
-                  : <Mic className="h-6 w-6" aria-hidden="true" />
-                }
-              </button>
-            </div>
+            <VoiceDock
+              streaming={streaming}
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+              transcript={transcript}
+              canFinish={canFinish}
+              finishHelper={finishHelper}
+              interviewerName={interviewerName}
+              waveformRef={waveformRef}
+              onMicClick={() => isListening ? stopListening() : startListening()}
+              onFinish={handleFinish}
+              onPause={handlePause}
+            />
           ) : (
-            <div className="border-t pt-4 flex flex-col gap-2">
-              <p
-                role="status"
-                aria-live="polite"
-                className="text-xs text-muted-foreground h-4 flex items-center gap-1.5"
-              >
-                {streaming ? '' : isSpeaking ? (
-                  <><Volume2 className="h-3 w-3 animate-pulse" aria-hidden="true" /> Speaking…</>
-                ) : (
-                  <><Keyboard className="h-3 w-3" aria-hidden="true" /> Type your answer — voice input isn&rsquo;t supported in this browser</>
-                )}
-              </p>
-              <div className="flex items-end gap-2">
-                <Textarea
-                  value={typedAnswer}
-                  onChange={(e) => setTypedAnswer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault()
-                      if (!streaming && !isSpeaking && typedAnswer.trim()) {
-                        submitUserText(typedAnswer)
-                      }
-                    }
-                  }}
-                  placeholder="Type your answer… (⌘/Ctrl + Enter to send)"
-                  rows={3}
-                  disabled={streaming || isSpeaking}
-                  className="resize-none"
-                />
-                <Button
-                  onClick={() => submitUserText(typedAnswer)}
-                  disabled={streaming || isSpeaking || !typedAnswer.trim()}
-                  size="icon"
-                  className="h-10 w-10 shrink-0"
-                  aria-label="Send"
-                >
-                  {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
+            <TypedDock
+              typedAnswer={typedAnswer}
+              streaming={streaming}
+              isSpeaking={isSpeaking}
+              onChange={setTypedAnswer}
+              onSubmit={() => submitUserText(typedAnswer)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault()
+                  if (!streaming && !isSpeaking && typedAnswer.trim()) submitUserText(typedAnswer)
+                }
+              }}
+              canFinish={canFinish}
+              finishHelper={finishHelper}
+              onFinish={handleFinish}
+            />
           )}
         </>
       )}
@@ -923,11 +963,219 @@ export default function OnboardingInterview() {
   )
 }
 
-// ── Pre-interview primer ─────────────────────────────────────────────────
-// Sets the founder up before the audio test: what this is, that the questions
-// go deep, that pauses and thinking are normal (and a good sign), and that
-// they can stop and come back. Copy is written to be spoken as well as read —
-// the interviewer (Bernard) opens on similar ground.
+// ── VoiceDock — permanent mic dock for SpeechRecognition browsers ─────────────
+function VoiceDock({
+  streaming, isSpeaking, isListening, transcript,
+  canFinish, finishHelper, interviewerName,
+  waveformRef, onMicClick, onFinish, onPause,
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-lg px-4 py-4">
+      {/* Status line — always shows current state */}
+      <div className="flex items-center justify-center gap-2 mb-3 min-h-[20px]" role="status" aria-live="polite">
+        {streaming ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">
+              {interviewerName} is thinking…
+            </span>
+          </>
+        ) : isSpeaking ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-blue-600">
+              {interviewerName} is speaking — listen, then it&apos;s your turn
+            </span>
+          </>
+        ) : isListening ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-destructive">
+              {transcript
+                ? 'Listening — say "done" or tap mic to send'
+                : 'Still listening — take your time, no rush'}
+            </span>
+          </>
+        ) : (
+          <span className="text-sm text-muted-foreground">Tap to speak your answer</span>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        {/* Finish (left) */}
+        <button
+          onClick={onFinish}
+          disabled={!canFinish}
+          title={canFinish ? 'Finish the interview' : finishHelper || undefined}
+          className="flex flex-col items-center gap-0.5 text-muted-foreground disabled:opacity-30 w-16 group"
+          aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+        >
+          <span className="h-10 w-10 rounded-full border border-border flex items-center justify-center group-enabled:group-hover:bg-muted transition-colors">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <span className="text-3xs">Finish</span>
+        </button>
+
+        {/* Center: waveform + mic */}
+        <div className="relative flex items-center justify-center" style={{ width: 160, height: 88 }}>
+          {/* Waveform bars — RAF drives transforms, opacity tracks isListening */}
+          <div
+            ref={waveformRef}
+            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none ${
+              isListening ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-hidden="true"
+            style={{ color: 'hsl(var(--destructive))' }}
+          >
+            {Array.from({ length: 13 }, (_, i) => (
+              <span
+                key={i}
+                className="bg-current rounded-full"
+                style={{
+                  width: '3px',
+                  height: `${14 + Math.round(Math.abs(Math.sin(i * 1.3)) * 28)}px`,
+                  transformOrigin: 'center',
+                  transform: 'scaleY(0.25)',
+                  willChange: 'transform',
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Mic ring + button */}
+          <div className="relative flex items-center justify-center h-[72px] w-[72px]">
+            {isListening && (
+              <span
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ background: 'hsl(var(--destructive) / 0.22)', animationDuration: '1.6s' }}
+                aria-hidden="true"
+              />
+            )}
+            {isSpeaking && (
+              <span
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ background: 'hsl(210 90% 54% / 0.22)', animationDuration: '1.8s' }}
+                aria-hidden="true"
+              />
+            )}
+            {streaming && (
+              <div
+                className="absolute rounded-full animate-spin pointer-events-none"
+                style={{
+                  inset: -4,
+                  background: 'conic-gradient(from 0deg, hsl(var(--primary)) 0%, transparent 55%)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))',
+                }}
+                aria-hidden="true"
+              />
+            )}
+            <button
+              onClick={onMicClick}
+              disabled={streaming || isSpeaking}
+              aria-label={isListening ? 'Stop recording' : 'Start recording'}
+              aria-pressed={isListening}
+              className="relative h-[72px] w-[72px] rounded-full flex items-center justify-center text-white shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+              style={{
+                background: isListening
+                  ? 'hsl(var(--destructive))'
+                  : isSpeaking
+                  ? 'hsl(210 90% 54%)'
+                  : streaming
+                  ? 'hsl(var(--muted))'
+                  : 'hsl(var(--primary))',
+              }}
+            >
+              {isListening ? (
+                <MicOff className="h-7 w-7" aria-hidden="true" />
+              ) : isSpeaking ? (
+                <Volume2 className="h-7 w-7" aria-hidden="true" />
+              ) : streaming ? (
+                <Sparkles className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <Mic className="h-7 w-7" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Pause (right) */}
+        <button
+          onClick={onPause}
+          className="flex flex-col items-center gap-0.5 text-muted-foreground w-16 group"
+          aria-label="Save progress and finish later"
+          title="Save your progress and come back later"
+        >
+          <span className="h-10 w-10 rounded-full border border-border flex items-center justify-center group-hover:bg-muted transition-colors">
+            <PauseCircle className="h-4 w-4" />
+          </span>
+          <span className="text-3xs">Pause</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── TypedDock — fallback for iOS Safari (no SpeechRecognition) ───────────────
+function TypedDock({ typedAnswer, streaming, isSpeaking, onChange, onSubmit, onKeyDown, canFinish, finishHelper, onFinish }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-lg px-4 py-4">
+      <div className="flex items-center justify-center gap-2 mb-3 min-h-[20px]" role="status" aria-live="polite">
+        {streaming ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">Thinking…</span>
+          </>
+        ) : isSpeaking ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+            <span className="text-sm font-medium text-blue-600">Speaking…</span>
+          </>
+        ) : (
+          <>
+            <Keyboard className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm text-muted-foreground">Type your answer — voice input isn&apos;t available in this browser</span>
+          </>
+        )}
+      </div>
+      <div className="flex items-end gap-2">
+        <Textarea
+          value={typedAnswer}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Type your answer… (⌘/Ctrl + Enter to send)"
+          rows={3}
+          disabled={streaming || isSpeaking}
+          className="resize-none"
+        />
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <Button
+            onClick={onSubmit}
+            disabled={streaming || isSpeaking || !typedAnswer.trim()}
+            size="icon"
+            className="h-10 w-10"
+            aria-label="Send"
+          >
+            {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onFinish}
+            disabled={!canFinish || streaming}
+            title={canFinish ? 'Finish interview' : finishHelper || undefined}
+            className="h-10 w-10"
+            aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Pre-interview primer ──────────────────────────────────────────────────────
 function InterviewPrimer({ workspace, onContinue }) {
   const interviewer = workspace?.interviewer_name || 'Bernard'
   const practice = workspace?.display_name || 'your practice'
@@ -946,23 +1194,23 @@ function InterviewPrimer({ workspace, onContinue }) {
       <div className="space-y-3">
         <PrimerCard
           icon={<MessagesSquare className="h-4 w-4 text-primary" />}
-          title="It’s a conversation, not a form"
+          title="It's a conversation, not a form"
           body={`${interviewer} will ask about your practice, your patients, and why you do this work. Just talk the way you would with a colleague — there are no wrong answers, and nothing is published from this.`}
         />
         <PrimerCard
           icon={<Lightbulb className="h-4 w-4 text-primary" />}
           title="Some questions go deep"
-          body="A few of these are genuinely thought-provoking — the kind you may not have put into words before. Most people find their first interview surprisingly striking. If a question stops you in your tracks, that’s exactly the point."
+          body="A few of these are genuinely thought-provoking — the kind you may not have put into words before. Most people find their first interview surprisingly striking. If a question stops you in your tracks, that's exactly the point."
         />
         <PrimerCard
           icon={<Coffee className="h-4 w-4 text-primary" />}
           title="Pausing and thinking is welcome"
-          body="Long pauses are normal and good. Take a breath, think it through, sit with it. There’s no timer running and no rush — the best answers usually come after a moment of reflection."
+          body="Long pauses are normal and good. Take a breath, think it through, sit with it. There's no timer running and no rush — the best answers usually come after a moment of reflection."
         />
         <PrimerCard
           icon={<Clock className="h-4 w-4 text-primary" />}
-          title="There’s no clock"
-          body="It can take as little as five minutes, but in real life most people go longer — and that’s a sign it’s working. You can stop anytime with Pause and pick up right where you left off."
+          title="There's no clock"
+          body="It can take as little as five minutes, but in real life most people go longer — and that's a sign it's working. You can stop anytime with Pause and pick up right where you left off."
         />
       </div>
 
@@ -991,24 +1239,6 @@ function PrimerCard({ icon, title, body }) {
   )
 }
 
-function MessageBubble({ role, content, streaming = false }) {
-  const isUser = role === 'user'
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-foreground'
-        }`}
-      >
-        {content}
-        {streaming && <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-current opacity-50 animate-pulse" />}
-      </div>
-    </div>
-  )
-}
-
 function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, onHome }) {
   if (status === 'running') {
     return (
@@ -1022,7 +1252,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
             <p className="text-sm text-muted-foreground">
               {dryRun
                 ? 'About a minute. The model is producing the synthesis JSON; nothing will be written.'
-                : 'About a minute. We’re reading your transcript and writing your workspace’s voice guidance, patient archetype, topic queue, and phrase bank. Hang tight.'}
+                : "About a minute. We're reading your transcript and writing your workspace's voice guidance, patient archetype, topic queue, and phrase bank. Hang tight."}
             </p>
           </div>
         </CardContent>
@@ -1051,7 +1281,6 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
     )
   }
 
-  // success or already-synthesized
   const isFresh = status === 'success'
   const headline = dryRun
     ? 'Dry-run synthesis complete — nothing was written.'
