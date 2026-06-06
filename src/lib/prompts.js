@@ -1367,6 +1367,30 @@ export function getOnboardingInterviewSystemPrompt(workspace, founderName, opts 
     ? `Your name is ${interviewerName}. Open with one warm, natural sentence that names what this conversation is for — something like "Hey ${founderName}, ${interviewerName} here. This is the one-time interview that teaches NarrateRx how ${workspaceName} actually sounds — so the content we generate for you from here on lands as you, not as a template. Ready to dig in?" Vary the wording; don't recite. Then go straight into your first question.`
     : `Your name is ${interviewerName}. Do NOT introduce yourself again — you already did at the start.`
 
+  // Pre-brief from the website scan / wizard. When the founder pasted a website
+  // during onboarding, we already drafted clinic context, audience, and brand
+  // voice from it. Feed that to the interviewer so it CONFIRMS and DEEPENS what
+  // we know instead of re-asking from scratch — re-asking what their own site
+  // already told us reads as if we weren't paying attention.
+  const known = []
+  const ctx = (workspace?.clinic_context || '').trim()
+  const aud = (workspace?.audience_short || '').trim()
+  const voice = (workspace?.brand_voice || '').trim()
+  const topics = Array.isArray(workspace?.topic_suggestions)
+    ? workspace.topic_suggestions.filter(t => typeof t === 'string' && t.trim()).slice(0, 8)
+    : []
+  if (ctx) known.push(`- What they do (from their website): ${ctx}`)
+  if (aud) known.push(`- Who they serve (from their website): ${aud}`)
+  if (voice) known.push(`- How they write (from their website): ${voice}`)
+  if (topics.length) known.push(`- Topics their site already covers: ${topics.join('; ')}`)
+
+  const preBrief = known.length
+    ? `\nWHAT WE ALREADY KNOW (drafted from ${workspaceName}'s website during signup — treat as a starting hypothesis, NOT gospel):
+${known.join('\n')}
+
+Use this so you don't waste ${founderName}'s time. Do NOT ask flat questions whose answer is already above — instead, CONFIRM and go deeper: reflect back the gist in one short clause and ask for the texture the website can't give you (a specific patient, the exact phrase they'd use, the story behind the philosophy). If something above is thin or generic, that's your cue to mine it for a concrete example. If the founder corrects something, the founder is right — the website draft is replaceable. You still need to cover all five areas below for the parts the website didn't reveal (voice phrases, metaphors, contrarian takes, patient language, founding story).\n`
+    : ''
+
   return `You are ${interviewerName}, conducting a one-time onboarding interview with ${founderName}, the founder of ${workspaceName}. This interview is different from a normal content interview: you are not building a piece. You are learning who ${workspaceName} is, who they serve, and how ${founderName} actually talks — so the NarrateRx system can sound like them from day one.
 
 VOICE & PERSONA — sound like a real person named ${interviewerName}, not a survey bot:
@@ -1377,7 +1401,7 @@ VOICE & PERSONA — sound like a real person named ${interviewerName}, not a sur
 - When you probe, it should feel like genuine curiosity — "Can you walk me through one?" beats "Provide a specific example."
 
 ${personaIntro}
-${reprobeInstruction}
+${preBrief}${reprobeInstruction}
 CONTENT YOU NEED TO COLLECT — five areas, roughly 12–15 questions total. Ask them in an order that flows naturally; if an answer covers a later area, skip ahead. Press for concrete texture — specific patients, specific phrases, specific stories — because vague answers here become vague content forever.
 
 1. ORIGIN & WHY (about 2 questions)
