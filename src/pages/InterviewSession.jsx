@@ -256,6 +256,14 @@ export default function InterviewSession() {
   // Stable timer ref so we can cancel pending restarts on stop/cleanup.
   const restartTimerRef = useRef(null)
   const finalTranscriptRef = useRef('')
+  // Waveform visualization refs — parallel getUserMedia stream for mic level.
+  // SpeechRecognition doesn't expose audio data, so we open a second stream
+  // purely for visualization and release it when not listening.
+  const waveformRef = useRef(null)
+  const analyserRef = useRef(null)
+  const animFrameRef = useRef(null)
+  const vizStreamRef = useRef(null)
+  const vizCtxRef = useRef(null)
   const interviewRef = useRef(null)
   const pastInterviewsRef = useRef([])
   // Emotional-state ref: 'weighted' | 'resistant' | null.
@@ -842,6 +850,80 @@ export default function InterviewSession() {
     // recoverOrphanedAudio is stable (useCallback []); one-shot via the ref above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewId, user?.id, interview])
+
+  // Waveform visualization via Web Audio.
+  // Opens a parallel getUserMedia stream for level visualization. Falls back
+  // to a sine-wave idle animation if getUserMedia is unavailable or denied —
+  // the waveform always breathes, never looks frozen.
+  useEffect(() => {
+    if (!hasSpeechRecognition || !isListening) {
+      cancelAnimationFrame(animFrameRef.current)
+      if (vizStreamRef.current) {
+        vizStreamRef.current.getTracks().forEach(t => t.stop())
+        vizStreamRef.current = null
+      }
+      if (vizCtxRef.current) {
+        vizCtxRef.current.close().catch(() => {})
+        vizCtxRef.current = null
+      }
+      analyserRef.current = null
+      if (waveformRef.current) {
+        Array.from(waveformRef.current.children).forEach(bar => {
+          bar.style.transform = ''
+        })
+      }
+      return
+    }
+
+    // Start RAF immediately — sine fallback runs until getUserMedia resolves.
+    let rafId
+    function draw() {
+      rafId = requestAnimationFrame(draw)
+      const bars = waveformRef.current ? Array.from(waveformRef.current.children) : []
+      if (!bars.length) return
+      if (analyserRef.current) {
+        const data = new Uint8Array(analyserRef.current.frequencyBinCount)
+        analyserRef.current.getByteFrequencyData(data)
+        bars.forEach((bar, i) => {
+          const idx = Math.floor((i / bars.length) * data.length)
+          const val = data[idx] / 255
+          bar.style.transform = `scaleY(${Math.max(0.12, val * 0.9 + 0.08)})`
+        })
+      } else {
+        // Idle breathing — visibly alive during silence and getUserMedia setup
+        const t = Date.now() / 1000
+        bars.forEach((bar, i) => {
+          const s = 0.14 + 0.28 * (0.5 + 0.5 * Math.sin(t * 1.3 + i * 0.48))
+          bar.style.transform = `scaleY(${s})`
+        })
+      }
+    }
+    animFrameRef.current = rafId
+    draw()
+
+    let active = true
+    ;(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        if (!active) { stream.getTracks().forEach(t => t.stop()); return }
+        vizStreamRef.current = stream
+        const ctx = new AudioContext()
+        vizCtxRef.current = ctx
+        const source = ctx.createMediaStreamSource(stream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 64
+        source.connect(analyser)
+        analyserRef.current = analyser
+      } catch {
+        // getUserMedia denied or unavailable — sine idle continues
+      }
+    })()
+
+    return () => {
+      active = false
+      cancelAnimationFrame(rafId)
+    }
+  }, [hasSpeechRecognition, isListening])
 
   function startListening({ preserveTranscript = false } = {}) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -1856,177 +1938,45 @@ export default function InterviewSession() {
       )}
 
       {!interviewComplete && isOwner && hasSpeechRecognition && (
-        // Bottom dock — anchors the recording UI to a persistent visual
-        // surface on mobile. Pause/Finish flank the mic so the primary
-        // actions are all within thumb reach. Desktop keeps the prior
-        // column layout (Finish/Pause stay in the top header on md+).
-        <div
-          className="pt-4 pb-1 shrink-0 flex flex-col items-center gap-3 border-t md:border-t-0 bg-background/95 backdrop-blur md:bg-transparent md:backdrop-blur-none -mx-6 md:mx-0 px-6 md:px-0"
-          style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}
-        >
-          {transcript && (
-            <div
-              aria-live="polite"
-              aria-label="Transcript"
-              className="w-full rounded-xl bg-muted px-4 py-3 text-sm text-foreground/80 italic min-h-[44px]"
-            >
-              &quot;{transcript}&quot;
-            </div>
-          )}
-
-          <p
-            role="status"
-            aria-live="polite"
-            className="text-xs text-muted-foreground h-4"
-          >
-            {isStreaming ? '' : isSpeaking ? (
-              <span className="flex items-center gap-1.5">
-                <Volume2 className="h-3 w-3 animate-pulse" aria-hidden="true" /> Speaking…
-              </span>
-            ) : isListening ? (
-              <span className="flex items-center gap-1.5 text-red-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" /> Listening — take your time. Say &quot;done&quot; or tap mic to send.
-              </span>
-            ) : 'Tap to speak'}
-          </p>
-
-          <div className="flex items-center justify-between md:justify-center gap-4 w-full md:w-auto">
-            {/* Mobile-only Pause — small ghost icon, left of the mic */}
-            <Button
-              variant="ghost"
-              onClick={handlePause}
-              aria-label="Pause interview"
-              title="Save and pause — you can resume later"
-              className="md:hidden h-11 w-11 p-0 text-muted-foreground active:bg-accent/30 shrink-0"
-            >
-              <PauseCircle className="h-5 w-5" />
-            </Button>
-
-            <button
-              onClick={isListening ? stopListening : startListening}
-              disabled={isStreaming || isGenerating || isSpeaking}
-              aria-label={isListening ? 'Stop recording' : 'Start recording'}
-              aria-pressed={isListening}
-              className={`h-16 w-16 rounded-full flex items-center justify-center transition-all shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                ${isListening
-                  ? 'bg-red-500 text-white scale-110'
-                  : 'bg-primary text-primary-foreground hover:opacity-90 active:scale-95'
-                } disabled:opacity-30 disabled:cursor-not-allowed disabled:scale-100`}
-            >
-              {isListening
-                ? <MicOff className="h-6 w-6" aria-hidden="true" />
-                : <Mic className="h-6 w-6" aria-hidden="true" />
-              }
-            </button>
-
-            {/* Mobile-only Finish — labeled button, right of the mic */}
-            <div className="md:hidden flex flex-col items-center gap-1">
-              <Button
-                onClick={() => setInterviewComplete(true)}
-                disabled={!canFinish}
-                aria-label={canFinish ? 'Finish interview' : finishHelper}
-                className="gap-1.5 min-h-[44px] shrink-0"
-                size="sm"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Finish
-              </Button>
-              {!canFinish && (
-                <span className="text-2xs text-muted-foreground text-center leading-tight px-1">
-                  {finishHelper}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <InterviewVoiceDock
+          isStreaming={isStreaming}
+          isGenerating={isGenerating}
+          isSpeaking={isSpeaking}
+          isListening={isListening}
+          transcript={transcript}
+          canFinish={canFinish}
+          finishHelper={finishHelper}
+          waveformRef={waveformRef}
+          onMicClick={isListening ? stopListening : startListening}
+          onFinish={() => setInterviewComplete(true)}
+          onPause={handlePause}
+        />
       )}
 
       {!interviewComplete && isOwner && !hasSpeechRecognition && (
-        // Typed-answer dock — same visual surface as the mic dock so the
-        // input region feels anchored to the bottom of the screen on mobile.
-        <div
-          className="pt-4 pb-1 shrink-0 flex flex-col gap-2 border-t md:border-t-0 bg-background/95 backdrop-blur md:bg-transparent md:backdrop-blur-none -mx-6 md:mx-0 px-6 md:px-0"
-          style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}
-        >
-          <p
-            role="status"
-            aria-live="polite"
-            className="text-xs text-muted-foreground h-4 flex items-center gap-1.5"
-          >
-            {isStreaming ? '' : isSpeaking ? (
-              <><Volume2 className="h-3 w-3 animate-pulse" aria-hidden="true" /> Speaking…</>
-            ) : (
-              <><Keyboard className="h-3 w-3" aria-hidden="true" /> Type your answer — voice input isn&rsquo;t supported in this browser</>
-            )}
-          </p>
-          <div className="flex items-end gap-2">
-            <textarea
-              value={typedAnswer}
-              onChange={(e) => {
-                // Mirror the in-flight answer to localStorage on every keystroke so
-                // a tab-kill before Send doesn't lose it (Gap B). Restored on resume.
-                setTypedAnswer(e.target.value)
-                saveDraft(interviewId, e.target.value)
-              }}
-              onKeyDown={(e) => {
-                // Cmd/Ctrl+Enter sends; plain Enter inserts newline so users
-                // can write multi-paragraph answers.
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault()
-                  if (!isStreaming && !isGenerating && !isSpeaking && typedAnswer.trim()) {
-                    submitUserText(typedAnswer)
-                  }
-                }
-              }}
-              placeholder="Type your answer here…"
-              rows={3}
-              disabled={isStreaming || isGenerating || isSpeaking}
-              className="flex-1 rounded-xl border bg-background px-3 py-2 text-base md:text-sm resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-              aria-label="Type your answer"
-            />
-            <Button
-              onClick={() => submitUserText(typedAnswer)}
-              disabled={isStreaming || isGenerating || isSpeaking || !typedAnswer.trim()}
-              size="lg"
-              aria-label="Send answer"
-              className="h-[44px] shrink-0"
-            >
-              <Send className="h-4 w-4 mr-1.5" aria-hidden="true" />
-              Send
-            </Button>
-          </div>
-          {/* Mobile-only action row — Pause + Finish live in the dock on
-              mobile since the header version is hidden below md. */}
-          <div className="md:hidden flex items-center justify-between gap-2 pt-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePause}
-              aria-label="Pause interview"
-              className="gap-1 text-muted-foreground min-h-[44px]"
-            >
-              <PauseCircle className="h-4 w-4" />
-              <span className="text-xs">Pause</span>
-            </Button>
-            <div className="flex flex-col items-end gap-1">
-              <Button
-                size="sm"
-                onClick={() => setInterviewComplete(true)}
-                disabled={!canFinish}
-                aria-label={canFinish ? 'Finish interview' : finishHelper}
-                className="gap-1.5 min-h-[44px]"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Finish
-              </Button>
-              {!canFinish && (
-                <span className="text-2xs text-muted-foreground text-right leading-tight max-w-[10rem]">
-                  {finishHelper}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <InterviewTypedDock
+          typedAnswer={typedAnswer}
+          isStreaming={isStreaming}
+          isGenerating={isGenerating}
+          isSpeaking={isSpeaking}
+          canFinish={canFinish}
+          finishHelper={finishHelper}
+          onChange={(v) => {
+            setTypedAnswer(v)
+            saveDraft(interviewId, v)
+          }}
+          onSubmit={() => submitUserText(typedAnswer)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault()
+              if (!isStreaming && !isGenerating && !isSpeaking && typedAnswer.trim()) {
+                submitUserText(typedAnswer)
+              }
+            }
+          }}
+          onFinish={() => setInterviewComplete(true)}
+          onPause={handlePause}
+        />
       )}
 
       {!interviewComplete && !isOwner && (
@@ -2052,6 +2002,287 @@ export default function InterviewSession() {
         destructive={false}
         onConfirm={leaveInterview}
       />
+      </div>
+    </div>
+  )
+}
+
+// ── InterviewVoiceDock ────────────────────────────────────────────────────────
+// Permanent mic dock for SpeechRecognition browsers. Status line always shows
+// current state. Waveform reacts to mic level (or falls back to sine idle
+// breathing). State rings change color by mode: red=listening,
+// blue=speaking, spinning arc=thinking.
+function InterviewVoiceDock({
+  isStreaming, isGenerating, isSpeaking, isListening, transcript,
+  canFinish, finishHelper,
+  waveformRef, onMicClick, onFinish, onPause,
+}) {
+  const disabled = isStreaming || isGenerating || isSpeaking
+  return (
+    <div
+      className="rounded-2xl border border-border bg-card shadow-lg px-4 py-4 shrink-0 -mx-6 md:mx-0"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      {/* Status line — always visible, never empty */}
+      <div className="flex items-center justify-center gap-2 mb-3 min-h-[20px]" role="status" aria-live="polite">
+        {isStreaming ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">Thinking…</span>
+          </>
+        ) : isSpeaking ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-blue-600">Speaking — your turn is next</span>
+          </>
+        ) : isListening ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-destructive">
+              {transcript
+                ? 'Listening — say “done” or tap mic to send'
+                : 'Still listening — take your time, no rush'}
+            </span>
+          </>
+        ) : (
+          <span className="text-sm text-muted-foreground">Tap to speak your answer</span>
+        )}
+      </div>
+
+      {/* Main row: Pause (mobile) | Waveform+Mic | Finish (mobile) */}
+      <div className="flex items-center justify-between md:justify-center gap-3">
+        {/* Pause — mobile only; desktop has it in the header */}
+        <button
+          type="button"
+          onClick={onPause}
+          aria-label="Pause interview"
+          title="Save and pause — you can resume later"
+          className="md:hidden flex flex-col items-center gap-0.5 text-muted-foreground w-14 shrink-0"
+        >
+          <span className="h-10 w-10 rounded-full border border-border flex items-center justify-center">
+            <PauseCircle className="h-4 w-4" />
+          </span>
+          <span className="text-3xs">Pause</span>
+        </button>
+
+        {/* Center: waveform bars + mic button */}
+        <div className="relative flex items-center justify-center" style={{ width: 160, height: 88 }}>
+          {/* Waveform bars — opacity driven by isListening, heights driven by RAF */}
+          <div
+            ref={waveformRef}
+            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none ${
+              isListening ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-hidden="true"
+            style={{ color: 'hsl(var(--destructive))' }}
+          >
+            {Array.from({ length: 13 }, (_, i) => (
+              <span
+                key={i}
+                className="bg-current rounded-full"
+                style={{
+                  width: '3px',
+                  height: `${14 + Math.round(Math.abs(Math.sin(i * 1.3)) * 28)}px`,
+                  transformOrigin: 'center',
+                  transform: 'scaleY(0.25)',
+                  willChange: 'transform',
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Mic ring + button */}
+          <div className="relative flex items-center justify-center h-[72px] w-[72px]">
+            {/* Listening: red pulsing ring */}
+            {isListening && (
+              <span
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ background: 'hsl(var(--destructive) / 0.22)', animationDuration: '1.6s' }}
+                aria-hidden="true"
+              />
+            )}
+            {/* Speaking: blue pulsing ring */}
+            {isSpeaking && (
+              <span
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ background: 'hsl(210 90% 54% / 0.22)', animationDuration: '1.8s' }}
+                aria-hidden="true"
+              />
+            )}
+            {/* Thinking: spinning conic-gradient arc */}
+            {isStreaming && (
+              <div
+                className="absolute rounded-full animate-spin pointer-events-none"
+                style={{
+                  inset: -4,
+                  background: 'conic-gradient(from 0deg, hsl(var(--primary)) 0%, transparent 55%)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))',
+                }}
+                aria-hidden="true"
+              />
+            )}
+            <button
+              onClick={onMicClick}
+              disabled={disabled}
+              aria-label={isListening ? 'Stop recording' : 'Start recording'}
+              aria-pressed={isListening}
+              className="relative h-[72px] w-[72px] rounded-full flex items-center justify-center text-white shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+              style={{
+                background: isListening
+                  ? 'hsl(var(--destructive))'
+                  : isSpeaking
+                  ? 'hsl(210 90% 54%)'
+                  : isStreaming
+                  ? 'hsl(var(--muted))'
+                  : 'hsl(var(--primary))',
+              }}
+            >
+              {isListening ? (
+                <MicOff className="h-7 w-7" aria-hidden="true" />
+              ) : isSpeaking ? (
+                <Volume2 className="h-7 w-7" aria-hidden="true" />
+              ) : isStreaming ? (
+                <Sparkles className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <Mic className="h-7 w-7" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Finish — mobile only; desktop has it in the header */}
+        <div className="md:hidden flex flex-col items-center gap-0.5 w-14 shrink-0">
+          <button
+            type="button"
+            onClick={onFinish}
+            disabled={!canFinish}
+            title={canFinish ? 'Finish interview' : finishHelper || undefined}
+            aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+            className="h-10 w-10 rounded-full border border-border flex items-center justify-center text-muted-foreground disabled:opacity-30 hover:bg-muted transition-colors"
+          >
+            <Sparkles className="h-4 w-4" />
+          </button>
+          <span className="text-3xs text-muted-foreground">Finish</span>
+          {!canFinish && finishHelper && (
+            <span className="text-3xs text-muted-foreground text-center leading-tight px-1 max-w-[3.5rem]">
+              {finishHelper}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Live transcript — shown below mic row */}
+      {transcript && (
+        <div
+          aria-live="polite"
+          aria-label="Transcript"
+          className="mt-3 rounded-xl bg-muted px-4 py-3 text-sm text-foreground/80 italic min-h-[44px]"
+        >
+          &quot;{transcript}&quot;
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── InterviewTypedDock ────────────────────────────────────────────────────────
+// Fallback dock for browsers without SpeechRecognition (iOS Safari).
+// Matches the card style of InterviewVoiceDock.
+function InterviewTypedDock({
+  typedAnswer, isStreaming, isGenerating, isSpeaking,
+  canFinish, finishHelper, onChange, onSubmit, onKeyDown, onFinish, onPause,
+}) {
+  const disabled = isStreaming || isGenerating || isSpeaking
+  return (
+    <div
+      className="rounded-2xl border border-border bg-card shadow-lg px-4 py-4 shrink-0 -mx-6 md:mx-0"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      {/* Status line */}
+      <div className="flex items-center justify-center gap-2 mb-3 min-h-[20px]" role="status" aria-live="polite">
+        {isStreaming ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">Thinking…</span>
+          </>
+        ) : isSpeaking ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-blue-600">Speaking — your turn is next</span>
+          </>
+        ) : (
+          <>
+            <Keyboard className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <span className="text-sm text-muted-foreground">Type your answer — voice input isn&rsquo;t available in this browser</span>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-end gap-2">
+        <textarea
+          value={typedAnswer}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Type your answer here…"
+          rows={3}
+          disabled={disabled}
+          className="flex-1 rounded-xl border bg-background px-3 py-2 text-base md:text-sm resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+          aria-label="Type your answer"
+        />
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <Button
+            onClick={onSubmit}
+            disabled={disabled || !typedAnswer.trim()}
+            size="lg"
+            aria-label="Send answer"
+            className="h-11 px-4"
+          >
+            {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" aria-hidden="true" />Send</>}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onFinish}
+            disabled={!canFinish || isStreaming}
+            title={canFinish ? 'Finish interview' : finishHelper || undefined}
+            aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+            className="h-11 w-11"
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile-only Pause + Finish row */}
+      <div className="md:hidden flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/50">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onPause}
+          aria-label="Pause interview"
+          className="gap-1 text-muted-foreground min-h-[44px]"
+        >
+          <PauseCircle className="h-4 w-4" />
+          <span className="text-xs">Pause</span>
+        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            size="sm"
+            onClick={onFinish}
+            disabled={!canFinish}
+            aria-label={canFinish ? 'Finish interview' : finishHelper}
+            className="gap-1.5 min-h-[44px]"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Finish
+          </Button>
+          {!canFinish && (
+            <span className="text-2xs text-muted-foreground text-right leading-tight max-w-[10rem]">
+              {finishHelper}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
