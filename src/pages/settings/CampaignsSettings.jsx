@@ -143,8 +143,9 @@ export default function CampaignsSettings() {
             <Target className="h-5 w-5 text-primary" /> Campaigns
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            Time-windowed pushes the slate generator biases toward. Define a window,
-            an event date, and a theme — the slate will allocate packages by event proximity.
+            Guide your content toward a specific goal — a seminar, a new patient push, a seasonal topic.
+            Set a window and an event date and NarrateRx will steer upcoming posts toward it automatically.
+            Your voice stays your voice; this just shapes the focus.
           </p>
         </div>
         <Button onClick={() => setEditing('new')} disabled={!!editing}>

@@ -36,7 +36,7 @@ const INTEGRATIONS = [
     label: 'Buffer',
     recommended: true,
     description:
-      'One connection that fans NarrateRx posts out to Instagram, Facebook, LinkedIn, Twitter/X, Threads, TikTok, YouTube Shorts, Bluesky, Mastodon, Google Business Profile, and more. The fastest way to get NarrateRx publishing for your workspace.',
+      'One connection that sends NarrateRx posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, TikTok, YouTube Shorts, Bluesky, Mastodon, Google Business Profile, and more. The fastest way to get NarrateRx publishing for your workspace.',
     platforms: ['Instagram', 'Facebook', 'LinkedIn', 'Twitter/X', 'Threads', 'TikTok', 'YouTube Shorts', 'Mastodon', 'Bluesky', 'Google Business Profile'],
     secretLabel: 'Buffer access token',
     secretPlaceholder: 'access_token_…',

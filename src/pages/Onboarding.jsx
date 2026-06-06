@@ -386,20 +386,21 @@ function AuthScreen({ capacity, onSignedIn }) {
             <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> Logo + brand colors come later — not blocking</li>
           </ul>
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        {/* Toggle — shared pill background makes it read as a toggle, not two separate buttons */}
+        <div className="inline-flex items-center rounded-full bg-muted p-0.5 text-xs">
           <button
             type="button"
             onClick={() => setMode('signup')}
-            className={`px-3 py-1.5 rounded-md ${mode === 'signup' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            className={`px-3 py-1.5 rounded-full transition-colors ${mode === 'signup' ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Sign up
           </button>
           <button
             type="button"
             onClick={() => setMode('signin')}
-            className={`px-3 py-1.5 rounded-md ${mode === 'signin' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            className={`px-3 py-1.5 rounded-full transition-colors ${mode === 'signin' ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            I already have an account
+            Already have an account
           </button>
         </div>
         <div>
@@ -1236,7 +1237,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
         })}
       </div>
       <p className="text-xs text-muted-foreground">
-        Pick at least one. Once connected, a social scheduling tool (we use Buffer — a free service that posts to all your social accounts at once) can fan your posts out to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
+        Pick at least one. Once connected, a social scheduling tool (we use Buffer — a free service that pushes to all your social accounts at once) will automatically send posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
       </p>
       <div className="flex items-center justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>← Back</Button>
