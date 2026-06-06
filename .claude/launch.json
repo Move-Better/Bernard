@@ -39,8 +39,8 @@
     },
     {
       "name": "mockups",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "/Users/qbook/Claude Projects/NarrateRx/.claude/mockups", "-p", "5174", "--no-clipboard"],
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5174", "--directory", "/Users/qbook/Claude Projects/NarrateRx/.claude"],
       "port": 5174
     }
   ]
