@@ -40,8 +40,8 @@
     {
       "name": "mockups",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5174", "--directory", "/Users/qbook/Claude Projects/NarrateRx/.claude/mockups"],
-      "port": 5174
+      "runtimeArgs": ["-m", "http.server", "8088", "--directory", "/Users/qbook/Claude Projects/NarrateRx/.claude"],
+      "port": 8088
     }
   ]
 }
