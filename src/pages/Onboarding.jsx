@@ -1065,7 +1065,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
       <div className="rounded-lg border border-input bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
         Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {Object.values(OUTPUT_CHANNELS).map(channel => {
           const checked = form.enabled_outputs.includes(channel.id)
           const upgrade = channel.publishMode ? UPGRADE_HINT[channel.publishMode] : null
@@ -1077,19 +1077,15 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
               onClick={() => toggle(channel.id)}
               aria-pressed={checked}
               title={`${EXPORT_LABEL[channel.exportShape] || 'Copy & paste anywhere'}${upgrade ? ` · ${upgrade}` : ''}`}
-              className={`group relative flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition ${
+              className={`group flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition ${
                 checked
                   ? 'border-primary bg-primary/5 ring-1 ring-primary'
                   : 'border-input hover:border-primary/40 hover:bg-accent/30'
               }`}
             >
-              {checked && (
-                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Check className="h-3 w-3" />
-                </span>
-              )}
-              <Icon className={`h-6 w-6 ${checked ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-              <span className="text-xs font-medium leading-tight">{channel.label}</span>
+              <Icon className={`h-4 w-4 shrink-0 ${checked ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+              <span className="flex-1 min-w-0 truncate text-xs font-medium leading-tight">{channel.label}</span>
+              {checked && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
             </button>
           )
         })}
