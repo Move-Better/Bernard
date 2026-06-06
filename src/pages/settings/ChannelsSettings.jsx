@@ -221,11 +221,11 @@ export default function ChannelsSettings() {
         <CardContent className="flex items-start gap-3 py-4">
           <Puzzle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground">
-            Publishing credentials (Buffer / WordPress / Astro) are managed on the{' '}
+            Publishing connections (your social scheduler, website, or newsletter) are managed on the{' '}
             <Link to="/settings/integrations" className="underline underline-offset-2 hover:text-foreground">
               Integrations
             </Link>
-            {' '}page. Channels marked <span className="font-medium">via Buffer</span> need a Buffer token connected.
+            {' '}page. Channels marked <span className="font-medium">via Buffer</span> post through Buffer — a social scheduling tool that publishes to all your social accounts at once — so they need a Buffer account connected.
           </p>
         </CardContent>
       </Card>
