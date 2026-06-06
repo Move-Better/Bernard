@@ -121,7 +121,7 @@ export async function renderAndPatchPackage({
           // Key by packageId, not just sourceAssetId — multi-clip v1 renders
           // several packages (segments) from ONE source asset; keying by source
           // alone would make every segment's render clobber the previous one.
-          const pathname = `media/renders/${ws.slug}/${sourceAssetId}/${packageId}/${repChannel}-${safeFilename}.mp4`
+          const pathname = `media/renders/${ws.id}/${sourceAssetId}/${packageId}/${repChannel}-${safeFilename}.mp4`
           const blob = await blobPut(pathname, buffer, {
             access: 'public', contentType: 'video/mp4', addRandomSuffix: false, allowOverwrite: true,
           })
@@ -141,7 +141,7 @@ export async function renderAndPatchPackage({
           const { buffer, width, height } = await renderPhotoChannel({
             photoUrl: sourceUrl, channel, captionText, workspace: ws, staffName,
           })
-          const pathname = `media/renders/${ws.slug}/${sourceAssetId}/${packageId}/${channel}-${safeFilename}.jpg`
+          const pathname = `media/renders/${ws.id}/${sourceAssetId}/${packageId}/${channel}-${safeFilename}.jpg`
           const blob = await blobPut(pathname, buffer, {
             access: 'public', contentType: 'image/jpeg', addRandomSuffix: false, allowOverwrite: true,
           })
