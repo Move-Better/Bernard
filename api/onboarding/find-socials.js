@@ -17,11 +17,20 @@ export const config = { runtime: 'nodejs' }
 //
 // Public endpoint (runs during onboarding before a workspace exists). Uses the
 // same AI_GATEWAY_API_KEY as scan-website.js — no extra provider package or env.
+//
+// Pass 1 uses a search-NATIVE model (Perplexity Sonar) rather than a provider
+// web-search TOOL: the gateway's `gateway.tools.parallelSearch` emits a
+// `web_search_tool_result` content block that Anthropic's API rejects when the
+// multi-step loop feeds it back to a Claude model (GatewayInternalServerError:
+// "Input tag 'web_search_tool_result' ... does not match any of the expected
+// tags"). A search-native model has no tool loop, so there's no foreign block to
+// round-trip. Pass 2 (structured extraction) stays on Claude.
 
-import { generateText, generateObject, gateway, stepCountIs } from 'ai'
+import { generateText, generateObject } from 'ai'
 import { z } from 'zod'
 
-const MODEL = 'anthropic/claude-sonnet-4-6'
+const SEARCH_MODEL = 'perplexity/sonar-pro'   // searches the live web inherently
+const MODEL = 'anthropic/claude-sonnet-4-6'   // structured extraction
 const PLATFORMS = ['instagram', 'facebook', 'linkedin', 'youtube', 'tiktok', 'twitter']
 
 // Map a platform → the host(s) a real profile URL must live on, so the model
@@ -113,17 +122,21 @@ async function handler(req, res) {
     `Platforms to find: ${missing.join(', ')}`,
   ].filter(Boolean).join('\n')
 
-  // Pass 1 — let the model search the live web for the official profiles.
+  // Pass 1 — a search-native model finds the official profiles on the live web.
+  // We demand full inline https URLs (the extraction pass + server-side URL
+  // re-validation key off them) and also fold in any citation source URLs.
   let research = ''
   try {
     const result = await generateText({
-      model: MODEL,
-      tools: { web_search: gateway.tools.parallelSearch({ maxResults: 8 }) },
-      stopWhen: stepCountIs(6),
-      system: `You find the OFFICIAL social media profiles of a specific local business. Search the web for each requested platform. Prefer profiles whose name, location, and niche match the business exactly. Be skeptical of similarly-named accounts in other cities or industries — it is far better to return nothing for a platform than to guess wrong. Report each profile you find with its full URL and a short note on why you believe it belongs to this business. If you can't confidently find a platform, say so.`,
-      prompt: `Find the official social profiles for this business:\n\n${facts}\n\nSearch for each platform and report the profile URLs you find.`,
+      model: SEARCH_MODEL,
+      system: `You find the OFFICIAL social media profiles of a specific local business. For each requested platform, report the profile as a full https URL written inline in your answer. Prefer profiles whose name, location, and niche match the business exactly; be skeptical of similarly-named accounts in other cities or industries — it is far better to report none for a platform than to guess wrong. If you can't confidently find a platform, say so.`,
+      prompt: `Find the official social profiles for this business and list each profile's full URL inline:\n\n${facts}`,
     })
-    research = result.text || ''
+    const sourceUrls = Array.isArray(result.sources)
+      ? result.sources.map(s => (typeof s === 'string' ? s : s?.url)).filter(Boolean)
+      : []
+    research = [result.text || '', sourceUrls.length ? `\nSources:\n${sourceUrls.join('\n')}` : '']
+      .join('').trim()
   } catch (e) {
     console.error('[find-socials] web-search pass failed:', e?.message)
     return res.status(502).json({ error: 'search-failed' })
