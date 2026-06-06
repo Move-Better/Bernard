@@ -37,25 +37,7 @@ import { useAppMutation } from '@/lib/useAppMutation'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { TONES, getVoiceModes } from '@/lib/prompts'
 
-// ── Speed helpers ──────────────────────────────────────────────────────────────
 
-const SPEED_MIN = 0.7
-const SPEED_MAX = 1.2
-const SPEED_DEFAULT = 1.0
-
-function speedPct(speed) {
-  return ((speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100
-}
-
-function speedLabel(speed) {
-  if (speed < 0.95) return 'Calm'
-  if (speed > 1.05) return 'Crisp'
-  return 'Default'
-}
-
-function fmtSpeed(n) {
-  return n.toFixed(2).replace(/\.?0+$/, '') + '×'
-}
 
 // Phrase count → strength label
 function phraseStrength(total) {
@@ -145,7 +127,6 @@ export default function StaffProfile() {
   const showArc = isMyStaffProfile || role === 'admin'
 
   // Voice hero data
-  const speed = staffMember?.tts_settings?.speed ?? SPEED_DEFAULT
   const totalPhrases = voiceData?.total_phrases ?? 0
   const topPhrases = voiceData?.phrases ?? []
   const pieceCount = voiceData?.pieces_count ?? 0
@@ -418,38 +399,11 @@ export default function StaffProfile() {
                   </div>
                 </div>
 
-                {/* ── Col 2: Pace + memory (owner only) / freshness stats (non-owner) ── */}
+                {/* ── Col 2: Voice memory (owner only) / freshness stats (non-owner) ── */}
+                {/* Note: interview pace is editable in the VoicePlaybackCard below — no need to repeat it here */}
                 <div className="space-y-5">
                   {isMyStaffProfile ? (
                     <>
-                      {/* Pace readout */}
-                      <div>
-                        <p className="text-2xs font-semibold uppercase tracking-wider text-white/40 mb-2">Interview pace</p>
-                        <div className="flex justify-between items-baseline mb-2">
-                          <span className="text-sm text-white/45">Slower</span>
-                          <span className="text-lg font-bold text-white">
-                            {fmtSpeed(speed)}
-                            <span className="ml-1.5 text-sm font-normal text-white/45">{speedLabel(speed)}</span>
-                          </span>
-                          <span className="text-sm text-white/45">Faster</span>
-                        </div>
-                        <div className="relative h-[6px] rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}>
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-primary"
-                            style={{ width: `${speedPct(speed)}%` }}
-                          />
-                          <div
-                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white ring-2 ring-primary"
-                            style={{ left: `calc(${speedPct(speed)}% - 8px)`, boxShadow: '0 1px 4px rgba(0,0,0,.3)' }}
-                          />
-                        </div>
-                        <div className="flex justify-between mt-1.5">
-                          <span className="text-3xs text-white/20">0.7×</span>
-                          <span className="text-3xs text-white/20">1.0×</span>
-                          <span className="text-3xs text-white/20">1.2×</span>
-                        </div>
-                      </div>
-
                       {/* Voice memory excerpt */}
                       {staffMember.voice_notes ? (
                         <div>
