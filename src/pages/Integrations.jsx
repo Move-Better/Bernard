@@ -21,6 +21,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch, apiFetchResponse } from '@/lib/api'
+import { isIntegrationRelevantForIntent, hasPublishIntent } from '@/lib/outputChannels'
 import { toast } from '@/lib/toast'
 
 // Customer-facing publishing connect page. Per-workspace credentials are
@@ -155,8 +156,24 @@ export default function Integrations() {
   const { getToken } = useAuth()
   const [services, setServices] = useState(null) // null=loading, [] when none
   const [loadError, setLoadError] = useState(null)
+  const [showAllIntegrations, setShowAllIntegrations] = useState(false)
 
-  const visible = INTEGRATIONS.filter((i) => hasCapability(ws, i.capabilityKey))
+  const capable = INTEGRATIONS.filter((i) => hasCapability(ws, i.capabilityKey))
+  // "Hide integrations only" — tailor the connect cards to what the workspace
+  // told us in onboarding (publish_intent). An integration shows when: the user
+  // asked to see everything, OR it matches their stated tools, OR a credential
+  // is already connected (never hide a live integration). Workspaces that
+  // onboarded before the publish-intent step have an empty intent → all shown.
+  const intent = ws?.publish_intent
+  const connectedSet = new Set(ws?.connected_publish_services || [])
+  const visible = capable.filter(
+    (i) =>
+      showAllIntegrations ||
+      connectedSet.has(i.id) ||
+      isIntegrationRelevantForIntent(i.id, intent)
+  )
+  const hiddenByIntent = capable.length - visible.length
+  const intentFiltering = hasPublishIntent(intent) && !showAllIntegrations
   const showTdc = hasCapability(ws, 'tdcPublish')
   const isAdmin = role === 'admin'
 
@@ -210,6 +227,27 @@ export default function Integrations() {
         <div className="rounded-lg border bg-muted/40 px-4 py-3 flex items-start gap-3">
           <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
           <p className="text-sm text-muted-foreground">{loadError}</p>
+        </div>
+      )}
+
+      {intentFiltering && (
+        <div className="rounded-lg border bg-muted/40 px-4 py-3 flex items-start gap-3">
+          <Lightbulb className="h-4 w-4 text-info shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
+            Showing the integrations that match the tools you picked during setup.
+            {hiddenByIntent > 0 && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  onClick={() => setShowAllIntegrations(true)}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Show all {hiddenByIntent} other integration{hiddenByIntent === 1 ? '' : 's'}
+                </button>
+              </>
+            )}
+          </p>
         </div>
       )}
 
