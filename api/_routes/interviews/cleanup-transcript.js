@@ -21,10 +21,10 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { generateText } from 'ai'
-import { workspaceContext } from '../_lib/workspaceContext.js'
-import { requireRole } from '../_lib/auth.js'
-import { enforceLimit } from '../_lib/ratelimit.js'
-import { resolveGlossary } from '../../src/lib/medicalGlossary.js'
+import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
+import { resolveGlossary } from '../../../src/lib/medicalGlossary.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

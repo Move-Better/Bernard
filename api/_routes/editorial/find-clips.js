@@ -23,10 +23,10 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { waitUntil } from '@vercel/functions'
-import { requireRole } from '../_lib/auth.js'
-import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
-import { workspaceContext } from '../_lib/workspaceContext.js'
-import { detectSegmentsForAsset } from '../_lib/segmentDetect.js'
+import { requireRole } from '../../_lib/auth.js'
+import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
+import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { detectSegmentsForAsset } from '../../_lib/segmentDetect.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

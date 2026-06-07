@@ -34,16 +34,16 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { waitUntil } from '@vercel/functions'
-import { requireRole } from '../_lib/auth.js'
-import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
-import { workspaceContext } from '../_lib/workspaceContext.js'
-import { searchClips } from '../_lib/clipSearch.js'
-import { fetchFusedRagContext } from '../_lib/ragFusion.js'
-import { CHANNEL_SPECS } from '../_lib/brandRender.js'
-import { VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
-import { renderAndPatchPackage } from '../_lib/renderPackageChannels.js'
-import { generateCaption } from '../_lib/captionGen.js'
-import { generateSyntheticBroll, runwayConfigured } from '../_lib/syntheticBroll.js'
+import { requireRole } from '../../_lib/auth.js'
+import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
+import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { searchClips } from '../../_lib/clipSearch.js'
+import { fetchFusedRagContext } from '../../_lib/ragFusion.js'
+import { CHANNEL_SPECS } from '../../_lib/brandRender.js'
+import { VIDEO_CHANNEL_SPECS } from '../../_lib/brandRenderVideo.js'
+import { renderAndPatchPackage } from '../../_lib/renderPackageChannels.js'
+import { generateCaption } from '../../_lib/captionGen.js'
+import { generateSyntheticBroll, runwayConfigured } from '../../_lib/syntheticBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
