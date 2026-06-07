@@ -133,28 +133,8 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-background flex">
 
-      {/* ── Product switcher bar ─────────────────────────────────────────── */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-9 bg-[#18181b] flex items-center gap-1 px-3 shrink-0">
-        <a
-          href="https://narraterx.ai"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold text-white bg-[#27272a] cursor-default"
-          aria-current="page"
-        >
-          <span className="w-3.5 h-3.5 rounded-[3px] bg-gradient-to-br from-indigo-500 to-violet-500 shrink-0" />
-          NarrateRx
-        </a>
-        <div className="w-px h-4 bg-[#3f3f46] mx-0.5" />
-        <a
-          href="https://bernard-production-7143.up.railway.app"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors"
-        >
-          <span className="w-3.5 h-3.5 rounded-[3px] bg-gradient-to-br from-teal-600 to-cyan-500 shrink-0" />
-          Bernard
-        </a>
-      </div>
-
       {/* ── Left sidebar — desktop only ─────────────────────────────────── */}
-      <aside className={`hidden md:flex fixed top-9 bottom-0 left-0 ${sidebarW} flex-col border-r bg-white z-30 transition-[width] duration-200`}>
+      <aside className={`hidden md:flex fixed inset-y-0 left-0 ${sidebarW} flex-col border-r bg-white z-30 transition-[width] duration-200`}>
 
         {/* Logo */}
         <div className={`h-14 border-b shrink-0 flex items-center ${collapsed ? 'justify-center px-0' : 'px-4 gap-2.5'}`}>
@@ -272,10 +252,10 @@ export default function Layout({ children }) {
       </aside>
 
       {/* ── Right column: header (mobile only) + content ───────────────── */}
-      <div className={`flex-1 ${contentML} pt-9 transition-[margin-left] duration-200`}>
+      <div className={`flex-1 ${contentML} transition-[margin-left] duration-200`}>
         {/* Header is mobile-only — desktop nav lives in the sidebar.
             h-14 kept so SettingsLayout's mobile sticky top-14 rail stays correct. */}
-        <header className="md:hidden sticky top-9 z-40 h-14 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm flex items-center gap-3 px-4 sm:px-6">
+        <header className="md:hidden sticky top-0 z-40 h-14 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm flex items-center gap-3 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 min-w-0">
             <img src={logoSrc} alt={logoAlt} className="h-8 w-auto shrink-0" />
           </Link>
