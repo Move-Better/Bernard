@@ -35,3 +35,4 @@ _voice-samples/
 # Python bytecode cache (from scripts/*.py)
 __pycache__/
 *.pyc
+.env*
