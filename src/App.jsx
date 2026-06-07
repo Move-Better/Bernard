@@ -815,10 +815,13 @@ export default function App() {
               {/* Public pages — no auth required */}
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
-              {/* No-login public demo. Leaf route, fixed path — never hits OrgGate
-                  or WorkspaceProvider (it lives outside ProtectedAppWithProvider).
-                  Scope: .claude/scope-no-login-demo.md. */}
-              <Route path="/demo" element={<DemoExperience />} />
+              {/* No-login live demo. Lives at /demo/try (NOT /demo — that path is
+                  the static marketing page public/demo.html, which wins Vercel's
+                  filesystem phase before this SPA rewrite). Leaf route, fixed path
+                  — never hits OrgGate or WorkspaceProvider (it's outside
+                  ProtectedAppWithProvider). The marketing /demo page links here via
+                  its "Then try it" CTA. Scope: .claude/scope-no-login-demo.md. */}
+              <Route path="/demo/try" element={<DemoExperience />} />
               {/* The apex wizard lives at /onboard exactly. Anything deeper
                   (/onboard/brand-kit, /onboard/interview) is part of the
                   authenticated app and falls through to the * catch-all
