@@ -14,13 +14,13 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { generateText } from 'ai'
-import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../_lib/workspaceContext.js'
-import { requireRole } from '../_lib/auth.js'
-import { enforceLimit } from '../_lib/ratelimit.js'
+import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../../_lib/workspaceContext.js'
+import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import {
   getOnboardingSynthesisSystemPrompt,
   SYNTHESIS_PROMPT_VERSION,
-} from '../../src/lib/onboardingSynthesisPrompt.js'
+} from '../../../src/lib/onboardingSynthesisPrompt.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

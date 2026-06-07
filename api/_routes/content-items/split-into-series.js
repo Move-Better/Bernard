@@ -27,18 +27,18 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { randomUUID } from 'node:crypto'
 import { generateText } from 'ai'
-import { workspaceContext } from '../_lib/workspaceContext.js'
-import { requireRole } from '../_lib/auth.js'
-import { enforceLimit } from '../_lib/ratelimit.js'
+import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import {
   getSeriesClusterSystemPrompt,
   getSeriesPartSystemPrompt,
   buildVerbatimBlock,
-} from '../../src/lib/prompts.js'
-import { resolveOwnHistoryBlock, buildRagQuery } from '../_lib/practiceMemory.js'
-import { applyLocationOverlay } from '../../src/lib/locationOverlay.js'
-import { extractProvenanceBlock } from '../../src/lib/provenance.js'
-import { resolveLengthPreset, LENGTH_PRESETS } from '../../src/lib/lengthPresets.js'
+} from '../../../src/lib/prompts.js'
+import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
+import { applyLocationOverlay } from '../../../src/lib/locationOverlay.js'
+import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
+import { resolveLengthPreset, LENGTH_PRESETS } from '../../../src/lib/lengthPresets.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
