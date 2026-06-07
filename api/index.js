@@ -1,50 +1,64 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-// Consolidated API (Phase 1b) — single Express function serving the light
-// JSON routes. Heavy/streaming/raw-body/cron functions stay as their own
-// files (they win in Vercel's filesystem phase, before this rewrite).
-// See .claude/plan-function-consolidation.md.
+// Consolidated API — a single Vercel Function (Express app) serving the ~127
+// light JSON routes. Heavy / streaming / raw-body / cron handlers stay as their
+// own files in api/ (they win Vercel's filesystem phase before the /api/(.*)
+// rewrite in vercel.json). See .claude/plan-function-consolidation.md.
 //
-// SPIKE NOTE (Phase 1a): the _echo routes below are temporary probes to
-// validate (Q2) req.body parsing via express.json, (Q3) req.url preservation
-// through the /api/(.*) rewrite, and precedence vs real functions. Removed
-// once validated; replaced by the generated route manifest.
+// Routes come from a generated manifest (scripts/build-api-manifest.mjs, run in
+// prebuild). Each handler keeps its original (req, res) shape and its own method
+// gating; we mount with app.all and a thin shim so handlers need no changes.
 
 import express from 'express'
+import { routes } from './_routes/_manifest.generated.js'
 
 const app = express()
+app.disable('x-powered-by')
 
-// Vercel does NOT pre-parse req.body when the default export is an Express app
-// (proven in the 1a spike) — so we parse here. Light routes are all JSON.
-app.use(express.json({ limit: '15mb' }))
-app.use(express.urlencoded({ extended: true, limit: '15mb' }))
+// Vercel does NOT pre-parse req.body under an Express-app export (1a spike), and
+// every migrated route is JSON in/out (stream/raw-body handlers stay separate).
+app.use(express.json({ limit: '20mb' }))
+app.use(express.urlencoded({ extended: true, limit: '20mb' }))
 
-const echo = (req, res) =>
-  res.status(200).json({
-    ok: true,
-    via: 'catch-all',
-    method: req.method,
-    url: req.url,
-    originalUrl: req.originalUrl,
-    query: req.query,
-    params: req.params,
-    bodyType: typeof req.body,
-    body: req.body ?? null,
-  })
+// Adapt an existing Vercel (req, res) handler to an Express route:
+//   - merge Express :params into req.query so handlers reading req.query.id work
+//     (defineProperty: Express 5 makes req.query a getter; plain assignment is a
+//     no-op/throws in ESM strict mode);
+//   - restore the full original path on req.url so handlers that parse
+//     url.pathname.split('/').pop() resolve the id;
+//   - forward async rejections to the Express error handler.
+function wrap(handler) {
+  return (req, res, next) => {
+    try {
+      req.url = req.originalUrl
+      const merged = { ...(req.query || {}), ...(req.params || {}) }
+      Object.defineProperty(req, 'query', {
+        value: merged,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      })
+      return Promise.resolve(handler(req, res)).catch(next)
+    } catch (err) {
+      return next(err)
+    }
+  }
+}
 
-app.all('/api/_echo', echo)
-app.all('/api/_echo/:a/:b', echo)
+for (const { path, handler } of routes) {
+  app.all(path, wrap(handler))
+}
 
-app.use((req, res) =>
-  res
-    .status(404)
-    .json({ error: 'not_found', via: 'catch-all', originalUrl: req.originalUrl, url: req.url }),
-)
+// Unmatched /api path that fell through the rewrite — should be rare.
+app.use((req, res) => {
+  res.status(404).json({ error: 'not_found', path: req.originalUrl })
+})
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('[api/index] error:', err?.stack || err)
-  res.status(500).json({ error: String(err?.message || err), via: 'catch-all' })
+  console.error('[api/index] handler error:', err?.stack || err)
+  if (res.headersSent) return
+  res.status(500).json({ error: 'internal_error' })
 })
 
 export default app

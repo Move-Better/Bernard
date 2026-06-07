@@ -9,7 +9,7 @@ import noArbitraryTextSize from './eslint/rules/no-arbitrary-text-size.js'
 import noRawApiFetch from './eslint/rules/no-raw-api-fetch.js'
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'playwright-report/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'playwright-report/**', 'api/_routes/_manifest.generated.js'] },
   {
     files: ['src/**/*.{js,jsx}', 'api/**/*.js'],
     languageOptions: {

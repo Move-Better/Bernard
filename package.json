@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/write-version.mjs && node scripts/build-blog.mjs",
+    "prebuild": "node scripts/write-version.mjs && node scripts/build-blog.mjs && node scripts/build-api-manifest.mjs",
+    "verify-api-manifest": "node scripts/build-api-manifest.mjs --check",
     "build": "vite build",
     "build:blog": "node scripts/build-blog.mjs",
     "preview": "vite preview",

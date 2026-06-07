@@ -12,7 +12,7 @@ export const config = { runtime: 'nodejs' }
 //
 // Auth: Bearer CRON_SECRET (same pattern as refresh-engagement.js).
 
-import { runCampaignSpin } from '../editorial/campaign-spin.js'
+import { runCampaignSpin } from '../_routes/editorial/campaign-spin.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
