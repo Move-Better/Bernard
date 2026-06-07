@@ -23,7 +23,7 @@
 
 export const config = { runtime: 'nodejs' }
 
-import { verifyWebhookSignature, mintPlaybackToken, muxSignedConfigured, getAssetDimensions } from '../_lib/muxClient.js'
+import { verifyWebhookSignature, mintPlaybackToken, muxSignedConfigured, getAssetDimensions } from '../../_lib/muxClient.js'
 import { put as blobPut } from '@vercel/blob'
 
 const SUPABASE_URL = process.env.SUPABASE_URL

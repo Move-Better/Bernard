@@ -11,8 +11,8 @@ export const config = { runtime: 'nodejs' }
 //
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
-import { getCredential } from '../_lib/getCredential.js'
-import { fetchPostStats } from '../_lib/bufferPostStats.js'
+import { getCredential } from '../../_lib/getCredential.js'
+import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

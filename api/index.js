@@ -1,8 +1,9 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-// Consolidated API — a single Vercel Function (Express app) serving the ~127
-// light JSON routes. Heavy / streaming / raw-body / cron handlers stay as their
-// own files in api/ (they win Vercel's filesystem phase before the /api/(.*)
+// Consolidated API — a single Vercel Function (Express app) serving the ~148
+// light JSON routes + crons + webhooks. Heavy render (ffmpeg/includeFiles),
+// streaming (SSE/TTS/WebSocket), and large-upload handlers stay as their own
+// files in api/ (they win Vercel's filesystem phase before the /api/(.*)
 // rewrite in vercel.json). See .claude/plan-function-consolidation.md.
 //
 // Routes come from a generated manifest (scripts/build-api-manifest.mjs, run in
@@ -17,7 +18,14 @@ app.disable('x-powered-by')
 
 // Vercel does NOT pre-parse req.body under an Express-app export (1a spike), and
 // every migrated route is JSON in/out (stream/raw-body handlers stay separate).
-app.use(express.json({ limit: '20mb' }))
+//
+// The verify callback exposes req.rawBody (a Buffer) for webhook signature
+// verification. The Stripe webhook handler reads req.rawBody; the Mux webhook
+// re-stringifies req.body (compact JSON matches the signed payload byte-for-byte).
+app.use(express.json({
+  limit: '20mb',
+  verify: (req, _res, buf) => { req.rawBody = buf },
+}))
 app.use(express.urlencoded({ extended: true, limit: '20mb' }))
 
 // Adapt an existing Vercel (req, res) handler to an Express route:

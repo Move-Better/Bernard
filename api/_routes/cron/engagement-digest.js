@@ -21,9 +21,9 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { withSentry } from '../_lib/sentry.js'
+import { withSentry } from '../../_lib/sentry.js'
 import { createClerkClient } from '@clerk/backend'
-import { buildDigest } from '../_lib/engagementDigestEmail.js'
+import { buildDigest } from '../../_lib/engagementDigestEmail.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

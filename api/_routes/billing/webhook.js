@@ -14,17 +14,14 @@
 // Signature verification uses STRIPE_WEBHOOK_SECRET (HMAC-SHA256).
 // In dev (no secret set), verification is skipped with a warning.
 //
-// IMPORTANT: Stripe sends the raw body for signature verification, so we
-// must read the raw buffer before any JSON parsing. Vercel's bodyParser
-// is disabled via the config export below.
+// Raw body access: api/index.js exposes req.rawBody (Buffer) via express.json's
+// verify callback. This handler reads req.rawBody for signature verification
+// instead of the old stream-based readRawBody approach (bodyParser: false).
 
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { buildPricePlanMap } from '../_lib/stripePlans.js'
+import { buildPricePlanMap } from '../../_lib/stripePlans.js'
 
-export const config = {
-  runtime: 'nodejs',
-  api: { bodyParser: false },
-}
+export const config = { runtime: 'nodejs' }
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -39,15 +36,6 @@ function sb(path, init = {}) {
       'Content-Type': 'application/json',
       ...init.headers,
     },
-  })
-}
-
-async function readRawBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = []
-    req.on('data', (chunk) => chunks.push(chunk))
-    req.on('end', () => resolve(Buffer.concat(chunks)))
-    req.on('error', reject)
   })
 }
 
@@ -113,8 +101,8 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'method-not-allowed' })
   }
 
-  const rawBody = await readRawBody(req)
-  const rawBodyStr = rawBody.toString('utf8')
+  // req.rawBody is a Buffer set by the express.json verify callback in api/index.js.
+  const rawBodyStr = (req.rawBody || Buffer.alloc(0)).toString('utf8')
   const sigHeader = req.headers['stripe-signature']
 
   // Verify signature when secret is configured.
