@@ -1,9 +1,13 @@
 // Per-bucket rate limiters backed by Upstash Redis.
 //
 // Buckets (req/min):
-//   ai      — 10   (expensive: Anthropic via AI Gateway)
-//   media   — 30   (expensive: ffmpeg + AI tagging)
-//   generic — 60   (default for anything we want lightly capped)
+//   ai        — 10   (expensive: Anthropic via AI Gateway)
+//   media     — 30   (expensive: ffmpeg + AI tagging)
+//   generic   — 60   (default for anything we want lightly capped)
+//   demo      — 5    (UNAUTHENTICATED public demo surface — Whisper/Anthropic on
+//                     /api/demo/*; keyed by IP. Burst cap.)
+//   demoDaily — 20/day  (total daily ceiling for the same IP across /api/demo/*,
+//                     so a single visitor can't drain demo spend over a day.)
 //
 // Identity resolution:
 //   1. Clerk JWT in the Authorization header → key on `u:<userId>`
@@ -28,9 +32,15 @@ function getRedis() {
 }
 
 const BUCKETS = {
-  ai:      { max: 10, windowSec: 60 },
-  media:   { max: 30, windowSec: 60 },
-  generic: { max: 60, windowSec: 60 },
+  ai:        { max: 10, windowSec: 60 },
+  media:     { max: 30, windowSec: 60 },
+  generic:   { max: 60, windowSec: 60 },
+  // Public demo surface (/api/demo/*) — unauthenticated, so keyed by IP and
+  // capped tighter than authed buckets. `demo` is the per-minute burst; the
+  // demo handlers ALSO check `demoDaily` so one IP can't grind through demo
+  // spend over a full day. Both fail open until Upstash is provisioned.
+  demo:      { max: 5,  windowSec: 60 },
+  demoDaily: { max: 20, windowSec: 86400 },
 }
 
 const _limiters = {}
