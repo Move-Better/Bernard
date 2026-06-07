@@ -1,43 +1,63 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Mic, Square, Loader2, RotateCcw, ArrowRight, Sparkles, Lock } from 'lucide-react'
+import { Mic, Square, Loader2, RotateCcw, ArrowRight, Sparkles, Lock, ChevronLeft, Star, HelpCircle, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 /**
- * DemoExperience — the no-login public demo (/demo).
+ * DemoExperience — the no-login public demo (/demo/try).
  *
  * Lives OUTSIDE the auth gate (sibling of /privacy, /onboard in App.jsx's outer
- * <Routes>), so a prospect on narraterx.ai can experience the core loop with zero
- * signup. Scope + rationale: .claude/scope-no-login-demo.md.
+ * <Routes>), so a prospect can experience the core loop with zero signup.
  *
- * Phase B1 (this file): record up to 90s → POST the audio to /api/demo/transcribe
- *   → show the transcript in the visitor's own words. Nothing is persisted.
- * Phase B2 will slot a "turn this into drafts" generation step in after the
- *   transcript (streaming blog + social atoms from /api/demo/generate).
+ * Flow: pick a topic → record (≤90s) → see your transcript → sign-up CTA.
  *
- * Positioning guardrail (project memory): NarrateRx amplifies the clinician's
- * REAL voice — it is a librarian, not a ghostwriter. Copy here never says "AI
- * writes your content"; the hero of the demo is *their* words, captured exactly.
+ * Phase B1: record → transcribe → show transcript. Nothing is persisted.
+ * Phase B2 will slot generation (streaming blog + social atoms) in after transcript.
  *
- * iOS capture notes: getUserMedia is invoked inside the tap handler (a user
- * gesture, required on iOS), and the MediaRecorder mime falls back to audio/mp4
- * (Safari's only supported type). There is no audio *playback* in B1, so the
- * TTS audio-unlock dance (project memory) isn't needed until B3's talk-back.
+ * iOS note: getUserMedia runs inside the tap handler (user gesture, required on iOS).
+ * Mime falls back to audio/mp4 for Safari.
  */
 
 const MAX_SECONDS = 90
 
-// Anti-blank-mic nudge: rotate concrete things a clinician could say, so the
-// visitor is never staring at a silent mic wondering what to talk about.
-const PROMPTS = [
-  'Tell me about a patient who finally got relief this week.',
-  "What's a question every new patient asks you?",
-  'Explain something you wish more people understood about back pain.',
-  "Describe a treatment patients are nervous about — but shouldn't be.",
-  'What did you take away from your last seminar or course?',
-  'Walk me through how you explain a first visit to someone new.',
+// Three interview archetypes — maps to the 3 core content types NarrateRx produces:
+// patient story (blog/email), FAQ (social + Google Q&A), thought leadership (opinion post).
+const TOPICS = [
+  {
+    id: 'story',
+    Icon: Star,
+    label: 'A patient win',
+    question: 'Tell me about a patient who finally got the relief they were looking for.',
+    hint: 'A recent case, an outcome that surprised you, or someone whose life changed.',
+    color: 'text-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-950/30',
+    border: 'border-amber-200 dark:border-amber-800',
+    hoverBorder: 'hover:border-amber-400 dark:hover:border-amber-600',
+  },
+  {
+    id: 'faq',
+    Icon: HelpCircle,
+    label: 'Your most-asked question',
+    question: "What's the question almost every new patient asks you — and what do you tell them?",
+    hint: 'The thing you explain so often you could say it in your sleep.',
+    color: 'text-blue-500',
+    bg: 'bg-blue-50 dark:bg-blue-950/30',
+    border: 'border-blue-200 dark:border-blue-800',
+    hoverBorder: 'hover:border-blue-400 dark:hover:border-blue-600',
+  },
+  {
+    id: 'insight',
+    Icon: Lightbulb,
+    label: 'Something patients get wrong',
+    question: "What's one thing you wish every patient understood before their first visit?",
+    hint: 'A common misconception, a fear you ease, or a mindset shift that changes outcomes.',
+    color: 'text-primary',
+    bg: 'bg-primary/5',
+    border: 'border-primary/20',
+    hoverBorder: 'hover:border-primary/50',
+  },
 ]
 
 const PREFERRED_MIME_TYPES = [
@@ -52,7 +72,7 @@ function pickMimeType() {
   for (const t of PREFERRED_MIME_TYPES) {
     if (MediaRecorder.isTypeSupported(t)) return t
   }
-  return '' // let the browser pick
+  return ''
 }
 
 function formatTime(sec) {
@@ -65,12 +85,12 @@ function formatTime(sec) {
 export default function DemoExperience() {
   useDocumentTitle('Try NarrateRx — talk for a minute, no login')
 
-  // state machine: idle | requesting | recording | transcribing | done
-  const [state, setState] = useState('idle')
+  // state machine: picking | requesting | recording | transcribing | done
+  const [phase, setPhase] = useState('picking')
+  const [topicId, setTopicId] = useState(null)
   const [elapsed, setElapsed] = useState(0)
   const [transcript, setTranscript] = useState('')
   const [error, setError] = useState('')
-  const [promptIdx, setPromptIdx] = useState(0)
 
   const recorderRef = useRef(null)
   const chunksRef = useRef([])
@@ -79,17 +99,9 @@ export default function DemoExperience() {
   const startTimeRef = useRef(0)
   const mimeRef = useRef('')
 
-  // Rotate the suggestion prompt while idle. Pauses once the user is recording
-  // or reviewing — at that point they don't need the nudge.
-  useEffect(() => {
-    if (state !== 'idle') return
-    const id = setInterval(() => {
-      setPromptIdx((i) => (i + 1) % PROMPTS.length)
-    }, 3800)
-    return () => clearInterval(id)
-  }, [state])
+  const topic = TOPICS.find((t) => t.id === topicId) || null
 
-  // Stop the mic + clear the timer on unmount so the recording indicator clears.
+  // Stop the mic + clear the timer on unmount.
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -102,12 +114,10 @@ export default function DemoExperience() {
     streamRef.current = null
   }, [])
 
-  // Send the captured audio to the public transcribe endpoint. No auth, no
-  // workspace — this is a deliberately public marketing surface.
   const transcribe = useCallback(async (blob, mime) => {
-    setState('transcribing')
+    setPhase('transcribing')
     try {
-      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public, unauthenticated demo endpoint; sends a raw binary audio body (no Bearer token, no JSON wrapper), so apiFetch doesn't apply.
+      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public unauthenticated demo endpoint; raw binary audio body, no Bearer token, apiFetch doesn't apply.
       const res = await fetch('/api/demo/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': mime || blob.type || 'audio/webm' },
@@ -122,21 +132,22 @@ export default function DemoExperience() {
           if (data?.message) msg = data.message
         }
         setError(msg)
-        setState('idle')
+        setPhase('recording') // back to recording state so they see the error in context
+        setPhase('picking')
         return
       }
       const data = await res.json()
       const text = (data?.transcript || '').trim()
       if (!text) {
         setError("We didn't catch any speech — try recording again somewhere quieter.")
-        setState('idle')
+        setPhase('picking')
         return
       }
       setTranscript(text)
-      setState('done')
+      setPhase('done')
     } catch {
       setError('Something went wrong reaching the demo. Check your connection and try again.')
-      setState('idle')
+      setPhase('picking')
     }
   }, [])
 
@@ -153,15 +164,12 @@ export default function DemoExperience() {
 
   const startRecording = useCallback(async () => {
     setError('')
-    setTranscript('')
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setError("This browser can't record audio. Try Safari or Chrome on a phone or laptop.")
       return
     }
-    setState('requesting')
+    setPhase('requesting')
     try {
-      // getUserMedia must run inside the tap gesture on iOS — it does (this is the
-      // click handler). Permission may already be granted from a prior visit.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       streamRef.current = stream
 
@@ -180,7 +188,7 @@ export default function DemoExperience() {
         const blob = new Blob(chunksRef.current, { type })
         if (!blob.size) {
           setError("That recording came through empty — try again.")
-          setState('idle')
+          setPhase('picking')
           return
         }
         transcribe(blob, type)
@@ -188,22 +196,19 @@ export default function DemoExperience() {
       rec.onerror = () => {
         setError('Recording stopped unexpectedly — try again.')
         stopRecording()
-        setState('idle')
+        setPhase('picking')
       }
 
-      // 1s timeslices so chunks accumulate steadily (and a backgrounded tab loses
-      // at most a second of audio).
       rec.start(1000)
       startTimeRef.current = Date.now()
       setElapsed(0)
-      setState('recording')
+      setPhase('recording')
       timerRef.current = setInterval(() => {
         const secs = (Date.now() - startTimeRef.current) / 1000
         setElapsed(secs)
-        if (secs >= MAX_SECONDS) stopRecording() // hard cap — auto-stop at 90s
+        if (secs >= MAX_SECONDS) stopRecording()
       }, 200)
     } catch (e) {
-      // Permission denied / NotFoundError / etc.
       const denied = e?.name === 'NotAllowedError' || e?.name === 'SecurityError'
       setError(
         denied
@@ -211,7 +216,7 @@ export default function DemoExperience() {
           : "We couldn't start the microphone. Check it's connected and try again."
       )
       stopTracks()
-      setState('idle')
+      setPhase('picking')
     }
   }, [stopTracks, stopRecording, transcribe])
 
@@ -219,13 +224,23 @@ export default function DemoExperience() {
     setTranscript('')
     setError('')
     setElapsed(0)
-    setState('idle')
+    setTopicId(null)
+    setPhase('picking')
   }, [])
 
-  const recording = state === 'recording'
-  const requesting = state === 'requesting'
-  const transcribing = state === 'transcribing'
-  const done = state === 'done'
+  const goBack = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    stopTracks()
+    setError('')
+    setElapsed(0)
+    setPhase('picking')
+  }, [stopTracks])
+
+  const recording = phase === 'recording'
+  const requesting = phase === 'requesting'
+  const transcribing = phase === 'transcribing'
+  const done = phase === 'done'
+  const picking = phase === 'picking'
   const remaining = Math.max(0, MAX_SECONDS - elapsed)
 
   return (
@@ -241,92 +256,160 @@ export default function DemoExperience() {
         </span>
       </header>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col items-center justify-center px-5 py-10 sm:py-14">
         <div className="w-full max-w-xl">
-          {!done && (
-            <div className="text-center mb-8 sm:mb-10">
-              <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-balance">
-                Talk for a minute. In your own words.
-              </h1>
-              <p className="mt-3 text-base text-muted-foreground text-balance">
-                Tell us about a patient win, a question you always get, or something you
-                wish more people understood. We&apos;ll capture it exactly as you said it —
-                the raw material for content in <span className="text-foreground font-medium">your</span> voice.
+
+          {/* ── Topic picker ─────────────────────────────────────────────── */}
+          {picking && (
+            <>
+              <div className="text-center mb-8">
+                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-balance">
+                  Pick a question. <em className="not-italic text-primary">Answer it out loud.</em>
+                </h1>
+                <p className="mt-3 text-base text-muted-foreground text-balance">
+                  Talk for up to a minute — in your own words. We&apos;ll capture it
+                  exactly as you said it.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {TOPICS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => { setTopicId(t.id); startRecording() }}
+                    className={cn(
+                      'w-full text-left rounded-2xl border-2 p-5 sm:p-6 transition-all duration-150 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
+                      t.bg, t.border, t.hoverBorder,
+                      'hover:shadow-sm active:scale-[0.99]'
+                    )}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={cn('mt-0.5 shrink-0', t.color)}>
+                        <t.Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          {t.label}
+                        </div>
+                        <p className="text-base font-medium text-foreground leading-snug">
+                          {t.question}
+                        </p>
+                        <p className="mt-1.5 text-sm text-muted-foreground">
+                          {t.hint}
+                        </p>
+                      </div>
+                      <div className="ml-auto pl-2 shrink-0 flex items-center self-center">
+                        <div className={cn('h-9 w-9 rounded-full flex items-center justify-center', t.bg, t.border, 'border')}>
+                          <Mic className={cn('h-4 w-4', t.color)} />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {error && (
+                <div className="mt-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
+                  {error}
+                </div>
+              )}
+
+              <p className="mt-6 text-center text-xs text-muted-foreground">
+                Nothing is saved. Your recording is transcribed and discarded — this is just a taste.
               </p>
-            </div>
+            </>
           )}
 
-          {/* ── Capture card ─────────────────────────────────────────────── */}
-          {!done && (
-            <div className="rounded-2xl border border-border bg-card shadow-sm p-8 sm:p-10 flex flex-col items-center">
-              <button
-                type="button"
-                onClick={recording ? stopRecording : startRecording}
-                disabled={requesting || transcribing}
-                aria-label={recording ? 'Stop recording' : 'Start recording'}
-                className={cn(
-                  'h-28 w-28 rounded-full flex items-center justify-center transition shadow-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:opacity-60',
-                  recording
-                    ? 'bg-destructive text-destructive-foreground animate-pulse'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                )}
-              >
-                {requesting || transcribing ? (
-                  <Loader2 className="h-10 w-10 animate-spin" />
-                ) : recording ? (
-                  <Square className="h-9 w-9" fill="currentColor" />
-                ) : (
-                  <Mic className="h-10 w-10" />
-                )}
-              </button>
+          {/* ── Recording / requesting / transcribing ─────────────────────── */}
+          {(requesting || recording || transcribing) && topic && (
+            <>
+              {/* Question being answered */}
+              <div className={cn('rounded-2xl border-2 p-5 sm:p-6 mb-6', topic.bg, topic.border)}>
+                <div className="flex items-center gap-2 mb-2">
+                  <topic.Icon className={cn('h-4 w-4', topic.color)} />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {topic.label}
+                  </span>
+                </div>
+                <p className="text-base font-medium text-foreground leading-snug">
+                  {topic.question}
+                </p>
+              </div>
 
-              {/* Timer / status */}
-              <div className="mt-5 text-center" aria-live="polite">
-                {recording ? (
-                  <>
-                    <div className="text-3xl font-mono tabular-nums">{formatTime(elapsed)}</div>
-                    <div className="mt-1 text-xs text-muted-foreground tabular-nums">
-                      {formatTime(remaining)} left · tap to stop
-                    </div>
-                  </>
-                ) : transcribing ? (
-                  <div className="text-sm font-medium">Listening back to what you said…</div>
-                ) : requesting ? (
-                  <div className="text-sm text-muted-foreground">Waiting for the microphone…</div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">Tap to start recording</div>
+              {/* Mic */}
+              <div className="rounded-2xl border border-border bg-card shadow-sm p-8 sm:p-10 flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={recording ? stopRecording : undefined}
+                  disabled={requesting || transcribing}
+                  aria-label={recording ? 'Stop recording' : 'Recording…'}
+                  className={cn(
+                    'h-28 w-28 rounded-full flex items-center justify-center transition shadow-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:opacity-60',
+                    recording
+                      ? 'bg-destructive text-destructive-foreground animate-pulse cursor-pointer'
+                      : 'bg-primary text-primary-foreground cursor-default'
+                  )}
+                >
+                  {requesting || transcribing ? (
+                    <Loader2 className="h-10 w-10 animate-spin" />
+                  ) : recording ? (
+                    <Square className="h-9 w-9" fill="currentColor" />
+                  ) : (
+                    <Mic className="h-10 w-10" />
+                  )}
+                </button>
+
+                <div className="mt-5 text-center" aria-live="polite">
+                  {recording ? (
+                    <>
+                      <div className="text-3xl font-mono tabular-nums">{formatTime(elapsed)}</div>
+                      <div className="mt-1 text-xs text-muted-foreground tabular-nums">
+                        {formatTime(remaining)} left · tap to stop early
+                      </div>
+                    </>
+                  ) : transcribing ? (
+                    <div className="text-sm font-medium">Listening back to what you said…</div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Waiting for the microphone…</div>
+                  )}
+                </div>
+
+                {recording && (
+                  <div className="mt-4 w-full max-w-xs h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-destructive transition-[width] duration-200 ease-linear"
+                      style={{ width: `${Math.min(100, (elapsed / MAX_SECONDS) * 100)}%` }}
+                    />
+                  </div>
                 )}
               </div>
 
-              {/* Recording progress bar */}
-              {recording && (
-                <div className="mt-4 w-full max-w-xs h-1 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-destructive transition-[width] duration-200 ease-linear"
-                    style={{ width: `${Math.min(100, (elapsed / MAX_SECONDS) * 100)}%` }}
-                  />
-                </div>
+              {!transcribing && (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="mt-5 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition mx-auto"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Pick a different question
+                </button>
               )}
-
-              {/* Rotating prompt nudge (idle only) */}
-              {state === 'idle' && (
-                <div className="mt-6 h-12 flex items-center justify-center text-center px-2">
-                  <p key={promptIdx} className="text-sm text-muted-foreground transition-opacity">
-                    <span className="text-muted-foreground/70">Not sure what to say? Try: </span>
-                    <span className="text-foreground">“{PROMPTS[promptIdx]}”</span>
-                  </p>
-                </div>
-              )}
-            </div>
+            </>
           )}
 
           {/* ── Result: transcript ───────────────────────────────────────── */}
-          {done && (
+          {done && topic && (
             <div>
+              {/* The question they answered */}
+              <div className={cn('rounded-xl border p-4 mb-5 flex items-start gap-3', topic.bg, topic.border)}>
+                <topic.Icon className={cn('h-4 w-4 mt-0.5 shrink-0', topic.color)} />
+                <p className="text-sm text-muted-foreground leading-snug">{topic.question}</p>
+              </div>
+
               <div className="flex items-center gap-2 text-sm font-medium text-primary mb-3">
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
-                Here&apos;s what you said
+                Your answer, captured word for word
               </div>
               <div className="rounded-2xl border border-border bg-card shadow-sm p-6 sm:p-8">
                 <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground">
@@ -334,9 +417,9 @@ export default function DemoExperience() {
                 </p>
               </div>
               <p className="mt-4 text-sm text-muted-foreground text-balance">
-                That&apos;s your raw material — captured word-for-word. NarrateRx turns
-                transcripts like this into ready-to-post blogs, social posts, and
-                newsletters, always in your voice (never a robot&apos;s).
+                That&apos;s your raw material. NarrateRx turns transcripts like this into
+                ready-to-post blogs, social posts, and newsletters — always in your voice,
+                never a robot&apos;s.
               </p>
 
               <div className="mt-6 flex flex-col sm:flex-row gap-3">
@@ -348,24 +431,17 @@ export default function DemoExperience() {
                 </Button>
                 <Button variant="outline" onClick={reset} className="flex-1 sm:flex-none">
                   <RotateCcw className="mr-1.5 h-4 w-4" />
-                  Record again
+                  Try another question
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Error */}
-          {error && (
+          {/* Error (non-picking states) */}
+          {error && !picking && (
             <div className="mt-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
               {error}
             </div>
-          )}
-
-          {/* Reassurance footer */}
-          {!done && (
-            <p className="mt-6 text-center text-xs text-muted-foreground">
-              Nothing is saved. Your recording is transcribed and discarded — this is just a taste.
-            </p>
           )}
         </div>
       </main>
