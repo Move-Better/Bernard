@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useParams } 
 import { Analytics } from '@vercel/analytics/react'
 import PrivacyPolicy from '@/pages/PrivacyPolicy'
 import TermsOfService from '@/pages/TermsOfService'
+import DemoExperience from '@/pages/DemoExperience'
 import {
   ClerkProvider,
   SignIn,
@@ -814,6 +815,10 @@ export default function App() {
               {/* Public pages — no auth required */}
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              {/* No-login public demo. Leaf route, fixed path — never hits OrgGate
+                  or WorkspaceProvider (it lives outside ProtectedAppWithProvider).
+                  Scope: .claude/scope-no-login-demo.md. */}
+              <Route path="/demo" element={<DemoExperience />} />
               {/* The apex wizard lives at /onboard exactly. Anything deeper
                   (/onboard/brand-kit, /onboard/interview) is part of the
                   authenticated app and falls through to the * catch-all
