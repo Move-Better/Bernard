@@ -50,15 +50,6 @@ export const KEEP_FILES = [
   'publish/website.js',
   'interviews/detect-video-offset.js',
   'handout/create.js',
-  // heavy long-running AI (Phase-2 fold candidates)
-  'generate.js',
-  'editorial/find-clips.js',
-  'editorial/generate-package.js',
-  'book/regenerate.js',
-  'onboarding/synthesize.js',
-  'content-items/split-into-series.js',
-  'interviews/cleanup-transcript.js',
-  'seminar/transcribe-worker.js',
 ]
 
 // The Express app itself — never migrated, never registered as a route.

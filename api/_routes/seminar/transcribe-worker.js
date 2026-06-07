@@ -18,7 +18,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { waitUntil } from '@vercel/functions'
-import { transcribeSeminar } from '../_lib/seminarTranscribe.js'
+import { transcribeSeminar } from '../../_lib/seminarTranscribe.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

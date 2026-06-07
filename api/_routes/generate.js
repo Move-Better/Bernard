@@ -1,8 +1,8 @@
-import { withSentry } from './_lib/sentry.js'
+import { withSentry } from '../_lib/sentry.js'
 import { generateText } from 'ai'
-import { enforceLimit } from './_lib/ratelimit.js'
-import { requireRole } from './_lib/auth.js'
-import { workspaceContext } from './_lib/workspaceContext.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
+import { requireRole } from '../_lib/auth.js'
+import { workspaceContext } from '../_lib/workspaceContext.js'
 
 // Pinned to Node runtime so the Edge whole-graph bundler doesn't follow
 // the ratelimit.js → @clerk/backend → node:crypto chain into middleware.

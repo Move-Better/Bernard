@@ -17,10 +17,10 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { workspaceContext } from '../_lib/workspaceContext.js'
-import { requireRole } from '../_lib/auth.js'
-import { enforceLimit } from '../_lib/ratelimit.js'
-import { synthesizeBook } from '../_lib/bookSynthesis.js'
+import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
+import { synthesizeBook } from '../../_lib/bookSynthesis.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
