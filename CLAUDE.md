@@ -336,6 +336,18 @@ PRs need to merge close to when they're opened, not batch-stacked indefinitely. 
 
 When work *has* batched (long autonomous run, lots of stacked PRs), triage rather than mass-merge: identify which PRs are now duplicative of merged work, which can rebase cleanly, and which need to be re-done against the current shape of the codebase.
 
+**Stacked PRs + squash-merge = guaranteed rebase conflict; use cherry-pick instead.** When PR A (the base) merges as a squash, git produces a brand-new commit that subsumes A's individual commits. Branch B, which was stacked on top of A, now has A's original commits in its history — and `git rebase origin/main` finds conflicts because the squash-commit and A's original commits touch the same files differently. `git rebase --abort` is the right response. The clean recovery:
+```bash
+# from inside the stacked branch
+git log --oneline -3          # find B's single meaningful commit SHA
+git fetch origin main
+git checkout -b <new-branch-name> origin/main
+git cherry-pick <B-commit-sha>
+git push -u origin <new-branch-name>
+# close the old PR, open a new one targeting main
+```
+Cherry-pick replays only B's actual change onto clean main — no conflict. This pattern recurred twice in the 2026-06-07 function-consolidation session (Phase 2 and Phase 3 stacked PRs after Phase 1 squash-merged).
+
 ## Production deploys
 Deploy to prod **only** from the project root (`/Users/qbook/Claude Projects/NarrateRx`) and **only** when the project root is on `main`, fully synced with `origin/main`. `vercel deploy --prod` ships the local working tree (not the git ref), so deploying from a worktree, a feature branch, or a project root with uncommitted changes will publish whatever happens to be on disk — including reverting recently-merged PRs.
 
@@ -412,6 +424,12 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 - [ ] Feature used in-browser at least once before the PR is opened (the step most often skipped)
 - [ ] For large-surface features: run `npm run e2e` or manually smoke the relevant page on the Vercel preview URL
 - [ ] If the PR changes a label, heading, button name, or default route behavior on a page covered by an E2E spec, update the spec in the same PR. Today the specs cover `/`, `/new`, `/settings/integrations`, `/settings/workspace`, and `/stories` (see `tests/e2e/*.spec.ts`). The post-deploy `E2E smoke` workflow only runs after merge to `main`, so a missed selector update keeps the smoke red until the next person notices — usually several merges later, by which point multiple suites are broken and the failure is harder to triage. Grep the specs for the heading/label you're changing before opening the PR: `grep -rn "<old label>" tests/e2e/`.
+
+**E2E smoke `ClerkAPIResponseError: Unauthorized` = stale `E2E_CLERK_SECRET_KEY` GitHub Actions secret.** The `auth.setup.ts` fixture mints Clerk sign-in tokens using `CLERK_SECRET_KEY` (mapped from the `E2E_CLERK_SECRET_KEY` Actions secret). If the secret is stale, EVERY e2e run fails at setup before any Playwright test runs. The failure is NOT caused by app code. Fix — run in any directory:
+```bash
+awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/Claude Projects/NarrateRx/.env.local.1pw" | tr -d '\r' | gh secret set E2E_CLERK_SECRET_KEY --repo Move-Better/NarrateRx
+```
+Confirm with `gh secret list --repo Move-Better/NarrateRx` — the updated timestamp should be today. (Hit 2026-06-06 after the secret was set 2026-05-12 and aged out.)
 
 ### Merge hygiene
 - [ ] Branch rebased on current `origin/main` (`git fetch && git rebase origin/main`) immediately before opening the PR
