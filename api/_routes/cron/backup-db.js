@@ -1,4 +1,4 @@
-import { withSentry } from '../_lib/sentry.js'
+import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
 // Nightly cloud backup of the shared narraterx Supabase DB to Vercel Blob.
 //
