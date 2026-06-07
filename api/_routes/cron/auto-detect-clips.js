@@ -23,8 +23,8 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { waitUntil } from '@vercel/functions'
-import { workspaceById } from '../_lib/workspaceContext.js'
-import { detectSegmentsForAsset } from '../_lib/segmentDetect.js'
+import { workspaceById } from '../../_lib/workspaceContext.js'
+import { detectSegmentsForAsset } from '../../_lib/segmentDetect.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

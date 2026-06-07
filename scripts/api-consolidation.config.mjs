@@ -8,17 +8,18 @@
 // resource profile the shared app can't provide, or a request shape the shared
 // express.json() body parser would break:
 //   - ffmpeg binary (includeFiles) + high memory
-//   - streaming responses
-//   - raw request body (webhook signature verification)
+//   - streaming responses (SSE, WebSocket, long-poll TTS)
 //   - large uploads streamed to disk
-//   - heavy long-running AI (Phase-2 fold candidates)
-//   - crons (own invocation model; static paths win in the filesystem phase)
 //
 // All KEEP paths are relative to api/ and use posix separators.
+// Webhooks and crons moved into the Express app in Phase 3:
+//   - Mux webhook uses JSON.stringify(req.body) re-stringify (no raw body needed)
+//   - Stripe webhook uses req.rawBody exposed via the express.json verify callback
+//   - Crons are called by Vercel on the /api/cron/* paths; the rewrite routes them
+//     to the Express app now that no filesystem files exist at those paths.
 
 // Whole directories kept (every *.js inside stays a separate function).
 export const KEEP_DIRS = [
-  'cron', // 11 scheduled jobs; static paths, win in filesystem phase
   'media/[id]', // nested-dynamic (consent/edit/purge/thumbnail); excluded via the rewrite lookahead
 ]
 
@@ -34,15 +35,12 @@ export const KEEP_FILES = [
   'editorial/render-segments.js',
   'editorial/repurpose-video.js',
   'editorial/rerender-package.js',
-  // streaming responses
+  // streaming responses (SSE / long-lived / WebSocket)
   'stream.js',
   'realtime-session.js',
   'tts.js',
   'voice-preview.js',
   'voice-memo.js',
-  // raw body (signature verification)
-  'billing/webhook.js',
-  'webhooks/mux.js',
   // large upload / stream-to-disk
   'capture/upload.js',
   'voice-clone/create.js',

@@ -1,5 +1,5 @@
-import { withSentry } from '../_lib/sentry.js'
-import { extractPackageShortId } from '../_lib/utm.js'
+import { withSentry } from '../../_lib/sentry.js'
+import { extractPackageShortId } from '../../_lib/utm.js'
 export const config = { runtime: 'nodejs' }
 // Tier 2b — daily engagement refresh + auto-flag.
 //
@@ -20,9 +20,9 @@ export const config = { runtime: 'nodejs' }
 //
 // Auth: Bearer CRON_SECRET (same pattern as backup-db).
 
-import { decryptSecret } from '../_lib/credentialCrypto.js'
-import { fetchGA4Metrics, urlToPagePath } from '../_lib/ga4.js'
-import { fetchPostStats } from '../_lib/bufferPostStats.js'
+import { decryptSecret } from '../../_lib/credentialCrypto.js'
+import { fetchGA4Metrics, urlToPagePath } from '../../_lib/ga4.js'
+import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY

@@ -21,7 +21,7 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { synthesizeBook } from '../_lib/bookSynthesis.js'
+import { synthesizeBook } from '../../_lib/bookSynthesis.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
