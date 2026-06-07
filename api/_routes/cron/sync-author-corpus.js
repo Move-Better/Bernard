@@ -30,7 +30,7 @@ const TARGET_SLUG = 'qbook'
 // would index the wrong person's interviews into the qbook (Author Mode) corpus.
 const Q_USER_ID = 'user_3DWDihgcc6OPc5eVvYkZO9sgqVt'
 
-import { indexInterviewTranscriptFull } from '../_lib/practiceMemoryRag.js'
+import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

@@ -13,11 +13,11 @@ export const config = { runtime: 'nodejs' }
 //
 // Auth: Bearer CRON_SECRET (same as backup-db and refresh-engagement).
 
-import { evaluate } from '../_lib/autoPublishGate.js'
-import { getCredential } from '../_lib/getCredential.js'
-import { prepareMediaForBuffer } from '../_lib/prepareMediaForBuffer.js'
-import { filterCampaignsForStaff } from '../_lib/tentpoleCampaignContext.js'
-import { getActiveCampaigns } from '../_lib/activeCampaigns.js'
+import { evaluate } from '../../_lib/autoPublishGate.js'
+import { getCredential } from '../../_lib/getCredential.js'
+import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
+import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
+import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
