@@ -378,12 +378,14 @@ function Card({ title, subtitle, children, footer }) {
 
 function LoadingScreen() {
   return (
-    <Card title="Just a moment…" subtitle="Checking if founding-owner spots are still open.">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
-        Loading
+    <div className="flex flex-col items-center justify-center py-24 gap-6">
+      <div className="text-3xl font-semibold select-none">
+        <span>narrate</span>
+        <span className="text-orange-600">Rx</span>
       </div>
-    </Card>
+      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+      <p className="text-sm text-muted-foreground">Checking availability…</p>
+    </div>
   )
 }
 
