@@ -232,8 +232,9 @@ The shared `/api/stream` endpoint and its client wrapper `streamMessage()` in `s
 
 ## Custom ESLint rules to know before writing JSX
 
-Two project-specific rules bite hard if you don't know them:
+Three project-specific rules bite hard if you don't know them:
 
+- **`react-hooks/static-components`** — component functions defined **inside** another component's render function (`const Foo = () => ...` inside `function Parent()`) reset their state on every render and trigger this error. Fix: declare all sub-components at **module scope**, outside any other component. Caught on `ProgressDots` in the demo session (2026-06-07).
 - **`narraterx/no-arbitrary-text-size`** — prohibits `text-[10px]`, `text-[11px]`, etc. Use the semantic tokens instead: `text-3xs` (10px) or `text-2xs` (11px). Lint will error at 0-warnings-allowed; the fix is a global replace before committing.
 - **`narraterx/no-raw-use-mutation`** — use `useAppMutation` not raw TanStack `useMutation`.
 - **`narraterx/no-raw-api-fetch`** — use `apiFetch`/`apiFetchResponse`, never bare `fetch('/api/...')`.
