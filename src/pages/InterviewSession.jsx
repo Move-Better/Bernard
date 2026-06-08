@@ -170,7 +170,7 @@ export default function InterviewSession() {
   // user navigates here from the clinician profile (already warm) or
   // returns to a previously-loaded interview within the gcTime window.
   const qc = useQueryClient()
-  const { data: staffData } = useStaffMember(staffId)
+  const { data: staffData, isLoading: staffMemberLoading } = useStaffMember(staffId)
   const { data: interviewData, isLoading: interviewLoading } = useInterview(interviewId)
   // Campaign goals (Settings → Campaigns) — used only by the goal-steered
   // "Write a newsletter" flow to resolve the bound campaign_id into a steering
@@ -178,7 +178,7 @@ export default function InterviewSession() {
   const { data: campaignsList = [] } = useCampaigns()
   const staffMember = staffData ?? null
   const [interview, setInterview] = useState(null)
-  const loading = interviewLoading || !staffMember || !interview
+  const loading = interviewLoading || staffMemberLoading || !interview
   const [messages, setMessages] = useState([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
@@ -1503,6 +1503,11 @@ export default function InterviewSession() {
     )
   }
 
+  if (interviewLoading || staffMemberLoading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+    </div>
+  )
   if (!staffMember || !interview) return null
 
   const isOwner = user?.id === interview.owner_id
@@ -1602,38 +1607,16 @@ export default function InterviewSession() {
           <p className="font-medium text-sm leading-none">{staffMember.name}</p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate" title={interview.topic}>{interview.topic}</p>
         </div>
-        {saveStatus && (
+        {saveStatus && saveStatus !== 'error' && (
           <span
-            className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'error' ? 'text-destructive' : saveStatus === 'recovered' ? 'text-amber-600' : 'text-muted-foreground'}`}
-            title={
-              saveStatus === 'error'
-                ? 'Server save failed — your answers are kept locally. Tap to retry.'
-                : saveStatus === 'recovered'
-                ? 'Restored from local backup after a save failure. Re-syncing…'
-                : ''
-            }
+            className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-amber-600' : 'text-muted-foreground'}`}
           >
             {saveStatus === 'saving'
               ? <><Loader2 className="h-3 w-3 animate-spin" />Saving…</>
               : saveStatus === 'saved'
               ? <><Check className="h-3 w-3" />Saved</>
-              : saveStatus === 'recovered'
-              ? <><RefreshCw className="h-3 w-3" />Recovered locally</>
-              : (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 underline underline-offset-2"
-                  onClick={() => {
-                    if (user?.id) saveMessages(
-                      interviewId,
-                      { messages: messagesRef.current, session_state: buildSessionState(messagesRef.current) },
-                    )
-                  }}
-                >
-                  <AlertCircle className="h-3 w-3" />
-                  Save failed — retry
-                </button>
-              )}
+              : <><RefreshCw className="h-3 w-3" />Recovered locally</>
+            }
           </span>
         )}
         {interviewComplete
@@ -1702,6 +1685,25 @@ export default function InterviewSession() {
         <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center gap-2 shrink-0" role="status">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" aria-hidden="true" />
           Resuming your session…
+        </div>
+      )}
+
+      {saveStatus === 'error' && (
+        <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800 flex items-center gap-2 shrink-0" role="alert">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">Server save failed — your answers are kept locally.</span>
+          <button
+            type="button"
+            className="font-medium underline underline-offset-2 shrink-0"
+            onClick={() => {
+              if (user?.id) saveMessages(
+                interviewId,
+                { messages: messagesRef.current, session_state: buildSessionState(messagesRef.current) },
+              )
+            }}
+          >
+            Retry
+          </button>
         </div>
       )}
 
