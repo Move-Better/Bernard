@@ -15,7 +15,7 @@ export default function InstallBanner() {
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-foreground">Add NarrateRx to your home screen</p>
+        <p className="font-medium text-foreground">Add Bernard to your home screen</p>
         {isIOSSafari ? (
           <p className="text-muted-foreground mt-0.5">
             Tap the <Share className="inline h-3.5 w-3.5 mb-0.5" /> Share button at the bottom of Safari, then choose <strong>Add to Home Screen</strong>.

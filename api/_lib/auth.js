@@ -6,7 +6,7 @@
 // shape (some endpoints want 401 vs 403 split, some want a generic 'forbidden').
 //
 // Roles (see api/_lib/roles.js for canonical persona model):
-//   admin     — workspace owner; configures NarrateRx; can purge
+//   admin     — workspace owner; configures Bernard; can purge
 //   publisher — publishes content (attach media, schedule, publish, monitor)
 //               LEGACY ALIAS: 'editor' — still authorizes via EDITOR_ROLES
 //   clinician — owns voice; records interviews, reviews drafts; upload only
@@ -123,7 +123,7 @@ export async function requireRole(req, allowedRoles = null, { orgId = null } = {
   }
   if (!user) return { ok: false, reason: 'no-user' }
 
-  // Clerk Organization admins are treated as NarrateRx admins for the active
+  // Clerk Organization admins are treated as Bernard admins for the active
   // workspace, regardless of their publicMetadata.role. This lets workspace
   // owners modify settings without a separate user-level role grant.
   //

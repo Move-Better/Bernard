@@ -1,14 +1,14 @@
 import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
-// Nightly cloud backup of the shared narraterx Supabase DB to Vercel Blob.
+// Nightly cloud backup of the shared bernard Supabase DB to Vercel Blob.
 //
 // Vercel cron hits this daily (see vercel.json). Auth = Bearer CRON_SECRET.
 //
 // Strategy: pg_dump is unavailable in Vercel Functions, so we read each
 // public-schema BASE TABLE via `pg`, build a single JSON snapshot
 // { meta, tables: { name: { columns, rows } } }, gzip it, and PUT it to
-// Vercel Blob at backups/narraterx-db/YYYY-MM-DD-<random>.json.gz with
-// access:'private'. Restore: `vercel blob list --prefix backups/narraterx-db/`
+// Vercel Blob at backups/bernard-db/YYYY-MM-DD-<random>.json.gz with
+// access:'private'. Restore: `vercel blob list --prefix backups/bernard-db/`
 // then `vercel blob get <pathname>` to download, then
 // scripts/restore-db-from-blob.mjs against the local file (JSON replay,
 // not byte-identical SQL — fine because schema is reproducible from
@@ -25,7 +25,7 @@ import { put, list, del } from '@vercel/blob'
 const { Pool } = pg
 
 const RETENTION_DAYS = 30
-const PREFIX = 'backups/narraterx-db/'
+const PREFIX = 'backups/bernard-db/'
 
 async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET

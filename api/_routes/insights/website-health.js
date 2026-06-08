@@ -47,7 +47,7 @@ async function checkPage(url) {
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'user-agent': 'NarrateRx-InsightsBot/1.0 (+https://narraterx.ai)' },
+      headers: { 'user-agent': 'Bernard-InsightsBot/1.0 (+https://withbernard.ai)' },
     })
     // Drain/ignore the body — we only need the status. Cancel to free the socket.
     try { await r.body?.cancel() } catch { /* noop */ }

@@ -35,23 +35,23 @@ describe('addProjectDomain', () => {
   })
 
   it('returns { added: true } on 200 OK', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, { name: 'studio.narraterx.ai' }))
-    const r = await addProjectDomain('studio.narraterx.ai')
-    expect(r).toEqual({ added: true, name: 'studio.narraterx.ai' })
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { name: 'studio.withbernard.ai' }))
+    const r = await addProjectDomain('studio.withbernard.ai')
+    expect(r).toEqual({ added: true, name: 'studio.withbernard.ai' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('treats domain_already_in_use_by_project as success without inspecting', async () => {
     fetchMock.mockResolvedValueOnce(errorResponse(409, 'domain_already_in_use_by_project'))
-    const r = await addProjectDomain('studio.narraterx.ai')
-    expect(r).toEqual({ added: false, name: 'studio.narraterx.ai', alreadyAttached: true })
+    const r = await addProjectDomain('studio.withbernard.ai')
+    expect(r).toEqual({ added: false, name: 'studio.withbernard.ai', alreadyAttached: true })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('treats domain_already_exists as success without inspecting', async () => {
     fetchMock.mockResolvedValueOnce(errorResponse(409, 'domain_already_exists'))
-    const r = await addProjectDomain('studio.narraterx.ai')
-    expect(r).toEqual({ added: false, name: 'studio.narraterx.ai', alreadyAttached: true })
+    const r = await addProjectDomain('studio.withbernard.ai')
+    expect(r).toEqual({ added: false, name: 'studio.withbernard.ai', alreadyAttached: true })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -59,8 +59,8 @@ describe('addProjectDomain', () => {
     fetchMock
       .mockResolvedValueOnce(errorResponse(409, 'domain_already_in_use'))
       .mockResolvedValueOnce(jsonResponse(200, { projects: [PROJECT_ID] }))
-    const r = await addProjectDomain('studio.narraterx.ai')
-    expect(r).toEqual({ added: false, name: 'studio.narraterx.ai', alreadyAttached: true })
+    const r = await addProjectDomain('studio.withbernard.ai')
+    expect(r).toEqual({ added: false, name: 'studio.withbernard.ai', alreadyAttached: true })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -68,7 +68,7 @@ describe('addProjectDomain', () => {
     fetchMock
       .mockResolvedValueOnce(errorResponse(409, 'domain_already_in_use'))
       .mockResolvedValueOnce(jsonResponse(200, { domain: { projects: [{ id: PROJECT_ID }] } }))
-    const r = await addProjectDomain('studio.narraterx.ai')
+    const r = await addProjectDomain('studio.withbernard.ai')
     expect(r.alreadyAttached).toBe(true)
   })
 
@@ -76,26 +76,26 @@ describe('addProjectDomain', () => {
     fetchMock
       .mockResolvedValueOnce(errorResponse(409, 'domain_already_in_use', 'in use by other'))
       .mockResolvedValueOnce(jsonResponse(200, { projects: ['prj_other'] }))
-    await expect(addProjectDomain('studio.narraterx.ai')).rejects.toBeInstanceOf(VercelDomainError)
+    await expect(addProjectDomain('studio.withbernard.ai')).rejects.toBeInstanceOf(VercelDomainError)
   })
 
   it('domain_already_in_use + inspect 404 → throws (ambiguous = real error)', async () => {
     fetchMock
       .mockResolvedValueOnce(errorResponse(409, 'domain_already_in_use'))
       .mockResolvedValueOnce(jsonResponse(404, { error: { code: 'not_found' } }))
-    await expect(addProjectDomain('studio.narraterx.ai')).rejects.toBeInstanceOf(VercelDomainError)
+    await expect(addProjectDomain('studio.withbernard.ai')).rejects.toBeInstanceOf(VercelDomainError)
   })
 
   it('domain_already_in_use + inspect network error → throws', async () => {
     fetchMock
       .mockResolvedValueOnce(errorResponse(409, 'domain_already_in_use'))
       .mockRejectedValueOnce(new Error('boom'))
-    await expect(addProjectDomain('studio.narraterx.ai')).rejects.toBeInstanceOf(VercelDomainError)
+    await expect(addProjectDomain('studio.withbernard.ai')).rejects.toBeInstanceOf(VercelDomainError)
   })
 
   it('throws on other error codes', async () => {
     fetchMock.mockResolvedValueOnce(errorResponse(403, 'forbidden', 'nope'))
-    await expect(addProjectDomain('studio.narraterx.ai')).rejects.toMatchObject({
+    await expect(addProjectDomain('studio.withbernard.ai')).rejects.toMatchObject({
       name: 'VercelDomainError',
       code: 'forbidden',
       status: 403,

@@ -1,6 +1,6 @@
 // Resolves the workspace scope for any inbound API request.
 //
-// The shared multi-tenant deployment (narraterx.ai) keys every domain table
+// The shared multi-tenant deployment (withbernard.ai) keys every domain table
 // by `workspace_id UUID FK`. The workspace is resolved from the request's
 // Host header via workspaceContext.
 //

@@ -28,7 +28,7 @@ import { buildDigest } from '../../_lib/engagementDigestEmail.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const RESEND_API_KEY = process.env.RESEND_API_KEY
-const ADMIN_NOTIFY_FROM = process.env.ADMIN_NOTIFY_FROM || 'NarrateRx <noreply@narraterx.ai>'
+const ADMIN_NOTIFY_FROM = process.env.ADMIN_NOTIFY_FROM || 'Bernard <noreply@withbernard.ai>'
 const CLERK_SECRET = process.env.CLERK_SECRET_KEY
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'

@@ -1,17 +1,17 @@
-// Inbound publish webhook for narraterx.ai's own blog.
+// Inbound publish webhook for withbernard.ai's own blog.
 //
 // Mirrors the receive side of the Astro+GitHub publish contract that
 // api/publish/website.js → publishToAstro() sends to. Lets a Studio
-// workspace push approved blog posts straight into Move-Better/NarrateRx's
+// workspace push approved blog posts straight into Move-Better/Bernard's
 // src/content/blog/<slug>.md, which scripts/build-blog.mjs picks up at the
 // next Vercel deploy.
 //
-// Auth: Bearer <NARRATERX_PUBLISH_SECRET>. The shared secret is configured
+// Auth: Bearer <BERNARD_PUBLISH_SECRET>. The shared secret is configured
 // once in this project's env vars (Sensitive) and pasted into the calling
 // workspace's astro_github credential.
 //
-// GitHub: commits via Contents API using GITHUB_TOKEN_NARRATERX_PUBLISH
-// (Sensitive, fine-grained PAT scoped to Move-Better/NarrateRx with
+// GitHub: commits via Contents API using GITHUB_TOKEN_BERNARD_PUBLISH
+// (Sensitive, fine-grained PAT scoped to Move-Better/Bernard with
 // `contents: read+write`). Never overwrites — duplicate slug → 409.
 //
 // Contract (response codes mirror what publishToAstro() expects):
@@ -27,7 +27,7 @@ export const config = { runtime: 'nodejs', maxDuration: 30 }
 import { enforceLimit } from '../_lib/ratelimit.js'
 
 const REPO_OWNER = 'Move-Better'
-const REPO_NAME  = 'NarrateRx'
+const REPO_NAME  = 'Bernard'
 const REPO_BRANCH = 'main'
 const CONTENT_PATH_PREFIX = 'src/content/blog'
 
@@ -84,7 +84,7 @@ function timingSafeEqual(a, b) {
 const GH_HEADERS_BASE = {
   Accept: 'application/vnd.github+json',
   'X-GitHub-Api-Version': '2022-11-28',
-  'User-Agent': 'narraterx-publish-blog/1.0',
+  'User-Agent': 'bernard-publish-blog/1.0',
 }
 
 async function githubGet(token, path) {
@@ -112,13 +112,13 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'publish-blog-inbound'))) return
 
-  const expectedSecret = process.env.NARRATERX_PUBLISH_SECRET
-  const ghToken        = process.env.GITHUB_TOKEN_NARRATERX_PUBLISH
+  const expectedSecret = process.env.BERNARD_PUBLISH_SECRET
+  const ghToken        = process.env.GITHUB_TOKEN_BERNARD_PUBLISH
   if (!expectedSecret || !ghToken) {
     console.error('[publish-blog] env missing:', { hasSecret: !!expectedSecret, hasToken: !!ghToken })
     return res.status(500).json({
       error: 'misconfigured',
-      message: 'narraterx.ai publish webhook is missing env vars (NARRATERX_PUBLISH_SECRET and/or GITHUB_TOKEN_NARRATERX_PUBLISH). Not retriable from the client.',
+      message: 'withbernard.ai publish webhook is missing env vars (BERNARD_PUBLISH_SECRET and/or GITHUB_TOKEN_BERNARD_PUBLISH). Not retriable from the client.',
     })
   }
 
@@ -168,7 +168,7 @@ export default async function handler(req, res) {
     console.error(tag, `github auth ${existsResp.status} on existence check`)
     return res.status(500).json({
       error: 'misconfigured',
-      message: 'The GitHub token lacks contents access on Move-Better/NarrateRx. Regenerate the PAT with `Contents: read+write` and re-paste in Vercel env.',
+      message: 'The GitHub token lacks contents access on Move-Better/Bernard. Regenerate the PAT with `Contents: read+write` and re-paste in Vercel env.',
     })
   }
   if (existsResp.status !== 404) {
@@ -179,7 +179,7 @@ export default async function handler(req, res) {
 
   // 2. Build the markdown file content.
   const fileContent = buildMarkdownFile(payload)
-  const commitMessage = `feat(blog): publish ${slug}\n\nPushed via the publish webhook from a NarrateRx Studio workspace.`
+  const commitMessage = `feat(blog): publish ${slug}\n\nPushed via the publish webhook from a Bernard Studio workspace.`
 
   // 3. Commit via Contents API.
   let putResp
@@ -208,6 +208,6 @@ export default async function handler(req, res) {
     success:   true,
     slug,
     commitUrl: putData?.commit?.html_url || null,
-    postUrl:   `https://narraterx.ai/blog/${slug}`,
+    postUrl:   `https://withbernard.ai/blog/${slug}`,
   })
 }

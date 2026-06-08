@@ -51,7 +51,7 @@ export function buildDigest({ workspace, published, slateStats, triage, queued, 
   const accent = (workspace.colors?.primary) || '#e36525'
   const ribbonGradient = `linear-gradient(135deg, ${accent}, ${shade(accent, -22)})`
   const subject = `${wsName} — last week's content + this week's queue`
-  const baseUrl = `https://${workspace.slug}.narraterx.ai`
+  const baseUrl = `https://${workspace.slug}.withbernard.ai`
   const slateUrl = `${baseUrl}/slate`
 
   const publishedCount = published.length

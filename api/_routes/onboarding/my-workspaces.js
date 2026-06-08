@@ -91,7 +91,7 @@ async function handler(req, res) {
     workspaces = rows.map(row => ({
       slug: row.slug,
       display_name: row.display_name,
-      url: `https://${row.slug}.narraterx.ai`,
+      url: `https://${row.slug}.withbernard.ai`,
     }))
   }
 
@@ -112,7 +112,7 @@ async function handler(req, res) {
         .map(row => ({
           slug: row.slug,
           display_name: row.display_name,
-          url: `https://${row.slug}.narraterx.ai`,
+          url: `https://${row.slug}.withbernard.ai`,
         }))
     }
   }

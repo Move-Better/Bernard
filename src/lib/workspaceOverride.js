@@ -1,7 +1,7 @@
 // Non-prod-only workspace override.
 //
-// Preview deploys live at `narraterx-git-<branch>.vercel.app`, which has no
-// `<slug>.narraterx.ai` subdomain for workspaceContext to resolve. Playwright
+// Preview deploys live at `bernard-git-<branch>.vercel.app`, which has no
+// `<slug>.withbernard.ai` subdomain for workspaceContext to resolve. Playwright
 // preview-smoke tests need to act on a real workspace, so we accept
 // `?workspace=<slug>` as a fallback resolver, persisted to sessionStorage so it
 // survives in-app navigations.
@@ -9,7 +9,7 @@
 // The server side (api/_lib/workspaceContext.js) only honors this override when
 // `VERCEL_ENV !== 'production'`. The client patch here is opt-in (no `?workspace=`
 // in URL or sessionStorage → no patching, no behavior change). Production runs
-// are unaffected: even if someone tacks `?workspace=` onto narraterx.ai, the API
+// are unaffected: even if someone tacks `?workspace=` onto withbernard.ai, the API
 // ignores it.
 
 const STORAGE_KEY = '__nrx_workspace_override'

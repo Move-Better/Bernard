@@ -133,7 +133,7 @@ async function fetchPage(url) {
         redirect: 'manual',
         signal: controller.signal,
         headers: {
-          'User-Agent': 'NarrateRxBot/1.0 (+https://narraterx.ai)',
+          'User-Agent': 'BernardBot/1.0 (+https://withbernard.ai)',
           Accept: 'text/html,application/xhtml+xml',
         },
       })
@@ -384,7 +384,7 @@ function extractText(html, sourceUrl, maxChars = MAX_TEXT_CHARS_HOME) {
   return parts.join('\n\n')
 }
 
-const SYSTEM = `You are helping NarrateRx onboard a new business. You're reading several pages from their site — typically home, about, one or more services / treatments / programs pages, and one or more blog / article pages — and producing structured starter brand-voice context the business owner can edit.
+const SYSTEM = `You are helping Bernard onboard a new business. You're reading several pages from their site — typically home, about, one or more services / treatments / programs pages, and one or more blog / article pages — and producing structured starter brand-voice context the business owner can edit.
 
 Be specific and grounded in the source. If the site doesn't tell you something, leave that field empty (or the array empty) rather than inventing. Do NOT use marketing fluff. Match the tone and vocabulary the site already uses — that's the whole point.
 

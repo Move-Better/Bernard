@@ -15,11 +15,11 @@
 //     half-written answer survives.
 
 function messagesKey(interviewId) {
-  return `narraterx:interview:${interviewId}:messages`
+  return `bernard:interview:${interviewId}:messages`
 }
 
 function draftKey(interviewId) {
-  return `narraterx:interview:${interviewId}:draft`
+  return `bernard:interview:${interviewId}:draft`
 }
 
 // ── Committed messages ──────────────────────────────────────────────────────

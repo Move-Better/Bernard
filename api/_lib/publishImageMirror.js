@@ -1,6 +1,6 @@
 // Shared helpers for mirror-on-publish: walk a blog post's markdown body and
 // its attached media_urls to produce a normalized manifest that the WordPress
-// and Astro publish handlers can use to copy images out of NarrateRx blob
+// and Astro publish handlers can use to copy images out of Bernard blob
 // storage and onto the receiving site.
 //
 // Two image sources feed the manifest:
@@ -17,7 +17,7 @@
 
 const MD_IMAGE_RE = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
 
-// Recognize NarrateRx-served blob URLs so we don't try to mirror images that
+// Recognize Bernard-served blob URLs so we don't try to mirror images that
 // already live on a public CDN (e.g. unsplash hero stock). Anything we can't
 // fetch reliably is left as a hotlink.
 function isMirrorableUrl(url) {
@@ -26,7 +26,7 @@ function isMirrorableUrl(url) {
   return (
     /\.public\.blob\.vercel-storage\.com/i.test(url) ||
     /\.blob\.vercel-storage\.com/i.test(url) ||
-    /\.narraterx\.ai\//i.test(url)
+    /\.bernard\.ai\//i.test(url)
   )
 }
 

@@ -28,7 +28,7 @@ const SNOOZE_HOURS = 24
 const SNOOZE_MS = SNOOZE_HOURS * 60 * 60 * 1000
 
 function snoozeKey(workspaceId) {
-  return `narraterx.onboarding-snooze.${workspaceId}`
+  return `bernard.onboarding-snooze.${workspaceId}`
 }
 
 function isSnoozed(workspaceId) {
@@ -141,16 +141,16 @@ export default function OnboardingCard() {
                   Continue your onboarding interview — {turnsIn} answer{turnsIn === 1 ? '' : 's'} in
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Pick up where you left off. Once finished, NarrateRx will use your voice instead of the paradigm defaults.
+                  Pick up where you left off. Once finished, Bernard will use your voice instead of the paradigm defaults.
                 </p>
               </>
             ) : (
               <>
                 <p className="font-semibold text-sm">
-                  Tell NarrateRx about {workspace?.display_name || 'your practice'}
+                  Tell Bernard about {workspace?.display_name || 'your practice'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  ~15 minutes. We&apos;ll learn your voice, patient type, and the topics you wish more people understood — then every piece NarrateRx generates will sound like you, not a template.
+                  ~15 minutes. We&apos;ll learn your voice, patient type, and the topics you wish more people understood — then every piece Bernard generates will sound like you, not a template.
                 </p>
               </>
             )}

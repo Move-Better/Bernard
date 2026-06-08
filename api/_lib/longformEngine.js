@@ -127,7 +127,7 @@ async function packageStatus(packageId, workspaceId) {
  *
  * @param {Object} p
  * @param {string} p.packageId
- * @param {string} [p.baseUrl]  — origin for the self-continuation POST (e.g. https://slug.narraterx.ai)
+ * @param {string} [p.baseUrl]  — origin for the self-continuation POST (e.g. https://slug.withbernard.ai)
  */
 export async function runChunkPass({ packageId, baseUrl }) {
   const startedAt = Date.now()

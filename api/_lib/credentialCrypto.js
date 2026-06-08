@@ -6,7 +6,7 @@
 //
 // Master key: WORKSPACE_CREDENTIALS_KEY env var, 64 hex chars (32 bytes).
 // Generate once with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-// Set on the shared narraterx Vercel project as Sensitive. Losing this key
+// Set on the shared bernard Vercel project as Sensitive. Losing this key
 // makes existing encrypted credentials unrecoverable — re-paste required.
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'

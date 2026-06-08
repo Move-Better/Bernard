@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 const EFFECTIVE = 'May 15, 2026'
-const CONTACT   = 'narraterx@gmail.com'
+const CONTACT   = 'bernard@gmail.com'
 
 export default function TermsOfService() {
   return (
@@ -11,7 +11,7 @@ export default function TermsOfService() {
         {/* Header */}
         <div className="mb-10">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to NarrateRx
+            ← Back to Bernard
           </Link>
           <h1 className="mt-6 text-3xl font-bold tracking-tight">Terms of Service</h1>
           <p className="mt-2 text-sm text-muted-foreground">Effective {EFFECTIVE}</p>
@@ -22,10 +22,10 @@ export default function TermsOfService() {
 
           <section>
             <p>
-              These Terms of Service (&ldquo;Terms&rdquo;) govern your use of NarrateRx,
-              operated by NarrateRx (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;).
-              By accessing or using NarrateRx you agree to these Terms. If you are using
-              NarrateRx on behalf of an organization, you represent that you have authority
+              These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Bernard,
+              operated by Bernard (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;).
+              By accessing or using Bernard you agree to these Terms. If you are using
+              Bernard on behalf of an organization, you represent that you have authority
               to bind that organization.
             </p>
           </section>
@@ -33,7 +33,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-base font-semibold mb-3">1. The service</h2>
             <p>
-              NarrateRx is a software-as-a-service platform that helps clinicians capture
+              Bernard is a software-as-a-service platform that helps clinicians capture
               interview recordings, generate AI-assisted content drafts, and publish
               approved content to connected channels. Features and pricing may change with
               reasonable notice.
@@ -62,10 +62,10 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-base font-semibold mb-3">3. Your content</h2>
             <p>
-              You retain ownership of all content you create in NarrateRx — interview
+              You retain ownership of all content you create in Bernard — interview
               transcripts, recordings, uploaded media, and generated drafts. By using the
               service you grant us a limited licence to store, process, and transmit your
-              content solely to operate NarrateRx on your behalf (including sending
+              content solely to operate Bernard on your behalf (including sending
               transcripts to AI models to produce drafts).
             </p>
             <p className="mt-2">
@@ -76,7 +76,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-base font-semibold mb-3">4. AI-generated content</h2>
             <p>
-              NarrateRx uses large language models to generate content drafts from your
+              Bernard uses large language models to generate content drafts from your
               interviews. You are responsible for reviewing, editing, and approving all
               AI-generated output before publishing. We make no warranty that AI-generated
               drafts are accurate, complete, or suitable for any particular purpose. The
@@ -93,7 +93,7 @@ export default function TermsOfService() {
               <li>
                 Store protected health information (PHI) as defined under HIPAA or
                 equivalent regulations in any interview, transcript, or media upload.
-                NarrateRx is a content creation tool, not an electronic health record
+                Bernard is a content creation tool, not an electronic health record
                 system, and is not designed or certified for PHI storage.
               </li>
               <li>Attempt to access another tenant&apos;s workspace or data.</li>
@@ -105,7 +105,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-base font-semibold mb-3">6. HIPAA notice</h2>
             <p>
-              NarrateRx is designed for creating clinical thought-leadership and marketing
+              Bernard is designed for creating clinical thought-leadership and marketing
               content — not for storing, transmitting, or processing patient records.
               <strong> Do not enter patient-identifying information</strong> (names, dates
               of birth, health record numbers, or any other PHI) into interview transcripts
@@ -150,9 +150,9 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-base font-semibold mb-3">9. Intellectual property</h2>
             <p>
-              The NarrateRx platform, including its design, code, and brand, is owned by
-              NarrateRx and protected by copyright and other laws. These Terms do not
-              grant you any rights in NarrateRx beyond the limited licence to use the
+              The Bernard platform, including its design, code, and brand, is owned by
+              Bernard and protected by copyright and other laws. These Terms do not
+              grant you any rights in Bernard beyond the limited licence to use the
               service.
             </p>
           </section>
@@ -171,7 +171,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-base font-semibold mb-3">11. Limitation of liability</h2>
             <p>
-              To the maximum extent permitted by law, NarrateRx&apos;s total liability
+              To the maximum extent permitted by law, Bernard&apos;s total liability
               for any claim arising from your use of the service is limited to the greater
               of (a) the amount you paid us in the 12 months before the claim arose or
               (b) $100 USD. We are not liable for indirect, consequential, or punitive
@@ -195,14 +195,14 @@ export default function TermsOfService() {
               We may update these Terms. Material changes will be communicated via email
               and an in-app notice at least 14 days before they take effect. Continued use
               after the effective date constitutes acceptance. The current version is
-              always at <code className="text-xs bg-muted px-1 py-0.5 rounded">narraterx.ai/terms</code>.
+              always at <code className="text-xs bg-muted px-1 py-0.5 rounded">withbernard.ai/terms</code>.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-semibold mb-3">14. Contact</h2>
             <p>
-              NarrateRx<br />
+              Bernard<br />
               Portland, OR, USA<br />
               <a href={`mailto:${CONTACT}`} className="text-primary underline-offset-4 hover:underline">{CONTACT}</a>
             </p>

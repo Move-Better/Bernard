@@ -837,7 +837,7 @@ function CaptureCompanionCard({ staffMember }) {
             </div>
             <div className="flex items-center justify-between gap-2 pt-1">
               <a
-                href="https://github.com/Move-Better/NarrateRx/blob/main/.claude/runbooks/capture-companion-ios-shortcut.md"
+                href="https://github.com/Move-Better/Bernard/blob/main/.claude/runbooks/capture-companion-ios-shortcut.md"
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-primary hover:underline"

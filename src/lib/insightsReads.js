@@ -2,7 +2,7 @@
 // data (published pieces + engagement snapshots). No fabrication: every read is
 // computed from counted facts, and when there isn't enough signal we say so
 // rather than inventing a trend. The plain-language phrasing is the product —
-// Narrate acting like a content expert — but the claims are all real.
+// Bernard acting like a content expert — but the claims are all real.
 //
 // Phase 1 is intentionally rule-based (no model call): it's instant, free, and
 // can't hallucinate a number. An LLM-polish pass can layer on later without

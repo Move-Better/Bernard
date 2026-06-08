@@ -2,10 +2,10 @@ name: E2E smoke
 
 # Post-deploy smoke against the real production subdomain. Pre-merge gating
 # on PR-preview URLs is architecturally blocked: prod Clerk only accepts
-# origins that are narraterx.ai or a subdomain (vercel.app preview URLs are
-# rejected with "Production Keys are only allowed for domain narraterx.ai").
+# origins that are withbernard.ai or a subdomain (vercel.app preview URLs are
+# rejected with "Production Keys are only allowed for domain withbernard.ai").
 # We run after each merge to main, wait for Vercel's production deployment,
-# then test against movebetter-people.narraterx.ai. Catches regressions
+# then test against movebetter-people.withbernard.ai. Catches regressions
 # within a few minutes of shipping, before customers notice. See the
 # `project_e2e_staging_stack_option` memory for the pre-merge alternative.
 
@@ -82,7 +82,7 @@ jobs:
 
       - name: Run Playwright smoke
         env:
-          E2E_BASE_URL: https://movebetter-people.narraterx.ai
+          E2E_BASE_URL: https://movebetter-people.withbernard.ai
           E2E_WORKSPACE_SLUG: movebetter-people
           E2E_FIXTURE_STAFF_NAME: E2E Smoke Staff
           E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}

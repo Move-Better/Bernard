@@ -9,7 +9,7 @@ const STEPS = [
   {
     key: 'onboarding_interview',
     label: 'Set up your voice (about 5 minutes)',
-    description: 'Answer a few questions out loud so NarrateRx learns how you talk — then everything it writes sounds like you.',
+    description: 'Answer a few questions out loud so Bernard learns how you talk — then everything it writes sounds like you.',
     href: '/onboard/interview',
   },
   {
@@ -21,7 +21,7 @@ const STEPS = [
   {
     key: 'approve_draft',
     label: 'Review your first draft',
-    description: 'See what NarrateRx wrote from your own words — tweak anything you want, then approve it.',
+    description: 'See what Bernard wrote from your own words — tweak anything you want, then approve it.',
     href: '/?bucket=review',
   },
   {

@@ -28,7 +28,7 @@ function fmtDate(raw) {
 function buildPlainText(story, messages) {
   const staffLabel = story.staff_name || 'Clinician'
   const header = [
-    'NarrateRx — Interview Transcript',
+    'Bernard — Interview Transcript',
     `Clinician: ${story.staff_name || 'Unknown'}`,
     `Topic:     ${story.topic || 'Untitled'}`,
     `Date:      ${fmtDate(story.created_at)}`,
@@ -87,7 +87,7 @@ function buildPrintHtml(story, messages) {
   </style>
 </head>
 <body>
-  <h1>NarrateRx — Interview Transcript</h1>
+  <h1>Bernard — Interview Transcript</h1>
   <div class="meta">
     <div>Clinician: ${escape(story.staff_name || 'Unknown')}</div>
     <div>Topic: ${escape(story.topic || 'Untitled')}</div>

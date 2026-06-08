@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 const EFFECTIVE = 'May 15, 2026'
-const CONTACT   = 'narraterx@gmail.com'
+const CONTACT   = 'bernard@gmail.com'
 
 export default function PrivacyPolicy() {
   return (
@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
         {/* Header */}
         <div className="mb-10">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to NarrateRx
+            ← Back to Bernard
           </Link>
           <h1 className="mt-6 text-3xl font-bold tracking-tight">Privacy Policy</h1>
           <p className="mt-2 text-sm text-muted-foreground">Effective {EFFECTIVE}</p>
@@ -22,9 +22,9 @@ export default function PrivacyPolicy() {
 
           <section>
             <p>
-              NarrateRx is operated by NarrateRx (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or
+              Bernard is operated by Bernard (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or
               &ldquo;us&rdquo;). This policy explains what information we collect when you use
-              NarrateRx, how we use it, and the choices you have.
+              Bernard, how we use it, and the choices you have.
             </p>
           </section>
 
@@ -38,7 +38,7 @@ export default function PrivacyPolicy() {
               </li>
               <li>
                 <strong>Interview content.</strong> Transcripts and recordings you create
-                within NarrateRx, including the AI-generated drafts produced from them.
+                within Bernard, including the AI-generated drafts produced from them.
                 This content lives in your workspace and is not shared with other tenants.
               </li>
               <li>
@@ -66,7 +66,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-base font-semibold mb-3">2. How we use your information</h2>
             <ul className="list-disc pl-5 space-y-2">
-              <li>To provide and operate the NarrateRx service.</li>
+              <li>To provide and operate the Bernard service.</li>
               <li>
                 To process interview transcripts through AI models in order to generate
                 content drafts. Transcripts are sent to the AI provider (Anthropic) solely
@@ -153,14 +153,14 @@ export default function PrivacyPolicy() {
             <p>
               We may update this policy. Material changes will be communicated via email
               and an in-app notice at least 14 days before they take effect. The current
-              version is always at <code className="text-xs bg-muted px-1 py-0.5 rounded">narraterx.ai/privacy</code>.
+              version is always at <code className="text-xs bg-muted px-1 py-0.5 rounded">withbernard.ai/privacy</code>.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-semibold mb-3">8. Contact</h2>
             <p>
-              NarrateRx<br />
+              Bernard<br />
               Portland, OR, USA<br />
               <a href={`mailto:${CONTACT}`} className="text-primary underline-offset-4 hover:underline">{CONTACT}</a>
             </p>

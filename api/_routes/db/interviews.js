@@ -459,14 +459,14 @@ export default async function handler(req, res) {
 
     // Block deletion if any content items from this interview have been
     // published. The guard exists because "published" normally means
-    // "live on the user's website via the NarrateRx publish flow" — and
+    // "live on the user's website via the Bernard publish flow" — and
     // deleting the source interview would orphan engagement metrics that
     // point back to it.
     //
     // Imported interviews (capture_mode='text_import') get an automatic
     // status='published' + resolved_url=<source URL> on the keystone,
     // but the source post lives at the user's site independently of
-    // NarrateRx. Deleting the interview just removes our record of it —
+    // Bernard. Deleting the interview just removes our record of it —
     // nothing is orphaned. So skip the guard for imports.
     if (rows[0].capture_mode !== 'text_import') {
       const pubChk = await sb(`content_items?interview_id=eq.${id}&${wsFilter}&status=eq.published&select=id&limit=1`)

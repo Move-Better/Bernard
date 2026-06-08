@@ -153,7 +153,7 @@ export default function ChannelsSettings() {
   if (role !== 'admin' || !has(CAP_SETTINGS_EDIT)) return <Navigate to="/" replace />
   if (!ws) return (
     <div className="py-16 text-center text-sm text-muted-foreground">
-      Workspace settings are only available on a <code className="font-mono text-xs">*.narraterx.ai</code> deployment.
+      Workspace settings are only available on a <code className="font-mono text-xs">*.withbernard.ai</code> deployment.
     </div>
   )
 

@@ -1,6 +1,6 @@
 export const config = { runtime: 'nodejs' }
-// Buffer OAuth 2.0 callback — called from narraterx.ai (root domain) after the
-// user authorizes NarrateRx in Buffer. No workspace subdomain here; workspace_id
+// Buffer OAuth 2.0 callback — called from withbernard.ai (root domain) after the
+// user authorizes Bernard in Buffer. No workspace subdomain here; workspace_id
 // comes from the signed state param. Exchanges the code for an access token and
 // saves it to workspace_credentials, then redirects back to the workspace's
 // settings/integrations page.
@@ -10,7 +10,7 @@ import { encryptSecret } from '../../../_lib/credentialCrypto.js'
 
 const CLIENT_ID = process.env.BUFFER_CLIENT_ID
 const CLIENT_SECRET = process.env.BUFFER_CLIENT_SECRET
-const REDIRECT_URI = 'https://narraterx.ai/api/oauth/buffer/callback'
+const REDIRECT_URI = 'https://withbernard.ai/api/oauth/buffer/callback'
 const TOKEN_URL = 'https://api.bufferapp.com/1/oauth2/token.json'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -123,7 +123,7 @@ async function handler(req, res) {
   const workspaces = wsRes.ok ? await wsRes.json().catch(() => []) : []
   const slug = workspaces[0]?.slug
 
-  const returnHost = slug ? `https://${slug}.narraterx.ai` : 'https://narraterx.ai'
+  const returnHost = slug ? `https://${slug}.withbernard.ai` : 'https://withbernard.ai'
   return redirectTo(res, `${returnHost}/settings/integrations?buffer=connected`)
 }
 

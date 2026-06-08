@@ -7,7 +7,7 @@ export const config = { runtime: 'nodejs' }
 // status='published' with published_at=sentAt.
 //
 // This closes the gap where Buffer publishes a scheduled post autonomously but
-// NarrateRx has no inbound webhook to hear about it.
+// Bernard has no inbound webhook to hear about it.
 //
 // Auth: Bearer CRON_SECRET (same as all other crons).
 

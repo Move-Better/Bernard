@@ -33,7 +33,7 @@ function formatTime(sec) {
  *
  * A clinician records a 30–60 second voice memo immediately after a visit
  * ("I just saw a runner, post-op shoulder, gave her three movements…")
- * and NarrateRx generates a one-page handout in their voice. The server
+ * and Bernard generates a one-page handout in their voice. The server
  * uploads the audio, transcribes via Whisper, creates an interviews row
  * with capture_mode='patient_handout', generates the handout, inserts a
  * content_item, and we redirect straight to that piece for review.
@@ -185,7 +185,7 @@ export default function HandoutCapture() {
           <FileText className="h-5 w-5 text-primary" /> Patient handout
         </h1>
         <p className="text-sm text-muted-foreground">
-          Just say what happened — the patient, what you did, what they should do at home. About 30–60 seconds. NarrateRx writes a one-page handout in your voice.
+          Just say what happened — the patient, what you did, what they should do at home. About 30–60 seconds. Bernard writes a one-page handout in your voice.
         </p>
       </div>
 
@@ -253,7 +253,7 @@ export default function HandoutCapture() {
       </Card>
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p><strong>No patient details are stored.</strong> Don&apos;t say the patient&apos;s name — &quot;the runner I saw today&quot; is enough. NarrateRx generalizes any identifying details out of the handout, and you add the patient name by hand when you print or email it.</p>
+        <p><strong>No patient details are stored.</strong> Don&apos;t say the patient&apos;s name — &quot;the runner I saw today&quot; is enough. Bernard generalizes any identifying details out of the handout, and you add the patient name by hand when you print or email it.</p>
       </div>
     </div>
   )

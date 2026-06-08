@@ -23,7 +23,7 @@ import { toast } from '@/lib/toast'
 // Per-piece dismissal, scoped to the browser session so a dismissed proposal
 // doesn't nag on every remount but doesn't persist forever either.
 function dismissKey(id) {
-  return `narraterx:split-proposal-dismissed:${id}`
+  return `bernard:split-proposal-dismissed:${id}`
 }
 function isDismissed(id) {
   try {

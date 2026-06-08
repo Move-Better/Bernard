@@ -1,7 +1,7 @@
 // Canonical role tokens stored in Clerk publicMetadata.role.
 //
 // Three personas the product is designed around:
-//   admin     — workspace owner; configures NarrateRx (voice, members,
+//   admin     — workspace owner; configures Bernard (voice, members,
 //               brand kit, integrations, billing). One per workspace,
 //               usually the clinic owner.
 //   clinician — voices interviews and approves drafts for voice fidelity.

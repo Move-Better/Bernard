@@ -52,7 +52,7 @@ function getLimiter(bucket) {
   _limiters[bucket] = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(cfg.max, `${cfg.windowSec} s`),
-    prefix: `narraterx:rl:${bucket}`,
+    prefix: `bernard:rl:${bucket}`,
     analytics: false,
   })
   return _limiters[bucket]
