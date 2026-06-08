@@ -120,6 +120,7 @@ export default function DemoExperience() {
   const [error, setError] = useState('')
 
   const recorderRef = useRef(null)
+  const recorderErrorRef = useRef(false)
   const chunksRef = useRef([])
   const streamRef = useRef(null)
   const timerRef = useRef(null)
@@ -223,11 +224,13 @@ export default function DemoExperience() {
       mimeRef.current = mime || 'audio/webm'
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
       recorderRef.current = rec
+      recorderErrorRef.current = false
       chunksRef.current = []
 
       rec.ondataavailable = (e) => { if (e.data?.size > 0) chunksRef.current.push(e.data) }
       rec.onstop = () => {
         stopTracks()
+        if (recorderErrorRef.current) return
         const type = rec.mimeType || mimeRef.current || 'audio/webm'
         const blob = new Blob(chunksRef.current, { type })
         if (!blob.size) {
@@ -238,8 +241,11 @@ export default function DemoExperience() {
         transcribeBlob(blob, type, currentTranscripts, currentTopicId)
       }
       rec.onerror = () => {
+        recorderErrorRef.current = true
         setError('Recording stopped unexpectedly — try again.')
-        stopRecording()
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+        const r = recorderRef.current
+        if (r && r.state !== 'inactive') r.stop()
         setPhase(currentTranscripts.length === 0 ? 'picking' : 'ready')
       }
 
@@ -274,7 +280,12 @@ export default function DemoExperience() {
   }, [])
 
   const goBack = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    const rec = recorderRef.current
+    if (rec) {
+      rec.onstop = null
+      if (rec.state !== 'inactive') rec.stop()
+    }
     stopTracks()
     reset()
   }, [stopTracks, reset])
