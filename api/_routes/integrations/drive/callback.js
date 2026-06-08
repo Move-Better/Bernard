@@ -10,7 +10,7 @@ import { workspaceById } from '../../../_lib/workspaceContext.js'
 
 // GET /api/integrations/drive/callback?code=…&state=…
 //
-// Runs on the apex (narraterx.ai) because Google requires a fixed redirect
+// Runs on the apex (withbernard.ai) because Google requires a fixed redirect
 // URI and wildcard subdomains aren't supported. The state token carries the
 // originating workspace_id + slug so we know where to persist the credential
 // and where to redirect the admin back to after the exchange completes.
@@ -22,7 +22,7 @@ import { workspaceById } from '../../../_lib/workspaceContext.js'
 export const config = { runtime: 'nodejs' }
 
 function redirectBack(res, slug, params) {
-  const target = new URL(`https://${slug}.narraterx.ai/settings/integrations`)
+  const target = new URL(`https://${slug}.withbernard.ai/settings/integrations`)
   for (const [k, v] of Object.entries(params)) target.searchParams.set(k, v)
   res.statusCode = 302
   res.setHeader('Location', target.toString())

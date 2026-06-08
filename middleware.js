@@ -1,6 +1,6 @@
 // Vercel Routing Middleware — runs before cache on every matched request.
 //
-// Apex (`narraterx.ai` / `www.narraterx.ai`):
+// Apex (`withbernard.ai` / `www.withbernard.ai`):
 //   - `/` → rewrite to `/landing.html` (static marketing home)
 //   - Known marketing paths (e.g. `/how-it-works`, `/features`, `/demo`,
 //     `/pricing`, `/who-its-for`, `/why`, `/about`) → rewrite to their
@@ -9,7 +9,7 @@
 //   - Everything else (e.g. `/onboard`) → pass through; the SPA fallback
 //     serves the React onboarding wizard.
 //
-// Subdomain (`<slug>.narraterx.ai`):
+// Subdomain (`<slug>.withbernard.ai`):
 //   - 404 if the slug doesn't match an active workspace
 //   - Pass through otherwise (the React app handles routing)
 //
@@ -28,7 +28,14 @@ export const config = {
   matcher: ['/((?!assets/|favicon\\.ico|robots\\.txt|sitemap\\.xml|_vercel/).*)'],
 }
 
-const APEX_HOSTS = new Set(['narraterx.ai', 'www.narraterx.ai'])
+// Transitional dual-domain: recognize both the new brand domain and the legacy
+// narraterx.ai so a deploy that lands before the DNS/Clerk cutover doesn't break
+// the still-live narraterx.ai. Drop narraterx.ai in a follow-up once cutover is done.
+const APEX_HOSTS = new Set([
+  'withbernard.ai', 'www.withbernard.ai',
+  'narraterx.ai', 'www.narraterx.ai',
+])
+const WORKSPACE_SUFFIXES = ['.withbernard.ai', '.narraterx.ai']
 
 // Clean-URL routing table for the marketing site. Keys are the public path
 // (no trailing slash, lowercase); values are the static file inside public/.
@@ -61,8 +68,8 @@ function extractSlug(host) {
   if (!host) return null
   const h = host.split(':')[0].toLowerCase()
   if (APEX_HOSTS.has(h)) return null
-  if (h.endsWith('.narraterx.ai')) {
-    return h.slice(0, -'.narraterx.ai'.length)
+  for (const suffix of WORKSPACE_SUFFIXES) {
+    if (h.endsWith(suffix)) return h.slice(0, -suffix.length)
   }
   return null
 }

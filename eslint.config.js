@@ -49,10 +49,10 @@ export default [
     files: ['api/**/*.js', 'middleware.js'],
     ignores: ['api/_lib/**'],
     plugins: {
-      narraterx: { rules: { 'api-handler-shape': apiHandlerShape } },
+      bernard: { rules: { 'api-handler-shape': apiHandlerShape } },
     },
     rules: {
-      'narraterx/api-handler-shape': 'error',
+      'bernard/api-handler-shape': 'error',
     },
   },
   // Local rules for client code (src/**):
@@ -67,7 +67,7 @@ export default [
   {
     files: ['src/**/*.{js,jsx}'],
     plugins: {
-      narraterx: {
+      bernard: {
         rules: {
           'no-raw-use-mutation': noRawUseMutation,
           'no-arbitrary-text-size': noArbitraryTextSize,
@@ -76,10 +76,10 @@ export default [
       },
     },
     rules: {
-      'narraterx/no-raw-use-mutation': 'error',
+      'bernard/no-raw-use-mutation': 'error',
       // Ban text-[Npx] arbitrary sizes — use text-3xs/text-2xs/Tailwind scale.
-      'narraterx/no-arbitrary-text-size': 'error',
-      'narraterx/no-raw-api-fetch': 'error',
+      'bernard/no-arbitrary-text-size': 'error',
+      'bernard/no-raw-api-fetch': 'error',
     },
   },
 ]

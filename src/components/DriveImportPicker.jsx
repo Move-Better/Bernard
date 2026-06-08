@@ -61,7 +61,7 @@ function loadGapi() {
       resolve(window.gapi)
       return
     }
-    const existing = document.querySelector(`script[data-narraterx-gapi="1"]`)
+    const existing = document.querySelector(`script[data-bernard-gapi="1"]`)
     if (existing) {
       existing.addEventListener('load', () => resolve(window.gapi))
       existing.addEventListener('error', () => reject(new Error('failed to load gapi script')))
@@ -71,7 +71,7 @@ function loadGapi() {
     s.src = PICKER_SCRIPT_SRC
     s.async = true
     s.defer = true
-    s.dataset.narraterxGapi = '1'
+    s.dataset.bernardGapi = '1'
     s.onload = () => resolve(window.gapi)
     s.onerror = () => reject(new Error('failed to load gapi script'))
     document.head.appendChild(s)
@@ -160,7 +160,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
         .setOAuthToken(config.accessToken)
         .setDeveloperKey(config.developerKey)
         .setAppId(config.appId)
-        .setTitle('Pick photos and videos to import into NarrateRx')
+        .setTitle('Pick photos and videos to import into Bernard')
         .addView(sharedView)
         .addView(imageView)
         .addView(videoView)
@@ -289,7 +289,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
             <HardDrive className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-sm font-medium mb-1.5">Pick photos and videos from Drive</p>
             <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto leading-relaxed">
-              Google’s file picker opens in a window. Pick up to {MAX_BATCH} files; only the files you pick are shared with NarrateRx — we can’t see the rest of your Drive.
+              Google’s file picker opens in a window. Pick up to {MAX_BATCH} files; only the files you pick are shared with Bernard — we can’t see the rest of your Drive.
             </p>
             <Button onClick={handleBrowse} disabled={!canBrowse}>
               {opening ? (

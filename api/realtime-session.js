@@ -223,7 +223,7 @@ export default async function handler(req, res) {
       headers: {
         Authorization: `Bearer ${OPENAI_KEY}`,
         'Content-Type': 'application/json',
-        'OpenAI-Safety-Identifier': `narraterx:${ws.slug}:${auth.userId}`,
+        'OpenAI-Safety-Identifier': `bernard:${ws.slug}:${auth.userId}`,
       },
       body: JSON.stringify({
         expires_after: { anchor: 'created_at', seconds: TOKEN_TTL_SEC },

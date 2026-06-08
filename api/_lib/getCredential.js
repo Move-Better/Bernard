@@ -73,10 +73,10 @@ function envFallback(service) {
           }
         : null
     case 'website':
-      return process.env.WEBSITE_PUBLISH_URL && process.env.NARRATERX_PUBLISH_SECRET
+      return process.env.WEBSITE_PUBLISH_URL && process.env.BERNARD_PUBLISH_SECRET
         ? {
             config: { url: process.env.WEBSITE_PUBLISH_URL },
-            secret: process.env.NARRATERX_PUBLISH_SECRET,
+            secret: process.env.BERNARD_PUBLISH_SECRET,
           }
         : null
     default:

@@ -132,7 +132,7 @@ function OrgGate({ clerkOrgId, children }) {
   // confirms the switch.
   //
   // Read the active org from the LIVE Clerk singleton, not only the useSession
-  // snapshot. Diagnosed 2026-06-05 on movebetter-equine.narraterx.ai: after the
+  // snapshot. Diagnosed 2026-06-05 on movebetter-equine.withbernard.ai: after the
   // setActive retry loop below gives up, Clerk mutates
   // session.lastActiveOrganizationId to the correct org IN PLACE,
   // asynchronously, WITHOUT notifying useSession subscribers — so the hook's
@@ -149,7 +149,7 @@ function OrgGate({ clerkOrgId, children }) {
 
   // Authoritative readiness signal, decoupled from Clerk's React reactivity.
   //
-  // Diagnosed live on movebetter-equine.narraterx.ai 2026-06-05: a tenant
+  // Diagnosed live on movebetter-equine.withbernard.ai 2026-06-05: a tenant
   // subdomain could wedge on the "Reload page" card permanently even though the
   // live Clerk state was completely correct — window.Clerk.session active on
   // the right org, lastActiveOrganizationId === clerkOrgId, AND both the cached
@@ -259,7 +259,7 @@ function OrgGate({ clerkOrgId, children }) {
   // gate without any reload). Firing the reload too early (it was dropped to 2s
   // in #843) just throws away an in-flight flip and restarts the same ~5-8s
   // race on the next load, which is exactly the never-converging loop reported
-  // 2026-06-05 on movebetter-equine.narraterx.ai. So we wait 7s — past the 5s
+  // 2026-06-05 on movebetter-equine.withbernard.ai. So we wait 7s — past the 5s
   // setActive window plus headroom for the late flip — before reloading once.
   //
   // Loop guard: sessionStorage flag ensures only ONE auto-reload per arrival.
@@ -278,7 +278,7 @@ function OrgGate({ clerkOrgId, children }) {
       // active org (which our switcher's setActive already updated).
       if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
         try {
-          const key = 'narraterx:orggate-stuck-reloaded'
+          const key = 'bernard:orggate-stuck-reloaded'
           if (!sessionStorage.getItem(key)) {
             sessionStorage.setItem(key, '1')
             console.warn('[OrgGate] session failed to activate within 7s; auto-reloading once')
@@ -297,7 +297,7 @@ function OrgGate({ clerkOrgId, children }) {
   // and can auto-recover if it also gets stuck.
   useEffect(() => {
     if (isActive && tokenReady && typeof sessionStorage !== 'undefined') {
-      try { sessionStorage.removeItem('narraterx:orggate-stuck-reloaded') } catch { /* noop */ }
+      try { sessionStorage.removeItem('bernard:orggate-stuck-reloaded') } catch { /* noop */ }
     }
   }, [isActive, tokenReady])
 
@@ -310,7 +310,7 @@ function OrgGate({ clerkOrgId, children }) {
   // with no match skips this entirely (the user genuinely isn't a member).
   useEffect(() => {
     if (!noMatchProvisional) return
-    const key = 'narraterx:orggate-nomatch-reloaded'
+    const key = 'bernard:orggate-nomatch-reloaded'
     const t = setTimeout(() => {
       let reloaded = false
       if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
@@ -334,7 +334,7 @@ function OrgGate({ clerkOrgId, children }) {
   // workspace switch in the same tab can auto-recover from this race again.
   useEffect(() => {
     if (match && typeof sessionStorage !== 'undefined') {
-      try { sessionStorage.removeItem('narraterx:orggate-nomatch-reloaded') } catch { /* noop */ }
+      try { sessionStorage.removeItem('bernard:orggate-nomatch-reloaded') } catch { /* noop */ }
     }
   }, [match])
 
@@ -422,7 +422,7 @@ function OrgGate({ clerkOrgId, children }) {
               </p>
               <button
                 onClick={() => {
-                  try { sessionStorage.removeItem('narraterx:orggate-stuck-reloaded') } catch { /* noop */ }
+                  try { sessionStorage.removeItem('bernard:orggate-stuck-reloaded') } catch { /* noop */ }
                   window.location.reload()
                 }}
                 className="text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -704,7 +704,7 @@ function ProtectedApp() {
         <SignIn
           appearance={{
             layout: {
-              logoImageUrl: '/narraterx-logo.svg',
+              logoImageUrl: '/bernard-logo.svg',
               logoPlacement: 'inside',
             },
             elements: {

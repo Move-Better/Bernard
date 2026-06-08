@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const POLL_INTERVAL_MS = 60_000
-const DISMISSED_KEY = 'narraterx:dismissed-update-sha'
+const DISMISSED_KEY = 'bernard:dismissed-update-sha'
 
 // __BUILD_SHA__ is injected by Vite at build time (see vite.config.js).
 // Resolves to the commit SHA the running bundle was built from, or "dev"

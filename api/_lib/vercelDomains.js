@@ -1,21 +1,21 @@
-// Vercel REST API helper for registering `<slug>.narraterx.ai` as a domain on
-// the shared narraterx Vercel project at workspace-claim time.
+// Vercel REST API helper for registering `<slug>.withbernard.ai` as a domain on
+// the shared bernard Vercel project at workspace-claim time.
 //
-// Why this exists: Cloudflare manages narraterx.ai DNS, which blocks Vercel's
+// Why this exists: Cloudflare manages withbernard.ai DNS, which blocks Vercel's
 // wildcard cert issuance. Per the Phase 1A pattern, each subdomain must be
 // registered as a specific Vercel project domain so Vercel issues a per-domain
 // cert via the HTTP-01 challenge. Move Better's three subdomains were added by
 // hand; this helper automates the same step for self-serve onboarding.
 //
-// Required env (set on the shared narraterx Vercel project):
+// Required env (set on the shared bernard Vercel project):
 //   VERCEL_TOKEN         — Personal/integration token with project:write
 //                          (Sensitive — paste via Vercel dashboard)
-//   VERCEL_PROJECT_ID    — Project ID for the narraterx project
+//   VERCEL_PROJECT_ID    — Project ID for the bernard project
 //                          (Mildly sensitive)
 //   VERCEL_TEAM_ID       — Team/scope ID. Optional — set when the project lives
 //                          in a Vercel Team (Mildly sensitive)
 //
-// Assumes Cloudflare has a wildcard CNAME `*.narraterx.ai → cname.vercel-dns.com`
+// Assumes Cloudflare has a wildcard CNAME `*.withbernard.ai → cname.vercel-dns.com`
 // (or per-subdomain CNAMEs). Adding the domain in Vercel without DNS resolution
 // returns 200 from Vercel but cert issuance hangs until DNS resolves. The
 // onboarding wizard's 1.8s "launching" screen + Vercel's loading state cover

@@ -42,10 +42,10 @@ function clinicalWorkspace(overrides = {}) {
 function generalWorkspace(overrides = {}) {
   return {
     ...clinicalWorkspace(),
-    display_name: 'NarrateRx',
+    display_name: 'Bernard',
     brand_voice: 'Direct, peer-to-peer, opinionated.',
     clinic_context: 'Voice-faithful interview-to-content engine for clinicians.',
-    booking_url: 'https://narraterx.ai/early-access',
+    booking_url: 'https://withbernard.ai/early-access',
     prompt_mode: 'general',
     ...overrides,
   }
@@ -110,7 +110,7 @@ describe('getInterviewSystemPrompt — clinical mode (default)', () => {
 describe('getInterviewSystemPrompt — general mode (non-clinical workspaces)', () => {
   it('drops clinical framing entirely', () => {
     const ws = generalWorkspace()
-    const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx', [], null, {
+    const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard', [], null, {
       isFirstMessage: true,
     })
     // The clinical-specific section headers from the old template MUST NOT appear.
@@ -121,12 +121,12 @@ describe('getInterviewSystemPrompt — general mode (non-clinical workspaces)', 
     expect(prompt).not.toContain('LOCAL COMMUNITY ANGLE')
     // "patient" and "treat <topic>" should not appear in the general template.
     expect(prompt).not.toContain('patient')
-    expect(prompt).not.toContain('treat why I built NarrateRx')
+    expect(prompt).not.toContain('treat why I built Bernard')
   })
 
   it('includes the general-mode collection areas', () => {
     const ws = generalWorkspace()
-    const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx', [], null, {
+    const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard', [], null, {
       isFirstMessage: true,
     })
     expect(prompt).toContain('THE CONCRETE MOMENT')
@@ -138,7 +138,7 @@ describe('getInterviewSystemPrompt — general mode (non-clinical workspaces)', 
 
   it('uses GENERAL_TONES probe goal, not clinical tone language', () => {
     const ws = generalWorkspace()
-    const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx', [], null, {
+    const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard', [], null, {
       tone: 'warm',
       isFirstMessage: true,
     })
@@ -188,7 +188,7 @@ describe('getBlogPostSystemPrompt — clinical mode (default)', () => {
 describe('getBlogPostSystemPrompt — general mode', () => {
   it('drops clinical section headers and patient framing', () => {
     const ws = generalWorkspace()
-    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx')
+    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard')
     expect(prompt).not.toContain('What Our Patients Experience')
     expect(prompt).not.toContain('What I See in My Patients')
     expect(prompt).not.toContain('Mayo Clinic')
@@ -196,33 +196,33 @@ describe('getBlogPostSystemPrompt — general mode', () => {
     expect(prompt).not.toContain('Cleveland Clinic')
     expect(prompt).not.toContain('Book Your Movement Assessment')
     expect(prompt).not.toContain('patient')
-    expect(prompt).not.toContain('treating why I built NarrateRx')
+    expect(prompt).not.toContain('treating why I built Bernard')
   })
 
   it('leads with voice fidelity and uses general target length', () => {
     const ws = generalWorkspace()
-    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx')
+    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard')
     expect(prompt).toContain('VOICE FIDELITY IS THE ONLY GOAL')
     expect(prompt).toContain('voice fidelity beats length')
     expect(prompt).toContain('900–1200 words')
   })
 
   it('emits the workspace booking_url as the CTA link when set', () => {
-    const ws = generalWorkspace({ booking_url: 'https://narraterx.ai/early-access' })
-    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx')
-    expect(prompt).toContain('https://narraterx.ai/early-access')
+    const ws = generalWorkspace({ booking_url: 'https://withbernard.ai/early-access' })
+    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard')
+    expect(prompt).toContain('https://withbernard.ai/early-access')
   })
 
   it('omits the CTA section entirely when no booking_url / website is set', () => {
     const ws = generalWorkspace({ booking_url: null, website: null })
-    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx')
+    const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard')
     expect(prompt).not.toContain('Want to talk?')
   })
 
   it('switches to personal-voice framing when voiceMode === "personal"', () => {
     const ws = generalWorkspace()
-    const personal = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx', 'smart', 'personal')
-    const practice = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built NarrateRx', 'smart', 'practice')
+    const personal = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard', 'smart', 'personal')
+    const practice = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard', 'smart', 'practice')
     expect(personal).toContain('PERSONAL VOICE')
     expect(personal).toContain('First-person throughout')
     expect(practice).not.toContain('PERSONAL VOICE')
@@ -323,7 +323,7 @@ describe('getThreadDetectionSystemPrompt', () => {
   })
 
   it('personal (I) lane frames output as first-person', () => {
-    const prompt = getThreadDetectionSystemPrompt('Michael Quasney', 'why I built NarrateRx', { voiceMode: 'personal' })
+    const prompt = getThreadDetectionSystemPrompt('Michael Quasney', 'why I built Bernard', { voiceMode: 'personal' })
     expect(prompt).toContain('first-person voice')
     expect(prompt).not.toContain("clinic's team voice")
   })

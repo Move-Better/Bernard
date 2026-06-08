@@ -1,5 +1,5 @@
 /* ============================================================
-   NarrateRx — landing styles
+   Bernard — landing styles
    Design language: borrowed from Move Better brandbook.
    Dynamic angles, no flat horizontal section breaks, orange
    primary, sage green secondary, warm grey neutrals.
@@ -440,7 +440,7 @@ a:hover { color: var(--orange-dark); }
 }
 
 /* ============================================================
-   Integration callout (Create with NarrateRx → Post with Buffer)
+   Integration callout (Create with Bernard → Post with Buffer)
    ============================================================ */
 .integration-callout {
   margin: 56px auto 0;

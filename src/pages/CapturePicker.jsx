@@ -200,7 +200,7 @@ export default function CapturePicker() {
               <div>
                 <div className="font-medium">Patient handout</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  After a visit, say what just happened. NarrateRx writes a one-page handout in your voice.
+                  After a visit, say what just happened. Bernard writes a one-page handout in your voice.
                 </p>
               </div>
             </CardContent>

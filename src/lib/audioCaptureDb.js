@@ -8,7 +8,7 @@
 // to the last flushed chunk on next open.
 //
 // Two object stores (kept separate from the media multipart store
-// `narraterx-uploads` so the two systems never interfere):
+// `bernard-uploads` so the two systems never interfere):
 //
 //   sessions  keyPath 'id'
 //     { id, status, source, mimeType, filename, durationSec, staffId,
@@ -23,11 +23,11 @@
 // rewriting a growing blob array every few seconds (which would bog down a long
 // recording on an old phone). Assembly reads all chunks for a session by index.
 //
-// Per-origin store → tenant-isolated (each <slug>.narraterx.ai subdomain sees
+// Per-origin store → tenant-isolated (each <slug>.withbernard.ai subdomain sees
 // only its own sessions). `workspaceHost` is recorded so a recovered session can
 // be confined to the host it was captured on.
 
-const DB_NAME  = 'narraterx-audio-capture'
+const DB_NAME  = 'bernard-audio-capture'
 const SESSIONS = 'sessions'
 const CHUNKS    = 'chunks'
 const VERSION  = 1

@@ -144,14 +144,14 @@ export async function apiFetchResponse(path, init = {}) {
       // still fails.
       if (freshToken && freshOrgId === staleOrgId && !_forceFlipAttempted && typeof window !== 'undefined') {
         const expectedOrgId = /** @type {string | undefined} */ (
-          /** @type {any} */ (window).__narraterxExpectedClerkOrgId
+          /** @type {any} */ (window).__bernardExpectedClerkOrgId
         )
         if (!expectedOrgId) {
           // Force-flip path can't run without the target. This means
           // WorkspaceContext hasn't resolved a DB workspace yet, or the
           // workspace endpoint returned a shape that doesn't include
           // clerk_org_id. Log loudly so the cause is obvious.
-          console.error(`[apiFetch] CANNOT force-flip: window.__narraterxExpectedClerkOrgId is unset. WorkspaceContext likely returned slim shape without clerk_org_id.`)
+          console.error(`[apiFetch] CANNOT force-flip: window.__bernardExpectedClerkOrgId is unset. WorkspaceContext likely returned slim shape without clerk_org_id.`)
         }
         if (expectedOrgId && expectedOrgId !== freshOrgId) {
           _forceFlipAttempted = true
@@ -173,9 +173,9 @@ export async function apiFetchResponse(path, init = {}) {
             // we offer the reload; second failure of the same kind we surface
             // the error as-is.
             try {
-              const seen = sessionStorage.getItem('narraterx:force-flip-reload-offered')
+              const seen = sessionStorage.getItem('bernard:force-flip-reload-offered')
               if (!seen) {
-                sessionStorage.setItem('narraterx:force-flip-reload-offered', '1')
+                sessionStorage.setItem('bernard:force-flip-reload-offered', '1')
                 const { toast } = await import('@/lib/toast')
                 toast.error('Workspace session is stuck', {
                   description: 'Your active workspace got out of sync. Reload to fix.',

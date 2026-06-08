@@ -32,7 +32,7 @@ const RECOMMENDED_DURATION_SEC = 180
 // uploading the audio but the upstream clone step fails, we keep the blob
 // URL here so the user can retry without re-recording. Keyed by staffId
 // because different clinicians could share a browser.
-const STASH_KEY = 'narraterx.voice-clone.pending.v1'
+const STASH_KEY = 'bernard.voice-clone.pending.v1'
 const STASH_TTL_MS = 24 * 60 * 60 * 1000
 
 function loadStash(staffId) {
@@ -329,7 +329,7 @@ export default function VoiceTraining() {
           <Sparkles className="h-5 w-5 text-primary" /> Voice training
         </h1>
         <p className="text-sm text-muted-foreground">
-          Record yourself reading the passage below — about 3 minutes works best. After you submit, NarrateRx will create a voice clone you can use for blog audio, handouts, and other narration.
+          Record yourself reading the passage below — about 3 minutes works best. After you submit, Bernard will create a voice clone you can use for blog audio, handouts, and other narration.
         </p>
         {!staffId && (
           <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-2">
@@ -450,7 +450,7 @@ export default function VoiceTraining() {
       </Card>
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p><strong>By submitting,</strong> you consent to NarrateRx storing this sample and creating a voice clone at ElevenLabs that NarrateRx can use to narrate content tied to you.</p>
+        <p><strong>By submitting,</strong> you consent to Bernard storing this sample and creating a voice clone at ElevenLabs that Bernard can use to narrate content tied to you.</p>
         <p>You can revoke the clone any time from your profile&apos;s Voice tab — the voice is deleted from ElevenLabs and stops being used immediately.</p>
       </div>
     </div>

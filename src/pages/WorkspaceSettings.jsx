@@ -190,8 +190,8 @@ export default function WorkspaceSettings() {
     return (
       <div className="max-w-3xl mx-auto py-16 text-center space-y-2">
         <p className="text-muted-foreground text-sm">
-          Workspace settings are only available on the shared NarrateRx deployment
-          (<code className="font-mono text-xs">*.narraterx.ai</code>).
+          Workspace settings are only available on the shared Bernard deployment
+          (<code className="font-mono text-xs">*.withbernard.ai</code>).
         </p>
       </div>
     )
@@ -248,7 +248,7 @@ export default function WorkspaceSettings() {
           hint="Shown below the workspace name on the sign-in screen." />
         <Field label="App name"
           value={form.app_name} onChange={set('app_name')}
-          hint="App name in the browser tab — e.g. “Move Better — NarrateRx”." />
+          hint="App name in the browser tab — e.g. “Move Better — Bernard”." />
       </SectionCard>
 
       <SectionCard
@@ -319,7 +319,7 @@ export default function WorkspaceSettings() {
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium leading-tight">Use Buffer&rsquo;s queue by default</div>
             <div className="text-xs text-muted-foreground mt-1">
-              When approving a post, the primary action becomes &ldquo;Add to Buffer queue&rdquo; — Buffer slots the post into the next open spot on your channel&rsquo;s schedule. Keep this off to use NarrateRx&rsquo;s platform-aware suggested times instead. &ldquo;Pick a specific time&rdquo; and &ldquo;Publish now&rdquo; remain available either way.
+              When approving a post, the primary action becomes &ldquo;Add to Buffer queue&rdquo; — Buffer slots the post into the next open spot on your channel&rsquo;s schedule. Keep this off to use Bernard&rsquo;s platform-aware suggested times instead. &ldquo;Pick a specific time&rdquo; and &ldquo;Publish now&rdquo; remain available either way.
             </div>
           </div>
         </label>
@@ -445,7 +445,7 @@ function DangerZone({ workspace, getToken }) {
         return
       }
       try { await window.Clerk?.signOut?.() } catch { /* empty */ }
-      window.location.href = 'https://narraterx.ai'
+      window.location.href = 'https://withbernard.ai'
     } catch (e) {
       setError(e?.message || 'network-error')
       setArchiving(false)
@@ -516,7 +516,7 @@ function DangerZone({ workspace, getToken }) {
         </div>
 
         <p className="text-2xs text-muted-foreground">
-          Rename, transfer ownership, and hard delete are not available in-app yet — each requires substantial server work. Contact the platform team (drq@narraterx.ai) for any of these.
+          Rename, transfer ownership, and hard delete are not available in-app yet — each requires substantial server work. Contact the platform team (drq@withbernard.ai) for any of these.
         </p>
       </CardContent>
     </Card>

@@ -53,7 +53,7 @@ async function handler(req, res) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
 
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'narraterx.ai'
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'withbernard.ai'
   const base = `https://${host}`
   const returnUrl = `${base}/settings/workspace/billing`
 

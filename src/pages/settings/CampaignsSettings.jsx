@@ -144,7 +144,7 @@ export default function CampaignsSettings() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-xl">
             Guide your content toward a specific goal — a seminar, a new patient push, a seasonal topic.
-            Set a window and an event date and NarrateRx will steer upcoming posts toward it automatically.
+            Set a window and an event date and Bernard will steer upcoming posts toward it automatically.
             Your voice stays your voice; this just shapes the focus.
           </p>
         </div>

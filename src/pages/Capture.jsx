@@ -32,7 +32,7 @@ const SHORTCUT_INSTALL_URL = import.meta.env.VITE_SHORTCUT_INSTALL_URL || null
 //
 // This page is the UNIVERSAL upload pathway. The iOS Shortcut from Phase 1
 // remains as an optional faster route for iOS users; it is no longer the
-// gating mechanism for getting media into NarrateRx.
+// gating mechanism for getting media into Bernard.
 
 const MB = 1024 * 1024
 

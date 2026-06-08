@@ -21,7 +21,7 @@ export const config = { runtime: 'nodejs' }
 // Mode selection: if 'wordpress' creds resolve, use WP. Else if 'astro_github'
 // or generic 'website' creds resolve, use Astro. The legacy env-var fallback in
 // getCredential keeps per-brand deployments working — WORDPRESS_USER/PASSWORD
-// surfaces as 'wordpress' creds, NARRATERX_PUBLISH_SECRET as 'website'.
+// surfaces as 'wordpress' creds, BERNARD_PUBLISH_SECRET as 'website'.
 //
 // Payload contract (callers pass these in payload):
 //   slug, title, description, pubDate, markdown        — required
@@ -113,7 +113,7 @@ async function publishToAstro(res, payload, cred, workspaceSlug) {
   if (payload.author)       body.author       = payload.author
   if (payload.heroImage)    body.heroImage    = payload.heroImage
   if (payload.heroImageAlt) body.heroImageAlt = payload.heroImageAlt
-  // Mux video hero — forwarded as-is. The narraterx.ai blog receiver knows
+  // Mux video hero — forwarded as-is. The withbernard.ai blog receiver knows
   // about it (scripts/build-blog.mjs renders <mux-player>); third-party
   // receivers that don't understand the field ignore it cleanly.
   if (payload.heroVideo && payload.heroVideo.playbackId) body.heroVideo = payload.heroVideo
@@ -237,7 +237,7 @@ async function publishToWordPress(res, payload, cred) {
   // 4. Inline body images — mirror each into the WordPress Media Library and
   // build a {oldUrl → newWpUrl} map. The markdown body is rewritten so the
   // emitted HTML references WP-hosted images, severing the dependency on
-  // NarrateRx blob storage. Non-mirrorable URLs (external CDNs, etc.) are
+  // Bernard blob storage. Non-mirrorable URLs (external CDNs, etc.) are
   // left as hotlinks.
   let mirroredMarkdown = payload.markdown
   if (Array.isArray(payload.images) && payload.images.length) {
@@ -417,7 +417,7 @@ async function resolveTags(wp, names) {
 // either accepts arbitrary topics (animals) or ignores the field.
 //
 // `enum`: the exact list the receiver's content schema accepts.
-// `aliases`: known kebab-cased values NarrateRx might generate from a
+// `aliases`: known kebab-cased values Bernard might generate from a
 //   freeform workspace topic, mapped to the closest enum slug. Keep
 //   this targeted — broad string-similarity matching is a footgun.
 //   Anything not in `enum` or `aliases` falls through to "general".

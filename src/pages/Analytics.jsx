@@ -13,7 +13,7 @@ import { buildCostView, fmtUsd } from '@/lib/costEstimate'
 
 // ── Insights advisor ──────────────────────────────────────────────────────────
 //
-// Narrate reading the workspace's performance like a content expert: plain-
+// Bernard reading the workspace's performance like a content expert: plain-
 // language "reads" + a next action, a small legible "receipts" summary, the
 // content-aiming loop that already runs (topic suggestions), and a website
 // tune-up section (GA4 / Search Console reads light up as those inputs connect).
@@ -127,7 +127,7 @@ export default function Analytics() {
             {assetName} — Insights
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Narrate reads your performance like a content expert and tells you what&rsquo;s working and what
+            Bernard reads your performance like a content expert and tells you what&rsquo;s working and what
             to do next — in plain language, with the numbers behind it if you want them.
           </p>
         </div>
@@ -241,7 +241,7 @@ export default function Analytics() {
       </div>
       <p className="text-sm text-muted-foreground mb-3 max-w-2xl">
         Not &ldquo;make more content&rdquo; — the actual changes to make on the site so visitors do something
-        once they land. Narrate spots them; you make them. These reads light up as each input connects.
+        once they land. Bernard spots them; you make them. These reads light up as each input connects.
       </p>
       <div className="space-y-3">
         {/* Live-now: page-health check (no GA4 needed) */}
@@ -311,19 +311,19 @@ export default function Analytics() {
         </PendingRead>
       </div>
 
-      {/* SECTION 4 — what Narrate already did */}
+      {/* SECTION 4 — what Bernard already did */}
       {suggestions.length > 0 && (
         <>
           <div className="flex items-center gap-2 mt-8 mb-3">
             <GitBranch className="h-4 w-4 text-primary" aria-hidden="true" />
-            <h2 className="font-semibold">What Narrate already did with this</h2>
+            <h2 className="font-semibold">What Bernard already did with this</h2>
           </div>
           <div className="rounded-2xl border border-success/15 bg-success/10 p-5">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
               <div className="text-sm leading-relaxed">
                 <p>
-                  You don&rsquo;t have to act on every note yourself — Narrate&rsquo;s already using this in the
+                  You don&rsquo;t have to act on every note yourself — Bernard&rsquo;s already using this in the
                   background. Based on what&rsquo;s resonating, it lined up follow-up topics for your next interview:
                 </p>
                 <div className="flex flex-wrap gap-2 mt-3">

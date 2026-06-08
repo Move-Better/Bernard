@@ -1,4 +1,4 @@
-// Phase 1E onboarding wizard. Lives at narraterx.ai/onboard (apex).
+// Phase 1E onboarding wizard. Lives at withbernard.ai/onboard (apex).
 //
 // Flow:
 //   0. Capacity check — silent unless full (then we show a waitlist gate).
@@ -13,7 +13,7 @@
 //   6. Capture setup — video capture is on by default; user sets their display
 //      name for content (seeds the founding clinician row at claim time)
 //   7. Review + submit
-//   8. "Setting up your workspace…" loader → redirect to <slug>.narraterx.ai/settings/workspace
+//   8. "Setting up your workspace…" loader → redirect to <slug>.withbernard.ai/settings/workspace
 //
 // The component does NOT use the WorkspaceProvider (no workspace exists yet)
 // and does NOT use OrgGate (Clerk Org is created server-side at the claim step).
@@ -79,7 +79,7 @@ export default function Onboarding() {
   // 0. Capacity check — runs once on mount. We only block on the response
   //    when spots are full; otherwise we drop straight to the auth step.
   useEffect(() => {
-    // eslint-disable-next-line narraterx/no-raw-api-fetch -- public capacity check; runs before sign-in (api/onboarding/capacity.js)
+    // eslint-disable-next-line bernard/no-raw-api-fetch -- public capacity check; runs before sign-in (api/onboarding/capacity.js)
     fetch('/api/onboarding/capacity')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -127,7 +127,7 @@ export default function Onboarding() {
     setScanState({ status: 'scanning', error: null, sources: [], recent_topics: [], services: [] })
     setSocialLookup({ status: 'idle', error: null, candidates: {} })
     try {
-      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public onboarding scan; rate-limited, not auth-gated (api/onboarding/scan-website.js)
+      // eslint-disable-next-line bernard/no-raw-api-fetch -- public onboarding scan; rate-limited, not auth-gated (api/onboarding/scan-website.js)
       const r = await fetch('/api/onboarding/scan-website', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -394,11 +394,11 @@ function CapacityFullScreen({ capacity }) {
   return (
     <Card
       title="Founding owner spots are full"
-      subtitle={`The first ${cap} founding spots are taken. NarrateRx is invite-only beyond founding — drop a note and you'll be first in line when the next cohort opens.`}
+      subtitle={`The first ${cap} founding spots are taken. Bernard is invite-only beyond founding — drop a note and you'll be first in line when the next cohort opens.`}
     >
       <a
         className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 hover:underline"
-        href="mailto:drq@narraterx.ai?subject=Waitlist%20%E2%80%94%20NarrateRx"
+        href="mailto:drq@withbernard.ai?subject=Waitlist%20%E2%80%94%20Bernard"
       >
         Email Dr. Q to join the waitlist <ArrowRight className="h-4 w-4" />
       </a>
@@ -454,7 +454,7 @@ function AuthScreen({ capacity, onSignedIn }) {
           <ul className="text-muted-foreground space-y-1">
             <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> About 5 minutes to fill in your business + voice setup</li>
             <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> Your website URL (we&apos;ll auto-extract what we can)</li>
-            <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> A subdomain you want (e.g. <code className="px-1 py-0.5 rounded bg-background border text-3xs">yourclinic</code>.narraterx.ai)</li>
+            <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> A subdomain you want (e.g. <code className="px-1 py-0.5 rounded bg-background border text-3xs">yourclinic</code>.withbernard.ai)</li>
             <li className="flex gap-2"><Check className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" /> Logo + brand colors come later — not blocking</li>
           </ul>
         </div>
@@ -625,7 +625,7 @@ function SignedInPrompt({ onContinue }) {
               >
                 <div className="min-w-0">
                   <div className="font-medium truncate" title={ws.display_name || ws.slug}>{ws.display_name || ws.slug}</div>
-                  <div className="text-xs text-muted-foreground font-mono truncate">{ws.slug}.narraterx.ai</div>
+                  <div className="text-xs text-muted-foreground font-mono truncate">{ws.slug}.withbernard.ai</div>
                 </div>
               </div>
             ))}
@@ -633,7 +633,7 @@ function SignedInPrompt({ onContinue }) {
           <p className="text-xs text-muted-foreground leading-relaxed pt-1">
             We can&apos;t put you on this workspace automatically — your team admin needs to invite you. Ask them to add{' '}
             <span className="font-mono">{user?.primaryEmailAddress?.emailAddress}</span> from their settings, then sign in at the workspace URL above. Stuck?{' '}
-            <a className="underline" href="mailto:support@narraterx.ai">support@narraterx.ai</a>
+            <a className="underline" href="mailto:support@withbernard.ai">support@withbernard.ai</a>
           </p>
         </div>
       </div>
@@ -658,7 +658,7 @@ function SignedInPrompt({ onContinue }) {
               >
                 <div className="min-w-0">
                   <div className="font-medium truncate" title={ws.display_name || ws.slug}>{ws.display_name || ws.slug}</div>
-                  <div className="text-xs text-muted-foreground font-mono truncate" title={`${ws.slug}.narraterx.ai`}>{ws.slug}.narraterx.ai</div>
+                  <div className="text-xs text-muted-foreground font-mono truncate" title={`${ws.slug}.withbernard.ai`}>{ws.slug}.withbernard.ai</div>
                 </div>
                 <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </a>
@@ -823,7 +823,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
   async function runSocialLookup() {
     setSocialLookup({ status: 'searching', error: null, candidates: {} })
     try {
-      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public onboarding lookup; rate-limited, not auth-gated (api/onboarding/find-socials.js)
+      // eslint-disable-next-line bernard/no-raw-api-fetch -- public onboarding lookup; rate-limited, not auth-gated (api/onboarding/find-socials.js)
       const r = await fetch('/api/onboarding/find-socials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1128,7 +1128,7 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
             Why this matters most
           </p>
           <p className="text-xs text-orange-900 leading-relaxed">
-            Everything NarrateRx writes traces back to what you and your team actually say. The few lines below are what keep your drafts sounding like your practice — your words, your tone — instead of generic AI content. When you review a draft, you&apos;ll see exactly which phrases came from your own answers and which the AI filled in.
+            Everything Bernard writes traces back to what you and your team actually say. The few lines below are what keep your drafts sounding like your practice — your words, your tone — instead of generic AI content. When you review a draft, you&apos;ll see exactly which phrases came from your own answers and which the AI filled in.
           </p>
         </div>
       </div>
@@ -1214,7 +1214,7 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
     }
     let cancelled = false
     setSlugCheck({ status: 'checking', available: null, reason: null })
-    // eslint-disable-next-line narraterx/no-raw-api-fetch -- public slug-availability check during onboarding (api/onboarding/check-slug.js)
+    // eslint-disable-next-line bernard/no-raw-api-fetch -- public slug-availability check during onboarding (api/onboarding/check-slug.js)
     fetch('/api/onboarding/check-slug', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1261,7 +1261,7 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
             spellCheck="false"
           />
           <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-l">
-            .narraterx.ai
+            .withbernard.ai
           </span>
         </div>
         <div className="text-xs h-5 mt-1">
@@ -1338,7 +1338,7 @@ function PublishIntentScreen({ form, setForm, onBack, onContinue }) {
   return (
     <Card
       title="How do you publish today?"
-      subtitle="NarrateRx works as a clean copy-and-paste export from day one — you never need any of this. But if you tell us the tools you already use, we'll skip the ones you don't and show you exactly how to connect the ones you do. You can change all of this later in settings."
+      subtitle="Bernard works as a clean copy-and-paste export from day one — you never need any of this. But if you tell us the tools you already use, we'll skip the ones you don't and show you exactly how to connect the ones you do. You can change all of this later in settings."
     >
       <IntentGroup icon={Globe} title="Your website — where blog posts go" colsClass="sm:grid-cols-3">
         <IntentOption selected={intent.website === 'wordpress'} onClick={() => set('website', 'wordpress')}
@@ -1368,7 +1368,7 @@ function PublishIntentScreen({ form, setForm, onBack, onContinue }) {
       <div className="flex items-start gap-3 rounded-lg border border-input bg-accent/40 px-3.5 py-2.5">
         <BarChart3 className="h-4 w-4 text-info shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Optional:</strong> Connect Google Analytics later so NarrateRx can see which
+          <strong className="text-foreground">Optional:</strong> Connect Google Analytics later so Bernard can see which
           posts actually drew traffic and aim future content at what&apos;s working. Read-only — set it up in settings whenever you&apos;re ready.
         </p>
       </div>
@@ -1462,7 +1462,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
       </div>
       <div className="flex gap-2.5 border-l-2 border-border pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>Picking a <strong>blog or website</strong> channel? When NarrateRx publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.</span>
+        <span>Picking a <strong>blog or website</strong> channel? When Bernard publishes to your site, it fills in the SEO details for you — the page title, meta description, URL slug, and tags — so you don&apos;t have to.</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
         {visibleChannels.map(channel => {
@@ -1525,7 +1525,7 @@ function CaptureScreen({ form, setField, onBack, onContinue }) {
       <div>
         <h2 className="text-xl font-semibold">Your capture companion is ready</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Video capture is included for all workspaces. Add NarrateRx to your iPhone home
+          Video capture is included for all workspaces. Add Bernard to your iPhone home
           screen and start capturing clips in seconds — no separate app to install.
         </p>
       </div>
@@ -1538,7 +1538,7 @@ function CaptureScreen({ form, setField, onBack, onContinue }) {
         <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">How it works</p>
         <ul className="space-y-3.5">
           {[
-            { icon: Smartphone, label: 'Capture', body: 'Add NarrateRx to your iPhone home screen via Safari — it opens straight to the camera.' },
+            { icon: Smartphone, label: 'Capture', body: 'Add Bernard to your iPhone home screen via Safari — it opens straight to the camera.' },
             { icon: Clapperboard, label: 'Drafts', body: 'Your clips turn into ready-to-review draft posts you can check each morning.' },
             { icon: CheckCircle2, label: 'Approval', body: 'Nothing publishes without your sign-off. Auto-publish is opt-in, channel by channel.' },
             { icon: Sparkles, label: 'Your voice', body: 'Drafts keep your words, your views, and your tone — and point out anything that doesn\'t sound like you before it goes out.' },
@@ -1601,7 +1601,7 @@ function ReviewScreen({ form, submitting, submitError, onBack, onSubmit }) {
       subtitle="Last check. Subdomain can't be changed later — everything else is editable in settings."
     >
       <ReviewRow label="Workspace name" value={form.display_name} />
-      <ReviewRow label="Subdomain" value={`${form.slug}.narraterx.ai`} mono />
+      <ReviewRow label="Subdomain" value={`${form.slug}.withbernard.ai`} mono />
       {form.website && <ReviewRow label="Website" value={form.website} />}
       {form.locations.filter(l => l.city.trim()).length > 0 && (
         <ReviewRow
@@ -1621,8 +1621,8 @@ function ReviewScreen({ form, submitting, submitError, onBack, onSubmit }) {
           {submitError === 'founding-spots-full' && 'Founding spots filled while you were filling this out. Email us to join the waitlist.'}
           {submitError === 'no-channels-selected' && 'Pick at least one channel.'}
           {submitError === 'org-create-failed' && 'Could not create your workspace org — please try again.'}
-          {submitError === 'domain-registration-failed' && 'Could not register your subdomain with our hosting provider. Please try again, or email drq@narraterx.ai if it keeps failing.'}
-          {submitError === 'domain-already-claimed' && 'A workspace at this domain already exists. Ask your team admin to invite you, or email support@narraterx.ai.'}
+          {submitError === 'domain-registration-failed' && 'Could not register your subdomain with our hosting provider. Please try again, or email drq@withbernard.ai if it keeps failing.'}
+          {submitError === 'domain-already-claimed' && 'A workspace at this domain already exists. Ask your team admin to invite you, or email support@withbernard.ai.'}
           {!['slug-taken','founding-spots-full','no-channels-selected','org-create-failed','domain-registration-failed','domain-already-claimed'].includes(submitError) && submitError}
         </div>
       )}

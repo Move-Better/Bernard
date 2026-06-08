@@ -2,7 +2,7 @@
 // creates the workspace. P2 deliverable: text-only chat using the
 // getOnboardingInterviewSystemPrompt prompt. P2b adds the full voice loop
 // (mic + TTS + iOS gesture priming) so the page is the proof-of-concept
-// for how NarrateRx actually works.
+// for how Bernard actually works.
 //
 // Founder-only — gated by the API route's requireRole(['admin']) check.
 // Workspace-scoped via workspaceContext on the server.
@@ -749,7 +749,7 @@ export default function OnboardingInterview() {
             <div className="flex items-center justify-between mb-2.5">
               <h1 className="text-sm font-semibold flex items-center gap-1.5">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Tell NarrateRx about {workspace?.display_name || 'your practice'}
+                Tell Bernard about {workspace?.display_name || 'your practice'}
               </h1>
               <span className="text-xs text-muted-foreground">~15 min</span>
             </div>
@@ -1187,7 +1187,7 @@ function InterviewPrimer({ workspace, onContinue }) {
           Before we begin
         </h1>
         <p className="text-muted-foreground text-sm">
-          A real conversation with {interviewer} about {practice} — this is how NarrateRx learns your voice.
+          A real conversation with {interviewer} about {practice} — this is how Bernard learns your voice.
         </p>
       </div>
 
@@ -1290,7 +1290,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
   const subhead = dryRun
     ? 'Review the JSON below. Tune the synthesis prompt if anything looks off, then remove ?dryRun=1 from the URL to run for real.'
     : isFresh
-      ? 'From here on, content NarrateRx generates uses the voice, audience, and topic queue from your interview.'
+      ? 'From here on, content Bernard generates uses the voice, audience, and topic queue from your interview.'
       : 'Your workspace voice was already synthesized. Visit Settings → Voice to review or refine.'
   const verb = dryRun ? 'Would write' : 'Wrote'
   return (

@@ -378,5 +378,5 @@ export async function deleteDriveCredential(workspaceId) {
 // to the production apex URL.
 export function driveRedirectUri() {
   return process.env.GOOGLE_DRIVE_REDIRECT_URI
-    || 'https://narraterx.ai/api/integrations/drive/callback'
+    || 'https://withbernard.ai/api/integrations/drive/callback'
 }

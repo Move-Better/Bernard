@@ -11,7 +11,7 @@ function isMirrorableUrl(url) {
   return (
     /\.public\.blob\.vercel-storage\.com/i.test(url) ||
     /\.blob\.vercel-storage\.com/i.test(url) ||
-    /\.narraterx\.ai\//i.test(url)
+    /\.bernard\.ai\//i.test(url)
   )
 }
 

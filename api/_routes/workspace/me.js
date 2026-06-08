@@ -262,7 +262,7 @@ async function handler(req, res) {
       // the user's auth state, so disclosing it doesn't leak anything that
       // a curl of the same subdomain wouldn't reveal. The client needs it
       // to recover from a wrong-org-stuck Clerk session (apiFetch reads it
-      // from window.__narraterxExpectedClerkOrgId to force a setActive flip
+      // from window.__bernardExpectedClerkOrgId to force a setActive flip
       // — without it, the recovery path silently skips and the user is
       // stranded on a "wrong-org" error screen).
       return res.status(200).json({

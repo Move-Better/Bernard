@@ -28,6 +28,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 const MAX_SECONDS = 90
 const MAX_ROUNDS = 3 // 1 opener + 2 Bernard follow-ups
 
+// Three interview archetypes — maps to the 3 core content types Bernard produces:
+// patient story (blog/email), FAQ (social + Google Q&A), thought leadership (opinion post).
 const TOPICS = [
   {
     id: 'story',
@@ -105,7 +107,7 @@ function ProgressDots({ completed }) {
 }
 
 export default function DemoExperience() {
-  useDocumentTitle('Try NarrateRx — talk for a minute, no login')
+  useDocumentTitle('Try Bernard — talk for a minute, no login')
 
   // phase: picking | requesting | recording | transcribing | bernard | ready | done
   const [phase, setPhase] = useState('picking')
@@ -174,7 +176,7 @@ export default function DemoExperience() {
   const transcribeBlob = useCallback(async (blob, mime, currentTranscripts, currentTopicId) => {
     setPhase('transcribing')
     try {
-      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public unauthenticated demo endpoint; raw binary audio body, no Bearer token, apiFetch doesn't apply.
+      // eslint-disable-next-line bernard/no-raw-api-fetch -- public unauthenticated demo endpoint; raw binary audio body, no Bearer token, apiFetch doesn't apply.
       const res = await fetch('/api/demo/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': mime || blob.type || 'audio/webm' },
@@ -533,14 +535,14 @@ export default function DemoExperience() {
                 {transcripts.length > 1
                   ? `${transcripts.length} answers, captured word for word. `
                   : 'Captured word for word. '}
-                NarrateRx turns interviews like this into ready-to-post blogs, social posts,
+                Bernard turns interviews like this into ready-to-post blogs, social posts,
                 and newsletters — always in your voice.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="flex-1">
                   <Link to="/onboard">
-                    See what NarrateRx can do
+                    See what Bernard can do
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </Link>
                 </Button>

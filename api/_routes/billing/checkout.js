@@ -69,7 +69,7 @@ async function handler(req, res) {
   }
 
   // Build success/cancel URLs from the request host.
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'narraterx.ai'
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'withbernard.ai'
   const protocol = 'https'
   const base = `${protocol}://${host}`
 

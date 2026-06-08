@@ -88,9 +88,9 @@ export async function cloneFromSampleUrl({ ws, staffMember, sampleUrl }) {
   let voiceId
   try {
     const result = await createInstantVoice({
-      name:        `${staffMember.name || 'Staff member'} — NarrateRx`,
+      name:        `${staffMember.name || 'Staff member'} — Bernard`,
       sampleUrl,
-      description: `NarrateRx voice clone for ${staffMember.name || staffMember.id} (workspace ${ws.slug}).`,
+      description: `Bernard voice clone for ${staffMember.name || staffMember.id} (workspace ${ws.slug}).`,
     })
     voiceId = result.voiceId
   } catch (e) {

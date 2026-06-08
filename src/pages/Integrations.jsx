@@ -36,16 +36,16 @@ const INTEGRATIONS = [
     label: 'Buffer',
     recommended: true,
     description:
-      'One connection that sends NarrateRx posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, TikTok, YouTube Shorts, Bluesky, Mastodon, Google Business Profile, and more. The fastest way to get NarrateRx publishing for your workspace.',
+      'One connection that sends Bernard posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, TikTok, YouTube Shorts, Bluesky, Mastodon, Google Business Profile, and more. The fastest way to get Bernard publishing for your workspace.',
     platforms: ['Instagram', 'Facebook', 'LinkedIn', 'Twitter/X', 'Threads', 'TikTok', 'YouTube Shorts', 'Mastodon', 'Bluesky', 'Google Business Profile'],
     secretLabel: 'Buffer access token',
     secretPlaceholder: 'access_token_…',
     fields: [],
     setupSteps: [
       'Sign in (or sign up) at buffer.com.',
-      'In Buffer, connect every channel you want NarrateRx to publish to (Instagram, Facebook Page, LinkedIn, X, TikTok, etc.).',
+      'In Buffer, connect every channel you want Bernard to publish to (Instagram, Facebook Page, LinkedIn, X, TikTok, etc.).',
       'Open publish.buffer.com/settings/api and go to the Personal Keys tab.',
-      'Click + New Key, give it a name (e.g. "NarrateRx"), and copy the token.',
+      'Click + New Key, give it a name (e.g. "Bernard"), and copy the token.',
       'Paste it below and Save — your token is stored encrypted and used only at publish time.',
     ],
     docsUrl: 'https://buffer.com/developers/api',
@@ -99,7 +99,7 @@ const INTEGRATIONS = [
     ],
     setupSteps: [
       'Sign in at app.beehiiv.com.',
-      'Open Settings → Integrations → API and create a new key (give it a name like "NarrateRx"). Copy the key.',
+      'Open Settings → Integrations → API and create a new key (give it a name like "Bernard"). Copy the key.',
       'Find your Publication ID — it’s the UUID in your Beehiiv URL: app.beehiiv.com/publications/<publication_id>/… Paste it as-is; we add the pub_ prefix automatically.',
       'Paste the key + publication ID below and Save. Click Test connection to verify.',
     ],
@@ -109,7 +109,7 @@ const INTEGRATIONS = [
     id: 'ga4',
     label: 'Google Analytics (GA4)',
     description:
-      'Read-only. Connects your website analytics so NarrateRx can see which published posts actually drew traffic — fueling the “What’s working” signal, smarter topic suggestions, and outcome-aware campaign aiming. NarrateRx only reads aggregate page metrics; it never writes to or changes your analytics.',
+      'Read-only. Connects your website analytics so Bernard can see which published posts actually drew traffic — fueling the “What’s working” signal, smarter topic suggestions, and outcome-aware campaign aiming. Bernard only reads aggregate page metrics; it never writes to or changes your analytics.',
     platforms: ['Website analytics'],
     secretLabel: 'Service-account JSON',
     secretIsTextarea: true,
@@ -120,9 +120,9 @@ const INTEGRATIONS = [
     setupSteps: [
       'In Google Analytics (analytics.google.com) → Admin → Property details, copy the numeric Property ID (e.g. 412345678) — NOT the “G-XXXXXXX” measurement ID.',
       'In Google Cloud Console (console.cloud.google.com), pick or create a project and enable the “Google Analytics Data API” under APIs & Services → Library.',
-      'Under IAM & Admin → Service Accounts, create a service account (e.g. “narraterx-ga4-reader”), then open it → Keys → Add key → Create new key → JSON. Save the downloaded file.',
+      'Under IAM & Admin → Service Accounts, create a service account (e.g. “bernard-ga4-reader”), then open it → Keys → Add key → Create new key → JSON. Save the downloaded file.',
       'Back in GA4 → Admin → Property Access Management, add the service account’s email (client_email from the JSON) with the Viewer role.',
-      'Paste the Property ID above and the full JSON file contents below, then Save. Click Test connection to confirm NarrateRx can read your pageviews.',
+      'Paste the Property ID above and the full JSON file contents below, then Save. Click Test connection to confirm Bernard can read your pageviews.',
     ],
     docsUrl: 'https://developers.google.com/analytics/devguides/reporting/data/v1',
   },
@@ -459,7 +459,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
               ) : null}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Pull source photos and videos from your Drive into the Media Library. NarrateRx can only see files you specifically pick — we never see the rest of your Drive.
+              Pull source photos and videos from your Drive into the Media Library. Bernard can only see files you specifically pick — we never see the rest of your Drive.
             </p>
             {configured && connectedEmail && (
               <p className="text-xs text-muted-foreground mt-1">
@@ -481,9 +481,9 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
             <p className="text-sm font-medium mb-2">How it works</p>
             <ol className="space-y-1.5">
               {[
-                'Click Connect Google Drive below — you’ll be sent to Google to sign in and grant NarrateRx the ability to read files you later pick.',
-                'Back in the Library, use Import from Drive. Google’s own file picker opens; the files you select are the only files NarrateRx ever sees.',
-                'Selected files copy into NarrateRx and run through the normal Library pipeline (tagging, transcription, thumbnails). Drive stays the master archive.',
+                'Click Connect Google Drive below — you’ll be sent to Google to sign in and grant Bernard the ability to read files you later pick.',
+                'Back in the Library, use Import from Drive. Google’s own file picker opens; the files you select are the only files Bernard ever sees.',
+                'Selected files copy into Bernard and run through the normal Library pipeline (tagging, transcription, thumbnails). Drive stays the master archive.',
               ].map((step, i) => (
                 <li key={i} className="flex gap-2 text-sm text-muted-foreground">
                   <span className="text-primary font-semibold shrink-0">{i + 1}.</span>
@@ -506,7 +506,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
                 <Lightbulb className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="text-xs text-amber-900 leading-relaxed">
                   <span className="font-semibold">Tip — connect with a dedicated account.</span>{' '}
-                  Pick a Google account whose Drive contains only the photos and videos you want NarrateRx to see — ideally a shared clinic account, or one whose Drive holds your media Shared Drive. Every workspace member who imports will see the same Drive view, so avoid using a personal account with private photos.
+                  Pick a Google account whose Drive contains only the photos and videos you want Bernard to see — ideally a shared clinic account, or one whose Drive holds your media Shared Drive. Every workspace member who imports will see the same Drive view, so avoid using a personal account with private photos.
                 </div>
               </div>
               <Button onClick={handleConnect} disabled={disabled || connecting}>

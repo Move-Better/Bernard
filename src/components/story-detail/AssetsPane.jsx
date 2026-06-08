@@ -94,7 +94,7 @@ function CommentThread({ pieceId }) {
 
   // Resolve a comment's author to a human display name. Prefer a matching
   // clinician row (by Clerk user id) so threads read "Q" rather than
-  // "drq@narraterx.ai"; fall back to the email local-part.
+  // "drq@withbernard.ai"; fall back to the email local-part.
   const authorLabel = (c) => {
     const match = c.user_id && staff.find((s) => s?.user_id === c.user_id)
     if (match?.name) return match.name
@@ -240,7 +240,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
   const [viewMode, setViewMode] = useState(() => {
     if (!hasProvenance) return 'edit'
     try {
-      const saved = localStorage.getItem('narraterx:readMode')
+      const saved = localStorage.getItem('bernard:readMode')
       if (saved === 'plain') return 'edit'
     } catch { /* private browsing */ }
     return 'attributed'
@@ -347,7 +347,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
             onClick={() => {
               setViewMode(mode)
               try {
-                localStorage.setItem('narraterx:readMode', mode === 'edit' ? 'plain' : mode)
+                localStorage.setItem('bernard:readMode', mode === 'edit' ? 'plain' : mode)
               } catch { /* private browsing */ }
             }}
             className={`px-2 py-0.5 rounded text-xs transition-colors ${

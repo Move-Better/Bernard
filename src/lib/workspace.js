@@ -1,6 +1,6 @@
 // Static workspace registry — placeholder/fallback only.
 //
-// Runtime workspace data on the shared narraterx.ai deployment comes from the
+// Runtime workspace data on the shared withbernard.ai deployment comes from the
 // DB via `useWorkspace()` (browser, src/lib/WorkspaceContext.jsx) and
 // `workspaceContext(req)` (server, api/_lib/workspaceContext.js). This file
 // stays alive for two narrow reasons:
@@ -22,7 +22,7 @@ const PEOPLE = {
 
   // Identity
   name: 'Move Better',
-  appName: 'Move Better — NarrateRx',
+  appName: 'Move Better — Bernard',
   tagline: 'Movement Based Medicine',
   signInBlurb: 'Move Better · Sign in with your @movebetter.co account',
 
@@ -147,7 +147,7 @@ const EQUINE = {
 
   // Identity
   name: 'Move Better Equine',
-  appName: 'Move Better Equine — NarrateRx',
+  appName: 'Move Better Equine — Bernard',
   tagline: 'Restoring Movement, Balance, and Comfort for Horses',
   signInBlurb: 'Move Better Equine · Sign in with your @movebetter.co account',
 
@@ -246,7 +246,7 @@ const ANIMALS = {
 
   // Identity
   name: 'Move Better Animals Chiropractic',
-  appName: 'Move Better Animals Chiropractic — NarrateRx',
+  appName: 'Move Better Animals Chiropractic — Bernard',
   tagline: 'Chiropractic care for the pets you love',
   signInBlurb: 'Move Better Animals Chiropractic · Sign in with your @movebetter.co account',
 

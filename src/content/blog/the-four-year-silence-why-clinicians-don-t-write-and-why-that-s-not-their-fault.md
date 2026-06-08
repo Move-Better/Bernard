@@ -1,14 +1,14 @@
 ---
 title: "The Four-Year Silence: Why Clinicians Don't Write (And Why That's Not Their Fault)"
-description: "*Why I Built NarrateRx — Part 1*"
+description: "*Why I Built Bernard — Part 1*"
 pubDate: 2026-05-20
 author: "Dr. Q"
 hero: "https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/raw/2026-05-20T13-13-01-343Z-7a227d75-ccee-47e4-aca3-aa7ab4a670c6_1_105_c.jpeg"
 heroAlt: "7A227D75-CCEE-47E4-ACA3-AA7AB4A670C6_1_105_c.jpeg"
-topic: "why-i-built-narraterx-what-i-see-clinicians-struggling-with"
+topic: "why-i-built-bernard-what-i-see-clinicians-struggling-with"
 ---
 
-*Why I Built NarrateRx — Part 1*
+*Why I Built Bernard — Part 1*
 
 # The Four-Year Silence: Why Clinicians Don't Write (And Why That's Not Their Fault)
 
@@ -64,6 +64,6 @@ For now, the takeaway is just this: the four-year silence in your clinic isn't a
 
 ## Want to talk?
 
-If any of this sounds like your clinic, I'd love to hear about it. You can find me and the rest of what we're building over at [NarrateRx](https://narraterx.ai).
+If any of this sounds like your clinic, I'd love to hear about it. You can find me and the rest of what we're building over at [Bernard](https://withbernard.ai).
 
-— Dr. Q, NarrateRx
+— Dr. Q, Bernard

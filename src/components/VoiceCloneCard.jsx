@@ -63,10 +63,10 @@ export default function VoiceCloneCard({ staffMember }) {
             <div className="text-base font-semibold">Your voice clone</div>
             <div className="text-sm text-muted-foreground">
               {hasClone
-                ? 'Active. NarrateRx can narrate content in your voice.'
+                ? 'Active. Bernard can narrate content in your voice.'
                 : hadClone
                 ? 'Revoked. You can train a new clone any time.'
-                : 'Not trained yet. Read a short passage and NarrateRx can speak in your voice.'}
+                : 'Not trained yet. Read a short passage and Bernard can speak in your voice.'}
             </div>
           </div>
         </div>

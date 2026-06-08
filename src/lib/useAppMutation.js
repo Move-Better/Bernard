@@ -16,7 +16,7 @@
 //     the call site has a deliberately custom error surface)
 //
 // All mutations in src/lib/queries.js use this. The custom ESLint rule
-// `narraterx/no-raw-use-mutation` prevents new code from bypassing it.
+// `bernard/no-raw-use-mutation` prevents new code from bypassing it.
 
 import { useMutation } from '@tanstack/react-query'
 import { toast } from '@/lib/toast'

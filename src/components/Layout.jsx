@@ -146,7 +146,7 @@ export default function Layout({ children }) {
             <Link to="/" className="flex items-center gap-2.5 min-w-0">
               <img src={logoSrc} alt={logoAlt} className="h-8 w-auto shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-none truncate">NarrateRx</p>
+                <p className="text-sm font-semibold leading-none truncate">Bernard</p>
                 <p className="text-3xs text-muted-foreground mt-0.5 leading-none truncate" title={APP_BYLINE}>
                   {APP_BYLINE}
                 </p>
@@ -436,7 +436,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
     } catch {
       // navigate anyway — OrgGate handles activation on the destination
     }
-    window.location.assign(`https://${pendingWs.slug}.narraterx.ai`)
+    window.location.assign(`https://${pendingWs.slug}.withbernard.ai`)
   }
 
   return (
@@ -480,7 +480,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
         open={!!pendingWs}
         onOpenChange={(v) => { if (!v && !switching) setPendingWs(null) }}
         title={`Switch to ${pendingWs?.display_name ?? 'another workspace'}?`}
-        description={`Each NarrateRx workspace opens as its own app. ${pendingWs?.display_name ?? 'The new workspace'} will open in a new window — you can keep both open at once.`}
+        description={`Each Bernard workspace opens as its own app. ${pendingWs?.display_name ?? 'The new workspace'} will open in a new window — you can keep both open at once.`}
         confirmLabel="Open workspace"
         cancelLabel="Stay here"
         destructive={false}

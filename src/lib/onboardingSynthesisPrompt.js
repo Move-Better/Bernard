@@ -16,7 +16,7 @@ export function getOnboardingSynthesisSystemPrompt(workspace, founderName) {
   const workspaceName = workspace?.display_name || 'this practice'
   const fname = founderName || 'the founder'
 
-  return `You are extracting workspace configuration from an onboarding-interview transcript with ${fname}, founder of ${workspaceName}. Your output configures how NarrateRx writes content for them from here on, so accuracy and groundedness matter far more than coverage.
+  return `You are extracting workspace configuration from an onboarding-interview transcript with ${fname}, founder of ${workspaceName}. Your output configures how Bernard writes content for them from here on, so accuracy and groundedness matter far more than coverage.
 
 THE CARDINAL RULE: extract, do not invent. Every field you populate must be supportable from the transcript text. If the transcript doesn't give you material for a field, either OMIT the field entirely or pass an empty array/null — do NOT make something up to fill the slot. A workspace configured with hallucinated voice will produce hallucinated content forever.
 

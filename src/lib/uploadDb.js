@@ -1,6 +1,6 @@
 // IndexedDB wrapper for resumable uploads.
 //
-// Database: narraterx-uploads  (version 1)
+// Database: bernard-uploads  (version 1)
 // Object store: uploads
 //   keyPath: 'id'
 //   indexes: createdAt (for hydration ordering)
@@ -33,7 +33,7 @@
 // each see their own pending uploads — exactly what we want for tenant
 // isolation.
 
-const DB_NAME = 'narraterx-uploads'
+const DB_NAME = 'bernard-uploads'
 const STORE   = 'uploads'
 const VERSION = 1
 

@@ -188,7 +188,7 @@ export default function SchedulePrefsSection({ value, onChange }) {
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Override NarrateRx&rsquo;s built-in optimal posting times on a per-platform basis.
+        Override Bernard&rsquo;s built-in optimal posting times on a per-platform basis.
         Untouched platforms use defaults — your overrides drive the &ldquo;Schedule for&rdquo;
         suggestion on the approve action sheet and the optimal-time tint on the calendar.
       </p>

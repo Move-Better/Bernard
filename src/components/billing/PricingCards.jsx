@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/react'
 import { Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-// Displays the three NarrateRx subscription plans side-by-side (or stacked on
+// Displays the three Bernard subscription plans side-by-side (or stacked on
 // mobile). Highlights the active plan and wires Upgrade / Manage buttons to
 // the billing API endpoints.
 //
@@ -20,7 +20,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // eslint-disable-next-line narraterx/no-raw-api-fetch -- public pricing catalog; no auth by design (api/billing/plans.js)
+    // eslint-disable-next-line bernard/no-raw-api-fetch -- public pricing catalog; no auth by design (api/billing/plans.js)
     fetch('/api/billing/plans')
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d?.plans) setPlans(d.plans) })

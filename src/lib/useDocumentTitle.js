@@ -3,12 +3,12 @@
 // switcher previews accurate.
 //
 // Convention: pass the page-specific noun phrase only ("Media", "Settings —
-// Workspace") — the hook appends " · NarrateRx" so the brand stays in the tab.
+// Workspace") — the hook appends " · Bernard" so the brand stays in the tab.
 // Pass an empty/null page to use just the brand.
 
 import { useEffect } from 'react'
 
-const SUFFIX = 'NarrateRx'
+const SUFFIX = 'Bernard'
 
 export function useDocumentTitle(page) {
   useEffect(() => {
