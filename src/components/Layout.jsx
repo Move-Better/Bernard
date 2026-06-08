@@ -313,7 +313,7 @@ export default function Layout({ children }) {
                     <DrawerClose asChild key={item.to}>
                       <Link
                         to={item.to}
-                        className={`flex items-center gap-2 px-3 py-3 rounded-md text-base font-medium ${item.match(location.pathname) ? 'bg-accent/40 text-foreground' : 'text-muted-foreground active:bg-accent/30'}`}
+                        className={`flex items-center gap-2 px-3 py-3 rounded-md text-base font-medium ${item.match(location.pathname) ? 'bg-primary/10 text-primary' : 'text-muted-foreground active:bg-accent/30'}`}
                       >
                         {item.icon && <item.icon className="h-4 w-4 shrink-0" />}
                         <span className="flex-1">{item.label}</span>
