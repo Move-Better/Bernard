@@ -2,7 +2,7 @@
 
 For the `movebetter-animals` workspace (and any future workspace publishing to an Astro+GitHub-backed site), the **Settings → Publishing credentials → Astro + GitHub website** card needs two values. Both are easy to lose track of because one is a Sensitive shared secret that lives on **two** sides — NarrateRx and the Astro deployment — and they must match exactly.
 
-At publish time NarrateRx serializes the blog post (slug, title, description, pubDate, markdown, optional heroImage / heroImageAlt / tags / draft / images[]) and `POST`s it as JSON to the webhook URL with `Authorization: Bearer <secret>`. The receiving Astro app validates the bearer, writes a markdown file to its content directory, commits to GitHub, and lets Vercel rebuild. The full receiver contract lives at `docs/api-publish-contract.md` in the `movebetteranimal` repo.
+At publish time Bernard serializes the blog post (slug, title, description, pubDate, markdown, optional heroImage / heroImageAlt / tags / draft / images[]) and `POST`s it as JSON to the webhook URL with `Authorization: Bearer <secret>`. The receiving Astro app validates the bearer, writes a markdown file to its content directory, commits to GitHub, and lets Vercel rebuild. The full receiver contract lives at `docs/api-publish-contract.md` in the `movebetteranimal` repo.
 
 **Book publish (added 2026-05-26)**: the same lane also carries the workspace book, dispatched on a new `kind: 'book'` field in the payload. The receiver writes a single fixed file (`src/pages/book.astro`), overwrites on every publish, and renders at `https://<site>/book`. Full contract: [`docs/BOOK_PUBLISH_CONTRACT.md`](./BOOK_PUBLISH_CONTRACT.md). Receivers that haven't been updated yet return `400` and NarrateRx surfaces it as `receiver_out_of_date` to the admin.
 
@@ -24,8 +24,8 @@ This URL is not a secret in the OWASP sense — knowing it doesn't grant access 
 
 **Source**: the same secret value lives in **two** places that must stay in sync:
 
-- **NarrateRx side**: encrypted in `workspace_credentials.secret_ciphertext` for `(workspace='movebetter-animals', service='astro_github')`. Originally also lived as the `NARRATERX_PUBLISH_SECRET` env var on the legacy `narraterx-animals` Vercel project; that value was marked **Sensitive** there and so `vercel env pull` returns empty for it (see `feedback_vercel_sensitive_env_pull_empty.md`).
-- **Astro deployment side**: env var on the `movebetteranimalchiro.com` Vercel project (probably named `NARRATERX_PUBLISH_SECRET` to match the NarrateRx side, but the receiver picks whichever env name it reads). The Astro `/api/publish` handler compares the inbound `Authorization: Bearer …` header against this env var.
+- **Bernard side**: encrypted in `workspace_credentials.secret_ciphertext` for `(workspace='movebetter-animals', service='astro_github')`. Originally also lived as the `BERNARD_PUBLISH_SECRET` env var on the legacy `bernard-animals` Vercel project; that value was marked **Sensitive** there and so `vercel env pull` returns empty for it (see `feedback_vercel_sensitive_env_pull_empty.md`).
+- **Astro deployment side**: env var on the `movebetteranimalchiro.com` Vercel project (probably named `BERNARD_PUBLISH_SECRET` to match the Bernard side, but the receiver picks whichever env name it reads). The Astro `/api/publish` handler compares the inbound `Authorization: Bearer …` header against this env var.
 
 The two values **must match byte-for-byte**. A mismatch produces HTTP 401 from the Astro side, which NarrateRx surfaces as `error: 'auth_failed'` in the publish UI.
 
@@ -55,13 +55,13 @@ Set the env var on the receiving Vercel project (the one that hosts `movebettera
 
 1. Open https://vercel.com → switch to the project that hosts `movebetteranimalchiro.com`.
 2. **Settings → Environment Variables**.
-3. Find `NARRATERX_PUBLISH_SECRET` (or whatever env name the receiver reads — check `api/publish.ts` in the `movebetteranimal` repo if unsure).
+3. Find `BERNARD_PUBLISH_SECRET` (or whatever env name the receiver reads — check `api/publish.ts` in the `movebetteranimal` repo if unsure).
 4. Edit → paste the new value → save.
 5. **Redeploy production** so the new value is live. The redeploy isn't optional — Vercel env var changes don't apply to running deployments until the next build.
 
 ### Step 3 — paste into NarrateRx
 
-1. Open `https://movebetter-animals.narraterx.ai/settings/workspace`.
+1. Open `https://movebetter-animals.withbernard.ai/settings/workspace`.
 2. Scroll to **Publishing credentials** → expand the **Astro + GitHub website** card.
 3. Paste the same secret into the **Shared bearer secret** field.
 4. Leave the **Publish webhook URL** field as-is (it doesn't change on secret rotation).
@@ -79,7 +79,7 @@ Or send a test publish from the Review Post UI with the **Draft** toggle on so i
 
 ### Step 5 — update 1Password
 
-Open the existing `NarrateRx — movebetter-animals Astro+GitHub credentials` Secure Note. Replace the secret value in the Notes body. Update the "Key rotated" date. Save.
+Open the existing `Bernard — movebetter-animals Astro+GitHub credentials` Secure Note. Replace the secret value in the Notes body. Update the "Key rotated" date. Save.
 
 ---
 
@@ -87,7 +87,7 @@ Open the existing `NarrateRx — movebetter-animals Astro+GitHub credentials` Se
 
 `scripts/astro-verify.mjs` sends a minimal probe payload to the webhook URL with the bearer header set. It does **not** send a real publish — it sends an intentionally-invalid payload and inspects the response code to disambiguate the auth and connectivity outcomes:
 
-- **401** → bearer secret doesn't match. Re-check the NarrateRx side against the Astro side.
+- **401** → bearer secret doesn't match. Re-check the Bernard side against the Astro side.
 - **400** → bearer was accepted (auth passed), Astro side rejected the payload as invalid (expected — the probe payload is missing required fields). This is **success** for the purpose of credential verification.
 - **404 / DNS failure** → the URL is wrong.
 - **5xx** → the Astro deployment is misconfigured or down (typically missing its own GitHub token env var).
@@ -111,9 +111,9 @@ After pasting into NarrateRx, mirror everything into 1Password so future-you (or
 | Field | Value |
 |---|---|
 | **Item type** | Secure Note |
-| **Title** | `NarrateRx — movebetter-animals Astro+GitHub credentials` |
+| **Title** | `Bernard — movebetter-animals Astro+GitHub credentials` |
 | **Vault** | The vault holding your other production NarrateRx / Move Better credentials |
-| **Website** (optional) | `https://movebetter-animals.narraterx.ai/settings/workspace` |
+| **Website** (optional) | `https://movebetter-animals.withbernard.ai/settings/workspace` |
 
 ### Notes body (copy-paste template)
 
@@ -121,12 +121,12 @@ Replace each `<...>` placeholder with the actual value.
 
 ```
 Workspace:    movebetter-animals
-URL:          https://movebetter-animals.narraterx.ai
-Settings:     https://movebetter-animals.narraterx.ai/settings/workspace
+URL:          https://movebetter-animals.withbernard.ai
+Settings:     https://movebetter-animals.withbernard.ai/settings/workspace
 Set date:     <YYYY-MM-DD>
 Key rotated:  <YYYY-MM-DD>
 
-These credentials let NarrateRx POST blog posts to the Astro site at
+These credentials let Bernard POST blog posts to the Astro site at
 movebetteranimalchiro.com. The shared secret is mirrored on the receiving
 Vercel project's env vars; rotating one side without the other breaks
 publishing. Full rotation walkthrough: docs/ASTRO_GITHUB_CREDENTIALS.md.
@@ -149,7 +149,7 @@ Value:    <paste the secret here — same value as set on the Astro side>
 Source:   Mirrored in two places that must match byte-for-byte:
             1. NarrateRx workspace_credentials row (encrypted)
             2. movebetteranimalchiro.com Vercel project env var
-               (NARRATERX_PUBLISH_SECRET or equivalent — check the
+               (BERNARD_PUBLISH_SECRET or equivalent — check the
                 receiver source if unsure)
 Rotation: Generate new with `openssl rand -base64 32`. Paste into the
           Astro Vercel project's env var FIRST and redeploy, then into
@@ -164,7 +164,7 @@ If this 1Password entry is lost:
     project's domain settings in seconds.
   • Field 2 may be recoverable from the Astro deployment's env vars
     (Vercel dashboard → Settings → Environment Variables → reveal the
-    NARRATERX_PUBLISH_SECRET value). If that value is also marked
+    BERNARD_PUBLISH_SECRET value). If that value is also marked
     Sensitive (can't be revealed), rotate per the walkthrough above —
     rotation is non-destructive aside from the brief redeploy window.
 ```
@@ -178,18 +178,18 @@ The values below are the real 1Password entry shape for the animals workspace. T
 | Field | Value |
 |---|---|
 | **Item type** | Secure Note |
-| **Title** | `NarrateRx — movebetter-animals Astro+GitHub credentials` |
+| **Title** | `Bernard — movebetter-animals Astro+GitHub credentials` |
 | **Vault** | Move Better — Operations (or wherever production NarrateRx secrets live) |
-| **Website** | `https://movebetter-animals.narraterx.ai/settings/workspace` |
+| **Website** | `https://movebetter-animals.withbernard.ai/settings/workspace` |
 
 ```
 Workspace:    movebetter-animals
-URL:          https://movebetter-animals.narraterx.ai
-Settings:     https://movebetter-animals.narraterx.ai/settings/workspace
+URL:          https://movebetter-animals.withbernard.ai
+Settings:     https://movebetter-animals.withbernard.ai/settings/workspace
 Set date:     2026-05-10
 Key rotated:  <inherited from legacy narraterx-animals — set date unknown>
 
-These credentials let NarrateRx POST blog posts to the Astro site at
+These credentials let Bernard POST blog posts to the Astro site at
 movebetteranimalchiro.com. The shared secret is mirrored on the receiving
 Vercel project's env vars; rotating one side without the other breaks
 publishing. Full rotation walkthrough: docs/ASTRO_GITHUB_CREDENTIALS.md.
@@ -206,7 +206,7 @@ FIELD 2 — Shared bearer secret
 Sensitivity: Sensitive
 ────────────────────────────────────────────
 Value:    <REDACTED — retrieve from legacy narraterx-animals Vercel
-           project (NARRATERX_PUBLISH_SECRET) OR from the receiving
+           project (BERNARD_PUBLISH_SECRET) OR from the receiving
            movebetteranimalchiro.com Vercel project (same env var name).
            If neither side can reveal the existing value, rotate per
            docs/ASTRO_GITHUB_CREDENTIALS.md.>

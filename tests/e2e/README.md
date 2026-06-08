@@ -3,7 +3,7 @@
 Playwright smoke that runs **after each merge to `main`** via
 `.github/workflows/e2e.yml`. Waits for the Vercel production deploy, then
 exercises the core interview-create flow + workspace-gated reads on
-`https://movebetter-people.narraterx.ai`.
+`https://movebetter-people.withbernard.ai`.
 
 Catches the kind of regressions that took down 2026-05-11:
 
@@ -16,9 +16,9 @@ Catches the kind of regressions that took down 2026-05-11:
 
 ## Why post-deploy, not pre-merge?
 
-Production Clerk keys can only be used from `narraterx.ai` (or a subdomain).
+Production Clerk keys can only be used from `withbernard.ai` (or a subdomain).
 Vercel preview URLs (`*.vercel.app`) are rejected with *"Production Keys are
-only allowed for domain narraterx.ai"* — hardcoded in Clerk, no dashboard
+only allowed for domain withbernard.ai"* — hardcoded in Clerk, no dashboard
 toggle. Testing against PR previews would require a separate staging stack
 with dev Clerk keys (deferred; see the `project_e2e_staging_stack_option`
 memory in your auto-memory).
@@ -29,7 +29,7 @@ fails, the next step is `vercel rollback` to the prior deploy.
 
 ## Run locally
 
-Local runs go directly against `movebetter-people.narraterx.ai` (prod) by
+Local runs go directly against `movebetter-people.withbernard.ai` (prod) by
 default. Override with `E2E_BASE_URL` if you want to point at something else
 (local dev, a previously aliased preview, etc.).
 
@@ -41,7 +41,7 @@ cd "/Users/qbook/Claude Projects/NarrateRx" && \
   npm run e2e
 ```
 
-`.env.e2e.local` (gitignored — paste from 1Password "NarrateRx — E2E Smoke User"):
+`.env.e2e.local` (gitignored — paste from 1Password "Bernard — E2E Smoke User"):
 
 ```
 E2E_TEST_USER_EMAIL=...
@@ -53,7 +53,7 @@ MULTITENANT_DATABASE_URL=...   # same value as in your .env.local
 
 | Var | Where | Sensitivity | Used by |
 |---|---|---|---|
-| `E2E_BASE_URL` | optional, defaults `https://movebetter-people.narraterx.ai` | Not sensitive | Playwright `baseURL` |
+| `E2E_BASE_URL` | optional, defaults `https://movebetter-people.withbernard.ai` | Not sensitive | Playwright `baseURL` |
 | `E2E_WORKSPACE_SLUG` | optional, defaults `movebetter-people` | Not sensitive | seed |
 | `E2E_FIXTURE_STAFF_NAME` | optional, defaults `E2E Smoke Staff` | Not sensitive | seed + spec |
 | `E2E_TEST_USER_EMAIL` | GHA secret | Mildly sensitive | resolving the Clerk user via Backend API |
@@ -61,7 +61,7 @@ MULTITENANT_DATABASE_URL=...   # same value as in your .env.local
 | `CLERK_SECRET_KEY` | GHA secret `E2E_CLERK_SECRET_KEY` (prod `sk_live_...`) | **Sensitive** | minting Clerk sign-in tickets server-side |
 | `MULTITENANT_DATABASE_URL` | GHA secret (Supabase **shared pooler** URL) | **Sensitive** | fixture seed |
 
-All sensitive values live in the **NarrateRx** 1Password vault and are
+All sensitive values live in the **Bernard** 1Password vault and are
 mirrored to GitHub repo secrets of the same name.
 
 ## Real-prod data caveat

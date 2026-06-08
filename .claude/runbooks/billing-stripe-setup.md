@@ -24,7 +24,7 @@ Pre-launch loose end #E (`/Users/qbook/.claude/projects/-Users-qbook-Claude-Proj
 ### 1. Stripe account
 
 If you don't have one yet:
-1. Sign up at https://dashboard.stripe.com/register with **drq@narraterx.ai** (or the operations alias if shared access).
+1. Sign up at https://dashboard.stripe.com/register with **drq@withbernard.ai** (or the operations alias if shared access).
 2. Verify the account.
 3. **Start in TEST MODE** for the first end-to-end verification — switch to live mode only after a clean test checkout.
 
@@ -36,9 +36,9 @@ In Stripe Dashboard → **Products** → **+ Add product** (do this once in test
 
 | Product name | Price | Billing | Notes |
 |---|---|---|---|
-| NarrateRx Solo | $149.00 USD | Monthly recurring | Up to 3 staff |
-| NarrateRx Practice | $299.00 USD | Monthly recurring | Up to 10 staff |
-| NarrateRx Multi-location | $499.00 USD | Monthly recurring | Unlimited |
+| Bernard Solo | $149.00 USD | Monthly recurring | Up to 3 staff |
+| Bernard Practice | $299.00 USD | Monthly recurring | Up to 10 staff |
+| Bernard Multi-location | $499.00 USD | Monthly recurring | Unlimited |
 
 After creating each product, **note the Price ID** (looks like `price_1QABcdef...`). You need three IDs total.
 
@@ -47,7 +47,7 @@ After creating each product, **note the Price ID** (looks like `price_1QABcdef..
 > | Field | Value |
 > |---|---|
 > | **Item type** | API Credential |
-> | **Title** | `NarrateRx — STRIPE_PRICE_SOLO (test)` (one item per price, per mode) |
+> | **Title** | `Bernard — STRIPE_PRICE_SOLO (test)` (one item per price, per mode) |
 > | **Vault** | NarrateRx |
 > | **Password / Value** | `price_xxxxxxxxxxxx` |
 > | **Notes** | "Stripe Price ID for Solo plan, test mode. Used by `STRIPE_PRICE_SOLO` env var. Regenerate by editing the price in Stripe Dashboard → Products → Solo." |
@@ -63,11 +63,11 @@ Sensitivity: **Sensitive** — grants full Stripe account access. Save in 1Passw
 | Field | Value |
 |---|---|
 | **Item type** | API Credential |
-| **Title** | `NarrateRx — STRIPE_SECRET_KEY (test)` |
+| **Title** | `Bernard — STRIPE_SECRET_KEY (test)` |
 | **Vault** | NarrateRx |
 | **Password / Value** | `sk_test_xxxxxxxxxxxx` |
 | **Website** | https://dashboard.stripe.com/test/apikeys |
-| **Notes** | "Stripe secret key, test mode. Used by `STRIPE_SECRET_KEY` env var on the narraterx Vercel project. Rotate by creating a new key in Stripe Dashboard → Developers → API keys and updating Vercel. The old key remains active until you click 'Roll' on it." |
+| **Notes** | "Stripe secret key, test mode. Used by `STRIPE_SECRET_KEY` env var on the bernard Vercel project. Rotate by creating a new key in Stripe Dashboard → Developers → API keys and updating Vercel. The old key remains active until you click 'Roll' on it." |
 
 ### 4. Set env vars in Vercel
 
@@ -97,7 +97,7 @@ Stripe Dashboard → **Developers** → **Webhooks** → **+ Add endpoint**:
 
 | Field | Value |
 |---|---|
-| **Endpoint URL** | `https://narraterx.ai/api/billing/webhook` |
+| **Endpoint URL** | `https://withbernard.ai/api/billing/webhook` |
 | **Events to send** | Select these three: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted` |
 
 After saving, click into the new endpoint → **Reveal signing secret** (`whsec_xxx`). Save in 1Password and add to Vercel:
@@ -116,7 +116,7 @@ cd "/Users/qbook/Claude Projects/NarrateRx" && npm run deploy:prod
 
 ### 7. End-to-end test (test mode)
 
-1. Visit `https://movebetter-people.narraterx.ai/settings/workspace/billing` (signed in as an admin).
+1. Visit `https://movebetter-people.withbernard.ai/settings/workspace/billing` (signed in as an admin).
 2. Pick a plan → Stripe Checkout opens.
 3. Use Stripe's test card: `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
 4. Complete checkout. You should be redirected back to `/settings/workspace/billing?billing=success`.
@@ -155,7 +155,7 @@ Once test mode works end-to-end:
 
 | Symptom | Diagnose | Fix |
 |---|---|---|
-| BillingSettings shows "Workspace settings only available on a *.narraterx.ai deployment" | You're on the apex (`narraterx.ai`) instead of a workspace subdomain | Visit `https://<workspace-slug>.narraterx.ai/settings/workspace/billing` |
+| BillingSettings shows "Workspace settings only available on a *.withbernard.ai deployment" | You're on the apex (`withbernard.ai`) instead of a workspace subdomain | Visit `https://<workspace-slug>.withbernard.ai/settings/workspace/billing` |
 | Checkout returns 500 `billing-not-configured` | `STRIPE_SECRET_KEY` env var missing | Re-run step 4, redeploy |
 | Pricing cards show plan info but "Subscribe" button missing | `STRIPE_PRICE_*` env vars missing | Re-run step 4 for the missing price IDs |
 | Checkout succeeds but workspace row doesn't update | Webhook signature failed OR webhook endpoint URL wrong | Check Stripe Dashboard → Webhooks → recent deliveries. If 4xx/5xx, fetch `vercel logs --query "[billing/webhook]"` |

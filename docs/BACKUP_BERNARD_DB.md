@@ -1,4 +1,4 @@
-# Manual backup — shared `narraterx` Supabase
+# Manual backup — shared `bernard` Supabase
 
 **There is no automatic backup.** PITR is not enabled. Supabase's free-tier daily snapshots cover the last 7 days but are not downloadable. Take a manual backup whenever you want a portable, vendor-neutral snapshot.
 
@@ -14,7 +14,7 @@ That's it. The script:
 - Sources `.env.local` for `MULTITENANT_DATABASE_URL`
 - Runs `pg_dump` on the `public` schema (skips Supabase-internal schemas you can't restore anyway)
 - Gzips the output
-- Writes to `~/Backups/narraterx-supabase/narraterx-<UTC-timestamp>.sql.gz`
+- Writes to `~/Backups/bernard-supabase/bernard-<UTC-timestamp>.sql.gz`
 - Prints the latest 5 backups + a reminder to copy off-machine
 
 Takes ~30 seconds. Output file is ~1–10 MB compressed.
@@ -31,7 +31,7 @@ The repo's `.env.local` must contain `MULTITENANT_DATABASE_URL` (already there p
 
 ## What's in the backup
 
-The full `public` schema of the shared `narraterx` Supabase project (`db.wrqfrjhevkbbheymzezy.supabase.co`):
+The full `public` schema of the shared `bernard` Supabase project (`db.wrqfrjhevkbbheymzezy.supabase.co`):
 - workspaces, workspace_credentials, workspace_locations
 - clinicians, interviews, content_items, content_pieces
 - media_assets, media_audit, collections, collection_items, clinic_settings
@@ -45,7 +45,7 @@ The full `public` schema of the shared `narraterx` Supabase project (`db.wrqfrjh
 Quick row-count sanity check:
 
 ```
-gunzip -c ~/Backups/narraterx-supabase/narraterx-<timestamp>.sql.gz | grep -E "^COPY public\." | head -20
+gunzip -c ~/Backups/bernard-supabase/bernard-<timestamp>.sql.gz | grep -E "^COPY public\." | head -20
 ```
 
 You should see `COPY public.workspaces`, `COPY public.media_assets`, etc.
@@ -54,8 +54,8 @@ You should see `COPY public.workspaces`, `COPY public.media_assets`, etc.
 
 After taking a backup, copy to at least one off-machine location:
 
-- **1Password Secure Note attachment** (if < 250 MB) — drag-drop the `.sql.gz` into a note titled `NarrateRx — DB snapshot YYYY-MM-DD`.
-- **iCloud Drive / Dropbox / external SSD** — copy from `~/Backups/narraterx-supabase/`.
+- **1Password Secure Note attachment** (if < 250 MB) — drag-drop the `.sql.gz` into a note titled `Bernard — DB snapshot YYYY-MM-DD`.
+- **iCloud Drive / Dropbox / external SSD** — copy from `~/Backups/bernard-supabase/`.
 
 Don't push backups to the source repo (`.backups/` is gitignored for this reason).
 
@@ -64,9 +64,9 @@ Don't push backups to the source repo (`.backups/` is gitignored for this reason
 **Test restore into a fresh local Postgres** first (never directly to prod):
 
 ```
-createdb narraterx_restore_test && \
-gunzip -c ~/Backups/narraterx-supabase/narraterx-<timestamp>.sql.gz | psql -d narraterx_restore_test && \
-psql -d narraterx_restore_test -c "SELECT count(*) FROM workspaces; SELECT count(*) FROM media_assets;"
+createdb bernard_restore_test && \
+gunzip -c ~/Backups/bernard-supabase/bernard-<timestamp>.sql.gz | psql -d bernard_restore_test && \
+psql -d bernard_restore_test -c "SELECT count(*) FROM workspaces; SELECT count(*) FROM media_assets;"
 ```
 
 Counts should match the live DB at backup time.
@@ -74,10 +74,10 @@ Counts should match the live DB at backup time.
 **Restore into a NEW Supabase project** (vendor-exit or disaster recovery):
 
 1. Create a new Supabase project, get its connection string.
-2. `gunzip -c ~/Backups/narraterx-supabase/narraterx-<timestamp>.sql.gz | psql -d <new-conn-string>`
+2. `gunzip -c ~/Backups/bernard-supabase/bernard-<timestamp>.sql.gz | psql -d <new-conn-string>`
 3. Re-run `supabase/multitenant/migrations/003_grant_service_role.sql` to ensure service_role grants apply.
 4. Set `WORKSPACE_CREDENTIALS_KEY` env var on the new deployment (without it, `workspace_credentials` rows are unreadable).
-5. Update `MULTITENANT_DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` env vars on the `narraterx` Vercel project to point at the new project.
+5. Update `MULTITENANT_DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` env vars on the `bernard` Vercel project to point at the new project.
 
 ## When to take one
 
