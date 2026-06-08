@@ -154,7 +154,7 @@ export default function DemoExperience() {
 
     setPhase('bernard')
     try {
-      // eslint-disable-next-line narraterx/no-raw-api-fetch -- public unauthenticated demo endpoint; no Bearer token, apiFetch doesn't apply.
+      // eslint-disable-next-line bernard/no-raw-api-fetch -- public unauthenticated demo endpoint; no Bearer token, apiFetch doesn't apply.
       const res = await fetch('/api/demo/followup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
