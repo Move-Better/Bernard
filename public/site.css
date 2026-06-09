@@ -1,36 +1,36 @@
 /* ============================================================
-   Bernard — production site stylesheet
-   Design: Forest (deep evergreen, emerald accents)
+   Bernard (withbernard.ai) — production site stylesheet
+   Design: Clean white · emerald accents
    Covers: shared tokens, home page, and all subpages.
    ============================================================ */
 
 /* ---- Reset ---- */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* ---- Design tokens: Forest palette ---- */
+/* ---- Design tokens: White / Coral palette ---- */
 :root {
-  /* Backdrop — lifted sage */
-  --bg:        #6e9581;
-  /* Card / section surfaces — deep evergreen */
-  --bg-2:      #1a4a33;
-  --bg-3:      #1f5a3d;
-  --bg-card:   #1c4d37;
-  --bg-card-2: #235a41;
-  --line:      rgba(220,255,230,0.14);
-  --line-2:    rgba(220,255,230,0.22);
-  --line-3:    rgba(220,255,230,0.32);
+  /* Backdrop — pure white */
+  --bg:        #ffffff;
+  /* Section surfaces — light grays */
+  --bg-2:      #f7f8fa;
+  --bg-3:      #eef0f4;
+  --bg-card:   #ffffff;
+  --bg-card-2: #f9fafb;
+  --line:      rgba(0,0,0,0.07);
+  --line-2:    rgba(0,0,0,0.11);
+  --line-3:    rgba(0,0,0,0.18);
 
-  --ink:       #f4f8ed;
-  --ink-soft:  #c4d6be;
-  --grey:      #8fa489;
-  --grey-d:    #74896f;
+  --ink:       #0f172a;
+  --ink-soft:  #4b5563;
+  --grey:      #9ca3af;
+  --grey-d:    #6b7280;
 
   /* Emerald — bright green accent */
   --coral:     #10B981;
   --coral-h:   #34D399;
   --coral-d:   #059669;
-  --sage:      #a8d6a0;
-  --sage-d:    #7baa72;
+  --sage:      #2d6a4f;
+  --sage-d:    #1b4332;
   --glow:      rgba(16,185,129,0.38);
 
   --sans:  'Inter', -apple-system, system-ui, sans-serif;
@@ -52,9 +52,8 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(circle at 85% -5%, rgba(16,185,129,0.06) 0%, transparent 45%),
-    radial-gradient(circle at -10% 45%, rgba(168,214,160,0.04) 0%, transparent 50%),
-    radial-gradient(circle at 50% 110%, rgba(168,214,160,0.03) 0%, transparent 45%);
+    radial-gradient(circle at 85% -5%, rgba(16,185,129,0.04) 0%, transparent 45%),
+    radial-gradient(circle at -10% 45%, rgba(45,106,79,0.03) 0%, transparent 50%);
 }
 img { max-width: 100%; display: block; }
 a { color: var(--coral); text-decoration: none; }
@@ -68,7 +67,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uhdr {
   border-bottom: 1px solid var(--line);
   padding: 18px 0;
-  background: rgba(28,77,55,0.82);
+  background: rgba(255,255,255,0.90);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   position: sticky; top: 0; z-index: 20;
@@ -76,13 +75,29 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uhdr-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 
 .uhdr-logo {
-  display: inline-flex; align-items: center;
-  line-height: 1;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  display: inline-flex; align-items: center; gap: 10px;
 }
-.uhdr-logo img {
-  display: block;
-  height: 36px;
-  width: auto;
+.uhdr-logo .glyph {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  background: var(--coral);
+  border-radius: 9px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 4px 16px -4px rgba(16,185,129,0.40);
+}
+.uhdr-logo .rx {
+  color: var(--coral);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
 }
 
 .uhdr-nav { display: flex; gap: 28px; font-size: 15px; align-items: center; }
@@ -90,14 +105,14 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uhdr-nav a:hover, .uhdr-nav a.is-active { color: var(--ink); }
 .uhdr-nav .uhdr-signin { font-size: 14px; }
 .uhdr-cta {
-  background: var(--ink);
-  color: #1c4d37 !important;
+  background: var(--coral);
+  color: #fff !important;
   padding: 9px 18px;
   border-radius: 999px;
   font-weight: 600;
   font-size: 14px;
 }
-.uhdr-cta:hover { background: var(--coral); color: #1c4d37 !important; }
+.uhdr-cta:hover { background: var(--coral-d); color: #fff !important; }
 
 /* Mobile hamburger */
 .uhdr-toggle {
@@ -165,13 +180,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   text-decoration: none;
 }
 .ubtn-primary {
-  background: var(--ink);
-  color: #1c4d37 !important;
-  box-shadow: 0 10px 30px -10px rgba(244,248,237,0.30);
+  background: var(--coral);
+  color: #fff !important;
+  box-shadow: 0 10px 30px -10px rgba(16,185,129,0.35);
 }
-.ubtn-primary:hover { background: var(--coral); color: #1c4d37 !important; }
+.ubtn-primary:hover { background: var(--coral-d); color: #fff !important; }
 .ubtn-ghost {
-  background: var(--bg-card);
+  background: transparent;
   color: var(--ink) !important;
   border-color: var(--line-2);
 }
@@ -228,19 +243,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   line-height: 1.02;
   letter-spacing: -0.03em;
   margin: 0 0 26px;
-  background: linear-gradient(180deg, #f4f8ed 0%, #c4d6be 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 .uhero h1 em {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .uhero-sub {
   font-size: clamp(17px, 1.4vw, 21px);
@@ -347,7 +356,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   background: linear-gradient(90deg, transparent 0%, var(--coral) 50%, transparent 100%);
   transform: translateX(-50%);
 }
-.upreview-window { background: #1c4d37; border-radius: 12px; border: 1px solid var(--line); overflow: hidden; }
+.upreview-window { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--line); overflow: hidden; }
 .upreview-bar {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 16px;
@@ -379,7 +388,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   min-height: 320px;
 }
 @media (max-width: 760px) { .upreview-body { grid-template-columns: 1fr; } }
-.upreview-pane { background: #1c4d37; padding: 26px; }
+.upreview-pane { background: var(--bg-card); padding: 26px; }
 .upreview-pane .h {
   font-size: 12px;
   letter-spacing: 0.14em;
@@ -412,7 +421,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   position: absolute;
   top: -10px; left: 14px;
   background: var(--coral);
-  color: #1c4d37;
+  color: #fff;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -432,7 +441,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 }
 .upreview-tabs span.is-on {
   background: var(--coral);
-  color: #1c4d37;
+  color: #fff;
   border-color: var(--coral);
   font-weight: 600;
 }
@@ -523,10 +532,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .ufeat-head p { color: var(--ink-soft); max-width: 400px; margin: 0; font-size: 16px; line-height: 1.65; }
 
@@ -539,10 +545,11 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 @media (max-width: 640px) { .ufeat-grid { grid-template-columns: 1fr; } }
 
 .ufeat-card {
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-2) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--line-2);
   border-radius: var(--radius);
   padding: 28px;
+  box-shadow: 0 2px 8px -2px rgba(0,0,0,0.06);
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
   position: relative;
   overflow: hidden;
@@ -550,7 +557,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .ufeat-card:hover {
   border-color: var(--coral);
   transform: translateY(-3px);
-  box-shadow: 0 22px 44px -22px rgba(0,0,0,0.50);
+  box-shadow: 0 12px 28px -12px rgba(0,0,0,0.14);
 }
 .ufeat-card::after {
   content: '';
@@ -639,7 +646,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-size: 88px;
-  color: var(--sage);
+  color: var(--coral);
   line-height: 0.5;
   margin-bottom: 24px;
 }
@@ -658,7 +665,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--sage);
+  color: var(--grey);
   font-weight: 600;
 }
 
@@ -685,19 +692,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   line-height: 1.05;
   letter-spacing: -0.03em;
   margin: 0 0 20px;
-  background: linear-gradient(180deg, #f4f8ed 0%, #c4d6be 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 .ucta h2 em {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .ucta p { color: var(--ink-soft); font-size: 18px; margin: 0 0 32px; line-height: 1.6; }
 
@@ -787,10 +788,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .upage-hero p {
   font-size: clamp(17px, 1.4vw, 21px);
@@ -1079,9 +1077,9 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 }
 .uvoice-toggle button.is-active {
   background: var(--coral);
-  color: #1c4d37;
+  color: #fff;
 }
-.uvoice-toggle button.is-bernard.is-active {
+.uvoice-toggle button.is-narraterx.is-active {
   background: var(--sage);
   color: #1c4d37;
 }
@@ -1102,7 +1100,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   color: var(--grey);
   margin: 0 0 18px;
 }
-.uvoice-panel.is-bernard h4 { color: var(--sage); }
+.uvoice-panel.is-narraterx h4 { color: var(--sage); }
 .uvoice-panel p { color: var(--ink-soft); font-size: 16px; line-height: 1.7; margin: 0 0 14px; }
 .uvoice-panel p:last-of-type { margin-bottom: 0; }
 .uvoice-chip {
@@ -1269,7 +1267,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   border-bottom: 2px solid var(--line-2);
   white-space: nowrap;
 }
-.ucompare-table th.is-bernard {
+.ucompare-table th.is-narraterx {
   background: rgba(16,185,129,0.12);
   color: var(--coral);
   border-bottom-color: var(--coral);
@@ -1333,6 +1331,8 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   vertical-align: 0.08em;
   margin-right: 2px;
 }
+/* Ensure all remaining h2/h3 em elements keep coral on white */
+.uband h2 em { color: var(--coral); }
 .ustat-lbl { font-size: 13.5px; color: var(--grey); }
 
 /* ============================================================
@@ -1792,8 +1792,8 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
    DEMO WIDGET — real-app look
    Overrides the dark-green .upreview styles for any widget that
    carries [data-demo]. Looks like a macOS screen recording of the
-   actual Bernard app: light OS chrome + the real app palette
-   (cool-paper bg, white cards, slate borders, emerald brand).
+   actual NarrateRx app: light OS chrome + the real app palette
+   (cool-paper bg, white cards, slate borders, orange brand).
    ============================================================ */
 
 /* Drop the marketing-site glow/shadow box; give it a neutral lift. */
@@ -1955,8 +1955,8 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   display: block;
 }
 .upreview[data-demo] .upreview-pane .out .chip {
-  background: rgba(227,101,37,0.12);
-  color: #c2410c;          /* orange-700 */
+  background: rgba(16,185,129,0.12);
+  color: #059669;          /* orange-700 */
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 600;
@@ -2013,10 +2013,11 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 }
 @media (max-width: 820px) { .usteps-grid { grid-template-columns: 1fr; } }
 .ustep-card {
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-2) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--line-2);
   border-radius: var(--radius);
   padding: 28px 26px;
+  box-shadow: 0 2px 8px -2px rgba(0,0,0,0.06);
 }
 .ustep-card .ix {
   display: inline-flex;
@@ -2024,7 +2025,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   width: 38px; height: 38px;
   border-radius: 50%;
   background: var(--coral);
-  color: #1c4d37;
+  color: #fff;
   font-weight: 700;
   font-size: 18px;
   margin-bottom: 16px;
