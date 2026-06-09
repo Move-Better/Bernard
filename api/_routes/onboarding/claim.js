@@ -7,7 +7,7 @@ export const config = { runtime: 'nodejs' }
 //   2. Create Clerk Organization with the user as creator (auto-admin)
 //   3. Insert workspaces row referencing the new org id
 //   4. Set the user's publicMetadata.role = 'admin' so requireRole(['admin']) passes
-//   5. Return the redirect URL (https://<slug>.narraterx.ai/onboard/brand-kit?welcome=1)
+//   5. Return the redirect URL (https://<slug>.withbernard.ai/onboard/brand-kit?welcome=1)
 //
 // If step 3 fails after the org is created, we attempt to delete the org so the
 // user can retry. If step 4 fails, we log but proceed — the workspace exists
@@ -32,12 +32,12 @@ function clerk() {
   return _clerk
 }
 
-// Fire-and-forget: fetch the NarrateRx mark from the deployed apex and
+// Fire-and-forget: fetch the Bernard mark from the deployed apex and
 // upload it as the org logo. Replaces Clerk's default purple-building avatar.
 // Never throws — log only. Skipped silently in dev when the apex isn't reachable.
 async function uploadDefaultOrgLogo(orgId, userId) {
   try {
-    const logoUrl = 'https://narraterx.ai/brand/narraterx-icon-512.png'
+    const logoUrl = 'https://withbernard.ai/brand/bernard-icon-512.png'
     const r = await fetch(logoUrl)
     if (!r.ok) {
       console.warn(`[claim] default-logo fetch ${r.status} for org=${orgId}`)
@@ -373,11 +373,11 @@ async function handler(req, res) {
     }
   }
 
-  // 2a. Replace the generic Clerk org avatar with the NarrateRx mark.
+  // 2a. Replace the generic Clerk org avatar with the Bernard mark.
   // Fire-and-forget — failure here shouldn't break the claim flow. Resolves
   // Clerk-dashboard-punchlist item #3 (new orgs got the purple building
   // icon). Once the user completes /onboard/brand-kit, their own logo can
-  // replace this; until then the NarrateRx mark is a much better default.
+  // replace this; until then the Bernard mark is a much better default.
   uploadDefaultOrgLogo(org.id, userId)
 
   // 3. Insert workspace row.
@@ -475,7 +475,7 @@ async function handler(req, res) {
     }),
   }).catch(e => console.error('[claim] clinician seed failed:', e?.message))
 
-  // 3.5. Register <slug>.narraterx.ai as a domain on the shared narraterx Vercel
+  // 3.5. Register <slug>.withbernard.ai as a domain on the shared bernard Vercel
   // project so per-domain cert issuance kicks off. Hard-fail with full rollback
   // if Vercel rejects: a workspace whose subdomain doesn't resolve is worse than
   // no workspace.
@@ -483,7 +483,7 @@ async function handler(req, res) {
   // Skipped (with a warning) when Vercel env vars aren't configured — keeps the
   // dev/local path working for engineers running this against a non-prod Vercel
   // project.
-  const domainName = `${slug}.narraterx.ai`
+  const domainName = `${slug}.withbernard.ai`
   let domainRegistered = false
   if (vercelDomainConfigured()) {
     try {
@@ -534,12 +534,12 @@ async function handler(req, res) {
     const fullName = [claimingUser?.firstName, claimingUser?.lastName].filter(Boolean).join(' ').trim()
     const who = fullName ? `${fullName} <${email}>` : email
     const lines = [
-      `New NarrateRx signup: ${display_name} (${slug})`,
+      `New Bernard signup: ${display_name} (${slug})`,
       '',
       `User:        ${who}`,
       `Workspace:   ${display_name}`,
       `Slug:        ${slug}`,
-      `Subdomain:   https://${slug}.narraterx.ai`,
+      `Subdomain:   https://${slug}.withbernard.ai`,
       website  ? `Website:     ${website}`  : null,
       locations.length > 0
         ? `Location${locations.length > 1 ? 's' : ''}:   ${locations.map(l => [l.city, l.region].filter(Boolean).join(', ')).join(' · ')}`
@@ -554,7 +554,7 @@ async function handler(req, res) {
     // Don't await — keeps response latency low. Vercel Fluid Compute keeps the
     // function alive long enough for fire-and-forget tasks to complete.
     sendAdminNotification({
-      subject: `[NarrateRx] New signup: ${display_name} (${slug})`,
+      subject: `[Bernard] New signup: ${display_name} (${slug})`,
       text: lines.join('\n'),
     }).catch(e => console.error('[claim] notifyAdmin error:', e?.message))
   } catch (e) {
@@ -574,7 +574,7 @@ async function handler(req, res) {
     // the apex onboarding page. /onboard/brand-kit advances to /?welcome=1
     // (Dashboard + welcome banner + getting-started checklist) once the user
     // hits "Looks good — continue" or "Skip for now".
-    redirect_url: `https://${slug}.narraterx.ai/onboard/brand-kit?welcome=1`,
+    redirect_url: `https://${slug}.withbernard.ai/onboard/brand-kit?welcome=1`,
   })
 }
 

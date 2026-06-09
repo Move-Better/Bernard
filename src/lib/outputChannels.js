@@ -1,4 +1,4 @@
-// Developer-owned registry of output channels NarrateRx generates content for.
+// Developer-owned registry of output channels Bernard generates content for.
 //
 // The set is fixed in code (developers add new channels by editing this file
 // and shipping a release). Per-workspace participation is tenant-editable:
@@ -8,7 +8,7 @@
 //   - interviews.selected_outputs[]  → subset chosen for a single interview
 //                                      (the per-run time gate)
 //
-// Each channel declares two paths content can take to leave NarrateRx:
+// Each channel declares two paths content can take to leave Bernard:
 //
 //   - exportShape — used by external workspaces (no first-party integration
 //                   credentials configured). Maps to a UI export affordance.

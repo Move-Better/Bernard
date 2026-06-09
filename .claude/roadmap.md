@@ -1,4 +1,4 @@
-# NarrateRx — Roadmap (single source of truth)
+# Bernard — Roadmap (single source of truth)
 
 > **This is the only roadmap.** It replaces the previous five (`development-roadmap.md`,
 > `development-roadmap-phase-4.md`, `development-roadmap-phase-5.md`,
@@ -24,7 +24,7 @@
 - **Two filters on every bet:** (1) plumbing or product? (2) deepens the real-voice library / outcome loop, or table-stakes parity? Full reasoning: `.claude/ux-current-state.md`.
 - **Voice scores read low ≈ not a grader bug** (Q's call) — content-gen guidelines changed; fix is **regenerating old content against current guidelines** (sign-off required, deferred — not auto-run).
 
-**Next (gated, need Q):** (a) verify Slate produce-flow; (b) **instruction-first Studio consolidation mockup** (mockup-first rule); (c) Library indexed **by meaning, not filename** (P2 — also where the real-voice-library moat compounds); (d) **narraterx.ai website refresh** from the new positioning brief (`.claude/narraterx-positioning-brief.md`) — *spawned as a background task*.
+**Next (gated, need Q):** (a) verify Slate produce-flow; (b) **instruction-first Studio consolidation mockup** (mockup-first rule); (c) Library indexed **by meaning, not filename** (P2 — also where the real-voice-library moat compounds); (d) **withbernard.ai website refresh** from the new positioning brief (`.claude/bernard-positioning-brief.md`) — *spawned as a background task*.
 
 ---
 
@@ -128,17 +128,17 @@ clipper" and not "build a better clipper" — it's **plug the brain into the joi
 > Days 1–4 work largely landed. Per this plan's own verification bar, **code-merged ≠ done** —
 > the human-attach gates still decide whether a bet truly advanced.
 >
-> - **F3** ✅ code shipped — [#1077](https://github.com/Move-Better/NarrateRx/pull/1077). Hard cap + retry on the summary model call, PATCH, and the shared embeddings HTTP call. No human gate (resilience).
-> - **F1** ✅ code shipped — [#1078](https://github.com/Move-Better/NarrateRx/pull/1078). Extracts on interview *completion* at provisional weight 0.5. Proven on Dr. Tyler's real transcript (0→25 phrases). **Gate pending:** confirm a non-Q clinician's *next* live completion lands phrases.
+> - **F3** ✅ code shipped — [#1077](https://github.com/Move-Better/Bernard/pull/1077). Hard cap + retry on the summary model call, PATCH, and the shared embeddings HTTP call. No human gate (resilience).
+> - **F1** ✅ code shipped — [#1078](https://github.com/Move-Better/Bernard/pull/1078). Extracts on interview *completion* at provisional weight 0.5. Proven on Dr. Tyler's real transcript (0→25 phrases). **Gate pending:** confirm a non-Q clinician's *next* live completion lands phrases.
 > - **F4** ✅ COMPLETE — the code (claim-by-email + access-matrix reconciliation surface) was already on `main`; Part A prod reconciliation **verified done** 2026-05-31 via a live child-count audit (every clinician bound, learning intact; the "unclaimed proxies" were e2e smoke fixtures). Open flags resolved: Whitney already `org:admin` ×3, e2e kept admin (Playwright role-tolerant), AJ confirmed interviewable talent. Only the *optional* Clerk invite-accept webhook is unbuilt. **No prod writes were needed.**
-> - **Caption grader** ✅ SHIPPED — [#1081](https://github.com/Move-Better/NarrateRx/pull/1081) merged. The
+> - **Caption grader** ✅ SHIPPED — [#1081](https://github.com/Move-Better/Bernard/pull/1081) merged. The
 >   `captionFidelity` scorer was the wrong instrument: it **never received the clip transcript** and two of
 >   its five dimensions rewarded clinical register ("real anatomy, technique names"), so it penalized
 >   faithful warm/personal captions. Rewrote it to `faithfulness-v2` (single shared rubric
 >   `api/_lib/captionFidelityRubric.js`): grades **said_fidelity** against the transcript + **register-neutral
 >   voice_match**. Baseline recalibrated 5.5→4.8. This was the keystone unblock for U1.
 > - **P0 (media→content matching) ⚙️ ENGINE SHIPPED, UX gate blocked on redesign.**
->   [#1084](https://github.com/Move-Better/NarrateRx/pull/1084) + [#1091](https://github.com/Move-Better/NarrateRx/pull/1091) merged.
+>   [#1084](https://github.com/Move-Better/Bernard/pull/1084) + [#1091](https://github.com/Move-Better/Bernard/pull/1091) merged.
 >   `POST /api/content-items/suggest-media` (whole-asset, draft→media direction of `searchClips`); `/needs-media`
 >   worklist + nav item; `MediaSuggestions` one-click strip in the Assets panel. 579/579 People assets re-indexed.
 >   Platform-kind filter (#1091): youtube/tiktok→video-only, blog/landing→photo-only. Verified on real drafts.
@@ -147,7 +147,7 @@ clipper" and not "build a better clipper" — it's **plug the brain into the joi
 >   as a separate task** (ask-before-build). Gate resumes once the redesigned full-size media-approval page lands
 >   (gate = Philip/Q attaches ≥10 drafts in one sitting + draft-with-media rate moves off ~50% floor).
 >
-> - **U1** ✅ **ADVANCED — human gate cleared 2026-05-31.** [#1079](https://github.com/Move-Better/NarrateRx/pull/1079)
+> - **U1** ✅ **ADVANCED — human gate cleared 2026-05-31.** [#1079](https://github.com/Move-Better/Bernard/pull/1079)
 >   merged. The −0.68 "regression" was the *grader's* fault; under the fixed grader transcript-grounding wins
 >   **+1.74 overall / +2.62 said_fidelity, C beats A 7/7**. Human-attach gate now done: **Q ran the Zach/Cullen
 >   clip live** (Library → "Use whole video" → Slate → Edit-to-read → Approve→draft), voice fidelity **7.3
@@ -207,7 +207,7 @@ against prod (Supabase `wrqfrjhevkbbheymzezy` + Clerk API) on 2026-05-30._
 
 **⚠️ Security action (do first): ✅ DONE — `CLERK_SECRET_KEY` rotated 2026-05-31** (new
 `sk_live_…` confirmed working against the Clerk API). It had been exposed in a Claude session
-transcript 2026-05-30; the new key is in 1Password (`narraterx-local`) + Vercel `narraterx`
+transcript 2026-05-30; the new key is in 1Password (`bernard-local`) + Vercel `bernard`
 prod env. Old key dead on roll.
 
 **Root cause (one bug → all splits):** `api/staff/ensure-self.js:127` claims a clinician's
@@ -296,7 +296,7 @@ lift**.
 ### Days 5–10 — The daily lane + learn-on-capture
 - **U4** daily short-clip lane (drop → caption → pick → attach; no-audio path).
 - **F1** learn voice phrases on interview completion.
-- **Gate:** **Philip attaches 10 clips to drafts in one sitting** without leaving NarrateRx;
+- **Gate:** **Philip attaches 10 clips to drafts in one sitting** without leaving Bernard;
   media-link rate moves off 0%; AND **≥1 non-Q clinician gains voice phrases from an
   interview alone** (no approval needed) — proving the phrase doom-loop is broken.
 
@@ -319,7 +319,7 @@ lift**.
 ## Pipeline UX redesign — smoothing interview → publish (design approved 2026-05-31)
 
 > **Status: ✅ ALL 5 PHASES SHIPPED to prod (2026-06-01).** The full interview→publish flow +
-> information-architecture redesign is live on `narraterx.ai`. The P0 media-matcher engine's gate
+> information-architecture redesign is live on `withbernard.ai`. The P0 media-matcher engine's gate
 > was blocked on cramped in-editor UX; this redesign unblocked it. It grew — with Q, iteratively,
 > through a clickable mockup — from "a media-approval page" into the whole spine. The visual spec
 > was the clickable prototype **`.claude/storyboard-flow-mockup.html`** (it WAS the build contract).
@@ -486,7 +486,7 @@ bar, trust live output over any ✅.
 
 ## Multi-tenant pivot (complete)
 
-Single shared `narraterx` deployment serving workspaces by subdomain; `/onboard` wizard;
+Single shared `bernard` deployment serving workspaces by subdomain; `/onboard` wizard;
 per-tenant publish creds in `workspace_credentials`; 3 live workspaces. Legacy per-brand
 overlay + `VITE_BRAND` retired. (See `memory/project_multitenant_pivot.md`.)
 

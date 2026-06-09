@@ -218,7 +218,7 @@ Easily inside the $290–460/mo software ceiling from the budget.
 - **No Story Director UI** — that's Phase 3. Phase 2 produces packages that Phase 3's daily slate consumes.
 - **No auto-publish** — Phase 5 wires `story_packages.approved_at` to Buffer push.
 - **No engagement attribution** — Phase 5.
-- **No UTM tracking back to NarrateRx** — Phase 5.
+- **No UTM tracking back to Bernard** — Phase 5.
 - **No lip-sync / talking-head video** — deferred. If we A/B that in W3, it lands as a separate feature toggle.
 
 ## What I want to know before Day 5 starts

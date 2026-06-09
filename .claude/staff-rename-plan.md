@@ -68,7 +68,7 @@
 2. Apply `106_rename_clinician_to_staff.sql` to prod (Supabase MCP `apply_migration` or the apply script).
 3. Immediately merge the entity PR → GitHub-integration auto-deploy (~2 min).
 4. During the window: `.from('clinicians')` etc. survive via compat views; `clinician_id` column refs in the ~2-min-old code error. Run at low traffic.
-5. Verify: `vercel inspect narraterx.ai` SHA == `origin/main`; post-deploy E2E smoke; exercise StaffProfile, interviews, Slate, Library, content items in-browser (confirm staff associations resolve).
+5. Verify: `vercel inspect withbernard.ai` SHA == `origin/main`; post-deploy E2E smoke; exercise StaffProfile, interviews, Slate, Library, content items in-browser (confirm staff associations resolve).
 6. **Rollback:** keep `106_down` (rename back) ready; if deploy fails, apply it and old code works again.
 
 ---
@@ -257,4 +257,4 @@ COMMIT;
 
 ## 7. Source inventory
 Full per-file token lists (entity/authz/keep/prose buckets) from the Phase 0 workflow are saved at the task output:
-`/private/tmp/claude-501/-Users-qbook-Claude-Projects-NarrateRx/ab02f7b3-576e-4f5f-bf82-1f4574cac374/tasks/w4zch88uh.output` (`.result.reports[]`). The `src-pages-components` subsystem was recovered via direct grep (agent didn't emit structured output).
+`/private/tmp/claude-501/-Users-qbook-Claude-Projects-Bernard/ab02f7b3-576e-4f5f-bf82-1f4574cac374/tasks/w4zch88uh.output` (`.result.reports[]`). The `src-pages-components` subsystem was recovered via direct grep (agent didn't emit structured output).

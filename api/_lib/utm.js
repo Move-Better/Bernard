@@ -3,7 +3,7 @@
 // Schema agreed at Phase 5 scope:
 //   utm_source=<channel>       e.g. gbp, instagram, blog
 //   utm_medium=organic
-//   utm_campaign=<tentpole>    active tentpole slug, or 'narraterx' fallback
+//   utm_campaign=<tentpole>    active tentpole slug, or 'bernard' fallback
 //   utm_content=pkg_<short_id> first 8 chars of the package UUID
 //
 // applyUtmToUrl is idempotent — if UTM params are already present it
@@ -24,9 +24,9 @@ export function applyUtmToUrl(url, { channel, packageId, campaignSlug } = {}) {
   } catch {
     return url
   }
-  parsed.searchParams.set('utm_source',   channel || 'narraterx')
+  parsed.searchParams.set('utm_source',   channel || 'bernard')
   parsed.searchParams.set('utm_medium',   'organic')
-  parsed.searchParams.set('utm_campaign', campaignSlug || 'narraterx')
+  parsed.searchParams.set('utm_campaign', campaignSlug || 'bernard')
   if (packageId) {
     parsed.searchParams.set('utm_content', `pkg_${packageId.replace(/-/g, '').slice(0, 8)}`)
   }

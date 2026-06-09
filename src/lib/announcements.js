@@ -23,7 +23,7 @@ export const ANNOUNCEMENTS = [
       {
         icon: Mic,
         title: 'Start with a conversation',
-        body: 'Pick a topic and start talking. NarrateRx asks the questions in a 15–30 minute interview — you (or a teammate) just answer out loud. No writing required.',
+        body: 'Pick a topic and start talking. Bernard asks the questions in a 15–30 minute interview — you (or a teammate) just answer out loud. No writing required.',
         accent: 'bg-amber-100 text-amber-700',
       },
       {

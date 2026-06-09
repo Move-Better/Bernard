@@ -2,7 +2,7 @@ import { useAuth, useUser } from '@clerk/react'
 import { ROLE_ADMIN, ROLE_CLINICIAN, isEditor } from '@/lib/roles'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 
-// Hook for reading the current user's NarrateRx role. The role is stored in
+// Hook for reading the current user's Bernard role. The role is stored in
 // Clerk's publicMetadata.role and synced when an admin sets it on the user.
 // Defaults to the least-privileged tier ('clinician') when no role is set so
 // new users can upload but cannot edit/archive/purge until an admin promotes
@@ -14,7 +14,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 // if the UI somehow surfaces the action to them.
 //
 // Roles (see src/lib/roles.js for the canonical persona model):
-//   admin     → workspace owner; configures NarrateRx; can purge
+//   admin     → workspace owner; configures Bernard; can purge
 //   publisher → publishes content (attach media, schedule, publish, monitor)
 //               LEGACY ALIAS: 'editor' still authorizes via isEditor()
 //   clinician → owns voice; records interviews, reviews drafts; upload only
@@ -22,7 +22,7 @@ export function useUserRole() {
   const { user, isLoaded } = useUser()
   const { orgRole } = useAuth()
   const workspace = useWorkspace()
-  // Clerk Organization admins are treated as NarrateRx admins for the active
+  // Clerk Organization admins are treated as Bernard admins for the active
   // workspace, regardless of their publicMetadata.role. Mirrors the server-side
   // gate in api/_lib/auth.js.
   //

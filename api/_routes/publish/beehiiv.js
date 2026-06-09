@@ -87,7 +87,7 @@ async function handler(req, res) {
     ? String(rawPublicationId)
     : `pub_${rawPublicationId}`
 
-  // Beehiiv stores body_content as HTML. Inline images from the NarrateRx
+  // Beehiiv stores body_content as HTML. Inline images from the Bernard
   // blob store stay hot-linked — Beehiiv's renderer fetches and caches them
   // at send-time. We do NOT mirror images into Beehiiv's media library at
   // v1 (no public Beehiiv media API endpoint for inline images yet); the
@@ -140,7 +140,7 @@ async function handler(req, res) {
       postUrl:  post.web_url || null,
       status:   post.status || 'draft',
       // Echo the source slug back so the caller can correlate the Beehiiv
-      // post with the originating NarrateRx piece. Beehiiv assigns its own
+      // post with the originating Bernard piece. Beehiiv assigns its own
       // slug from the title; we don't try to override it.
       slug:     payload.slug || null,
     })

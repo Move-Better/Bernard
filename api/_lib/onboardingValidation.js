@@ -6,7 +6,7 @@ export const RESERVED_SLUGS = new Set([
   'www', 'api', 'app', 'admin', 'assets', 'static', 'cdn',
   'mail', 'email', 'smtp', 'imap', 'webmail',
   'docs', 'help', 'support', 'status', 'blog',
-  'narraterx', 'vercel', '_vercel', 'preview', 'staging',
+  'bernard', 'vercel', '_vercel', 'preview', 'staging',
   'auth', 'sso', 'oauth', 'login', 'signup', 'signin', 'register',
   'onboard', 'onboarding', 'dashboard', 'settings',
   'me', 'us', 'about', 'pricing', 'terms', 'privacy', 'legal',

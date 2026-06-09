@@ -67,8 +67,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: process.env.ADMIN_NOTIFY_FROM  || 'NarrateRx <noreply@narraterx.ai>',
-        to:   [process.env.ADMIN_NOTIFY_EMAIL || 'drq@narraterx.ai'],
+        from: process.env.ADMIN_NOTIFY_FROM  || 'Bernard <noreply@withbernard.ai>',
+        to:   [process.env.ADMIN_NOTIFY_EMAIL || 'drq@withbernard.ai'],
         subject: `[Feedback] ${ws}: ${message.trim().slice(0, 60)}${message.trim().length > 60 ? '…' : ''}`,
         html,
         text,

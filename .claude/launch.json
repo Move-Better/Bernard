@@ -2,45 +2,45 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "narraterx-dev",
+      "name": "bernard-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx", "run", "dev"],
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard", "run", "dev"],
       "port": 5173
     },
     {
-      "name": "narraterx-layout",
+      "name": "bernard-layout",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx-worktrees/layout-width-expansion", "run", "dev", "--", "--port", "5175"],
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard-worktrees/layout-width-expansion", "run", "dev", "--", "--port", "5175"],
       "port": 5175
     },
     {
       "name": "clinician-profile-redesign",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx-worktrees/clinician-profile-redesign", "run", "dev", "--", "--port", "5176"],
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard-worktrees/clinician-profile-redesign", "run", "dev", "--", "--port", "5176"],
       "port": 5176
     },
     {
       "name": "phone-call-mode",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx-worktrees/phone-call-mode", "run", "dev", "--", "--port", "5177"],
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard-worktrees/phone-call-mode", "run", "dev", "--", "--port", "5177"],
       "port": 5177
     },
     {
       "name": "feat-left-sidebar-nav",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx-worktrees/feat-left-sidebar-nav", "run", "dev", "--", "--port", "5178"],
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard-worktrees/feat-left-sidebar-nav", "run", "dev", "--", "--port", "5178"],
       "port": 5178
     },
     {
       "name": "goofy-cartwright",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/NarrateRx/.claude/worktrees/goofy-cartwright-3375a0", "run", "dev", "--", "--port", "5179"],
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/goofy-cartwright-3375a0", "run", "dev", "--", "--port", "5179"],
       "port": 5179
     },
     {
       "name": "mockups",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8088", "--directory", "/Users/qbook/Claude Projects/NarrateRx/.claude"],
+      "runtimeArgs": ["-m", "http.server", "8088", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude"],
       "port": 8088
     }
   ]

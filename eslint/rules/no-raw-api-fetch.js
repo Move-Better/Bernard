@@ -18,7 +18,7 @@
 // given the benefit of the doubt and NOT flagged. So this rule produces few/no
 // false positives on the existing authenticated saves. A genuinely public
 // endpoint (no token by design) should use `apiFetch(path, { auth: false })`
-// or carry an inline `// eslint-disable-next-line narraterx/no-raw-api-fetch`
+// or carry an inline `// eslint-disable-next-line bernard/no-raw-api-fetch`
 // with a one-line reason.
 
 // The apiFetch/apiFetchResponse wrappers themselves legitimately call fetch().

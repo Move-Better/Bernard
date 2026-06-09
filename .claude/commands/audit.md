@@ -1,5 +1,5 @@
 ---
-description: Multi-agent deep audit of the NarrateRx codebase scoped to commits since the last audit — static gates + parallel runs of bug-hunter, tenant-isolation-auditor, and ui-reviewer. Synthesizes a prioritized punch list and spawns fix-task chips for P0s. For a full-codebase sweep (no scoping), use /auditfull instead.
+description: Multi-agent deep audit of the Bernard codebase scoped to commits since the last audit — static gates + parallel runs of bug-hunter, tenant-isolation-auditor, and ui-reviewer. Synthesizes a prioritized punch list and spawns fix-task chips for P0s. For a full-codebase sweep (no scoping), use /auditfull instead.
 ---
 
 Run a structured multi-agent audit scoped to commits **since the last audit**, and produce a prioritized punch list. Composes three specialized agents in parallel with the static-check stack. Sister command to `/checkup` (procedural health pass) and `/auditfull` (full-codebase deep audit, no scoping).
@@ -52,7 +52,7 @@ Then dispatch the three agents in one message:
 ### Agent 1 — bug-hunter
 - **Scope**: only the files in `$CHANGED_FILES`
 - **Prompt template**:
-  > Hunt for bugs in the NarrateRx codebase. Look for logic errors, edge cases, race conditions, state bugs, and unsafe assumptions. Do NOT report style or formatting issues.
+  > Hunt for bugs in the Bernard codebase. Look for logic errors, edge cases, race conditions, state bugs, and unsafe assumptions. Do NOT report style or formatting issues.
   >
   > Scope: `<CHANGED_FILES>`
   >
@@ -68,7 +68,7 @@ Then dispatch the three agents in one message:
 ### Agent 2 — tenant-isolation-auditor
 - **Scope**: only the files in `$CHANGED_FILES` that match `api/**/*.js`
 - **Prompt template**:
-  > Audit NarrateRx API handlers for tenant-isolation gaps. Cross-workspace data leaks are 🔴 critical — this is enforced at the API layer (no RLS), so every handler that reads or writes a tenant-scoped table MUST call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`.
+  > Audit Bernard API handlers for tenant-isolation gaps. Cross-workspace data leaks are 🔴 critical — this is enforced at the API layer (no RLS), so every handler that reads or writes a tenant-scoped table MUST call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`.
   >
   > Scope: `<changed api/* files>`
   >
@@ -79,7 +79,7 @@ Then dispatch the three agents in one message:
 ### Agent 3 — ui-reviewer
 - **Scope**: always full sweep — visual drift is cumulative; an old PR's color choice may only show as inconsistent when a new page lands.
 - **Prompt template**:
-  > Review the NarrateRx UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in CLAUDE.md "Brand-color refresh checklist".
+  > Review the Bernard UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in CLAUDE.md "Brand-color refresh checklist".
   >
   > Major screens: Home (`/`), Stories (`/stories`), StoryDetail (`/stories/:id`), Library / MediaHub, Settings (workspace, brand kit, channels, locations), Account, New Interview, Interview Session.
   >
@@ -140,14 +140,14 @@ Fix the P0 audit finding from <audit report path>:
 <verbatim finding text from the punch list>
 
 Context: spawned by /audit on <date>. Start by cd-ing into a fresh worktree:
-  cd "/Users/qbook/Claude Projects/NarrateRx" && bash scripts/new-session-worktree.sh fix-<short-slug>
+  cd "/Users/qbook/Claude Projects/Bernard" && bash scripts/new-session-worktree.sh fix-<short-slug>
 Then make the change, commit, push, and open a PR with auto-merge.
 ```
 
 Title: under 60 chars, action phrase ("Fix tenant filter in api/clinicians.js").
 TLDR: 1-2 sentences plain-English summary for the chip tooltip.
 
-If `cwd` makes sense for a different repo (rare — almost always NarrateRx), set it; otherwise leave unset.
+If `cwd` makes sense for a different repo (rare — almost always Bernard), set it; otherwise leave unset.
 
 Do NOT spawn chips for P2 findings — those should be triaged in a manual pass, not auto-actioned.
 

@@ -1,6 +1,6 @@
 // useInterviewAudioCapture — MediaRecorder hook for interview voice capture.
 //
-// Records the clinician's microphone during a NarrateRx interview session.
+// Records the clinician's microphone during a Bernard interview session.
 // The captured audio is uploaded to Vercel Blob at completion and stored on
 // interviews.audio_recording_url for later ElevenLabs voice clone re-training.
 //

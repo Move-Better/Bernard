@@ -1,4 +1,4 @@
-# NarrateRx — Idea Parking Lot
+# Bernard — Idea Parking Lot
 
 Append-only list of out-of-scope ideas that surfaced during sessions. Not a roadmap (that's [`development-roadmap.md`](development-roadmap.md)) and not a commitment — just "we could also do this someday, here's enough context to evaluate when the time comes."
 
@@ -41,7 +41,7 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 - **TLDR:** Cloudinary supports image AND video text overlay via URL params (`l_text:font_60_bold:HOOK,co_white`). Has a real Vercel Marketplace integration so billing/provisioning is unified. Cheaper than Bannerbear; less design flexibility.
 - **Effort:** ~3–4 hours (URL builder, replace `renderSlide`)
 - **Trigger to revisit:** If we want video overlay AND simple-uniform layouts AND we don't want Bannerbear's monthly fee.
-- **Status:** Parked (Bannerbear is the preferred swap path — see [project_image_overlay_strategy.md memory](/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/project_image_overlay_strategy.md))
+- **Status:** Parked (Bannerbear is the preferred swap path — see [project_image_overlay_strategy.md memory](/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/project_image_overlay_strategy.md))
 
 ## Idea: Canva Connect API — push drafts to Canva for clinician finalize
 - **Surfaced:** 2026-05-13
@@ -64,7 +64,7 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 - **Area:** would need `content_items.overlay_spec` (already there!), engagement events feedback loop
 - **TLDR:** Once engagement metrics flow back in (post-launch), tag each post with its `overlay_spec.template` and analyze engagement per template. Feed back into the picker prompt as "templates that perform well for this workspace."
 - **Effort:** ~1 day (assuming engagement data is already flowing)
-- **Trigger to revisit:** Engagement API access unblocks (see [engagement_api_access memory](/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/project_engagement_api_access.md)). Currently inert.
+- **Trigger to revisit:** Engagement API access unblocks (see [engagement_api_access memory](/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/project_engagement_api_access.md)). Currently inert.
 - **Status:** Parked (blocked on engagement data, not on build effort)
 
 ## Idea: AI-extract brand kit from logo/website during onboarding

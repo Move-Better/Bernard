@@ -1,12 +1,12 @@
-# NarrateRx — Project Notes
+# Bernard — Project Notes
 
 ## Verifying authed pages — use Q's logged-in Chrome (on PROD), don't stop at the Clerk lock
 
-Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (`mcp__Claude_in_Chrome__*`): `list_connected_browsers` → `select_browser` (device "DrQ") → `tabs_context_mcp` → `navigate` to the real page on `https://*.narraterx.ai` → `computer` screenshot / `read_page`. That session is already past the Clerk gate, so any authed surface (Slate, Library, Storyboard, Settings, …) can be visually verified directly against prod data. Default to this for "does this UI change look right?" instead of declaring it blocked by auth.
+Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (`mcp__Claude_in_Chrome__*`): `list_connected_browsers` → `select_browser` (device "DrQ") → `tabs_context_mcp` → `navigate` to the real page on `https://*.withbernard.ai` → `computer` screenshot / `read_page`. That session is already past the Clerk gate, so any authed surface (Slate, Library, Storyboard, Settings, …) can be visually verified directly against prod data. Default to this for "does this UI change look right?" instead of declaring it blocked by auth.
 
-**The one catch — it only works against PROD (`narraterx.ai`), so the code must be deployed first.** Authed verification cannot be done on localhost or a vercel.app preview:
+**The one catch — it only works against PROD (`withbernard.ai`), so the code must be deployed first.** Authed verification cannot be done on localhost or a vercel.app preview:
 - localhost dev server fails with `Missing VITE_CLERK_PUBLISHABLE_KEY` (it's a Sensitive var stripped from the worktree `.env.local` by `vercel env pull`), and even with the key, prod `pk_live` Clerk is domain-locked and rejects the `localhost`/`*.vercel.app` origin.
-- So the workflow for a UI fix is: merge → GitHub-integration auto-deploys to prod (~2 min) → confirm the live SHA (`curl -s https://narraterx.ai/version.json | grep sha`) → THEN open the page in Q's Chrome and screenshot. It's post-deploy verification, but it's real and doesn't require Q to look manually.
+- So the workflow for a UI fix is: merge → GitHub-integration auto-deploys to prod (~2 min) → confirm the live SHA (`curl -s https://withbernard.ai/version.json | grep sha`) → THEN open the page in Q's Chrome and screenshot. It's post-deploy verification, but it's real and doesn't require Q to look manually.
 - Pure render/transform code (Sharp/SVG compositors) is the exception — verify those locally with a node harness, no browser needed (see the WHOOP note below).
 
 **This is THE standard verification procedure — not a fallback.** For any change to an authed surface, the default is: deploy → confirm live SHA → drive Q's Chrome and screenshot. Do NOT declare a UI change "verified" off a localhost render, a preview URL, or a green build alone, and do NOT report an authed surface as "blocked by Clerk" — the logged-in Chrome session is past the gate and is the way to look. Only skip the browser when the change is pure render/transform code (verify with a node harness) or has no observable surface.
@@ -39,11 +39,11 @@ Rule: before estimating a change, grep for callers of the core function(s) and c
 
 An observation made earlier in a session (or in a screenshot, or "last night") can be **stale** — this repo runs parallel sessions with auto-merge to `main`, so a "broken" feature may have been fixed by another context *since you saw it*. 2026-06-02: an overnight "fix Slate (empty video grid)" task was nearly a from-scratch rebuild — the exact fix (`mediaData.assets` shape mismatch + missing `staff_id` SELECT field) had already shipped as #1146 and **was already live on prod**. It was caught only by the worktree re-read rule (an 87-line diff between the stale branch and `origin/main`) plus checking prod's deployed SHA.
 
-Rule: before diagnosing or building a fix for an "it's broken" report, confirm it STILL reproduces on **current `origin/main`** and on **live prod**. Cheap checks: `git fetch && git log --oneline -8 origin/main -- <suspect file>` (did someone just touch it?) and `curl -s https://narraterx.ai/version.json` vs `git rev-parse origin/main` (is the fix already deployed?). Grounding the diagnosis in the prod DB (Supabase MCP) is still worth doing even if the fix already exists — it validates the premise rather than wasting it.
+Rule: before diagnosing or building a fix for an "it's broken" report, confirm it STILL reproduces on **current `origin/main`** and on **live prod**. Cheap checks: `git fetch && git log --oneline -8 origin/main -- <suspect file>` (did someone just touch it?) and `curl -s https://withbernard.ai/version.json` vs `git rev-parse origin/main` (is the fix already deployed?). Grounding the diagnosis in the prod DB (Supabase MCP) is still worth doing even if the fix already exists — it validates the premise rather than wasting it.
 
 ## You CAN audit/verify the live authenticated app — Q logs in, you drive the tab
 
-The "Clerk prod keys are domain-locked, so you can't smoke the authed app" belief (`memory/feedback_local_dev_smoke_unavailable.md`) is only half true: you can't *authenticate as Claude*, but you don't need to. The Clerk **session cookie is shared across the whole Chrome profile**, so once Q logs into `<slug>.narraterx.ai` in Chrome, Claude drives the already-authenticated session via the **Claude-in-Chrome MCP** (`list_connected_browsers` → `select_browser` → `tabs_context_mcp` → `navigate`/`computer`) — even in a fresh tab. This is how the 2026-06-02 live UX audit and the Slate-fix verification ran against real prod data.
+The "Clerk prod keys are domain-locked, so you can't smoke the authed app" belief (`memory/feedback_local_dev_smoke_unavailable.md`) is only half true: you can't *authenticate as Claude*, but you don't need to. The Clerk **session cookie is shared across the whole Chrome profile**, so once Q logs into `<slug>.withbernard.ai` in Chrome, Claude drives the already-authenticated session via the **Claude-in-Chrome MCP** (`list_connected_browsers` → `select_browser` → `tabs_context_mcp` → `navigate`/`computer`) — even in a fresh tab. This is how the 2026-06-02 live UX audit and the Slate-fix verification ran against real prod data.
 
 Rule: to verify a UI change or audit live prod, ask Q to log in once, then drive the authed tab **read-only** (navigate by URL, screenshot, score — never click publish/delete/send). Don't try to auth as Claude, and don't conclude "can't test on prod." Note: workspace subdomains use the **full slug** (`movebetter-people`), not the brand short-name (`people` → "Unknown workspace").
 
@@ -68,7 +68,7 @@ The photo compositor (`api/_lib/brandRender.js` `renderEditorialPhoto`, `api/_li
 
 Before writing code for any non-trivial UI or flow change, build a **clickable HTML mockup and get Q's sign-off first.** Q steers UI design by *reacting to a visual*, not prose, and catches scope/IA problems text reviews miss. This session burned an early build pass (Layout edge-to-edge + new components) before Q stopped it with "the idea is good but I need to see something before we do more"; every subsequent mockup round then surfaced a real refinement — a whole carousel composer, the interview→Words entry seam, a nav reorg, a new top-level surface — that prose alone would have dropped.
 
-Rule: for an audit/redesign that will touch multiple surfaces, after the assessment go straight to a self-contained prototype in `.claude/*.html` (a *keep* file, not scratch) — Tailwind Play CDN + lucide CDN + the app's real `src/index.css` HSL tokens so it looks like NarrateRx; replicate the chrome and wire the key interactions (gating, approve→handoff, toggles, view switches) so Q can *feel* the flow, with a dashed "What changed here" legend per screen tying choices to the audit findings. Verify it renders before handing over: serve the mockup with **`python3 -m http.server <port>` from inside the `.claude` dir** — NOT `npx serve`. `serve` 301-redirects `foo.html`→`/foo` (clean URLs) and then 404s, and it hides dot-directories so a worktree-root `serve .` can't reach `.claude/mockups` at all (both cost real time this session). Then drive the Claude_Preview tools (navigate the preview browser to `http://localhost:<port>/mockups/<file>.html` via `preview_eval`) — `preview_start` → `preview_eval` to switch screens → `preview_console_logs` (errors) → `preview_screenshot` at an **explicit wide width (e.g. 1360)**, because the "desktop" preset reverts to a narrow native size that hides the md-breakpoint sidebar. Iterate to sign-off, then build against the mockup as the spec, in trial-able phases. Full preference + how-to: `memory/feedback_mockup_first_for_ui.md`.
+Rule: for an audit/redesign that will touch multiple surfaces, after the assessment go straight to a self-contained prototype in `.claude/*.html` (a *keep* file, not scratch) — Tailwind Play CDN + lucide CDN + the app's real `src/index.css` HSL tokens so it looks like Bernard; replicate the chrome and wire the key interactions (gating, approve→handoff, toggles, view switches) so Q can *feel* the flow, with a dashed "What changed here" legend per screen tying choices to the audit findings. Verify it renders before handing over: serve the mockup with **`python3 -m http.server <port>` from inside the `.claude` dir** — NOT `npx serve`. `serve` 301-redirects `foo.html`→`/foo` (clean URLs) and then 404s, and it hides dot-directories so a worktree-root `serve .` can't reach `.claude/mockups` at all (both cost real time this session). Then drive the Claude_Preview tools (navigate the preview browser to `http://localhost:<port>/mockups/<file>.html` via `preview_eval`) — `preview_start` → `preview_eval` to switch screens → `preview_console_logs` (errors) → `preview_screenshot` at an **explicit wide width (e.g. 1360)**, because the "desktop" preset reverts to a narrow native size that hides the md-breakpoint sidebar. Iterate to sign-off, then build against the mockup as the spec, in trial-able phases. Full preference + how-to: `memory/feedback_mockup_first_for_ui.md`.
 
 ## The quality metric itself can be the bug — validate the validator
 
@@ -84,15 +84,15 @@ Hold both ideas at once: **keep holding on a red metric** (don't declare green w
 - **One shared rubric module.** The eval prompt had drifted into 2–3 near-identical copies; any rubric used in >1 place must be a single import or the copies diverge. Full write-up in `memory/feedback_validate_the_validator.md`.
 
 ## Multi-tenant SaaS
-NarrateRx runs as a single shared deployment that serves multiple workspaces by subdomain (`<slug>.narraterx.ai`). Move Better People, Equine, and Animals are the three seed workspaces; external tenants self-onboard at `narraterx.ai/onboard`. All tenant-editable config — display name, voice/tone modifiers, interview/patient context, topic suggestions, output channels, publish credentials — lives in the `workspaces` row in the shared narraterx Supabase, edited via `/settings/workspace`.
+Bernard runs as a single shared deployment that serves multiple workspaces by subdomain (`<slug>.withbernard.ai`). Move Better People, Equine, and Animals are the three seed workspaces; external tenants self-onboard at `withbernard.ai/onboard`. All tenant-editable config — display name, voice/tone modifiers, interview/patient context, topic suggestions, output channels, publish credentials — lives in the `workspaces` row in the shared bernard Supabase, edited via `/settings/workspace`.
 
 The legacy `brands/<id>/` filesystem-overlay pattern and the `VITE_BRAND` / `BRAND` env vars were retired in Phase 1F (2026-05-10). Paradigm content is no longer build-time-pinned. To onboard a new tenant, use the wizard — there is no per-deployment scaffolding.
 
 `src/lib/workspace.js` retains a static config for legacy per-brand deployments only; runtime code reads `useWorkspace()` (browser) or `workspaceContext(req)` (serverless), which resolve from the DB by subdomain.
 
-**Tenant onboarding** (`/onboard`, `api/onboarding/*`): a Clerk-authenticated user fills the wizard, which (a) creates a Clerk Organization, (b) inserts a `workspaces` row with the chosen slug + paradigm defaults pre-populated into the JSONB columns, (c) binds the Clerk org id back to the workspace, (d) seeds `enabled_outputs` and a default `clinic_settings` row. Subdomain DNS is wildcard (`*.narraterx.ai` → narraterx Vercel project), so the new subdomain works immediately with no DNS step.
+**Tenant onboarding** (`/onboard`, `api/onboarding/*`): a Clerk-authenticated user fills the wizard, which (a) creates a Clerk Organization, (b) inserts a `workspaces` row with the chosen slug + paradigm defaults pre-populated into the JSONB columns, (c) binds the Clerk org id back to the workspace, (d) seeds `enabled_outputs` and a default `clinic_settings` row. Subdomain DNS is wildcard (`*.withbernard.ai` → bernard Vercel project), so the new subdomain works immediately with no DNS step.
 
-**Per-tenant publish credentials** (Buffer / Facebook / GBP / WordPress / etc.) live in the `workspace_credentials` table, encrypted at the column level with `WORKSPACE_CREDENTIALS_KEY` (Sensitive env var on the `narraterx` Vercel project). Each row is `{ workspace_id, service, config (jsonb), secret_ciphertext (text) }`. Read/write goes through `api/_lib/workspaceCredentials.js`; never store these as Vercel env vars again — that pattern died with the per-brand deployments.
+**Per-tenant publish credentials** (Buffer / Facebook / GBP / WordPress / etc.) live in the `workspace_credentials` table, encrypted at the column level with `WORKSPACE_CREDENTIALS_KEY` (Sensitive env var on the `bernard` Vercel project). Each row is `{ workspace_id, service, config (jsonb), secret_ciphertext (text) }`. Read/write goes through `api/_lib/workspaceCredentials.js`; never store these as Vercel env vars again — that pattern died with the per-brand deployments.
 
 **Cross-workspace data isolation** is enforced at the API layer, not at the database layer: there is no RLS on the public schema (service_role bypasses anyway). Every API route that touches tenant-scoped tables must call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`. Forgetting that = cross-tenant data leak. Treat the workspace_id filter the same way you'd treat an authorization check.
 
@@ -122,13 +122,13 @@ For Supabase REST failures, the `dbErr(res, r, msg)` helper in each `api/db/*.js
 **Reading `responseStatusCode` in Vercel logs**: a value of `0` means the function crashed or timed out before returning any response — it's NOT an HTTP status code. A value of `200` means the handler returned successfully, even if the response body has `{error: ...}` and the client toasts it as a failure. When triaging prod errors, filter on `responseStatusCode=0` to find crashes, then read the `logs` array on that entry for the actual stack. Always log `e.stack` (not just `e.message`) in catch blocks that capture failures into a response `errors[]` array — Sharp / ffmpeg / native module crashes often have empty `.message` and only a useful `.stack`. Related: a warm function instance can return `200` on code that crashes on cold start (fontconfig init, lazy module load, etc.); "works in prod right now" ≠ "ships safely." Exercise the cold-start path before declaring an SVG-rendering / native-dep feature done.
 
 ### Bundle smoke test
-CI runs `npm run verify-bundles` (= `node scripts/verify-function-bundles.mjs`) after `npm run build`. The script dynamically imports every `api/**/*.js` handler from the project root and fails if any throws at module-load time — the same failure mode as `ERR_INTERNAL_ASSERTION` from a native dep like `sharp` with the wrong conditional-export resolution, or a static import of a name the target module doesn't export. This is the bundle-time complement to the `narraterx/api-handler-shape` ESLint rule.
+CI runs `npm run verify-bundles` (= `node scripts/verify-function-bundles.mjs`) after `npm run build`. The script dynamically imports every `api/**/*.js` handler from the project root and fails if any throws at module-load time — the same failure mode as `ERR_INTERNAL_ASSERTION` from a native dep like `sharp` with the wrong conditional-export resolution, or a static import of a name the target module doesn't export. This is the bundle-time complement to the `bernard/api-handler-shape` ESLint rule.
 
 **Why it doesn't run `vercel build`:** Vercel's Node runtime copies source files into each `.func` unchanged and traces `node_modules` into the bundle — there's no esbuild transform on Node handlers. The crash class we care about fires during Node's module loader, which behaves identically whether deps resolve from a bundled per-function `node_modules` or from the project's installed `node_modules`. So a project-root import reproduces the same module graph that breaks in production, without needing `VERCEL_TOKEN` in CI.
 
 **To run locally:**
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && npm run verify-bundles
+cd "/Users/qbook/Claude Projects/Bernard" && npm run verify-bundles
 ```
 
 **When the check fires in CI:**
@@ -235,9 +235,9 @@ The shared `/api/stream` endpoint and its client wrapper `streamMessage()` in `s
 Three project-specific rules bite hard if you don't know them:
 
 - **`react-hooks/static-components`** — component functions defined **inside** another component's render function (`const Foo = () => ...` inside `function Parent()`) reset their state on every render and trigger this error. Fix: declare all sub-components at **module scope**, outside any other component. Caught on `ProgressDots` in the demo session (2026-06-07).
-- **`narraterx/no-arbitrary-text-size`** — prohibits `text-[10px]`, `text-[11px]`, etc. Use the semantic tokens instead: `text-3xs` (10px) or `text-2xs` (11px). Lint will error at 0-warnings-allowed; the fix is a global replace before committing.
-- **`narraterx/no-raw-use-mutation`** — use `useAppMutation` not raw TanStack `useMutation`.
-- **`narraterx/no-raw-api-fetch`** — use `apiFetch`/`apiFetchResponse`, never bare `fetch('/api/...')`.
+- **`bernard/no-arbitrary-text-size`** — prohibits `text-[10px]`, `text-[11px]`, etc. Use the semantic tokens instead: `text-3xs` (10px) or `text-2xs` (11px). Lint will error at 0-warnings-allowed; the fix is a global replace before committing.
+- **`bernard/no-raw-use-mutation`** — use `useAppMutation` not raw TanStack `useMutation`.
+- **`bernard/no-raw-api-fetch`** — use `apiFetch`/`apiFetchResponse`, never bare `fetch('/api/...')`.
 
 ## Template literal backticks in `src/lib/prompts.js`
 
@@ -278,7 +278,7 @@ WHERE table_schema = 'public' AND table_name = '<table>';
 
 If the column is missing, paste the relevant `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` from the migration file straight into the SQL Editor — faster than running the apply script, and idempotent so safe to re-paste.
 
-Local migration runs require an unredacted `MULTITENANT_DATABASE_URL` in `.env.local`. `vercel env pull` replaces Sensitive vars with `*****REDACTED*****`, which silently breaks the apply script (`TypeError: Invalid URL`). After any `vercel env pull`, restore `MULTITENANT_DATABASE_URL` from 1Password (NarrateRx vault) before running migrations locally.
+Local migration runs require an unredacted `MULTITENANT_DATABASE_URL` in `.env.local`. `vercel env pull` replaces Sensitive vars with `*****REDACTED*****`, which silently breaks the apply script (`TypeError: Invalid URL`). After any `vercel env pull`, restore `MULTITENANT_DATABASE_URL` from 1Password (Bernard vault) before running migrations locally.
 
 **Status columns have CHECK constraints.** Any new status value needs a migration — symptom is a generic `db_error`/500. Before adding a new status value, grep `<table>_status_check` in `supabase/multitenant/migrations/` to find the constraint, then add an `ALTER TABLE … DROP CONSTRAINT / ADD CONSTRAINT` in the same migration as the code that uses it. Never assume a text column accepts any value.
 
@@ -293,7 +293,7 @@ Rule: before ANY staff delete or merge, count children per `staff_id` across all
 Prefer the atomic, collision-safe `merge_staff(source, target, workspace)` SQL function (migration 112) over hand-rolled deletes — it repoints all 12 FKs + the campaigns array, blocks cross-workspace merges, and de-dups the 3 child tables that carry a `staff_id`-bearing unique index (`staff_voice_phrases`, `staff_corpus_documents`, `staff_recipes` one-default). Do NOT combine the repoint `UPDATE`s and the staff `DELETE` in a single multi-CTE statement: data-modifying CTEs share one snapshot, so the cascade-vs-repoint interaction is unpredictable. Sequence them (repoint, verify zero children, then delete) or call the function. This same repoint-then-delete discipline applies to any future table whose FKs cascade — re-discover the FK graph from `information_schema` before assuming the list of children.
 
 ## Blob store
-All production media lives in a single Vercel Blob store (`narraterx-prod`, prefix `t4otw6ecf8ztxfeq`), attached to the `narraterx` Vercel project on team `movebetter`. `BLOB_READ_WRITE_TOKEN` in `.env.local` / Vercel env points to this store.
+All production media lives in a single Vercel Blob store (`bernard-prod`, prefix `t4otw6ecf8ztxfeq`), attached to the `bernard` Vercel project on team `movebetter`. `BLOB_READ_WRITE_TOKEN` in `.env.local` / Vercel env points to this store.
 
 **Legacy stores are gone.** Three per-brand blob stores (`gmrxcvv1cauu7ksf`, `jl52kpqqmvyxuhpr`, `ep9i5v4jhxekujri`) were detached from Vercel when the per-brand projects were deleted on 2026-05-10. All 908 `media_assets.blob_url` values were migrated to the current store by `scripts/migrate-legacy-blobs.mjs` (2026-05-12, PR #325). Legacy public URLs may continue to resolve for a time but are not relied upon.
 
@@ -307,18 +307,18 @@ All production media lives in a single Vercel Blob store (`narraterx-prod`, pref
 Use the GitHub CLI (`gh`) for GitHub-specific interactions — PRs, issues, releases, repo management. `gh` is configured as the git credential helper, so plain `git push` / `git fetch` are fine for ref operations (they authenticate through `gh` under the hood). Do not set up separate HTTPS basic auth or raw SSH credentials.
 
 ## Parallel sessions — one worktree per session
-The project root (`/Users/qbook/Claude Projects/NarrateRx`) is reserved for two things only: `git pull` on `main` and `npm run deploy:prod`. **No session — Claude or human — does feature work there.** Every active Claude session runs in its own git worktree, so two sessions can never collide on a branch, a working tree, or a half-committed file.
+The project root (`/Users/qbook/Claude Projects/Bernard`) is reserved for two things only: `git pull` on `main` and `npm run deploy:prod`. **No session — Claude or human — does feature work there.** Every active Claude session runs in its own git worktree, so two sessions can never collide on a branch, a working tree, or a half-committed file.
 
-The 2026-05-21 deploy stall was the canonical failure: Session A (post-interview UX, on `fix/post-interview-flow`) finished and merged its PR. Session B (onboarding P2) was still working in the same project root on `feat/onboarding-interview-p2` with uncommitted edits to `src/App.jsx`. When Session A tried `git checkout main` to deploy, the checkout aborted on B's WIP. A had to wait for B to commit before prod could ship. With per-session worktrees, A's deploy step is `cd "/Users/qbook/Claude Projects/NarrateRx" && git pull && npm run deploy:prod` — independent of whatever B is doing.
+The 2026-05-21 deploy stall was the canonical failure: Session A (post-interview UX, on `fix/post-interview-flow`) finished and merged its PR. Session B (onboarding P2) was still working in the same project root on `feat/onboarding-interview-p2` with uncommitted edits to `src/App.jsx`. When Session A tried `git checkout main` to deploy, the checkout aborted on B's WIP. A had to wait for B to commit before prod could ship. With per-session worktrees, A's deploy step is `cd "/Users/qbook/Claude Projects/Bernard" && git pull && npm run deploy:prod` — independent of whatever B is doing.
 
-**Helper:** `scripts/new-session-worktree.sh <session-name>` creates a fresh worktree at `../NarrateRx-worktrees/<session-name>` branched off `origin/main`, copies `.env.local` + `.vercel/` in, and symlinks `node_modules` so `npm run dev` works immediately. When the session's PR is merged, clean up with `git worktree remove ../NarrateRx-worktrees/<session-name>`.
+**Helper:** `scripts/new-session-worktree.sh <session-name>` creates a fresh worktree at `../Bernard-worktrees/<session-name>` branched off `origin/main`, copies `.env.local` + `.vercel/` in, and symlinks `node_modules` so `npm run dev` works immediately. When the session's PR is merged, clean up with `git worktree remove ../Bernard-worktrees/<session-name>`.
 
 **Rules:**
 - A new Claude session that intends to edit code starts by creating a worktree, not by editing in the project root.
 - The project root stays on `main`. If you find yourself on another branch in the project root, you (or another session) skipped the worktree step — recover by stashing, switching back to `main`, and re-doing the work in a fresh worktree.
 - Long-running sessions can stay parked in their worktree across days. Stale branches still cost nothing in disk space.
 
-**Worktrees symlink `node_modules` to the project root — so when a PR adds a new npm package, all worktrees break until the project root's `node_modules` is updated.** Fix: `git -C "/Users/qbook/Claude Projects/NarrateRx" stash && git -C "/Users/qbook/Claude Projects/NarrateRx" checkout main && git -C "/Users/qbook/Claude Projects/NarrateRx" pull && npm --prefix "/Users/qbook/Claude Projects/NarrateRx" install`. Never run `npm install` while the project root is on a feature branch — it will add the dep to that branch's `package.json`/`package-lock.json` as an uncommitted side-effect. Always check out `main` first. (2026-06-02: checkup after sprint found `@vercel/toolbar` missing from `node_modules`; fixing it while root was on `feat/url-import-preserve-publish-date` polluted Q's working branch.)
+**Worktrees symlink `node_modules` to the project root — so when a PR adds a new npm package, all worktrees break until the project root's `node_modules` is updated.** Fix: `git -C "/Users/qbook/Claude Projects/Bernard" stash && git -C "/Users/qbook/Claude Projects/Bernard" checkout main && git -C "/Users/qbook/Claude Projects/Bernard" pull && npm --prefix "/Users/qbook/Claude Projects/Bernard" install`. Never run `npm install` while the project root is on a feature branch — it will add the dep to that branch's `package.json`/`package-lock.json` as an uncommitted side-effect. Always check out `main` first. (2026-06-02: checkup after sprint found `@vercel/toolbar` missing from `node_modules`; fixing it while root was on `feat/url-import-preserve-publish-date` polluted Q's working branch.)
 
 ## Branch workflow (avoiding pile-ups)
 PRs need to merge close to when they're opened, not batch-stacked indefinitely. The 26-PR pileup of 2026-05-12 happened because work batched while `main` moved in parallel from other contexts — every PR ended up conflicting with a different file `main` had since rewritten. To avoid the repeat:
@@ -350,23 +350,23 @@ git push -u origin <new-branch-name>
 Cherry-pick replays only B's actual change onto clean main — no conflict. This pattern recurred twice in the 2026-06-07 function-consolidation session (Phase 2 and Phase 3 stacked PRs after Phase 1 squash-merged).
 
 ## Production deploys
-Deploy to prod **only** from the project root (`/Users/qbook/Claude Projects/NarrateRx`) and **only** when the project root is on `main`, fully synced with `origin/main`. `vercel deploy --prod` ships the local working tree (not the git ref), so deploying from a worktree, a feature branch, or a project root with uncommitted changes will publish whatever happens to be on disk — including reverting recently-merged PRs.
+Deploy to prod **only** from the project root (`/Users/qbook/Claude Projects/Bernard`) and **only** when the project root is on `main`, fully synced with `origin/main`. `vercel deploy --prod` ships the local working tree (not the git ref), so deploying from a worktree, a feature branch, or a project root with uncommitted changes will publish whatever happens to be on disk — including reverting recently-merged PRs.
 
 Canonical command:
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && npm run deploy:prod
+cd "/Users/qbook/Claude Projects/Bernard" && npm run deploy:prod
 ```
 
 `npm run deploy:prod` wraps `vercel deploy --prod` and injects `VERCEL_GIT_COMMIT_SHA=$(git rev-parse HEAD)` as a build-env. CLI uploads have no `.git` in the build container, so without this the prebuild's `write-version.mjs` falls back to `sha: "dev"` and the auto-update notifier silently no-ops for that deploy.
 
 **Preflight check** (`scripts/deploy-prod-preflight.sh`, runs automatically before every `deploy:prod`): refuses to deploy unless (a) cwd is the project root, (b) current branch is `main`, (c) HEAD equals `origin/main`, (d) no uncommitted modifications to tracked files. If a parallel session leaves the project root on a feature branch or with WIP, the deploy aborts before Vercel sees a single byte of code. The 2026-05-22 close-call (deployed `feat/onboarding-interview-p4` instead of `main`, only saved by coincident merge of #720) is the direct prompt for this guard. To bypass in a true emergency: `DEPLOY_PROD_BYPASS_PREFLIGHT=1 npm run deploy:prod`.
 
-If the project root is on another branch (with WIP), do not switch under the user. Either run the deploy from a separate `main`-tracking worktree that's `vercel link`ed to the `narraterx` project (copy `.vercel/project.json` in if needed) or ask the user to free up the project root. Always confirm the resulting deploy is aliased to `narraterx.ai` + `*.narraterx.ai` with `vercel inspect <dpl-id>` before declaring it done — deploys from an unlinked worktree silently create a separate Vercel project and never touch the real prod aliases.
+If the project root is on another branch (with WIP), do not switch under the user. Either run the deploy from a separate `main`-tracking worktree that's `vercel link`ed to the `bernard` project (copy `.vercel/project.json` in if needed) or ask the user to free up the project root. Always confirm the resulting deploy is aliased to `withbernard.ai` + `*.withbernard.ai` with `vercel inspect <dpl-id>` before declaring it done — deploys from an unlinked worktree silently create a separate Vercel project and never touch the real prod aliases.
 
-**Vercel's GitHub integration auto-deploys every push to `main`.** Each merge to `main` triggers a Vercel build that finishes in ~2 minutes and is aliased to `narraterx.ai` automatically. The auto-deploy runs in a real git clone, so `VERCEL_GIT_COMMIT_SHA` is set naturally and the auto-update notifier works correctly. **Do NOT run `npm run deploy:prod` after your own merge — it ships the exact same commit a second time, doubles the build cost, and just clobbers the GitHub-integration alias with an identical artifact.** Discovered 2026-05-25 (commits #839/#840/#841 each got two production deployments — one auto, one manual — for no benefit).
+**Vercel's GitHub integration auto-deploys every push to `main`.** Each merge to `main` triggers a Vercel build that finishes in ~2 minutes and is aliased to `withbernard.ai` automatically. The auto-deploy runs in a real git clone, so `VERCEL_GIT_COMMIT_SHA` is set naturally and the auto-update notifier works correctly. **Do NOT run `npm run deploy:prod` after your own merge — it ships the exact same commit a second time, doubles the build cost, and just clobbers the GitHub-integration alias with an identical artifact.** Discovered 2026-05-25 (commits #839/#840/#841 each got two production deployments — one auto, one manual — for no benefit).
 
-After a merge, verify the auto-deploy via `vercel ls narraterx --prod | head -3` (look for a ● Ready row whose age matches the merge time) or `vercel inspect narraterx.ai` (confirm the deployed SHA matches `git rev-parse origin/main`). That's the whole post-merge protocol.
+After a merge, verify the auto-deploy via `vercel ls bernard --prod | head -3` (look for a ● Ready row whose age matches the merge time) or `vercel inspect withbernard.ai` (confirm the deployed SHA matches `git rev-parse origin/main`). That's the whole post-merge protocol.
 
 `npm run deploy:prod` is still the right tool for:
 - The GitHub integration is failing or paused
@@ -393,14 +393,14 @@ These are untracked, so `rm` is unrecoverable (see ~/.claude/CLAUDE.md "Deleting
 
 ## Auto-memory index hygiene (MEMORY.md)
 
-The per-project auto-memory **index** (`~/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/MEMORY.md`) is auto-loaded into context at the start of every session and has a hard **~24KB cap** — once over, the tail entries silently truncate and that recall is lost. It ballooned to 27KB+ (2026-06-05, had to be run through `/consolidate-memory` almost daily) because entries were written as multi-line paragraphs and shipped work was never archived. Keep it lean so this stops recurring:
+The per-project auto-memory **index** (`~/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/MEMORY.md`) is auto-loaded into context at the start of every session and has a hard **~24KB cap** — once over, the tail entries silently truncate and that recall is lost. It ballooned to 27KB+ (2026-06-05, had to be run through `/consolidate-memory` almost daily) because entries were written as multi-line paragraphs and shipped work was never archived. Keep it lean so this stops recurring:
 
 - **One line per entry, <150 chars**: `- [Title](topic-file.md) — one-line hook`. ALL detail goes in the linked topic file, never in the index line. If you're writing a second sentence in the index, move it into the file.
 - **Archive shipped work**: once a `project_*` item is SHIPPED / COMPLETE / LIVE, collapse its index line into the "ARCHIVE — shipped & stable" rollup at the bottom (list its file stem for `grep`, drop the per-line hook). Don't carry done projects as live entries.
 - **Never delete topic files** to reclaim space — they're untracked and unrecoverable; archive the *index line*, keep the file on disk.
 - **Verify after any index rewrite**: extract the `](*.md)` link set before and after and diff — the only links that should disappear are ones you intentionally archived; zero accidental drops.
 
-A weekly launchd job (`com.narraterx.memory-maintenance` → `scripts/memory-maintenance.sh`) backs up the index and runs `/consolidate-memory` headlessly when it crosses ~22KB (backup-first, auto-restores on a suspicious mass link-drop). If you notice the index near cap mid-session, trim the fattest entries rather than appending to it.
+A weekly launchd job (`com.bernard.memory-maintenance` → `scripts/memory-maintenance.sh`) backs up the index and runs `/consolidate-memory` headlessly when it crosses ~22KB (backup-first, auto-restores on a suspicious mass link-drop). If you notice the index near cap mid-session, trim the fattest entries rather than appending to it.
 
 ## Definition of Done
 Every PR must satisfy this checklist before merging. The triage on 2026-05-14 traced 12+ bugs to exactly these gaps being skipped.
@@ -411,8 +411,8 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 - [ ] `npm run build` exits 0
 
 ### Logic
-- [ ] Every new `useMutation` call uses `useAppMutation` (not raw TanStack `useMutation`) — enforced by the `narraterx/no-raw-use-mutation` ESLint rule
-- [ ] Every new `fetch()` to an `/api` route uses `apiFetch` or `apiFetchResponse` — never a raw `fetch()` that could miss the Bearer token — enforced by the `narraterx/no-raw-api-fetch` ESLint rule. The rule flags a raw `fetch('/api/...')` only when it can prove no `Authorization` header is attached (variable/spread headers get the benefit of the doubt, so authenticated saves don't trip it). A genuinely public endpoint uses `apiFetch(path, { auth: false })` or an inline `eslint-disable-next-line narraterx/no-raw-api-fetch` with a reason. This was the PR #1064 class: tokenless loads of `/api/workspace/me` silently got the slim public-branding shape, so saved settings (`enabled_outputs`, `plan`, `locations`, …) reverted on reload.
+- [ ] Every new `useMutation` call uses `useAppMutation` (not raw TanStack `useMutation`) — enforced by the `bernard/no-raw-use-mutation` ESLint rule
+- [ ] Every new `fetch()` to an `/api` route uses `apiFetch` or `apiFetchResponse` — never a raw `fetch()` that could miss the Bearer token — enforced by the `bernard/no-raw-api-fetch` ESLint rule. The rule flags a raw `fetch('/api/...')` only when it can prove no `Authorization` header is attached (variable/spread headers get the benefit of the doubt, so authenticated saves don't trip it). A genuinely public endpoint uses `apiFetch(path, { auth: false })` or an inline `eslint-disable-next-line bernard/no-raw-api-fetch` with a reason. This was the PR #1064 class: tokenless loads of `/api/workspace/me` silently got the slim public-branding shape, so saved settings (`enabled_outputs`, `plan`, `locations`, …) reverted on reload.
 - [ ] Every new API handler that touches a tenant-scoped table calls `workspaceContext(req)` and filters by `workspace_id`
 - [ ] 401 / 403 branches are handled on `err?.status`, not `err?.message` string matching
 
@@ -428,9 +428,9 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 
 **E2E smoke `ClerkAPIResponseError: Unauthorized` = stale `E2E_CLERK_SECRET_KEY` GitHub Actions secret.** The `auth.setup.ts` fixture mints Clerk sign-in tokens using `CLERK_SECRET_KEY` (mapped from the `E2E_CLERK_SECRET_KEY` Actions secret). If the secret is stale, EVERY e2e run fails at setup before any Playwright test runs. The failure is NOT caused by app code. Fix — run in any directory:
 ```bash
-awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/Claude Projects/NarrateRx/.env.local.1pw" | tr -d '\r' | gh secret set E2E_CLERK_SECRET_KEY --repo Move-Better/NarrateRx
+awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/Claude Projects/Bernard/.env.local.1pw" | tr -d '\r' | gh secret set E2E_CLERK_SECRET_KEY --repo Move-Better/Bernard
 ```
-Confirm with `gh secret list --repo Move-Better/NarrateRx` — the updated timestamp should be today. (Hit 2026-06-06 after the secret was set 2026-05-12 and aged out.)
+Confirm with `gh secret list --repo Move-Better/Bernard` — the updated timestamp should be today. (Hit 2026-06-06 after the secret was set 2026-05-12 and aged out.)
 
 ### Merge hygiene
 - [ ] Branch rebased on current `origin/main` (`git fetch && git rebase origin/main`) immediately before opening the PR

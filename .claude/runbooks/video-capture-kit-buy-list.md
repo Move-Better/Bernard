@@ -14,7 +14,7 @@ The two kits are **not exclusive** — a Studio-Kit clinic can also use the PWA 
 
 ## Universal upload page (works for both kits)
 
-Every tenant gets `/capture` on their NarrateRx subdomain (e.g. `movebetter-people.narraterx.ai/capture`). Works on any device with a browser and a camera or file picker — iOS Safari, Android Chrome, Mac browsers, Chromebook, iPad, anything.
+Every tenant gets `/capture` on their Bernard subdomain (e.g. `movebetter-people.withbernard.ai/capture`). Works on any device with a browser and a camera or file picker — iOS Safari, Android Chrome, Mac browsers, Chromebook, iPad, anything.
 
 Two entry points on the page:
 - **Take photo or video** — opens the device's native camera
@@ -23,8 +23,8 @@ Two entry points on the page:
 ### Add to home screen (iPhone — 30 seconds)
 
 1. Open **Safari** on the iPhone
-2. Go to `<workspace-slug>.narraterx.ai/capture` (e.g. `movebetter-equine.narraterx.ai/capture`)
-3. Sign in once with the clinician's NarrateRx account
+2. Go to `<workspace-slug>.withbernard.ai/capture` (e.g. `movebetter-equine.withbernard.ai/capture`)
+3. Sign in once with the clinician's Bernard account
 4. Tap the **Share** icon (square with arrow up) at the bottom of Safari
 5. Scroll down → tap **Add to Home Screen**
 6. Name it "Capture" (or anything else) → **Add**
@@ -33,7 +33,7 @@ Done. A "Capture" icon now sits on the home screen and behaves like a native app
 
 The same Share → Add to Home Screen flow works on **Android Chrome** ("Install app") if a clinician is on Android.
 
-Logged-in NarrateRx user is automatically the uploader; no token to manage.
+Logged-in Bernard user is automatically the uploader; no token to manage.
 
 ## Studio Kit — fixed-location clinic
 
@@ -111,7 +111,7 @@ The iPhone uses the same **PWA `/capture` page** as the Studio Kit — added to 
 
 Once added:
 - Tap the Capture icon on the home screen
-- iPhone camera opens → capture → uploads to your NarrateRx workspace in ~5 seconds
+- iPhone camera opens → capture → uploads to your Bernard workspace in ~5 seconds
 - Or pick existing files → uploads
 
 No Shortcut to build, no token to paste, no iOS-version-specific quirks. The PWA is what you get; this is the documented path going forward.
@@ -124,7 +124,7 @@ No Shortcut to build, no token to paste, no iOS-version-specific quirks. The PWA
 
 To generate a token if you ever need one:
 
-1. Sign in to NarrateRx as the clinician (or as a workspace owner viewing the clinician's profile)
+1. Sign in to Bernard as the clinician (or as a workspace owner viewing the clinician's profile)
 2. Clinician Profile → **Settings** tab → **Capture Companion** section
 3. Tap **Generate Token** — the value is displayed **once**, copy immediately
 4. Token can be rotated or revoked from the same panel
@@ -143,19 +143,19 @@ The endpoint is `POST /api/capture/upload` with header `Authorization: Bearer cc
 | **Insta360 direct** (insta360.com) | X5; bundles better than resellers | Insta360 account |
 | **Samsung + Amazon** | T7 Shield SSD; widely available | Existing |
 
-All vendors ship to commercial / clinic addresses. Use the clinic shipping address; bill to NarrateRx if separate accounting.
+All vendors ship to commercial / clinic addresses. Use the clinic shipping address; bill to Bernard if separate accounting.
 
 ### Sensitivity
 
 | Item | Tier |
 |---|---|
-| Vendor accounts + invoices | Mildly sensitive — store in 1Password under NarrateRx vault |
+| Vendor accounts + invoices | Mildly sensitive — store in 1Password under Bernard vault |
 | Shipping addresses | Mildly sensitive |
 | Capture Upload Tokens (`cct_…`) | **Sensitive** — anyone with one can upload to that clinician's identity. Rotate immediately if leaked. |
 
 ## iPhone Kit — fixed clinic, iPhone as hero device
 
-An alternative to the Studio Kit for clinics that prefer a single capture device over a dedicated camera. One device handles capture, upload, and NarrateRx PWA in one tap. iPhone 16 Pro Max camera outperforms the ZV-1F in variable clinic lighting and eliminates the SD card shuffle.
+An alternative to the Studio Kit for clinics that prefer a single capture device over a dedicated camera. One device handles capture, upload, and Bernard PWA in one tap. iPhone 16 Pro Max camera outperforms the ZV-1F in variable clinic lighting and eliminates the SD card shuffle.
 
 Total: **~$2,485**
 

@@ -344,7 +344,7 @@ export async function searchPracticeMemory({ workspaceId, staffId, query, topK =
 //                                  spoken/typed interview turns (not the
 //                                  AI summary)
 //   - original_blog              — blog posts the clinician typed themselves
-//                                  pre-NarrateRx
+//                                  pre-Bernard
 //   - uploaded_draft             — arbitrary draft documents (notes, longhand
 //                                  drafts, transcribed voice memos)
 //
@@ -518,7 +518,7 @@ async function indexAuthoredProse({
 }
 
 /**
- * Index a piece of prose the clinician wrote themselves (pre-NarrateRx
+ * Index a piece of prose the clinician wrote themselves (pre-Bernard
  * blogs, articles, longhand). Caller supplies a UUID source_id and tracks
  * the source row in staff_corpus_documents (migration 079, follow-up).
  */

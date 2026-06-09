@@ -97,7 +97,7 @@ Enforcement: at content-generation time, the UI surfaces only lanes appropriate 
 ## D2-adjacent acceptance test (when Philip is ready)
 
 Either Q or Philip:
-1. Sign in to `movebetter-people.narraterx.ai` as Philip
+1. Sign in to `movebetter-people.withbernard.ai` as Philip
 2. Start a turn-based interview at `/new/interview` with topic like "What patients ask at the front desk"
 3. Verify Bernard's first message frames the conversation around Philip's observations, not clinical advice
 4. Verify Bernard never asks for treatment recommendations

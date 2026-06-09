@@ -53,7 +53,7 @@ COMMENT ON COLUMN public.staff.capability_overrides IS
 Apply before shipping any code that references `capability_overrides`:
 
 ```bash
-cd "/Users/qbook/Claude Projects/NarrateRx" && node scripts/apply-multitenant-migrations.mjs supabase/multitenant/migrations/107_staff_capability_overrides.sql
+cd "/Users/qbook/Claude Projects/Bernard" && node scripts/apply-multitenant-migrations.mjs supabase/multitenant/migrations/107_staff_capability_overrides.sql
 ```
 
 ---

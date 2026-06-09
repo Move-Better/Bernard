@@ -20,7 +20,7 @@
 // A Runtime Cache layer can wrap this in a later phase to avoid one DB
 // hit per request.
 
-const APEX_HOSTS = new Set(['narraterx.ai', 'www.narraterx.ai'])
+const APEX_HOSTS = new Set(['withbernard.ai', 'www.withbernard.ai'])
 
 // In-process workspace cache. Fluid Compute reuses warm instances across
 // concurrent requests so hit rate is high. TTL 60s — workspace config
@@ -61,8 +61,8 @@ function extractSlug(host) {
   if (!host) return null
   const h = host.split(':')[0].toLowerCase()
   if (APEX_HOSTS.has(h)) return null
-  if (h.endsWith('.narraterx.ai')) {
-    return h.slice(0, -'.narraterx.ai'.length)
+  if (h.endsWith('.withbernard.ai')) {
+    return h.slice(0, -'.withbernard.ai'.length)
   }
   return null
 }
@@ -75,7 +75,7 @@ function readHostHeader(req) {
 }
 
 // Non-prod-only fallback for Playwright preview-smoke tests. Vercel preview
-// URLs (narraterx-git-*.vercel.app) have no .narraterx.ai subdomain to
+// URLs (bernard-git-*.vercel.app) have no .withbernard.ai subdomain to
 // resolve, so we accept ?workspace=<slug> as an explicit override.
 // Production runs short-circuit before this is read.
 function extractSlugFromQuery(req) {

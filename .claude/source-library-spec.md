@@ -10,7 +10,7 @@
 
 Tenants have a body of **published work** — blog posts, guest articles on other sites,
 podcast appearances, recorded talks, even a published study. Today that work is invisible
-to NarrateRx. Source Library ingests it once and makes it permanently useful.
+to Bernard. Source Library ingests it once and makes it permanently useful.
 
 It is **not** a "blog importer." The unit is *any digital work the team has authored*,
 and the input is just **a URL**. Same pipeline regardless of source type.
@@ -159,7 +159,7 @@ The ~11 announcement-type People posts (pandemic-era updates, product recs, "cli
 health updates" — the ones the migration flagged `draft:true`) are **excluded from the
 corpus and Book**: they are NOT ingested as voice material. Only substantive
 philosophy/clinical posts feed voice + Book. (They can still live on the live website;
-this is purely about what trains NarrateRx.)
+this is purely about what trains Bernard.)
 
 ---
 

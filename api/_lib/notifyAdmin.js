@@ -3,8 +3,8 @@
 // No dependency: posts to https://api.resend.com/emails directly.
 // Env:
 //   RESEND_API_KEY      — required; if missing the call is a no-op (warn only)
-//   ADMIN_NOTIFY_EMAIL  — defaults to drq@narraterx.ai
-//   ADMIN_NOTIFY_FROM   — defaults to "NarrateRx <noreply@narraterx.ai>"
+//   ADMIN_NOTIFY_EMAIL  — defaults to drq@withbernard.ai
+//   ADMIN_NOTIFY_FROM   — defaults to "Bernard <noreply@withbernard.ai>"
 //
 // Always resolves; never throws. Caller should not await success.
 
@@ -16,8 +16,8 @@ export async function sendAdminNotification({ subject, text, html }) {
     console.warn('[notifyAdmin] RESEND_API_KEY not set; skipping notification')
     return { ok: false, skipped: true }
   }
-  const to   = process.env.ADMIN_NOTIFY_EMAIL || 'drq@narraterx.ai'
-  const from = process.env.ADMIN_NOTIFY_FROM  || 'NarrateRx <noreply@narraterx.ai>'
+  const to   = process.env.ADMIN_NOTIFY_EMAIL || 'drq@withbernard.ai'
+  const from = process.env.ADMIN_NOTIFY_FROM  || 'Bernard <noreply@withbernard.ai>'
 
   try {
     const r = await fetch(RESEND_ENDPOINT, {

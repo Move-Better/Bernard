@@ -1,4 +1,4 @@
-# Code Quality Audit — NarrateRx Pre-Launch
+# Code Quality Audit — Bernard Pre-Launch
 
 ## Metrics at audit start
 - **Largest components:** WorkspaceSettings.jsx (1,201 lines), ReviewPost.jsx (988), MediaDetail.jsx (678), BulkActionBar.jsx (567)
