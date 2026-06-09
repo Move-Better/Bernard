@@ -43,8 +43,8 @@ async function handler(req, res) {
   const platform    = searchParams.get('platform')      // target_platform filter
   const sourceId    = searchParams.get('sourceId')      // limit to one source asset
   const assignedTo  = searchParams.get('assignedTo')    // email
-  const limit       = Math.min(parseInt(searchParams.get('limit') || '60'), 200)
-  const offset      = parseInt(searchParams.get('offset') || '0')
+  const limit       = Math.min(parseInt(searchParams.get('limit') || '60', 10), 200)
+  const offset      = parseInt(searchParams.get('offset') || '0', 10)
 
   const scope = await workspaceScope(req)
 

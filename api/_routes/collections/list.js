@@ -37,8 +37,8 @@ async function handler(req, res) {
   const status  = searchParams.get('status')   // active (default) | archived | all
   const kind    = searchParams.get('kind')     // campaign | series | session | adhoc
   const assetId = searchParams.get('assetId')  // limit to collections containing this asset
-  const limit   = Math.min(parseInt(searchParams.get('limit') || '100'), 500)
-  const offset  = parseInt(searchParams.get('offset') || '0')
+  const limit   = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500)
+  const offset  = parseInt(searchParams.get('offset') || '0', 10)
 
   const scope = await workspaceScope(req)
 

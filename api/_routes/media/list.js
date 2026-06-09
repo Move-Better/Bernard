@@ -47,8 +47,8 @@ async function handler(req, res) {
   const clipParent  = searchParams.get('clipParent')
   const collectionId = searchParams.get('collectionId')// limit to assets in a given collection
   const compact     = searchParams.get('compact') === 'true'
-  const limit       = Math.min(parseInt(searchParams.get('limit') || '60'), 200)
-  const offset      = parseInt(searchParams.get('offset') || '0')
+  const limit       = Math.min(parseInt(searchParams.get('limit') || '60', 10), 200)
+  const offset      = parseInt(searchParams.get('offset') || '0', 10)
 
   const scope = await workspaceScope(req)
 

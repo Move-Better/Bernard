@@ -146,7 +146,11 @@ export default async function handler(req, res) {
 
   async function patchByAssetOrPassthrough(patch) {
     const wsId = await resolveWorkspaceId()
-    const wsFilter = wsId ? `&workspace_id=eq.${encodeURIComponent(wsId)}` : ''
+    if (!wsId) {
+      console.warn('[mux-webhook] no workspace resolved for asset', assetId, '— skipping PATCH')
+      return res.status(200).json({ ok: true, skipped: 'no_workspace' })
+    }
+    const wsFilter = `&workspace_id=eq.${encodeURIComponent(wsId)}`
 
     // Try asset_id first (set by our create call). Fall back to passthrough
     // if zero rows updated — covers the edge case where the create call's
