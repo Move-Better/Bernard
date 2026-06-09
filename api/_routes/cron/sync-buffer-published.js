@@ -35,7 +35,7 @@ function sb(path, init = {}) {
   })
 }
 
-async function fetchOverdueItems() {
+async function fetchOverdueItems(wsFilter = '') {
   const cutoff = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString()
   // scheduled_at.lt.now() catches everything past its window;
   // scheduled_at.gte.cutoff avoids touching rows older than 30 days.
@@ -45,6 +45,7 @@ async function fetchOverdueItems() {
     `&buffer_update_id=not.is.null` +
     `&scheduled_at=lt.${new Date().toISOString()}` +
     `&scheduled_at=gte.${cutoff}` +
+    wsFilter +
     `&select=id,workspace_id,buffer_update_id,scheduled_at` +
     `&order=scheduled_at.asc` +
     `&limit=${MAX_ITEMS}`
@@ -91,7 +92,11 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase env not configured' })
   }
 
-  const items = await fetchOverdueItems()
+  const wsRes = await sb('workspaces?status=eq.active&select=id')
+  const wsRows = await wsRes.json().catch(() => [])
+  const activeIds = (Array.isArray(wsRows) ? wsRows : []).map(w => w.id)
+  const wsScope = activeIds.length ? `&workspace_id=in.(${activeIds.map(id => `"${id}"`).join(',')})` : ''
+  const items = await fetchOverdueItems(wsScope)
   if (items.length === 0) {
     return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })
   }
