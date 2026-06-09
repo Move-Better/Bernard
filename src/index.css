@@ -145,11 +145,11 @@
      hero ribbons, campaign progress strips, brand-mark badges. Do NOT use
      for buttons (use .nx-btn-primary). */
   .nx-grad {
-    background: linear-gradient(135deg, #ff7a3d 0%, #f43f5e 55%, #7c3aed 100%);
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action)));
     color: #fff;
   }
   .nx-grad-text {
-    background: linear-gradient(135deg, #ff7a3d 0%, #f43f5e 55%, #7c3aed 100%);
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action)));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -236,7 +236,7 @@
     display: block;
     height: 100%;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #ff7a3d, #f43f5e);
+    background: hsl(var(--primary));
   }
   .nx-progress-flat > i {
     background: hsl(var(--primary));
