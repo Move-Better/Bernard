@@ -15,8 +15,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 8%;
 
-    /* Brand primary — Move Better Orange #E36525 (kept). */
-    --primary: 20 76% 52%;
+    /* Brand primary — Bernard Emerald #10B981 (≈ HSL 160 84% 39%). */
+    --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary / muted greys — pulled cooler to harmonize with the new
@@ -28,17 +28,17 @@
     --muted: 220 14% 96%;
     --muted-foreground: 215 16% 47%;   /* slate-500 */
 
-    /* Soft orange tint — used for hover surfaces, gap-highlight banners,
+    /* Soft emerald tint — used for hover surfaces, gap-highlight banners,
        and the Review-stage column background. */
-    --accent: 20 60% 95%;
-    --accent-foreground: 20 76% 38%;
+    --accent: 160 60% 95%;
+    --accent-foreground: 160 84% 30%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;             /* slate-200 */
     --input: 214 32% 91%;
-    --ring: 20 76% 52%;
+    --ring: 160 84% 39%;
     --radius: 0.625rem;                /* 10px — tighter than the old 8px */
 
     /* ── Voice-fidelity semantic tokens ────────────────────────────────────
@@ -161,23 +161,23 @@
     box-shadow: 0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10);
   }
   .nx-card-hi {
-    background: linear-gradient(180deg, #fff, #fefaf7);
-    border: 1px solid #f3d3b5;
+    background: linear-gradient(180deg, #fff, #f4fbf8);
+    border: 1px solid hsl(var(--primary) / 0.3);
     border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(227,101,37,0.22);
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(16,185,129,0.22);
   }
 
-  /* Buttons — solid-orange primary with a subtle warm shadow, neutral
+  /* Buttons — solid-emerald primary with a subtle shadow, neutral
      secondary, ink-dark variant for finish/destructive-ish surfaces. */
   .nx-btn-primary {
     background: hsl(var(--primary));
     color: #fff;
     font-weight: 600;
     border-radius: 10px;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 6px 16px -10px rgba(227,101,37,0.55);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 6px 16px -10px rgba(16,185,129,0.55);
     transition: background .15s ease;
   }
-  .nx-btn-primary:hover { background: #c04d18; }
+  .nx-btn-primary:hover { background: #059669; }
   .nx-btn-secondary {
     background: #fff;
     color: hsl(var(--foreground));
@@ -214,7 +214,7 @@
   }
 
   /* Progress bar — slim, gradient fill. .nx-progress-flat uses a single
-     orange fill instead of the gradient (less visual noise when many
+     emerald fill instead of the gradient (less visual noise when many
      bars stack in one view). */
   .nx-progress {
     height: 6px;
