@@ -174,15 +174,14 @@ export default function Home() {
 
   const greeting = greetingFor(user, runtimeWorkspace)
 
-  // Lane accent colors for the bucket rails — keep aligned with the
-  // PipelineKanban lane palette so the same semantics carry across pages.
-  // amber flags every "your turn" surface (drafting + act-now); emerald is
-  // reserved for "done/published" so it can't read as an action prompt.
+  // Lane accent colors for the bucket rails. The "your turn / do this now"
+  // surfaces all share the amber --action token (NOT emerald — emerald reads
+  // as "done"); overdue is neutral slate, informational rather than urgent.
   const ACCENT = {
-    ready:        '#d97706', // amber — drafting needed
-    review:       '#d97706', // amber — your action queue (act-now)
-    distribute:   '#d97706', // amber — "act now" publisher surface (was orange; emerald read as "done")
-    overdue:      '#64748b', // slate — informational, not an urgent action (was sky-blue; violated brand rule)
+    ready:        'hsl(var(--action))', // act-now — drafting needed (your turn)
+    review:       'hsl(var(--action))', // act-now — your review queue
+    distribute:   'hsl(var(--action))', // act-now — publisher surface
+    overdue:      '#64748b',            // slate — informational, not an urgent action
   }
 
   return (
