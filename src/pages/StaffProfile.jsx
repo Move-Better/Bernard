@@ -175,12 +175,12 @@ export default function StaffProfile() {
                 </span>
               )}
               {arc?.stats?.streak > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-xs text-orange-700">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-action/10 border border-action/30 rounded-full text-xs text-action">
                   🔥 <strong className="font-semibold">{arc.stats.streak}-wk</strong> streak
                 </span>
               )}
               {inProgress.length > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs text-emerald-700">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary">
                   <strong className="font-semibold">{inProgress.length}</strong> in progress
                 </span>
               )}
@@ -225,7 +225,7 @@ export default function StaffProfile() {
                 {ringPct > 0 && (
                   <circle
                     cx="7" cy="7" r="5" fill="none"
-                    stroke={activeTab === 'voice' ? 'hsl(var(--primary))' : '#c2410c'}
+                    stroke="hsl(var(--action))"
                     strokeWidth="2"
                     strokeDasharray={`${31.4 * ringPct} 31.4`}
                     strokeLinecap="round"
@@ -238,7 +238,7 @@ export default function StaffProfile() {
                 <span className={`ml-1 text-3xs font-semibold px-1.5 py-px rounded-full leading-none ${
                   activeTab === 'voice'
                     ? 'bg-primary/10 text-primary'
-                    : 'bg-emerald-100 text-emerald-700'
+                    : 'bg-primary/10 text-primary'
                 }`}>
                   {strength}
                 </span>
@@ -371,7 +371,7 @@ export default function StaffProfile() {
                     {ringPct > 0 && (
                       <circle
                         cx="55" cy="55" r="42" fill="none"
-                        stroke="#c2410c" strokeWidth="9"
+                        stroke="hsl(var(--action))" strokeWidth="9"
                         strokeDasharray={`${ringDash} ${CIRC}`}
                         strokeDashoffset="0"
                         strokeLinecap="round"
@@ -382,7 +382,7 @@ export default function StaffProfile() {
                     {ringPct > 0 && (
                       <circle
                         cx="55" cy="55" r="42" fill="none"
-                        stroke="rgba(194,65,12,0.20)" strokeWidth="9"
+                        stroke="rgba(217,119,6,0.20)" strokeWidth="9"
                         strokeDasharray={`${CIRC - ringDash} ${CIRC}`}
                         strokeDashoffset={`${-ringDash}`}
                         strokeLinecap="round"

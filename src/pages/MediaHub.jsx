@@ -402,18 +402,22 @@ export default function MediaHub() {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              aria-label="Filter by status"
-              className="text-2xs h-7 px-3 rounded-full border border-border bg-white text-foreground font-medium cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
-            >
-              {STATUS_FILTERS.map((s) => (
-                <option key={s.id || 'all-status'} value={s.id}>{s.label}</option>
-              ))}
-            </select>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            {STATUS_FILTERS.map((s) => (
+              <button
+                key={s.id || 'all-status'}
+                type="button"
+                onClick={() => setStatus(s.id)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  status === s.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
 
           {canUpload && (

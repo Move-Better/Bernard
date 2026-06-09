@@ -48,9 +48,9 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
   if (readyCount > 0)
     parts.push(`${readyCount} ready to send`)
   return (
-    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)] px-5 py-4 flex items-center gap-3">
-      <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-primary" aria-hidden="true" />
-      <Inbox className="h-4 w-4 text-primary shrink-0" />
+    <div className="rounded-2xl border border-action/30 bg-gradient-to-b from-white to-[#fffbf2] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(217,119,6,0.22)] px-5 py-4 flex items-center gap-3">
+      <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
+      <Inbox className="h-4 w-4 text-action shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-foreground">
           Your queue: {parts.join(' · ')}
@@ -64,7 +64,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
       {readyCount > 0 && (
         <Link
           to="/storyboard#ready"
-          className="shrink-0 inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+          className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
         >
           <Send className="h-3.5 w-3.5" />
           Work the inbox
@@ -164,12 +164,12 @@ export default function Storyboard() {
           {ready.length > 0 && (
             <section id="ready" className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="inline-block w-1 h-4 rounded-full shrink-0 bg-primary" aria-hidden="true" />
-                <Send className="h-3.5 w-3.5 text-primary" />
-                <p className="text-sm font-bold text-primary tracking-tight">
+                <span className="inline-block w-1 h-4 rounded-full shrink-0 bg-action" aria-hidden="true" />
+                <Send className="h-3.5 w-3.5 text-action" />
+                <p className="text-sm font-bold text-action tracking-tight">
                   Ready to distribute
                 </p>
-                <span className="text-3xs font-bold rounded-full px-2 py-0.5 bg-primary text-primary-foreground">
+                <span className="text-3xs font-bold rounded-full px-2 py-0.5 bg-action/10 text-action">
                   {ready.length}
                 </span>
               </div>

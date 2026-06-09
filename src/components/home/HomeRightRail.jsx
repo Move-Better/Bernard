@@ -97,7 +97,7 @@ export default function HomeRightRail({ stories = [] }) {
       {/* Upcoming scheduled posts */}
       <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#7c3aed' }} aria-hidden="true" />
+          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#7c3aed' /* scheduled accent — no token yet */ }} aria-hidden="true" />
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-base font-bold tracking-tight flex-1">Scheduled this week</h2>
         </div>
@@ -131,7 +131,7 @@ export default function HomeRightRail({ stories = [] }) {
       {topPerformers.length > 0 && (
         <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-            <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#059669' }} aria-hidden="true" />
+            <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: 'hsl(var(--success))' }} aria-hidden="true" />
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-base font-bold tracking-tight flex-1">What&apos;s working</h2>
           </div>
@@ -171,7 +171,7 @@ export default function HomeRightRail({ stories = [] }) {
       {/* Topic suggestions — AI-generated patient questions */}
       <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#0284c7' }} aria-hidden="true" />
+          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#0284c7' /* info accent — no token yet */ }} aria-hidden="true" />
           <Sparkles className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-base font-bold tracking-tight flex-1">Questions patients are asking</h2>
           <button
@@ -211,7 +211,7 @@ export default function HomeRightRail({ stories = [] }) {
       {/* Bernard nudge — stub */}
       <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#d97706' }} aria-hidden="true" />
+          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: 'hsl(var(--action))' }} aria-hidden="true" />
           <Bot className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-base font-bold tracking-tight flex-1">Bernard</h2>
         </div>
