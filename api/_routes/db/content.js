@@ -17,6 +17,21 @@ import { waitUntil } from '@vercel/functions'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+// Allowlists for query-param values interpolated into PostgREST query strings.
+// Without these, a crafted value like `draft,approved)&limit=10000` would break
+// out of the intended clause and override server-side constraints.
+const VALID_STATUSES  = new Set(['draft', 'in_review', 'approved', 'published', 'scheduled'])
+const VALID_PLATFORMS = new Set([
+  // atom-namespace keys (ATOM_DEFINITIONS in api/_lib/atomPlan.js)
+  'instagram', 'linkedin', 'facebook', 'gbp', 'tiktok', 'twitter',
+  'threads', 'bluesky', 'mastodon',
+  // single-output platforms
+  'blog', 'email', 'landing_page', 'youtube', 'youtube_short',
+  'google_ads', 'instagram_ads', 'ig_ads', 'instagram_post', 'instagram_reel',
+])
+
+const MAX_LIMIT = 100
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -87,8 +102,15 @@ export default async function handler(req, res) {
     const interviewId = searchParams.get('interviewId')
     const staffId = searchParams.get('staffId')
     const archived    = searchParams.get('archived')    // 'true' | 'only' | 'all' — default excludes archived
-    const limit       = parseInt(searchParams.get('limit') || '100')
+    const limit       = Math.min(parseInt(searchParams.get('limit') || '100', 10) || MAX_LIMIT, MAX_LIMIT)
     const view        = searchParams.get('view')        // 'card' | 'performers' = slim shapes
+
+    // Validate allowlisted params before interpolating into the PostgREST query.
+    if (status) {
+      const statuses = status.split(',')
+      if (statuses.some((s) => !VALID_STATUSES.has(s.trim()))) return err(res, 'Invalid status', 400)
+    }
+    if (platform && !VALID_PLATFORMS.has(platform)) return err(res, 'Invalid platform', 400)
 
     const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
