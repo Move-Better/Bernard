@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Bernard">
   <title>Bernard</title>
-  <!-- Deep evergreen rounded-square background -->
-  <rect width="64" height="64" rx="12" fill="#1c4d37"/>
-  <!-- Waveform bars — white for outer bars, coral for center peak -->
-  <rect x="9"  y="23" width="6" height="18" rx="3" fill="white" opacity="0.65"/>
-  <rect x="19" y="15" width="6" height="34" rx="3" fill="white" opacity="0.75"/>
-  <rect x="29" y="8"  width="6" height="48" rx="3" fill="#ff8552"/>
-  <rect x="39" y="19" width="6" height="26" rx="3" fill="white" opacity="0.75"/>
-  <rect x="49" y="25" width="6" height="14" rx="3" fill="white" opacity="0.45"/>
+  <!-- Emerald rounded-square app mark with a bold white "B" monogram. -->
+  <!-- Kept deliberately simple so it stays legible down to 16px favicons. -->
+  <rect width="64" height="64" rx="14" fill="#10B981"/>
+  <text x="32" y="34"
+        text-anchor="middle" dominant-baseline="central"
+        font-family="Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-weight="700" font-size="46" fill="#FFFFFF">B</text>
 </svg>
