@@ -118,17 +118,40 @@ export default async function handler(req, res) {
   // at create time (which is the media_assets row id). Passthrough is the
   // more reliable join because Mux occasionally re-issues asset ids during
   // certain failure-and-retry flows, but normally either works.
-  // PostgREST filter syntax: comma-separated `or=(...)` allows either to
-  // match. Workspace scoping is implicit — service_role bypasses RLS and
-  // the unique asset id is workspace-blind anyway.
   const filterByAsset = `mux_asset_id=eq.${encodeURIComponent(assetId)}`
   const filterByPass  = passthrough ? `id=eq.${encodeURIComponent(passthrough)}` : null
 
+  // Resolve the owning workspace_id BEFORE mutating so every PATCH is
+  // workspace-scoped. The HMAC gate already proves the event came from Mux
+  // (active leak isn't possible), but as defense-in-depth we never issue a
+  // workspace-blind write to a tenant-scoped table. If the row can't be found
+  // (e.g. the create-call PATCH hasn't landed yet), wsId stays null and we fall
+  // back to the unscoped filter — the unique asset/passthrough id still pins a
+  // single row, so this preserves the create-race fallback without widening it.
+  async function resolveWorkspaceId() {
+    let r = await sb(`media_assets?${filterByAsset}&select=workspace_id&limit=1`)
+    if (r.ok) {
+      const rows = await r.json().catch(() => [])
+      if (rows[0]?.workspace_id) return rows[0].workspace_id
+    }
+    if (filterByPass) {
+      r = await sb(`media_assets?${filterByPass}&select=workspace_id&limit=1`)
+      if (r.ok) {
+        const rows = await r.json().catch(() => [])
+        if (rows[0]?.workspace_id) return rows[0].workspace_id
+      }
+    }
+    return null
+  }
+
   async function patchByAssetOrPassthrough(patch) {
+    const wsId = await resolveWorkspaceId()
+    const wsFilter = wsId ? `&workspace_id=eq.${encodeURIComponent(wsId)}` : ''
+
     // Try asset_id first (set by our create call). Fall back to passthrough
     // if zero rows updated — covers the edge case where the create call's
     // PATCH lost a race with the ready webhook (Mux is fast).
-    let r = await sb(`media_assets?${filterByAsset}`, {
+    let r = await sb(`media_assets?${filterByAsset}${wsFilter}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify(patch),
@@ -141,7 +164,7 @@ export default async function handler(req, res) {
     if (rows.length > 0) return true
 
     if (!filterByPass) return false
-    r = await sb(`media_assets?${filterByPass}`, {
+    r = await sb(`media_assets?${filterByPass}${wsFilter}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify({ ...patch, mux_asset_id: assetId }),

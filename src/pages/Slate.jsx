@@ -157,10 +157,13 @@ export default function Slate() {
   const [searchQ, setSearchQ] = useState('')
 
   // Track when the current poll window started, so the refetch loops below can
-  // hard-cap even if a detection job silently stalls in 'detecting'. Reset when
-  // detection (re)starts (effect below) so a video ingested long after mount
-  // still gets fresh polling rather than being permanently past the cap.
-  const pollStartRef = useRef(Date.now())
+  // hard-cap even if a detection job silently stalls in 'detecting'. The window
+  // start is set LAZILY the first time detection is observed (inside
+  // refetchInterval), not at mount — anchoring at mount means a page left idle
+  // past POLL_CEILING_MS before detection starts would see the cap already
+  // exceeded and never poll. Reset to 0 when detection ends (effect below) so a
+  // future detection restarts the window. Matches the Book/ClipFinder pattern.
+  const pollStartRef = useRef({ at: 0 })
 
   // Source videos (kind=video, not archived)
   const {
@@ -176,7 +179,8 @@ export default function Slate() {
       // Only poll while a source video is mid-detection; hard-cap at 5 min so a
       // stuck 'detecting' row can't poll for the life of the tab.
       if (!anyDetecting(q.state.data)) return false
-      if (Date.now() - pollStartRef.current > POLL_CEILING_MS) return false
+      if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
+      if (Date.now() - pollStartRef.current.at > POLL_CEILING_MS) return false
       return REFETCH_INTERVAL_MS
     },
     refetchOnWindowFocus: false,
@@ -192,7 +196,8 @@ export default function Slate() {
       // detection state (counts only change while detection or its follow-on
       // render is in flight) and hard-cap at 5 min.
       if (!anyDetecting(mediaData)) return false
-      if (Date.now() - pollStartRef.current > POLL_CEILING_MS) return false
+      if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
+      if (Date.now() - pollStartRef.current.at > POLL_CEILING_MS) return false
       return 60_000
     },
     refetchOnWindowFocus: false,
@@ -207,20 +212,18 @@ export default function Slate() {
       // Same gating as clip counts: proposals appear when detection lands, so
       // poll only while a source video is detecting, capped at 5 min.
       if (!anyDetecting(mediaData)) return false
-      if (Date.now() - pollStartRef.current > POLL_CEILING_MS) return false
+      if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
+      if (Date.now() - pollStartRef.current.at > POLL_CEILING_MS) return false
       return 60_000
     },
     refetchOnWindowFocus: false,
   })
 
-  // Restart the poll-cap window each time detection (re)starts so a video
-  // ingested well after mount still polls, instead of being stuck past a cap
-  // anchored at mount.
+  // Reset the poll-cap window when detection ends, so the next detection lazily
+  // restarts a fresh window (set inside refetchInterval the moment it's seen).
   const isDetecting = anyDetecting(mediaData)
-  const wasDetectingRef = useRef(isDetecting)
   useEffect(() => {
-    if (isDetecting && !wasDetectingRef.current) pollStartRef.current = Date.now()
-    wasDetectingRef.current = isDetecting
+    if (!isDetecting) pollStartRef.current = { at: 0 }
   }, [isDetecting])
 
   const sourceVideos = useMemo(() => {

@@ -265,6 +265,11 @@ export default function InterviewSession() {
   const vizStreamRef = useRef(null)
   const vizCtxRef = useRef(null)
   const interviewRef = useRef(null)
+  // Mirror runtimeWorkspace into a ref so the memoized sendToAI (whose dep array
+  // intentionally excludes runtimeWorkspace to stay stable) reads the LATEST
+  // workspace — including locations used for the per-interview location overlay —
+  // instead of closing over a stale value. Matches the interviewRef pattern.
+  const runtimeWorkspaceRef = useRef(null)
   const pastInterviewsRef = useRef([])
   // Emotional-state ref: 'weighted' | 'resistant' | null.
   // Set after each user message; reset to null after each AI response completes.
@@ -320,6 +325,15 @@ export default function InterviewSession() {
   }
 
   function saveMessages(interviewId, patch) {
+    // If this save finalizes the interview (clears session_state), cancel any
+    // pending debounced session_state autosave first. Otherwise that 3s timer
+    // can fire AFTER this null-out lands and re-write session_state to the live
+    // messages — Supabase REST is last-writer-wins per column, so the resume
+    // banner would resurrect on the next visit of a completed interview.
+    if (patch && patch.session_state === null) {
+      clearTimeout(sessionSaveTimerRef.current)
+      sessionSaveTimerRef.current = null
+    }
     // Always mirror to localStorage FIRST so the data survives even if the
     // server PATCH never lands (auth blip, network, iOS WebKit kill).
     if (Array.isArray(patch?.messages)) saveLocalMessages(interviewId, patch.messages)
@@ -345,6 +359,7 @@ export default function InterviewSession() {
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { transcriptRef.current = transcript }, [transcript])
   useEffect(() => { interviewRef.current = interview }, [interview])
+  useEffect(() => { runtimeWorkspaceRef.current = runtimeWorkspace }, [runtimeWorkspace])
   useEffect(() => { userIdRef.current = user?.id }, [user?.id])
   useEffect(() => { interviewCompleteRef.current = interviewComplete }, [interviewComplete])
 
@@ -672,10 +687,11 @@ export default function InterviewSession() {
     setStreamingText('')
     setError('')
 
-    const interviewLocation = (runtimeWorkspace?.locations || []).find(
+    const liveWorkspace = runtimeWorkspaceRef.current
+    const interviewLocation = (liveWorkspace?.locations || []).find(
       l => l.id === interviewRef.current?.location_id
     )
-    const overlaidWorkspace = applyLocationOverlay(runtimeWorkspace, interviewLocation)
+    const overlaidWorkspace = applyLocationOverlay(liveWorkspace, interviewLocation)
 
     // First message = AI introduces itself; subsequent = skip intro
     const isFirstMessage = currentMessages.length === 0 ||
@@ -796,7 +812,14 @@ export default function InterviewSession() {
       // Writing 'in_progress' here was wrong (same value it already has) and
       // created a race where the fire-and-forget saveMessages could overwrite
       // the 'completed' status set by the generation PATCH.
-      if (isComplete) { patch.session_state = null; patch.paused_at = null }
+      if (isComplete) {
+        patch.session_state = null
+        patch.paused_at = null
+        // Cancel the pending debounced autosave BEFORE dispatching the finalizing
+        // PATCH so it can't race the session_state null-out (last-writer-wins).
+        clearTimeout(sessionSaveTimerRef.current)
+        sessionSaveTimerRef.current = null
+      }
       saveMessages(interviewId, patch)
       // Once the AI declares the interview complete, the local backup has
       // served its purpose. Drop it so a future load doesn't accidentally
@@ -810,11 +833,12 @@ export default function InterviewSession() {
 
     // Speak the clean version (without probe tokens)
     if (!isComplete) speak(stripGapToken(stripAgreementToken(stripContrastToken(cleanText))))
-    // `runtimeWorkspace`, `saveMessages`, and `speak` are stable for the
-    // session: workspace switching reloads the page; saveMessages and speak
-    // are unmemoized helpers re-created each render. Listing them would
-    // defeat useCallback (sendToAI would re-create constantly and re-trigger
-    // every effect that depends on it).
+    // `runtimeWorkspace` is read through `runtimeWorkspaceRef` (synced above) so
+    // sendToAI always sees the latest workspace/locations without listing it as
+    // a dep — listing it would defeat useCallback (a react-query refetch returns
+    // a new workspace object identity, re-creating sendToAI constantly and
+    // re-triggering every effect that depends on it). `saveMessages` and `speak`
+    // are unmemoized helpers re-created each render; same reasoning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staffMember, interviewId, user?.id])
 
