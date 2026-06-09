@@ -76,29 +76,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uhdr-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 
 .uhdr-logo {
-  font-family: var(--sans);
-  font-weight: 700;
-  font-size: 19px;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  display: inline-flex; align-items: center; gap: 10px;
+  display: inline-flex; align-items: center;
+  line-height: 1;
 }
-.uhdr-logo .glyph {
-  display: inline-flex;
-  align-items: center; justify-content: center;
-  width: 30px; height: 30px;
-  background: var(--bg-card);
-  border-radius: 9px;
-  color: var(--coral);
-  font-weight: 700;
-  font-size: 15px;
-  box-shadow: 0 4px 16px -4px rgba(28,77,55,0.35);
-}
-.uhdr-logo .rx {
-  color: var(--coral);
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
+.uhdr-logo img {
+  display: block;
+  height: 36px;
+  width: auto;
 }
 
 .uhdr-nav { display: flex; gap: 28px; font-size: 15px; align-items: center; }
