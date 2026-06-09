@@ -26,7 +26,7 @@ export default function TaskBucketCard({
   highlight = false,
 }) {
   const surface = highlight
-    ? 'rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]'
+    ? 'rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)]'
     : 'rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
   return (
     <div id={id} className={surface}>

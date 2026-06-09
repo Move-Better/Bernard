@@ -81,7 +81,7 @@ export default function Overview() {
 
       {/* "What needs me" banner — role-aware, hides when queue is empty */}
       {showPublisherBanner && readyToDistribute.length > 0 && (
-        <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)] px-5 py-4 flex items-center gap-3">
+        <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)] px-5 py-4 flex items-center gap-3">
           <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-primary" aria-hidden="true" />
           <Inbox className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1 min-w-0">

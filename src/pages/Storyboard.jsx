@@ -48,7 +48,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
   if (readyCount > 0)
     parts.push(`${readyCount} ready to send`)
   return (
-    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)] px-5 py-4 flex items-center gap-3">
+    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)] px-5 py-4 flex items-center gap-3">
       <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-primary" aria-hidden="true" />
       <Inbox className="h-4 w-4 text-primary shrink-0" />
       <div className="flex-1 min-w-0">
@@ -260,7 +260,7 @@ function ReadyCard({ piece }) {
     <div className="relative group">
       <Link
         to={`/storyboard/${piece.id}/publish`}
-        className="block rounded-lg border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(227,101,37,0.3)] hover:-translate-y-0.5"
+        className="block rounded-lg border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(16,185,129,0.3)] hover:-translate-y-0.5"
       >
         <div className="flex items-start justify-between gap-2">
           <Badge variant="outline" className="gap-1 text-2xs">

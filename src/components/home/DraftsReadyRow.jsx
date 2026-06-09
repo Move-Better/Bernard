@@ -47,7 +47,7 @@ export default function DraftsReadyRow({ stories = [] }) {
   const overflow = Math.max(0, pieces.length - visible.length)
 
   return (
-    <div id="review" className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
+    <div id="review" className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)]">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
         <span
           className="inline-block w-1 h-6 rounded-full shrink-0"

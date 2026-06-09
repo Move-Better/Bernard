@@ -45,7 +45,7 @@ function Lane({ lane, items, isPublisherInbox }) {
   // so the "do this now" lane visually pops above the others. Other lanes
   // stay on neutral card surface.
   const surface = isPublisherInbox
-    ? 'border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.25)]'
+    ? 'border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]'
     : 'border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
   return (
     <div className={`rounded-2xl border p-3 ${surface}`}>
@@ -111,7 +111,7 @@ function Card({ item }) {
   return (
     <Link
       to={href}
-      className="block rounded-xl border border-border bg-white p-2.5 text-xs space-y-1.5 transition-all duration-150 hover:-translate-y-0.5 hover:border-[#fde0d2] hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)]"
+      className="block rounded-xl border border-border bg-white p-2.5 text-xs space-y-1.5 transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)]"
     >
       <div className="flex items-center justify-between gap-1.5">
         <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full ${pm.bg}`}>

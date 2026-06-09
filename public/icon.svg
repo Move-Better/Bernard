@@ -1,36 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Logos" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: #6e7072;
-      }
-
-      .cls-1, .cls-2, .cls-3 {
-        stroke-width: 0px;
-      }
-
-      .cls-2 {
-        fill: #000;
-      }
-
-      .cls-3 {
-        fill: #e36525;
-      }
-    </style>
-  </defs>
-  <polygon class="cls-1" points="12.72 10.32 12.64 13.52 14.13 8.6 12.72 10.32"/>
-  <polygon class="cls-3" points="10.94 5.01 11.6 10.31 12.47 7.72 10.94 5.01"/>
-  <polygon class="cls-3" points="2.64 9.03 4.56 9.32 3.03 10.23 2.64 9.03"/>
-  <polygon class="cls-1" points="4.74 13.53 4.4 10.88 6.66 9.53 4.74 13.53"/>
-  <polygon class="cls-1" points="8.53 10.62 8.64 13.52 10.89 8.94 8.53 10.62"/>
-  <polygon class="cls-3" points="6.67 7.09 6.75 7.48 6.83 7.83 7.3 10.09 9.04 8.28 6.67 7.09"/>
-  <g>
-    <polygon class="cls-2" points="7.16 11.08 7.66 13.53 8.01 13.53 7.43 10.72 7.16 11.08"/>
-    <polygon class="cls-2" points="11.92 2.47 11.47 2.47 14.16 7.25 14.16 6.44 11.92 2.47"/>
-    <polygon class="cls-2" points="11.41 11.65 11.63 13.53 11.98 13.53 11.65 10.86 11.41 11.65"/>
-    <polygon class="cls-2" points="2.95 11.09 3.75 13.53 4.12 13.53 3.23 10.84 2.95 11.09"/>
-    <polygon class="cls-2" points="1.84 6.78 1.98 7.21 6.31 7.86 6.22 7.44 1.84 6.78"/>
-    <polygon class="cls-2" points="6.13 4.44 6.24 4.94 10.68 7.18 10.62 6.71 6.13 4.44"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Bernard">
+  <title>Bernard</title>
+  <!-- Emerald rounded-square app mark with the logo's "voiceprint" waveform — NO monogram. -->
+  <!-- Bars are the exact two-hump amplitude envelope from bernard-logo.svg, scaled + centered. -->
+  <rect width="64" height="64" rx="14" fill="#10B981"/>
+  <g fill="#FFFFFF" transform="translate(8,3) scale(0.63)">
+    <rect x="0.00"  y="43.00" width="2.2" height="6"  rx="0"/>
+    <rect x="3.70"  y="44.00" width="2.2" height="4"  rx="0"/>
+    <rect x="7.40"  y="40.50" width="2.2" height="11" rx="0"/>
+    <rect x="11.10" y="36.50" width="2.2" height="19" rx="0"/>
+    <rect x="14.80" y="32.50" width="2.2" height="27" rx="0"/>
+    <rect x="18.50" y="30.00" width="2.2" height="32" rx="0"/>
+    <rect x="22.20" y="31.00" width="2.2" height="30" rx="0"/>
+    <rect x="25.90" y="34.00" width="2.2" height="24" rx="0"/>
+    <rect x="29.60" y="38.00" width="2.2" height="16" rx="0"/>
+    <rect x="33.30" y="39.50" width="2.2" height="13" rx="0"/>
+    <rect x="37.00" y="37.00" width="2.2" height="18" rx="0"/>
+    <rect x="40.70" y="32.50" width="2.2" height="27" rx="0"/>
+    <rect x="44.40" y="28.00" width="2.2" height="36" rx="0"/>
+    <rect x="48.10" y="25.00" width="2.2" height="42" rx="0"/>
+    <rect x="51.80" y="26.50" width="2.2" height="39" rx="0"/>
+    <rect x="55.50" y="30.00" width="2.2" height="32" rx="0"/>
+    <rect x="59.20" y="34.00" width="2.2" height="24" rx="0"/>
+    <rect x="62.90" y="38.00" width="2.2" height="16" rx="0"/>
+    <rect x="66.60" y="41.00" width="2.2" height="10" rx="0"/>
+    <rect x="70.30" y="43.00" width="2.2" height="6"  rx="0"/>
+    <rect x="74.00" y="44.00" width="2.2" height="4"  rx="0"/>
   </g>
 </svg>

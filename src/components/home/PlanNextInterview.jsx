@@ -33,7 +33,7 @@ export default function PlanNextInterview({
   const filteredEmpty = gaps.length === 0
 
   return (
-    <div className="rounded-2xl border border-[#f3d3b5] bg-gradient-to-b from-white to-[#fefaf7] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(227,101,37,0.22)]">
+    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)]">
       <div className="flex flex-col sm:flex-row items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
