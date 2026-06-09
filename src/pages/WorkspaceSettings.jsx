@@ -188,11 +188,10 @@ export default function WorkspaceSettings() {
 
   if (!ws) {
     return (
-      <div className="max-w-3xl mx-auto py-16 text-center space-y-2">
-        <p className="text-muted-foreground text-sm">
-          Workspace settings are only available on the shared Bernard deployment
-          (<code className="font-mono text-xs">*.withbernard.ai</code>).
-        </p>
+      <div className="p-6">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Settings could not load. You may be signed into the wrong organisation — try signing out and back in.
+        </div>
       </div>
     )
   }

@@ -229,7 +229,7 @@ export default function SettingsLayout() {
 
             return (
               <div key={group.label}>
-                <p className="text-3xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
+                <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
                   {group.label}
                 </p>
                 <nav className="space-y-0.5">

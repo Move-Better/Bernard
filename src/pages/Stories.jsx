@@ -214,7 +214,7 @@ export default function Stories() {
           <button
             type="button"
             onClick={clearOwner}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold hover:bg-[hsl(160_70%_92%)] transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold hover:bg-accent transition-colors"
           >
             <User className="h-3 w-3" aria-hidden="true" />
             Mine only
@@ -231,7 +231,7 @@ export default function Stories() {
           <button
             type="button"
             onClick={toggleRealOnly}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold hover:bg-[hsl(160_70%_92%)] transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold hover:bg-accent transition-colors"
           >
             <Mic className="h-3 w-3" aria-hidden="true" />
             Real moments

@@ -1,3 +1,6 @@
+// OWNER_ROLE_COLORS: bg-[#fff7f0] text-[#c04d18] bg-[#fde0d2] border-[#f9c4a8]
+// These are the owner-role accent values. No design token exists yet — tracked in audit-2026-06-09.
+// When a --role-owner token is added to src/index.css, replace these literals.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'

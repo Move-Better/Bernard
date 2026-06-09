@@ -1,5 +1,5 @@
 import { useSearchParams, Link } from 'react-router-dom'
-import { BookOpen, Mic } from 'lucide-react'
+import { Mic } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import StoryCard from './StoryCard'
 import EmptyState from '@/components/EmptyState'
@@ -30,7 +30,7 @@ function SkeletonCard() {
  * @param {{ stories: Array, isLoading: boolean }} props
  */
 export default function StoriesCardsView({ stories = [], isLoading = false }) {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const platformFilter = searchParams.get('platform') || ''
   const stageFilter    = searchParams.get('stage')    || ''
   const locationFilter = searchParams.get('location') || ''
@@ -54,14 +54,28 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
     return true
   })
 
+  const filtersActive = !!(platformFilter || stageFilter || campaignFilter || locationFilter)
+
   if (filtered.length === 0) {
-    if (platformFilter || stageFilter || campaignFilter) {
+    if (filtersActive) {
       return (
-        <EmptyState
-          icon={<BookOpen className="h-5 w-5" />}
-          title="No stories match"
-          description="No stories match the current filters. Try clearing a filter."
-        />
+        <div className="py-16 text-center text-muted-foreground">
+          <p className="text-sm font-medium">No stories match your filters</p>
+          <button
+            type="button"
+            onClick={() => setSearchParams((prev) => {
+              const next = new URLSearchParams(prev)
+              next.delete('platform')
+              next.delete('stage')
+              next.delete('campaign')
+              next.delete('location')
+              return next
+            }, { replace: true })}
+            className="mt-2 text-xs text-primary hover:underline"
+          >
+            Clear filters
+          </button>
+        </div>
       )
     }
 

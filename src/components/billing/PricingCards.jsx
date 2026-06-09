@@ -115,12 +115,12 @@ export default function PricingCards({ currentPlan = 'trial' }) {
               key={plan.id}
               className={`relative rounded-xl border p-6 flex flex-col gap-4 ${
                 isActive
-                  ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-sm'
+                  ? 'border-action bg-action/5 dark:bg-action/10 shadow-sm'
                   : 'border-border bg-card'
               }`}
             >
               {isActive && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-0.5 text-2xs font-semibold text-white uppercase tracking-wide">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-action px-3 py-0.5 text-2xs font-semibold text-white uppercase tracking-wide">
                   Current plan
                 </span>
               )}
@@ -158,7 +158,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
                   </Button>
                 ) : isUpgrade ? (
                   <Button
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                    className="w-full bg-action hover:bg-action/90 text-white"
                     onClick={() => handleUpgrade(plan.priceId, plan.id)}
                     disabled={!!actionLoading}
                   >
@@ -178,7 +178,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
                 ) : (
                   // trial → any plan
                   <Button
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                    className="w-full bg-action hover:bg-action/90 text-white"
                     onClick={() => handleUpgrade(plan.priceId, plan.id)}
                     disabled={!!actionLoading}
                   >

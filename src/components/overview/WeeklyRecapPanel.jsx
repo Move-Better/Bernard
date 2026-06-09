@@ -57,8 +57,8 @@ function RecapBlock({ recap }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100 border-b border-slate-100">
-        <Stat value={stats.wentLive} label="went live" color="#059669" />
-        <Stat value={stats.scheduled} label="scheduled to go out" color="#0284c7" />
+        <Stat value={stats.wentLive} label="went live" color="hsl(var(--success))" />
+        <Stat value={stats.scheduled} label="scheduled to go out" color="#0284c7" /* info accent — no token yet */ />
         <Stat value={stats.waiting} label="waiting on review" color="hsl(var(--primary))" />
         <Stat value={stats.captured} label="new stories captured" color="#334155" />
       </div>
