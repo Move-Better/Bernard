@@ -155,3 +155,11 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 - **Effort:** ~1 week (path 2 below); near-zero if path 1 lands on Buffer's side
 - **Trigger to revisit:** Buffer ships mixed-carousel API support (path 1, check Buffer changelog), OR a clinician specifically asks to combine a clip + photos in one IG post often enough to justify a **direct Instagram Graph API** publish path for IG (path 2 — bypasses Buffer, supports mixed, but needs IG OAuth + long-lived token and loses Buffer's unified scheduling for that channel).
 - **Status:** Parked
+
+## Idea: P1 UI batch — mockup-first design session (from 2026-06-09 audit)
+- **Surfaced:** 2026-06-09 (P1 UI items from /auditfull)
+- **Area:** `src/components/MediaGrid.jsx`, `src/pages/Stories.jsx`, `src/pages/Home.jsx`, `src/pages/NewInterview.jsx`, `src/pages/Onboarding.jsx`
+- **TLDR:** Five P1 UI/IA diffs that need a clickable mock + Q sign-off before any JSX (per "mockup-first" rule): (12) Library thumbnail fallback skeleton/"Processing" state for null `web_blob_url`; (13) Stories filter bar — collapse 5 `<select>`s into a "More filters" popover, surface `capture=real` as a first-class "Real moments" pill; (14) Home — give `DraftsReadyRow` hero weight when it has items, step the other ~7 cards down; (15) New Interview — top-3 `getSuggestedTopics` chips on the empty topic field; (16) Onboarding — defer brand-kit/channels/team, target 3-4 steps to first interview.
+- **Effort:** ~2–3 days (one mock round + sign-off + phased build)
+- **Trigger to revisit:** next dedicated design/UX session, OR a clinician complains about Stories filter clutter / blank Library thumbnails / onboarding drop-off. Source: `.claude/audit-history/2026-06-09-0829-full.md`
+- **Status:** Parked
