@@ -3,7 +3,7 @@
 Playwright smoke that runs **after each merge to `main`** via
 `.github/workflows/e2e.yml`. Waits for the Vercel production deploy, then
 exercises the core interview-create flow + workspace-gated reads on
-`https://movebetter-people.withbernard.ai`.
+`https://movebetter.withbernard.ai`.
 
 Catches the kind of regressions that took down 2026-05-11:
 
@@ -29,7 +29,7 @@ fails, the next step is `vercel rollback` to the prior deploy.
 
 ## Run locally
 
-Local runs go directly against `movebetter-people.withbernard.ai` (prod) by
+Local runs go directly against `movebetter.withbernard.ai` (prod) by
 default. Override with `E2E_BASE_URL` if you want to point at something else
 (local dev, a previously aliased preview, etc.).
 
@@ -53,8 +53,8 @@ MULTITENANT_DATABASE_URL=...   # same value as in your .env.local
 
 | Var | Where | Sensitivity | Used by |
 |---|---|---|---|
-| `E2E_BASE_URL` | optional, defaults `https://movebetter-people.withbernard.ai` | Not sensitive | Playwright `baseURL` |
-| `E2E_WORKSPACE_SLUG` | optional, defaults `movebetter-people` | Not sensitive | seed |
+| `E2E_BASE_URL` | optional, defaults `https://movebetter.withbernard.ai` | Not sensitive | Playwright `baseURL` |
+| `E2E_WORKSPACE_SLUG` | optional, defaults `movebetter` | Not sensitive | seed |
 | `E2E_FIXTURE_STAFF_NAME` | optional, defaults `E2E Smoke Staff` | Not sensitive | seed + spec |
 | `E2E_TEST_USER_EMAIL` | GHA secret | Mildly sensitive | resolving the Clerk user via Backend API |
 | `E2E_TEST_USER_PASSWORD` | GHA secret | **Sensitive** | break-glass / local UI sign-in only — the workflow doesn't use it |
@@ -66,7 +66,7 @@ mirrored to GitHub repo secrets of the same name.
 
 ## Real-prod data caveat
 
-The smoke runs against the actual production `movebetter-people` workspace.
+The smoke runs against the actual production `movebetter` workspace.
 Side effects per run:
 
 - `E2E Smoke Staff` exists permanently in `staff` (seeded
@@ -77,7 +77,7 @@ Side effects per run:
   to time. (Future improvement: auto-prune older test interviews in the
   seed step.)
 
-These rows are visible to anyone with admin access to `movebetter-people`
+These rows are visible to anyone with admin access to `movebetter`
 but contain no real PHI.
 
 ## When the test fails
