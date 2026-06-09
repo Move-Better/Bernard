@@ -20,9 +20,9 @@ Disallow: /mock-dusk-midnight
 Disallow: /mock-dusk-forest
 Disallow: /mock-dusk-parchment
 
-# The signed-in app at workspace subdomains (e.g. <slug>.narraterx.ai) is
+# The signed-in app at workspace subdomains (e.g. <slug>.withbernard.ai) is
 # auth-gated; the same SPA shell serves every workspace path so there is
 # nothing useful to index there. Crawl budget is best spent on apex.
 Disallow: /onboard
 
-Sitemap: https://narraterx.ai/sitemap.xml
+Sitemap: https://withbernard.ai/sitemap.xml

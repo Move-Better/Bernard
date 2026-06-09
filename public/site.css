@@ -1,6 +1,6 @@
 /* ============================================================
-   NarrateRx — production site stylesheet
-   Design: Dusk · Forest (deep evergreen, coral accents)
+   Bernard — production site stylesheet
+   Design: Forest (deep evergreen, emerald accents)
    Covers: shared tokens, home page, and all subpages.
    ============================================================ */
 
@@ -25,13 +25,13 @@
   --grey:      #8fa489;
   --grey-d:    #74896f;
 
-  /* Coral — slightly warm-orange against green */
-  --coral:     #ff8552;
-  --coral-h:   #ffa885;
-  --coral-d:   #d65a32;
+  /* Emerald — bright green accent */
+  --coral:     #10B981;
+  --coral-h:   #34D399;
+  --coral-d:   #059669;
   --sage:      #a8d6a0;
   --sage-d:    #7baa72;
-  --glow:      rgba(255,133,82,0.42);
+  --glow:      rgba(16,185,129,0.38);
 
   --sans:  'Inter', -apple-system, system-ui, sans-serif;
   --serif: 'Source Serif 4', Georgia, serif;
@@ -52,7 +52,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(circle at 85% -5%, rgba(255,133,82,0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% -5%, rgba(16,185,129,0.06) 0%, transparent 45%),
     radial-gradient(circle at -10% 45%, rgba(168,214,160,0.04) 0%, transparent 50%),
     radial-gradient(circle at 50% 110%, rgba(168,214,160,0.03) 0%, transparent 45%);
 }
@@ -253,7 +253,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
+  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -352,7 +352,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   border: 1px solid var(--line-2);
   border-radius: var(--radius-lg);
   padding: 18px;
-  box-shadow: 0 40px 100px -40px rgba(0,0,0,0.70), 0 0 0 1px rgba(255,133,82,0.08);
+  box-shadow: 0 40px 100px -40px rgba(0,0,0,0.70), 0 0 0 1px rgba(16,185,129,0.08);
   position: relative; overflow: hidden;
 }
 .upreview::after {
@@ -472,7 +472,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   display: block;
 }
 .upreview-pane .out .chip {
-  background: rgba(255,133,82,0.14);
+  background: rgba(16,185,129,0.14);
   color: var(--coral);
   padding: 1px 6px;
   border-radius: 4px;
@@ -539,7 +539,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
+  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -572,7 +572,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   content: '';
   position: absolute; inset: -1px;
   border-radius: var(--radius);
-  background: radial-gradient(circle at 100% 0%, rgba(255,133,82,0.18) 0%, transparent 45%);
+  background: radial-gradient(circle at 100% 0%, rgba(16,185,129,0.18) 0%, transparent 45%);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.25s;
@@ -602,7 +602,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .ufeat-icon {
   width: 40px; height: 40px;
   border-radius: 10px;
-  background: rgba(255,133,82,0.12);
+  background: rgba(16,185,129,0.12);
   display: flex; align-items: center; justify-content: center;
   color: var(--coral);
   margin-bottom: 18px;
@@ -621,7 +621,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   margin-bottom: 14px;
 }
 .ufeat-badge.is-live { background: rgba(168,214,160,0.18); color: var(--sage); }
-.ufeat-badge.is-soon { background: rgba(255,133,82,0.12); color: var(--coral); }
+.ufeat-badge.is-soon { background: rgba(16,185,129,0.12); color: var(--coral); }
 
 /* ============================================================
    QUOTE SECTION
@@ -648,7 +648,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uquote::after {
   bottom: -100px; right: 5%;
   width: 280px; height: 280px;
-  background: radial-gradient(circle, rgba(255,133,82,0.10) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 65%);
 }
 .uquote-inner { max-width: 880px; margin: 0 auto; padding: 0 var(--gutter); position: relative; z-index: 2; }
 .uquote-mark {
@@ -710,7 +710,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
+  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -803,7 +803,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
+  background: linear-gradient(135deg, var(--coral) 0%, #6EE7B7 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1097,7 +1097,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   background: var(--coral);
   color: #1c4d37;
 }
-.uvoice-toggle button.is-narraterx.is-active {
+.uvoice-toggle button.is-bernard.is-active {
   background: var(--sage);
   color: #1c4d37;
 }
@@ -1118,11 +1118,11 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   color: var(--grey);
   margin: 0 0 18px;
 }
-.uvoice-panel.is-narraterx h4 { color: var(--sage); }
+.uvoice-panel.is-bernard h4 { color: var(--sage); }
 .uvoice-panel p { color: var(--ink-soft); font-size: 16px; line-height: 1.7; margin: 0 0 14px; }
 .uvoice-panel p:last-of-type { margin-bottom: 0; }
 .uvoice-chip {
-  background: rgba(255,133,82,0.14);
+  background: rgba(16,185,129,0.14);
   color: var(--coral);
   padding: 2px 8px;
   border-radius: 4px;
@@ -1285,8 +1285,8 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   border-bottom: 2px solid var(--line-2);
   white-space: nowrap;
 }
-.ucompare-table th.is-narraterx {
-  background: rgba(255,133,82,0.12);
+.ucompare-table th.is-bernard {
+  background: rgba(16,185,129,0.12);
   color: var(--coral);
   border-bottom-color: var(--coral);
 }
@@ -1512,7 +1512,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   color: var(--coral);
   font-weight: 600;
   letter-spacing: 0.05em;
-  background: rgba(255,133,82,0.06);
+  background: rgba(16,185,129,0.06);
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -1540,9 +1540,9 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-size: 13px;
   flex: 1 1 180px;
 }
-.uatom-chip.is-belief  { background: rgba(255,133,82,0.08); border-color: rgba(255,133,82,0.25); }
+.uatom-chip.is-belief  { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
 .uatom-chip.is-case    { background: rgba(168,214,160,0.08); border-color: rgba(168,214,160,0.25); }
-.uatom-chip.is-condition { background: rgba(255,133,82,0.05); border-color: var(--line); }
+.uatom-chip.is-condition { background: rgba(16,185,129,0.05); border-color: var(--line); }
 .uatom-chip.is-archetype { background: rgba(168,214,160,0.05); border-color: var(--line); }
 .uatom-chip.is-objection { background: rgba(196,214,190,0.08); border-color: var(--line); }
 .uatom-type {
@@ -1585,7 +1585,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-weight: 500;
 }
 .uphrase-chip.is-fresh { background: rgba(168,214,160,0.12); border-color: rgba(168,214,160,0.3); color: var(--ink); }
-.uphrase-chip.is-ok    { background: rgba(255,133,82,0.08); border-color: rgba(255,133,82,0.2); color: var(--ink-soft); }
+.uphrase-chip.is-ok    { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2); color: var(--ink-soft); }
 .uphrase-chip.is-stale { background: rgba(196,214,190,0.04); border-color: var(--line); color: var(--grey); opacity: 0.7; }
 .uphrase-fresh, .uphrase-ok, .uphrase-stale {
   font-size: 10px;
@@ -1596,7 +1596,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   border-radius: 4px;
 }
 .uphrase-fresh { background: rgba(168,214,160,0.2); color: var(--sage); }
-.uphrase-ok    { background: rgba(255,133,82,0.15); color: var(--coral); }
+.uphrase-ok    { background: rgba(16,185,129,0.15); color: var(--coral); }
 .uphrase-stale { background: rgba(255,255,255,0.06); color: var(--grey); }
 .unote { font-size: 13.5px; color: var(--grey); margin-top: 14px; text-align: center; }
 
@@ -1808,8 +1808,8 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
    DEMO WIDGET — real-app look
    Overrides the dark-green .upreview styles for any widget that
    carries [data-demo]. Looks like a macOS screen recording of the
-   actual NarrateRx app: light OS chrome + the real app palette
-   (cool-paper bg, white cards, slate borders, orange brand).
+   actual Bernard app: light OS chrome + the real app palette
+   (cool-paper bg, white cards, slate borders, emerald brand).
    ============================================================ */
 
 /* Drop the marketing-site glow/shadow box; give it a neutral lift. */
@@ -1855,7 +1855,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   color: #6b7280;      /* slate-500 */
   font-size: 12.5px;
 }
-.upreview[data-demo] .upreview-bar .urlbar .path { color: #e36525; } /* app orange */
+.upreview[data-demo] .upreview-bar .urlbar .path { color: #10B981; } /* app orange */
 
 /* Body: white divider between the two panes */
 .upreview[data-demo] .upreview-body {
@@ -1869,7 +1869,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 
 /* Left pane — interview question */
 .upreview[data-demo] .upreview-pane .h {
-  color: #e36525;       /* orange primary */
+  color: #10B981;       /* orange primary */
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1903,7 +1903,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   content: 'You';
   position: absolute;
   top: -10px; left: 14px;
-  background: #e36525;
+  background: #10B981;
   color: #fff;
   font-size: 9.5px;
   font-weight: 700;
@@ -1926,9 +1926,9 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-weight: 500;
 }
 .upreview[data-demo] .upreview-tabs span.is-on {
-  background: #e36525;
+  background: #10B981;
   color: #fff;
-  border-color: #e36525;
+  border-color: #10B981;
   font-weight: 600;
 }
 .upreview[data-demo] .upreview-tabs span[data-tab] {
@@ -1936,11 +1936,11 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   transition: all 0.15s ease;
 }
 .upreview[data-demo] .upreview-tabs span[data-tab]:hover:not(.is-on) {
-  border-color: #e36525;
+  border-color: #10B981;
   color: #374151;
 }
 .upreview[data-demo] .upreview-tabs span[data-tab]:focus-visible {
-  outline: 2px solid #e36525;
+  outline: 2px solid #10B981;
   outline-offset: 2px;
 }
 
@@ -1985,7 +1985,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   width: 2px; height: 1.05em;
   margin-left: 2px;
   vertical-align: -2px;
-  background: #e36525;
+  background: #10B981;
   animation: udemoBlink 0.9s steps(1) infinite;
 }
 @keyframes udemoBlink { 50% { opacity: 0; } }
@@ -1999,7 +1999,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 
 /* Status label inherits app colours */
 .upreview[data-demo] [data-demo-status] {
-  color: #e36525;
+  color: #10B981;
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;

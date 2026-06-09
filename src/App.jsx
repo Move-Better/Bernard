@@ -704,7 +704,7 @@ function ProtectedApp() {
         <SignIn
           appearance={{
             layout: {
-              logoImageUrl: '/narraterx-logo.svg',
+              logoImageUrl: '/bernard-logo.svg',
               logoPlacement: 'inside',
             },
             elements: {

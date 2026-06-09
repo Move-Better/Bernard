@@ -39,7 +39,7 @@ const PEOPLE = {
   regionShort: 'PNW',
 
   // Visual identity
-  logo: { main: '/logo.svg', icon: '/icon.svg' },
+  logo: { main: '/bernard-logo.svg', icon: '/bernard-icon.svg' },
   colors: { primary: '#E36525', grey: '#6E7072' },
   socialAvatarInitials: 'MB',
   linkPreviewBlurb: 'Movement-first care for lasting pain relief.',
@@ -168,7 +168,7 @@ const EQUINE = {
 
   // Visual identity. Logo paths resolve from each deployment's public/ — the
   // equine-branded SVGs will replace the default ones in Move Better Equine/public/.
-  logo: { main: '/logo.svg', icon: '/icon.svg' },
+  logo: { main: '/bernard-logo.svg', icon: '/bernard-icon.svg' },
   colors: { primary: '#E36525', grey: '#6E7072' },
   socialAvatarInitials: 'MBE',
   linkPreviewBlurb: 'Mobile equine chiropractic care across Southwest Washington and the greater Portland area — restoring movement, balance, and comfort for horses.',
@@ -267,7 +267,7 @@ const ANIMALS = {
 
   // Visual identity. Logos reuse the Move Better marks per brand-owner direction —
   // public/ in this deployment will hold the same SVGs as the human deployment.
-  logo: { main: '/logo.svg', icon: '/icon.svg' },
+  logo: { main: '/bernard-logo.svg', icon: '/bernard-icon.svg' },
   colors: { primary: '#E36525', grey: '#6E7072' },
   socialAvatarInitials: 'MBA',
   linkPreviewBlurb: 'AVCA-certified animal chiropractic in Portland and Vancouver — gentle adjustments for dogs, cats, and small animals.',

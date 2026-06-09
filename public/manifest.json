@@ -1,7 +1,7 @@
 {
-  "name": "NarrateRx",
-  "short_name": "NarrateRx",
-  "description": "Capture clinic moments. Your next patient is already watching.",
+  "name": "Bernard",
+  "short_name": "Bernard",
+  "description": "You talk. It does the rest. Turn a short interview into a week of patient-facing content in your voice.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,7 +10,7 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/narraterx-icon.svg",
+      "src": "/bernard-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -23,7 +23,7 @@
       "short_name": "Capture",
       "description": "Upload a photo or video",
       "url": "/capture",
-      "icons": [{ "src": "/narraterx-icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "/bernard-icon.svg", "sizes": "any" }]
     }
   ]
 }

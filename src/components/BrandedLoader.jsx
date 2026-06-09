@@ -31,8 +31,8 @@ export default function BrandedLoader({
     >
       <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
         <img
-          src="/narraterx-logo.svg"
-          alt="NarrateRx"
+          src="/bernard-logo.svg"
+          alt="Bernard"
           className="h-10 w-auto opacity-90"
           onError={(e) => { e.currentTarget.style.display = 'none' }}
         />
