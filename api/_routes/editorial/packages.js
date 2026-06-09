@@ -75,7 +75,7 @@ export default async function handler(req, res) {
   // compact { done, total } below rather than shipping the raw rows.
   query += `&select=id,topic,caption_text,similarity,channels,renders,status,error_message,created_at,source_asset_id,staff_id,campaign_id,voice_fidelity_score,voice_fidelity_breakdown,auto_publish_state,auto_published_at,source_asset:media_assets(consent_status,consent_notes),campaign:campaigns(id,name,content_style,event_at),story_package_chunks(status)`
   if (status) query += `&status=eq.${status}`
-  if (staffId) query += `&staff_id=eq.${staffId}`
+  if (staffId) query += `&staff_id=eq.${encodeURIComponent(staffId)}`
 
   const dbRes = await sb(query)
   if (!dbRes.ok) return res.status(500).json({ error: 'db_error' })

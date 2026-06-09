@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     const topicEscaped = topic.replace(/%/g, '\\%').replace(/_/g, '\\_')
     let qs = `interviews?${wsFilter}&topic=ilike.${encodeURIComponent(topicEscaped)}&status=eq.completed`
     qs += `&select=id,topic,messages,created_at,staff(name)`
-    if (excludeId) qs += `&id=neq.${excludeId}`
+    if (excludeId) qs += `&id=neq.${encodeURIComponent(excludeId)}`
     qs += `&order=created_at.desc&limit=3`
 
     const r = await sb(qs)
