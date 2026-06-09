@@ -45,12 +45,23 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase env not configured' })
   }
 
+  // Scope to active workspaces only
+  const wsRes = await sb('workspaces?status=eq.active&select=id')
+  if (!wsRes.ok) {
+    console.error('[resume-longform] workspace fetch failed:', wsRes.status)
+    return res.status(500).json({ error: 'workspace_fetch_failed' })
+  }
+  const wsRows = await wsRes.json().catch(() => [])
+  const activeWsIds = (Array.isArray(wsRows) ? wsRows : []).map(w => w.id)
+  if (!activeWsIds.length) return res.status(200).json({ resumed: 0, note: 'no_active_workspaces' })
+  const wsIdFilter = `&workspace_id=in.(${activeWsIds.map(id => `"${id}"`).join(',')})`
+
   const staleBefore = new Date(Date.now() - STALL_THRESHOLD_MS).toISOString()
 
   // Step 1: package_ids that have a stalled (no recent activity), not-yet-done
   // piece. Two plain queries instead of a PostgREST embed-filter — more robust.
   const r = await sb(
-    `story_package_chunks?status=in.(pending,rendering)&updated_at=lt.${staleBefore}&select=package_id`,
+    `story_package_chunks?status=in.(pending,rendering)&updated_at=lt.${staleBefore}${wsIdFilter}&select=package_id`,
   )
   if (!r.ok) {
     const text = await r.text().catch(() => '')
@@ -65,7 +76,7 @@ export default async function handler(req, res) {
   let packageIds = []
   if (candidateIds.length) {
     const inList = candidateIds.map((id) => `"${id}"`).join(',')
-    const pr = await sb(`story_packages?id=in.(${inList})&status=eq.generating&select=id`)
+    const pr = await sb(`story_packages?id=in.(${inList})&status=eq.generating${wsIdFilter}&select=id`)
     if (!pr.ok) {
       const text = await pr.text().catch(() => '')
       console.error('[resume-longform] package query failed:', pr.status, text)

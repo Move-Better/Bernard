@@ -50,13 +50,24 @@ export default async function handler(req, res) {
 
   const cutoff = new Date(Date.now() - STUCK_THRESHOLD_MS).toISOString()
 
+  // Fetch active workspace IDs so the sweep is scoped to known tenants
+  const wsRes = await sb('workspaces?status=eq.active&select=id')
+  if (!wsRes.ok) {
+    console.error('[sweep-stuck-seminars] workspace fetch failed:', wsRes.status)
+    return res.status(500).json({ error: 'workspace_fetch_failed' })
+  }
+  const workspaces = await wsRes.json().catch(() => [])
+  const activeIds = (Array.isArray(workspaces) ? workspaces : []).map(w => w.id)
+  if (!activeIds.length) return res.status(200).json({ swept: 0, note: 'no_active_workspaces' })
+  const wsFilter = `&workspace_id=in.(${activeIds.map(id => `"${id}"`).join(',')})`
+
   // Single guarded PATCH: every row still 'processing' whose updated_at predates
   // the cutoff flips to 'failed'. The updated_at filter is the staleness check
   // (the row's last write was its creation, since nothing touches it mid-job);
   // the transcribe_status filter is the cooperative guard. return=representation
   // gives us the swept rows so we can report the count.
   const r = await sb(
-    `interviews?transcribe_status=eq.processing&updated_at=lt.${cutoff}`,
+    `interviews?transcribe_status=eq.processing&updated_at=lt.${cutoff}${wsFilter}`,
     {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
