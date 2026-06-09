@@ -238,6 +238,7 @@ Three project-specific rules bite hard if you don't know them:
 - **`bernard/no-arbitrary-text-size`** — prohibits `text-[10px]`, `text-[11px]`, etc. Use the semantic tokens instead: `text-3xs` (10px) or `text-2xs` (11px). Lint will error at 0-warnings-allowed; the fix is a global replace before committing.
 - **`bernard/no-raw-use-mutation`** — use `useAppMutation` not raw TanStack `useMutation`.
 - **`bernard/no-raw-api-fetch`** — use `apiFetch`/`apiFetchResponse`, never bare `fetch('/api/...')`.
+- **`bernard/no-hardcoded-brand-color`** — bans retired brand-color *literals* (Move-Better orange `#e36525` / hue-20 `hsl(20 …)` / `rgb(227,101,37)`, grey `#6e7072`, evergreen `#1c4d37`, coral `#ff8552`) anywhere in a `src` JS/JSX string. Use the design tokens instead: `bg-primary`/`text-primary`/`hsl(var(--primary))` (emerald brand), `bg-action`/`hsl(var(--action))` (amber act-now signal) — defined in `src/index.css` + `src/lib/brand.js` (the single JS-side brand source). Added #1297 after the #1294 repaint was a multi-file hunt; it immediately caught a `#E36525` a case-sensitive grep had missed. For a genuinely-intentional exception, `eslint-disable-next-line bernard/no-hardcoded-brand-color` with a reason.
 
 ## Template literal backticks in `src/lib/prompts.js`
 
@@ -332,6 +333,8 @@ PRs need to merge close to when they're opened, not batch-stacked indefinitely. 
 4. **Same-file overlap = base on the older PR, not main.** Before opening a follow-up PR, check whether your next branch touches a file an open PR also touches (`gh pr diff <num> --name-only` per open PR). If yes, base it on that PR's branch (`git fetch && git checkout -b <next> origin/<open-pr-branch>`) instead of `origin/main`. Otherwise the older PR is guaranteed to conflict when the newer ones land first, and auto-merge silently stalls — you only notice when someone asks "did it ship?". Cheaper to base correctly than to rebase three files of conflicts later. (Lesson from the 2026-05-19 approve-flow stack: PRs B/C/E/F all touched `AssetsPane.jsx`; PR D opened mid-stack stalled on a three-way conflict because E/F merged first.)
 
 5. **Check for merged-while-you-worked PRs.** Before the next feature branch, run `gh pr list --state merged --search 'merged:>=<session-start-iso>'`. Catches the case where a parallel agent shipped overlapping work — surfaces conflicts in seconds instead of at end-of-session.
+
+5b. **Don't spawn a follow-up chip for work you then do yourself the same session.** A `spawn_task` chip the user clicks becomes its own parallel session — if you *also* implement that same work, you've guaranteed a same-file conflict between two PRs. 2026-06-09: a chip spawned for the "act-now hue" decision got spun off and shipped #1295 (amber as raw literals) while this session shipped #1297 (amber as the `--action` token) touching the same 3 files — forcing a rebase + `--force-with-lease`. Mine superseded theirs cleanly, but the collision was self-inflicted. Rule: if you decide to do the deferred work yourself, `dismiss_task` the chip FIRST (it only works while still pending — once the user clicks it, you can't withdraw it and must rebase onto whatever it ships). Spawn a chip only for work you are NOT going to touch.
 
 5. **If two agents share a worktree, neither owns it.** When you discover you're not alone in the working tree (a `git branch --show-current` shows an unfamiliar branch, untracked files you didn't create appear, your edits get reverted between an Edit and the next Read, or `git status` shows a divergent branch), do NOT keep editing in place. Stash your work, create a fresh branch off `origin/main`, and pop the stash there. If files were reverted before you could stash, cherry-pick your commit onto a clean branch from `origin/main` instead. Do not push commits to a branch the other agent appears to own — that's how PRs end up containing a mix of work that shouldn't ship together.
 
@@ -460,6 +463,8 @@ Quick grep:
 ```
 grep -rn "bg-success/\|text-success\|bg-blue-50\|text-blue-700\|bg-info" src
 ```
+
+**Hex sweeps MUST be case-insensitive (`grep -ri`).** Hex appears in both cases (`#e36525` vs `#E36525`), and a case-sensitive `grep -o "...e36525..."` silently misses the uppercase ones. The #1294 emerald repaint's final-inventory greps were case-sensitive and left a live `#E36525` brand-accent fallback in `StoryboardPiece.jsx` — caught only later by the `bernard/no-hardcoded-brand-color` lint rule (which is case-insensitive). After any color sweep, re-grep with `-i`, and lean on the lint rule as the real backstop rather than a hand-rolled grep.
 
 After fixing, sanity check by clicking through every major surface (Home, Stories, Library, Settings + subpages, Account) in one sitting and watching for any color that doesn't belong to the new identity. Cross-page review catches what per-page review misses.
 
