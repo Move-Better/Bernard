@@ -34,7 +34,7 @@ default. Override with `E2E_BASE_URL` if you want to point at something else
 (local dev, a previously aliased preview, etc.).
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && \
+cd "/Users/qbook/Claude Projects/Bernard" && \
   set -a && source .env.e2e.local && set +a && \
   npm run e2e:install && \
   npm run e2e:seed && \

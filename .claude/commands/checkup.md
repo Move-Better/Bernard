@@ -1,5 +1,5 @@
 ---
-description: Run a structured health check of the NarrateRx app — static checks, tests, code review of recent changes, and prod health. Subcommands: quick / ui / full.
+description: Run a structured health check of the Bernard app — static checks, tests, code review of recent changes, and prod health. Subcommands: quick / ui / full.
 ---
 
 Run a structured app checkup and produce a **Green / Yellow / Red** report. Auto-fix trivial issues; report the rest.
@@ -157,11 +157,11 @@ Confirm prod aliases:
 vercel ls --prod | head -3
 ```
 
-The latest prod deployment should be aliased to `narraterx.ai` and `*.narraterx.ai`. If not → 🔴.
+The latest prod deployment should be aliased to `withbernard.ai` and `*.withbernard.ai`. If not → 🔴.
 
 Hit prod from a browser:
-- `https://narraterx.ai/` — loads, no console errors
-- `https://movebetter-people.narraterx.ai/` — loads, no console errors
+- `https://withbernard.ai/` — loads, no console errors
+- `https://movebetter-people.withbernard.ai/` — loads, no console errors
 
 ---
 

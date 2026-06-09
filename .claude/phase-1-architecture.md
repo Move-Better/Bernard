@@ -4,7 +4,7 @@ _Drafted 2026-05-27. Phase 1 of the 30-day video output build. See `.claude/deve
 
 ## Goal
 
-Get continuous iPhone-based capture (photos + videos) flowing from Move Better's clinic into NarrateRx's blob store, auto-tagged, indexed in visual practice memory, and ready for Phase 2's editorial AI to retrieve. Clinician/Producer touchpoint: open Shortcut → tap mic/camera → done. Everything else automatic.
+Get continuous iPhone-based capture (photos + videos) flowing from Move Better's clinic into Bernard's blob store, auto-tagged, indexed in visual practice memory, and ready for Phase 2's editorial AI to retrieve. Clinician/Producer touchpoint: open Shortcut → tap mic/camera → done. Everything else automatic.
 
 ## Build philosophy
 
@@ -134,7 +134,7 @@ See `.claude/runbooks/capture-companion-ios-shortcut.md` for the click-by-click 
 
 ## What Phase 1 does NOT do
 
-- **No new UI in NarrateRx app yet.** That's Phase 3. For now, Capture Companion uploads → media library → Producer can see them via existing media library UI.
+- **No new UI in Bernard app yet.** That's Phase 3. For now, Capture Companion uploads → media library → Producer can see them via existing media library UI.
 - **No backfill of historical media into visual_memory_chunks.** That's a separate one-off script (Day 4 in the roadmap). Will be `scripts/backfill-visual-memory.mjs`.
 - **No Story Director surface.** That's Phase 3.
 - **No editorial AI / clip-pull.** That's Phase 2.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Weekly watchdog for the NarrateRx auto-memory INDEX (MEMORY.md).
+# Weekly watchdog for the Bernard auto-memory INDEX (MEMORY.md).
 #
 # MEMORY.md is auto-loaded into every Claude session and has a hard ~24.4KB
 # cap — over it, tail entries silently truncate and recall is lost. This job
@@ -19,14 +19,14 @@
 # growth slow enough that this watchdog rarely needs to fire.
 #
 # Opt-in to true unattended consolidation (only if you accept the trade-off):
-#   cd "/Users/qbook/Claude Projects/NarrateRx" \
+#   cd "/Users/qbook/Claude Projects/Bernard" \
 #     && claude -p "/consolidate-memory" --permission-mode bypassPermissions --model sonnet --max-budget-usd 2
 #
-# Installed via launchd: ~/Library/LaunchAgents/com.narraterx.memory-maintenance.plist
+# Installed via launchd: ~/Library/LaunchAgents/com.bernard.memory-maintenance.plist
 # Manual run / smoke test:  bash scripts/memory-maintenance.sh
 set -uo pipefail
 
-MEM_DIR="/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory"
+MEM_DIR="/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory"
 MEM="$MEM_DIR/MEMORY.md"
 BAK_DIR="$MEM_DIR/.backups"
 SOFT_LIMIT=22000     # notify above this many bytes
@@ -34,7 +34,7 @@ HARD_CAP=24400       # the auto-loader truncates above this
 KEEP_BACKUPS=8
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
-notify() { /usr/bin/osascript -e "display notification \"$1\" with title \"NarrateRx memory\"" >/dev/null 2>&1 || true; }
+notify() { /usr/bin/osascript -e "display notification \"$1\" with title \"Bernard memory\"" >/dev/null 2>&1 || true; }
 
 [ -f "$MEM" ] || { echo "[mem] $(ts) ERROR: MEMORY.md not found at $MEM"; exit 1; }
 mkdir -p "$BAK_DIR"

@@ -1,5 +1,5 @@
 ---
-description: Full-codebase multi-agent deep audit of NarrateRx — bug-hunter + tenant-isolation-auditor + ui-reviewer review the entire codebase (no since-last scoping), then synthesize a prioritized punch list and spawn fix-task chips for P0s. Higher cost and time than /audit; use before a release or for a quarterly baseline.
+description: Full-codebase multi-agent deep audit of Bernard — bug-hunter + tenant-isolation-auditor + ui-reviewer review the entire codebase (no since-last scoping), then synthesize a prioritized punch list and spawn fix-task chips for P0s. Higher cost and time than /audit; use before a release or for a quarterly baseline.
 ---
 
 Run a structured multi-agent **full-codebase** audit and produce a prioritized punch list. Identical to `/audit` except all three agents sweep the entire codebase — no `.last-audit` scoping. Use this when you want a baseline (before a release, after a long autonomous sprint, or when you suspect a previous since-last run missed something).
@@ -51,7 +51,7 @@ Then dispatch the three agents in one message:
 ### Agent 1 — bug-hunter
 - **Scope**: full sweep — every file under `src/` and `api/`, skipping `node_modules`, `dist`, `.claude/worktrees`
 - **Prompt template**:
-  > Hunt for bugs across the entire NarrateRx codebase. Look for logic errors, edge cases, race conditions, state bugs, and unsafe assumptions. Do NOT report style or formatting issues.
+  > Hunt for bugs across the entire Bernard codebase. Look for logic errors, edge cases, race conditions, state bugs, and unsafe assumptions. Do NOT report style or formatting issues.
   >
   > Scope: full sweep — every file under `src/` and `api/`, skipping `node_modules`, `dist`, `.claude/worktrees`. Walk the codebase systematically; don't try to read every file but use `grep` for common bug patterns.
   >
@@ -67,7 +67,7 @@ Then dispatch the three agents in one message:
 ### Agent 2 — tenant-isolation-auditor
 - **Scope**: every file under `api/` recursively
 - **Prompt template**:
-  > Audit every NarrateRx API handler for tenant-isolation gaps. Cross-workspace data leaks are 🔴 critical — this is enforced at the API layer (no RLS), so every handler that reads or writes a tenant-scoped table MUST call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`.
+  > Audit every Bernard API handler for tenant-isolation gaps. Cross-workspace data leaks are 🔴 critical — this is enforced at the API layer (no RLS), so every handler that reads or writes a tenant-scoped table MUST call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`.
   >
   > Scope: every file under `api/` recursively. Audit each handler — do not skip files just because they look familiar; this is a baseline pass.
   >
@@ -78,7 +78,7 @@ Then dispatch the three agents in one message:
 ### Agent 3 — ui-reviewer
 - **Scope**: full app, all major screens (same as `/audit` — visual drift is always cumulative)
 - **Prompt template**:
-  > Review the NarrateRx UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in CLAUDE.md "Brand-color refresh checklist".
+  > Review the Bernard UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in CLAUDE.md "Brand-color refresh checklist".
   >
   > Major screens: Home (`/`), Stories (`/stories`), StoryDetail (`/stories/:id`), Library / MediaHub, Settings (workspace, brand kit, channels, locations), Account, New Interview, Interview Session.
   >
@@ -140,7 +140,7 @@ Fix the P0 audit finding from <audit report path>:
 <verbatim finding text from the punch list>
 
 Context: spawned by /auditfull on <date>. Start by cd-ing into a fresh worktree:
-  cd "/Users/qbook/Claude Projects/NarrateRx" && bash scripts/new-session-worktree.sh fix-<short-slug>
+  cd "/Users/qbook/Claude Projects/Bernard" && bash scripts/new-session-worktree.sh fix-<short-slug>
 Then make the change, commit, push, and open a PR with auto-merge.
 ```
 

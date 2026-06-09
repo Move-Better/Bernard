@@ -1,5 +1,5 @@
 /* ============================================================
-   NarrateRx — site.js
+   Bernard — site.js
    No build step, no deps. Shared across all marketing pages.
    ============================================================ */
 (function () {
@@ -130,7 +130,7 @@
 
   /* ---- 9. Interactive demo (.upreview[data-demo]) ------------ */
   // Shows the core "trick" right on the page: a real interview answer types
-  // out, NarrateRx "writes", and a finished post appears. Channel tabs swap
+  // out, Bernard "writes", and a finished post appears. Channel tabs swap
   // the same idea between Blog / Social / Email / Google. Pure vanilla JS,
   // honors prefers-reduced-motion (jumps straight to the finished state).
   (function initDemo() {

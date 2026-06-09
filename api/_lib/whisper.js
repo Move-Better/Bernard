@@ -1,9 +1,9 @@
 /**
- * @movebetter/transcribe — NarrateRx copy
+ * @movebetter/transcribe — api/_lib copy
  *
- * Shared transcription layer used by both NarrateRx and Bernard.
+ * Shared transcription layer, mirrored in packages/transcribe/index.js.
  * Provider swaps (e.g. Whisper → AssemblyAI diarization) happen here
- * and in Bernard's packages/transcribe/index.js in tandem.
+ * and in packages/transcribe/index.js in tandem.
  *
  * TODO: once Move-Better repos are consolidated into a monorepo, replace
  * this file with: import { transcribeToSrt, transcribeToSegments } from '@movebetter/transcribe'

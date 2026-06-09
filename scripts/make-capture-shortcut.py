@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Generates the NarrateRx Capture.shortcut file.
+Generates the Bernard Capture.shortcut file.
 
 Usage:
     python3 scripts/make-capture-shortcut.py --token cct_YOUR_TOKEN
 
 Output:
-    ~/Desktop/NarrateRx Capture.shortcut  (signed, ready to double-click)
+    ~/Desktop/Bernard Capture.shortcut  (signed, ready to double-click)
 
 Then: right-click the shortcut → Share → Copy iCloud Link
 Paste that URL into VITE_SHORTCUT_INSTALL_URL in Vercel.
@@ -308,7 +308,7 @@ def build(token=None, distributable=False):
     token         — bake this token in (personal single-user shortcut).
     distributable — instead of baking a token, prepend a Text action whose
                     content is filled by an Apple import question at install
-                    time ("Paste your NarrateRx upload token"), stored in a
+                    time ("Paste your Bernard upload token"), stored in a
                     `Token` variable. Every installer supplies their own token,
                     so uploads attribute to them. One published link, many users.
     """
@@ -326,7 +326,7 @@ def build(token=None, distributable=False):
             'ParameterKey': 'WFTextActionText',
             'Category': 'Parameter',
             'ActionIndex': 0,
-            'Text': 'Paste your NarrateRx upload token (Capture page → Get iOS Shortcut)',
+            'Text': 'Paste your Bernard upload token (Capture page → Get iOS Shortcut)',
             'DefaultValue': '',
         })
         auth_header = lambda: prefix_named_var('Bearer ', 'Token')
@@ -350,7 +350,7 @@ def build(token=None, distributable=False):
     upload_info_uuid = uid()
     actions.append(a_http_post_json(
         upload_info_uuid,
-        'https://narraterx.ai/api/capture/upload-url',
+        'https://withbernard.ai/api/capture/upload-url',
         header_pairs=[
             ('Authorization', auth_header()),
             ('Content-Type', text_token('application/json')),
@@ -393,7 +393,7 @@ def build(token=None, distributable=False):
     reg_uuid = uid()
     actions.append(a_http_post_json(
         reg_uuid,
-        'https://narraterx.ai/api/capture/register',
+        'https://withbernard.ai/api/capture/register',
         header_pairs=[
             ('Authorization', auth_header()),
             ('Content-Type', text_token('application/json')),
@@ -405,7 +405,7 @@ def build(token=None, distributable=False):
         ],
     ))
 
-    actions.append(a_notify('NarrateRx', 'Uploaded ✓'))
+    actions.append(a_notify('Bernard', 'Uploaded ✓'))
 
     return {
         'WFWorkflowActions': actions,
@@ -425,7 +425,7 @@ def build(token=None, distributable=False):
 
 
 def main():
-    p = argparse.ArgumentParser(description='Generate NarrateRx Capture.shortcut')
+    p = argparse.ArgumentParser(description='Generate Bernard Capture.shortcut')
     p.add_argument('--token', help='Bake in this capture upload token (cct_...). Personal single-user shortcut.')
     p.add_argument('--distributable', action='store_true',
                    help='No baked-in token. Asks each installer for their own token via an Apple import '
@@ -434,7 +434,7 @@ def main():
 
     if args.distributable:
         data = build(distributable=True)
-        out_name = 'NarrateRx Capture.shortcut'
+        out_name = 'Bernard Capture.shortcut'
     else:
         if not args.token:
             print('Error: pass --token cct_... (personal) or --distributable (team install).')
@@ -443,10 +443,10 @@ def main():
             print('Error: token must start with cct_  — generate one at /capture in the app.')
             sys.exit(1)
         data = build(token=args.token)
-        out_name = 'NarrateRx Capture.shortcut'
+        out_name = 'Bernard Capture.shortcut'
 
-    xml_tmp = Path('/tmp/narraterx_capture.plist')
-    unsigned = Path('/tmp/NarrateRx Capture (unsigned).shortcut')
+    xml_tmp = Path('/tmp/bernard_capture.plist')
+    unsigned = Path('/tmp/Bernard Capture (unsigned).shortcut')
     out = Path.home() / 'Desktop' / out_name
 
     with open(xml_tmp, 'wb') as f:

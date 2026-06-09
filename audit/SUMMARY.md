@@ -11,16 +11,16 @@
 
 | PR | Phase | Commit | Changes |
 |---|---|---|---|
-| [#295](https://github.com/Move-Better/NarrateRx/pull/295) | CI / Phase 0 | `0e4bc03d` | ESLint flat config + lint gate in pr.yml |
-| [#296](https://github.com/Move-Better/NarrateRx/pull/296) | UX / Phase 1 | `aa337460` | 8 UX fixes (empty states, error messages, loading states) |
-| [#297](https://github.com/Move-Better/NarrateRx/pull/297) | Code Quality / Phase 2 | `64063d79` | Unused imports, dead code, findings doc |
-| [#298](https://github.com/Move-Better/NarrateRx/pull/298) | Security / Phase 3 | `dd514c6f` | Security headers in vercel.json, tighter iframe sandbox |
-| [#299](https://github.com/Move-Better/NarrateRx/pull/299) | Performance / Phase 4 | `069abe81` | Route splitting (14 lazy routes), lazy images, Dashboard memoization |
-| [#300](https://github.com/Move-Better/NarrateRx/pull/300) | Accessibility / Phase 5 | `cce6e8ce` | aria-live, audio keyboard controls, carousel labels, heading nav |
-| [#301](https://github.com/Move-Better/NarrateRx/pull/301) | Responsive / Phase 6 | `bf077944` | Mobile overflow, tap targets, table scroll, grid stacking |
-| [#302](https://github.com/Move-Better/NarrateRx/pull/302) | Forms / Phase 7 | `42dff9cb` | autoComplete attrs, type=url, input labeling |
-| [#303](https://github.com/Move-Better/NarrateRx/pull/303) | SEO / Phase 8 | `6af9f7a3` | Document titles (5 pages), robots.txt, og:url, twitter:image:alt |
-| [#304](https://github.com/Move-Better/NarrateRx/pull/304) | Functionality / Phase 9 | `ee1aa96a` | JSON parse guard, AI response null guard |
+| [#295](https://github.com/Move-Better/Bernard/pull/295) | CI / Phase 0 | `0e4bc03d` | ESLint flat config + lint gate in pr.yml |
+| [#296](https://github.com/Move-Better/Bernard/pull/296) | UX / Phase 1 | `aa337460` | 8 UX fixes (empty states, error messages, loading states) |
+| [#297](https://github.com/Move-Better/Bernard/pull/297) | Code Quality / Phase 2 | `64063d79` | Unused imports, dead code, findings doc |
+| [#298](https://github.com/Move-Better/Bernard/pull/298) | Security / Phase 3 | `dd514c6f` | Security headers in vercel.json, tighter iframe sandbox |
+| [#299](https://github.com/Move-Better/Bernard/pull/299) | Performance / Phase 4 | `069abe81` | Route splitting (14 lazy routes), lazy images, Dashboard memoization |
+| [#300](https://github.com/Move-Better/Bernard/pull/300) | Accessibility / Phase 5 | `cce6e8ce` | aria-live, audio keyboard controls, carousel labels, heading nav |
+| [#301](https://github.com/Move-Better/Bernard/pull/301) | Responsive / Phase 6 | `bf077944` | Mobile overflow, tap targets, table scroll, grid stacking |
+| [#302](https://github.com/Move-Better/Bernard/pull/302) | Forms / Phase 7 | `42dff9cb` | autoComplete attrs, type=url, input labeling |
+| [#303](https://github.com/Move-Better/Bernard/pull/303) | SEO / Phase 8 | `6af9f7a3` | Document titles (5 pages), robots.txt, og:url, twitter:image:alt |
+| [#304](https://github.com/Move-Better/Bernard/pull/304) | Functionality / Phase 9 | `ee1aa96a` | JSON parse guard, AI response null guard |
 
 ---
 
@@ -143,7 +143,7 @@
 
 4. **Add retry buttons** on InterviewOutput + Dashboard error states (UX-E3, UX-E5) — currently errors are terminal; a retry gives users recovery without a page reload. ~1 hour.
 
-5. **Create 1200×630 PNG social share image** (SEO-04) — any social share of `narraterx.ai` currently shows a broken image on Facebook/LinkedIn. Quick design + 2-line `index.html` update.
+5. **Create 1200×630 PNG social share image** (SEO-04) — any social share of `withbernard.ai` currently shows a broken image on Facebook/LinkedIn. Quick design + 2-line `index.html` update.
 
 ---
 

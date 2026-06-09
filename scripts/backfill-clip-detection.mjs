@@ -27,13 +27,13 @@
 // Vercel AI gateway):
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY   (from .env.local)
 //   AI_GATEWAY_API_KEY                   (from .env.local)
-//   OPENAI_API_KEY                       (from the 1Password narraterx-local mount)
+//   OPENAI_API_KEY                       (from the 1Password bernard-local mount)
 //
 // Usage (from this worktree) — note we source BOTH env files; the 1Password mount
 // supplies OPENAI_API_KEY which .env.local lacks:
 //   set -a \
-//     && source "/Users/qbook/Claude Projects/NarrateRx/.env.local" \
-//     && source "/Users/qbook/Claude Projects/NarrateRx/.env.local.1pw" \
+//     && source "/Users/qbook/Claude Projects/Bernard/.env.local" \
+//     && source "/Users/qbook/Claude Projects/Bernard/.env.local.1pw" \
 //     && set +a \
 //     && node scripts/backfill-clip-detection.mjs --dry-run
 //   ... then without --dry-run to run for real.

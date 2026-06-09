@@ -15,7 +15,7 @@
 #   scripts/new-session-worktree.sh feat-export origin/main
 #
 # Produces:
-#   ../NarrateRx-worktrees/<session-name>/   — fresh worktree off base
+#   ../Bernard-worktrees/<session-name>/   — fresh worktree off base
 #   .env.local copied in (Sensitive vars stay on disk, not git)
 #   .vercel/ copied in so `vercel deploy` knows the project
 #
@@ -44,7 +44,7 @@ if [[ ! "$NAME" =~ ^[a-zA-Z0-9._-]+$ ]]; then
 fi
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-WORKTREE_PARENT="$(dirname "$PROJECT_ROOT")/NarrateRx-worktrees"
+WORKTREE_PARENT="$(dirname "$PROJECT_ROOT")/Bernard-worktrees"
 WORKTREE_PATH="$WORKTREE_PARENT/$NAME"
 
 if [[ -e "$WORKTREE_PATH" ]]; then

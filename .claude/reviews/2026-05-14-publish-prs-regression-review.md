@@ -1,7 +1,7 @@
 # Regression review — PR #430 + PR #438 (publish flow)
 
 **Reviewer:** Claude (overnight code-level review, no live browser exercise)
-**Scope:** [PR #430](https://github.com/Move-Better/NarrateRx/pull/430) (enrich blog payload + capture live URL) and [PR #438](https://github.com/Move-Better/NarrateRx/pull/438) (mirror blog images on publish). Both merged to `main`.
+**Scope:** [PR #430](https://github.com/Move-Better/Bernard/pull/430) (enrich blog payload + capture live URL) and [PR #438](https://github.com/Move-Better/Bernard/pull/438) (mirror blog images on publish). Both merged to `main`.
 
 ## TL;DR
 
@@ -42,7 +42,7 @@ for (const img of payload.images) {
 }
 ```
 
-- **Before:** WP publish succeeded even with broken inline images — the post landed with hotlinks to NarrateRx blob storage.
+- **Before:** WP publish succeeded even with broken inline images — the post landed with hotlinks to Bernard blob storage.
 - **After:** Any single inline image failing to upload to `/wp/v2/media` short-circuits the whole publish with 502. No WP post created.
 
 This is defensible (avoids partial-mirror posts where half the images are mirrored and half are hotlinked) but it's a behavior change. Transient WP errors that previously didn't matter now block publishing.
@@ -52,11 +52,11 @@ This is defensible (avoids partial-mirror posts where half the images are mirror
 ### Other findings
 - **`uploadMedia` return-shape change has no missed callers.** Before: returned the media `id` int. After: returns `{ id, source_url }`. Grep confirms exactly two callers in `website.js` — both updated correctly. No collateral.
 - **Client/server `buildImagesManifest` parity is enforced by unit test** ([tests/lib/publishImageMirror.test.js](tests/lib/publishImageMirror.test.js)) — good defensive measure given the duplicate-source-of-truth pattern.
-- **`isMirrorableUrl` whitelist is correct** for the three URL shapes that currently produce blob references (`*.public.blob.vercel-storage.com`, `*.blob.vercel-storage.com`, `*.narraterx.ai/...`). External CDNs (e.g. unsplash) correctly fall through as `mirrorable: false` and stay as hotlinks.
-- **Astro path is forward-compatible.** Old receivers in movebetteranimal/movebetterpeople ignore the unknown `images[]` field; images stay as hotlinks until each receiver repo lands its own commit-bytes PR. **No regression there**, just a deferred opportunity — the dependency on NarrateRx blob storage isn't severed for Astro tenants until those receiver PRs ship.
+- **`isMirrorableUrl` whitelist is correct** for the three URL shapes that currently produce blob references (`*.public.blob.vercel-storage.com`, `*.blob.vercel-storage.com`, `*.withbernard.ai/...`). External CDNs (e.g. unsplash) correctly fall through as `mirrorable: false` and stay as hotlinks.
+- **Astro path is forward-compatible.** Old receivers in movebetteranimal/movebetterpeople ignore the unknown `images[]` field; images stay as hotlinks until each receiver repo lands its own commit-bytes PR. **No regression there**, just a deferred opportunity — the dependency on Bernard blob storage isn't severed for Astro tenants until those receiver PRs ship.
 
 ### Smoke checklist (when you're back)
-- [ ] **Equine WP publish with 2+ inline body images** — confirm both upload to `/wp/v2/media` and the rendered post on the live site references WP-hosted URLs (not NarrateRx blob URLs).
+- [ ] **Equine WP publish with 2+ inline body images** — confirm both upload to `/wp/v2/media` and the rendered post on the live site references WP-hosted URLs (not Bernard blob URLs).
 - [ ] **Equine WP publish where one image is broken/404** — confirm the 502 surfaces cleanly in the workbench toast (not a generic "Database error").
 - [ ] **Animals/People Astro publish** — confirm publish still succeeds and the post renders (with hotlinked images, which is expected until the receiver PR ships).
 

@@ -1079,7 +1079,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   background: var(--coral);
   color: #fff;
 }
-.uvoice-toggle button.is-narraterx.is-active {
+.uvoice-toggle button.is-bernard.is-active {
   background: var(--sage);
   color: #1c4d37;
 }
@@ -1100,7 +1100,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   color: var(--grey);
   margin: 0 0 18px;
 }
-.uvoice-panel.is-narraterx h4 { color: var(--sage); }
+.uvoice-panel.is-bernard h4 { color: var(--sage); }
 .uvoice-panel p { color: var(--ink-soft); font-size: 16px; line-height: 1.7; margin: 0 0 14px; }
 .uvoice-panel p:last-of-type { margin-bottom: 0; }
 .uvoice-chip {
@@ -1267,7 +1267,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   border-bottom: 2px solid var(--line-2);
   white-space: nowrap;
 }
-.ucompare-table th.is-narraterx {
+.ucompare-table th.is-bernard {
   background: rgba(16,185,129,0.12);
   color: var(--coral);
   border-bottom-color: var(--coral);
@@ -1792,7 +1792,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
    DEMO WIDGET — real-app look
    Overrides the dark-green .upreview styles for any widget that
    carries [data-demo]. Looks like a macOS screen recording of the
-   actual NarrateRx app: light OS chrome + the real app palette
+   actual Bernard app: light OS chrome + the real app palette
    (cool-paper bg, white cards, slate borders, orange brand).
    ============================================================ */
 

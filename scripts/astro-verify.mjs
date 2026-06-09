@@ -16,9 +16,9 @@ if (!url || !secret) {
 }
 
 const probe = {
-  slug:        '__narraterx_verify__',
-  title:       '__narraterx_verify__',
-  description: '__narraterx_verify__',
+  slug:        '__bernard_verify__',
+  title:       '__bernard_verify__',
+  description: '__bernard_verify__',
   pubDate:     '1970-01-01',
   markdown:    '',
 }
@@ -43,8 +43,8 @@ const snippet = body.slice(0, 200).replace(/\s+/g, ' ').trim()
 
 if (status === 401) {
   console.error(`FAIL (401) — bearer secret rejected by ${url}.`)
-  console.error('The secret pasted into NarrateRx does not match the env var on the Astro deployment.')
-  console.error('Fix: re-paste the same secret on both sides (NarrateRx settings + Astro Vercel env var).')
+  console.error('The secret pasted into Bernard does not match the env var on the Astro deployment.')
+  console.error('Fix: re-paste the same secret on both sides (Bernard settings + Astro Vercel env var).')
   if (snippet) console.error(`  upstream body: ${snippet}`)
   process.exit(1)
 }

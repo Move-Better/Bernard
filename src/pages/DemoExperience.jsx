@@ -325,7 +325,7 @@ export default function DemoExperience() {
                 </h1>
                 <p className="mt-3 text-base text-muted-foreground text-balance">
                   Talk for up to a minute. Bernard will ask a couple of follow-ups —
-                  just like a real NarrateRx interview.
+                  just like a real Bernard interview.
                 </p>
               </div>
               <div className="flex flex-col gap-3">

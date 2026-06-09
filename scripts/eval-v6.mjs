@@ -11,7 +11,7 @@
 //                           vs hot-tier retrieval.
 //
 // Usage:
-//   cd "/Users/qbook/Claude Projects/NarrateRx" && \
+//   cd "/Users/qbook/Claude Projects/Bernard" && \
 //   set -a && source .env.local && set +a && \
 //   node scripts/eval-v6.mjs [--workspace-id <id>] [--limit <n>]
 //

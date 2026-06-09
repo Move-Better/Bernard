@@ -7,7 +7,7 @@
 // have tags.
 //
 // Usage (from project root):
-//   cd "/Users/qbook/Claude Projects/NarrateRx" && \
+//   cd "/Users/qbook/Claude Projects/Bernard" && \
 //   set -a && source .env.local && set +a && \
 //   node scripts/backfill-topic-tags.mjs [--dry-run]
 //

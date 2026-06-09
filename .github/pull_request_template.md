@@ -11,7 +11,7 @@ If this PR touches Supabase tables that are workspace-scoped (anything with `wor
 - [ ] If joining via a junction table without its own `workspace_id` (e.g. `collection_items`), the input id is verified to belong to the current workspace first
 - [ ] N/A — this PR doesn't touch tenant data
 
-Background: see [#242](https://github.com/Move-Better/NarrateRx/pull/242) / [#244](https://github.com/Move-Better/NarrateRx/pull/244) / [#250](https://github.com/Move-Better/NarrateRx/pull/250) for the failure mode this checklist is guarding against.
+Background: see [#242](https://github.com/Move-Better/Bernard/pull/242) / [#244](https://github.com/Move-Better/Bernard/pull/244) / [#250](https://github.com/Move-Better/Bernard/pull/250) for the failure mode this checklist is guarding against.
 
 ## Test plan
 

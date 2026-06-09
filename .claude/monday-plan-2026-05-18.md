@@ -1,8 +1,8 @@
-# NarrateRx — Visual Audit + Monday Plan (2026-05-18)
+# Bernard — Visual Audit + Monday Plan (2026-05-18)
 
-Companion to [overnight-audit-2026-05-17.md](overnight-audit-2026-05-17.md). This pass walked **every story page on the live site** (movebetter-people.narraterx.ai + movebetter-equine.narraterx.ai) and **every platform tab inside each story** to find rendering issues that the prior data audit missed. Driven via Claude-in-Chrome on prod.
+Companion to [overnight-audit-2026-05-17.md](overnight-audit-2026-05-17.md). This pass walked **every story page on the live site** (movebetter-people.withbernard.ai + movebetter-equine.withbernard.ai) and **every platform tab inside each story** to find rendering issues that the prior data audit missed. Driven via Claude-in-Chrome on prod.
 
-**TL;DR:** one new P0 visual bug found and fixed ([PR #636](https://github.com/Move-Better/NarrateRx/pull/636)) — the right pane was stacking new ContentEditor blocks on every tab click without removing the previous one. A handful of smaller cosmetic and content-quality issues remain; none block the Monday workflow.
+**TL;DR:** one new P0 visual bug found and fixed ([PR #636](https://github.com/Move-Better/Bernard/pull/636)) — the right pane was stacking new ContentEditor blocks on every tab click without removing the previous one. A handful of smaller cosmetic and content-quality issues remain; none block the Monday workflow.
 
 ---
 
@@ -42,7 +42,7 @@ Fresh page loads were fine. Only the click path through `handleSelectPiece` (whi
 
 **Fix:** wrap the entire piece-scoped subtree in `<div key={active.id} className="space-y-3">`. Atomic unmount/remount on piece change. Verified clean: `npm run typecheck && npm run lint && npm run build && npm run verify-bundles`.
 
-PR: [#636](https://github.com/Move-Better/NarrateRx/pull/636), auto-merge enabled.
+PR: [#636](https://github.com/Move-Better/Bernard/pull/636), auto-merge enabled.
 
 ---
 
@@ -58,7 +58,7 @@ Older photos (rows 2+) all render fine with `Raw` badges and visible images.
 
 Quick check from project root:
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && set -a && source .env.local && set +a && node scripts/backfill-thumbnails.mjs
+cd "/Users/qbook/Claude Projects/Bernard" && set -a && source .env.local && set +a && node scripts/backfill-thumbnails.mjs
 ```
 
 ---
@@ -157,14 +157,14 @@ The "IN PROGRESS — PICK UP WHERE YOU LEFT OFF" card on the Home page shows `Up
 
 ## Recommended Monday actions (prioritized)
 
-1. **Wait for [PR #636](https://github.com/Move-Better/NarrateRx/pull/636) to auto-merge after CI** — this is the visual fix. Then anyone using the app sees one editor at a time. Auto-merge is already enabled; CI takes ~3 min.
+1. **Wait for [PR #636](https://github.com/Move-Better/Bernard/pull/636) to auto-merge after CI** — this is the visual fix. Then anyone using the app sees one editor at a time. Auto-merge is already enabled; CI takes ~3 min.
 2. **Apply the data cleanup script** to clear overdue phantom schedules + strip markdown from drafts:
    ```
-   cd "/Users/qbook/Claude Projects/NarrateRx" && set -a && source .env.local && set +a && node scripts/audit-2026-05-17-cleanup.mjs --apply
+   cd "/Users/qbook/Claude Projects/Bernard" && set -a && source .env.local && set +a && node scripts/audit-2026-05-17-cleanup.mjs --apply
    ```
 3. **Backfill missing thumbnails** for the 4 blank Library photos:
    ```
-   cd "/Users/qbook/Claude Projects/NarrateRx" && set -a && source .env.local && set +a && node scripts/backfill-thumbnails.mjs
+   cd "/Users/qbook/Claude Projects/Bernard" && set -a && source .env.local && set +a && node scripts/backfill-thumbnails.mjs
    ```
 4. **Manually edit the live GBP post** on `business.google.com` (Move Better's Portland listing → 2026-05-12 Low back pain post) to fix the "link in profile" wording.
 5. **Decide on the markdown-asterisks-in-published-FB-and-IG-posts** — either delete+re-create on Buffer or leave as-is (low-impact cosmetic).

@@ -7,7 +7,7 @@
 // matcher the server uses as a fallback. Stores with source:
 // "algorithmic_backfill" so we can tell the population path apart later.
 //
-// Usage (from NarrateRx project root):
+// Usage (from Bernard project root):
 //   node scripts/backfill-provenance.mjs
 //
 // Optional flags:
@@ -53,7 +53,7 @@ const BATCH_PAUSE_MS = 100    // breath for the DB between batches
 // Support running from either the project root or a worktree — fall back to
 // the project-root .env.local when the relative path comes up empty.
 const env = (await readFile('.env.local', 'utf8').catch(() => ''))
-  || (await readFile('/Users/qbook/Claude Projects/NarrateRx/.env.local', 'utf8').catch(() => ''))
+  || (await readFile('/Users/qbook/Claude Projects/Bernard/.env.local', 'utf8').catch(() => ''))
 const m = env.match(/^MULTITENANT_DATABASE_URL=(.+)$/m)
 if (!m) {
   console.error('MULTITENANT_DATABASE_URL not found in .env.local')

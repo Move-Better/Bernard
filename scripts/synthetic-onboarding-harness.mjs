@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * NarrateRx Synthetic Onboarding Harness
+ * Bernard Synthetic Onboarding Harness
  *
  * Validates 50 synthetic tenant onboarding payloads against the real
  * claim.js logic WITHOUT hitting Clerk, Vercel domains, or inserting

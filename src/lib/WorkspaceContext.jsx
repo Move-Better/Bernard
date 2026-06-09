@@ -53,11 +53,8 @@ const WorkspaceContext = createContext({ workspace: STATIC_AS_ROW, isLoading: fa
 function isSubdomainHost() {
   if (typeof window === 'undefined') return false
   const host = window.location.hostname
-  // Transitional dual-domain: recognize both the new brand domain and the
-  // legacy narraterx.ai during the cutover window. Drop narraterx.ai once DNS
-  // + Clerk have fully moved to withbernard.ai.
-  const onWorkspaceDomain = host.endsWith('.withbernard.ai') || host.endsWith('.narraterx.ai')
-  const isApex = host === 'www.withbernard.ai' || host === 'www.narraterx.ai'
+  const onWorkspaceDomain = host.endsWith('.withbernard.ai')
+  const isApex = host === 'www.withbernard.ai'
   if (onWorkspaceDomain && !isApex) return true
   return false
 }

@@ -9,7 +9,7 @@
  * Keys). The token stays in your terminal env — it is NOT printed. Only schema
  * field NAMES (non-sensitive) are output, which you can paste back.
  *
- *   cd "/Users/qbook/Claude Projects/NarrateRx" && \
+ *   cd "/Users/qbook/Claude Projects/Bernard" && \
  *     BUFFER_TOKEN='<paste-your-buffer-personal-key>' node scripts/buffer-schema-probe.mjs
  */
 

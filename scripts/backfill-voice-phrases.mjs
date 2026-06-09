@@ -10,7 +10,7 @@
 // counts and last_seen_at are merged rather than overwritten, so this script
 // is safe to re-run — it is fully idempotent.
 //
-// Usage (from NarrateRx project root):
+// Usage (from Bernard project root):
 //   node scripts/backfill-voice-phrases.mjs
 //
 // Optional flags:

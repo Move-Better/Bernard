@@ -87,7 +87,7 @@ Fix requires `npm audit fix --force` which upgrades Vite to v8 (breaking change)
 **File:** `vercel.json`  
 **Status:** ℹ️ Noted — not auto-fixed
 
-A strict CSP would provide additional XSS protection. Not applied because this Vite SPA with Clerk (which injects iframes and scripts from `clerk.narraterx.ai`, `accounts.narraterx.ai`, Clerk CDN, and Stripe) requires a permissive CSP that adds complexity without proportionate benefit at this stage. Recommend revisiting if the app grows third-party script surface.
+A strict CSP would provide additional XSS protection. Not applied because this Vite SPA with Clerk (which injects iframes and scripts from `clerk.withbernard.ai`, `accounts.withbernard.ai`, Clerk CDN, and Stripe) requires a permissive CSP that adds complexity without proportionate benefit at this stage. Recommend revisiting if the app grows third-party script surface.
 
 ---
 

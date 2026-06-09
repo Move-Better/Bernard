@@ -99,7 +99,7 @@ There is a 2×2 matrix here:
 | **High voice quality** | 4 independents (Dr. Pond, Dr. Ferguson, etc.) — publish 1-12x/year | **EMPTY** |
 | **Low voice quality** | Most agency-served sites | Camarata, Premier Care Portland (5-40+ posts/mo) |
 
-**NarrateRx's pitch lives in the empty quadrant.** Nobody is doing consistent, distinctly-voiced content at volume. The agencies can do volume; the independents who care can do voice. No one has both.
+**Bernard's pitch lives in the empty quadrant.** Nobody is doing consistent, distinctly-voiced content at volume. The agencies can do volume; the independents who care can do voice. No one has both.
 
 ### Why agency content fails
 
@@ -115,13 +115,13 @@ Dr. Lincoln Kamell's CCSP credentials: **nowhere in his blog.** Dr. Arturo Espin
 
 **Not one site in the sample** connected the blog topic to the appointment CTA. Every post ends with the same "Book now" button regardless of whether the post was about postpartum back pain, Medicare reform, or pickleball injuries.
 
-NarrateRx-generated content has a structural advantage here — it comes from the clinician's clinical reasoning about a specific patient type, so the CTA can be tailored to exactly that population. This is a prompt feature worth making explicit.
+Bernard-generated content has a structural advantage here — it comes from the clinician's clinical reasoning about a specific patient type, so the CTA can be tailored to exactly that population. This is a prompt feature worth making explicit.
 
 ### The pitch that lands
 
 > "Content that sounds like you, because it starts with you talking."
 
-The contrast isn't AI vs. human-written. It's **voice-sourced** (starts with the clinician speaking) vs. **ghost-written** (starts with an agency template). Every alternative requires the clinician to either surrender their voice or spend time writing. NarrateRx is the only path that preserves both fidelity and clinician time.
+The contrast isn't AI vs. human-written. It's **voice-sourced** (starts with the clinician speaking) vs. **ghost-written** (starts with an agency template). Every alternative requires the clinician to either surrender their voice or spend time writing. Bernard is the only path that preserves both fidelity and clinician time.
 
 Full audit with per-site scoring at `.claude/competitor-content-audit-2026-05-25.md`.
 
@@ -181,6 +181,6 @@ The eval model (Haiku 4.5) is hitting the 300-token `maxOutputTokens` cap partwa
 | Prompt eval results (when done) | `overnight-experiments/.claude/prompt-eval-results-2026-05-26.md` |
 
 All scripts committed to branch `overnight-experiments` → PR at:
-https://github.com/Move-Better/NarrateRx/pull/new/overnight-experiments
+https://github.com/Move-Better/Bernard/pull/new/overnight-experiments
 
 _Prompt eval PID 34874 still running — check `/tmp/prompt-eval.log` for status._

@@ -13,7 +13,7 @@
  * Supabase REST API as service_role (same surface the handler uses).
  *
  * Usage from this worktree:
- *   set -a && source /Users/qbook/Claude\ Projects/NarrateRx/.env.local && set +a && \
+ *   set -a && source /Users/qbook/Claude\ Projects/Bernard/.env.local && set +a && \
  *   node scripts/rerun-cleanup-on-failed-interviews.mjs --dry-run
  *   node scripts/rerun-cleanup-on-failed-interviews.mjs --apply
  *

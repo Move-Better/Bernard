@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-// Restore a NarrateRx DB snapshot produced by api/cron/backup-db.js.
+// Restore a Bernard DB snapshot produced by api/cron/backup-db.js.
 //
 // Usage (cloud backup — private, must download first):
-//   vercel blob list --prefix backups/narraterx-db/
-//   vercel blob get backups/narraterx-db/<date>-<suffix>.json.gz > /tmp/snap.json.gz
-//   DATABASE_URL='postgres://.../narraterx_restore' \
+//   vercel blob list --prefix backups/bernard-db/
+//   vercel blob get backups/bernard-db/<date>-<suffix>.json.gz > /tmp/snap.json.gz
+//   DATABASE_URL='postgres://.../bernard_restore' \
 //     node scripts/restore-db-from-blob.mjs /tmp/snap.json.gz
 //
 // Usage (local file or already-signed public URL):
-//   DATABASE_URL='postgres://.../narraterx_restore' \
+//   DATABASE_URL='postgres://.../bernard_restore' \
 //     node scripts/restore-db-from-blob.mjs <local-path-or-signed-url>
 //
 // SAFETY: Refuses to run unless DATABASE_URL contains 'restore' or '_test'.
 // This is a hard guard against accidentally truncating production. To restore
-// to prod, point at a fresh DB named e.g. narraterx_restore, verify, and
+// to prod, point at a fresh DB named e.g. bernard_restore, verify, and
 // promote via Supabase tooling — never aim this script at the live DB.
 //
 // Behaviour: TRUNCATE ... CASCADE every snapshot table, then bulk INSERT

@@ -21,15 +21,15 @@ This is **Phase 0 infra** — Phase 1 starts day-one on July 1 with this loop wo
 
 ### Setup steps (Michael, ~30 min)
 
-1. **Sign in / sign up** at https://calendly.com using **drq@narraterx.ai** (decision below).
-   - **Email choice:** use `drq@narraterx.ai` (not `drq@movebetter.co`). Reason: the demo is for NarrateRx, the confirmation email + Zoom invite shows the sender domain, and we want prospects to see the NarrateRx brand at every touchpoint — not Move Better. `drq@narraterx.ai` forwards to `narraterx@gmail.com` per [[reference_platform_ownership]], so replies still land in Michael's inbox.
+1. **Sign in / sign up** at https://calendly.com using **drq@withbernard.ai** (decision below).
+   - **Email choice:** use `drq@withbernard.ai` (not `drq@movebetter.co`). Reason: the demo is for Bernard, the confirmation email + Zoom invite shows the sender domain, and we want prospects to see the Bernard brand at every touchpoint — not Move Better. `drq@withbernard.ai` forwards to `bernard@gmail.com` per [[reference_platform_ownership]], so replies still land in Michael's inbox.
    - Free tier covers this use case.
 
 2. **Connect calendar:** Google Calendar (the one Michael actually checks for clinic + life). Required for conflict detection.
 
-3. **Create event type:** `NarrateRx Demo · 30 min`
-   - **URL slug:** `narraterx-demo`
-   - **Final shareable URL:** `https://calendly.com/<calendly-username>/narraterx-demo`
+3. **Create event type:** `Bernard Demo · 30 min`
+   - **URL slug:** `bernard-demo`
+   - **Final shareable URL:** `https://calendly.com/<calendly-username>/bernard-demo`
    - Single-session, 30 min, 1-on-1
    - Video: Zoom or Google Meet (whichever Michael uses for clinic telehealth — fewer logins)
    - Location field: "Web conferencing details provided upon confirmation"
@@ -48,7 +48,7 @@ This is **Phase 0 infra** — Phase 1 starts day-one on July 1 with this loop wo
    | 2 | Email | Email | Yes (default) |
    | 3 | Practice name + your role | Single line | Yes |
    | 4 | How many clinicians (incl. yourself) currently work in your practice? | Single select: `Just me`, `2–4`, `5–10`, `11+` | Yes |
-   | 5 | In one sentence, what do you hope NarrateRx does for you? | Paragraph | Yes |
+   | 5 | In one sentence, what do you hope Bernard does for you? | Paragraph | Yes |
 
    *Why #4 is multiple choice:* maps cleanly to pricing tiers (Solo / Practice / Multi-location) so Michael can pre-segment before the call.
 
@@ -69,9 +69,9 @@ This is **Phase 0 infra** — Phase 1 starts day-one on July 1 with this loop wo
 
 ### Setup steps (Michael, ~60 min)
 
-1. **Sign up** at https://folk.app using **drq@narraterx.ai**. Free tier ("Folk Free") supports up to 2 workspaces, 1,000 contacts, 1 user — more than enough for Phase 1.
+1. **Sign up** at https://folk.app using **drq@withbernard.ai**. Free tier ("Folk Free") supports up to 2 workspaces, 1,000 contacts, 1 user — more than enough for Phase 1.
 
-2. **Create workspace:** `NarrateRx`.
+2. **Create workspace:** `Bernard`.
 
 3. **Create three pipelines** (Folk calls these "Groups" with custom pipeline views):
 
@@ -104,7 +104,7 @@ This is **Phase 0 infra** — Phase 1 starts day-one on July 1 with this loop wo
    - **Don't bulk-import the whole network** — only add prospects as Michael decides to reach out. Bulk imports rot fast and make the pipeline noisy. Per-week pulls are healthier.
 
 6. **Wire Calendly → Folk:**
-   - **Preferred path:** Folk's native Calendly integration. Settings → Integrations → Calendly → Connect → authorize with the same `drq@narraterx.ai` account.
+   - **Preferred path:** Folk's native Calendly integration. Settings → Integrations → Calendly → Connect → authorize with the same `drq@withbernard.ai` account.
    - **If native integration is missing/broken:** fall back to **Zapier**. Zap shape: *Calendly "Invitee Created"* → *Folk "Create or update contact"* + *Folk "Add to group: Demos / stage: Demo Booked"*. Map all 5 booking-form fields + 4 UTM fields. Zapier free tier (100 tasks/mo) is plenty for 3 demos/wk.
    - **Auto-move rule:** when a contact in the Outreach pipeline books a demo, Folk should move them to Demo Booked in the Demos pipeline (Folk's automation tab handles this; if not, just leave the contact in both — Folk supports multi-group membership).
 
@@ -112,18 +112,18 @@ This is **Phase 0 infra** — Phase 1 starts day-one on July 1 with this loop wo
 
 ## Part 3 — UTM convention (lock now, don't drift)
 
-Every NarrateRx outbound link gets UTM tags. Calendly passes them through to Folk. **Use lowercase, snake_case, no spaces.**
+Every Bernard outbound link gets UTM tags. Calendly passes them through to Folk. **Use lowercase, snake_case, no spaces.**
 
 ### Parameter values
 
 | Param | Allowed values | When |
 |---|---|---|
 | `utm_source` | `linkedin_organic` | Posts from Michael's LinkedIn personal feed |
-| | `linkedin_company` | Posts from NarrateRx Company Page |
+| | `linkedin_company` | Posts from Bernard Company Page |
 | | `linkedin_ads` | Paid LinkedIn campaigns |
 | | `newsletter` | Beehiiv issue links |
 | | `dm` | Personalized DMs (LinkedIn, email, SMS) |
-| | `blog` | narraterx.ai blog post CTAs |
+| | `blog` | withbernard.ai blog post CTAs |
 | | `referral` | Existing-customer referrals |
 | | `podcast` | Podcast guesting (Phase 2+) |
 | `utm_medium` | `social` | LinkedIn organic / company page |
@@ -141,15 +141,15 @@ Every NarrateRx outbound link gets UTM tags. Calendly passes them through to Fol
 ### Example links
 
 ```
-https://calendly.com/<user>/narraterx-demo?utm_source=linkedin_ads&utm_medium=cpc&utm_campaign=phase1_launch&utm_content=v1_founder
+https://calendly.com/<user>/bernard-demo?utm_source=linkedin_ads&utm_medium=cpc&utm_campaign=phase1_launch&utm_content=v1_founder
 ```
 
 ```
-https://calendly.com/<user>/narraterx-demo?utm_source=newsletter&utm_medium=email&utm_campaign=newsletter_20260708
+https://calendly.com/<user>/bernard-demo?utm_source=newsletter&utm_medium=email&utm_campaign=newsletter_20260708
 ```
 
 ```
-https://calendly.com/<user>/narraterx-demo?utm_source=dm&utm_medium=direct&utm_campaign=dm_outreach_202607
+https://calendly.com/<user>/bernard-demo?utm_source=dm&utm_medium=direct&utm_campaign=dm_outreach_202607
 ```
 
 ### Where to keep this table
@@ -164,12 +164,12 @@ Before declaring this done, run this exact test:
 
 1. On Michael's phone (not the laptop he set Calendly up on — different network, different cache), open:
    ```
-   https://calendly.com/<calendly-username>/narraterx-demo?utm_source=dm&utm_medium=direct&utm_campaign=test_e2e&utm_content=v0_test
+   https://calendly.com/<calendly-username>/bernard-demo?utm_source=dm&utm_medium=direct&utm_campaign=test_e2e&utm_content=v0_test
    ```
-2. Book the earliest available slot. Use a throwaway email (or `narraterx+e2etest@gmail.com`) so it doesn't pollute Michael's contact list.
+2. Book the earliest available slot. Use a throwaway email (or `bernard+e2etest@gmail.com`) so it doesn't pollute Michael's contact list.
 3. Fill the qualifying questions with obvious test data (`Practice name: TEST DELETE ME`).
 4. **Verify within 5 min:**
-   - [ ] Calendar invite landed in Michael's `drq@narraterx.ai` inbox (forwards to narraterx@gmail.com).
+   - [ ] Calendar invite landed in Michael's `drq@withbernard.ai` inbox (forwards to bernard@gmail.com).
    - [ ] Invite body shows the 5 qualifying-question answers.
    - [ ] Confirmation email to the booker mentions the Loom recording.
    - [ ] Contact appears in Folk → Demos pipeline → Demo Booked stage.
@@ -183,7 +183,7 @@ If any checkbox fails, fix before launch — partial attribution is worse than n
 
 ## Operating cadence (where this fits in Michael's week)
 
-Per [[project_narraterx_revenue_roadmap]] Phase 1 weekly cadence:
+Per [[project_bernard_revenue_roadmap]] Phase 1 weekly cadence:
 
 - **Mondays, 30 min — outreach batch:** review LinkedIn / referrals from last week, use Folk LinkedIn extension to add ~10 new prospects at `Identified`, research each (move to `Researched`), draft + send 10 DMs (move to `DM Sent`). Each DM includes the UTM-tagged Calendly link (`utm_source=dm`).
 - **Throughout the week:** when a prospect replies, move to `Responded` and reply 1:1. When they book, Folk auto-moves to Demos / Demo Booked.
@@ -194,12 +194,12 @@ Per [[project_narraterx_revenue_roadmap]] Phase 1 weekly cadence:
 
 ## What Michael owes future-Michael
 
-After running the test in Part 4, fill in these blanks at the top of this file (or in [[project_narraterx_revenue_roadmap]]) so the URLs are findable cold:
+After running the test in Part 4, fill in these blanks at the top of this file (or in [[project_bernard_revenue_roadmap]]) so the URLs are findable cold:
 
-- [ ] **Calendly URL to share:** `https://calendly.com/__________/narraterx-demo`
+- [ ] **Calendly URL to share:** `https://calendly.com/__________/bernard-demo`
 - [ ] **Folk workspace URL:** `https://app.folk.app/__________`
-- [ ] **Calendly account email:** `drq@narraterx.ai` (confirmed)
-- [ ] **Folk account email:** `drq@narraterx.ai` (confirmed)
+- [ ] **Calendly account email:** `drq@withbernard.ai` (confirmed)
+- [ ] **Folk account email:** `drq@withbernard.ai` (confirmed)
 - [ ] **Calendly→Folk wiring:** native integration / Zapier (circle one)
 - [ ] **End-to-end test:** passed on YYYY-MM-DD by Michael
 
@@ -207,7 +207,7 @@ After running the test in Part 4, fill in these blanks at the top of this file (
 
 ## Out of scope (do NOT build)
 
-- ❌ Custom CRM features inside NarrateRx — Folk is the buy
+- ❌ Custom CRM features inside Bernard — Folk is the buy
 - ❌ Automated email sequences in Folk — Phase 1 demos are personalized 1:1
 - ❌ Multi-rep sales setup — single-founder pipeline
 - ❌ LinkedIn ads — separate task, fires after this lands
@@ -216,4 +216,4 @@ If the setup hits a wall and starts pulling Claude/Michael toward building somet
 
 ---
 
-Related: [[project_narraterx_revenue_roadmap]], [[project_narraterx_marketing_strategy]], [[project_clinician_first_framing]], [[reference_platform_ownership]].
+Related: [[project_bernard_revenue_roadmap]], [[project_bernard_marketing_strategy]], [[project_clinician_first_framing]], [[reference_platform_ownership]].

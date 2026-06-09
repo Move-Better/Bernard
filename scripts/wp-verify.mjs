@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Verify a WordPress Application Password by hitting /wp/v2/users/me.
 // Usage: node scripts/wp-verify.mjs <site-url> <username> "<app password>"
-// Example: node scripts/wp-verify.mjs https://movebetterequine.com narraterx "abcd EFGH ijkl MNOP qrst UVWX"
+// Example: node scripts/wp-verify.mjs https://movebetterequine.com bernard "abcd EFGH ijkl MNOP qrst UVWX"
 
 const [, , siteArg, user, ...rest] = process.argv
 const appPassword = rest.join(' ')
@@ -68,7 +68,7 @@ console.log(`  edit_posts:     ${caps.edit_posts === true ? 'yes' : 'no'}`)
 console.log(`  manage_categories: ${caps.manage_categories === true ? 'yes' : 'no'}`)
 
 if (!canPublish || !canUpload) {
-  console.error('\nWarning: user is missing required capabilities for NarrateRx publishing.')
+  console.error('\nWarning: user is missing required capabilities for Bernard publishing.')
   process.exit(1)
 }
-console.log('\nOK — credentials work and have the capabilities NarrateRx needs.')
+console.log('\nOK — credentials work and have the capabilities Bernard needs.')

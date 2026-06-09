@@ -50,20 +50,20 @@ That short SHA is what MUST be live on prod before the session can close.
 ### b. Poll prod until it matches — don't check once and move on
 
 ```
-curl -s "https://narraterx.ai/version.json" | grep -oE '"sha": *"[^"]*"'
+curl -s "https://withbernard.ai/version.json" | grep -oE '"sha": *"[^"]*"'
 ```
 
 - **Matches `origin/main`** → confirmed live. Done with this step.
 - **Doesn't match** → a deploy is either in flight or was skipped. Distinguish:
 
   ```
-  gh api "repos/Move-Better/NarrateRx/deployments?environment=Production&per_page=2" --jq '.[].sha' 2>/dev/null
+  gh api "repos/Move-Better/Bernard/deployments?environment=Production&per_page=2" --jq '.[].sha' 2>/dev/null
   ```
 
   - **A deploy record exists for the target SHA** → it's building (~2 min). **Poll, don't abandon.** Re-curl `version.json` every ~60–90s until it flips, up to ~5 minutes. Use `ScheduleWakeup` (60–90s) or a short `sleep`+re-curl loop rather than declaring "should be live shortly" and walking away. Report only once it's confirmed.
   - **NO deploy record for the target SHA** → the GitHub→Vercel auto-deploy was **skipped** (the rapid-back-to-back-merge coalescing bug — `~/.claude/CLAUDE.md`). This is the exact failure the user is worried about. It will NOT self-heal until the next push to `main`. Recover it:
     1. Tell the user prod is stuck one commit behind and why.
-    2. Offer to ship it: from the **project root** (`/Users/qbook/Claude Projects/NarrateRx`), on `main`, synced — `cd "/Users/qbook/Claude Projects/NarrateRx" && git pull && npm run deploy:prod`. A prod deploy needs **explicit confirmation at that step** (Mechanical execution policy) — present the command, get the go-ahead, then run it.
+    2. Offer to ship it: from the **project root** (`/Users/qbook/Claude Projects/Bernard`), on `main`, synced — `cd "/Users/qbook/Claude Projects/Bernard" && git pull && npm run deploy:prod`. A prod deploy needs **explicit confirmation at that step** (Mechanical execution policy) — present the command, get the go-ahead, then run it.
     3. After it deploys, re-curl `version.json` and confirm the SHA matches before calling it done.
 
 ### c. The gate
@@ -72,12 +72,12 @@ Do **not** write "shipped / live" in the report, and do **not** clean up the wor
 
 ## 4. Worktree cleanup
 
-Only if running inside a session worktree (`git rev-parse --git-common-dir` differs from `.git`, or the path is under `.claude/worktrees/` or `NarrateRx-worktrees/`).
+Only if running inside a session worktree (`git rev-parse --git-common-dir` differs from `.git`, or the path is under `.claude/worktrees/` or `Bernard-worktrees/`).
 
 - **This session's PR is merged, prod is confirmed live (step 3 gate passed), + nothing unaccounted-for in the tree** → remove it as routine cleanup (the user has standing authorization for the *session's own* merged worktree): `git worktree remove <path>`. Use `--force` only when the sole blocker is confirmed-regenerable scratch.
 - **Unmerged commits, uncommitted work you can't account for, or a `locked` worktree** → do NOT remove. Flag it for the user.
 - **Never** remove another session's worktree.
-- The project root (`/Users/qbook/Claude Projects/NarrateRx`) is not a worktree — never "clean it up."
+- The project root (`/Users/qbook/Claude Projects/Bernard`) is not a worktree — never "clean it up."
 
 ## 5. Lessons
 
@@ -87,7 +87,7 @@ Run the `/lessons` review over this session (invoke the lessons skill, or apply 
 
 - Capture any durable new facts surfaced this session (user preferences, project decisions, references) into the auto-memory dir per the memory rules — one fact per file, one-line index entry in `MEMORY.md`. Don't save what the repo/git already records.
 - Archive any `project_*` memory whose work **shipped this session** into the MEMORY.md ARCHIVE rollup (collapse to file stem, drop the hook) — keeps the index under its ~24KB cap.
-- Check index size: `wc -c "/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/MEMORY.md"`. If near/over ~22KB, suggest (or run) `/consolidate-memory`.
+- Check index size: `wc -c "/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/MEMORY.md"`. If near/over ~22KB, suggest (or run) `/consolidate-memory`.
 
 ## 7. Moments worth capturing
 
