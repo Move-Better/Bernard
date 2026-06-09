@@ -251,8 +251,8 @@ export function useStaffMember(id, options = {}) {
 export function useDeleteStaff() {
   const qc = useQueryClient()
   return useAppMutation({
-    errorMessage: "Couldn't delete staff member",
-    mutationFn: ({ id, userId }) => deleteStaff(id, userId),
+    silent: true,
+    mutationFn: ({ id, userId, mergeTo, force }) => deleteStaff(id, userId, { mergeTo, force }),
     onSuccess: (_data, { id }) => {
       // Wipe the list cache + the specific detail so a re-fetch sees fresh
       // state. Also flush anything interview-shaped since deleted clinicians

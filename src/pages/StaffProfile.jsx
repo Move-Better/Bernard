@@ -54,7 +54,7 @@ export default function StaffProfile() {
   const { staffId } = useParams()
   const navigate = useNavigate()
   const { user } = useUser()
-  const { role } = useUserRole()
+  const { role, canPurge } = useUserRole()
   const { data: staffMember, isLoading: loading, error: loadError } = useStaffMember(staffId)
   const { data: staffList = [] } = useStaffSummaries()
 
@@ -69,6 +69,9 @@ export default function StaffProfile() {
   const [activeTab, setActiveTab] = useState(initialTab)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteError, setDeleteError] = useState('')
+  const [childConflict, setChildConflict] = useState(null)
+  const [mergeTargetId, setMergeTargetId] = useState('')
+  const [forceConfirmed, setForceConfirmed] = useState(false)
   const [arc, setArc] = useState(null)
   const [voiceData, setVoiceData] = useState(null)
 
@@ -107,13 +110,20 @@ export default function StaffProfile() {
     }
   }
 
-  async function handleDeleteStaff() {
+  async function handleDeleteStaff({ mergeTo, force } = {}) {
     try {
-      await deleteStaffMut.mutateAsync({ id: staffId, userId: user.id })
-      toast.success(`Deleted ${staffMember?.name || 'staff member'}`)
+      await deleteStaffMut.mutateAsync({ id: staffId, userId: user.id, mergeTo, force })
+      toast.success(mergeTo
+        ? `Merged ${staffMember?.name || 'staff member'} and deleted`
+        : `Deleted ${staffMember?.name || 'staff member'}`)
       navigate('/')
     } catch (e) {
-      toast.error('Could not delete staff member', { description: e.message })
+      if (e?.status === 409 && e?.payload?.error === 'staff_has_children') {
+        setDeleteTarget(null)
+        setChildConflict({ childCounts: e.payload.childCounts, totalChildren: e.payload.totalChildren })
+      } else {
+        toast.error('Could not delete staff member', { description: e.message })
+      }
     }
   }
 
@@ -184,7 +194,7 @@ export default function StaffProfile() {
                   New Interview
                 </Link>
               </Button>
-              {isMyStaffProfile && (
+              {canPurge && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -546,6 +556,123 @@ export default function StaffProfile() {
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Staff has-children conflict dialog ───────────────────── */}
+      <Dialog
+        open={!!childConflict}
+        onOpenChange={(o) => {
+          if (!o) { setChildConflict(null); setMergeTargetId(''); setForceConfirmed(false) }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>This staff member has history attached</DialogTitle>
+            <DialogDescription>
+              Choose what to do with {staffMember.name}&apos;s {childConflict?.totalChildren} attached records before deleting.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Child count summary */}
+          {childConflict && (
+            <div className="rounded-lg bg-muted/50 border border-border px-4 py-3 text-sm space-y-1.5">
+              {childConflict.childCounts.interviews > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Interviews</span>
+                  <span className="font-medium">{childConflict.childCounts.interviews}</span>
+                </div>
+              )}
+              {childConflict.childCounts.content_items > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Content items</span>
+                  <span className="font-medium">{childConflict.childCounts.content_items}</span>
+                </div>
+              )}
+              {childConflict.childCounts.staff_voice_phrases > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Voice phrases</span>
+                  <span className="font-medium">{childConflict.childCounts.staff_voice_phrases}</span>
+                </div>
+              )}
+              {childConflict.childCounts.practice_memory_chunks > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Memory chunks</span>
+                  <span className="font-medium">{childConflict.childCounts.practice_memory_chunks}</span>
+                </div>
+              )}
+              {childConflict.childCounts.staff_recipes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Recipes</span>
+                  <span className="font-medium">{childConflict.childCounts.staff_recipes}</span>
+                </div>
+              )}
+              {childConflict.childCounts.campaigns > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Campaign references</span>
+                  <span className="font-medium">{childConflict.childCounts.campaigns}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Option A: Merge */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium">Merge into another staff member</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">All history moves to the chosen member — nothing is lost.</p>
+            </div>
+            <select
+              value={mergeTargetId}
+              onChange={(e) => setMergeTargetId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Select a staff member…</option>
+              {staffList.filter((s) => s.id !== staffId).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <Button
+              className="w-full"
+              disabled={!mergeTargetId || deleteStaffMut.isPending}
+              onClick={() => handleDeleteStaff({ mergeTo: mergeTargetId })}
+            >
+              {deleteStaffMut.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : 'Merge and delete'}
+            </Button>
+          </div>
+
+          {/* Option B: Force delete */}
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium text-destructive">Permanently delete everything</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">
+                All {childConflict?.totalChildren} attached records will be destroyed. This cannot be undone.
+              </p>
+            </div>
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={forceConfirmed}
+                onChange={(e) => setForceConfirmed(e.target.checked)}
+                className="mt-0.5 accent-destructive"
+              />
+              <span className="text-2xs text-muted-foreground">
+                I understand this will permanently destroy all of {staffMember.name}&apos;s interviews, voice phrases, and content.
+              </span>
+            </label>
+            <Button
+              variant="destructive"
+              className="w-full"
+              disabled={!forceConfirmed || deleteStaffMut.isPending}
+              onClick={() => handleDeleteStaff({ force: true })}
+            >
+              {deleteStaffMut.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : 'Delete everything'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
