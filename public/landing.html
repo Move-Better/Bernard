@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bernard — One conversation. A month of content. In your actual voice.</title>
-  <meta name="description" content="Talk for 15 minutes. Bernard turns it into a month of blog, social, email, and Google posts — in your voice, ready to publish. Built for busy clinics." />
+  <title>Bernard — Your AI interviewer. A month of content in your voice.</title>
+  <meta name="description" content="Talk to Bernard for 15 minutes. He turns your words into a month of blog, social, email, and Google posts — in your actual voice, ready to publish." />
   <link rel="canonical" href="https://withbernard.ai/" />
-  <meta property="og:title" content="Bernard — Marketing in your actual voice" />
-  <meta property="og:description" content="Talk for 15 minutes. Get a month of blog, social, email, and Google posts in your voice, ready to publish." />
+  <meta property="og:title" content="Bernard — Your AI interviewer. A month of content." />
+  <meta property="og:description" content="Talk for 15 minutes. Bernard turns it into blog, social, email, and Google posts — written from what you actually said." />
   <meta property="og:url" content="https://withbernard.ai/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Bernard" />
@@ -18,16 +18,102 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/site.css" />
+  <style>
+    /* ── Live demo teaser card ── */
+    .utry-card {
+      background: #fff;
+      border: 1.5px solid var(--line-2);
+      border-radius: var(--radius-lg);
+      padding: clamp(32px, 5vw, 56px) clamp(28px, 5vw, 56px);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: clamp(24px, 4vw, 48px);
+      align-items: center;
+      box-shadow: 0 4px 24px -4px rgba(0,0,0,0.08);
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    .utry-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at 85% 50%, rgba(16,185,129,0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .utry-card:hover {
+      border-color: var(--coral);
+      box-shadow: 0 12px 40px -12px rgba(16,185,129,0.20);
+      transform: translateY(-2px);
+    }
+    @media (max-width: 680px) {
+      .utry-card { grid-template-columns: 1fr; }
+      .utry-card-arrow { display: none; }
+    }
+    .utry-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(16,185,129,0.10);
+      color: var(--coral);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+    .utry-badge-dot {
+      width: 6px; height: 6px;
+      background: var(--coral);
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(16,185,129,0.6);
+    }
+    .utry-card h3 {
+      font-weight: 700;
+      font-size: clamp(22px, 2.8vw, 30px);
+      margin: 0 0 10px;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .utry-card h3 em {
+      font-family: var(--serif);
+      font-style: italic;
+      font-weight: 500;
+      color: var(--coral);
+    }
+    .utry-card p {
+      color: var(--ink-soft);
+      font-size: 16px;
+      margin: 0;
+      line-height: 1.6;
+      max-width: 500px;
+    }
+    .utry-card-arrow {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--coral);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 22px;
+      box-shadow: 0 8px 24px -8px rgba(16,185,129,0.40);
+      transition: transform 0.2s;
+    }
+    .utry-card:hover .utry-card-arrow { transform: translateX(4px); }
+
+    /* ── Hero stat panel overrides on white ── */
+    .uhero-side {
+      box-shadow: 0 4px 32px -8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
+    }
+  </style>
   <script defer src="/_vercel/insights/script.js"></script>
   <script>
-    // Auto-redirect signed-in users to /onboard so the React app can route
-    // them to their workspace subdomain. Catches the post-invitation-signup
-    // flow: Clerk's Account Portal redirects to withbernard.ai/ after sign-up,
-    // and without this check the user sees this marketing page instead of
-    // landing in their workspace. Clerk sets __client_uat (and __session in
-    // some flows) on .withbernard.ai when a session exists. __client_uat=0 means
-    // signed out, any positive integer means signed in. ?stay=1 opts out for
-    // anyone who genuinely wants to view this page while signed in.
     (function () {
       try {
         if (new URLSearchParams(location.search).get('stay') === '1') return
@@ -36,12 +122,8 @@
         var hasSession =
           (uatMatch && uatMatch[1] !== '0') ||
           /(?:^|;\s*)__session=/.test(cookies)
-        if (hasSession) {
-          location.replace('/onboard')
-        }
-      } catch (e) {
-        // Cookie API blocked or some other oddity — just render the page.
-      }
+        if (hasSession) { location.replace('/onboard') }
+      } catch (e) {}
     })()
   </script>
 </head>
@@ -49,15 +131,19 @@
 
 <header class="uhdr">
   <div class="container uhdr-inner">
-    <a href="/" class="uhdr-logo"><img src="/bernard-logo-light.svg" alt="Bernard"></a>
+    <a href="/" class="uhdr-logo">
+      <span class="glyph">B</span>
+      Bernard
+    </a>
     <button class="uhdr-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
     <nav class="uhdr-nav">
       <a href="/how-it-works">How it works</a>
+      <a href="/demo">Demo</a>
       <a href="/pricing">Pricing</a>
       <a href="/onboard#signin" class="uhdr-signin">Sign in</a>
-      <a href="/onboard" class="uhdr-cta">Claim a spot</a>
+      <a href="/onboard" class="uhdr-cta">Get early access</a>
     </nav>
   </div>
 </header>
@@ -68,25 +154,23 @@
     <div class="uhero-text">
       <a href="/about" class="uhero-pill">
         <span class="dot"></span>
-        <span>Now onboarding the founding group</span>
+        <span>Founding group now open</span>
         <span class="arrow">→</span>
       </a>
       <h1>
-        One conversation.<br>
-        A month of content<br>
-        <em>— in your actual voice.</em>
+        Talk to Bernard.<br>
+        He writes <em>your whole month.</em>
       </h1>
       <p class="uhero-sub">
-        Talk for fifteen minutes about your work. Bernard turns it into a
-        month of <strong>blog, social, email, and Google posts</strong> — written
-        from what you actually said, in a voice that sounds like you. You review,
-        you publish. That's it.
+        Bernard interviews you for about 15 minutes. Your answers become a full month
+        of <strong>blog posts, social captions, newsletters, and Google updates</strong> —
+        written from what you actually said, in a voice that sounds like you.
       </p>
       <div class="uhero-cta">
-        <a class="ubtn ubtn-primary" href="/onboard">Claim a founding spot <span class="arrow">→</span></a>
-        <a class="ubtn ubtn-quiet" href="#see-it">Watch it work ↓</a>
+        <a class="ubtn ubtn-primary" href="/demo/try">Try it now — no login <span class="arrow">→</span></a>
+        <a class="ubtn ubtn-quiet" href="#see-it">See how it works ↓</a>
       </div>
-      <p class="uhero-meta">Free to join the founding group. No credit card. Keep everything we write for you.</p>
+      <p class="uhero-meta">No credit card · no login to try · keep everything he writes</p>
     </div>
 
     <aside class="uhero-side">
@@ -101,23 +185,40 @@
         </div>
         <div class="uhero-stat">
           <span class="num">4</span>
-          <span class="lbl">places it posts: blog, social, email, Google</span>
+          <span class="lbl">channels: blog, social, email, Google</span>
         </div>
       </div>
     </aside>
   </div>
 </section>
 
-<!-- INTERACTIVE DEMO — show the trick immediately -->
+<!-- LIVE DEMO TEASER — prominent above the fold -->
+<section style="padding: 0 0 clamp(40px,5vw,64px);">
+  <div class="container">
+    <a class="utry-card" href="/demo/try">
+      <div>
+        <div class="utry-badge">
+          <span class="utry-badge-dot"></span>
+          Live demo · no login
+        </div>
+        <h3>Pick a question.<br>Answer it out loud. <em>See what Bernard captures.</em></h3>
+        <p>Talk for up to 60 seconds — a patient story, your most-asked question, anything. Bernard captures every word exactly as you said it. No signup, nothing saved.</p>
+      </div>
+      <div class="utry-card-arrow" aria-hidden="true">→</div>
+    </a>
+  </div>
+</section>
+
+<!-- INTERACTIVE DEMO — show the output -->
 <section class="udemo-wrap" id="see-it">
   <div class="container">
     <div class="udemo-intro">
       <p class="uband-eyebrow"><span class="dot"></span> See it work</p>
-      <h2>Here's one real answer becoming <em>a finished post.</em></h2>
+      <h2>One real answer. <em>Four finished posts.</em></h2>
       <p class="udemo-lede">
         Below is a real answer from a Move Better clinician. Watch what Bernard
         writes from it — then tap <strong>Social</strong>, <strong>Email</strong>, or
-        <strong>Google</strong> to see the same idea ready for each place you post.
+        <strong>Google</strong> to see the same idea ready for each channel.
       </p>
     </div>
 
@@ -147,13 +248,13 @@
       </div>
       <div class="udemo-controls">
         <button type="button" class="ubtn ubtn-quiet udemo-replay" data-demo-replay>↻ Replay</button>
-        <span class="udemo-note">Real answer. Real output. Nothing was made up for the demo.</span>
+        <span class="udemo-note">Real answer. Real output. Nothing was made up for this demo.</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- PROOF STRIP — moved up, right after the demo -->
+<!-- PROOF STRIP -->
 <section class="uproof">
   <div class="container uproof-inner">
     <span><em>Already running three real practices</em></span>
@@ -165,7 +266,7 @@
   </div>
 </section>
 
-<!-- THREE SIMPLE STEPS -->
+<!-- THREE STEPS -->
 <section class="usteps">
   <div class="container">
     <div class="ufeat-head">
@@ -173,52 +274,52 @@
         <p class="ufeat-eyebrow"><span class="dot"></span> How it works</p>
         <h2>Three steps. <em>Most of it isn't yours.</em></h2>
       </div>
-      <p>You do the first step. Bernard does the messy middle. You get the last word before anything goes out.</p>
+      <p>You do step one. Bernard does the hard part. You have the last word before anything goes out.</p>
     </div>
 
     <div class="usteps-grid">
       <article class="ustep-card">
         <span class="ix">1</span>
-        <h3>You talk for 15 minutes</h3>
-        <p>Answer a few friendly questions out loud — about your work, a patient story, something you wish people understood. No writing, no blank page. Just talk like you would to a colleague.</p>
+        <h3>Bernard asks. You answer.</h3>
+        <p>Pick a question — a recent patient win, something you explain every week, a perspective your audience needs to hear. Answer it out loud for up to 90 seconds. No writing. No blank page.</p>
       </article>
       <article class="ustep-card">
         <span class="ix">2</span>
-        <h3>It writes a month of content</h3>
-        <p>Bernard turns that one conversation into a blog post, social captions, a newsletter, and a Google update — all from your own words, in a voice that sounds like you instead of a robot.</p>
+        <h3>Your words become posts.</h3>
+        <p>Bernard turns your answer into a blog post, social captions, a newsletter, and a Google Business update — all written from what you actually said, never from a generic AI prompt.</p>
       </article>
       <article class="ustep-card">
         <span class="ix">3</span>
-        <h3>You review and publish</h3>
-        <p>Skim the drafts between patients, tweak anything you want, and post straight to your blog, social, and Google with a click. Nothing goes out until you say so.</p>
+        <h3>You review and publish.</h3>
+        <p>Skim the drafts between patients, tweak anything you want, and post straight to your blog, social, and Google with one click. Nothing goes out until you say so.</p>
       </article>
     </div>
   </div>
 </section>
 
-<!-- WHY IT'S DIFFERENT — 3 plain benefits, not 6 jargon cards -->
+<!-- WHY DIFFERENT -->
 <section class="ufeat">
   <div class="container">
     <div class="ufeat-head">
       <div>
-        <p class="ufeat-eyebrow"><span class="dot"></span> Why it's different</p>
-        <h2>Other tools start from a blank box. <em>This one starts from you.</em></h2>
+        <p class="ufeat-eyebrow"><span class="dot"></span> Why Bernard is different</p>
+        <h2>Other tools start from a blank box. <em>Bernard starts from you.</em></h2>
       </div>
-      <p>Most AI writers wait for you to type a prompt and hand back something generic. Bernard starts from the one thing only you have — your voice and your ideas.</p>
+      <p>Most AI writing tools wait for you to type a prompt. Bernard asks the questions himself — so every word in every post comes from what you actually know and said.</p>
     </div>
 
     <div class="ufeat-grid ufeat-grid-3">
       <article class="ufeat-card">
-        <h3>It sounds like you, not a robot</h3>
-        <p>Every post comes from what you actually said in your interview. The more you use it, the more it picks up your phrasing — so it reads like you wrote it, not like AI filler.</p>
+        <h3>Every word traces back to yours</h3>
+        <p>Nothing is invented. Every claim, story, and phrase in a Bernard post comes from your interview answers. You can trace any sentence back to what you said — and so can your patients.</p>
       </article>
       <article class="ufeat-card">
-        <h3>Built for clinics, not generic marketing</h3>
-        <p>Bernard understands hands-on and integrative care — chiropractic, equine, animal, coaching. It knows your audience and your topics, so you're not fighting a tool built for software ads.</p>
+        <h3>It sounds like you, not AI</h3>
+        <p>Bernard listens for how you talk: your phrasing, your examples, the way you explain hard things simply. The more you use it, the more the posts sound like something you actually wrote.</p>
       </article>
       <article class="ufeat-card">
-        <h3>Posts straight to where you publish</h3>
-        <p>Blog, social, Google Business, and email — sent right where they need to go, or exported clean for whatever you already use. No copy-paste tour, no learning a new system.</p>
+        <h3>Posts straight to where they need to go</h3>
+        <p>Blog, social, Google Business, and email — published right from the app, or exported clean for whatever you already use. No copy-paste tour. No second tool.</p>
       </article>
     </div>
   </div>
@@ -240,15 +341,15 @@
 <section class="ucta">
   <div class="container ucta-inner">
     <h2>Stop staring at a blank page. <em>Just talk.</em></h2>
-    <p>The fastest way to see it is to do one real interview. Founding-group onboarding is free, and you keep every draft we write — whether you continue or not.</p>
+    <p>The fastest way to know whether Bernard works for you is one real interview. Founding-group onboarding is free, and you keep every draft he writes — whether you continue or not.</p>
     <div class="uhero-cta" style="justify-content:center;">
-      <a class="ubtn ubtn-primary" href="/onboard">Claim a founding spot <span class="arrow">→</span></a>
-      <a class="ubtn ubtn-quiet" href="/pricing">See pricing</a>
+      <a class="ubtn ubtn-primary" href="/onboard">Get early access <span class="arrow">→</span></a>
+      <a class="ubtn ubtn-ghost" href="/demo/try">Try it first — no login</a>
     </div>
   </div>
 </section>
 
-<!-- SUBSCRIBE (Beehiiv inline embed) -->
+<!-- SUBSCRIBE -->
 <section class="usubscribe" aria-labelledby="usubscribe-heading">
   <div class="container usubscribe-inner">
     <p class="usubscribe-eyebrow">Newsletter</p>
@@ -262,9 +363,9 @@
 
 <footer class="ufoot">
   <div class="container ufoot-inner">
-    <span class="footer-brand">Bernard — You talk. It does the rest.</span>
-    <span><a href="/how-it-works">How it works</a> · <a href="/features">Features</a> · <a href="/who-its-for">Who it's for</a> · <a href="/compare">Compare</a> · <a href="/pricing">Pricing</a> · <a href="/about">About</a> · <a href="/transparency">Transparency</a></span>
-    <span>© <span data-year>2026</span> · <a href="mailto:drq@withbernard.ai">drq@withbernard.ai</a></span>
+    <span class="footer-brand">Bernard — You talk. He writes.</span>
+    <span><a href="/how-it-works">How it works</a> · <a href="/demo">Demo</a> · <a href="/pricing">Pricing</a> · <a href="/about">About</a></span>
+    <span>© <span data-year>2026</span> · <a href="mailto:drq@narraterx.ai">drq@narraterx.ai</a></span>
   </div>
 </footer>
 
