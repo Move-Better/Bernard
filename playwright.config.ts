@@ -1,11 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
 
 // Base URL points at the workspace's production subdomain. The workflow
-// runs post-deploy on main against `https://movebetter-people.withbernard.ai`
+// runs post-deploy on main against `https://movebetter.withbernard.ai`
 // (real prod, real Clerk, real DB). Local runs can override via E2E_BASE_URL
 // to point at any reachable bernard host that already includes a workspace
 // subdomain.
-const baseURL = process.env.E2E_BASE_URL || 'https://movebetter-people.withbernard.ai'
+const baseURL = process.env.E2E_BASE_URL || 'https://movebetter.withbernard.ai'
 
 export default defineConfig({
   testDir: './tests/e2e',

@@ -5,7 +5,7 @@ name: E2E smoke
 # origins that are withbernard.ai or a subdomain (vercel.app preview URLs are
 # rejected with "Production Keys are only allowed for domain withbernard.ai").
 # We run after each merge to main, wait for Vercel's production deployment,
-# then test against movebetter-people.withbernard.ai. Catches regressions
+# then test against movebetter.withbernard.ai. Catches regressions
 # within a few minutes of shipping, before customers notice. See the
 # `project_e2e_staging_stack_option` memory for the pre-merge alternative.
 
@@ -73,7 +73,7 @@ jobs:
       - name: Seed fixture data
         env:
           MULTITENANT_DATABASE_URL: ${{ secrets.MULTITENANT_DATABASE_URL }}
-          E2E_WORKSPACE_SLUG: movebetter-people
+          E2E_WORKSPACE_SLUG: movebetter
           E2E_FIXTURE_STAFF_NAME: E2E Smoke Staff
         run: npm run e2e:seed
 
@@ -82,8 +82,8 @@ jobs:
 
       - name: Run Playwright smoke
         env:
-          E2E_BASE_URL: https://movebetter-people.withbernard.ai
-          E2E_WORKSPACE_SLUG: movebetter-people
+          E2E_BASE_URL: https://movebetter.withbernard.ai
+          E2E_WORKSPACE_SLUG: movebetter
           E2E_FIXTURE_STAFF_NAME: E2E Smoke Staff
           E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           # The workflow mints a Clerk sign-in ticket via Backend API and
