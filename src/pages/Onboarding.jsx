@@ -34,6 +34,7 @@ import {
   channelHiddenForIntent,
 } from '@/lib/outputChannels'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { BERNARD_LOGO_URL } from '@/lib/brand'
 
 export default function Onboarding() {
   useDocumentTitle('Get started')
@@ -314,9 +315,8 @@ function Header() {
   return (
     <header className="border-b">
       <div className="w-full px-6 sm:px-10 lg:px-16 py-4 flex items-center justify-between">
-        <a href="/" className="font-semibold text-lg">
-          <span>narrate</span>
-          <span className="text-primary">Rx</span>
+        <a href="/">
+          <img src={BERNARD_LOGO_URL} alt="Bernard" className="h-7 w-auto" />
         </a>
         <a href="/" className="text-xs text-muted-foreground hover:underline">
           ← Back to home
@@ -379,10 +379,7 @@ function Card({ title, subtitle, children, footer }) {
 function LoadingScreen() {
   return (
     <div className="flex flex-col items-center justify-center py-24 gap-6">
-      <div className="text-3xl font-semibold select-none">
-        <span>narrate</span>
-        <span className="text-primary">Rx</span>
-      </div>
+      <img src={BERNARD_LOGO_URL} alt="Bernard" className="h-9 w-auto" />
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <p className="text-sm text-muted-foreground">Checking availability…</p>
     </div>
