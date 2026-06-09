@@ -272,11 +272,11 @@ export default async function handler(req, res) {
     // otherwise the cascade would silently destroy interviews + voice learning.
     const childCounts = {}
     const countTargets = [
-      ['content_items',          `staff_id=eq.${id}`],
-      ['interviews',             `staff_id=eq.${id}`],
-      ['practice_memory_chunks', `staff_id=eq.${id}`],
-      ['staff_recipes',          `staff_id=eq.${id}`],
-      ['staff_voice_phrases',    `staff_id=eq.${id}`],
+      ['content_items',          `staff_id=eq.${id}&${wsFilter}`],
+      ['interviews',             `staff_id=eq.${id}&${wsFilter}`],
+      ['practice_memory_chunks', `staff_id=eq.${id}&${wsFilter}`],
+      ['staff_recipes',          `staff_id=eq.${id}&${wsFilter}`],
+      ['staff_voice_phrases',    `staff_id=eq.${id}&${wsFilter}`],
       // PostgREST array-contains: target_staff_ids @> {<id>} (braces encoded).
       ['campaigns',              `target_staff_ids=cs.%7B${id}%7D&${wsFilter}`],
     ]
