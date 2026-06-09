@@ -268,9 +268,12 @@ export function syncStaffName(name) {
   }))
 }
 
-/** @param {string} id @param {string} userId @returns {Promise<unknown>} */
-export function deleteStaff(id, userId) {
-  return apiFetch(`/api/db/staff?id=${encodeURIComponent(id)}`, {
+/** @param {string} id @param {string} userId @param {{ mergeTo?: string, force?: boolean }} [opts] @returns {Promise<unknown>} */
+export function deleteStaff(id, userId, opts = {}) {
+  const params = new URLSearchParams({ id })
+  if (opts.mergeTo) params.set('mergeTo', opts.mergeTo)
+  if (opts.force) params.set('force', 'true')
+  return apiFetch(`/api/db/staff?${params}`, {
     method: 'DELETE',
     headers: { 'x-user-id': userId },
   })
