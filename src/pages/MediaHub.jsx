@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive } from 'lucide-react'
+import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, RefreshCw, AlertCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -568,7 +568,9 @@ export default function MediaHub() {
       )}
 
       {/* Results */}
-      {error && (
+      {/* Pagination error — only shown when some assets are already visible so the
+          message doesn't collide with the centered error state below. */}
+      {error && assets.length > 0 && (
         <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 flex items-center justify-between gap-3">
           <span>{error}</span>
           <Button size="sm" variant="outline" onClick={refetchMedia} className="shrink-0">Retry</Button>
@@ -577,6 +579,16 @@ export default function MediaHub() {
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : error && assets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive/60 mb-3" />
+          <p className="text-sm font-medium text-destructive mb-1">Could not load your media library</p>
+          <p className="text-xs text-muted-foreground mb-4">{error}</p>
+          <Button size="sm" variant="outline" onClick={refetchMedia}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Retry
+          </Button>
         </div>
       ) : assets.length === 0 ? (
         // Distinguish "library is empty" from "filters returned nothing" so
