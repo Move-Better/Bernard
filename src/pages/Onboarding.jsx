@@ -316,7 +316,7 @@ function Header() {
       <div className="w-full px-6 sm:px-10 lg:px-16 py-4 flex items-center justify-between">
         <a href="/" className="font-semibold text-lg">
           <span>narrate</span>
-          <span className="text-orange-600">Rx</span>
+          <span className="text-primary">Rx</span>
         </a>
         <a href="/" className="text-xs text-muted-foreground hover:underline">
           ← Back to home
@@ -350,7 +350,7 @@ function ProgressBar({ step }) {
       {VISIBLE_STEPS.map((s, i) => (
         <div key={s} className="flex-1 flex items-center gap-2">
           <div
-            className={`h-1.5 flex-1 rounded-full ${i <= idx ? 'bg-orange-600' : 'bg-muted'}`}
+            className={`h-1.5 flex-1 rounded-full ${i <= idx ? 'bg-primary' : 'bg-muted'}`}
           />
         </div>
       ))}
@@ -381,9 +381,9 @@ function LoadingScreen() {
     <div className="flex flex-col items-center justify-center py-24 gap-6">
       <div className="text-3xl font-semibold select-none">
         <span>narrate</span>
-        <span className="text-orange-600">Rx</span>
+        <span className="text-primary">Rx</span>
       </div>
-      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <p className="text-sm text-muted-foreground">Checking availability…</p>
     </div>
   )
@@ -397,7 +397,7 @@ function CapacityFullScreen({ capacity }) {
       subtitle={`The first ${cap} founding spots are taken. Bernard is invite-only beyond founding — drop a note and you'll be first in line when the next cohort opens.`}
     >
       <a
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         href="mailto:drq@withbernard.ai?subject=Waitlist%20%E2%80%94%20Bernard"
       >
         Email Dr. Q to join the waitlist <ArrowRight className="h-4 w-4" />
@@ -432,7 +432,7 @@ function AuthScreen({ capacity, onSignedIn }) {
       subtitle="One account. Sign back in any time at your workspace's subdomain."
     >
       {showBadge && (
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-action/30 bg-action/10 px-3 py-1 text-xs font-medium text-action">
           <Sparkles className="h-3.5 w-3.5" />
           {remaining} founding {remaining === 1 ? 'spot' : 'spots'} left · founding price locked in for life
         </div>
@@ -703,19 +703,19 @@ function ScanningIndicator() {
     return () => clearInterval(tick)
   }, [])
   return (
-    <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2.5 space-y-2">
+    <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2.5 space-y-2">
       <div className="flex items-start gap-2">
-        <Loader2 className="h-4 w-4 animate-spin text-orange-600 mt-0.5 shrink-0" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-orange-900">{SCAN_STATUS_MESSAGES[idx]}</p>
-          <p className="text-2xs text-orange-700 mt-0.5">
+          <p className="text-xs font-medium">{SCAN_STATUS_MESSAGES[idx]}</p>
+          <p className="text-2xs text-muted-foreground mt-0.5">
             This usually takes 20–60 seconds. We&apos;re reading up to 15 pages from your site.
             {elapsed > 0 && ` (${elapsed}s elapsed)`}
           </p>
         </div>
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-orange-100">
-        <div className="h-full w-1/3 animate-pulse bg-orange-500 rounded-full" />
+      <div className="h-1 w-full overflow-hidden rounded-full bg-primary/20">
+        <div className="h-full w-1/3 animate-pulse bg-primary rounded-full" />
       </div>
     </div>
   )
@@ -930,8 +930,8 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
             if (!meta) return null
             const { Icon } = meta
             return (
-              <div key={platform} className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 space-y-1.5">
-                <p className="text-2xs font-medium text-orange-900 inline-flex items-center gap-1.5">
+              <div key={platform} className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 space-y-1.5">
+                <p className="text-2xs font-medium inline-flex items-center gap-1.5">
                   <Icon className="h-3.5 w-3.5" /> Is this your {meta.label}?
                 </p>
                 {list.slice(0, 3).map((c, i) => (
@@ -940,7 +940,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
                       href={c.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-2xs text-orange-900 underline truncate min-w-0"
+                      className="text-2xs text-primary underline truncate min-w-0"
                       title={c.url}
                     >
                       {c.handle}
@@ -948,7 +948,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
                     <button
                       type="button"
                       onClick={() => acceptCandidate(platform, c.handle)}
-                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white border border-orange-300 px-2 py-0.5 text-2xs font-medium text-orange-800 hover:bg-orange-100"
+                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-background border border-primary/30 px-2 py-0.5 text-2xs font-medium text-primary hover:bg-primary/10"
                     >
                       <Check className="h-3 w-3" /> Yes, that&apos;s me
                     </button>
@@ -1076,7 +1076,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
         <button
           type="button"
           onClick={addLocation}
-          className="inline-flex items-center gap-1 text-xs text-orange-600 hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
           <Plus className="h-3.5 w-3.5" /> Add another location
         </button>
@@ -1121,13 +1121,13 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
     >
       {/* Voice-fidelity promise — sets the right expectation before the user
           touches any fields. Everything generated traces back to these inputs. */}
-      <div className="rounded-xl border-2 border-orange-300 bg-orange-50 px-4 py-4 flex items-start gap-3 -mt-1 shadow-sm">
+      <div className="rounded-xl border-2 border-primary/30 bg-primary/10 px-4 py-4 flex items-start gap-3 -mt-1 shadow-sm">
         <span className="text-2xl mt-0.5 shrink-0">🎙</span>
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-orange-900">
+          <p className="text-sm font-semibold">
             Why this matters most
           </p>
-          <p className="text-xs text-orange-900 leading-relaxed">
+          <p className="text-xs leading-relaxed">
             Everything Bernard writes traces back to what you and your team actually say. The few lines below are what keep your drafts sounding like your practice — your words, your tone — instead of generic AI content. When you review a draft, you&apos;ll see exactly which phrases came from your own answers and which the AI filled in.
           </p>
         </div>
@@ -1159,21 +1159,21 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
         />
       </FieldRow>
       {topics.length > 0 && (
-        <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2.5">
-          <p className="text-xs font-medium text-orange-900 mb-1.5">
+        <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2.5">
+          <p className="text-xs font-medium mb-1.5">
             We saw you write about:
           </p>
           <div className="flex flex-wrap gap-1.5">
             {topics.map((t, i) => (
               <span
                 key={i}
-                className="inline-flex items-center rounded-full bg-white border border-orange-200 px-2 py-0.5 text-2xs text-orange-900"
+                className="inline-flex items-center rounded-full bg-background border border-primary/20 px-2 py-0.5 text-2xs"
               >
                 {t}
               </span>
             ))}
           </div>
-          <p className="text-2xs text-orange-700 mt-1.5">
+          <p className="text-2xs text-muted-foreground mt-1.5">
             These are topics pulled from your blog. We&apos;ll use them later to seed post ideas — you don&apos;t need to edit anything here.
           </p>
         </div>
@@ -1322,7 +1322,7 @@ function IntentGroup({ icon: Icon, title, colsClass, children }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-orange-600" />
+        <Icon className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold">{title}</h3>
       </div>
       <div className={`grid grid-cols-1 ${colsClass} gap-2.5`}>{children}</div>
@@ -1740,7 +1740,7 @@ function LaunchingScreen({ redirectUrl }) {
             Retry
           </Button>
           {redirectUrl && (
-            <a className="text-xs underline text-orange-600" href={redirectUrl}>
+            <a className="text-xs underline text-primary" href={redirectUrl}>
               Continue manually
             </a>
           )}
@@ -1755,7 +1755,7 @@ function LaunchingScreen({ redirectUrl }) {
       subtitle="Provisioning your subdomain and wiring up your voice context. This usually takes 5–15 seconds."
     >
       <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
         <span>
           {ready
             ? `Redirecting to ${redirectUrl ? new URL(redirectUrl).host : ''}…`
@@ -1765,7 +1765,7 @@ function LaunchingScreen({ redirectUrl }) {
       {!ready && elapsed >= 25 && redirectUrl && (
         <p className="text-xs text-muted-foreground">
           Taking longer than usual? You can also{' '}
-          <a className="underline text-orange-600" href={redirectUrl}>continue manually</a>.
+          <a className="underline text-primary" href={redirectUrl}>continue manually</a>.
         </p>
       )}
     </Card>
