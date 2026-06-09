@@ -18,8 +18,8 @@
 // headers — that pattern doesn't propagate through this Vite/Edge setup.
 //
 // Dual-run safe: when MULTITENANT_DATABASE_URL is unset (legacy per-brand
-// Vercel projects: narraterx-people, narraterx-equine, narraterx-animals),
-// the middleware no-ops and every request passes through unchanged.
+// Vercel projects, now retired), the middleware no-ops and every request
+// passes through unchanged.
 
 import { next, rewrite } from '@vercel/functions'
 
@@ -28,14 +28,10 @@ export const config = {
   matcher: ['/((?!assets/|favicon\\.ico|robots\\.txt|sitemap\\.xml|_vercel/).*)'],
 }
 
-// Transitional dual-domain: recognize both the new brand domain and the legacy
-// narraterx.ai so a deploy that lands before the DNS/Clerk cutover doesn't break
-// the still-live narraterx.ai. Drop narraterx.ai in a follow-up once cutover is done.
 const APEX_HOSTS = new Set([
   'withbernard.ai', 'www.withbernard.ai',
-  'narraterx.ai', 'www.narraterx.ai',
 ])
-const WORKSPACE_SUFFIXES = ['.withbernard.ai', '.narraterx.ai']
+const WORKSPACE_SUFFIXES = ['.withbernard.ai']
 
 // Clean-URL routing table for the marketing site. Keys are the public path
 // (no trailing slash, lowercase); values are the static file inside public/.

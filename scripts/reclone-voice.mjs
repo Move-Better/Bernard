@@ -106,7 +106,7 @@ try {
   for (const iv of interviews) {
     const url = iv.audio_recording_url
     const ext = url.split('.').pop().split('?')[0] || 'webm'
-    const tmpPath = join(tmpdir(), `narraterx-voice-${iv.id}.${ext}`)
+    const tmpPath = join(tmpdir(), `bernard-voice-${iv.id}.${ext}`)
     process.stdout.write(`  Downloading ${basename(url)}... `)
     const r = await fetch(url)
     if (!r.ok) { console.log(`SKIP (${r.status})`); continue }
@@ -129,8 +129,8 @@ if (tmpFiles.length === 0) {
 console.log(`\nSubmitting ${tmpFiles.length} file(s) to ElevenLabs...`)
 
 const form = new FormData()
-form.append('name',        `${cl.name} (NarrateRx interviews)`)
-form.append('description', `Auto-trained from ${tmpFiles.length} NarrateRx interview session(s). Regenerated ${new Date().toISOString().slice(0, 10)}.`)
+form.append('name',        `${cl.name} (Bernard interviews)`)
+form.append('description', `Auto-trained from ${tmpFiles.length} Bernard interview session(s). Regenerated ${new Date().toISOString().slice(0, 10)}.`)
 
 for (const { path, ext } of tmpFiles) {
   const buf  = await readFile(path)

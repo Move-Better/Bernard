@@ -44,7 +44,7 @@ const DRY_RUN = args.includes('--dry-run')
 // ---------------------------------------------------------------------------
 // .env.local
 // ---------------------------------------------------------------------------
-const envPath = '/Users/qbook/Claude Projects/NarrateRx/.env.local'
+const envPath = '/Users/qbook/Claude Projects/Bernard/.env.local'
 for (const line of readFileSync(envPath, 'utf8').split('\n')) {
   const t = line.trim(); if (!t || t.startsWith('#')) continue
   const eq = t.indexOf('='); if (eq < 0) continue

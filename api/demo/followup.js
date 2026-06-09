@@ -2,7 +2,7 @@
 //
 // PUBLIC, UNAUTHENTICATED demo endpoint. Takes the topic + the visitor's prior
 // transcript(s) and returns a single AI-generated follow-up question from
-// Bernard, the NarrateRx interview host.
+// Bernard, the interview host.
 //
 //   • NO workspaceContext / NO requireRole / NO Supabase / NO Vercel Blob.
 //     Persists nothing. Audio is never received here — only text.
@@ -26,7 +26,7 @@ const TOPIC_CONTEXT = {
   insight: 'The visitor is sharing something they wish every patient understood.',
 }
 
-const BERNARD_SYSTEM = `You are Bernard, the NarrateRx interview host. Your job is to ask ONE short, focused follow-up question that draws out a deeper or more specific layer of what the person just said.
+const BERNARD_SYSTEM = `You are Bernard, the interview host. Your job is to ask ONE short, focused follow-up question that draws out a deeper or more specific layer of what the person just said.
 
 Rules:
 - Ask exactly ONE question. No preamble, no compliments, no "Great answer!" — just the question.

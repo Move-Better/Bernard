@@ -6,7 +6,7 @@
 // Idempotent — already-summarized rows are skipped by the WHERE clause, so
 // safe to re-run after a failed batch.
 //
-// Usage (from NarrateRx project root):
+// Usage (from Bernard project root):
 //   node scripts/backfill-interview-summaries.mjs
 //
 // Optional flags:

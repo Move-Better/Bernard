@@ -1,4 +1,4 @@
-# NarrateRx — Current-State Map (how it ACTUALLY works today)
+# Bernard — Current-State Map (how it ACTUALLY works today)
 
 **Built:** 2026-06-02 from the real code, not a redesign. **Status:** for Q to correct BEFORE any mockup.
 **Why this exists:** two greenfield "Studio" mockups reinvented logic the app already ships, worse. This maps reality first. Correct anything wrong and I build targeted fixes against *this*, framed as labelled diffs.
@@ -44,7 +44,7 @@ The **"Approved · add media"** badge IS the clinician→publisher handoff seam 
 ## Roles (real — TWO axes, and a naming thing to settle)
 
 **Legacy role** (`roles.js`, stored in Clerk):
-- **admin** — owner; configures NarrateRx (voice, members, brand, billing).
+- **admin** — owner; configures Bernard (voice, members, brand, billing).
 - **clinician** — voices interviews, **approves drafts for voice fidelity. Owns the words.**
 - **publisher** — **attaches media from Library, schedules, publishes. Owns distribution.** (`editor` = legacy alias.)
 

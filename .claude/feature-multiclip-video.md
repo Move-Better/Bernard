@@ -6,7 +6,7 @@ Authored 2026-05-29. ⚠️ Correction (2026-05-29): a later pass this day re-sc
 
 ## Problem
 One long recording (seminar, talk, voice-memo video) currently becomes **one** post.
-It should become **many**. This is the core NarrateRx thesis (content multiplication)
+It should become **many**. This is the core Bernard thesis (content multiplication)
 and is especially apt for Move Better, which records monthly seminars — hours of A/V
 that should turn into dozens of clips. Aligns with existing principles:
 `project_app_serves_interview_principle` (long-form → spawn pieces, don't truncate)
@@ -40,7 +40,7 @@ moments* — a complete thought, a demonstrable technique, a quotable line.
 
 ## Phase 0 — buy-vs-build eval (DONE 2026-05-29)
 
-Decision hinge: NarrateRx's differentiation is its **own** brand render + voice-faithful
+Decision hinge: Bernard's differentiation is its **own** brand render + voice-faithful
 caption, so a vendor is only wanted for moment **detection (timestamps)** — never one that
 bakes its own captions/styling.
 

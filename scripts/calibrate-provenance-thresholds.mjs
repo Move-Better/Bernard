@@ -23,7 +23,7 @@
 //      validated data exists, supply a hand-labeled JSON file in this shape:
 //      [{ paragraph: "...", userMessages: ["..."], label: "verbatim" }, ...]
 //
-// Usage (from NarrateRx project root):
+// Usage (from Bernard project root):
 //   node scripts/calibrate-provenance-thresholds.mjs           # synthetic
 //   node scripts/calibrate-provenance-thresholds.mjs --distribution
 //   node scripts/calibrate-provenance-thresholds.mjs --analyze=labeled.json
@@ -239,7 +239,7 @@ function runSyntheticChecks() {
 // ─── DB fetchers ─────────────────────────────────────────────────────────────
 
 async function connect() {
-  const env = await readFile('/Users/qbook/Claude Projects/NarrateRx/.env.local', 'utf8').catch(() => '')
+  const env = await readFile('/Users/qbook/Claude Projects/Bernard/.env.local', 'utf8').catch(() => '')
   const m = env.match(/^MULTITENANT_DATABASE_URL=(.+)$/m)
   if (!m) {
     console.error('MULTITENANT_DATABASE_URL not found in project-root .env.local')
@@ -247,7 +247,7 @@ async function connect() {
   }
   const connectionString = m[1].trim().replace(/^"(.*)"$/, '$1')
   if (connectionString.includes('REDACTED')) {
-    console.error('MULTITENANT_DATABASE_URL is redacted — restore from 1Password (NarrateRx vault)')
+    console.error('MULTITENANT_DATABASE_URL is redacted — restore from 1Password (Bernard vault)')
     process.exit(1)
   }
   const client = new Client({ connectionString })

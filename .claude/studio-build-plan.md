@@ -1,4 +1,4 @@
-# NarrateRx — Studio/Edit/Slate Build Plan
+# Bernard — Studio/Edit/Slate Build Plan
 
 **Created:** 2026-06-02 · **Status:** approved direction, ready to build · **Owner:** Q
 **Source of truth:** the locked mockups in `.claude/mockups/` — each is the page-specific spec. Build to match them closely (side-by-side check per page). Strategy: [[project_bet_against_slop_strategy]]; product truths: [[project_studio_consolidation_product_truths]].

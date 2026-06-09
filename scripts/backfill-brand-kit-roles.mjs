@@ -3,7 +3,7 @@
 // ai_classification, and for each top candidate with confidence >= 0.75
 // inserts into brand_kit_roles if the slot is empty.
 //
-// Run from the NarrateRx project root:
+// Run from the Bernard project root:
 //   node scripts/backfill-brand-kit-roles.mjs
 //
 // Requires SUPABASE_URL and SUPABASE_SERVICE_KEY in .env.local.

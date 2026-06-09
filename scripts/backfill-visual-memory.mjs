@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * NarrateRx Visual Memory Backfill
+ * Bernard Visual Memory Backfill
  *
  * One-off script that backfills the `visual_memory_chunks` table from
  * existing `media_assets` rows. Lets Phase 2's clip-pull AI retrieve
@@ -91,7 +91,7 @@ async function sbGet(path) {
 }
 
 // ── Resolve workspaces ───────────────────────────────────────────────────────
-console.log('\n📦 NarrateRx Visual Memory Backfill')
+console.log('\n📦 Bernard Visual Memory Backfill')
 console.log(`   ${DRY_RUN ? 'DRY RUN' : 'LIVE'} • batch=${BATCH}${LIMIT ? ` • limit=${LIMIT}` : ''}${WORKSPACE_SLUG ? ` • workspace=${WORKSPACE_SLUG}` : ''}${SKIP_INDEXED ? ' • skip-indexed' : ''}`)
 
 const wsFilter = WORKSPACE_SLUG ? `slug=eq.${WORKSPACE_SLUG}&` : ''

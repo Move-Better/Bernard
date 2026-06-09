@@ -128,7 +128,7 @@ CI runs `npm run verify-bundles` (= `node scripts/verify-function-bundles.mjs`) 
 
 **To run locally:**
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && npm run verify-bundles
+cd "/Users/qbook/Claude Projects/Bernard" && npm run verify-bundles
 ```
 
 **When the check fires in CI:**
@@ -307,18 +307,18 @@ All production media lives in a single Vercel Blob store (`bernard-prod`, prefix
 Use the GitHub CLI (`gh`) for GitHub-specific interactions — PRs, issues, releases, repo management. `gh` is configured as the git credential helper, so plain `git push` / `git fetch` are fine for ref operations (they authenticate through `gh` under the hood). Do not set up separate HTTPS basic auth or raw SSH credentials.
 
 ## Parallel sessions — one worktree per session
-The project root (`/Users/qbook/Claude Projects/NarrateRx`) is reserved for two things only: `git pull` on `main` and `npm run deploy:prod`. **No session — Claude or human — does feature work there.** Every active Claude session runs in its own git worktree, so two sessions can never collide on a branch, a working tree, or a half-committed file.
+The project root (`/Users/qbook/Claude Projects/Bernard`) is reserved for two things only: `git pull` on `main` and `npm run deploy:prod`. **No session — Claude or human — does feature work there.** Every active Claude session runs in its own git worktree, so two sessions can never collide on a branch, a working tree, or a half-committed file.
 
-The 2026-05-21 deploy stall was the canonical failure: Session A (post-interview UX, on `fix/post-interview-flow`) finished and merged its PR. Session B (onboarding P2) was still working in the same project root on `feat/onboarding-interview-p2` with uncommitted edits to `src/App.jsx`. When Session A tried `git checkout main` to deploy, the checkout aborted on B's WIP. A had to wait for B to commit before prod could ship. With per-session worktrees, A's deploy step is `cd "/Users/qbook/Claude Projects/NarrateRx" && git pull && npm run deploy:prod` — independent of whatever B is doing.
+The 2026-05-21 deploy stall was the canonical failure: Session A (post-interview UX, on `fix/post-interview-flow`) finished and merged its PR. Session B (onboarding P2) was still working in the same project root on `feat/onboarding-interview-p2` with uncommitted edits to `src/App.jsx`. When Session A tried `git checkout main` to deploy, the checkout aborted on B's WIP. A had to wait for B to commit before prod could ship. With per-session worktrees, A's deploy step is `cd "/Users/qbook/Claude Projects/Bernard" && git pull && npm run deploy:prod` — independent of whatever B is doing.
 
-**Helper:** `scripts/new-session-worktree.sh <session-name>` creates a fresh worktree at `../NarrateRx-worktrees/<session-name>` branched off `origin/main`, copies `.env.local` + `.vercel/` in, and symlinks `node_modules` so `npm run dev` works immediately. When the session's PR is merged, clean up with `git worktree remove ../NarrateRx-worktrees/<session-name>`.
+**Helper:** `scripts/new-session-worktree.sh <session-name>` creates a fresh worktree at `../Bernard-worktrees/<session-name>` branched off `origin/main`, copies `.env.local` + `.vercel/` in, and symlinks `node_modules` so `npm run dev` works immediately. When the session's PR is merged, clean up with `git worktree remove ../Bernard-worktrees/<session-name>`.
 
 **Rules:**
 - A new Claude session that intends to edit code starts by creating a worktree, not by editing in the project root.
 - The project root stays on `main`. If you find yourself on another branch in the project root, you (or another session) skipped the worktree step — recover by stashing, switching back to `main`, and re-doing the work in a fresh worktree.
 - Long-running sessions can stay parked in their worktree across days. Stale branches still cost nothing in disk space.
 
-**Worktrees symlink `node_modules` to the project root — so when a PR adds a new npm package, all worktrees break until the project root's `node_modules` is updated.** Fix: `git -C "/Users/qbook/Claude Projects/NarrateRx" stash && git -C "/Users/qbook/Claude Projects/NarrateRx" checkout main && git -C "/Users/qbook/Claude Projects/NarrateRx" pull && npm --prefix "/Users/qbook/Claude Projects/NarrateRx" install`. Never run `npm install` while the project root is on a feature branch — it will add the dep to that branch's `package.json`/`package-lock.json` as an uncommitted side-effect. Always check out `main` first. (2026-06-02: checkup after sprint found `@vercel/toolbar` missing from `node_modules`; fixing it while root was on `feat/url-import-preserve-publish-date` polluted Q's working branch.)
+**Worktrees symlink `node_modules` to the project root — so when a PR adds a new npm package, all worktrees break until the project root's `node_modules` is updated.** Fix: `git -C "/Users/qbook/Claude Projects/Bernard" stash && git -C "/Users/qbook/Claude Projects/Bernard" checkout main && git -C "/Users/qbook/Claude Projects/Bernard" pull && npm --prefix "/Users/qbook/Claude Projects/Bernard" install`. Never run `npm install` while the project root is on a feature branch — it will add the dep to that branch's `package.json`/`package-lock.json` as an uncommitted side-effect. Always check out `main` first. (2026-06-02: checkup after sprint found `@vercel/toolbar` missing from `node_modules`; fixing it while root was on `feat/url-import-preserve-publish-date` polluted Q's working branch.)
 
 ## Branch workflow (avoiding pile-ups)
 PRs need to merge close to when they're opened, not batch-stacked indefinitely. The 26-PR pileup of 2026-05-12 happened because work batched while `main` moved in parallel from other contexts — every PR ended up conflicting with a different file `main` had since rewritten. To avoid the repeat:
@@ -350,12 +350,12 @@ git push -u origin <new-branch-name>
 Cherry-pick replays only B's actual change onto clean main — no conflict. This pattern recurred twice in the 2026-06-07 function-consolidation session (Phase 2 and Phase 3 stacked PRs after Phase 1 squash-merged).
 
 ## Production deploys
-Deploy to prod **only** from the project root (`/Users/qbook/Claude Projects/NarrateRx`) and **only** when the project root is on `main`, fully synced with `origin/main`. `vercel deploy --prod` ships the local working tree (not the git ref), so deploying from a worktree, a feature branch, or a project root with uncommitted changes will publish whatever happens to be on disk — including reverting recently-merged PRs.
+Deploy to prod **only** from the project root (`/Users/qbook/Claude Projects/Bernard`) and **only** when the project root is on `main`, fully synced with `origin/main`. `vercel deploy --prod` ships the local working tree (not the git ref), so deploying from a worktree, a feature branch, or a project root with uncommitted changes will publish whatever happens to be on disk — including reverting recently-merged PRs.
 
 Canonical command:
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && npm run deploy:prod
+cd "/Users/qbook/Claude Projects/Bernard" && npm run deploy:prod
 ```
 
 `npm run deploy:prod` wraps `vercel deploy --prod` and injects `VERCEL_GIT_COMMIT_SHA=$(git rev-parse HEAD)` as a build-env. CLI uploads have no `.git` in the build container, so without this the prebuild's `write-version.mjs` falls back to `sha: "dev"` and the auto-update notifier silently no-ops for that deploy.
@@ -368,14 +368,14 @@ If the project root is on another branch (with WIP), do not switch under the use
 
 After a merge, verify the auto-deploy via `vercel ls bernard --prod | head -3` (look for a ● Ready row whose age matches the merge time) or by polling `curl -s https://withbernard.ai/version.json` until `sha` flips to `git rev-parse origin/main`. That's the whole post-merge protocol.
 
-**`vercel inspect <dpl>` Aliases / domains list is FROZEN deployment metadata — NOT live routing.** It shows the domains a deployment was assigned at deploy time and does not update when you add/remove aliases afterward. After `vercel alias rm <name>`, `inspect` will keep listing the removed alias (it refreshes only on the next prod deploy), which reads as "the removal failed" when it actually succeeded. **For live alias/routing state, trust HTTP probes, not `inspect`:** `curl -s -o /dev/null -w "%{http_code}" https://<host>/` (a removed alias → 404/connection refused; a live one → 200). Bit us during the 2026-06-08 narraterx.ai→withbernard.ai cutover — `inspect` listed five `narraterx.ai` aliases as still attached after they'd been removed; curl confirmed every one was actually dead.
+**`vercel inspect <dpl>` Aliases / domains list is FROZEN deployment metadata — NOT live routing.** It shows the domains a deployment was assigned at deploy time and does not update when you add/remove aliases afterward. After `vercel alias rm <name>`, `inspect` will keep listing the removed alias (it refreshes only on the next prod deploy), which reads as "the removal failed" when it actually succeeded. **For live alias/routing state, trust HTTP probes, not `inspect`:** `curl -s -o /dev/null -w "%{http_code}" https://<host>/` (a removed alias → 404/connection refused; a live one → 200). Bit us during the 2026-06-08 withbernard.ai→withbernard.ai cutover — `inspect` listed five `withbernard.ai` aliases as still attached after they'd been removed; curl confirmed every one was actually dead.
 
 ## Renaming ≠ rebranding — check build-generated output and binary/vector asset *contents*, not just string refs
 
-A global find/replace (`narraterx`→`bernard`, `narraterx.ai`→`withbernard.ai`) swaps strings and renames files but leaves two whole classes of stale branding that a `grep` of source won't catch. Both shipped to live prod during the 2026-06-08 rebrand and were only caught later:
+A global find/replace (`bernard`→`bernard`, `withbernard.ai`→`withbernard.ai`) swaps strings and renames files but leaves two whole classes of stale branding that a `grep` of source won't catch. Both shipped to live prod during the 2026-06-08 rebrand and were only caught later:
 
-- **Build-time generators regenerate stale output on every deploy.** `scripts/build-blog.mjs` has inline HTML templates (header logo, `<title>`, canonical/OG URLs, footer email) that were never rebranded. It runs as part of `npm run build`, so Vercel regenerated `public/blog.html` + `public/blog/*.html` with full narrateRx branding (favicon `/narraterx-icon.svg`, `https://narraterx.ai/blog` canonical) on **every** deploy — the committed files looked correct but were overwritten at build time, and the live blog served the old brand regardless. **Rule: after a rename, grep `scripts/` and any `prebuild`/`build` step for the old name, not just `src/`/`api/`. A file that's regenerated by the build is owned by its generator, not by its committed copy.**
-- **Renamed asset files still contain the old artwork.** `git mv narraterx-logo.svg bernard-logo.svg` changes the filename, not the pixels/paths inside. Every `public/*.svg` and `public/brand/*.png` was the old evergreen-`#1c4d37`/coral-`#ff8552` narrateRx mark under a Bernard filename — including `bernard-icon.svg`, the sitewide favicon + PWA + Clerk-org-logo (~43 refs). **Rule: for SVGs, grep the file *bodies* for old brand color hexes / wordmark text (`grep -l '#ff8552\|narrate' public/**/*.svg`); for PNGs, actually open/rasterize a couple and look. A clean `grep` of code references proves nothing about asset contents.** (Local rasterization fallback when rsvg/ImageMagick are absent: `qlmanage -t -s <px> -o /tmp x.svg` then `sips -z`/`--padToHeightWidth` for exact dimensions.)
+- **Build-time generators regenerate stale output on every deploy.** `scripts/build-blog.mjs` has inline HTML templates (header logo, `<title>`, canonical/OG URLs, footer email) that were never rebranded. It runs as part of `npm run build`, so Vercel regenerated `public/blog.html` + `public/blog/*.html` with full Bernard branding (favicon `/bernard-icon.svg`, `https://withbernard.ai/blog` canonical) on **every** deploy — the committed files looked correct but were overwritten at build time, and the live blog served the old brand regardless. **Rule: after a rename, grep `scripts/` and any `prebuild`/`build` step for the old name, not just `src/`/`api/`. A file that's regenerated by the build is owned by its generator, not by its committed copy.**
+- **Renamed asset files still contain the old artwork.** `git mv bernard-logo.svg bernard-logo.svg` changes the filename, not the pixels/paths inside. Every `public/*.svg` and `public/brand/*.png` was the old evergreen-`#1c4d37`/coral-`#ff8552` Bernard mark under a Bernard filename — including `bernard-icon.svg`, the sitewide favicon + PWA + Clerk-org-logo (~43 refs). **Rule: for SVGs, grep the file *bodies* for old brand color hexes / wordmark text (`grep -l '#ff8552\|narrate' public/**/*.svg`); for PNGs, actually open/rasterize a couple and look. A clean `grep` of code references proves nothing about asset contents.** (Local rasterization fallback when rsvg/ImageMagick are absent: `qlmanage -t -s <px> -o /tmp x.svg` then `sips -z`/`--padToHeightWidth` for exact dimensions.)
 
 `npm run deploy:prod` is still the right tool for:
 - The GitHub integration is failing or paused
@@ -402,7 +402,7 @@ These are untracked, so `rm` is unrecoverable (see ~/.claude/CLAUDE.md "Deleting
 
 ## Auto-memory index hygiene (MEMORY.md)
 
-The per-project auto-memory **index** (`~/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/MEMORY.md`) is auto-loaded into context at the start of every session and has a hard **~24KB cap** — once over, the tail entries silently truncate and that recall is lost. It ballooned to 27KB+ (2026-06-05, had to be run through `/consolidate-memory` almost daily) because entries were written as multi-line paragraphs and shipped work was never archived. Keep it lean so this stops recurring:
+The per-project auto-memory **index** (`~/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/MEMORY.md`) is auto-loaded into context at the start of every session and has a hard **~24KB cap** — once over, the tail entries silently truncate and that recall is lost. It ballooned to 27KB+ (2026-06-05, had to be run through `/consolidate-memory` almost daily) because entries were written as multi-line paragraphs and shipped work was never archived. Keep it lean so this stops recurring:
 
 - **One line per entry, <150 chars**: `- [Title](topic-file.md) — one-line hook`. ALL detail goes in the linked topic file, never in the index line. If you're writing a second sentence in the index, move it into the file.
 - **Archive shipped work**: once a `project_*` item is SHIPPED / COMPLETE / LIVE, collapse its index line into the "ARCHIVE — shipped & stable" rollup at the bottom (list its file stem for `grep`, drop the per-line hook). Don't carry done projects as live entries.
@@ -437,7 +437,7 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 
 **E2E smoke `ClerkAPIResponseError: Unauthorized` = stale `E2E_CLERK_SECRET_KEY` GitHub Actions secret.** The `auth.setup.ts` fixture mints Clerk sign-in tokens using `CLERK_SECRET_KEY` (mapped from the `E2E_CLERK_SECRET_KEY` Actions secret). If the secret is stale, EVERY e2e run fails at setup before any Playwright test runs. The failure is NOT caused by app code. Fix — run in any directory:
 ```bash
-awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/Claude Projects/NarrateRx/.env.local.1pw" | tr -d '\r' | gh secret set E2E_CLERK_SECRET_KEY --repo Move-Better/Bernard
+awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/Claude Projects/Bernard/.env.local.1pw" | tr -d '\r' | gh secret set E2E_CLERK_SECRET_KEY --repo Move-Better/Bernard
 ```
 Confirm with `gh secret list --repo Move-Better/Bernard` — the updated timestamp should be today. (Hit 2026-06-06 after the secret was set 2026-05-12 and aged out.)
 

@@ -82,7 +82,7 @@ try {
   } else {
     const inserted = await client.query(
       `insert into staff (workspace_id, name, created_by_id, created_by_email)
-       values ($1, $2, 'e2e-seed', 'e2e@narraterx.test')
+       values ($1, $2, 'e2e-seed', 'e2e@bernard.test')
        returning id, name`,
       [workspace.id, STAFF_NAME],
     )

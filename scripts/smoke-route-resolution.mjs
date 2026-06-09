@@ -8,7 +8,7 @@
 //
 // Preview deployments sit behind Vercel Deployment Protection, so requests go
 // through `vercel curl` (auto-bypass). Usage:
-//   node scripts/smoke-route-resolution.mjs https://narraterx-xxxx-movebetter.vercel.app
+//   node scripts/smoke-route-resolution.mjs https://bernard-xxxx-movebetter.vercel.app
 
 import { readdirSync, statSync } from 'node:fs'
 import { join, resolve, relative, sep } from 'node:path'

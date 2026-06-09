@@ -9,11 +9,11 @@ _Last updated: 2026-05-21_
 Each tool has one job:
 
 - **GoHighLevel** = the operational machine. Landing page, registration form, calendar event, email + SMS reminders, attendance tracking, post-event nurture pipeline, attribution back to ad spend.
-- **NarrateRx** = the voice-true content fuel. Every social post, email excerpt, and video script Michael creates from his interviews automatically points readers to the seminar RSVP page — in his own voice, with the invitation sentence we wrote, linking to the exact GHL URL.
+- **Bernard** = the voice-true content fuel. Every social post, email excerpt, and video script Michael creates from his interviews automatically points readers to the seminar RSVP page — in his own voice, with the invitation sentence we wrote, linking to the exact GHL URL.
 
 The point of the pairing: the paid ad gets you the cold audience, but organic content from Michael's interviews **lowers cost-per-registrant** over the quarter because his social/email/video posts also drive RSVPs without paid spend.
 
-## How NarrateRx supports this (new this week)
+## How Bernard supports this (new this week)
 
 **Workspace-wide default**: Admin sets the workspace's content focus. Default stays on **Bookings** — everyone's day-to-day content drives consult bookings as normal.
 
@@ -51,10 +51,10 @@ Blog posts stay timeless so they keep working as evergreen SEO assets. Only the 
 
 ## Phases for the quarter
 
-1. **Pre-launch** (this week): Build GHL landing page + reminder workflows. Michael sets his NarrateRx override.
+1. **Pre-launch** (this week): Build GHL landing page + reminder workflows. Michael sets his Bernard override.
 2. **Ad live + organic amplification** (4–6 weeks before each seminar): IG ad runs; Michael's interviews generate seminar-CTA'd social/email/video that compounds the paid reach.
 3. **Day of**: GHL handles check-in + attendance tagging.
-4. **Post-seminar** (10 days): Quick Michael debrief interview → NarrateRx generates the follow-up email sequence + an "if you missed it" recap that doubles as ad creative for the next seminar.
+4. **Post-seminar** (10 days): Quick Michael debrief interview → Bernard generates the follow-up email sequence + an "if you missed it" recap that doubles as ad creative for the next seminar.
 5. **Quarter loop**: Report on cost-per-registrant, cost-per-attendee, cost-per-consult-booked.
 
 ## Quick reference for the staff

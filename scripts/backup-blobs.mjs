@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Backup NarrateRx media to local disk.
+ * Backup Bernard media to local disk.
  *
  * Sources every URL from the database (media_assets table) rather than
  * Vercel Blob list(), because the originals are spread across multiple
@@ -56,9 +56,9 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + 
 const driveDefault = join(
   os.homedir(),
   'Library', 'CloudStorage', 'GoogleDrive-drq@movebetter.co', 'My Drive',
-  'NarrateRx Backups', 'media',
+  'Bernard Backups', 'media',
 );
-const localFallback = join(os.homedir(), 'Backups', 'narraterx-blobs');
+const localFallback = join(os.homedir(), 'Backups', 'bernard-blobs');
 let parentDir;
 if (process.env.BACKUP_BLOBS_DIR) {
   parentDir = process.env.BACKUP_BLOBS_DIR;

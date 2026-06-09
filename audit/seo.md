@@ -28,8 +28,8 @@
 **Files:** `Strategy.jsx`, `Integrations.jsx`, `WorkspaceSettings.jsx`, `ClinicianProfile.jsx`, `Onboarding.jsx`  
 **Status:** ✅ Auto-fixed
 
-These pages left the browser tab title as the static `"NarrateRx"` from `index.html` instead of updating it to reflect the active page. This affects:
-- Browser history readability (all entries show "NarrateRx")
+These pages left the browser tab title as the static `"Bernard"` from `index.html` instead of updating it to reflect the active page. This affects:
+- Browser history readability (all entries show "Bernard")
 - Accessibility (screen readers announce the static title)
 - Tab-switcher recognition when multiple tabs are open
 
@@ -37,11 +37,11 @@ These pages left the browser tab title as the static `"NarrateRx"` from `index.h
 
 | Page | Title |
 |---|---|
-| `Strategy.jsx` | `Strategy · NarrateRx` |
-| `Integrations.jsx` | `Integrations · NarrateRx` |
-| `WorkspaceSettings.jsx` | `Settings — Workspace · NarrateRx` |
-| `ClinicianProfile.jsx` | `Clinician · NarrateRx` |
-| `Onboarding.jsx` | `Get started · NarrateRx` |
+| `Strategy.jsx` | `Strategy · Bernard` |
+| `Integrations.jsx` | `Integrations · Bernard` |
+| `WorkspaceSettings.jsx` | `Settings — Workspace · Bernard` |
+| `ClinicianProfile.jsx` | `Clinician · Bernard` |
+| `Onboarding.jsx` | `Get started · Bernard` |
 
 ---
 
@@ -52,7 +52,7 @@ These pages left the browser tab title as the static `"NarrateRx"` from `index.h
 
 No `robots.txt` existed. Without it, search crawlers would follow the SPA rewrite rules and attempt to index all auth-gated routes (which all return the same shell HTML — not useful content).
 
-**Fix applied:** Created `public/robots.txt` with `Disallow: /` for all agents. NarrateRx is a B2B SaaS app with invite-only acquisition; no routes benefit from organic indexing.
+**Fix applied:** Created `public/robots.txt` with `Disallow: /` for all agents. Bernard is a B2B SaaS app with invite-only acquisition; no routes benefit from organic indexing.
 
 ---
 
@@ -64,8 +64,8 @@ No `robots.txt` existed. Without it, search crawlers would follow the SPA rewrit
 `og:url` (the canonical URL for link unfurls) was absent. `twitter:image:alt` (screen reader text for the image in Twitter/X cards) was also missing.
 
 **Fix applied:**
-- Added `<meta property="og:url" content="https://narraterx.ai" />`
-- Added `<meta name="twitter:image:alt" content="NarrateRx — AI content for clinics" />`
+- Added `<meta property="og:url" content="https://withbernard.ai" />`
+- Added `<meta name="twitter:image:alt" content="Bernard — AI content for clinics" />`
 
 ---
 
@@ -74,9 +74,9 @@ No `robots.txt` existed. Without it, search crawlers would follow the SPA rewrit
 **File:** `index.html:19`  
 **Status:** 🔴 Noted — not auto-fixed (requires new PNG asset)
 
-`og:image` points to `/narraterx-icon.svg`. Major social platforms (Facebook, LinkedIn, Slack) do not support SVG as an OG image — they either display a broken image or fall back to a generic thumbnail. Twitter/X requires PNG or JPEG for card images.
+`og:image` points to `/bernard-icon.svg`. Major social platforms (Facebook, LinkedIn, Slack) do not support SVG as an OG image — they either display a broken image or fall back to a generic thumbnail. Twitter/X requires PNG or JPEG for card images.
 
-**Decision needed:** Create a 1200×630px PNG social share image (the standard OG image size) and update `og:image` to point to it. The existing `/narraterx-icon.svg` could be used as the base artwork.
+**Decision needed:** Create a 1200×630px PNG social share image (the standard OG image size) and update `og:image` to point to it. The existing `/bernard-icon.svg` could be used as the base artwork.
 
 ---
 
@@ -101,7 +101,7 @@ Already correct in `index.html`:
 - `<html lang="en">` for language declaration
 - Font preconnect + `display=swap`
 
-The `useDocumentTitle` hook is well-designed: it appends `" · NarrateRx"` consistently and restores the previous title on unmount, so navigating between routes keeps tab titles accurate.
+The `useDocumentTitle` hook is well-designed: it appends `" · Bernard"` consistently and restores the previous title on unmount, so navigating between routes keeps tab titles accurate.
 
 ---
 

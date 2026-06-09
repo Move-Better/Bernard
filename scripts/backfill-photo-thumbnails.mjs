@@ -40,7 +40,7 @@ const ONLY_IDS = idsArg ? idsArg.split('=')[1].split(',').map(s => s.trim()).fil
 // .env.local — mirrors the pattern in scripts/backfill-thumbnails.mjs so the
 // script works the same way when invoked from the project root.
 // ---------------------------------------------------------------------------
-const envPath = '/Users/qbook/Claude Projects/NarrateRx/.env.local'
+const envPath = '/Users/qbook/Claude Projects/Bernard/.env.local'
 try {
   for (const line of readFileSync(envPath, 'utf8').split('\n')) {
     const t = line.trim(); if (!t || t.startsWith('#')) continue

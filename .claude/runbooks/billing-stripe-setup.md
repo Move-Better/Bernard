@@ -2,7 +2,7 @@
 
 **Status as of 2026-05-24:** All code is in place (`api/billing/{checkout,portal,plans,webhook}.js`, `src/pages/settings/BillingSettings.jsx`, `src/components/billing/{PricingCards,UsageGate}.jsx`, migration 036). **Zero Stripe env vars are set in production.** Until you complete this runbook, the Billing settings page exists but no one can subscribe.
 
-Pre-launch loose end #E (`/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-NarrateRx/memory/project_prelaunch_out_of_scope.md`). Run this when the first external tenant says yes.
+Pre-launch loose end #E (`/Users/qbook/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/project_prelaunch_out_of_scope.md`). Run this when the first external tenant says yes.
 
 ---
 
@@ -48,7 +48,7 @@ After creating each product, **note the Price ID** (looks like `price_1QABcdef..
 > |---|---|
 > | **Item type** | API Credential |
 > | **Title** | `Bernard — STRIPE_PRICE_SOLO (test)` (one item per price, per mode) |
-> | **Vault** | NarrateRx |
+> | **Vault** | Bernard |
 > | **Password / Value** | `price_xxxxxxxxxxxx` |
 > | **Notes** | "Stripe Price ID for Solo plan, test mode. Used by `STRIPE_PRICE_SOLO` env var. Regenerate by editing the price in Stripe Dashboard → Products → Solo." |
 >
@@ -64,7 +64,7 @@ Sensitivity: **Sensitive** — grants full Stripe account access. Save in 1Passw
 |---|---|
 | **Item type** | API Credential |
 | **Title** | `Bernard — STRIPE_SECRET_KEY (test)` |
-| **Vault** | NarrateRx |
+| **Vault** | Bernard |
 | **Password / Value** | `sk_test_xxxxxxxxxxxx` |
 | **Website** | https://dashboard.stripe.com/test/apikeys |
 | **Notes** | "Stripe secret key, test mode. Used by `STRIPE_SECRET_KEY` env var on the bernard Vercel project. Rotate by creating a new key in Stripe Dashboard → Developers → API keys and updating Vercel. The old key remains active until you click 'Roll' on it." |
@@ -74,19 +74,19 @@ Sensitivity: **Sensitive** — grants full Stripe account access. Save in 1Passw
 Run these from the project root. **The values are Sensitive — paste them in the Vercel CLI prompt, never in chat:**
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && vercel env add STRIPE_SECRET_KEY production preview
+cd "/Users/qbook/Claude Projects/Bernard" && vercel env add STRIPE_SECRET_KEY production preview
 ```
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && vercel env add STRIPE_PRICE_SOLO production preview
+cd "/Users/qbook/Claude Projects/Bernard" && vercel env add STRIPE_PRICE_SOLO production preview
 ```
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && vercel env add STRIPE_PRICE_PRACTICE production preview
+cd "/Users/qbook/Claude Projects/Bernard" && vercel env add STRIPE_PRICE_PRACTICE production preview
 ```
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && vercel env add STRIPE_PRICE_MULTI production preview
+cd "/Users/qbook/Claude Projects/Bernard" && vercel env add STRIPE_PRICE_MULTI production preview
 ```
 
 When the CLI prompts, mark each variable as **Sensitive** in the Vercel dashboard afterward (Project Settings → Environment Variables → click each → check Sensitive). Per `memory/feedback_vercel_sensitive_env_pull_empty.md`, this means `vercel env pull` will redact them locally — that's correct.
@@ -103,7 +103,7 @@ Stripe Dashboard → **Developers** → **Webhooks** → **+ Add endpoint**:
 After saving, click into the new endpoint → **Reveal signing secret** (`whsec_xxx`). Save in 1Password and add to Vercel:
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && vercel env add STRIPE_WEBHOOK_SECRET production preview
+cd "/Users/qbook/Claude Projects/Bernard" && vercel env add STRIPE_WEBHOOK_SECRET production preview
 ```
 
 ### 6. Redeploy
@@ -111,7 +111,7 @@ cd "/Users/qbook/Claude Projects/NarrateRx" && vercel env add STRIPE_WEBHOOK_SEC
 Env var changes need a fresh build to take effect:
 
 ```
-cd "/Users/qbook/Claude Projects/NarrateRx" && npm run deploy:prod
+cd "/Users/qbook/Claude Projects/Bernard" && npm run deploy:prod
 ```
 
 ### 7. End-to-end test (test mode)

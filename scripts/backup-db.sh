@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Manual backup of the shared narraterx Supabase Postgres DB.
+# Manual backup of the shared bernard Supabase Postgres DB.
 # Run from repo root: npm run backup:db
-# Output: $BACKUP_DB_DIR (default: ~/Library/CloudStorage/GoogleDrive-*/My Drive/NarrateRx Backups/db)
+# Output: $BACKUP_DB_DIR (default: ~/Library/CloudStorage/GoogleDrive-*/My Drive/Bernard Backups/db)
 # Override with: BACKUP_DB_DIR=/path/to/dir npm run backup:db
 
 set -euo pipefail
@@ -10,8 +10,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Default to Google Drive sync folder so backups auto-upload off-machine.
 # Falls back to ~/Backups if Drive is not mounted.
-DEFAULT_DRIVE_DIR="${HOME}/Library/CloudStorage/GoogleDrive-drq@movebetter.co/My Drive/NarrateRx Backups/db"
-LOCAL_FALLBACK_DIR="${HOME}/Backups/narraterx-supabase"
+DEFAULT_DRIVE_DIR="${HOME}/Library/CloudStorage/GoogleDrive-drq@movebetter.co/My Drive/Bernard Backups/db"
+LOCAL_FALLBACK_DIR="${HOME}/Backups/bernard-supabase"
 if [ -n "${BACKUP_DB_DIR:-}" ]; then
   BACKUP_DIR="${BACKUP_DB_DIR}"
 elif [ -d "$(dirname "${DEFAULT_DRIVE_DIR}")" ] || [ -d "${DEFAULT_DRIVE_DIR}" ]; then
@@ -21,7 +21,7 @@ else
   BACKUP_DIR="${LOCAL_FALLBACK_DIR}"
 fi
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT_FILE="${BACKUP_DIR}/narraterx-${TIMESTAMP}.sql"
+OUT_FILE="${BACKUP_DIR}/bernard-${TIMESTAMP}.sql"
 
 if [ ! -f "${REPO_ROOT}/.env.local" ]; then
   echo "ERROR: ${REPO_ROOT}/.env.local not found. Need MULTITENANT_DATABASE_URL." >&2
@@ -70,7 +70,7 @@ PARSED="$(node --input-type=module -e '
 IFS=$'\t' read -r PGHOST PGPORT PGUSER PGDATABASE PGPASSWORD <<< "${PARSED}"
 export PGHOST PGPORT PGUSER PGDATABASE PGPASSWORD
 
-echo "→ Dumping shared narraterx DB to ${OUT_FILE}.gz ..."
+echo "→ Dumping shared bernard DB to ${OUT_FILE}.gz ..."
 pg_dump \
   --no-owner --no-privileges --clean --if-exists \
   --exclude-schema='auth' \

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// buffer-recon.mjs — reconcile Buffer's recent sent posts against NarrateRx's
-// content_items.buffer_update_id. Flags any Buffer send that NarrateRx didn't
+// buffer-recon.mjs — reconcile Buffer's recent sent posts against Bernard's
+// content_items.buffer_update_id. Flags any Buffer send that Bernard didn't
 // create (= came from another tool / manual scheduling / a stray key).
 //
-// Usage (from the NarrateRx project root):
+// Usage (from the Bernard project root):
 //
 //   set -a && source .env.local && set +a && \
 //   BUFFER_TOKEN='<paste-personal-key>' \
 //   node scripts/buffer-recon.mjs [--days 30]
 //
 // The Buffer Personal Key lives at https://publish.buffer.com/settings/api
-// (label: "NarrateRx"). Don't commit it. Required env from .env.local:
+// (label: "Bernard"). Don't commit it. Required env from .env.local:
 // MULTITENANT_DATABASE_URL.
 //
 // Flags
@@ -25,7 +25,7 @@ const DB_URL = process.env.MULTITENANT_DATABASE_URL
 const TOKEN = process.env.BUFFER_TOKEN
 
 if (!DB_URL) { console.error('MULTITENANT_DATABASE_URL not set — source .env.local first'); process.exit(1) }
-if (!TOKEN)  { console.error('BUFFER_TOKEN not set — paste the NarrateRx Personal Key from publish.buffer.com/settings/api'); process.exit(1) }
+if (!TOKEN)  { console.error('BUFFER_TOKEN not set — paste the Bernard Personal Key from publish.buffer.com/settings/api'); process.exit(1) }
 
 const argv = process.argv.slice(2)
 const days = Number(argv[argv.indexOf('--days') + 1]) || 30
@@ -87,7 +87,7 @@ for (const c of channels) {
 }
 console.log(`Buffer sent posts in last ${days}d: ${sent.length}`)
 
-// 3) Pull NarrateRx's buffer_update_ids.
+// 3) Pull Bernard's buffer_update_ids.
 const client = new pg.Client({ connectionString: DB_URL })
 await client.connect()
 const r = await client.query(
@@ -99,13 +99,13 @@ const r = await client.query(
 )
 await client.end()
 const known = new Map(r.rows.map((row) => [row.buffer_update_id, row]))
-console.log(`NarrateRx content_items with buffer_update_id in window: ${known.size}`)
+console.log(`Bernard content_items with buffer_update_id in window: ${known.size}`)
 
 // 4) Diff.
 const unknown = sent.filter((p) => !known.has(p.id))
 const matched = sent.length - unknown.length
 console.log('')
-console.log(`Matched (NarrateRx-owned): ${matched}`)
+console.log(`Matched (Bernard-owned): ${matched}`)
 console.log(`UNKNOWN (sent by something else): ${unknown.length}`)
 console.log('')
 if (unknown.length) {

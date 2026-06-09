@@ -16,7 +16,7 @@ A2 = tie the master + the clips it spawned into **one tracked unit** (a
 
 ## Decisions (locked 2026-05-30 with Q)
 
-1. **Drip = Buffer's queue** (not an explicit NarrateRx scheduler in v1). Queue
+1. **Drip = Buffer's queue** (not an explicit Bernard scheduler in v1). Queue
    the master first, clips behind; Buffer spaces them across the workspace's
    posting slots. An explicit `scheduled_for` scheduler is deferred to "Future".
 2. **Clips stay propose-for-review** (current model). No auto-approve in A2 v1 —
@@ -26,7 +26,7 @@ A2 = tie the master + the clips it spawned into **one tracked unit** (a
 
 ## Key finding: the "drip" is mostly Buffer's job, not ours
 
-NarrateRx has **no per-item scheduled-publish column**. `content_items` are
+Bernard has **no per-item scheduled-publish column**. `content_items` are
 created `status='approved'` (approve-package.js) and the auto-publish cron
 (`api/cron/auto-publish.js`) dispatches them via the Buffer **queue**
 (`useQueue=true`). Buffer then spaces queued posts across the workspace's
@@ -35,7 +35,7 @@ delegated to Buffer's queue scheduler.
 
 Implication: **v1 drip = control ORDER, not explicit times.** Queue the master
 first, then the clips, and Buffer spreads them over its slots naturally. A true
-NarrateRx-side "1 clip/day for a week" scheduler is a *later* enhancement that
+Bernard-side "1 clip/day for a week" scheduler is a *later* enhancement that
 needs a new `content_items.scheduled_for` column + a release cron + Buffer's
 `scheduledAt` — out of scope for A2 v1; noted under "Future" below.
 
@@ -121,7 +121,7 @@ touches the validated path — do it only after validation, and re-smoke long-fo
 
 ## Future (beyond A2 v1)
 
-- **Explicit NarrateRx-side drip schedule:** `content_items.scheduled_for` +
+- **Explicit Bernard-side drip schedule:** `content_items.scheduled_for` +
   a release cron + Buffer `scheduledAt`, for "N clips/day for a week behind the
   master" control instead of relying on Buffer's queue spacing.
 - **Auto-approve a curated subset of clips** (e.g. top-N by model confidence)

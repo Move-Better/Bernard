@@ -1,4 +1,4 @@
-# NarrateRx IA Refactor Plan — 2 Nav, Task-Queue Home, Stories Surface
+# Bernard IA Refactor Plan — 2 Nav, Task-Queue Home, Stories Surface
 
 *Plan date: 2026-05-13. Author: Opus 4.7 planning pass. Implementers: Sonnet 4.6, in sequenced PRs.*
 

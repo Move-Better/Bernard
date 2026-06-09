@@ -1,4 +1,4 @@
-# NarrateRx — Overnight Audit (2026-05-17)
+# Bernard — Overnight Audit (2026-05-17)
 
 **Scope:** every interview ("story") in prod, every content_item (platform output), every publish/schedule state, every error class in vercel logs over the past 7 days. Drives a fix plan for the recent rash of generation + publish bugs.
 
@@ -171,6 +171,6 @@ Listed for completeness so a future audit doesn't re-investigate:
 
 ## 5. Process notes
 
-- **My first read-through misdiagnosed PR #628 as reverted.** I was inspecting the project root (`/Users/qbook/Claude Projects/NarrateRx`, on `fix/kanban-view-only` — 11 commits behind main) rather than the worktree (which is on `origin/main`). PR #628's Now/Schedule toggle is intact on main and working correctly. The phantom-scheduled rows are atom-plan auto-fills that the reviewer never approved + published; nothing in the code is currently broken in the publish-timing path. Lesson recorded inline as a reminder to always confirm `git rev-parse HEAD` matches `origin/main` before drawing conclusions about regressions on `main`.
+- **My first read-through misdiagnosed PR #628 as reverted.** I was inspecting the project root (`/Users/qbook/Claude Projects/Bernard`, on `fix/kanban-view-only` — 11 commits behind main) rather than the worktree (which is on `origin/main`). PR #628's Now/Schedule toggle is intact on main and working correctly. The phantom-scheduled rows are atom-plan auto-fills that the reviewer never approved + published; nothing in the code is currently broken in the publish-timing path. Lesson recorded inline as a reminder to always confirm `git rev-parse HEAD` matches `origin/main` before drawing conclusions about regressions on `main`.
 - **The buffer-analytics endpoint has been silently 502'ing for over a day.** The UI just renders zeroed metrics, which looks plausible — there's no client surface that fails loudly. Worth wiring a "no metrics in 24h on any published post" check into the daily cron or the weekly backup-reminder routine.
 - **Migration 045 → schema-cache stale on PostgREST → 136 errors over 9 hours.** CLAUDE.md already says "verify the relevant migration is applied to prod before merging a PR that references a new column." Worth extending: after applying a migration that adds a FK on a table PostgREST reads, send `NOTIFY pgrst, 'reload schema'` from `apply-multitenant-migrations.mjs` to short-circuit the cache delay.

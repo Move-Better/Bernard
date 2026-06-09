@@ -1,4 +1,4 @@
-# NarrateRx — Strategy & UX Plan of Record
+# Bernard — Strategy & UX Plan of Record
 
 **Created:** 2026-06-01 · **Status:** plan of record (Q to mark up) · **Owner:** Q
 **Origin:** started as a Slate (slateteams.com) evaluation; turned into the project's strategic lens + action plan.
@@ -32,14 +32,14 @@ Backstop — the 5-question garbage filter (fail two → don't build):
 
 1. **The chrome isn't the problem.** One consistent shell already exists (`Layout.jsx`). Re-skinning won't fix the feeling.
 2. **The problem is surface proliferation + reorg sediment.** 9 nav destinations, 4 parallel editors, redirects from ~5 past reorganizations. It feels illogical because it *is* five designs layered on each other.
-3. **The deeper problem is paradigm.** NarrateRx is AI-first (the interview is a conversation), but a manual *visual editor* got bolted on against that grain. Fix: make instruction-and-approve the primary surface; demote visual editing to a fallback.
+3. **The deeper problem is paradigm.** Bernard is AI-first (the interview is a conversation), but a manual *visual editor* got bolted on against that grain. Fix: make instruction-and-approve the primary surface; demote visual editing to a fallback.
 4. **Output is the floor, not the moat.** Provide good photo/video (mandatory for years) — but rent the muscle, never build the render plumbing. The moat is the outcome loop + the real-voice library.
 
 ---
 
 ## The 5-year thesis: bet against slop
 
-When **AI-does-a-thing** and **easy-to-use** both commoditize — and they're commoditizing now — they stop being differentiators and become table stakes. As foundation models improve, the generic-capability gap between NarrateRx and a funded competitor *shrinks* (everyone rents the same model). So differentiation can't live in anything rentable.
+When **AI-does-a-thing** and **easy-to-use** both commoditize — and they're commoditizing now — they stop being differentiators and become table stakes. As foundation models improve, the generic-capability gap between Bernard and a funded competitor *shrinks* (everyone rents the same model). So differentiation can't live in anything rentable.
 
 **What can't be copied, bought, or cold-started:**
 
@@ -56,7 +56,7 @@ When **AI-does-a-thing** and **easy-to-use** both commoditize — and they're co
 
 - **Output = floor.** A shitty post buries great words; good-looking output is mandatory. But everyone has it → it's the cost of admission, not the win.
 - **Outcome loop = wedge.** Everyone converges on "makes good content." Nobody closes the loop from content → attention → patients/community, with the outcome signal fed back into what gets made next. That loop is per-practice, compounding, and unbuyable.
-- **Voice stays fixed and real; outcome tunes the AIM, not the voice.** The corpus is a library of things Q actually said. Outcome optimizes *which real piece → which person → which moment* — never the voice itself. Tuning voice on engagement is how every voice rots into clickbait. NarrateRx is a **librarian of your real voice, not a ghostwriter**: generation becomes curation/retrieval. Guard the seams — arranging real words is fidelity; generating connective glue is where fabrication leaks back in. The fidelity grader polices the seams.
+- **Voice stays fixed and real; outcome tunes the AIM, not the voice.** The corpus is a library of things Q actually said. Outcome optimizes *which real piece → which person → which moment* — never the voice itself. Tuning voice on engagement is how every voice rots into clickbait. Bernard is a **librarian of your real voice, not a ghostwriter**: generation becomes curation/retrieval. Guard the seams — arranging real words is fidelity; generating connective glue is where fabrication leaks back in. The fidelity grader polices the seams.
 
 **Two honest edges:**
 - The library must be *rich* before the aiming has leverage → keep the interview/practice-memory engine as **priority one** (it fills the library; selection is worthless without depth).
@@ -70,11 +70,11 @@ Three layers, often conflated:
 
 | Layer | What it is | Who lives here |
 |---|---|---|
-| **1. Intent** | "Tell it what to do" — natural language + guidelines | Descript Underlord · **NarrateRx's interview already** |
-| **2. Decision** | Intent + source + guidelines → a concrete edit/content plan | **NarrateRx's transcript→voice engine already** |
+| **1. Intent** | "Tell it what to do" — natural language + guidelines | Descript Underlord · **Bernard's interview already** |
+| **2. Decision** | Intent + source + guidelines → a concrete edit/content plan | **Bernard's transcript→voice engine already** |
 | **3. Execution** | Render the plan to a file | Remotion · Shotstack · ffmpeg (deterministic, no AI) |
 
-Descript spans all three. **Remotion is *only* layer 3** — the muscle, not the brain. NarrateRx already owns layers 1+2 (the hard, modern part). The struggle came from *also* building an old-school visual editor on top of an AI-first product — two paradigms that don't sit together, which is a real source of the "illogical."
+Descript spans all three. **Remotion is *only* layer 3** — the muscle, not the brain. Bernard already owns layers 1+2 (the hard, modern part). The struggle came from *also* building an old-school visual editor on top of an AI-first product — two paradigms that don't sit together, which is a real source of the "illogical."
 
 **The fix:** the "Studio" surface is an **instruction-and-approve** experience (AI's draft + a box to say what to change + guidelines holding the line), with manual visual controls as the *fallback* for the ~20% pixel-nudge cases — not a timeline as the main event. Honest temper: the frontier is "AI draft → light human nudge → guidelines guardrail," not magic chat. You still need a manual layer — as the safety net, not the headline.
 

@@ -69,7 +69,7 @@ const { Client } = pg
 const dbUrl = process.env.MULTITENANT_DATABASE_URL
 if (!dbUrl || dbUrl.includes('REDACTED')) {
   console.error('ERROR: MULTITENANT_DATABASE_URL missing or redacted in .env.local')
-  console.error('Restore from 1Password (NarrateRx vault) before running.')
+  console.error('Restore from 1Password (Bernard vault) before running.')
   process.exit(1)
 }
 const db = new Client({ connectionString: dbUrl })

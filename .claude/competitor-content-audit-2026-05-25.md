@@ -1,4 +1,4 @@
-# NarrateRx Competitor Content Audit — 2026-05-25
+# Bernard Competitor Content Audit — 2026-05-25
 
 Research methodology: visited 22 clinic websites across both groups, read actual blog content, assessed writing voice, CTAs, publishing cadence, and marketing platform attribution. Sites were found via targeted searches across Austin TX, Denver CO, Portland OR, Nashville TN, and Seattle WA — integrative-friendly markets. Agency identification relied on footer credits (Perfect Patients, Hibu, ChiroPlanet, Grow Gonstead, PatientPop/Tebra, Doctor Multimedia) and pattern analysis where credits were absent.
 
@@ -10,7 +10,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 
 - **The independent strong-content practices are rare, and most still rely heavily on SEO mechanics.** Of the ten "strong" independents identified, only four showed genuine practitioner voice: Nashville Chiro & Sports Therapy (Dr. Lauren Calabra Johnson), Function First Chiropractic Denver (Dr. Taylor Ferguson), Basler Family Chiropractic Kalispell (Dr. Basler), and Sports Medicine Northwest Seattle (Dr. Skylar Pond). The rest publish at volume but sound like a marketing department, not a clinician.
 
-- **Both groups are missing the same two things: a specific person and a specific patient.** Generic copy talks about "patients like you." Strong content names who the clinician is and describes the actual population they see — ski racers, front-desk workers, new moms, CrossFit athletes. That specificity is what NarrateRx produces structurally, because it comes directly from the clinician's recorded voice.
+- **Both groups are missing the same two things: a specific person and a specific patient.** Generic copy talks about "patients like you." Strong content names who the clinician is and describes the actual population they see — ski racers, front-desk workers, new moms, CrossFit athletes. That specificity is what Bernard produces structurally, because it comes directly from the clinician's recorded voice.
 
 - **Publishing cadence is the most underestimated competitive gap.** Agency-served clinics post 1-2x/month at best; most high-volume sites that post daily are using AI or bulk-generation, and readers can tell. The sweet spot — consistent, distinctly-voiced content at 1-2x/week — is nearly empty across all markets surveyed.
 
@@ -18,7 +18,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 
 - **SEO fundamentals are uneven.** Agency sites have technically solid SEO (keyword-targeted titles, location-stuffing). Independent strong-content sites often have better topical authority but weaker on-page mechanics. Almost none in the sample showed visible schema markup or structured data in their page sources. This means the independent content quality advantage isn't being harvested by search engines.
 
-- **NarrateRx's strongest claim isn't "better AI content" — it's "content that actually sounds like you."** Every alternative produces content the clinician has to edit to make sound like themselves, or that they'd be embarrassed to share with patients who know them. NarrateRx inverts this: the source is the clinician's spoken voice, so the output is recognizably theirs on the first pass.
+- **Bernard's strongest claim isn't "better AI content" — it's "content that actually sounds like you."** Every alternative produces content the clinician has to edit to make sound like themselves, or that they'd be embarrassed to share with patients who know them. Bernard inverts this: the source is the clinician's spoken voice, so the output is recognizably theirs on the first pass.
 
 ---
 
@@ -68,7 +68,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 | CTAs | 2 | Standard appointment request form; no personal follow-up |
 | SEO signals | 2 | Low; newsletter format without SEO optimization |
 
-**What they're missing:** The authentic family-clinic warmth visible in the About Us page does not carry into the blog. The newsletter titles suggest an attempt at personality, but the body content reverts to standard Perfect Patients language. The gap between "who they are" and "what their content sounds like" is where NarrateRx lives.
+**What they're missing:** The authentic family-clinic warmth visible in the About Us page does not carry into the blog. The newsletter titles suggest an attempt at personality, but the body content reverts to standard Perfect Patients language. The gap between "who they are" and "what their content sounds like" is where Bernard lives.
 
 ---
 
@@ -197,7 +197,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 
 **What they're doing right:** Personal narrative as content strategy. The healthspan post is a memorial to the author's grandfather that becomes a clinical philosophy statement. The Medicare advocacy post shows up-to-date professional engagement. Both feel like they came from a real person with a stake in the topic. These are the posts that get shared by patients, not just indexed by Google.
 
-**What they're missing:** Publishing frequency. Monthly is a missed opportunity given the evident capability. This is exactly the bottleneck NarrateRx addresses — the voice is there; the production bandwidth is the constraint.
+**What they're missing:** Publishing frequency. Monthly is a missed opportunity given the evident capability. This is exactly the bottleneck Bernard addresses — the voice is there; the production bandwidth is the constraint.
 
 ---
 
@@ -233,7 +233,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 
 **What they're doing right:** Niche focus. Sports-performance chiro for runners and triathletes is a defensible identity. The Booksy integration is clean and low-friction. The clinical language signals real authorship.
 
-**What they're missing:** Consistency. The blog went 10 months without a post (July 2025–May 2026). This is the exact problem NarrateRx solves — a clinician with something real to say who can't find time to write it.
+**What they're missing:** Consistency. The blog went 10 months without a post (July 2025–May 2026). This is the exact problem Bernard solves — a clinician with something real to say who can't find time to write it.
 
 ---
 
@@ -303,7 +303,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 | CTAs | 3 | Standard appointment request + phone |
 | SEO signals | 2 | Low volume undermines any technical strength |
 
-**What they're doing right:** Voice. Dr. Pond's content is identifiably his — the podcast appearance, the BJJ content, the "Dr. Pond on Front Row Dad" is all recognizably authored by a specific person with specific interests. This is the template NarrateRx is built to systematize.
+**What they're doing right:** Voice. Dr. Pond's content is identifiably his — the podcast appearance, the BJJ content, the "Dr. Pond on Front Row Dad" is all recognizably authored by a specific person with specific interests. This is the template Bernard is built to systematize.
 
 **What they're missing:** Everything else. Sporadic publishing across 8 years means none of the good voice content gets compounded. 12 posts over 8 years is not a content strategy. The voice is there; the production habit is absent.
 
@@ -359,7 +359,7 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 
 **What they're doing right:** The origin story hook on the homepage is more compelling than any blog post in Group A. A practitioner whose father's bad surgical experience drove him to chiropractic is a story patients remember. It creates immediate trust differentiation.
 
-**What they're missing:** Turning that origin story into a content series. The most powerful sentence on the site is the founding story — and it appears once, on the homepage, then disappears. A NarrateRx-style interview would draw out 20 posts from that story alone.
+**What they're missing:** Turning that origin story into a content series. The most powerful sentence on the site is the founding story — and it appears once, on the homepage, then disappears. A Bernard-style interview would draw out 20 posts from that story alone.
 
 ---
 
@@ -387,9 +387,9 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 - **Specific patient populations who recognize themselves** (Dr. Pond's BJJ athletes; Dr. Snell's powerlifters; Dr. Ferguson's pregnant women and triathletes). When the content is written for someone specific, that person feels found — which is worth more than any SEO ranking.
 - **Industry/professional engagement** (Nashville Chiro's Medicare advocacy post; Snell's continuing education curriculum). Content that shows the practitioner as a participant in the profession, not just a service provider, elevates trust.
 
-### What BOTH Groups Are Missing (NarrateRx Opportunity Gaps)
+### What BOTH Groups Are Missing (Bernard Opportunity Gaps)
 
-- **The clinician's spoken voice.** Every site in this sample — agency and independent — is mediated through writing. Even the best independent voices are the practitioner writing, not speaking. The characteristic rhythm, the aside, the self-correction, the "actually, let me say that differently" that signals a real person thinking — none of that survives the transition to typed copy. NarrateRx captures voice at the source.
+- **The clinician's spoken voice.** Every site in this sample — agency and independent — is mediated through writing. Even the best independent voices are the practitioner writing, not speaking. The characteristic rhythm, the aside, the self-correction, the "actually, let me say that differently" that signals a real person thinking — none of that survives the transition to typed copy. Bernard captures voice at the source.
 
 - **Consistent cadence from distinctive voices.** The practitioners with the best voices (Snell, Pond, Ferguson, Calabra Johnson) publish 1-12 times per year. The practices with the best cadence (Camarata, Premier Care Portland) use systematized or AI content. The quadrant that matters — high voice quality AND high frequency — is empty in every market surveyed.
 
@@ -397,37 +397,37 @@ Research methodology: visited 22 clinic websites across both groups, read actual
 
 - **Blog CTAs that match the post.** Every post ends with "Book an appointment" regardless of topic. A post about postpartum back pain should end with something like "If you're navigating new-mom back pain, [we see a lot of new moms at our office — call us and mention the post]." None of the sites in this sample do this.
 
-- **A content posture that says "this practice is worth researching."** The best independent sites give readers a reason to read 3 posts instead of 1. Most sites — agency and independent alike — give no reason to return after the first visit. NarrateRx output, because it accumulates from a real interview, has internal consistency and through-line that makes 3 posts feel like getting to know someone, not reading the same post three times.
+- **A content posture that says "this practice is worth researching."** The best independent sites give readers a reason to read 3 posts instead of 1. Most sites — agency and independent alike — give no reason to return after the first visit. Bernard output, because it accumulates from a real interview, has internal consistency and through-line that makes 3 posts feel like getting to know someone, not reading the same post three times.
 
 ---
 
-## Positioning Implications for NarrateRx
+## Positioning Implications for Bernard
 
 ### The 3 Strongest Differentiators
 
-**1. Voice fidelity: NarrateRx output sounds like the clinician, not like chiropractic content.**
+**1. Voice fidelity: Bernard output sounds like the clinician, not like chiropractic content.**
 
-The clinics with the strongest content (Snell, Ferguson, Calabra Johnson) produce that content by sitting down and writing — which most practitioners cannot sustain. NarrateRx solves this at the source: the clinician speaks, and the output carries their actual vocabulary, clinical references, and reasoning patterns. The comparison is not "AI content vs. human content." It is "content produced from your recorded voice vs. content produced by a writer who has never met you."
+The clinics with the strongest content (Snell, Ferguson, Calabra Johnson) produce that content by sitting down and writing — which most practitioners cannot sustain. Bernard solves this at the source: the clinician speaks, and the output carries their actual vocabulary, clinical references, and reasoning patterns. The comparison is not "AI content vs. human content." It is "content produced from your recorded voice vs. content produced by a writer who has never met you."
 
-In practice, this means: NarrateRx output for Dr. Michael Quasney mentions XC skiing because the interview covered it. Agency content for any chiropractic practice in the Denver market never mentions XC skiing because the agency writer knows nothing about the clinician's life or patient population.
+In practice, this means: Bernard output for Dr. Michael Quasney mentions XC skiing because the interview covered it. Agency content for any chiropractic practice in the Denver market never mentions XC skiing because the agency writer knows nothing about the clinician's life or patient population.
 
 **2. Production at clinician pace, not agency pace.**
 
-The best independent practices publish 1-4x per month and spend enormous effort doing it. Camarata publishes 5-7x per week but has industrialized the production to the point of losing voice. NarrateRx occupies a third position: consistent, voice-faithful output at a cadence the clinician can sustain without dedicating weekends to writing. The workflow is: record a conversation → review and approve posts → publish. The clinician's time investment is in speaking, not writing.
+The best independent practices publish 1-4x per month and spend enormous effort doing it. Camarata publishes 5-7x per week but has industrialized the production to the point of losing voice. Bernard occupies a third position: consistent, voice-faithful output at a cadence the clinician can sustain without dedicating weekends to writing. The workflow is: record a conversation → review and approve posts → publish. The clinician's time investment is in speaking, not writing.
 
 **3. Content that compounds because it's specific.**
 
-Agency content earns a first read; specific content earns a return visit and a referral. "My chiropractor wrote this post about XC skiers with low back pain and it sounded exactly like me" is a referral trigger. "My chiropractor's agency posted a generic neck pain article" is not. The specificity of NarrateRx output — because it starts from the clinician's actual patients and experiences — creates content that patients recognize themselves in and share with others who match the description.
+Agency content earns a first read; specific content earns a return visit and a referral. "My chiropractor wrote this post about XC skiers with low back pain and it sounded exactly like me" is a referral trigger. "My chiropractor's agency posted a generic neck pain article" is not. The specificity of Bernard output — because it starts from the clinician's actual patients and experiences — creates content that patients recognize themselves in and share with others who match the description.
 
-### The Claim NarrateRx Should Make (and Can Back Up)
+### The Claim Bernard Should Make (and Can Back Up)
 
 **"Content that sounds exactly like you, because it starts with you talking."**
 
-Backed by: the interview-to-blog pipeline. Clinician records a voice interview about their approach, their patients, a case, or a topic. NarrateRx generates posts that use the clinician's actual vocabulary, clinical references, and patient descriptions. The clinician reviews, not rewrites.
+Backed by: the interview-to-blog pipeline. Clinician records a voice interview about their approach, their patients, a case, or a topic. Bernard generates posts that use the clinician's actual vocabulary, clinical references, and patient descriptions. The clinician reviews, not rewrites.
 
-The implicit contrast: every alternative (agency, freelancer, AI tools) requires the clinician to either hand over brand voice to a stranger or spend time editing generic content into something that sounds like them. NarrateRx inverts the workflow — the content is the clinician's voice first, polished second.
+The implicit contrast: every alternative (agency, freelancer, AI tools) requires the clinician to either hand over brand voice to a stranger or spend time editing generic content into something that sounds like them. Bernard inverts the workflow — the content is the clinician's voice first, polished second.
 
-The secondary claim: **"Consistent content that doesn't require you to be a writer."** Every strong-voice practitioner in this sample has gaps of months or years in their publishing history. The voice exists; the production habit doesn't. NarrateRx makes production habitual without making writing mandatory.
+The secondary claim: **"Consistent content that doesn't require you to be a writer."** Every strong-voice practitioner in this sample has gaps of months or years in their publishing history. The voice exists; the production habit doesn't. Bernard makes production habitual without making writing mandatory.
 
 ### What NOT to Claim (Table Stakes, Already Everywhere)
 

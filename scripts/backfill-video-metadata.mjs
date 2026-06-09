@@ -20,7 +20,7 @@
 // what the player/grid actually renders. coded WxH is swapped when |rotation| = 90.
 //
 // Usage (from the project root or this worktree):
-//   set -a && source "/Users/qbook/Claude Projects/NarrateRx/.env.local" && set +a \
+//   set -a && source "/Users/qbook/Claude Projects/Bernard/.env.local" && set +a \
 //     && node scripts/backfill-video-metadata.mjs --dry-run
 //   ... then without --dry-run to apply.
 //

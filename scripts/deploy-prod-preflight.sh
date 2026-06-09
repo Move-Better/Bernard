@@ -28,8 +28,8 @@ fi
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 TOP_LEVEL_DIR="$(basename "$PROJECT_ROOT")"
-if [[ "$TOP_LEVEL_DIR" != "NarrateRx" ]]; then
-  echo "✗ Refusing to deploy: top-level dir is \"$TOP_LEVEL_DIR\", expected \"NarrateRx\"." >&2
+if [[ "$TOP_LEVEL_DIR" != "Bernard" ]]; then
+  echo "✗ Refusing to deploy: top-level dir is \"$TOP_LEVEL_DIR\", expected \"Bernard\"." >&2
   echo "  Production deploys must run from the project root, not a worktree." >&2
   exit 1
 fi

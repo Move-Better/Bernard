@@ -1,4 +1,4 @@
-# UX Audit — NarrateRx Pre-Launch
+# UX Audit — Bernard Pre-Launch
 
 ## User Journeys
 

@@ -33,7 +33,7 @@ Done. A "Capture" icon now sits on the home screen and behaves like a native app
 
 The same Share → Add to Home Screen flow works on **Android Chrome** ("Install app") if a clinician is on Android.
 
-Logged-in NarrateRx user is automatically the uploader; no token to manage.
+Logged-in Bernard user is automatically the uploader; no token to manage.
 
 ## Studio Kit — fixed-location clinic
 
@@ -143,7 +143,7 @@ The endpoint is `POST /api/capture/upload` with header `Authorization: Bearer cc
 | **Insta360 direct** (insta360.com) | X5; bundles better than resellers | Insta360 account |
 | **Samsung + Amazon** | T7 Shield SSD; widely available | Existing |
 
-All vendors ship to commercial / clinic addresses. Use the clinic shipping address; bill to NarrateRx if separate accounting.
+All vendors ship to commercial / clinic addresses. Use the clinic shipping address; bill to Bernard if separate accounting.
 
 ### Sensitivity
 

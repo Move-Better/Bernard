@@ -1,4 +1,4 @@
-# NarrateRx — Strategic pass, 2026-05-24
+# Bernard — Strategic pass, 2026-05-24
 
 _Successor to `memory/project_strategic_review_2026_05_22.md`. Revised after Michael's answers to the four questions below — see §5 for the final direction._
 
@@ -11,7 +11,7 @@ _Successor to `memory/project_strategic_review_2026_05_22.md`. Revised after Mic
 - **Live Interview** (real-time duplex voice, OpenAI Realtime, WebRTC) — shipped behind a workspace flag; polish task spawned for iOS, reconnect, daily-minute cap, quality dot.
 - **Practice memory** — hot tier (PRs #789/#794/#796) plus RAG layer (#803/#804/#806). Clinician's prior interviews, blog posts, and voice phrases are now visible to every generation prompt.
 - **Voice clone** — schema + ElevenLabs IVC lib + Voice tab UI + read-aloud preview on content pieces all shipped (#807/#808/#809/#816). First caller is the content-piece preview button.
-- **URL import lane** — Jina-Reader-backed `text_import` capture mode (#770/#787/#791), so an existing blog post can become a NarrateRx keystone without re-interviewing.
+- **URL import lane** — Jina-Reader-backed `text_import` capture mode (#770/#787/#791), so an existing blog post can become a Bernard keystone without re-interviewing.
 - **Onboarding interview** — voice-based wizard that writes brand_voice / patient_context / topic_suggestions / clinician_voice_phrases on completion.
 - **Stripe billing** — a step-by-step setup runbook landed (#818), but billing is NOT wired into the product yet. Wiring it is now in scope (see §5).
 
@@ -44,7 +44,7 @@ _Successor to `memory/project_strategic_review_2026_05_22.md`. Revised after Mic
 3. **Honor the individual clinician.** Per-clinician beats per-workspace.
 4. **FREE-UP-TIME filter.** New features must clear "saves clinician time AND maintenance tax less than time saved." "Don't build, use it harder" is a valid option.
 5. **Narrow-clinical vertical, no broadening.** Hands-on + integrative providers only.
-6. **Funnel-not-relationship boundary.** NarrateRx amplifies voice; in-clinic experience is the relationship; software doesn't fabricate warmth.
+6. **Funnel-not-relationship boundary.** Bernard amplifies voice; in-clinic experience is the relationship; software doesn't fabricate warmth.
 
 ---
 

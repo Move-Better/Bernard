@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * NarrateRx Caption Voice Fidelity — CI gate
+ * Bernard Caption Voice Fidelity — CI gate
  *
  * V1 of the "Deepen the video build" extension set. Reads a committed
  * fixture file written by scripts/voice-fidelity-captions.mjs and refuses
