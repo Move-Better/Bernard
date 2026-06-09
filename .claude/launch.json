@@ -42,6 +42,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8088", "--directory", "/Users/qbook/Claude Projects/NarrateRx/.claude"],
       "port": 8088
+    },
+    {
+      "name": "bernard-public",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8090", "--directory", "/Users/qbook/Claude Projects/Bernard/public"],
+      "port": 8090
     }
   ]
 }

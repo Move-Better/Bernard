@@ -213,7 +213,7 @@
       function showFinished() {
         answerEl.textContent = ANSWER;
         answerEl.classList.remove('is-typing');
-        setStatus('NarrateRx · generated 4 drafts');
+        setStatus('Bernard · generated 4 drafts');
         renderOut('blog');
       }
 
@@ -221,11 +221,11 @@
         clearInterval(typeTimer);
         outEl.innerHTML = '';
         tabs.forEach(function (t) { t.classList.remove('is-on'); });
-        setStatus('NarrateRx · listening…');
+        setStatus('Bernard · listening…');
         typeAnswer(ANSWER, function () {
-          setStatus('NarrateRx · writing…');
+          setStatus('Bernard · writing…');
           setTimeout(function () {
-            setStatus('NarrateRx · generated 4 drafts');
+            setStatus('Bernard · generated 4 drafts');
             renderOut('blog');
           }, 750);
         });

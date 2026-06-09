@@ -1,37 +1,37 @@
 /* ============================================================
-   NarrateRx — production site stylesheet
-   Design: Dusk · Forest (deep evergreen, coral accents)
+   Bernard (withbernard.ai) — production site stylesheet
+   Design: Clean white · coral accents
    Covers: shared tokens, home page, and all subpages.
    ============================================================ */
 
 /* ---- Reset ---- */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* ---- Design tokens: Forest palette ---- */
+/* ---- Design tokens: White / Coral palette ---- */
 :root {
-  /* Backdrop — lifted sage */
-  --bg:        #6e9581;
-  /* Card / section surfaces — deep evergreen */
-  --bg-2:      #1a4a33;
-  --bg-3:      #1f5a3d;
-  --bg-card:   #1c4d37;
-  --bg-card-2: #235a41;
-  --line:      rgba(220,255,230,0.14);
-  --line-2:    rgba(220,255,230,0.22);
-  --line-3:    rgba(220,255,230,0.32);
+  /* Backdrop — pure white */
+  --bg:        #ffffff;
+  /* Section surfaces — light grays */
+  --bg-2:      #f7f8fa;
+  --bg-3:      #eef0f4;
+  --bg-card:   #ffffff;
+  --bg-card-2: #f9fafb;
+  --line:      rgba(0,0,0,0.07);
+  --line-2:    rgba(0,0,0,0.11);
+  --line-3:    rgba(0,0,0,0.18);
 
-  --ink:       #f4f8ed;
-  --ink-soft:  #c4d6be;
-  --grey:      #8fa489;
-  --grey-d:    #74896f;
+  --ink:       #0f172a;
+  --ink-soft:  #4b5563;
+  --grey:      #9ca3af;
+  --grey-d:    #6b7280;
 
-  /* Coral — slightly warm-orange against green */
-  --coral:     #ff8552;
-  --coral-h:   #ffa885;
-  --coral-d:   #d65a32;
-  --sage:      #a8d6a0;
-  --sage-d:    #7baa72;
-  --glow:      rgba(255,133,82,0.42);
+  /* Coral — deeper for white bg readability */
+  --coral:     #e36525;
+  --coral-h:   #f4793c;
+  --coral-d:   #c2410c;
+  --sage:      #2d6a4f;
+  --sage-d:    #1b4332;
+  --glow:      rgba(227,101,37,0.25);
 
   --sans:  'Inter', -apple-system, system-ui, sans-serif;
   --serif: 'Source Serif 4', Georgia, serif;
@@ -52,9 +52,8 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(circle at 85% -5%, rgba(255,133,82,0.06) 0%, transparent 45%),
-    radial-gradient(circle at -10% 45%, rgba(168,214,160,0.04) 0%, transparent 50%),
-    radial-gradient(circle at 50% 110%, rgba(168,214,160,0.03) 0%, transparent 45%);
+    radial-gradient(circle at 85% -5%, rgba(227,101,37,0.04) 0%, transparent 45%),
+    radial-gradient(circle at -10% 45%, rgba(45,106,79,0.03) 0%, transparent 50%);
 }
 img { max-width: 100%; display: block; }
 a { color: var(--coral); text-decoration: none; }
@@ -68,7 +67,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uhdr {
   border-bottom: 1px solid var(--line);
   padding: 18px 0;
-  background: rgba(28,77,55,0.82);
+  background: rgba(255,255,255,0.90);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   position: sticky; top: 0; z-index: 20;
@@ -87,12 +86,12 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   display: inline-flex;
   align-items: center; justify-content: center;
   width: 30px; height: 30px;
-  background: var(--bg-card);
+  background: var(--coral);
   border-radius: 9px;
-  color: var(--coral);
+  color: #fff;
   font-weight: 700;
   font-size: 15px;
-  box-shadow: 0 4px 16px -4px rgba(28,77,55,0.35);
+  box-shadow: 0 4px 16px -4px rgba(227,101,37,0.40);
 }
 .uhdr-logo .rx {
   color: var(--coral);
@@ -106,14 +105,14 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .uhdr-nav a:hover, .uhdr-nav a.is-active { color: var(--ink); }
 .uhdr-nav .uhdr-signin { font-size: 14px; }
 .uhdr-cta {
-  background: var(--ink);
-  color: #1c4d37 !important;
+  background: var(--coral);
+  color: #fff !important;
   padding: 9px 18px;
   border-radius: 999px;
   font-weight: 600;
   font-size: 14px;
 }
-.uhdr-cta:hover { background: var(--coral); color: #1c4d37 !important; }
+.uhdr-cta:hover { background: var(--coral-d); color: #fff !important; }
 
 /* Mobile hamburger */
 .uhdr-toggle {
@@ -181,13 +180,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   text-decoration: none;
 }
 .ubtn-primary {
-  background: var(--ink);
-  color: #1c4d37 !important;
-  box-shadow: 0 10px 30px -10px rgba(244,248,237,0.30);
+  background: var(--coral);
+  color: #fff !important;
+  box-shadow: 0 10px 30px -10px rgba(227,101,37,0.35);
 }
-.ubtn-primary:hover { background: var(--coral); color: #1c4d37 !important; }
+.ubtn-primary:hover { background: var(--coral-d); color: #fff !important; }
 .ubtn-ghost {
-  background: var(--bg-card);
+  background: transparent;
   color: var(--ink) !important;
   border-color: var(--line-2);
 }
@@ -244,19 +243,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   line-height: 1.02;
   letter-spacing: -0.03em;
   margin: 0 0 26px;
-  background: linear-gradient(180deg, #f4f8ed 0%, #c4d6be 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 .uhero h1 em {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .uhero-sub {
   font-size: clamp(17px, 1.4vw, 21px);
@@ -539,10 +532,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .ufeat-head p { color: var(--ink-soft); max-width: 400px; margin: 0; font-size: 16px; line-height: 1.65; }
 
@@ -555,10 +545,11 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 @media (max-width: 640px) { .ufeat-grid { grid-template-columns: 1fr; } }
 
 .ufeat-card {
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-2) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--line-2);
   border-radius: var(--radius);
   padding: 28px;
+  box-shadow: 0 2px 8px -2px rgba(0,0,0,0.06);
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
   position: relative;
   overflow: hidden;
@@ -566,7 +557,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 .ufeat-card:hover {
   border-color: var(--coral);
   transform: translateY(-3px);
-  box-shadow: 0 22px 44px -22px rgba(0,0,0,0.50);
+  box-shadow: 0 12px 28px -12px rgba(0,0,0,0.14);
 }
 .ufeat-card::after {
   content: '';
@@ -655,7 +646,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-size: 88px;
-  color: var(--sage);
+  color: var(--coral);
   line-height: 0.5;
   margin-bottom: 24px;
 }
@@ -674,7 +665,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--sage);
+  color: var(--grey);
   font-weight: 600;
 }
 
@@ -701,19 +692,13 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   line-height: 1.05;
   letter-spacing: -0.03em;
   margin: 0 0 20px;
-  background: linear-gradient(180deg, #f4f8ed 0%, #c4d6be 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 .ucta h2 em {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .ucta p { color: var(--ink-soft); font-size: 18px; margin: 0 0 32px; line-height: 1.6; }
 
@@ -803,10 +788,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(135deg, var(--coral) 0%, #ffb892 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--coral);
 }
 .upage-hero p {
   font-size: clamp(17px, 1.4vw, 21px);
@@ -1349,6 +1331,8 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   vertical-align: 0.08em;
   margin-right: 2px;
 }
+/* Ensure all remaining h2/h3 em elements keep coral on white */
+.uband h2 em { color: var(--coral); }
 .ustat-lbl { font-size: 13.5px; color: var(--grey); }
 
 /* ============================================================
@@ -2029,10 +2013,11 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
 }
 @media (max-width: 820px) { .usteps-grid { grid-template-columns: 1fr; } }
 .ustep-card {
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-2) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--line-2);
   border-radius: var(--radius);
   padding: 28px 26px;
+  box-shadow: 0 2px 8px -2px rgba(0,0,0,0.06);
 }
 .ustep-card .ix {
   display: inline-flex;
@@ -2040,7 +2025,7 @@ em { font-family: var(--serif); font-style: italic; font-weight: 500; }
   width: 38px; height: 38px;
   border-radius: 50%;
   background: var(--coral);
-  color: #1c4d37;
+  color: #fff;
   font-weight: 700;
   font-size: 18px;
   margin-bottom: 16px;
