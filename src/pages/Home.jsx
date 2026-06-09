@@ -176,11 +176,12 @@ export default function Home() {
 
   // Lane accent colors for the bucket rails — keep aligned with the
   // PipelineKanban lane palette so the same semantics carry across pages.
-  // primary orange flags the "do this now" surface (Awaiting review).
+  // amber flags every "your turn" surface (drafting + act-now); emerald is
+  // reserved for "done/published" so it can't read as an action prompt.
   const ACCENT = {
-    ready:        '#d97706', // amber  — drafting needed
-    review:       '#e36525', // primary orange — your action queue
-    distribute:   '#e36525', // primary orange — "act now" publisher surface (was emerald; green read as "done")
+    ready:        '#d97706', // amber — drafting needed
+    review:       '#d97706', // amber — your action queue (act-now)
+    distribute:   '#d97706', // amber — "act now" publisher surface (was orange; emerald read as "done")
     overdue:      '#64748b', // slate — informational, not an urgent action (was sky-blue; violated brand rule)
   }
 
