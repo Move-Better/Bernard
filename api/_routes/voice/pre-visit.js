@@ -67,26 +67,33 @@ export default async function handler(req, res) {
 
   // ── 1. Look up the clinician voice clone ────────────────────────────────────
   let voiceId = process.env.TTS_DEFAULT_VOICE_ID || DEFAULT_VOICE_ID
+  let staffName = null
   try {
     const clRes = await sb(
       `staff?workspace_id=eq.${ws.id}&user_id=eq.${auth.userId}` +
-      `&select=id,eleven_voice_id&limit=1`,
+      `&select=id,name,eleven_voice_id&limit=1`,
     )
     if (clRes.ok) {
       const rows = await clRes.json()
       if (rows[0]?.eleven_voice_id) voiceId = rows[0].eleven_voice_id
+      if (rows[0]?.name) staffName = rows[0].name
     }
   } catch (e) {
     console.warn('[voice/pre-visit] clinician voice lookup failed:', e?.message)
   }
+
+  const clinicianName = staffName || ws.display_name || 'your clinician'
+  const practiceContext = ws.clinic_context
+    ? ws.clinic_context.slice(0, 300)
+    : 'a healthcare practice'
 
   // ── 2. Generate the script via Claude ───────────────────────────────────────
   const apiKey = process.env.AI_GATEWAY_API_KEY
   if (!apiKey) return err(res, 'AI_GATEWAY_API_KEY not configured', 503)
 
   const systemPrompt = [
-    "You are writing a short, warm pre-appointment voice message for a chiropractor named Dr. Q to send to a patient.",
-    "Write in first-person as Dr. Q. Tone: warm, professional, direct.",
+    `You are writing a short, warm pre-appointment voice message for ${clinicianName} at ${practiceContext} to send to a patient.`,
+    `Write in first-person as ${clinicianName}. Tone: warm, professional, direct.`,
     "Length: 3–5 sentences. Do NOT add a greeting line like 'Hello' — start with the content.",
     "Do not add stage directions, quotes, or any formatting. Plain prose only.",
   ].join(' ')
