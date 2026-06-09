@@ -17,6 +17,8 @@
 // are kept for reference so PostPreview's identity strings have a paper trail
 // and can be cross-checked against the workspaces DB rows.
 
+import { BERNARD_EMERALD, BERNARD_LOGO_URL, BERNARD_ICON_URL } from './brand.js'
+
 const PEOPLE = {
   id: 'people',
 
@@ -39,8 +41,8 @@ const PEOPLE = {
   regionShort: 'PNW',
 
   // Visual identity
-  logo: { main: '/bernard-logo.svg', icon: '/bernard-icon.svg' },
-  colors: { primary: '#10B981', grey: '#6E7072' },
+  logo: { main: BERNARD_LOGO_URL, icon: BERNARD_ICON_URL },
+  colors: { primary: BERNARD_EMERALD },
   socialAvatarInitials: 'MB',
   linkPreviewBlurb: 'Movement-first care for lasting pain relief.',
   linkedInIndustry: 'Chiropractic',
@@ -168,8 +170,8 @@ const EQUINE = {
 
   // Visual identity. Logo paths resolve from each deployment's public/ — the
   // equine-branded SVGs will replace the default ones in Move Better Equine/public/.
-  logo: { main: '/bernard-logo.svg', icon: '/bernard-icon.svg' },
-  colors: { primary: '#10B981', grey: '#6E7072' },
+  logo: { main: BERNARD_LOGO_URL, icon: BERNARD_ICON_URL },
+  colors: { primary: BERNARD_EMERALD },
   socialAvatarInitials: 'MBE',
   linkPreviewBlurb: 'Mobile equine chiropractic care across Southwest Washington and the greater Portland area — restoring movement, balance, and comfort for horses.',
   linkedInIndustry: 'Veterinary',
@@ -267,8 +269,8 @@ const ANIMALS = {
 
   // Visual identity. Logos reuse the Move Better marks per brand-owner direction —
   // public/ in this deployment will hold the same SVGs as the human deployment.
-  logo: { main: '/bernard-logo.svg', icon: '/bernard-icon.svg' },
-  colors: { primary: '#10B981', grey: '#6E7072' },
+  logo: { main: BERNARD_LOGO_URL, icon: BERNARD_ICON_URL },
+  colors: { primary: BERNARD_EMERALD },
   socialAvatarInitials: 'MBA',
   linkPreviewBlurb: 'AVCA-certified animal chiropractic in Portland and Vancouver — gentle adjustments for dogs, cats, and small animals.',
   linkedInIndustry: 'Veterinary',

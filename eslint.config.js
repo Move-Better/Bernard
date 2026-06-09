@@ -7,6 +7,7 @@ import apiHandlerShape from './eslint/rules/api-handler-shape.js'
 import noRawUseMutation from './eslint/rules/no-raw-use-mutation.js'
 import noArbitraryTextSize from './eslint/rules/no-arbitrary-text-size.js'
 import noRawApiFetch from './eslint/rules/no-raw-api-fetch.js'
+import noHardcodedBrandColor from './eslint/rules/no-hardcoded-brand-color.js'
 
 export default [
   { ignores: ['dist/**', 'node_modules/**', 'playwright-report/**', 'api/_routes/_manifest.generated.js'] },
@@ -64,6 +65,10 @@ export default [
   //     apiFetch so the Clerk bearer token is attached (the API ignores the
   //     session cookie, so a tokenless call gets the slim/unauth shape — the
   //     PR #1064 "settings won't save" bug). Source files in eslint/rules/.
+  //   no-hardcoded-brand-color — ban retired brand color literals (Move-Better
+  //     orange #e36525 / hue-20 hsl / rgb(227,101,37), grey #6e7072, evergreen
+  //     #1c4d37, coral #ff8552) so the brand color stays in the design tokens
+  //     (src/index.css) and the next rebrand is a token change, not a hunt (#1294).
   {
     files: ['src/**/*.{js,jsx}'],
     plugins: {
@@ -72,6 +77,7 @@ export default [
           'no-raw-use-mutation': noRawUseMutation,
           'no-arbitrary-text-size': noArbitraryTextSize,
           'no-raw-api-fetch': noRawApiFetch,
+          'no-hardcoded-brand-color': noHardcodedBrandColor,
         },
       },
     },
@@ -80,6 +86,7 @@ export default [
       // Ban text-[Npx] arbitrary sizes — use text-3xs/text-2xs/Tailwind scale.
       'bernard/no-arbitrary-text-size': 'error',
       'bernard/no-raw-api-fetch': 'error',
+      'bernard/no-hardcoded-brand-color': 'error',
     },
   },
 ]

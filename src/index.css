@@ -63,6 +63,16 @@
     --success: 152 76% 40%;
     --warning:  38 92% 50%;
     --info:    199 95% 40%;
+
+    /* ── Act-now signal ─────────────────────────────────────────────────────
+       The "it's your turn / do this now" accent — publisher inbox, awaiting-
+       review queues, the Home action buckets, the approved kanban rail.
+       Deliberately AMBER, kept distinct from --primary (emerald = the brand)
+       AND from --success (emerald = "done/published"); using emerald here would
+       make "act now" read as "already done". Reference as bg-action /
+       text-action / border-action or hsl(var(--action)) — never a raw hex. */
+    --action: 32 95% 44%;              /* amber-600 #d97706 */
+    --action-foreground: 0 0% 100%;
   }
 }
 

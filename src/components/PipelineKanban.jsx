@@ -18,7 +18,7 @@ import { getContentStatusToken } from '@/lib/contentStatusTokens'
 const LANES = [
   { id: 'draft',     icon: FileText,     publisherInbox: false, rail: '#94a3b8' /* slate-400 */ },
   { id: 'in_review', icon: Clock,        publisherInbox: false, rail: '#d97706' /* amber-600 */ },
-  { id: 'approved',  icon: CheckCircle2, publisherInbox: true,  rail: '#d97706' /* amber-600 — act-now (emerald reads as "done") */ },
+  { id: 'approved',  icon: CheckCircle2, publisherInbox: true,  rail: 'hsl(var(--action))' /* act-now */ },
   { id: 'scheduled', icon: CalendarDays, publisherInbox: false, rail: '#7c3aed' /* violet-600 */ },
   { id: 'published', icon: Send,         publisherInbox: false, rail: '#059669' /* emerald-600 */ },
 ]
