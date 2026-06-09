@@ -104,6 +104,9 @@ function isTransientStreamError(e) {
   const status = e?.status
   if (status === 401 || status === 403 || status === 429) return false
   if (typeof status === 'number' && status >= 400 && status < 500) return false
+  // 529 = AI gateway overloaded (transient); other 5xx may include structural errors
+  // (invalid model, quota hard-stop) but we can't distinguish without parsing the body.
+  // Retry once is acceptable for structural errors — the 3-retry max is the real cap.
   return true
 }
 
@@ -271,6 +274,9 @@ export default function InterviewSession() {
   // instead of closing over a stale value. Matches the interviewRef pattern.
   const runtimeWorkspaceRef = useRef(null)
   const pastInterviewsRef = useRef([])
+  // Unmount guard — set false in cleanup so async generators in generateCoveredSummary
+  // and handleGenerateContent don't call setState on an unmounted component.
+  const mountedRef = useRef(true)
   // Emotional-state ref: 'weighted' | 'resistant' | null.
   // Set after each user message; reset to null after each AI response completes.
   // State is per-exchange — not persistent across the whole session.
@@ -610,6 +616,9 @@ export default function InterviewSession() {
       recognitionRef.current?.abort()
     }
   }, [])
+
+  // Unmount guard — prevents setState calls after navigation during 60-120s generation.
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   // Release the mic the moment the interview ends. Without this, the
   // SpeechRecognition session can linger and the browser tab keeps the
@@ -1308,9 +1317,11 @@ export default function InterviewSession() {
       const seed = [...apiMessages, { role: 'user', content: 'Summarize what I covered, in 3 lines.' }]
       let acc = ''
       for await (const delta of streamMessage(seed, sys, { model: 'claude-haiku-4-5', maxOutputTokens: 300 })) {
+        if (!mountedRef.current) return ''
         acc += delta
         setCoveredSummary(acc)
       }
+      if (!mountedRef.current) return ''
       const finalSummary = acc.trim()
       setCoveredSummary(finalSummary)
       return finalSummary
@@ -1479,12 +1490,14 @@ export default function InterviewSession() {
       // verbatim + paraphrase paragraphs / total paragraphs). Server computes the
       // authoritative pct later; this is just a first impression for the card.
       const voicePct = deriveVoicePct(provenanceJson || '')
+      if (!mountedRef.current) return
       setIsGenerating(false)
       setCompletionData({ voicePct, staffName: staffMember.name, topic: interview.topic, isNewsletter })
       // The completion card now rests here as the primary "See your story →"
       // handoff. Video attach is an optional link on that card, never an
       // auto-advancing gate — so no timer pushes the user into it.
     } catch (err) {
+      if (!mountedRef.current) return
       setGenerationError(true)
       setError(`Failed to generate content: ${err.message}`)
       setIsGenerating(false)
