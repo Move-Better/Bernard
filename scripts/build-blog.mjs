@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Build static blog HTML for narraterx.ai from markdown sources.
+// Build static blog HTML for withbernard.ai from markdown sources.
 //
 //   Source:    src/content/blog/<slug>.md  (frontmatter + markdown body)
 //   Generated: public/blog/<slug>.html     (per-post page)
@@ -10,12 +10,12 @@
 //
 // Frontmatter (YAML-like, parsed manually — no extra dep):
 //   ---
-//   title: Why I built NarrateRx
+//   title: Why I built Bernard
 //   description: One paragraph (140-160 chars) for meta + OG.
 //   pubDate: 2026-05-19
-//   slug: why-i-built-narraterx        # optional; defaults to filename
+//   slug: why-i-built-bernard        # optional; defaults to filename
 //   updatedDate: 2026-05-20            # optional
-//   hero: /brand/narraterx-icon-1024.png # optional
+//   hero: /brand/bernard-icon-1024.png # optional
 //   ---
 //
 // Markdown is rendered with `marked` (already a dep — see api/publish/website.js).
@@ -79,7 +79,7 @@ function readTime(markdown) {
 // Keep these in sync if the marketing-site template changes.
 const HEADER = `<header class="uhdr">
   <div class="container uhdr-inner">
-    <a href="/" class="uhdr-logo"><span class="glyph">N</span>narrate<span class="rx">Rx</span></a>
+    <a href="/" class="uhdr-logo"><img src="/bernard-logo-light.svg" alt="Bernard"></a>
     <button class="uhdr-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -114,16 +114,16 @@ const SUBSCRIBE = `<section class="usubscribe" aria-labelledby="usubscribe-headi
 
 const FOOTER = `<footer class="ufoot">
   <div class="container ufoot-inner">
-    <span class="footer-brand">narrate<span class="rx">Rx</span> — You talk. It does the rest.</span>
+    <span class="footer-brand">Bernard — You talk. It does the rest.</span>
     <span><a href="/how-it-works">How it works</a> · <a href="/features">Features</a> · <a href="/compare">Compare</a> · <a href="/pricing">Pricing</a> · <a href="/blog">Blog</a> · <a href="/about">About</a> · <a href="/transparency">Transparency</a></span>
-    <span>© <span data-year>2026</span> · <a href="mailto:drq@narraterx.ai">drq@narraterx.ai</a></span>
+    <span>© <span data-year>2026</span> · <a href="mailto:drq@withbernard.ai">drq@withbernard.ai</a></span>
   </div>
 </footer>`
 
 const HEAD_COMMON = `<meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" type="image/svg+xml" href="/narraterx-icon.svg" />
-  <link rel="apple-touch-icon" href="/narraterx-icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/bernard-icon.svg" />
+  <link rel="apple-touch-icon" href="/bernard-icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet" />
@@ -135,10 +135,10 @@ function renderPostHtml({ data, body }) {
   const slug = data.slug || data._defaultSlug
   const pubDate = data.pubDate || ''
   const updatedDate = data.updatedDate || ''
-  const canonical = `https://narraterx.ai/blog/${slug}`
+  const canonical = `https://withbernard.ai/blog/${slug}`
   const dateLabel = formatDate(pubDate)
   const updatedLabel = updatedDate ? `Updated ${formatDate(updatedDate)}` : ''
-  const ogImage = data.hero || 'https://narraterx.ai/brand/narraterx-icon-1024.png'
+  const ogImage = data.hero || 'https://withbernard.ai/brand/bernard-icon-1024.png'
 
   const bodyHtml = marked.parse(body, { gfm: true, breaks: false })
 
@@ -200,7 +200,7 @@ function renderPostHtml({ data, body }) {
 <head>
   ${HEAD_COMMON}
   ${muxPlayerScript}
-  <title>${escapeHtml(title)} — NarrateRx</title>
+  <title>${escapeHtml(title)} — Bernard</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <link rel="canonical" href="${canonical}" />
   <meta property="og:title" content="${escapeHtml(title)}" />
@@ -284,12 +284,12 @@ function renderIndexHtml(posts) {
 <html lang="en">
 <head>
   ${HEAD_COMMON}
-  <title>Blog — NarrateRx</title>
-  <meta name="description" content="Field notes from building NarrateRx — voice-faithful content for hands-on and integrative care providers." />
-  <link rel="canonical" href="https://narraterx.ai/blog" />
-  <meta property="og:title" content="NarrateRx Blog" />
-  <meta property="og:description" content="Field notes from building NarrateRx — voice-faithful content for hands-on and integrative care providers." />
-  <meta property="og:url" content="https://narraterx.ai/blog" />
+  <title>Blog — Bernard</title>
+  <meta name="description" content="Field notes from building Bernard — voice-faithful content for hands-on and integrative care providers." />
+  <link rel="canonical" href="https://withbernard.ai/blog" />
+  <meta property="og:title" content="Bernard Blog" />
+  <meta property="og:description" content="Field notes from building Bernard — voice-faithful content for hands-on and integrative care providers." />
+  <meta property="og:url" content="https://withbernard.ai/blog" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <script defer src="/_vercel/insights/script.js"></script>
@@ -302,7 +302,7 @@ ${HEADER}
   <div class="container">
     <div class="upage-hero-inner">
       <p class="upage-eyebrow"><span class="dot"></span> Blog</p>
-      <h1>Field notes from <em>building NarrateRx</em>.</h1>
+      <h1>Field notes from <em>building Bernard</em>.</h1>
       <p>Why voice-faithful content matters, what we're learning from real clinicians, and how this thing is taking shape.</p>
     </div>
   </div>
