@@ -907,6 +907,7 @@ export default function InterviewSession() {
     let rafId
     function draw() {
       rafId = requestAnimationFrame(draw)
+      animFrameRef.current = rafId
       const bars = waveformRef.current ? Array.from(waveformRef.current.children) : []
       if (!bars.length) return
       if (analyserRef.current) {
@@ -926,7 +927,6 @@ export default function InterviewSession() {
         })
       }
     }
-    animFrameRef.current = rafId
     draw()
 
     let active = true
