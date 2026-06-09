@@ -11,6 +11,14 @@ export const ROLE_EDITOR_LEGACY = 'editor'
 // Used by requireRole() in api routes that gate content / media writes.
 export const EDITOR_ROLES = [ROLE_ADMIN, ROLE_PUBLISHER, ROLE_EDITOR_LEGACY]
 
+// Used by requireRole() on destructive / irreversible ops (e.g. hard-deleting a
+// staff row, which CASCADE-destroys that person's interviews + learning). Only
+// the workspace owner / org-admin (and internal-plan members, who requireRole
+// maps to 'admin') may invoke these. NOTE: requireRole() resolves a Clerk org
+// admin and any 'internal'-plan member to role 'admin', so this single value
+// covers both without enumerating tiers.
+export const ADMIN_ROLES = [ROLE_ADMIN]
+
 // Used by handshake routes (uploads) that any signed-in workspace member
 // may initiate.
 export const ALL_KNOWN_ROLES = [

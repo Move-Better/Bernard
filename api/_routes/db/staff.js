@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
+import { ADMIN_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -36,6 +37,20 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
   const body = await r.text().catch(() => '')
   console.error(`[db/clinicians] ${msg} — supabase ${r.status}: ${body.slice(0, 500)}`)
   return res.status(status).json({ error: msg })
+}
+
+// Count rows matching a PostgREST filter without materializing them: ask for
+// an exact count (Prefer: count=exact) and read the total from the
+// Content-Range response header (`0-0/<total>` or `*/<total>`). Returns
+// { ok:false, r } on a non-2xx so the caller can dbErr() with the response.
+async function countRefs(table, query) {
+  const r = await sb(`${table}?${query}&select=id&limit=1`, {
+    headers: { Prefer: 'count=exact' },
+  })
+  if (!r.ok) return { ok: false, r }
+  const range = r.headers.get('content-range') || ''
+  const total = parseInt(range.split('/')[1] || '0', 10)
+  return { ok: true, total: Number.isFinite(total) ? total : 0 }
 }
 
 const CLINICIAN_RECIPE_FIELDS = 'default_audience,default_story_type,default_tone,default_voice_mode'
@@ -211,15 +226,82 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
 
-    const chk = await sb(`staff?id=eq.${id}&${wsFilter}&select=created_by_id`)
+    // Hard-deleting a staff row CASCADE-destroys that person's interviews,
+    // content_items, practice_memory_chunks, staff_recipes and
+    // staff_voice_phrases (5 ON DELETE CASCADE FKs — see CLAUDE.md "Deleting or
+    // merging a staff row"). That is an irreversible, workspace-altering op, so
+    // gate it to workspace admins/owners. The prior check trusted only
+    // created_by_id, which let any member who happened to create the row fire
+    // the cascade regardless of role tier. requireRole maps Clerk org-admins +
+    // internal-plan members to 'admin', so ADMIN_ROLES covers both.
+    const adminAuth = await requireRole(req, ADMIN_ROLES, { orgId: ws.clerk_org_id })
+    if (!adminAuth.ok) {
+      return res.status(adminAuth.reason === 'forbidden' ? 403 : 401).json({ error: adminAuth.reason })
+    }
+
+    const chk = await sb(`staff?id=eq.${id}&${wsFilter}&select=id`)
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
-    if (rows[0].created_by_id !== userId) return err(res, 'Forbidden', 403)
+
+    const mergeTo = searchParams.get('mergeTo')
+    const force = searchParams.get('force') === 'true'
+
+    // Preferred path for a staff row with attached history: route through the
+    // atomic merge_staff() RPC (migration 112). It repoints all 12 staff_id FKs
+    // + campaigns.target_staff_ids onto the target IN ONE TRANSACTION before
+    // deleting the source, so no cascade fires and no learning is lost.
+    if (mergeTo) {
+      if (mergeTo === id) return err(res, 'Merge target must differ from the staff row being deleted')
+      const tgt = await sb(`staff?id=eq.${mergeTo}&${wsFilter}&select=id`)
+      if (!tgt.ok) return dbErr(res, tgt)
+      const tgtRows = await tgt.json()
+      if (!tgtRows.length) return err(res, 'Merge target not found in this workspace', 404)
+
+      const rpc = await sb('rpc/merge_staff', {
+        method: 'POST',
+        body: JSON.stringify({ p_source: id, p_target: mergeTo, p_workspace: ws.id }),
+      })
+      if (!rpc.ok) return dbErr(res, rpc, 'Merge failed')
+      return ok(res, { ok: true, merged: true, targetId: mergeTo })
+    }
+
+    // No merge target: count children across the 5 cascade tables + the
+    // denormalized campaigns.target_staff_ids array. If anything is attached,
+    // refuse the bare DELETE (409) unless the caller explicitly forces it —
+    // otherwise the cascade would silently destroy interviews + voice learning.
+    const childCounts = {}
+    const countTargets = [
+      ['content_items',          `staff_id=eq.${id}`],
+      ['interviews',             `staff_id=eq.${id}`],
+      ['practice_memory_chunks', `staff_id=eq.${id}`],
+      ['staff_recipes',          `staff_id=eq.${id}`],
+      ['staff_voice_phrases',    `staff_id=eq.${id}`],
+      // PostgREST array-contains: target_staff_ids @> {<id>} (braces encoded).
+      ['campaigns',              `target_staff_ids=cs.%7B${id}%7D&${wsFilter}`],
+    ]
+    for (const [table, query] of countTargets) {
+      const c = await countRefs(table, query)
+      if (!c.ok) return dbErr(res, c.r, `Child count failed (${table})`)
+      childCounts[table] = c.total
+    }
+    const totalChildren = Object.values(childCounts).reduce((a, b) => a + b, 0)
+
+    if (totalChildren > 0 && !force) {
+      return res.status(409).json({
+        error: 'staff_has_children',
+        message:
+          'This staff member still has interviews, content, or voice learning attached. ' +
+          'Merge them into another staff member (pass mergeTo=<staffId>) to preserve that ' +
+          'history, or pass force=true to permanently delete everything.',
+        childCounts,
+        totalChildren,
+      })
+    }
 
     const r = await sb(`staff?id=eq.${id}&${wsFilter}`, { method: 'DELETE' })
     if (!r.ok) return dbErr(res, r, 'Delete failed')
-    return ok(res, { ok: true })
+    return ok(res, { ok: true, forced: totalChildren > 0 })
   }
 
   return res.status(405).send('Method not allowed')
