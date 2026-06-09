@@ -47,7 +47,7 @@ function RecapBlock({ recap }) {
     <div className="rounded-2xl overflow-hidden border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.3)]">
       <div
         className="px-6 py-4 flex items-center gap-3 text-white"
-        style={{ background: 'linear-gradient(100deg,#e36525 0%,#f0883e 60%,#f6a96b 100%)' }}
+        style={{ background: 'linear-gradient(100deg,#d97706 0%,#f59e0b 60%,#fbbf24 100%)' }}
       >
         <div className="text-2xl" aria-hidden="true">🎉</div>
         <div className="flex-1 min-w-0">
