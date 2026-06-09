@@ -69,6 +69,9 @@ function isTransientStreamError(e) {
   const status = e?.status
   if (status === 401 || status === 403 || status === 429) return false
   if (typeof status === 'number' && status >= 400 && status < 500) return false
+  // 529 = AI gateway overloaded (transient); other 5xx may include structural errors
+  // (invalid model, quota hard-stop) but we can't distinguish without parsing the body.
+  // Retry once is acceptable for structural errors — the 3-retry max is the real cap.
   return true
 }
 
