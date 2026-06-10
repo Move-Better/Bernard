@@ -540,6 +540,18 @@ function LegacyStaffRedirect() {
   return <Navigate to={`/staff/${staffId}${search}`} replace />
 }
 
+// Legacy redirects: Storyboard was renamed Publish (media-flow redesign,
+// 2026-06-09 — Option 2 naming, kills the Stories/Storyboard collision).
+// Internal code names (components, files) intentionally keep Storyboard.
+function LegacyStoryboardPieceRedirect() {
+  const { pieceId } = useParams()
+  return <Navigate to={`/publish/${pieceId}`} replace />
+}
+function LegacyStoryboardPublishRedirect() {
+  const { pieceId } = useParams()
+  return <Navigate to={`/publish/${pieceId}/schedule`} replace />
+}
+
 // Phase 4: users without interview.start capability (producers in the default
 // template, viewers, etc.) land on /slate as their home. Users with the
 // capability see Home as before. Wrapped at the / route so the redirect
@@ -612,12 +624,15 @@ function AppRoutes() {
             <Route path="/write" element={guarded(<AuthorMode />)} />
             <Route path="/book"  element={guarded(<Book />)} />
             <Route path="/library" element={guarded(<MediaHub />)} />
-            {/* Storyboard — the content→media tool. Open a draft to review +
-                attach media at full size. /needs-media redirects to it. */}
-            <Route path="/storyboard" element={guarded(<Storyboard />)} />
-            <Route path="/storyboard/:pieceId" element={guarded(<StoryboardPiece />)} />
-            <Route path="/storyboard/:pieceId/publish" element={guarded(<StoryboardPublish />)} />
-            <Route path="/needs-media" element={<Navigate to="/storyboard" replace />} />
+            {/* Publish (né Storyboard) — the assembly desk: attach media, set
+                the look, schedule. /storyboard/* and /needs-media redirect. */}
+            <Route path="/publish" element={guarded(<Storyboard />)} />
+            <Route path="/publish/:pieceId" element={guarded(<StoryboardPiece />)} />
+            <Route path="/publish/:pieceId/schedule" element={guarded(<StoryboardPublish />)} />
+            <Route path="/storyboard" element={<Navigate to="/publish" replace />} />
+            <Route path="/storyboard/:pieceId" element={<LegacyStoryboardPieceRedirect />} />
+            <Route path="/storyboard/:pieceId/publish" element={<LegacyStoryboardPublishRedirect />} />
+            <Route path="/needs-media" element={<Navigate to="/publish" replace />} />
             {/* Universal PWA capture surface — works on any device with a browser + camera. */}
             <Route path="/capture" element={guarded(<Capture />)} />
             {/* Slate. Uses the * catch-all pattern so descendant

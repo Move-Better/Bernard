@@ -57,7 +57,7 @@ export default function StoryboardPublish() {
   if (isError || !piece) {
     return (
       <div className="space-y-4 py-6">
-        <BackLink to="/storyboard">Back to Storyboard</BackLink>
+        <BackLink to="/publish">Back to Publish</BackLink>
         <ErrorState message="Draft not found." />
       </div>
     )
@@ -81,8 +81,8 @@ export default function StoryboardPublish() {
           Publish you can step back to the media picker, not just the queue. */}
       <Breadcrumb
         items={[
-          { label: 'Storyboard', to: '/storyboard' },
-          { label: pieceLabel(piece), to: `/storyboard/${piece.id}` },
+          { label: 'Publish', to: '/publish' },
+          { label: pieceLabel(piece), to: `/publish/${piece.id}` },
           { label: 'Publish' },
         ]}
       />
@@ -92,8 +92,8 @@ export default function StoryboardPublish() {
         <div className="min-w-0">
           {/* Back goes to the media picker for THIS piece (Choose media), not
               the queue — so you can change the attached media without losing
-              the draft. "Back to Storyboard" (the queue) is still one crumb up. */}
-          <BackLink to={`/storyboard/${piece.id}`}>Back to media</BackLink>
+              the draft. "Back to Publish" (the queue) is still one crumb up. */}
+          <BackLink to={`/publish/${piece.id}`}>Back to media</BackLink>
           <h1 className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
             {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
             <span className="truncate">{title}</span>
@@ -170,7 +170,7 @@ export default function StoryboardPublish() {
               batch down. Hidden when nothing else is waiting on media. */}
           {remainingNeedsMedia.length > 0 && (
             <Link
-              to="/storyboard"
+              to="/publish"
               className="group block rounded-lg border border-primary/20 bg-accent/20 p-3 transition-colors hover:border-primary/40"
             >
               <p className="mb-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -184,7 +184,7 @@ export default function StoryboardPublish() {
                   need media
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-                  Storyboard <ArrowRight className="h-3.5 w-3.5" />
+                  Publish <ArrowRight className="h-3.5 w-3.5" />
                 </span>
               </span>
             </Link>

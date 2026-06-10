@@ -207,8 +207,8 @@ function UnscheduledRail({ items }) {
           const pm = PLATFORM_META[item.platform]
           const Icon = pm?.icon
           const to = HAS_MEDIA(item)
-            ? `/storyboard/${item.id}/publish`
-            : `/storyboard/${item.id}`
+            ? `/publish/${item.id}/schedule`
+            : `/publish/${item.id}`
           return (
             <Link
               key={item.id}

@@ -418,7 +418,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
       {/* Handoff to Storyboard: media is reviewed + attached at full size there,
           and the carousel composer + publish actions live on the publish step. */}
       <Link
-        to={`/storyboard/${piece.id}`}
+        to={`/publish/${piece.id}`}
         className="flex items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs transition-colors hover:border-primary/40 hover:bg-accent/20"
       >
         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -426,7 +426,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
           {Array.isArray(piece.media_urls) ? piece.media_urls.length : 0} media attached
         </span>
         <span className="inline-flex items-center gap-1 font-medium text-primary">
-          Open in Storyboard <ArrowRight className="h-3.5 w-3.5" />
+          Open in Publish <ArrowRight className="h-3.5 w-3.5" />
         </span>
       </Link>
     </div>
@@ -1212,7 +1212,7 @@ function WhenToPublishCard({
 // mode='workflow' (default, in the Stories editor): review workflow only —
 //   send-for-review / approve / request-changes / unapprove + comments. NO
 //   publish/schedule/export (those moved to the dedicated publish page).
-// mode='publish' (on /storyboard/:id/publish): the schedule/publish/export
+// mode='publish' (on /publish/:id/publish): the schedule/publish/export
 //   actions + scheduled/published state. NO review workflow / comments.
 // One component, one source of truth — the mode just gates which sections show.
 export function ApprovalPanel({ piece, mode = 'workflow' }) {
@@ -1333,7 +1333,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
         },
         cancel: {
           label: 'Add media',
-          onClick: () => navigate(`/storyboard/${piece.id}`),
+          onClick: () => navigate(`/publish/${piece.id}`),
         },
       })
       return
@@ -1603,7 +1603,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 
       {/* Words-approved handoff — the single, primary next step in the workflow
           (Words) view. Approving no longer silently redirects to Storyboard; it
-          rests here and shows an unmistakable primary "Add media in Storyboard →"
+          rests here and shows an unmistakable primary "Add media in Publish →"
           CTA (plus Undo), matching the Words-screen redesign. */}
       {!isPublish && piece.status === 'approved' && canReview && (
         <div className="rounded-lg border border-success/30 bg-success/10 p-4 flex flex-wrap items-center justify-between gap-3">
@@ -1622,10 +1622,10 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             </button>
             <Button
               size="sm"
-              onClick={() => navigate(`/storyboard/${piece.id}`)}
+              onClick={() => navigate(`/publish/${piece.id}`)}
               className="bg-primary text-primary-foreground"
             >
-              Add media in Storyboard
+              Add media in Publish
               <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
             </Button>
           </div>

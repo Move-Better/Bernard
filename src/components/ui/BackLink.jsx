@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react'
  * Standard back-navigation affordance for the Stories → Storyboard → Publish
  * spine. One component so "go back" looks and reads the same at every step
  * (previously each page hand-rolled its own link with drifting labels and
- * styling — "Back to Stories" / "Back to Storyboard" / "Back to media").
+ * styling — "Back to Stories" / "Back to Publish" / "Back to media").
  *
  * The negative left margin keeps the text visually flush with the content
  * column while giving the hover background a comfortable hit area.
