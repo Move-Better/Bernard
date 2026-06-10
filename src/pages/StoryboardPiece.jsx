@@ -343,7 +343,7 @@ export default function StoryboardPiece() {
   if (isError || !piece) {
     return (
       <div className="space-y-4 py-6">
-        <BackLink to="/storyboard">Back to Storyboard</BackLink>
+        <BackLink to="/publish">Back to Publish</BackLink>
         <ErrorState message="Draft not found." />
       </div>
     )
@@ -365,15 +365,15 @@ export default function StoryboardPiece() {
       <PipelineStepper current="media" />
       <Breadcrumb
         items={[
-          { label: 'Storyboard', to: '/storyboard' },
-          { label: pieceLabel(piece), to: `/storyboard/${piece.id}` },
+          { label: 'Publish', to: '/publish' },
+          { label: pieceLabel(piece), to: `/publish/${piece.id}` },
           { label: 'Edit post' },
         ]}
       />
 
       {/* Header nav */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <BackLink to="/storyboard">Back to Storyboard</BackLink>
+        <BackLink to="/publish">Back to Publish</BackLink>
         <div className="flex items-center gap-2">
           {piece.interview_id && (
             <Button
@@ -385,7 +385,7 @@ export default function StoryboardPiece() {
             </Button>
           )}
           {nextPieceId && (
-            <Button variant="ghost" size="sm" onClick={() => navigate(`/storyboard/${nextPieceId}`)}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(`/publish/${nextPieceId}`)}>
               Next draft ({remainingNeedsMedia.length} left) <ArrowRight className="ml-1 h-3.5 w-3.5" />
             </Button>
           )}
@@ -393,7 +393,7 @@ export default function StoryboardPiece() {
             size="sm"
             disabled={!hasMedia}
             title={hasMedia ? undefined : 'Attach a photo or video to continue'}
-            onClick={() => navigate(`/storyboard/${piece.id}/publish`)}
+            onClick={() => navigate(`/publish/${piece.id}/schedule`)}
           >
             Continue to publish <ArrowRight className="ml-1 h-3.5 w-3.5" />
           </Button>
@@ -1096,7 +1096,7 @@ export default function StoryboardPiece() {
                 className="flex-1"
                 disabled={!hasMedia}
                 title={hasMedia ? undefined : 'Attach media before scheduling'}
-                onClick={() => navigate(`/storyboard/${piece.id}/publish`)}
+                onClick={() => navigate(`/publish/${piece.id}/schedule`)}
               >
                 <Calendar className="mr-1.5 h-4 w-4" />
                 Schedule this post
@@ -1105,7 +1105,7 @@ export default function StoryboardPiece() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/storyboard/${nextPieceId}`)}
+                  onClick={() => navigate(`/publish/${nextPieceId}`)}
                   className="flex items-center gap-1"
                 >
                   Next <ArrowRight className="h-3.5 w-3.5" />

@@ -301,8 +301,8 @@ export default function SlateClipEditor() {
       markSelectedKept()
       const id = data?.contentItemId
       if (id) {
-        toast('Draft created — opening in Storyboard.')
-        navigate(`/storyboard/${id}`)
+        toast('Draft created — opening in Publish.')
+        navigate(`/publish/${id}`)
       } else {
         toast.error('Post created but no ID returned.')
       }
@@ -849,7 +849,7 @@ export default function SlateClipEditor() {
                   <FileText className="h-4 w-4 text-primary" />
                 )}
                 <div className="text-xs font-semibold mt-1">As a post</div>
-                <div className="text-3xs text-muted-foreground">→ Storyboard draft, ready to schedule</div>
+                <div className="text-3xs text-muted-foreground">→ Draft in Publish, ready to schedule</div>
               </button>
 
               <button

@@ -49,16 +49,21 @@ const NAV_SECTIONS = [
   {
     label: 'Produce',
     items: [
+      { to: '/stories',    label: 'Stories',    hint: 'Words',           match: (p) => p.startsWith('/stories'),  icon: Newspaper,
+        requiresCapability: CAP_INTERVIEW_START },
+      // Slate — the cutting desk (video → clips). Sits between Stories and
+      // Publish so the Produce section reads as the pipeline: words → cut →
+      // assemble/ship. Still gated on the workspace's video pipeline opt-in.
+      { to: '/slate',      label: 'Slate',      hint: 'Cut video',       match: (p) => p.startsWith('/slate'),    icon: Scissors,
+        showWhen: (ws) => ws?.video_pipeline_enabled === true },
+      // Publish (né Storyboard, renamed 2026-06-09) — the assembly desk:
+      // media + schedule. Ungated like Library so producers see it. Old
+      // /storyboard and /needs-media routes redirect.
+      { to: '/publish',    label: 'Publish',    hint: 'Media · schedule', match: (p) => p.startsWith('/publish') || p.startsWith('/storyboard') || p.startsWith('/needs-media'), icon: GalleryHorizontalEnd },
       // Review Inbox — the producer's single review→schedule queue (P4).
       // Editor-gated like Overview; individual clinicians never see it.
       { to: '/review-inbox', label: 'Review Inbox', hint: 'Approve & schedule', match: (p) => p.startsWith('/review-inbox'), icon: Inbox,
         requiresEditor: true },
-      { to: '/stories',    label: 'Stories',    hint: 'Words',           match: (p) => p.startsWith('/stories'),  icon: Newspaper,
-        requiresCapability: CAP_INTERVIEW_START },
-      // Storyboard — the content→media stage (Media · Publish). Ungated like
-      // Library so producers (no interview.start) see it. '/needs-media' is
-      // the old route, redirected.
-      { to: '/storyboard', label: 'Storyboard', hint: 'Media · Publish', match: (p) => p.startsWith('/storyboard') || p.startsWith('/needs-media'), icon: GalleryHorizontalEnd },
     ],
   },
   {
@@ -76,10 +81,6 @@ const NAV_SECTIONS = [
         hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START },
       { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2,
         requiresCapability: CAP_INTERVIEW_START },
-      // Slate — the video→content tool. Only when the workspace opts into the
-      // video pipeline.
-      { to: '/slate',     label: 'Slate',     match: (p) => p.startsWith('/slate'),     icon: Scissors,
-        showWhen: (ws) => ws?.video_pipeline_enabled === true, badge: 'new' },
     ],
   },
 ]

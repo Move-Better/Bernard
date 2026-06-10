@@ -403,10 +403,10 @@ function InboxRow({ piece, group, checked, onToggle, onApprove, busy }) {
     group === 'review'
       ? piece.interview_id
         ? `/stories/${piece.interview_id}?piece=${piece.id}`
-        : `/storyboard/${piece.id}`
+        : `/publish/${piece.id}`
       : hasMedia
-        ? `/storyboard/${piece.id}/publish`
-        : `/storyboard/${piece.id}`
+        ? `/publish/${piece.id}/schedule`
+        : `/publish/${piece.id}`
 
   const meta2 =
     group === 'review'

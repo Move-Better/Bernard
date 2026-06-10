@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react'
  *
  * Usage:
  *   <Breadcrumb items={[
- *     { label: 'Storyboard', to: '/storyboard' },
+ *     { label: 'Publish', to: '/publish' },
  *     { label: 'Choose media' },
  *     { label: 'Sciatica (Zach)' },
  *   ]} />

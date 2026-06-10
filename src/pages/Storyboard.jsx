@@ -63,7 +63,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
       </div>
       {readyCount > 0 && (
         <Link
-          to="/storyboard#ready"
+          to="/publish#ready"
           className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
         >
           <Send className="h-3.5 w-3.5" />
@@ -77,7 +77,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
 /**
  * Storyboard — the queue. Every written-and-ready draft that still has no
  * photo or video. Each card opens the focused Storyboard page
- * (/storyboard/:pieceId) where the producer reviews suggested media at full
+ * (/publish/:pieceId) where the producer reviews suggested media at full
  * size — plays the videos — and attaches the right one.
  *
  * The content→media tool, sibling to Slate (video→content). Ungated like
@@ -120,7 +120,7 @@ export default function Storyboard() {
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
           <GalleryHorizontalEnd className="h-5 w-5 text-primary" />
-          Storyboard
+          Publish
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Drafts that need a photo or video, and the ones you’ve already given media and can take to
@@ -138,7 +138,7 @@ export default function Storyboard() {
       ) : nothingToShow ? (
         <div className="rounded-lg border bg-muted/20 py-12 text-center">
           <Check className="mx-auto h-8 w-8 text-success" />
-          <p className="mt-2 text-sm font-medium text-foreground">Nothing in the Storyboard right now 🎉</p>
+          <p className="mt-2 text-sm font-medium text-foreground">Nothing to publish right now 🎉</p>
           <p className="text-xs text-muted-foreground">New drafts show up here when they need media.</p>
         </div>
       ) : (
@@ -201,7 +201,7 @@ function NeedsMediaCard({ piece }) {
   return (
     <div className="relative group">
       <Link
-        to={`/storyboard/${piece.id}`}
+        to={`/publish/${piece.id}`}
         className="block rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 hover:shadow-sm"
       >
         <div className="flex items-start justify-between gap-2">
@@ -259,7 +259,7 @@ function ReadyCard({ piece }) {
   return (
     <div className="relative group">
       <Link
-        to={`/storyboard/${piece.id}/publish`}
+        to={`/publish/${piece.id}/schedule`}
         className="block rounded-lg border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(16,185,129,0.3)] hover:-translate-y-0.5"
       >
         <div className="flex items-start justify-between gap-2">
