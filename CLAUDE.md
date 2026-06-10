@@ -435,6 +435,7 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 
 ### Testing
 - [ ] Feature used in-browser at least once before the PR is opened (the step most often skipped)
+- [ ] **Any page with a horizontal tab/filter row** → confirm it doesn't overflow at ~390px. A `flex items-center gap-2` row with 3+ buttons + a `w-48 ml-auto` search input totals 600–700px minimum — guaranteed horizontal scroll on mobile, making the site look "not loading." Fix: tabs in `overflow-x-auto` inner div with `shrink-0` buttons; search in `sm:ml-auto` outer row with `w-full sm:w-48`. (Hit on Slate #1316 → fixed #1322, 2026-06-10.)
 - [ ] For large-surface features: run `npm run e2e` or manually smoke the relevant page on the Vercel preview URL
 - [ ] If the PR changes a label, heading, button name, or default route behavior on a page covered by an E2E spec, update the spec in the same PR. Today the specs cover `/`, `/new`, `/settings/integrations`, `/settings/workspace`, and `/stories` (see `tests/e2e/*.spec.ts`). The post-deploy `E2E smoke` workflow only runs after merge to `main`, so a missed selector update keeps the smoke red until the next person notices — usually several merges later, by which point multiple suites are broken and the failure is harder to triage. Grep the specs for the heading/label you're changing before opening the PR: `grep -rn "<old label>" tests/e2e/`.
 
