@@ -421,75 +421,78 @@ export default function Slate() {
       </div>
 
       {/* Tabs + search row — review-first: the decisions tab leads, in the
-          act-now amber so the eye lands where the AI finished its homework. */}
-      <div className="flex items-center gap-2 text-xs">
-        <button
-          type="button"
-          onClick={() => setView('clips_to_review')}
-          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
-            view === 'clips_to_review'
-              ? 'bg-action text-white border-action'
-              : clipsToReviewVideos.length > 0
-                ? 'bg-card border-action/40 text-foreground hover:border-action'
+          act-now amber so the eye lands where the AI finished its homework.
+          On mobile: tabs scroll horizontally, search drops below. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2 text-xs overflow-x-auto pb-0.5">
+          <button
+            type="button"
+            onClick={() => setView('clips_to_review')}
+            className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              view === 'clips_to_review'
+                ? 'bg-action text-white border-action'
+                : clipsToReviewVideos.length > 0
+                  ? 'bg-card border-action/40 text-foreground hover:border-action'
+                  : 'bg-card border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Ready to review{' '}
+            {!isLoading && (
+              <span className="opacity-70">{clipsToReviewVideos.length}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('needs_cutting')}
+            className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              view === 'needs_cutting'
+                ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-card border-border text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          Ready to review{' '}
-          {!isLoading && (
-            <span className="opacity-70">{clipsToReviewVideos.length}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('needs_cutting')}
-          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-            view === 'needs_cutting'
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Uncut footage{' '}
-          {!isLoading && (
-            <span className="opacity-70">{needsCuttingVideos.length}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('in_progress')}
-          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-            view === 'in_progress'
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          In progress{' '}
-          {!isLoading && (
-            <span className="opacity-70">{inProgressVideos.length}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('coverage')}
-          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
-            view === 'coverage'
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <BarChart3 className="h-3.5 w-3.5" />Coverage
-        </button>
+            }`}
+          >
+            Uncut footage{' '}
+            {!isLoading && (
+              <span className="opacity-70">{needsCuttingVideos.length}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('in_progress')}
+            className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              view === 'in_progress'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            In progress{' '}
+            {!isLoading && (
+              <span className="opacity-70">{inProgressVideos.length}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('coverage')}
+            className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
+              view === 'coverage'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />Coverage
+          </button>
+        </div>
 
-        {/* Search — right side */}
+        {/* Search — right side on desktop, full-width below tabs on mobile */}
         {view !== 'coverage' && (
-          <div className="ml-auto relative">
+          <div className="relative sm:ml-auto">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <input
               type="search"
               placeholder="Search videos…"
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-card text-sm w-48 outline-none focus:ring-2 focus:ring-primary/30"
+              className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-card text-sm w-full sm:w-48 outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
         )}
