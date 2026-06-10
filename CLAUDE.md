@@ -474,3 +474,7 @@ The email newsletter preview renders the actual TrustDrivenCare (TDC) HTML templ
 **To update the template** (e.g. after redesigning in TDC): export the master HTML from TrustDrivenCare, replace `src/email-template.html` with the new HTML, and commit. No React changes needed — all `{{merge_tags}}` are substituted at render time by `fillTemplate()` in PostPreview.jsx.
 
 Merge tags currently in use: `{{preview_text}}`, `{{headline}}`, `{{pull_quote}}`, `{{body_paragraph_1}}`, `{{body_paragraph_2}}`, `{{body_paragraph_3}}`, `{{cta_text}}`, `{{cta_url}}`, `{{ps_text}}`, `{{hero_image_url}}`, `{{year}}`, `{{unsubscribe_url}}`, `{{webview_url}}`.
+
+## 1Password env mount — use `.env.bernard.1pw`, never `.env.local.1pw`
+
+The live 1Password Environments mount for this repo is **`/Users/qbook/Claude Projects/Bernard/.env.bernard.1pw`** (Bernard environment, has MULTITENANT_DATABASE_URL, BLOB_READ_WRITE_TOKEN, AI_GATEWAY_API_KEY, MUX_*, etc.). A stale `.env.local.1pw` FIFO may also exist in the project root — it is NOT an active mount, and reading it (awk/cat/grep) **blocks forever** with no error. If a read of a `.1pw` file hangs, don't retry harder: confirm the active mount path via the 1Password MCP (`list_local_env_files`) and use that. Extract single vars with `awk` per the global CLAUDE.md rules.
