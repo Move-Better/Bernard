@@ -21,7 +21,7 @@ function fmtDuration(s) {
 // tops out around ~0.55 for excellent matches, so "49%" announced weakness on
 // picks that were actually the best available. The raw score stays in the
 // tooltip for the curious.
-function matchTier(sim) {
+export function matchTier(sim) {
   const s = Number(sim) || 0
   if (s >= 0.48) return { label: 'Strong match', cls: 'bg-primary text-primary-foreground' }
   if (s >= 0.38) return { label: 'Good match', cls: 'bg-black/65 text-white' }
@@ -30,7 +30,7 @@ function matchTier(sim) {
 
 // One human-readable line about what's IN the asset — the visual narrative's
 // first sentence — instead of kebab-case tag soup. Tags remain the fallback.
-function reasonLine(clip) {
+export function reasonLine(clip) {
   const vn = (clip.visualNarrative || '').trim()
   if (vn) {
     const m = vn.match(/^.*?[.!?](?=\s|$)/)
