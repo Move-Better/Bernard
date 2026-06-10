@@ -639,7 +639,7 @@ export default function MediaHub() {
                     </span>
                   </div>
                   <div className="p-1.5">
-                    <p className="text-3xs font-semibold truncate">{c.filename}</p>
+                    <p className="text-3xs font-semibold truncate">{c.displayTitle || c.filename}</p>
                     <p className="text-3xs text-muted-foreground line-clamp-2 leading-snug">{reasonLine(c)}</p>
                   </div>
                 </button>

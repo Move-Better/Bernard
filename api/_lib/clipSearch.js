@@ -88,6 +88,7 @@ export async function searchClips({
     audioQuality:    r.audio_quality,
     videoQuality:    r.video_quality,
     storyRole:       r.story_role,
-    staffId:     r.staff_id,
+    staffId:         r.staff_id,
+    displayTitle:    r.asset_display_title || null,
   }))
 }
