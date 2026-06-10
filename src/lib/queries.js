@@ -361,7 +361,7 @@ export function useUpdateContentItem() {
   return useAppMutation({
     errorMessage: "Couldn't update content",
     mutationFn: ({ id, patch }) => updateContentItem(id, patch),
-    onSuccess: (data, { id }) => {
+    onSuccess: (data, { id, patch }) => {
       // Write the fresh row straight into the detail cache so subscribers
       // get the new value immediately (no extra network round-trip).
       if (data) qc.setQueryData(queryKeys.contentItems.detail(id), data)
@@ -371,6 +371,13 @@ export function useUpdateContentItem() {
       // V5: a winner toggle changes performed_well, which the Slate's Coverage
       // tab rolls up into per-topic / per-clinician winner counts.
       qc.invalidateQueries({ queryKey: ['editorial-coverage'] })
+      // Media suggestions rank against the draft's words, so a words change
+      // must re-rank them. Their key nests the factory array ([key, {kind,k}]),
+      // so the contentItems.all invalidation above never matches — invalidate
+      // with the same nested shape explicitly.
+      if (patch && ('content' in patch || 'topic' in patch || 'title' in patch)) {
+        qc.invalidateQueries({ queryKey: [queryKeys.contentItems.mediaSuggestions(id)] })
+      }
     },
   })
 }
