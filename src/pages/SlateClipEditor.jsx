@@ -385,7 +385,7 @@ export default function SlateClipEditor() {
         </button>
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="font-medium truncate">
-          {proposals.length > 0 ? 'Review moments' : 'Cut a clip'} · {asset.filename || 'Untitled video'}
+          {proposals.length > 0 ? 'Review moments' : 'Cut a clip'} · {asset.display_title || asset.filename || 'Untitled video'}
         </span>
         {ok ? (
           <span className="ml-2 flex items-center gap-1 text-2xs px-2 py-1 rounded-full bg-success/15 text-success font-semibold">
@@ -430,6 +430,7 @@ export default function SlateClipEditor() {
                   <video
                     ref={videoRef}
                     src={asset.blob_url}
+                    poster={asset.thumbnail_url || undefined}
                     className="w-full h-full object-contain"
                     onLoadedMetadata={(e) => setVideoDuration(e.target.duration)}
                     onPlay={() => setPlaying(true)}
@@ -524,7 +525,9 @@ export default function SlateClipEditor() {
               <div className="flex items-center justify-between text-3xs text-muted-foreground mt-1.5">
                 <span>{formatTime(startSec)}</span>
                 <span className="text-primary font-medium">clip {formatTime(durationSec)}</span>
-                <span>{formatTime(endSec)} / {formatTime(videoDuration)}</span>
+                {/* "1:00 / 0:00" read as a bug before metadata loads — show a
+                    dash until the real source duration is known. */}
+                <span>{formatTime(endSec)} / {videoDuration > 0 ? formatTime(videoDuration) : '—'}</span>
               </div>
             </div>
           </div>
