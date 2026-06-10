@@ -357,10 +357,13 @@ export default function Slate() {
   // the user has clicked.
   const viewSeededRef = useRef(false)
   useEffect(() => {
-    if (viewSeededRef.current || !proposalCounts) return
+    // Wait for BOTH the counts and the media list — seeding on counts alone
+    // raced the source-video fetch, saw an empty review list, and burned the
+    // one-shot without switching (seen on prod, 2026-06-09).
+    if (viewSeededRef.current || !proposalCounts || isLoading) return
     viewSeededRef.current = true
     if (clipsToReviewVideos.length > 0) setView('clips_to_review')
-  }, [proposalCounts, clipsToReviewVideos.length])
+  }, [proposalCounts, isLoading, clipsToReviewVideos.length])
 
   const queryClient = useQueryClient()
   const [repurposingId, setRepurposingId] = useState(null)

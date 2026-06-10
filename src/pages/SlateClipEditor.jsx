@@ -80,12 +80,8 @@ export default function SlateClipEditor() {
   const [startSec, setStartSec] = useState(0)
   const [endSec, setEndSec] = useState(60)
 
-  // When video metadata loads, snap the end handle to min(duration, 60s).
-  useEffect(() => {
-    if (videoDuration > 0) {
-      setEndSec(Math.min(videoDuration, 60))
-    }
-  }, [videoDuration])
+  // Metadata snap effect lives below the proposals block — it must not
+  // clobber an applied AI window, so it needs selectedSegmentId in scope.
 
   // Derived duration — what gets sent to the render API.
   const durationSec = Math.max(1, endSec - startSec)
@@ -138,13 +134,29 @@ export default function SlateClipEditor() {
     if (videoRef.current) videoRef.current.currentTime = start
   }
 
+  // Auto-apply the first proposal as soon as proposals load. Deliberately NOT
+  // gated on video metadata: with a poster set, browsers defer loading the
+  // video, so waiting on duration left the editor un-seeded until first play
+  // (seen on prod, 2026-06-09). applySegment caps against duration when known;
+  // the snap effect below clamps once metadata actually arrives.
   useEffect(() => {
     if (autoAppliedRef.current || trimTouchedRef.current) return
-    if (videoDuration <= 0 || proposals.length === 0) return
+    if (proposals.length === 0) return
     autoAppliedRef.current = true
     applySegment(proposals[0])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoDuration, proposals.length])
+  }, [proposals.length])
+
+  // When metadata loads: snap a manual session's end handle to min(dur, 60s);
+  // if an AI window is applied, only clamp it — never overwrite it.
+  useEffect(() => {
+    if (videoDuration <= 0) return
+    if (selectedSegmentId) {
+      setEndSec((e) => Math.min(e, videoDuration))
+    } else if (!trimTouchedRef.current) {
+      setEndSec(Math.min(videoDuration, 60))
+    }
+  }, [videoDuration, selectedSegmentId])
 
   const discardSegment = useAppMutation({
     mutationFn: (segmentId) => updateSegment(segmentId, 'discarded'),
@@ -465,6 +477,7 @@ export default function SlateClipEditor() {
                     ref={videoRef}
                     src={asset.blob_url}
                     poster={asset.thumbnail_url || undefined}
+                    preload="metadata"
                     className="w-full h-full object-contain"
                     onLoadedMetadata={(e) => setVideoDuration(e.target.duration)}
                     onPlay={() => setPlaying(true)}
