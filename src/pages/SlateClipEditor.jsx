@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -24,6 +24,148 @@ function formatTime(sec) {
   const m = Math.floor(sec / 60)
   const s = Math.floor(sec % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+// Dual-handle trim bar — shows the selected window on a single track.
+// Handles are draggable; the shaded region between them is the clip.
+function TrimBar({ duration, startSec, endSec, onStartChange, onEndChange, currentTime, disabled }) {
+  const trackRef = useRef(null)
+  // Store latest drag state in refs so window event handlers always read current values
+  const dragRef = useRef(null) // 'start' | 'end' | null
+  const propsRef = useRef({ duration, startSec, endSec, onStartChange, onEndChange })
+  useLayoutEffect(() => {
+    propsRef.current = { duration, startSec, endSec, onStartChange, onEndChange }
+  })
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+  const secToFrac = (s) => duration > 0 ? clamp(s / duration, 0, 1) : 0
+
+  useEffect(() => {
+    function getClientX(e) { return e.touches ? e.touches[0].clientX : e.clientX }
+
+    function onMove(e) {
+      if (!dragRef.current) return
+      e.preventDefault()
+      const rect = trackRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const { duration: dur, startSec: s, endSec: en, onStartChange: onS, onEndChange: onE } = propsRef.current
+      if (dur <= 0) return
+      const frac = clamp((getClientX(e) - rect.left) / rect.width, 0, 1)
+      const sec = frac * dur
+      if (dragRef.current === 'start') {
+        onS(clamp(sec, 0, en - 1))
+      } else {
+        onE(clamp(sec, s + 1, Math.min(s + 60, dur)))
+      }
+    }
+
+    function onUp() {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onUp)
+    }
+
+    function onStartDown(e) {
+      if (e.currentTarget.dataset.handle !== 'start') return
+      if (propsRef.current.duration <= 0) return
+      e.preventDefault()
+      dragRef.current = 'start'
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+      window.addEventListener('touchmove', onMove, { passive: false })
+      window.addEventListener('touchend', onUp)
+    }
+
+    function onEndDown(e) {
+      if (e.currentTarget.dataset.handle !== 'end') return
+      if (propsRef.current.duration <= 0) return
+      e.preventDefault()
+      dragRef.current = 'end'
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+      window.addEventListener('touchmove', onMove, { passive: false })
+      window.addEventListener('touchend', onUp)
+    }
+
+    const startEl = trackRef.current?.querySelector('[data-handle="start"]')
+    const endEl = trackRef.current?.querySelector('[data-handle="end"]')
+    startEl?.addEventListener('mousedown', onStartDown)
+    startEl?.addEventListener('touchstart', onStartDown, { passive: false })
+    endEl?.addEventListener('mousedown', onEndDown)
+    endEl?.addEventListener('touchstart', onEndDown, { passive: false })
+
+    return () => {
+      startEl?.removeEventListener('mousedown', onStartDown)
+      startEl?.removeEventListener('touchstart', onStartDown)
+      endEl?.removeEventListener('mousedown', onEndDown)
+      endEl?.removeEventListener('touchstart', onEndDown)
+      onUp()
+    }
+  // Only re-attach when the track mounts; latest values come through propsRef
+  }, [])
+
+  const startFrac = secToFrac(startSec)
+  const endFrac = secToFrac(endSec)
+  const playFrac = secToFrac(currentTime ?? 0)
+
+  return (
+    <div className="select-none py-2">
+      {/* Track */}
+      <div
+        ref={trackRef}
+        className="relative h-7 flex items-center"
+        style={{ touchAction: 'none' }}
+      >
+        {/* Full track background */}
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-muted" />
+
+        {/* Selected region */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-primary/50"
+          style={{ left: `${startFrac * 100}%`, width: `${(endFrac - startFrac) * 100}%` }}
+        />
+
+        {/* Playhead */}
+        {currentTime > 0 && duration > 0 && (
+          <div
+            className="absolute top-0 bottom-0 w-px bg-foreground/30 pointer-events-none"
+            style={{ left: `${playFrac * 100}%` }}
+          />
+        )}
+
+        {/* Start handle */}
+        <div
+          data-handle="start"
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-2.5 rounded-sm bg-primary border border-primary/80 shadow flex items-center justify-center transition-transform ${disabled ? 'opacity-40' : 'cursor-ew-resize hover:scale-110'}`}
+          style={{ left: `${startFrac * 100}%`, touchAction: 'none' }}
+          title={formatTime(startSec)}
+        >
+          <div className="h-2.5 w-px bg-primary-foreground/60 mx-px" />
+          <div className="h-2.5 w-px bg-primary-foreground/60 mx-px" />
+        </div>
+
+        {/* End handle */}
+        <div
+          data-handle="end"
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-2.5 rounded-sm bg-primary border border-primary/80 shadow flex items-center justify-center transition-transform ${disabled ? 'opacity-40' : 'cursor-ew-resize hover:scale-110'}`}
+          style={{ left: `${endFrac * 100}%`, touchAction: 'none' }}
+          title={formatTime(endSec)}
+        >
+          <div className="h-2.5 w-px bg-primary-foreground/60 mx-px" />
+          <div className="h-2.5 w-px bg-primary-foreground/60 mx-px" />
+        </div>
+      </div>
+
+      {/* Time labels */}
+      <div className="flex items-center justify-between text-3xs text-muted-foreground mt-0.5 px-0.5">
+        <span className="font-mono text-primary font-medium">{formatTime(startSec)}</span>
+        <span className="font-medium text-primary/80">clip {formatTime(Math.max(1, endSec - startSec))}</span>
+        <span className="font-mono">{formatTime(endSec)}{duration > 0 ? ` / ${formatTime(duration)}` : ''}</span>
+      </div>
+    </div>
+  )
 }
 
 export default function SlateClipEditor() {
@@ -67,6 +209,7 @@ export default function SlateClipEditor() {
   const videoRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [videoDuration, setVideoDuration] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
 
   function togglePlay() {
     const v = videoRef.current
@@ -483,6 +626,7 @@ export default function SlateClipEditor() {
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
                     onEnded={() => setPlaying(false)}
+                    onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
                     playsInline
                   />
                   {/* Caption band preview — WYSIWYG */}
@@ -525,57 +669,27 @@ export default function SlateClipEditor() {
             </div>
 
             {/* Trim timeline */}
-            <div className="p-3 border-t border-border">
-              <p className="text-3xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">Trim</p>
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center gap-3">
-                  <label className="text-2xs text-muted-foreground w-10 shrink-0">Start</label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(0, endSec - 1)}
-                    step={0.5}
-                    value={startSec}
-                    onChange={(e) => {
-                      const v = Number(e.target.value)
-                      trimTouchedRef.current = true
-                      setStartSec(v)
-                      // Push end forward if start would cross it, keeping min 1s clip.
-                      if (v >= endSec) setEndSec(Math.min(v + 1, videoDuration || v + 1))
-                      if (videoRef.current) videoRef.current.currentTime = v
-                    }}
-                    className="flex-1 accent-primary"
-                    disabled={videoDuration === 0}
-                  />
-                  <span className="text-3xs font-mono w-10 text-right text-muted-foreground">{formatTime(startSec)}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-2xs text-muted-foreground w-10 shrink-0">End</label>
-                  <input
-                    type="range"
-                    min={Math.min(startSec + 1, videoDuration || startSec + 1)}
-                    max={Math.min(startSec + 60, videoDuration || startSec + 60)}
-                    step={0.5}
-                    value={endSec}
-                    onChange={(e) => {
-                      const v = Number(e.target.value)
-                      trimTouchedRef.current = true
-                      setEndSec(v)
-                      if (videoRef.current) videoRef.current.currentTime = v
-                    }}
-                    className="flex-1 accent-primary"
-                    disabled={videoDuration === 0}
-                  />
-                  <span className="text-3xs font-mono w-10 text-right text-muted-foreground">{formatTime(endSec)}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-3xs text-muted-foreground mt-1.5">
-                <span>{formatTime(startSec)}</span>
-                <span className="text-primary font-medium">clip {formatTime(durationSec)}</span>
-                {/* "1:00 / 0:00" read as a bug before metadata loads — show a
-                    dash until the real source duration is known. */}
-                <span>{formatTime(endSec)} / {videoDuration > 0 ? formatTime(videoDuration) : '—'}</span>
-              </div>
+            <div className="px-3 pb-2 pt-2.5 border-t border-border">
+              <p className="text-3xs uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Trim</p>
+              <TrimBar
+                duration={videoDuration}
+                startSec={startSec}
+                endSec={endSec}
+                currentTime={currentTime}
+                disabled={videoDuration === 0}
+                onStartChange={(v) => {
+                  trimTouchedRef.current = true
+                  setStartSec(v)
+                  if (videoRef.current) videoRef.current.currentTime = v
+                  setRenderedBlobUrl(null)
+                }}
+                onEndChange={(v) => {
+                  trimTouchedRef.current = true
+                  setEndSec(v)
+                  if (videoRef.current) videoRef.current.currentTime = v
+                  setRenderedBlobUrl(null)
+                }}
+              />
             </div>
           </div>
         </div>
