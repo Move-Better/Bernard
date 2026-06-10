@@ -17,6 +17,29 @@ function fmtDuration(s) {
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
 }
 
+// Tier label instead of a raw percentage. Cosine similarity on these embeddings
+// tops out around ~0.55 for excellent matches, so "49%" announced weakness on
+// picks that were actually the best available. The raw score stays in the
+// tooltip for the curious.
+function matchTier(sim) {
+  const s = Number(sim) || 0
+  if (s >= 0.48) return { label: 'Strong match', cls: 'bg-primary text-primary-foreground' }
+  if (s >= 0.38) return { label: 'Good match', cls: 'bg-black/65 text-white' }
+  return { label: 'Worth a look', cls: 'bg-black/45 text-white/90' }
+}
+
+// One human-readable line about what's IN the asset — the visual narrative's
+// first sentence — instead of kebab-case tag soup. Tags remain the fallback.
+function reasonLine(clip) {
+  const vn = (clip.visualNarrative || '').trim()
+  if (vn) {
+    const m = vn.match(/^.*?[.!?](?=\s|$)/)
+    const first = (m ? m[0] : vn).trim()
+    return first.length > 120 ? `${first.slice(0, 117)}…` : first
+  }
+  return topTags(clip.aiTags).join(' · ')
+}
+
 /**
  * CandidateCard — one ranked media candidate, sized for real evaluation: a
  * large thumbnail you can actually read, click-to-open full-size preview
@@ -35,7 +58,8 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
   const isVideo = clip.kind === 'video'
   const thumb = clip.thumbnailUrl || (!isVideo ? clip.blobUrl : null)
   const pct = Math.round((clip.similarity || 0) * 100)
-  const tags = topTags(clip.aiTags)
+  const tier = matchTier(clip.similarity)
+  const reason = reasonLine(clip)
 
   return (
     <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
@@ -60,8 +84,11 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
             </div>
           </div>
         )}
-        <span className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-2xs font-semibold text-white">
-          {pct}% match
+        <span
+          className={`absolute left-2 top-2 rounded px-1.5 py-0.5 text-2xs font-semibold ${tier.cls}`}
+          title={`${pct}% semantic similarity`}
+        >
+          {tier.label}
         </span>
         <span className="absolute right-2 top-2 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
           <Maximize2 className="h-3.5 w-3.5" />
@@ -75,9 +102,12 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
         </span>
       </button>
       <div className="space-y-2 p-2.5">
-        {tags.length > 0 && (
-          <p className="line-clamp-2 text-2xs leading-snug text-muted-foreground" title={tags.join(', ')}>
-            {tags.join(' · ')}
+        {reason && (
+          <p
+            className="line-clamp-2 text-2xs leading-snug text-muted-foreground"
+            title={clip.visualNarrative || topTags(clip.aiTags).join(', ')}
+          >
+            {reason}
           </p>
         )}
         <Button

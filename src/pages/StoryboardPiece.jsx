@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Loader2, Pen, Sliders,
+  ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Loader2, Pen, Search, Sliders,
   Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft, Repeat, Type,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -252,6 +252,40 @@ export default function StoryboardPiece() {
   const [previewClip, setPreviewClip] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
+  // "Describe the shot" — manual query into the same suggest-media brain.
+  // The API has accepted a query override since P0; this is its missing UI.
+  const [shotQ, setShotQ] = useState('')
+  const [shotRes, setShotRes] = useState(null)
+  const [shotLoading, setShotLoading] = useState(false)
+
+  async function runShotSearch() {
+    const q = shotQ.trim()
+    if (!q || shotLoading) return
+    setShotLoading(true)
+    try {
+      const resp = await apiFetch('/api/content-items/suggest-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: pieceId,
+          query: q,
+          k: 12,
+          ...(effectiveKind ? { kind: effectiveKind } : {}),
+        }),
+      })
+      setShotRes((resp?.clips || []).filter((c) => !attachedKeys.has(c.assetId)))
+    } catch (e) {
+      toast.error(e?.message || 'Search failed.')
+    } finally {
+      setShotLoading(false)
+    }
+  }
+
+  function clearShot() {
+    setShotRes(null)
+    setShotQ('')
+  }
+
   const attachEntry = async (entry) => {
     const key = mediaEntryKey(entry)
     if (attachedKeys.has(key)) return
@@ -316,6 +350,8 @@ export default function StoryboardPiece() {
   }
 
   const clips = (sugg?.clips || []).filter((c) => !attachedKeys.has(c.assetId))
+  // A manual "describe the shot" search overrides the automatic ranking until cleared.
+  const shownClips = shotRes ?? clips
   const showKindToggle = platformKind === null
   const campaignName = interview?.campaign?.name ?? null
 
@@ -596,7 +632,9 @@ export default function StoryboardPiece() {
                 <Sparkles className="h-3 w-3 text-primary" />
               </span>
               <p className="text-muted-foreground">
-                I matched your brand book and picked the media. Want anything different? Try a suggestion, or just type.
+                {hasMedia
+                  ? 'I matched your brand book to this media. Want anything different? Try a suggestion, or just type.'
+                  : 'Waiting for media — attach something from the picks and I can style it.'}
               </p>
             </div>
             <div className="px-3 pb-3 pt-3">
@@ -605,7 +643,7 @@ export default function StoryboardPiece() {
                   <button
                     key={label}
                     type="button"
-                    disabled={restyleLoading}
+                    disabled={restyleLoading || !hasMedia}
                     onClick={() => fireRestyle(label)}
                     className="flex items-center gap-1 rounded-full border px-2 py-1 transition-colors hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -620,18 +658,20 @@ export default function StoryboardPiece() {
                   value={restyleInput}
                   onChange={(e) => setRestyleInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && restyleInput.trim()) {
+                    if (e.key === 'Enter' && restyleInput.trim() && hasMedia) {
                       fireRestyle(restyleInput)
                       setRestyleInput('')
                     }
                   }}
-                  placeholder="e.g. 'make the headline pop more' or 'warmer background'…"
+                  placeholder={hasMedia
+                    ? "e.g. 'make the headline pop more' or 'warmer background'…"
+                    : 'Attach media first — then ask for any look'}
                   className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/50"
-                  disabled={restyleLoading}
+                  disabled={restyleLoading || !hasMedia}
                 />
                 <button
                   type="button"
-                  disabled={restyleLoading || !restyleInput.trim()}
+                  disabled={restyleLoading || !restyleInput.trim() || !hasMedia}
                   onClick={() => { fireRestyle(restyleInput); setRestyleInput('') }}
                   className="flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -931,6 +971,7 @@ export default function StoryboardPiece() {
               {/* AI picks header + kind toggle */}
               <div className="flex items-center gap-2">
                 <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">AI picks</span>
+                <span className="text-3xs text-muted-foreground">· re-ranked when your words change</span>
                 {showKindToggle && (
                   <div className="ml-auto inline-flex rounded-md border p-0.5">
                     {KIND_TABS.map((t) => (
@@ -962,23 +1003,38 @@ export default function StoryboardPiece() {
                   Couldn&apos;t load suggestions.{' '}
                   <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>
                 </p>
-              ) : clips.length === 0 ? (
+              ) : shownClips.length === 0 ? (
                 <div className="rounded-lg border bg-muted/20 py-6 text-center">
                   <ImagePlus className="mx-auto h-6 w-6 text-muted-foreground" />
-                  <p className="mt-1.5 text-sm text-foreground">
-                    No strong {kind === 'video' ? 'video' : kind === 'photo' ? 'photo' : ''} matches.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="mt-1 text-xs text-primary hover:underline"
-                  >
-                    Browse the Library
-                  </button>
+                  {shotRes ? (
+                    <>
+                      <p className="mt-1.5 text-sm text-foreground">Nothing matched &ldquo;{shotQ}&rdquo;.</p>
+                      <button
+                        type="button"
+                        onClick={clearShot}
+                        className="mt-1 text-xs text-primary hover:underline"
+                      >
+                        Back to the AI picks
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-1.5 text-sm text-foreground">
+                        No strong {kind === 'video' ? 'video' : kind === 'photo' ? 'photo' : ''} matches.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPickerOpen(true)}
+                        className="mt-1 text-xs text-primary hover:underline"
+                      >
+                        Browse the Library
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
-                  {clips.slice(0, 6).map((clip) => (
+                  {shownClips.slice(0, 6).map((clip) => (
                     <CandidateCard
                       key={clip.chunkId || clip.assetId}
                       clip={clip}
@@ -990,9 +1046,41 @@ export default function StoryboardPiece() {
                   ))}
                 </div>
               )}
-              {isFetching && !suggLoading && (
+              {isFetching && !suggLoading && !shotRes && (
                 <p className="text-2xs text-muted-foreground">Refreshing…</p>
               )}
+
+              {/* Describe the shot — manual query into the same brain as the picks */}
+              <div className="rounded-lg border bg-muted/30 p-2">
+                {shotRes && (
+                  <div className="mb-1.5 flex items-center gap-2 text-2xs text-muted-foreground">
+                    <span>Showing matches for &ldquo;{shotQ}&rdquo;</span>
+                    <button type="button" onClick={clearShot} className="text-primary hover:underline">
+                      Back to AI picks
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={shotQ}
+                    onChange={(e) => setShotQ(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') runShotSearch() }}
+                    placeholder='Not it? Describe the shot — "her on the bike", "hands-on low back work"…'
+                    className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/50"
+                    disabled={shotLoading}
+                  />
+                  <button
+                    type="button"
+                    disabled={shotLoading || !shotQ.trim()}
+                    onClick={runShotSearch}
+                    className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {shotLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                    Find it
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
