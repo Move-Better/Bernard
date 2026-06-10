@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown } from 'lucide-react'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,9 +22,6 @@ import { useStaffSummaries } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { toast, runWithToast } from '@/lib/toast'
 import ContentBriefDetail from './ContentBriefDetail'
-import ClipFinder from './ClipFinder'
-import WholeVideoAction from './WholeVideoAction'
-import RepurposeAction from './RepurposeAction'
 import CollectionPicker from './CollectionPicker'
 import MediaEditModal from './MediaEditModal'
 import MediaVideoPlayer from './MediaVideoPlayer'
@@ -87,6 +85,7 @@ function originalExt(url) {
 // Detail/edit drawer for a single media asset.
 // `asset` is the row, `onClose` dismisses, `onChange` is called after save/delete.
 export default function MediaDetail({ asset, onClose, onChange }) {
+  const navigate = useNavigate()
   const [tags, setTags]         = useState(asset.tags || [])
   const [tagInput, setTagInput] = useState('')
   const [notes, setNotes]       = useState(asset.notes || '')
@@ -831,18 +830,26 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             {/* Collections — editorial groupings (campaigns, series, etc.) */}
             <CollectionPicker assetId={asset.id} onChange={() => onChange?.()} />
 
-            {/* Video repurposing. The one-click combo (full video + social clips)
-                sits above the two granular, opt-in choices (segment vs keep-whole),
-                which stay available for finer control. */}
+            {/* One door to the cutting desk. The drawer used to stack three
+                create-lanes here (Repurpose / Find clips / Whole video) — three
+                buttons meaning "make content from this video" via different
+                machinery. All of that lives on Slate now: the clip editor
+                shows AI-proposed moments, can find more, repurpose, or keep
+                the whole video. Shelf stores & finds; desks create. */}
             {asset.kind === 'video' && (
-              <>
-                {/* Combo: render the full-length master AND find social clips at once */}
-                <RepurposeAction asset={a} canEdit={canEdit} />
-                {/* Multi-clip: turn one long source into several standalone clips */}
-                <ClipFinder asset={a} canEdit={canEdit} />
-                {/* Keep-whole: render the entire source as one landscape package */}
-                <WholeVideoAction asset={a} canEdit={canEdit} />
-              </>
+              <div className="rounded-lg border-2 border-primary/35 bg-primary/5 p-3 space-y-2">
+                <div className="text-3xs uppercase tracking-wide font-bold text-primary">Work with this video</div>
+                {canEdit ? (
+                  <Button size="sm" className="w-full gap-1.5" onClick={() => navigate(`/slate/clip/${asset.id}`)}>
+                    <Scissors className="h-3.5 w-3.5" />Open in Slate
+                  </Button>
+                ) : (
+                  <p className="text-2xs text-muted-foreground">Editors cut this video into clips on Slate.</p>
+                )}
+                <p className="text-2xs text-muted-foreground leading-snug">
+                  Cut clips, review AI-proposed moments, repurpose, or use the whole video — all on the cutting desk now, one door instead of three buttons.
+                </p>
+              </div>
             )}
 
             {/* Edit briefs */}
@@ -852,13 +859,13 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   <div>
                     <div className="text-xs font-medium flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      Edit briefs
+                      Words from this video
                       {linkedBriefs.length > 0 && (
                         <Badge variant="secondary" className="text-3xs">{linkedBriefs.length}</Badge>
                       )}
                     </div>
                     <div className="text-2xs text-muted-foreground">
-                      Moments AI surfaced (or you added) for this clip.
+                      Draft briefs the AI surfaced (or you added) from this clip — they make words, so they live with words.
                     </div>
                   </div>
                   <div className="flex gap-1.5">
