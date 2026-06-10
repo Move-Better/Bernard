@@ -1,15 +1,17 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Scissors, Loader2, AlertCircle, BarChart3, Film, ShieldAlert,
-  ShieldCheck, PlayCircle, Search, Sparkles,
+  ShieldCheck, PlayCircle, Search, Sparkles, Clapperboard, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useStaffSummaries } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 import { listMedia } from '@/lib/mediaLib'
+import { findClips, repurposeVideo } from '@/lib/clipsLib'
+import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import CoveragePanel from '@/components/slate/CoveragePanel'
 
@@ -55,7 +57,79 @@ function videoLabel(asset) {
     .trim() || 'Untitled video'
 }
 
-function VideoCard({ asset, staffName, onEdit }) {
+function fmtClock(s) {
+  const n = Math.max(0, Math.floor(Number(s) || 0))
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
+}
+
+// One source on the "Ready to review" tab — a decision row, not a chore card:
+// the AI's first proposed moment sits right on the row (the "N clips proposed"
+// badge promise pays off before the click), with review + repurpose as the
+// only actions. Compact by design — mockup screen 1.
+function ReviewRow({ asset, staffName, onReview, onRepurpose, repurposing }) {
+  const ok = consentOk(asset)
+  const n = asset.proposal_count || 0
+  const sample = asset.proposal_sample || null
+  const len = sample && sample.end_sec != null && sample.start_sec != null
+    ? Math.max(0, sample.end_sec - sample.start_sec)
+    : null
+  return (
+    <div className="bg-card border border-border rounded-xl p-3 flex gap-3.5 items-center flex-wrap md:flex-nowrap hover:border-primary/40 transition-colors">
+      <div
+        className="w-[72px] shrink-0 rounded-lg overflow-hidden bg-muted relative"
+        style={{ aspectRatio: asset.width && asset.height ? `${asset.width} / ${asset.height}` : '9 / 16' }}
+      >
+        {asset.thumbnail_url
+          ? <img src={asset.thumbnail_url} alt="" className="w-full h-full object-cover" />
+          : <PlayCircle className="h-6 w-6 text-muted-foreground/40 absolute inset-0 m-auto" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold leading-snug line-clamp-1">{videoLabel(asset)}</p>
+        <div className="flex items-center gap-2 text-3xs text-muted-foreground mt-0.5">
+          <span className="truncate">{asset.filename}</span>
+          {staffName && <span>· {staffName}</span>}
+          {ok ? (
+            <span className="flex items-center gap-1 text-success"><ShieldCheck className="h-3 w-3" />consent ok</span>
+          ) : (
+            <span className="flex items-center gap-1 text-destructive"><ShieldAlert className="h-3 w-3" />consent pending</span>
+          )}
+        </div>
+        <div className="mt-1.5 rounded-lg bg-muted/60 border border-border px-2.5 py-1.5 text-xs leading-snug">
+          <span className="font-semibold">{n} moment{n !== 1 ? 's' : ''} proposed{sample?.hook ? ':' : ''}</span>
+          {sample?.hook && <span className="italic"> &ldquo;{sample.hook}&rdquo;</span>}
+          {len != null && (
+            <span className="text-muted-foreground"> · {fmtClock(len)}{sample?.start_sec != null ? ` · starts at ${fmtClock(sample.start_sec)}` : ''}</span>
+          )}
+          {n > 1 && <span className="text-muted-foreground"> · +{n - 1} more</span>}
+        </div>
+      </div>
+      <div className="flex md:flex-col gap-2 shrink-0">
+        <button
+          type="button"
+          disabled={!ok}
+          onClick={() => ok && onReview(asset.id)}
+          className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+            ok ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'
+          }`}
+          title={!ok ? 'Resolve consent before cutting clips' : undefined}
+        >
+          <Clapperboard className="h-3.5 w-3.5" />Review {n > 1 ? `${n} moments` : 'moment'}
+        </button>
+        <button
+          type="button"
+          disabled={!ok || repurposing}
+          onClick={() => ok && onRepurpose(asset.id)}
+          className="px-3.5 py-2 rounded-lg border border-border bg-card text-2xs font-medium hover:bg-muted flex items-center justify-center gap-1.5 disabled:opacity-50"
+          title="One click: render the full-length video AND keep finding clips — grouped as one campaign"
+        >
+          {repurposing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-action" />}Repurpose all
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function VideoCard({ asset, staffName, onEdit, onFind }) {
   const ok = consentOk(asset)
   const clips = clipCount(asset)
   const proposals = typeof asset.proposal_count === 'number' ? asset.proposal_count : null
@@ -137,6 +211,25 @@ function VideoCard({ asset, staffName, onEdit }) {
             : <><Scissors className="h-3.5 w-3.5" />Cut a clip</>
           }
         </button>
+
+        {/* Uncut footage: let the AI do the watching. Detection runs in the
+            background; the source moves to "Ready to review" when it lands. */}
+        {onFind && (proposals === null || proposals === 0) && (
+          asset.segment_status === 'detecting' ? (
+            <div className="w-full px-3 py-1.5 rounded-lg text-3xs text-muted-foreground flex items-center justify-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" />finding moments…
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => ok && onFind(asset.id)}
+              disabled={!ok}
+              className="w-full px-3 py-1.5 rounded-lg text-3xs font-semibold text-primary bg-primary/10 hover:bg-primary/15 flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
+            >
+              <Sparkles className="h-3 w-3" />Find moments
+            </button>
+          )
+        )}
       </div>
     </div>
   )
@@ -230,10 +323,12 @@ export default function Slate() {
     const assets = Array.isArray(mediaData) ? mediaData : []
     const counts = clipCounts?.counts || {}
     const proposals = proposalCounts?.counts || {}
+    const samples = proposalCounts?.samples || {}
     return assets.map((a) => ({
       ...a,
       clip_count: counts[a.id] ?? null,
       proposal_count: proposals[a.id] ?? null,
+      proposal_sample: samples[a.id] ?? null,
     }))
   }, [mediaData, clipCounts, proposalCounts])
 
@@ -256,6 +351,43 @@ export default function Slate() {
     if (view === 'clips_to_review') return clipsToReviewVideos
     return needsCuttingVideos
   }, [view, needsCuttingVideos, clipsToReviewVideos, inProgressVideos])
+
+  // Review-first: Slate opens on the decisions the AI already prepared, not
+  // the uncut backlog. Seed once when counts first arrive; never fight a tab
+  // the user has clicked.
+  const viewSeededRef = useRef(false)
+  useEffect(() => {
+    if (viewSeededRef.current || !proposalCounts) return
+    viewSeededRef.current = true
+    if (clipsToReviewVideos.length > 0) setView('clips_to_review')
+  }, [proposalCounts, clipsToReviewVideos.length])
+
+  const queryClient = useQueryClient()
+  const [repurposingId, setRepurposingId] = useState(null)
+
+  async function handleFindMoments(id) {
+    try {
+      await findClips(id)
+      toast('Finding moments — transcribing and scanning the source. It moves to "Ready to review" when done.')
+      refetch()
+    } catch (e) {
+      toast.error(e?.message || 'Could not start detection.')
+    }
+  }
+
+  async function handleRepurpose(id) {
+    setRepurposingId(id)
+    try {
+      await repurposeVideo(id)
+      toast('Repurposing — full-length render + clip detection kicked off, grouped as one campaign.')
+      refetch()
+      queryClient.invalidateQueries({ queryKey: ['slate-proposal-counts'] })
+    } catch (e) {
+      toast.error(e?.message || 'Could not start repurpose.')
+    } finally {
+      setRepurposingId(null)
+    }
+  }
 
   if (!ws?.video_pipeline_enabled) {
     return (
@@ -285,8 +417,26 @@ export default function Slate() {
         </span>
       </div>
 
-      {/* Tabs + search row */}
+      {/* Tabs + search row — review-first: the decisions tab leads, in the
+          act-now amber so the eye lands where the AI finished its homework. */}
       <div className="flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => setView('clips_to_review')}
+          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
+            view === 'clips_to_review'
+              ? 'bg-action text-white border-action'
+              : clipsToReviewVideos.length > 0
+                ? 'bg-card border-action/40 text-foreground hover:border-action'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Ready to review{' '}
+          {!isLoading && (
+            <span className="opacity-70">{clipsToReviewVideos.length}</span>
+          )}
+        </button>
         <button
           type="button"
           onClick={() => setView('needs_cutting')}
@@ -296,26 +446,11 @@ export default function Slate() {
               : 'bg-card border-border text-muted-foreground hover:text-foreground'
           }`}
         >
-          Needs cutting{' '}
+          Uncut footage{' '}
           {!isLoading && (
             <span className="opacity-70">{needsCuttingVideos.length}</span>
           )}
         </button>
-        {clipsToReviewVideos.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setView('clips_to_review')}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              view === 'clips_to_review'
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            Clips to review{' '}
-            <span className="opacity-70">{clipsToReviewVideos.length}</span>
-          </button>
-        )}
         <button
           type="button"
           onClick={() => setView('in_progress')}
@@ -375,28 +510,55 @@ export default function Slate() {
           <Film className="h-10 w-10 text-muted-foreground" />
           <div>
             <p className="font-semibold text-base">
-              {view === 'in_progress' ? 'No clips in progress' : 'No source videos yet'}
+              {view === 'in_progress'
+                ? 'No clips in progress'
+                : view === 'clips_to_review'
+                  ? 'Nothing waiting for review'
+                  : 'No source videos yet'}
             </p>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               {view === 'in_progress'
                 ? 'Cut a clip from a source video to see it here.'
-                : 'Upload videos via Capture or the Library. Once a video is in your library, it appears here for clipping.'}
+                : view === 'clips_to_review'
+                  ? 'Run "Find moments" on uncut footage and the AI-proposed clips land here for a keep/discard decision.'
+                  : 'Upload videos via Capture or the Library. Once a video is in your library, it appears here for clipping.'}
             </p>
           </div>
-          {view !== 'in_progress' && (
+          {view === 'clips_to_review' ? (
+            <Button size="sm" variant="outline" onClick={() => setView('needs_cutting')}>
+              See uncut footage
+            </Button>
+          ) : view !== 'in_progress' && (
             <Button size="sm" variant="outline" onClick={() => navigate('/library')}>
               Go to Library
             </Button>
           )}
         </div>
+      ) : view === 'clips_to_review' ? (
+        <div className="flex flex-col gap-2.5">
+          <p className="text-2xs text-muted-foreground -mb-0.5">
+            The AI already did the watching — each row is a decision, not a chore. The proposal is right here, not behind the click.
+          </p>
+          {visibleVideos.map((asset) => (
+            <ReviewRow
+              key={asset.id}
+              asset={asset}
+              staffName={staffMap[asset.staff_id]}
+              onReview={(id) => navigate(`/slate/clip/${id}`)}
+              onRepurpose={handleRepurpose}
+              repurposing={repurposingId === asset.id}
+            />
+          ))}
+        </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className={`grid sm:grid-cols-2 lg:grid-cols-3 ${view === 'needs_cutting' ? 'xl:grid-cols-4' : ''} gap-3`}>
           {visibleVideos.map((asset) => (
             <VideoCard
               key={asset.id}
               asset={asset}
               staffName={staffMap[asset.staff_id]}
               onEdit={(id) => navigate(`/slate/clip/${id}`)}
+              onFind={view === 'needs_cutting' ? handleFindMoments : undefined}
             />
           ))}
         </div>

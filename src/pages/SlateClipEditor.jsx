@@ -12,7 +12,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
-import { getSegments, updateSegment } from '@/lib/clipsLib'
+import { getSegments, updateSegment, findClips, renderWholeVideo } from '@/lib/clipsLib'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
@@ -160,6 +160,40 @@ export default function SlateClipEditor() {
   function markSelectedKept() {
     if (selectedSegment && selectedSegment.status === 'proposed') {
       updateSegment(selectedSegment.id, 'kept').catch(() => {})
+    }
+  }
+
+  // No proposals yet? Kick detection from right here — the drawer's old
+  // "Find clips" lane relocated to the cutting desk (one door, F4).
+  const [finding, setFinding] = useState(false)
+  async function startFindMoments() {
+    if (finding) return
+    setFinding(true)
+    try {
+      await findClips(assetId)
+      toast('Finding moments — transcribing and scanning. They appear here when ready; you can leave this page.')
+      queryClient.invalidateQueries({ queryKey: ['video-segments', assetId] })
+    } catch (e) {
+      toast.error(e?.message || 'Could not start detection.')
+    } finally {
+      setFinding(false)
+    }
+  }
+
+  // Third exit: keep the whole source as one landscape long-form video —
+  // relocated from the drawer's WholeVideoAction (same render-longform call).
+  const [wholeRendering, setWholeRendering] = useState(false)
+  async function sendWholeVideo() {
+    if (wholeRendering) return
+    setWholeRendering(true)
+    try {
+      await renderWholeVideo(assetId)
+      toast('Rendering the full-length video — track it on Slate.')
+      navigate('/slate')
+    } catch (e) {
+      toast.error(e?.message || 'Could not start the full-length render.')
+    } finally {
+      setWholeRendering(false)
     }
   }
 
@@ -340,7 +374,7 @@ export default function SlateClipEditor() {
     },
   })
 
-  const busy = rendering || asPostMutation.isPending || brollMutation.isPending
+  const busy = rendering || asPostMutation.isPending || brollMutation.isPending || wholeRendering
   const consentBlocked = asset?.consent_status === 'pending' || asset?.consent_status === 'revoked'
   const ok = !consentBlocked
 
@@ -618,6 +652,27 @@ export default function SlateClipEditor() {
             </div>
           )}
 
+          {/* No proposals + not detecting → offer detection right here (the
+              drawer's old "Find clips" lane, relocated to the cutting desk). */}
+          {segData && proposals.length === 0 && segData.status !== 'detecting' && (
+            <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2.5 flex-wrap">
+              <Sparkles className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0 text-2xs text-muted-foreground">
+                {segData.status === 'failed'
+                  ? <>Last scan failed{segData.error ? ` — ${segData.error}` : ''}. Try again, or trim by hand below.</>
+                  : 'No AI-proposed moments for this source yet — let the AI watch it and suggest standalone clips.'}
+              </div>
+              <Button
+                size="sm" variant="outline" className="h-7 gap-1.5 text-2xs shrink-0"
+                disabled={finding}
+                onClick={startFindMoments}
+              >
+                {finding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Find moments
+              </Button>
+            </div>
+          )}
+
           {/* What he actually said */}
           <div className="bg-card border border-border rounded-xl p-3">
             <div className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1.5">
@@ -832,7 +887,7 @@ export default function SlateClipEditor() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => !busy && !consentBlocked && asPostMutation.mutate()}
@@ -869,6 +924,26 @@ export default function SlateClipEditor() {
                 )}
                 <div className="text-xs font-semibold mt-1">As b-roll</div>
                 <div className="text-3xs text-muted-foreground">→ Library, reusable in other posts</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => !busy && !consentBlocked && sendWholeVideo()}
+                disabled={busy || consentBlocked}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  consentBlocked
+                    ? 'border-border opacity-45 cursor-not-allowed'
+                    : 'border-border hover:border-primary'
+                }`}
+                title="Skip cutting — render the entire source as one keep-whole landscape video"
+              >
+                {wholeRendering ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Film className="h-4 w-4 text-muted-foreground" />
+                )}
+                <div className="text-xs font-semibold mt-1">Whole video</div>
+                <div className="text-3xs text-muted-foreground">→ Skip cutting — full source, letterboxed, never cropped</div>
               </button>
             </div>
 
