@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, RefreshCw, AlertCircle } from 'lucide-react'
+import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, RefreshCw, AlertCircle, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,7 +17,9 @@ import BulkActionBar from '@/components/BulkActionBar'
 import MediaHubHelp from '@/components/MediaHubHelp'
 import { getMediaAsset } from '@/lib/mediaLib'
 import { useMediaInfinite, useStaff, queryKeys } from '@/lib/queries'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api'
+import { matchTier, reasonLine } from '@/components/storyboard/CandidateCard'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useUploadProgress } from '@/lib/UploadProgressContext'
@@ -132,6 +134,39 @@ export default function MediaHub() {
     error:          queryError,
     refetch:        refetchMedia,
   } = useMediaInfinite(mediaFilters, { pageSize: PAGE_SIZE })
+
+  // Semantic matches — same searchClips brain as Publish's AI picks and the
+  // picker, so "sciatica" finds the consult video by its transcript here too.
+  // The text grid below still answers on filename/notes; a collection filter
+  // is explicit curation, so it stays text-only.
+  const kindForSearch = kind === 'photo' ? 'photo' : kind === 'video' ? 'video' : undefined
+  const { data: semanticData } = useQuery({
+    queryKey: ['library-semantic', debouncedSearch, kindForSearch || 'any'],
+    queryFn: () =>
+      apiFetch('/api/content-items/suggest-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: debouncedSearch,
+          k: 12,
+          minScore: 0.25,
+          ...(kindForSearch ? { kind: kindForSearch } : {}),
+        }),
+      }).catch(() => null),
+    enabled: !!debouncedSearch && !collectionId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const semanticClips = useMemo(() => {
+    const seen = new Set()
+    return (semanticData?.clips || [])
+      .filter((c) => {
+        if (!c.assetId || seen.has(c.assetId)) return false
+        seen.add(c.assetId)
+        return true
+      })
+      .slice(0, 6)
+  }, [semanticData])
   const error = queryError?.message || ''
   // Flatten pages → flat asset array for the existing grid/select code.
   const allAssets = useMemo(() => mediaData?.pages?.flat() ?? [], [mediaData])
@@ -568,6 +603,49 @@ export default function MediaHub() {
           <span className="text-2xs text-muted-foreground">
             {allAssets.length} asset{allAssets.length === 1 ? '' : 's'} loaded{hasMore ? ' · more available' : ''}
           </span>
+        </div>
+      )}
+
+      {/* Semantic matches strip — shown above the text-match grid whenever a
+          search is active and the brain found something. */}
+      {debouncedSearch && !collectionId && semanticClips.length > 0 && (
+        <div className="rounded-xl border border-primary/25 bg-accent/30 p-3">
+          <p className="text-2xs font-semibold text-foreground flex items-center gap-1.5 mb-2">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Closest matches for &ldquo;{debouncedSearch}&rdquo;
+            <span className="font-normal text-muted-foreground">· ranked by transcript + what&rsquo;s visible — same brain as the AI picks</span>
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {semanticClips.map((c) => {
+              const tier = matchTier(c.similarity)
+              return (
+                <button
+                  key={c.assetId}
+                  type="button"
+                  onClick={() => openDetail({ id: c.assetId })}
+                  className="text-left rounded-lg border bg-card overflow-hidden hover:border-primary/50 transition-colors"
+                >
+                  <div className="relative aspect-video bg-muted">
+                    {(c.thumbnailUrl || (c.kind !== 'video' && c.blobUrl)) ? (
+                      <img src={c.thumbnailUrl || c.blobUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-muted-foreground absolute inset-0 m-auto" />
+                    )}
+                    <span
+                      className={`absolute left-1 top-1 rounded px-1 py-px text-3xs font-semibold ${tier.cls}`}
+                      title={`${Math.round((c.similarity || 0) * 100)}% semantic similarity`}
+                    >
+                      {tier.label}
+                    </span>
+                  </div>
+                  <div className="p-1.5">
+                    <p className="text-3xs font-semibold truncate">{c.filename}</p>
+                    <p className="text-3xs text-muted-foreground line-clamp-2 leading-snug">{reasonLine(c)}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 
