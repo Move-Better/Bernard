@@ -22,8 +22,8 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT_COMMON  = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,rendered_url,drive_id,filename,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,visual_narrative,asset_purpose,speaker_role,parent_id,parent_asset_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,staff_id,consent_status,segment_status'
-const SELECT_COMPACT = 'id,kind,status,filename,mime_type,size_bytes,duration_s,blob_url,original_blob_url,web_blob_url,mux_playback_id,transcode_status,rendered_url,thumbnail_url'
+const SELECT_COMMON  = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,rendered_url,drive_id,filename,display_title,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,visual_narrative,asset_purpose,speaker_role,parent_id,parent_asset_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,staff_id,consent_status,segment_status'
+const SELECT_COMPACT = 'id,kind,status,filename,display_title,mime_type,size_bytes,duration_s,blob_url,original_blob_url,web_blob_url,mux_playback_id,transcode_status,rendered_url,thumbnail_url'
 
 async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -106,7 +106,7 @@ async function handler(req, res) {
   if (search) {
     const term = encodeURIComponent(`%${search}%`)
     // PostgREST `or` syntax. Note: jsonb columns can't be ilike'd directly here.
-    qs += `&or=(filename.ilike.${term},notes.ilike.${term},condition.ilike.${term},patient_pseudonym.ilike.${term},transcription.ilike.${term})`
+    qs += `&or=(filename.ilike.${term},display_title.ilike.${term},notes.ilike.${term},condition.ilike.${term},patient_pseudonym.ilike.${term},transcription.ilike.${term})`
   }
   if (tag) {
     // tags is a jsonb array of strings — `cs` (contains) wants a JSON array literal.

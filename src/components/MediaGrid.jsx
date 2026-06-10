@@ -275,9 +275,13 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
         </div>
       )}
 
-      {/* Filename caption */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-3xs px-1.5 py-1 leading-tight truncate" title={asset.filename}>
-        {asset.filename}
+      {/* Title caption — AI display title when tagged; raw filename only as
+          the fallback (and always available in the tooltip). */}
+      <div
+        className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-3xs px-1.5 py-1 leading-tight truncate"
+        title={asset.display_title ? `${asset.display_title} (${asset.filename})` : asset.filename}
+      >
+        {asset.display_title || asset.filename}
       </div>
     </button>
   )

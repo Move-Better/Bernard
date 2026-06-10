@@ -44,7 +44,7 @@ function consentOk(asset) {
 // doesn't read as a list of camera-roll filenames. Never fabricates — a bare
 // "Capture 2026-06-02" stays as-is, just cleaned up.
 function videoLabel(asset) {
-  const real = asset?.title || asset?.topic || asset?.caption
+  const real = asset?.display_title || asset?.title || asset?.topic || asset?.caption
   if (real && real.trim()) return real.trim()
   const name = asset?.filename
   if (!name || !name.trim()) return 'Untitled video'

@@ -98,6 +98,8 @@ function buildSystemPrompt(asset, scope) {
     PURPOSE_FRAMING[purpose] || PURPOSE_FRAMING.photo,
     '',
     'Return 4–8 short, lowercase, kebab-case tags that describe what is visibly happening in this clip. Use single tokens or short phrases (e.g. "low-back", "post-op", "senior-dog", "lead-refusal"). Avoid filler tags like "video", "photo", "person", or generic camera/edit terms.',
+    '',
+    'Also return a display_title: a natural 4–9 word title a producer would recognize at a glance — what is happening plus who or what is in frame, e.g. "Kettlebell hinge coaching with a patient" or "Gym floor at golden hour". Sentence case, plain words; never echo the filename, never use hashtags or quotes.',
   ]
   if (kind === 'video') {
     // B-roll videos still get a visual_narrative pass (useful for search +
@@ -124,13 +126,15 @@ function buildSystemPrompt(asset, scope) {
 }
 
 const photoSchema = z.object({
-  tags: z.array(z.string()).min(1).max(10),
+  tags:          z.array(z.string()).min(1).max(10),
+  display_title: z.string(),
 })
 
 const videoSchema = z.object({
   tags:             z.array(z.string()).min(1).max(10),
   transcription:    z.string(),
   visual_narrative: z.string(),
+  display_title:    z.string(),
 })
 
 function normalizeTag(raw) {
@@ -232,7 +236,8 @@ async function callModel(asset, scope) {
   const ai_tags = normalizeTags(object.tags, asset.tags)
   const transcription = isVideo ? (object.transcription || '').trim() : null
   const visual_narrative = isVideo ? (object.visual_narrative || '').trim() : null
-  return { ai_tags, transcription, visual_narrative }
+  const display_title = (object.display_title || '').trim().slice(0, 120) || null
+  return { ai_tags, transcription, visual_narrative, display_title }
 }
 
 // Run AI tagging on an existing media_assets row and persist the result.
@@ -242,12 +247,16 @@ export async function tagAndPersist(asset, scope) {
   const s = requireScope(scope)
   const where = `id=eq.${asset.id}&${s.column}=eq.${s.id}`
   try {
-    const { ai_tags, transcription, visual_narrative } = await callModel(asset, s)
+    const { ai_tags, transcription, visual_narrative, display_title } = await callModel(asset, s)
     const patch = { ai_tags, status: 'tagged' }
     if (asset.kind === 'video') {
       patch.transcription = transcription
       patch.visual_narrative = visual_narrative
     }
+    // AI title replaces IMG_*.mov as the display name across Slate / Library /
+    // picker; the filename stays as metadata. Never overwrite a title a human
+    // (or earlier run) already set.
+    if (display_title && !asset.display_title) patch.display_title = display_title
 
     const upd = await sb(`media_assets?${where}`, { method: 'PATCH', body: JSON.stringify(patch) })
     if (!upd.ok) {
@@ -279,7 +288,7 @@ export async function tagAndPersist(asset, scope) {
 export async function tagById(id, scope) {
   const s = requireScope(scope)
   const where = `id=eq.${id}&${s.column}=eq.${s.id}`
-  const lookup = await sb(`media_assets?${where}&select=id,${s.column},kind,status,blob_url,mime_type,size_bytes,tags,notes,asset_purpose`)
+  const lookup = await sb(`media_assets?${where}&select=id,${s.column},kind,status,blob_url,mime_type,size_bytes,tags,notes,asset_purpose,display_title`)
   if (!lookup.ok) throw new Error('Database error')
   const rows = await lookup.json()
   const asset = rows[0]

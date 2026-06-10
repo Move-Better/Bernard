@@ -460,7 +460,12 @@ export default function MediaDetail({ asset, onClose, onChange }) {
       <div className={`bg-background shadow-2xl w-full flex flex-col ${isFullscreen ? 'w-screen h-screen' : 'rounded-xl max-w-full sm:max-w-3xl max-h-[90vh]'}`}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
-          <h2 className="font-semibold text-sm truncate pr-2" title={asset.filename}>{asset.filename}</h2>
+          <h2 className="font-semibold text-sm truncate pr-2" title={asset.display_title ? `${asset.display_title} (${asset.filename})` : asset.filename}>
+            {asset.display_title || asset.filename}
+            {asset.display_title && (
+              <span className="ml-2 font-normal text-2xs text-muted-foreground">{asset.filename}</span>
+            )}
+          </h2>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(v => !v)} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
               {isFullscreen ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
