@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { listMedia, uploadMedia } from '@/lib/mediaLib'
 import { listCollections } from '@/lib/collectionsLib'
+import { apiFetch } from '@/lib/api'
 
 // Picker for attaching media to a post. Two tabs:
 //   1. Library — the Media Hub (Vercel Blob + media_assets), the canonical home.
@@ -70,6 +71,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [semanticActive, setSemanticActive] = useState(false)
   const fileInputRef = useRef(null)
   const debounceRef  = useRef(null)
 
@@ -77,6 +79,45 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
     setLibraryLoading(true)
     if (!append) setLibraryError('')
     try {
+      // Semantic-first search: a typed query asks the same searchClips brain
+      // that ranks Storyboard's AI picks (suggest-media in query-only mode),
+      // so "sciatica" finds the consult video by its transcript even though no
+      // filename contains the word. Text matches fill in below. A collection
+      // filter is explicit curation, so it keeps the text-only path; any
+      // semantic failure falls back to text-only silently.
+      let semanticRows = []
+      if (q && !colId && pageNum === 0) {
+        try {
+          const resp = await apiFetch('/api/content-items/suggest-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: q,
+              k: 24,
+              minScore: 0.25,
+              ...(kindFilter !== 'all' ? { kind: kindFilter === 'photo' ? 'photo' : 'video' } : {}),
+            }),
+          })
+          const seen = new Set()
+          semanticRows = (resp?.clips || [])
+            .filter((c) => {
+              if (!c.assetId || seen.has(c.assetId)) return false
+              seen.add(c.assetId)
+              return true
+            })
+            .map((c) => ({
+              id:            c.assetId,
+              kind:          c.kind,
+              filename:      c.filename,
+              thumbnail_url: c.thumbnailUrl,
+              blob_url:      c.blobUrl,
+              duration_s:    c.durationS,
+            }))
+        } catch {
+          // embeddings unavailable — plain text search still works
+        }
+      }
+
       const rows = await listMedia({
         q:            q || undefined,
         kind:         kindFilter !== 'all' ? kindFilter : undefined,
@@ -85,8 +126,14 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
         offset:       pageNum * PAGE_SIZE,
         compact:      true,
       })
-      setLibraryItems(prev => append ? [...prev, ...rows] : rows)
+      const semIds = new Set(semanticRows.map((r) => r.id))
+      setLibraryItems(prev => {
+        if (!append) return [...semanticRows, ...rows.filter(r => !semIds.has(r.id))]
+        const have = new Set(prev.map(p => p.id))
+        return [...prev, ...rows.filter(r => !have.has(r.id))]
+      })
       setHasMore(rows.length === PAGE_SIZE)
+      setSemanticActive(semanticRows.length > 0)
     } catch (e) {
       setLibraryError(e.message)
     } finally {
@@ -224,7 +271,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                 <Input
                   value={query}
                   onChange={handleQueryChange}
-                  placeholder="Search your media library…"
+                  placeholder='Search by what&rsquo;s in it — "hip hinge", "sciatica", "front desk"…'
                   className="pl-8 pr-8 h-8 text-sm"
                 />
                 {query && (
@@ -287,6 +334,12 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
 
             {/* Grid */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3">
+              {semanticActive && query && !libraryError && libraryItems.length > 0 && (
+                <p className="text-2xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <Search className="h-3 w-3" />
+                  Ranked by what&rsquo;s in the video or photo — same brain as the AI picks.
+                </p>
+              )}
               {libraryError ? (
                 <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 text-center">{libraryError}</div>
               ) : libraryLoading && libraryItems.length === 0 ? (
@@ -295,9 +348,11 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                 </div>
               ) : libraryItems.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground text-sm">
-                  {kind !== 'all' || collectionId || query
-                    ? 'No media matches your filters.'
-                    : 'No media in your library yet. Use the Upload tab or visit the Media page to add some.'}
+                  {query
+                    ? 'No matches. Try describing the shot — "hip hinge", "front desk", "low-back work".'
+                    : kind !== 'all' || collectionId
+                      ? 'No media matches your filters.'
+                      : 'No media in your library yet. Use the Upload tab or visit the Media page to add some.'}
                 </div>
               ) : (
                 <>
