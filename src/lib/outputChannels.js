@@ -93,6 +93,12 @@ export const OUTPUT_CHANNELS = Object.freeze({
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
     publishMode: PUBLISH_MODES.BUFFER,
   },
+  instagram_story: {
+    id: 'instagram_story',
+    label: 'Instagram story',
+    exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
+    publishMode: PUBLISH_MODES.BUFFER,
+  },
   facebook: {
     id: 'facebook',
     label: 'Facebook post',

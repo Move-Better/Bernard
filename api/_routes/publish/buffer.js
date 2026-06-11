@@ -25,8 +25,9 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // Map our runtime platform IDs → Buffer service strings.
 // Service strings match Buffer's GraphQL Service enum exactly.
 const PLATFORM_TO_SERVICE = {
-  instagram:     'instagram',
-  facebook:      'facebook',
+  instagram:       'instagram',
+  instagram_story: 'instagram',
+  facebook:        'facebook',
   linkedin:      'linkedin',
   twitter:       'twitter',
   tiktok:        'tiktok',
@@ -88,6 +89,11 @@ function buildAssets(mediaUrls) {
 function buildMetadata(platform, mediaUrls, _content = '') {
   const imageCount = mediaUrls.filter((m) => !m.type?.startsWith('video')).length
   const videoCount = mediaUrls.filter((m) => m.type?.startsWith('video')).length
+  if (platform === 'instagram_story') {
+    // Stories don't support captions/stickers via auto-publish; Buffer sends
+    // a notification and the user finalizes in the Instagram app.
+    return { instagram: { type: 'story' } }
+  }
   if (platform === 'instagram') {
     // Buffer accepts only post | story | reel here. Multi-image carousels
     // are encoded as type: 'post' with multiple assets.
