@@ -25,13 +25,13 @@
   --grey:      #9ca3af;
   --grey-d:    #6b7280;
 
-  /* Emerald — bright green accent */
-  --coral:     #10B981;
-  --coral-h:   #34D399;
-  --coral-d:   #059669;
-  --sage:      #2d6a4f;
-  --sage-d:    #1b4332;
-  --glow:      rgba(16,185,129,0.38);
+  /* Blue Spruce — brand accent */
+  --coral:     #0C7580;
+  --coral-h:   #5CCFDB;
+  --coral-d:   #09545E;
+  --sage:      #0A4A52;
+  --sage-d:    #072F36;
+  --glow:      rgba(12,117,128,0.38);
 
   --sans:  'Inter', -apple-system, system-ui, sans-serif;
   --serif: 'Source Serif 4', Georgia, serif;
