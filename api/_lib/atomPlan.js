@@ -137,7 +137,7 @@ function atomPlatformsFromEnabledOutputs(enabledOutputs) {
   if (!enabledOutputs) return null
   const set = new Set()
   for (const id of enabledOutputs) {
-    if (id === 'instagram_post' || id === 'instagram_reel') set.add('instagram')
+    if (id === 'instagram_post' || id === 'instagram_reel' || id === 'instagram_story') set.add('instagram')
     else set.add(id)
   }
   return set
@@ -152,7 +152,7 @@ function atomPlatformsFromEnabledOutputs(enabledOutputs) {
 // only split: the registry has instagram_post + instagram_reel, both of which
 // key under the `instagram` atom platform.
 export function channelIdsForAtomPlatform(platform) {
-  if (platform === 'instagram') return ['instagram_post', 'instagram_reel']
+  if (platform === 'instagram') return ['instagram_post', 'instagram_reel', 'instagram_story']
   return [platform]
 }
 
