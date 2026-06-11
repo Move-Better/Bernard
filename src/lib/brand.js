@@ -10,14 +10,15 @@
 //     in <img src> (Layout, PostPreview, favicon), CSS vars/currentColor can't
 //     recolor them — the color is baked into the file, so the canonical art
 //     lives in exactly one .svg per mark.
-// BERNARD_EMERALD mirrors --primary's value; keep them in sync if the brand
+// BERNARD_PRIMARY mirrors --primary's value; keep them in sync if the brand
 // color ever changes (a rebrand touches both this constant and src/index.css).
 //
 // TENANT brands are NOT here — each workspace's colors/logos come from the DB
 // (workspaces row, brand_kit_roles, primary_logo_url). See CLAUDE.md
 // "Multi-tenant SaaS". This file is only the fallback/product identity.
 
-export const BERNARD_EMERALD = '#10B981' // primary — HSL 160 84% 39%
+export const BERNARD_PRIMARY = '#0C7580' // Blue Spruce — HSL 186 83% 27%
+export const BERNARD_EMERALD = BERNARD_PRIMARY // alias kept for any remaining refs
 export const BERNARD_INK     = '#0F172A'
 
 export const BERNARD_LOGO_URL = '/bernard-logo.svg' // horizontal wordmark

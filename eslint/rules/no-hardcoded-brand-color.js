@@ -14,8 +14,8 @@
 // src/index.css are not JS and are never scanned.
 
 const BANNED = [
-  // Retired brand hexes: Move-Better orange / grey, NarrateRx evergreen, coral.
-  { re: /#(?:e36525|6e7072|1c4d37|ff8552)\b/gi, hint: 'retired brand hex' },
+  // Retired brand hexes: Move-Better orange / grey, NarrateRx evergreen, coral, old Bernard emerald.
+  { re: /#(?:e36525|6e7072|1c4d37|ff8552|10b981)\b/gi, hint: 'retired brand hex' },
   // The Move-Better orange expressed as rgb()/rgba() (e.g. shadow tints).
   { re: /rgba?\(\s*227\s*,\s*101\s*,\s*37\b/gi, hint: 'Move-Better orange as rgb()' },
   // Any orange hue-20 HSL literal — this is the old --primary/--accent value
