@@ -124,6 +124,17 @@ export const ATOM_DEFINITIONS = {
       description: 'Plain-language educational post with an optional content warning, inclusive of the federated community',
     },
   ],
+  // instagram_story is its own atom platform (not grouped under `instagram`)
+  // because the content format is fundamentally different: 5–8 words of overlay
+  // text for a 9:16 frame + a link sticker URL, not a caption + carousel.
+  instagram_story: [
+    {
+      slot: 1,
+      angle: 'story_teaser',
+      label: 'Story',
+      description: '5–8 word overlay text teaser for a 9:16 Instagram Story with a link sticker',
+    },
+  ],
 }
 
 // Map a workspace enabled_outputs channel id (from src/lib/outputChannels.js)

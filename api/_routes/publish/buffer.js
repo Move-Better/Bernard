@@ -89,16 +89,12 @@ function buildAssets(mediaUrls) {
 function buildMetadata(platform, mediaUrls, _content = '') {
   const imageCount = mediaUrls.filter((m) => !m.type?.startsWith('video')).length
   const videoCount = mediaUrls.filter((m) => m.type?.startsWith('video')).length
-  if (platform === 'instagram_story') {
-    // Stories don't support captions/stickers via auto-publish; Buffer sends
-    // a notification and the user finalizes in the Instagram app.
-    return { instagram: { type: 'story' } }
-  }
-  if (platform === 'instagram') {
+  if (platform === 'instagram' || platform === 'instagram_story') {
     // Buffer accepts only post | story | reel here. Multi-image carousels
     // are encoded as type: 'post' with multiple assets.
-    const type = videoCount > 0 && imageCount === 0 ? 'reel' : 'post'
-    return { instagram: { type, shouldShareToFeed: true } }
+    const type = platform === 'instagram_story' ? 'story'
+      : videoCount > 0 && imageCount === 0 ? 'reel' : 'post'
+    return { instagram: { type, shouldShareToFeed: type !== 'story' } }
   }
   if (platform === 'facebook') {
     const type = videoCount > 0 && imageCount === 0 ? 'reel' : 'post'

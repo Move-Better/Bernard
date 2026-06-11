@@ -224,6 +224,15 @@ Include alt-text guidance if a visual would normally accompany the post: add \`[
 At most 2–3 hashtags, written in CamelCase for screen-reader accessibility (e.g. #PhysicalTherapy not #physicaltherapy).
 Output ONLY the post body (with the CW prefix and alt-text placeholder if applicable).`,
     },
+
+    instagram_story: {
+      story_teaser: `Write overlay text for a single Instagram Story frame for ${workspace.display_name} about ${condition}.
+FORMAT: 5–8 words maximum. ALL CAPS. This text appears printed over a photo or branded card — it must grab attention in under a second and make someone tap the link sticker.
+ANGLE: Distill the sharpest, most surprising claim or patient outcome from the conversation into one punchy line. Think billboard, not caption. No filler words ("here's why", "we share", "check out").
+${isPersonal ? `Echo ${firstName}'s voice — a line they'd actually say out loud.` : `Use "we" language, but keep it punchy.`}
+After the overlay text, on a new line output the label LINK_STICKER_TEXT: followed by 2–4 words for the sticker label (e.g. "Read more", "Book a visit", "Full story"). Keep it action-oriented.
+Output ONLY the overlay text line, then the LINK_STICKER_TEXT line. No other text.`,
+    },
   }
 
   const instruction = instructions[platform]?.[angle]
