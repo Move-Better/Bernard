@@ -40,7 +40,7 @@
     { "source": "/status", "destination": "https://stats.uptimerobot.com/GfIsrmmYYJ", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/api/((?!media/[^/]+/).*)", "destination": "/api/index" },
+    { "source": "/api/((?!media/(?!multipart/)[^/]+/).*)", "destination": "/api/index" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
