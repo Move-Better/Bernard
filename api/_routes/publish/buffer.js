@@ -26,17 +26,17 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // Service strings match Buffer's GraphQL Service enum exactly.
 const PLATFORM_TO_SERVICE = {
   instagram:       'instagram',
-  instagram_story: 'instagram',
+  instagram_story: 'instagram', // Stories use the same Buffer Instagram channel; type:story set in metadata
   facebook:        'facebook',
-  linkedin:      'linkedin',
-  twitter:       'twitter',
-  tiktok:        'tiktok',
-  threads:       'threads',
-  youtube_short: 'youtube',
-  youtube:       'youtube',   // long-form landscape video → same Buffer YouTube channel
-  bluesky:       'bluesky',
-  mastodon:      'mastodon',
-  gbp:           'googlebusiness',
+  linkedin:        'linkedin',
+  twitter:         'twitter',
+  tiktok:          'tiktok',
+  threads:         'threads',
+  youtube_short:   'youtube',
+  youtube:         'youtube',   // long-form landscape video → same Buffer YouTube channel
+  bluesky:         'bluesky',
+  mastodon:        'mastodon',
+  gbp:             'googlebusiness',
 }
 
 async function gql(token, query, variables = {}) {
