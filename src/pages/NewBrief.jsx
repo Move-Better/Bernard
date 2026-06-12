@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Loader2, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Loader2, ClipboardList, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch } from '@/lib/api'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
+import { uploadMedia } from '@/lib/mediaLib'
 
 // Channels that Brief generation supports. Other channels (blog, email,
 // youtube, etc.) require richer source material than a brief provides.
@@ -52,8 +53,11 @@ export default function NewBrief() {
   const [location, setLocation] = useState('')
   const [ctaUrl,   setCtaUrl]   = useState('')
   const [ctaLabel, setCtaLabel] = useState('')
-  const [mediaUrl] = useState('')
+  const [mediaUrl,     setMediaUrl]     = useState('')
+  const [mediaPreview, setMediaPreview] = useState(null)
+  const [uploading,    setUploading]    = useState(false)
   const [selected, setSelected] = useState(new Set())
+  const fileInputRef = useRef(null)
 
   // Submission state
   const [generating, setGenerating] = useState(false)
@@ -76,7 +80,28 @@ export default function NewBrief() {
     })
   }
 
-  const canSubmit = title.trim() && body.trim() && selected.size > 0 && !generating
+  async function handleMediaFile(file) {
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      const result = await uploadMedia(file, { assetPurpose: 'broll' })
+      setMediaUrl(result.url)
+      setMediaPreview(URL.createObjectURL(file))
+    } catch {
+      setError('Photo upload failed — please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeMedia() {
+    setMediaUrl('')
+    setMediaPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const canSubmit = title.trim() && body.trim() && selected.size > 0 && !generating && !uploading
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -206,6 +231,43 @@ export default function NewBrief() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Media attach */}
+              <div className="space-y-1.5">
+                <Label>🖼️ Attach photo <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <p className="text-xs text-muted-foreground">
+                  Attached to all channels that support media. Instagram Story uses it instead of a text card.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleMediaFile(e.target.files?.[0])}
+                />
+                {mediaPreview ? (
+                  <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-border">
+                    <img src={mediaPreview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeMedia}
+                      className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-sm text-muted-foreground transition-colors disabled:opacity-50"
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                    {uploading ? 'Uploading…' : 'Attach a photo'}
+                  </button>
+                )}
               </div>
 
               {error && (

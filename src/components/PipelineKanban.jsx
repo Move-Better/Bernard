@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FileText, Clock, CheckCircle2, CalendarDays, Send, Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, CalendarDays, Send, Image as ImageIcon, ExternalLink, ClipboardList } from 'lucide-react'
 import { formatRelativeDate } from '@/lib/utils'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { getContentStatusToken } from '@/lib/contentStatusTokens'
@@ -119,6 +119,11 @@ function Card({ item }) {
           <span className={`text-3xs font-semibold ${pm.color}`}>{pm.label}</span>
         </div>
         <div className="flex items-center gap-1">
+          {item.brief_id && (
+            <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-3xs font-semibold bg-action/10 text-action">
+              <ClipboardList className="h-2 w-2" />Brief
+            </span>
+          )}
           {showVoiceDrift && <VoiceDriftChip provenance={item.provenance} />}
           {hasMedia && <ImageIcon className="h-3 w-3 text-muted-foreground" />}
         </div>
