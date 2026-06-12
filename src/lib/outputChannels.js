@@ -76,11 +76,13 @@ export const OUTPUT_CHANNELS = Object.freeze({
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
     publishMode: PUBLISH_MODES.BUFFER,
   },
-  // NOTE: Instagram is split here (post + reel) for the settings picker, but
-  // the atom/publish namespace (ATOM_DEFINITIONS, content_items.platform,
-  // PLATFORM_TO_SERVICE, prompts) keys it as singular `instagram`. Any code
-  // that compares enabled_outputs against atom-namespace keys must normalize
-  // via atomPlatformsFromEnabledOutputs() in api/_lib/atomPlan.js — see PR #485.
+  // NOTE: Instagram is split here (post + reel + story) for the settings
+  // picker. Post and reel share the `instagram` atom platform key in
+  // ATOM_DEFINITIONS (same 4-angle set). Story is its own atom platform key
+  // `instagram_story` with a single story_teaser angle and a Buffer type:story
+  // payload. Any code that compares enabled_outputs against atom-namespace keys
+  // must normalize via atomPlatformsFromEnabledOutputs() in
+  // api/_lib/atomPlan.js — see PR #485.
   instagram_post: {
     id: 'instagram_post',
     label: 'Instagram feed post',
@@ -95,7 +97,7 @@ export const OUTPUT_CHANNELS = Object.freeze({
   },
   instagram_story: {
     id: 'instagram_story',
-    label: 'Instagram story',
+    label: 'Instagram Story',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
     publishMode: PUBLISH_MODES.BUFFER,
   },

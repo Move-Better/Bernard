@@ -27,6 +27,7 @@ const VoiceTraining = lazy(() => import('@/pages/VoiceTraining'))
 const PhoneCall = lazy(() => import('@/pages/PhoneCall'))
 const CaptureReview = lazy(() => import('@/pages/CaptureReview'))
 const ImportUrl = lazy(() => import('@/pages/ImportUrl'))
+const NewBrief  = lazy(() => import('@/pages/NewBrief'))
 const InterviewSession = lazy(() => import('@/pages/InterviewSession'))
 const OnboardingInterview = lazy(() => import('@/pages/OnboardingInterview'))
 const StaffProfile = lazy(() => import('@/pages/StaffProfile'))
@@ -599,6 +600,7 @@ function AppRoutes() {
                 2026-05-24 rename to /new/live-interview. */}
             <Route path="/new/phone-call" element={<Navigate to="/new/live-interview" replace />} />
             <Route path="/new/import" element={guarded(<ImportUrl />)} />
+            <Route path="/new/brief"  element={guarded(<NewBrief />)} />
             <Route path="/capture/:staffId/:interviewId/review" element={guarded(<CaptureReview />)} />
             <Route path="/interview/:staffId/:interviewId" element={guarded(<InterviewSession />)} />
             <Route path="/onboard/interview" element={guarded(<OnboardingInterview />)} />
