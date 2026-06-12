@@ -331,5 +331,8 @@ export default async function handler(req, res) {
   }
   summary.finishedAt = new Date().toISOString()
 
+  const pingUrl = process.env.HC_PING_AUTO_PUBLISH
+  if (pingUrl) fetch(pingUrl).catch(() => {})
+
   return res.status(200).json(summary)
 }

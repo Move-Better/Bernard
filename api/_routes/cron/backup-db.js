@@ -129,6 +129,9 @@ async function handler(req, res) {
       }
     } while (cursor)
 
+    const pingUrl = process.env.HC_PING_BACKUP_DB
+    if (pingUrl) fetch(pingUrl).catch(() => {})
+
     return res.status(200).json({
       ok: true,
       blob_pathname: uploaded.pathname,
