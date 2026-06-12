@@ -12,6 +12,7 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import express from 'express'
 import { routes } from './_routes/_manifest.generated.js'
+import { captureServerException } from './_lib/sentry.js'
 
 const app = express()
 app.disable('x-powered-by')
@@ -64,6 +65,10 @@ app.use((req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  // Backstop for the ~80 routes that aren't withSentry-wrapped: report to
+  // Sentry (no-op without SENTRY_DSN), then return the opaque 500. Wrapped
+  // handlers capture + flush themselves and resolve before reaching here.
+  captureServerException(err, req)
   console.error('[api/index] handler error:', err?.stack || err)
   if (res.headersSent) return
   res.status(500).json({ error: 'internal_error' })
