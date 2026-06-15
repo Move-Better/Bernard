@@ -40,6 +40,11 @@ export const ATOM_DEFINITIONS = {
   mastodon: [
     { slot: 1, angle: 'educational',    label: 'Educational Toot',  description: 'Plain-language educational post with an optional content warning, inclusive of the federated community' },
   ],
+  // instagram_story is its own atom platform (not grouped under `instagram`):
+  // 5–8 words of overlay text for a 9:16 frame + a link sticker, not a caption.
+  instagram_story: [
+    { slot: 1, angle: 'story_teaser',   label: 'Story',             description: '5–8 word overlay text teaser for a 9:16 Instagram Story with a link sticker' },
+  ],
 }
 
 export const PLATFORM_UI = {
@@ -52,6 +57,7 @@ export const PLATFORM_UI = {
   threads:   { label: 'Threads',           icon: AtSign,    color: 'text-zinc-700',    bg: 'bg-zinc-50',    border: 'border-zinc-200',    dot: 'bg-zinc-700'    },
   bluesky:   { label: 'Bluesky',           icon: Cloud,     color: 'text-sky-600',     bg: 'bg-sky-50',     border: 'border-sky-200',     dot: 'bg-sky-500'     },
   mastodon:  { label: 'Mastodon',          icon: Hash,      color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-200',  dot: 'bg-violet-600'  },
+  instagram_story: { label: 'Instagram Story', icon: Instagram, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500' },
 }
 
 export const SLOT_LABELS = ['Week 1', 'Week 2', 'Week 3', 'Week 4']
