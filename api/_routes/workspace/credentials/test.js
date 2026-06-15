@@ -206,6 +206,14 @@ async function handler(req, res) {
     return res.status(404).json({ ok: false, error: 'No credentials saved for this service.' })
   }
 
+  // Search Console: config.site_url can be null if detectSiteUrl failed at
+  // connect time. The canonical site URL is always mirrored to the workspace
+  // row (workspaces.gsc_site_url) — fall back to it so the test (and the
+  // OAuth token) can still be exercised without forcing a reconnect.
+  if (service === 'searchconsole' && !credential.config?.site_url && workspace.gsc_site_url) {
+    credential.config = { ...(credential.config || {}), site_url: workspace.gsc_site_url }
+  }
+
   let result
   try {
     result = await TESTERS[service](credential)

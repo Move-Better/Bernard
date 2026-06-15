@@ -18,7 +18,13 @@ import { encryptSecret } from './credentialCrypto.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-export const GSC_OAUTH_SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
+export const GSC_OAUTH_SCOPES = [
+  'https://www.googleapis.com/auth/webmasters.readonly',
+  // openid + email so we can label the credential with the connecting account
+  // (fetchAccountEmail hits the userinfo endpoint, which needs the email scope).
+  'openid',
+  'https://www.googleapis.com/auth/userinfo.email',
+]
 const STATE_TTL_MS = 10 * 60 * 1000
 const STATE_LABEL  = 'gsc_oauth_state_v1'
 
@@ -140,7 +146,9 @@ async function fetchAccountEmail(accessToken) {
 
 async function detectSiteUrl(accessToken) {
   try {
-    const r = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
+    // Canonical host. The legacy www.googleapis.com/webmasters host returns
+    // null/404 for the sites list, which silently left config.site_url unset.
+    const r = await fetch('https://searchconsole.googleapis.com/webmasters/v3/sites', {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (!r.ok) return null
