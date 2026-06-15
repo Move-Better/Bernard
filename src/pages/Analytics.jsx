@@ -5,7 +5,10 @@ import {
   Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions, useWebsiteHealth } from '@/lib/queries'
+import {
+  useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
+  useWebsiteHealth, useWebsiteGA4, useSearchQueries,
+} from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights, totalReach, sumField } from '@/lib/insightsReads'
@@ -90,6 +93,248 @@ function PendingRead({ icon: Icon, badge, children }) {
   )
 }
 
+// GA4 engagement-rate bar (0–1 float → coloured pill).
+function EngagementPill({ rate }) {
+  const pct  = Math.round((rate || 0) * 100)
+  const good = pct >= 55
+  return (
+    <span className={`text-2xs font-medium px-1.5 py-0.5 rounded-full ${good ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+      {pct}% engaged
+    </span>
+  )
+}
+
+// Renders when GA4 is connected — landing pages with sessions + engagement.
+function LandingPageRead({ data }) {
+  if (!data?.connected) {
+    return (
+      <PendingRead icon={LogIn} badge="Unlocks when GA4 connects">
+        <span className="font-semibold text-foreground">Coming:</span>{' '}
+        which pages people land on first and whether they go on to book — the literal{' '}
+        <span className="italic">&ldquo;is the website landing well?&rdquo;</span> read, with the specific fix to make.
+      </PendingRead>
+    )
+  }
+  if (data.error && !data.landingPages?.length) {
+    return (
+      <PendingRead icon={LogIn} badge="GA4 · Landing pages">
+        Data temporarily unavailable — check back shortly.
+      </PendingRead>
+    )
+  }
+  if (!data.landingPages?.length) {
+    return (
+      <PendingRead icon={LogIn} badge="GA4 · Landing pages">
+        Still gathering data — check back after a day or two of traffic.
+      </PendingRead>
+    )
+  }
+
+  const best = data.landingPages[0]
+  const bestPct = Math.round((best.engagementRate || 0) * 100)
+  const fix = bestPct < 50
+    ? 'Most visitors to your top page leave quickly — make sure the first screen answers "why should I read this?" with a clear hook.'
+    : null
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+          <LogIn className="h-4 w-4 text-info" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+            GA4 · Top landing pages (30d)
+          </span>
+          <ul className="mt-3 space-y-2.5">
+            {data.landingPages.map((p) => (
+              <li key={p.path} className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-muted-foreground min-w-0">{p.topic || p.path}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-2xs text-muted-foreground tabular-nums">{(p.sessions || 0).toLocaleString()} sessions</span>
+                  <EngagementPill rate={p.engagementRate} />
+                  {p.keyEvents > 0 && (
+                    <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {p.keyEvents} {data.hasKeyEvents ? 'conversions' : ''}
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {fix && (
+            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+              <span className="font-medium text-foreground">To improve:</span> {fix}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Renders when GA4 is connected — pages with poor engagement (high bounce rate).
+function ExitAnalysisRead({ data }) {
+  if (!data?.connected) {
+    return (
+      <PendingRead icon={TimerOff} badge="Unlocks when GA4 connects">
+        <span className="font-semibold text-foreground">Coming:</span>{' '}
+        pages where visitors leave fast (and why) — so you can fix the one that&rsquo;s leaking the most traffic.
+      </PendingRead>
+    )
+  }
+  if (data.error && !data.exitRisks?.length) {
+    return (
+      <PendingRead icon={TimerOff} badge="GA4 · Exit analysis">
+        Data temporarily unavailable — check back shortly.
+      </PendingRead>
+    )
+  }
+  if (!data.exitRisks?.length) {
+    return (
+      <div className="rounded-2xl border border-success/15 bg-success/10 p-4">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+          <p className="text-sm">
+            <span className="font-semibold">All your published pages are holding visitors well.</span>{' '}
+            <span className="text-muted-foreground">No high-exit pages to flag — keep publishing consistently.</span>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const worst = data.exitRisks[0]
+  const worstPct = Math.round((worst.bounceRate || 0) * 100)
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+          <TimerOff className="h-4 w-4 text-warning" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-2xs uppercase tracking-wide bg-warning/10 text-warning px-2 py-0.5 rounded-full font-medium">
+            GA4 · Pages leaking traffic
+          </span>
+          <p className="text-sm mt-2 text-muted-foreground">
+            These published pages have the most visitors leaving without engaging.
+            The first one to fix is <span className="font-medium text-foreground">{worst.topic || worst.path}</span> — {worstPct}% of visitors leave quickly.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {data.exitRisks.map((p) => {
+              const pct = Math.round((p.bounceRate || 0) * 100)
+              return (
+                <li key={p.path} className="text-sm rounded-lg border border-border bg-background px-3 py-2 flex items-center justify-between gap-3">
+                  <span className="truncate font-medium min-w-0">{p.topic || p.path}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-2xs text-muted-foreground tabular-nums">{(p.sessions || 0).toLocaleString()} sessions</span>
+                    <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">{pct}% bounce</span>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="text-xs text-muted-foreground mt-3">
+            Fix: a clear hook in the first paragraph, a visible CTA, and ensuring the page loads fast on mobile.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Renders when Search Console is connected — top queries + keyword gaps.
+function SearchQueriesRead({ data }) {
+  if (!data?.connected) {
+    return (
+      <PendingRead icon={Search} badge="Unlocks with Search Console · a separate connect">
+        <span className="font-semibold text-foreground">Coming:</span>{' '}
+        what people type into Google to find you — and the easy searches you&rsquo;re missing a post for.
+        <span className="inline-flex items-center gap-1.5 text-2xs text-muted-foreground ml-1">
+          <PenLine className="h-3 w-3" /> with a suggested post to close the gap
+        </span>
+      </PendingRead>
+    )
+  }
+  if (data.error) {
+    return (
+      <PendingRead icon={Search} badge="Search Console · temporarily unavailable">
+        Data temporarily unavailable — check back shortly.
+      </PendingRead>
+    )
+  }
+
+  const hasGaps = data.gaps?.length > 0
+  const hasQueries = data.topQueries?.length > 0
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+          <Search className="h-4 w-4 text-info" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+            Search Console · 28d
+          </span>
+
+          {hasQueries && (
+            <>
+              <p className="text-sm font-medium mt-3 mb-2">What people search to find you</p>
+              <ul className="space-y-1.5">
+                {data.topQueries.slice(0, 5).map((q) => (
+                  <li key={q.query} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate text-muted-foreground min-w-0">{q.query}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-2xs text-muted-foreground tabular-nums">{q.impressions.toLocaleString()} impressions</span>
+                      <span className="text-2xs tabular-nums">#{Math.round(q.position)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {hasGaps && (
+            <>
+              <p className="text-sm font-medium mt-4 mb-1">
+                <PenLine className="h-3.5 w-3.5 inline mr-1 text-primary" />
+                Searches you&rsquo;re missing a strong post for
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                You show up in Google for these but aren&rsquo;t on page one — a dedicated post could move you up.
+              </p>
+              <ul className="space-y-2">
+                {data.gaps.map((g) => (
+                  <li key={g.query} className="text-sm rounded-lg border border-border bg-background px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium truncate min-w-0">{g.query}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-2xs text-muted-foreground">{g.impressions} impr.</span>
+                        <span className="text-2xs text-muted-foreground">pos #{g.position}</span>
+                        {!g.hasPost && (
+                          <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                            no post yet
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {!hasQueries && !hasGaps && (
+            <p className="text-sm text-muted-foreground mt-3">Still gathering data — check back after a few days of search traffic.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Analytics() {
   useDocumentTitle('Insights')
   const ws = useWorkspace()
@@ -98,7 +343,9 @@ export default function Analytics() {
   const { data: performers = [] } = useTopPerformers()
   const { data: recap } = useWorkspaceRecap()
   const { data: topics } = useTopicSuggestions()
-  const { data: health } = useWebsiteHealth()
+  const { data: health }        = useWebsiteHealth()
+  const { data: websiteGA4 }    = useWebsiteGA4()
+  const { data: searchData }    = useSearchQueries()
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
@@ -136,17 +383,19 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* GA4 pending banner */}
-      <div className="rounded-xl border border-dashed border-primary/40 bg-accent/40 px-4 py-3 mt-5 flex items-start gap-3">
-        <Globe className="h-4 w-4 mt-0.5 shrink-0 text-info" aria-hidden="true" />
-        <p className="text-sm">
-          <span className="font-medium">Website traffic connects soon.</span>{' '}
-          <span className="text-muted-foreground">
-            Right now these reads use your social reach and content data. The moment Google finishes
-            connecting GA4, site visits fold in automatically — same screen, sharper picture. No setup on your end.
-          </span>
-        </p>
-      </div>
+      {/* GA4 pending banner — only when not yet connected */}
+      {!ws?.ga4_property_id && (
+        <div className="rounded-xl border border-dashed border-primary/40 bg-accent/40 px-4 py-3 mt-5 flex items-start gap-3">
+          <Globe className="h-4 w-4 mt-0.5 shrink-0 text-info" aria-hidden="true" />
+          <p className="text-sm">
+            <span className="font-medium">Website traffic connects soon.</span>{' '}
+            <span className="text-muted-foreground">
+              Right now these reads use your social reach and content data. Connect GA4 in Settings → Integrations
+              to fold site visits in automatically — same screen, sharper picture.
+            </span>
+          </p>
+        </div>
+      )}
 
       {/* SECTION 1 — the read */}
       <div className="flex items-center gap-2 mt-7 mb-3">
@@ -190,8 +439,12 @@ export default function Analytics() {
               <span className="font-semibold tabular-nums">{facts.hasReachData ? fmtNum(engagement) : '—'}</span>
             </div>
             <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Website visits</span>
-              <span className="font-semibold tabular-nums text-muted-foreground">— soon</span>
+              <span className="text-muted-foreground">Website sessions (30d)</span>
+              <span className="font-semibold tabular-nums">
+                {websiteGA4?.connected && websiteGA4?.totalPageviews != null
+                  ? websiteGA4.totalPageviews.toLocaleString()
+                  : <span className="text-muted-foreground">—</span>}
+              </span>
             </div>
             {cost.weekTotal > 0 && (
               <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
@@ -293,22 +546,9 @@ export default function Analytics() {
             </div>
           )
         )}
-        <PendingRead icon={LogIn} badge="Unlocks when GA4 connects">
-          <span className="font-semibold text-foreground">Coming:</span>{' '}
-          which pages people land on first and whether they go on to book — the literal{' '}
-          <span className="italic">&ldquo;is the website landing well?&rdquo;</span> read, with the specific fix to make.
-        </PendingRead>
-        <PendingRead icon={TimerOff} badge="Unlocks when GA4 connects">
-          <span className="font-semibold text-foreground">Coming:</span>{' '}
-          pages where visitors leave fast (and why) — so you can fix the one that&rsquo;s leaking the most traffic.
-        </PendingRead>
-        <PendingRead icon={Search} badge="Unlocks with Search Console · a separate connect">
-          <span className="font-semibold text-foreground">Coming:</span>{' '}
-          what people type into Google to find you — and the easy searches you&rsquo;re missing a post for.
-          <span className="inline-flex items-center gap-1.5 text-2xs text-muted-foreground ml-1">
-            <PenLine className="h-3 w-3" /> with a suggested post to close the gap
-          </span>
-        </PendingRead>
+        <LandingPageRead data={websiteGA4} />
+        <ExitAnalysisRead data={websiteGA4} />
+        <SearchQueriesRead data={searchData} />
       </div>
 
       {/* SECTION 4 — what Bernard already did */}

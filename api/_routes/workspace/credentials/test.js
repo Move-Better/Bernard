@@ -25,7 +25,8 @@ import { requireRole, requireCapability } from '../../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../../_lib/capabilities.js'
 import { workspaceContext } from '../../../_lib/workspaceContext.js'
 import { getCredential } from '../../../_lib/getCredential.js'
-import { testGA4Access } from '../../../_lib/ga4.js'
+import { testGA4Access }             from '../../../_lib/ga4.js'
+import { testSearchConsoleAccess }   from '../../../_lib/searchConsole.js'
 
 const TIMEOUT_MS = 8000
 
@@ -154,13 +155,25 @@ async function testGA4({ config, secret }) {
   }
 }
 
+async function testSearchConsole({ config, secret }) {
+  const siteUrl = config?.site_url
+  if (!siteUrl) return { ok: false, error: 'Missing Site URL — paste your Search Console property URL (e.g. https://movebetter.co/ or sc-domain:movebetter.co).' }
+  try {
+    const { totalImpressions } = await testSearchConsoleAccess({ serviceAccountJson: secret, siteUrl })
+    return { ok: true, info: { endpoint: `${siteUrl} · ${totalImpressions.toLocaleString()} impressions (7d)` } }
+  } catch (e) {
+    return { ok: false, error: e?.message || 'Search Console test failed.' }
+  }
+}
+
 const TESTERS = {
-  buffer:       ({ secret }) => testBuffer(secret),
-  wordpress:    testWordPress,
-  astro_github: testBearerEndpoint,
-  website:      testBearerEndpoint,
-  beehiiv:      testBeehiiv,
-  ga4:          testGA4,
+  buffer:          ({ secret }) => testBuffer(secret),
+  wordpress:       testWordPress,
+  astro_github:    testBearerEndpoint,
+  website:         testBearerEndpoint,
+  beehiiv:         testBeehiiv,
+  ga4:             testGA4,
+  searchconsole:   testSearchConsole,
 }
 
 async function handler(req, res) {

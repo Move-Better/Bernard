@@ -109,6 +109,8 @@ export const queryKeys = {
   topicSuggestions: ['topic-suggestions'],
   topPerformers:    ['top-performers'],
   websiteHealth:    ['website-health'],
+  websiteGA4:       ['website-ga4'],
+  searchQueries:    ['search-queries'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   locations: {
     all:  ['locations'],
@@ -737,6 +739,36 @@ export function useWebsiteHealth() {
     queryFn: () =>
       apiFetch('/api/insights/website-health').catch(() => ({ checked: 0, healthy: 0, issues: [] })),
     staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+  })
+}
+
+// ── GA4 website reads (Insights) ──────────────────────────────────────────────
+//
+// Fetches live from the GA4 Data API via /api/insights/website-ga4. Returns
+// { connected, landingPages, exitRisks, totalPageviews, hasKeyEvents } or
+// { connected: false } when GA4 isn't configured. Cached 1h — GA4 data is
+// refreshed daily anyway.
+export function useWebsiteGA4() {
+  return useQuery({
+    queryKey: queryKeys.websiteGA4,
+    queryFn: () =>
+      apiFetch('/api/insights/website-ga4').catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 60, // 1h
+    refetchOnWindowFocus: false,
+  })
+}
+
+// ── Search Console query analysis (Insights) ──────────────────────────────────
+//
+// Returns { connected, topQueries, gaps } from /api/insights/search-queries.
+// Cached 1h — Search Console updates data daily.
+export function useSearchQueries() {
+  return useQuery({
+    queryKey: queryKeys.searchQueries,
+    queryFn: () =>
+      apiFetch('/api/insights/search-queries').catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 60, // 1h
     refetchOnWindowFocus: false,
   })
 }
