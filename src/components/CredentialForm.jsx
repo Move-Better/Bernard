@@ -61,7 +61,7 @@ export default function CredentialForm({
   // test.js can actually probe (Buffer / WordPress / Astro / Website). tdc
   // is provisioned but the tester isn't wired yet — keep it off the allowlist
   // until it is so we don't show a button that can only fail.
-  const TESTABLE = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'beehiiv', 'ga4'])
+  const TESTABLE = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'beehiiv', 'ga4', 'searchconsole'])
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState(null)
   const configured = Boolean(row)
