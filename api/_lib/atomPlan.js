@@ -148,7 +148,12 @@ function atomPlatformsFromEnabledOutputs(enabledOutputs) {
   if (!enabledOutputs) return null
   const set = new Set()
   for (const id of enabledOutputs) {
-    if (id === 'instagram_post' || id === 'instagram_reel' || id === 'instagram_story') set.add('instagram')
+    // instagram_post / instagram_reel share the `instagram` atom platform; but
+    // instagram_story is its own atom platform (see ATOM_DEFINITIONS above), so
+    // it must map to the standalone `instagram_story` key — otherwise no story
+    // atom rows are ever seeded (buildPlanRows skips it as "not allowed").
+    if (id === 'instagram_post' || id === 'instagram_reel') set.add('instagram')
+    else if (id === 'instagram_story') set.add('instagram_story')
     else set.add(id)
   }
   return set
@@ -161,9 +166,10 @@ function atomPlatformsFromEnabledOutputs(enabledOutputs) {
 // the registry-id namespace, like workspaces.enabled_outputs — in sync when a
 // plan channel (atom-platform namespace) is turned on/off. Instagram is the
 // only split: the registry has instagram_post + instagram_reel, both of which
-// key under the `instagram` atom platform.
+// key under the `instagram` atom platform. instagram_story is its own atom
+// platform and maps 1:1 to the instagram_story registry id (default branch).
 export function channelIdsForAtomPlatform(platform) {
-  if (platform === 'instagram') return ['instagram_post', 'instagram_reel', 'instagram_story']
+  if (platform === 'instagram') return ['instagram_post', 'instagram_reel']
   return [platform]
 }
 
