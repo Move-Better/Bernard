@@ -22,28 +22,25 @@ test('interview create flow + integrations page', async ({ page }) => {
   // OrgGate must admit (PR #213 surface): if the JWT lacks org_id, the page
   // sits on the "No access to this workspace" guard and the New Interview
   // link never renders.
+  // ── 1. OrgGate check ─────────────────────────────────────────────────────
+  // Navigate to / and confirm OrgGate admits the user (PR #213 surface): if
+  // the JWT lacks org_id the page stays on the "No access" guard and no
+  // app content renders. We assert the greeting heading (producer Home) or
+  // the Slate heading (non-producer redirect) is visible — whichever variant
+  // the fixture user lands on. Then navigate directly to /new so the rest of
+  // the flow doesn't depend on which home CTA variant is shown.
   await page.goto('/')
-  // Home's primary CTA is the "Start an interview" link (→ /new). (Older
-  // builds labeled it "New interview"; accept both so the smoke is resilient.)
-  const newInterviewLink = page
-    .getByRole('link', { name: /start an interview|new interview/i })
-    .first()
-  await expect(newInterviewLink).toBeVisible({ timeout: 30_000 })
+  await expect(
+    page.getByRole('heading', { name: /good (morning|afternoon|evening)/i })
+      .or(page.getByRole('heading', { name: /^slate$/i }))
+      .first(),
+  ).toBeVisible({ timeout: 30_000 })
 
   // ── 2. Capture-mode picker → New Interview screen ────────────────────────
-  // As of the voice-memo-lane PR, /new is a picker (Interview vs Voice Memo
-  // vs Seminar). The existing "+ New Interview" link routes through the
-  // picker; we click "Start Interview" to land on the original form at
-  // /new/interview.
-  //
-  // The setup form itself is unchanged: single-screen (Staff member + Topic +
-  // tune chips + Start interview). One Start press creates the staff +
-  // interview rows and navigates straight into the session.
-  //
-  // This is the PR #244 surface: without workspace_id filtering on the
-  // staff/interviews POSTs, the create returned "Create failed" with a
-  // 500. We assert (a) no error banner, (b) navigation to the session URL.
-  await newInterviewLink.click()
+  // Navigate directly to /new (the picker). This is the PR #244 surface:
+  // without workspace_id filtering on the staff/interviews POSTs, create
+  // returned "Create failed" with a 500.
+  await page.goto('/new')
   await expect(page).toHaveURL(/\/new$/)
 
   // Picker: click the Interview card. The card is a <button> wrapping a
