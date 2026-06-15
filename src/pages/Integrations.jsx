@@ -126,33 +126,6 @@ const INTEGRATIONS = [
     ],
     docsUrl: 'https://developers.google.com/analytics/devguides/reporting/data/v1',
   },
-  {
-    id: 'searchconsole',
-    label: 'Google Search Console',
-    description:
-      'Read-only. Connects your Google Search Console property so Bernard can see what people type into Google to find you — surfacing high-impression queries you aren\'t ranking for yet, and suggesting posts to close those keyword gaps.',
-    platforms: ['Search analytics'],
-    secretLabel: 'Service-account JSON',
-    secretIsTextarea: true,
-    secretPlaceholder: '{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…", … }',
-    fields: [
-      {
-        key: 'site_url',
-        label: 'Search Console Site URL',
-        placeholder: 'https://movebetter.co/ or sc-domain:movebetter.co',
-        helpText: 'Must match your property in Search Console exactly — URL-prefix properties need a trailing slash.',
-      },
-    ],
-    setupSteps: [
-      'Open Google Search Console (search.google.com/search-console) and confirm your site is verified.',
-      'In Google Cloud Console (console.cloud.google.com), open the same project you used for GA4 (or create a new one) and enable the "Google Search Console API" under APIs & Services → Library.',
-      'Under IAM & Admin → Service Accounts, use the existing service account you created for GA4 (or create a new one). Open it → Keys → Add key → Create new key → JSON if you need a new file.',
-      'Back in Search Console → your property → Settings → Users and permissions → Add user. Enter the service account email (client_email from the JSON) and grant "Full" or "Restricted" access.',
-      'Copy your property URL from Search Console (e.g. "https://movebetter.co/" for a URL-prefix property, or "sc-domain:movebetter.co" for a domain property). Paste it in the Site URL field above.',
-      'Paste the JSON key file contents below, then Save. Click Test connection to confirm Bernard can read your search data.',
-    ],
-    docsUrl: 'https://developers.google.com/webmaster-tools/v1/searchanalytics/query',
-  },
 ]
 
 const EMAIL_MERGE_TAGS = [
@@ -296,6 +269,13 @@ export default function Integrations() {
 
         <GoogleDriveCard
           row={services?.find?.((s) => s.service === 'drive') || null}
+          loading={services === null && isAdmin}
+          disabled={!isAdmin}
+          onChange={reload}
+        />
+
+        <GoogleSearchConsoleCard
+          row={services?.find?.((s) => s.service === 'searchconsole') || null}
           loading={services === null && isAdmin}
           disabled={!isAdmin}
           onChange={reload}
@@ -585,6 +565,171 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
                       <>{testResult.message}</>
                     )}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const GSC_ERROR_COPY = {
+  access_denied:   'You declined the Google permission prompt — no changes saved.',
+  exchange_failed: 'Google rejected the OAuth code. Try connecting again.',
+  persist_failed:  'Connected to Google, but we couldn\'t save the credential. Try again or contact support.',
+}
+
+function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
+  const [open, setOpen] = useState(!row)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const configured   = Boolean(row)
+  const connectedEmail = row?.config?.account_email || null
+  const siteUrl      = row?.config?.site_url || null
+
+  useEffect(() => {
+    const status = searchParams.get('gsc')
+    if (!status) return
+    if (status === 'connected') {
+      toast.success('Google Search Console connected.')
+      onChange?.()
+    } else if (status === 'error') {
+      const reason = searchParams.get('reason') || 'unknown'
+      toast.error(GSC_ERROR_COPY[reason] || `Search Console connect failed: ${reason}`)
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('gsc')
+    next.delete('reason')
+    setSearchParams(next, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleConnect() {
+    setConnecting(true)
+    setTestResult(null)
+    try {
+      const data = await apiFetch('/api/integrations/gsc/connect', { method: 'POST' })
+      if (!data?.url) throw new Error('No OAuth URL returned')
+      window.location.assign(data.url)
+    } catch (err) {
+      setConnecting(false)
+      if (err?.status === 503) {
+        toast.error('Google OAuth isn\'t configured on this deployment yet.')
+      } else if (err?.status === 403) {
+        toast.error('Only workspace admins can connect Search Console.')
+      } else {
+        toast.error(err?.message || 'Couldn\'t start the Google connect flow.')
+      }
+    }
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm('Disconnect Google Search Console for this workspace?')) return
+    setDisconnecting(true)
+    try {
+      await apiFetchResponse('/api/integrations/gsc/disconnect', { method: 'DELETE' })
+      toast.success('Google Search Console disconnected.')
+      setTestResult(null)
+      onChange?.()
+    } catch (err) {
+      toast.error(err?.message || 'Couldn\'t disconnect Search Console.')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const data = await apiFetch('/api/workspace/credentials/test', {
+        method: 'POST',
+        body: JSON.stringify({ service: 'searchconsole' }),
+      })
+      setTestResult({ ok: data.ok, message: data.ok ? (data.info?.endpoint || 'Connection verified.') : data.error })
+    } catch (err) {
+      setTestResult({ ok: false, message: err?.message || 'Test failed.' })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-accent/30 transition-colors text-left"
+      >
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium">Google Search Console</p>
+              {configured ? (
+                <span className="text-3xs uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Connected</span>
+              ) : !loading ? (
+                <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
+              ) : null}
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Read-only. Shows what people type into Google to find you — keyword gaps, high-impression queries you aren&apos;t ranking for yet.
+            </p>
+            {configured && (connectedEmail || siteUrl) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {connectedEmail && <>Connected as <span className="font-medium">{connectedEmail}</span>{siteUrl ? ' · ' : ''}</>}
+                {siteUrl && <span className="font-medium">{siteUrl}</span>}
+              </p>
+            )}
+            <div className="flex gap-1 mt-1.5 flex-wrap">
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Search analytics</span>
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Keyword gaps</span>
+            </div>
+          </div>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-5 border-t pt-4">
+          {!configured ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Click below to sign in with the Google account that owns your Search Console property. Bernard gets read-only access to query data — we never modify anything.
+              </p>
+              <Button onClick={handleConnect} disabled={disabled || connecting}>
+                {connecting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Redirecting to Google…</>
+                ) : (
+                  <>Connect with Google</>
+                )}
+              </Button>
+              {disabled && <p className="text-xs text-muted-foreground mt-2">Admins only.</p>}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={handleTest} disabled={testing}>
+                  {testing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Testing…</> : <>Test connection</>}
+                </Button>
+                <Button variant="outline" onClick={handleConnect} disabled={connecting}>
+                  {connecting ? 'Reconnecting…' : 'Reconnect (switch account)'}
+                </Button>
+                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={disconnecting}>
+                  {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                </Button>
+              </div>
+              {testResult && (
+                <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
+                  testResult.ok
+                    ? 'border-green-200 bg-green-50 text-green-800'
+                    : 'border-destructive/30 bg-destructive/5 text-destructive'
+                }`}>
+                  {testResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                  <span>{testResult.message}</span>
                 </div>
               )}
             </div>

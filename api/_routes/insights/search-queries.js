@@ -69,19 +69,20 @@ export default async function handler(req, res) {
 
   const credRes = await sb(
     `workspace_credentials?workspace_id=eq.${ws.id}&service=eq.searchconsole&status=eq.active` +
-    `&select=secret_ciphertext&limit=1`
+    `&select=secret_ciphertext,config&limit=1`
   )
   if (!credRes.ok) return res.status(200).json({ connected: false, error: 'credential_fetch_failed' })
   const creds = await credRes.json().catch(() => [])
-  const ct = creds?.[0]?.secret_ciphertext
-  if (!ct) return res.status(200).json({ connected: false })
+  const row   = creds?.[0]
+  if (!row?.secret_ciphertext) return res.status(200).json({ connected: false })
 
-  let serviceAccountJson
+  let secret
   try {
-    serviceAccountJson = decryptSecret(ct)
+    secret = decryptSecret(row.secret_ciphertext)
   } catch {
     return res.status(200).json({ connected: false, error: 'credential_decrypt_failed' })
   }
+  const credential = { secret, config: row.config || {} }
 
   // Pull published post topics for gap cross-reference.
   const topicsRes = await sb(
@@ -93,7 +94,7 @@ export default async function handler(req, res) {
 
   let queries
   try {
-    queries = await fetchSearchQueries({ serviceAccountJson, siteUrl: ws.gsc_site_url })
+    queries = await fetchSearchQueries({ credential, siteUrl: ws.gsc_site_url })
   } catch (e) {
     console.error('[insights/search-queries]', e?.message)
     return res.status(200).json({ connected: true, error: 'gsc_fetch_failed', detail: e?.message })

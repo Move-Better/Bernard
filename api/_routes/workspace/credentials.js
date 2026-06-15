@@ -77,11 +77,14 @@ async function handler(req, res) {
     if (!service || !KNOWN_SERVICES.has(service)) {
       return res.status(400).json({ error: 'unknown-service' })
     }
-    // 'drive' is OAuth-only; the credential row is written by the OAuth
-    // callback, not by an admin pasting a secret. Refuse a manual PUT so a
+    // OAuth-only services: credential rows are written by their respective OAuth
+    // callbacks, not by an admin pasting a secret. Refuse manual PUT so a
     // crafted request can't overwrite the refresh token with arbitrary text.
     if (service === 'drive') {
       return res.status(400).json({ error: 'oauth-only', message: 'Google Drive must be connected via /api/integrations/drive/connect.' })
+    }
+    if (service === 'searchconsole') {
+      return res.status(400).json({ error: 'oauth-only', message: 'Search Console must be connected via /api/integrations/gsc/connect.' })
     }
     if (typeof secret !== 'string' || !secret) {
       return res.status(400).json({ error: 'secret-required' })

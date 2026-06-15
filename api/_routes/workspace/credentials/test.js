@@ -157,9 +157,10 @@ async function testGA4({ config, secret }) {
 
 async function testSearchConsole({ config, secret }) {
   const siteUrl = config?.site_url
-  if (!siteUrl) return { ok: false, error: 'Missing Site URL — paste your Search Console property URL (e.g. https://movebetter.co/ or sc-domain:movebetter.co).' }
+  if (!siteUrl) return { ok: false, error: 'No site URL found. Reconnect Search Console via Settings → Integrations.' }
+  const credential = { secret, config: config || {} }
   try {
-    const { totalImpressions } = await testSearchConsoleAccess({ serviceAccountJson: secret, siteUrl })
+    const { totalImpressions } = await testSearchConsoleAccess({ credential, siteUrl })
     return { ok: true, info: { endpoint: `${siteUrl} · ${totalImpressions.toLocaleString()} impressions (7d)` } }
   } catch (e) {
     return { ok: false, error: e?.message || 'Search Console test failed.' }
