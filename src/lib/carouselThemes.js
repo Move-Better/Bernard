@@ -40,33 +40,47 @@ const FALLBACK_BLOCK = {
 }
 
 // ── Built-in themes ─────────────────────────────────────────────────────────
+//
+// Built-ins follow the WHOOP editorial direction (see api/_lib/whoopTemplates.js,
+// the single-photo compositor): a deep-navy ink/ground (#0c1a2e), ONE brand
+// accent on the CTA (bgColor:null → workspace brand_style.accent_color), sage
+// (#83957c) for small uppercase labels, sentence-case bold headlines (the
+// label/page chrome is the only uppercase element), and quiet muted body text.
+// Theme IDs are stable — stories reference them — so only names + block style
+// values change here, never the keys.
+
+const NAVY   = '#0c1a2e'           // WHOOP deep-navy ink/ground
+const SAGE   = '#83957c'           // WHOOP sage (matches workspace colors.accent)
+const PAPER  = 'rgba(246,244,239,0.95)'  // WHOOP paper panel
+const PAPER2 = 'rgba(246,244,239,0.90)'
+const SAGE_PANEL = 'rgba(234,238,234,0.92)'
 
 export const BUILTIN_THEMES = {
   'bold-dark': {
     id: 'bold-dark',
-    name: 'Bold Dark',
+    name: 'Editorial Dark',
     builtin: true,
     blocks: {
-      hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',              shadow: 'medium', background: 'none', bgColor: null,                    uppercase: true  },
-      body:        { fontSize: 'base', fontWeight: 'semibold',  color: '#ffffff',              shadow: 'medium', background: 'none', bgColor: null,                    uppercase: false },
-      caption:     { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.92)', shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
+      hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',              shadow: 'strong', background: 'none', bgColor: null,                    uppercase: false },
+      body:        { fontSize: 'base', fontWeight: 'medium',    color: 'rgba(255,255,255,0.72)', shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
+      caption:     { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.66)', shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
       cta:         { fontSize: 'base', fontWeight: 'bold',      color: '#ffffff',              shadow: 'none',   background: 'pill', bgColor: null,                    uppercase: false },
-      attribution: { fontSize: 'xs',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.9)',  shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: false },
-      page:        { fontSize: 'xs',   fontWeight: 'semibold',  color: 'rgba(255,255,255,0.85)', shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: false },
+      attribution: { fontSize: 'xs',   fontWeight: 'semibold',  color: 'rgba(255,255,255,0.85)', shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: false },
+      page:        { fontSize: 'xs',   fontWeight: 'bold',      color: 'rgba(255,255,255,0.72)', shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: true  },
     },
   },
 
   'warm-light': {
     id: 'warm-light',
-    name: 'Warm Light',
+    name: 'Editorial Light',
     builtin: true,
     blocks: {
-      hook:        { fontSize: 'xl',   fontWeight: 'bold',      color: '#1c1917',              shadow: 'none',   background: 'rect', bgColor: 'rgba(255,251,235,0.92)', uppercase: false },
-      body:        { fontSize: 'base', fontWeight: 'medium',    color: '#44403c',              shadow: 'none',   background: 'rect', bgColor: 'rgba(255,251,235,0.85)', uppercase: false },
-      caption:     { fontSize: 'sm',   fontWeight: 'medium',    color: '#57534e',              shadow: 'none',   background: 'rect', bgColor: 'rgba(255,251,235,0.80)', uppercase: false },
-      cta:         { fontSize: 'base', fontWeight: 'bold',      color: '#9a3412',              shadow: 'none',   background: 'pill', bgColor: 'rgba(254,215,170,0.95)', uppercase: false },
-      attribution: { fontSize: 'xs',   fontWeight: 'medium',    color: '#ffffff',              shadow: 'soft',   background: 'none', bgColor: null,                    uppercase: false },
-      page:        { fontSize: 'xs',   fontWeight: 'semibold',  color: 'rgba(255,255,255,0.85)', shadow: 'soft',  background: 'none', bgColor: null,                   uppercase: false },
+      hook:        { fontSize: 'xl',   fontWeight: 'bold',      color: NAVY,                   shadow: 'none',   background: 'rect', bgColor: PAPER,                    uppercase: false },
+      body:        { fontSize: 'base', fontWeight: 'medium',    color: '#475569',              shadow: 'none',   background: 'rect', bgColor: PAPER2,                   uppercase: false },
+      caption:     { fontSize: 'sm',   fontWeight: 'medium',    color: '#475569',              shadow: 'none',   background: 'rect', bgColor: SAGE_PANEL,               uppercase: false },
+      cta:         { fontSize: 'base', fontWeight: 'bold',      color: '#ffffff',              shadow: 'none',   background: 'pill', bgColor: null,                    uppercase: false },
+      attribution: { fontSize: 'xs',   fontWeight: 'semibold',  color: NAVY,                   shadow: 'none',   background: 'rect', bgColor: PAPER,                    uppercase: false },
+      page:        { fontSize: 'xs',   fontWeight: 'bold',      color: SAGE,                   shadow: 'soft',   background: 'none', bgColor: null,                    uppercase: true  },
     },
   },
 
@@ -75,12 +89,12 @@ export const BUILTIN_THEMES = {
     name: 'Brand',
     builtin: true,
     blocks: {
-      hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',              shadow: 'medium', background: 'none', bgColor: null,                    uppercase: false },
-      body:        { fontSize: 'base', fontWeight: 'medium',    color: 'rgba(255,255,255,0.9)',  shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
-      caption:     { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.88)', shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
+      hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',              shadow: 'strong', background: 'none', bgColor: null,                    uppercase: false },
+      body:        { fontSize: 'base', fontWeight: 'medium',    color: 'rgba(255,255,255,0.88)', shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
+      caption:     { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.82)', shadow: 'medium', background: 'none', bgColor: null,                  uppercase: false },
       cta:         { fontSize: 'base', fontWeight: 'bold',      color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: null,                    uppercase: false },
       attribution: { fontSize: 'xs',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.9)',  shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: false },
-      page:        { fontSize: 'xs',   fontWeight: 'semibold',  color: 'rgba(255,255,255,0.85)', shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: false },
+      page:        { fontSize: 'xs',   fontWeight: 'semibold',  color: 'rgba(255,255,255,0.78)', shadow: 'soft',   background: 'none', bgColor: null,                  uppercase: true  },
     },
   },
 
@@ -90,11 +104,11 @@ export const BUILTIN_THEMES = {
     builtin: true,
     blocks: {
       hook:        { fontSize: 'xl',   fontWeight: 'semibold',  color: '#ffffff',              shadow: 'soft',   background: 'none', bgColor: null,                    uppercase: false },
-      body:        { fontSize: 'sm',   fontWeight: 'normal',    color: 'rgba(255,255,255,0.75)', shadow: 'soft',  background: 'none', bgColor: null,                   uppercase: false },
-      caption:     { fontSize: 'sm',   fontWeight: 'normal',    color: 'rgba(255,255,255,0.65)', shadow: 'soft',  background: 'none', bgColor: null,                   uppercase: false },
-      cta:         { fontSize: 'sm',   fontWeight: 'semibold',  color: '#ffffff',              shadow: 'none',   background: 'pill', bgColor: 'rgba(255,255,255,0.18)', uppercase: false },
-      attribution: { fontSize: 'xs',   fontWeight: 'normal',    color: 'rgba(255,255,255,0.6)',  shadow: 'none',   background: 'none', bgColor: null,                  uppercase: false },
-      page:        { fontSize: 'xs',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.55)', shadow: 'none',   background: 'none', bgColor: null,                  uppercase: false },
+      body:        { fontSize: 'sm',   fontWeight: 'normal',    color: 'rgba(255,255,255,0.78)', shadow: 'soft',  background: 'none', bgColor: null,                   uppercase: false },
+      caption:     { fontSize: 'sm',   fontWeight: 'normal',    color: 'rgba(255,255,255,0.66)', shadow: 'soft',  background: 'none', bgColor: null,                   uppercase: false },
+      cta:         { fontSize: 'sm',   fontWeight: 'semibold',  color: '#ffffff',              shadow: 'none',   background: 'pill', bgColor: 'rgba(12,26,46,0.55)',    uppercase: false },
+      attribution: { fontSize: 'xs',   fontWeight: 'normal',    color: 'rgba(255,255,255,0.62)', shadow: 'none',   background: 'none', bgColor: null,                  uppercase: false },
+      page:        { fontSize: 'xs',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.58)', shadow: 'none',   background: 'none', bgColor: null,                  uppercase: true  },
     },
   },
 
@@ -103,12 +117,12 @@ export const BUILTIN_THEMES = {
     name: 'High Contrast',
     builtin: true,
     blocks: {
-      hook:        { fontSize: 'xl',   fontWeight: 'extrabold', color: '#000000',              shadow: 'none',   background: 'rect', bgColor: '#ffffff',                uppercase: false },
-      body:        { fontSize: 'base', fontWeight: 'bold',      color: '#000000',              shadow: 'none',   background: 'rect', bgColor: 'rgba(255,255,255,0.92)', uppercase: false },
-      caption:     { fontSize: 'sm',   fontWeight: 'semibold',  color: '#000000',              shadow: 'none',   background: 'rect', bgColor: 'rgba(255,255,255,0.88)', uppercase: false },
-      cta:         { fontSize: 'base', fontWeight: 'extrabold', color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: '#000000',                uppercase: true  },
-      attribution: { fontSize: 'xs',   fontWeight: 'bold',      color: '#000000',              shadow: 'none',   background: 'rect', bgColor: 'rgba(255,255,255,0.88)', uppercase: false },
-      page:        { fontSize: 'xs',   fontWeight: 'bold',      color: '#000000',              shadow: 'none',   background: 'rect', bgColor: '#ffffff',                uppercase: false },
+      hook:        { fontSize: 'xl',   fontWeight: 'extrabold', color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: NAVY,                     uppercase: false },
+      body:        { fontSize: 'base', fontWeight: 'bold',      color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: 'rgba(12,26,46,0.92)',    uppercase: false },
+      caption:     { fontSize: 'sm',   fontWeight: 'semibold',  color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: 'rgba(12,26,46,0.88)',    uppercase: false },
+      cta:         { fontSize: 'base', fontWeight: 'extrabold', color: NAVY,                   shadow: 'none',   background: 'rect', bgColor: '#ffffff',                uppercase: true  },
+      attribution: { fontSize: 'xs',   fontWeight: 'bold',      color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: 'rgba(12,26,46,0.88)',    uppercase: false },
+      page:        { fontSize: 'xs',   fontWeight: 'bold',      color: '#ffffff',              shadow: 'none',   background: 'rect', bgColor: NAVY,                     uppercase: true  },
     },
   },
 }

@@ -591,7 +591,10 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
   const blockH = lines.length * typo.lineH + PAD_H * 2
   let y = anchorY - (lines.length - 1) * typo.lineH
 
-  if (typo.background === 'rect' && typo.bgColor) {
+  if (typo.background === 'rect') {
+    // A `rect` block with no explicit bgColor inherits the brand accent —
+    // same `null = brand accent` semantic the pill background already uses.
+    const rectColor = typo.bgColor || brandAccent(brandStyle)
     // Measure widest line for the background rect
     const maxLineW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0)
     const rectW = maxLineW + PAD_W * 2
@@ -600,7 +603,7 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
     else if (align === 'right') rectX = anchorX - maxLineW - PAD_W
     else                        rectX = anchorX - maxLineW / 2 - PAD_W
     const rectY = y - typo.lineH - PAD_H
-    ctx.fillStyle = typo.bgColor
+    ctx.fillStyle = rectColor
     ctx.fillRect(rectX, rectY, rectW, blockH)
   }
 
