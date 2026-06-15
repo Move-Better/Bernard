@@ -414,7 +414,7 @@ export default function Slate() {
     <div className="flex flex-col gap-4">
       {/* Page heading */}
       <div className="flex items-end gap-2 mt-1">
-        <h1 className="text-xl font-semibold">Slate</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Slate</h1>
         <span className="text-muted-foreground text-sm mb-0.5">
           · turn raw video into clips — each becomes a post or reusable b-roll
         </span>
@@ -438,8 +438,16 @@ export default function Slate() {
           >
             <Sparkles className="h-3.5 w-3.5" />
             Ready to review{' '}
-            {!isLoading && (
-              <span className="opacity-70">{clipsToReviewVideos.length}</span>
+            {!isLoading && clipsToReviewVideos.length > 0 && (
+              <span
+                className={
+                  view === 'clips_to_review'
+                    ? 'opacity-80'
+                    : 'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-action text-action-foreground text-3xs font-bold'
+                }
+              >
+                {clipsToReviewVideos.length}
+              </span>
             )}
           </button>
           <button

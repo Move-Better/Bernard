@@ -45,7 +45,7 @@ function Lane({ lane, items, isPublisherInbox }) {
   // so the "do this now" lane visually pops above the others. Other lanes
   // stay on neutral card surface.
   const surface = isPublisherInbox
-    ? 'border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]'
+    ? 'border-primary/30 bg-gradient-to-b from-white to-[hsl(var(--primary)/0.05)] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(12,117,128,0.25)]'
     : 'border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
   return (
     <div className={`rounded-2xl border p-3 ${surface}`}>
@@ -91,7 +91,7 @@ function VoiceDriftChip({ provenance }) {
   const { verbatim_pct = 0, paraphrase_pct = 0 } = provenance.summary
   const ownWords = Math.round(verbatim_pct + paraphrase_pct)
   if (ownWords === 0) return null
-  const color = ownWords >= 60 ? 'text-emerald-700 bg-emerald-50' : ownWords >= 35 ? 'text-amber-700 bg-amber-50' : 'text-slate-600 bg-slate-50'
+  const color = ownWords >= 60 ? 'text-agreement-signal bg-agreement-signal/10' : ownWords >= 35 ? 'text-amber-700 bg-amber-50' : 'text-slate-600 bg-slate-50'
   return (
     <span className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-3xs font-medium ${color}`}>
       {ownWords}% voice

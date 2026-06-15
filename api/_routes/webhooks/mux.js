@@ -34,7 +34,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // decodes any codec/container reliably — H.264, HEVC, non-faststart .mov —
 // where the local ffmpeg-static path is fragile (truncated downloads, codec
 // gaps). Returns the rehosted URL, or null on any failure (non-fatal).
-async function rehostMuxThumbnail(playbackId, assetId) {
+async function rehostMuxThumbnail(playbackId, assetId, workspaceId) {
   try {
     const token = muxSignedConfigured()
       ? mintPlaybackToken({ playbackId, audience: 't', expiresInSec: 300 })
@@ -45,8 +45,21 @@ async function rehostMuxThumbnail(playbackId, assetId) {
       console.error(`[mux/webhook] Mux thumbnail fetch failed: ${res.status}`)
       return null
     }
+    // Mux thumbnails are small JPEGs; guard against an unexpectedly large body
+    // before buffering it into memory (CLAUDE.md large-file rule).
+    const len = Number(res.headers.get('content-length') || 0)
+    if (len && len > 25 * 1024 * 1024) {
+      console.error(`[mux/webhook] thumbnail too large (${len} bytes); skipping rehost`)
+      return null
+    }
     const buf = Buffer.from(await res.arrayBuffer())
-    const uploaded = await blobPut(`media/thumbs/${assetId}.jpg`, buf, {
+    // Namespace the blob key by the immutable workspace UUID so thumbnail keys
+    // aren't a flat, cross-tenant-predictable namespace (CLAUDE.md blob rule).
+    // Fall back to the unscoped key if the workspace couldn't be resolved.
+    const key = workspaceId
+      ? `media/thumbs/${workspaceId}/${assetId}.jpg`
+      : `media/thumbs/${assetId}.jpg`
+    const uploaded = await blobPut(key, buf, {
       access: 'public',
       contentType: 'image/jpeg',
       addRandomSuffix: true,
@@ -227,17 +240,19 @@ export default async function handler(req, res) {
     // up the row's current thumbnail_url first so we never clobber a good
     // ffmpeg thumbnail or a user-chosen frame.
     if (playbackId) {
-      const lookup = await sb(`media_assets?${filterByAsset}&select=id,thumbnail_url`).catch(() => null)
+      const lookup = await sb(`media_assets?${filterByAsset}&select=id,thumbnail_url,workspace_id`).catch(() => null)
       let rowId = null
       let hasThumb = false
+      let rowWsId = null
       if (lookup?.ok) {
         const r = (await lookup.json().catch(() => []))?.[0]
         rowId = r?.id || null
         hasThumb = !!r?.thumbnail_url
+        rowWsId = r?.workspace_id || null
       }
       if (!rowId && passthrough) rowId = passthrough
       if (rowId && !hasThumb) {
-        const thumbUrl = await rehostMuxThumbnail(playbackId, rowId)
+        const thumbUrl = await rehostMuxThumbnail(playbackId, rowId, rowWsId)
         if (thumbUrl) patch.thumbnail_url = thumbUrl
       }
     }

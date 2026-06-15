@@ -260,7 +260,7 @@ function ReadyCard({ piece }) {
     <div className="relative group">
       <Link
         to={`/publish/${piece.id}/schedule`}
-        className="block rounded-lg border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(16,185,129,0.3)] hover:-translate-y-0.5"
+        className="block rounded-lg border border-primary/30 bg-gradient-to-b from-white to-[hsl(var(--primary)/0.05)] p-3 transition-all hover:shadow-[0_4px_12px_-8px_rgba(12,117,128,0.3)] hover:-translate-y-0.5"
       >
         <div className="flex items-start justify-between gap-2">
           <Badge variant="outline" className="gap-1 text-2xs">

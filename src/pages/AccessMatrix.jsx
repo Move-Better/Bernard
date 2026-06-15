@@ -199,7 +199,7 @@ export default function AccessMatrix() {
 
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-        <Legend swatch="bg-[#ecfdf5] text-[#059669]" icon={<Check className="h-3 w-3" />} label="tier default on" />
+        <Legend swatch="bg-agreement-signal/10 text-agreement-signal" icon={<Check className="h-3 w-3" />} label="tier default on" />
         <Legend swatch="bg-[#faf0eb] text-[#c04d18] ring-1 ring-[#fde0d2]" icon={<Check className="h-3 w-3" />} label="custom grant" />
         <Legend swatch="bg-[#f8fafc] text-[#cbd5e1]" icon={<Minus className="h-3 w-3" />} label="off" />
         <Legend swatch="bg-white ring-1 ring-[#e2e8f0] text-[#94a3b8]" icon={<Lock className="h-2.5 w-2.5" />} label="owner-only" />
@@ -358,7 +358,7 @@ function Cell({ person, st, onClick }) {
   }
   let cls
   if (st.hasOverride && st.effective) cls = 'bg-[#faf0eb] text-[#c04d18] ring-2 ring-[#fde0d2]'
-  else if (st.effective) cls = 'bg-[#ecfdf5] text-[#059669]'
+  else if (st.effective) cls = 'bg-agreement-signal/10 text-agreement-signal'
   else cls = 'bg-[#f8fafc] text-[#cbd5e1]'
   const icon = st.effective ? <Check className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />
 
@@ -404,8 +404,8 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
 
   if (total === 0) {
     return (
-      <div className="rounded-xl border border-[#d1fae5] bg-[#ecfdf5] px-4 py-3 flex items-center gap-2.5">
-        <UserCheck className="h-4 w-4 text-[#059669] shrink-0" />
+      <div className="rounded-xl border border-agreement-signal/20 bg-agreement-signal/10 px-4 py-3 flex items-center gap-2.5">
+        <UserCheck className="h-4 w-4 text-agreement-signal shrink-0" />
         <p className="text-2xs text-[#065f46]">
           <b>All reconciled.</b> Everyone who can sign in has exactly one profile here — no strays, no duplicates.
         </p>

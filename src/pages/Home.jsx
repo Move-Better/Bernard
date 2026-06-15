@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { FileText, Clock, Loader2, RefreshCw, ChevronRight, Send } from 'lucide-react'
+import { FileText, Clock, Loader2, RefreshCw, ChevronRight, Send, Mic2 } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
 import { Button } from '@/components/ui/button'
 import { useStories, useStaffSummaries } from '@/lib/queries'
@@ -202,7 +202,7 @@ export default function Home() {
             to="/new"
             className="inline-flex items-center gap-2 bg-white text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-slate-100 text-sm"
           >
-            <Send className="h-4 w-4" aria-hidden="true" />
+            <Mic2 className="h-4 w-4" aria-hidden="true" />
             Start an interview
           </Link>
         </div>
