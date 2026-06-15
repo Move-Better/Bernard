@@ -86,10 +86,16 @@ setup('authenticate fixture user', async ({ page }) => {
     // user.unsafeMetadata.seenAnnouncements).
   }
 
+  // Home renders a greeting <h1> ("Good morning/afternoon/evening, <name>")
+  // via greetingFor(). Fall back to the "new interview" CTA (still present on
+  // the producer Home) and the Slate heading (where non-producer users land
+  // after the /slate redirect) so the fixture is resilient to which surface
+  // the test user is admitted to.
   await expect(
-    page.getByRole('link', { name: /new interview/i })
+    page.getByRole('heading', { name: /good (morning|afternoon|evening)/i })
+      .or(page.getByRole('link', { name: /new interview/i }))
       .or(page.getByRole('button', { name: /new interview/i }))
-      .or(page.getByRole('heading', { name: /dashboard/i }))
+      .or(page.getByRole('heading', { name: /^slate$/i }))
       .first(),
   ).toBeVisible({ timeout: 30_000 })
 

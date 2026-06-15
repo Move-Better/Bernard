@@ -23,7 +23,11 @@ test('interview create flow + integrations page', async ({ page }) => {
   // sits on the "No access to this workspace" guard and the New Interview
   // link never renders.
   await page.goto('/')
-  const newInterviewLink = page.getByRole('link', { name: /new interview/i }).first()
+  // Home's primary CTA is the "Start an interview" link (→ /new). (Older
+  // builds labeled it "New interview"; accept both so the smoke is resilient.)
+  const newInterviewLink = page
+    .getByRole('link', { name: /start an interview|new interview/i })
+    .first()
   await expect(newInterviewLink).toBeVisible({ timeout: 30_000 })
 
   // ── 2. Capture-mode picker → New Interview screen ────────────────────────
@@ -48,7 +52,15 @@ test('interview create flow + integrations page', async ({ page }) => {
   await page.getByRole('button', { name: /^interview/i }).first().click()
   await expect(page).toHaveURL(/\/new\/interview/)
 
-  await page.getByLabel(/^staff member$/i).fill(FIXTURE_STAFF)
+  // Staff field is now a "Who's talking?" avatar-pill picker with a free-text
+  // "Other name…" input for names not already on staff (our fixture name).
+  // When no staff exist yet, it falls back to a single #staff input. The
+  // <Label> isn't associated with a control, so target the input directly.
+  await page
+    .getByPlaceholder(/other name/i)
+    .or(page.locator('#staff'))
+    .first()
+    .fill(FIXTURE_STAFF)
   await page.getByLabel(/^topic/i).fill('E2E smoke topic — safe to delete')
   await page.getByRole('button', { name: /start interview/i }).click()
 
