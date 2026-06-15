@@ -96,6 +96,18 @@ The legacy `brands/<id>/` filesystem-overlay pattern and the `VITE_BRAND` / `BRA
 
 **Cross-workspace data isolation** is enforced at the API layer, not at the database layer: there is no RLS on the public schema (service_role bypasses anyway). Every API route that touches tenant-scoped tables must call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`. Forgetting that = cross-tenant data leak. Treat the workspace_id filter the same way you'd treat an authorization check.
 
+## Google Search Console — OAuth, not service accounts (sc-domain: 403s)
+
+GSC analytics (`/analytics` page, `api/_routes/insights/search-queries.js`, `api/_lib/searchConsole.js`) authenticates via **per-workspace OAuth**, not a service-account JSON. The connect flow is `api/_routes/integrations/gsc/{connect,callback,disconnect}.js` + `api/_lib/gscAuth.js`, mirroring the Drive OAuth pattern (HMAC-signed state, refresh token encrypted in `workspace_credentials`, `config.token_type === 'oauth'`). It reuses the Drive OAuth client (`GOOGLE_DRIVE_CLIENT_ID/SECRET` fallback) — one extra redirect URI (`https://withbernard.ai/api/integrations/gsc/callback`) covers both.
+
+Why OAuth and not the service-account path used by GA4: **domain properties (`sc-domain:…`) 403 for service accounts forever** — the API caller must be a verified owner, and a service account can never satisfy DNS verification even when shown as a "Full" user in the SC UI. OAuth as a human account that owns the property is the only path. (GA4 still uses service-account JSON — that limitation is GSC-domain-property-specific.)
+
+Three real bugs hit while shipping this (2026-06-15), all worth knowing:
+
+- **A 403 when the connected account IS a property owner = the Search Console API is disabled in the OAuth client's GCP project**, NOT a missing user grant. These are indistinguishable unless you surface Google's error body — `searchConsole.js` now appends `text.slice(0,300)` to the 403 message for exactly this reason. Fix is in Google Cloud Console → enable "Google Search Console API" on the project that owns the OAuth client. (Hours lost assuming it was an account-permissions issue.)
+- **`detectSiteUrl` / any GSC call must use `searchconsole.googleapis.com`**, never the legacy `www.googleapis.com/webmasters/v3/sites` host — the legacy host silently returns null for the sites list, which left `config.site_url` unset at connect time. The site URL is always mirrored to `workspaces.gsc_site_url`, and both the insights read and the test endpoint fall back to it, so a null `config.site_url` is non-fatal — but fix the host so fresh connects populate config cleanly.
+- **`apiFetch` does NOT auto-set `Content-Type: application/json`** — a POST whose body must be parsed by a Node handler (`req.body`) needs the header set explicitly, or Vercel leaves `req.body` empty and the handler sees `undefined` fields (symptom here: the test button returned `unsupported-service` because `service` arrived empty). `CredentialForm` sets the header; new callers must too.
+
 ## API handler runtime conventions
 Vercel `/api/*` handlers must match the configured runtime — the runtime flag alone isn't enough. Mismatched handler shapes either crash with a `TypeError` or, worse, **silently hang until the 300s function timeout** (the client just spins forever).
 
