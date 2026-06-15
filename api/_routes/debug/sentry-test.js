@@ -14,8 +14,11 @@ async function handler(req, res) {
   if (process.env.SENTRY_DEBUG_ENABLED !== '1') {
     return res.status(404).json({ error: 'not-found' })
   }
-  await workspaceContext(req)
-  const auth = await requireRole(req, ['admin'])
+  const workspace = await workspaceContext(req)
+  // Bind the role check to THIS workspace's Clerk org so an admin of another
+  // workspace can't pass the gate on this subdomain (defense-in-depth — the
+  // endpoint has no data access, but keep the canonical pattern).
+  const auth = await requireRole(req, ['admin'], { orgId: workspace?.clerk_org_id })
   if (!auth.ok) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })

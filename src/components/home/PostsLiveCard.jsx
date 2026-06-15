@@ -67,16 +67,16 @@ export default function PostsLiveCard({ stories = [], userId }) {
   if (live.length === 0) return null
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]">
-      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-emerald-100">
-        <PartyPopper className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-        <h2 className="text-base font-bold tracking-tight text-emerald-800 flex-1">Your posts are live</h2>
+    <div className="rounded-2xl overflow-hidden border border-agreement-signal/25 bg-gradient-to-b from-agreement-signal/5 to-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-agreement-signal/15">
+        <PartyPopper className="h-4 w-4 text-agreement-signal" aria-hidden="true" />
+        <h2 className="text-base font-bold tracking-tight text-agreement-signal flex-1">Your posts are live</h2>
         <span className="nx-pill nx-pill-emerald">
           {live.length} {live.length === 1 ? 'this week' : 'this week'}
         </span>
       </div>
 
-      <div className="divide-y divide-emerald-50">
+      <div className="divide-y divide-agreement-signal/10">
         {live.map((item) => {
           const labels = platformLabels(item.platforms)
           const Icon = item.hasVideo ? Play : Image
@@ -84,7 +84,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
             <Link
               key={item.storyId}
               to={`/stories/${item.storyId}`}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-emerald-50/40 transition-colors group"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-agreement-signal/5 transition-colors group"
             >
               <div className="h-11 w-11 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
                 <Icon className="h-5 w-5" aria-hidden="true" />
@@ -96,7 +96,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
                   {labels.length ? ` · ${labels.join(', ')}` : ''}
                 </p>
               </div>
-              <span className="text-xs font-semibold text-emerald-700 inline-flex items-center gap-0.5 shrink-0 group-hover:underline underline-offset-2">
+              <span className="text-xs font-semibold text-agreement-signal inline-flex items-center gap-0.5 shrink-0 group-hover:underline underline-offset-2">
                 View post <ChevronRight className="h-3 w-3" />
               </span>
             </Link>
@@ -104,7 +104,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
         })}
       </div>
 
-      <div className="px-4 py-2.5 bg-emerald-50/60 text-2xs text-emerald-700 flex items-center gap-1.5">
+      <div className="px-4 py-2.5 bg-agreement-signal/5 text-2xs text-agreement-signal flex items-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         Reach &amp; “how’d you hear about us?” will land here next — closing the outcome loop.
       </div>

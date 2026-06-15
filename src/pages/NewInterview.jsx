@@ -340,6 +340,7 @@ export default function NewInterview() {
                     <button
                       key={s.id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => setStaffName(s.name)}
                       className={`inline-flex items-center gap-2 rounded-full border-2 pl-1 pr-3 py-1 transition-all ${
                         isSelected

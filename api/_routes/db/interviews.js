@@ -405,30 +405,36 @@ export default async function handler(req, res) {
       }
 
       // Auto-create content_plan_atoms once per interview (idempotent).
-      try {
-        const planExistsRes = await sb(
-          `content_plan_atoms?interview_id=eq.${id}&${wsFilter}&select=id&limit=1`
-        )
-        const planExists = planExistsRes.ok && (await planExistsRes.json()).length > 0
-        if (!planExists) {
-          // Per-story selection (interviews.selected_outputs) overrides the
-          // workspace default when set; null inherits ws.enabled_outputs.
-          const planRows = buildPlanRows(id, ws.id, rows[0].selected_outputs ?? ws.enabled_outputs ?? [])
-          if (planRows.length > 0) {
-            const atomRes = await sb('content_plan_atoms', {
-              method: 'POST',
-              body: JSON.stringify(planRows),
-              headers: { Prefer: 'return=minimal' },
-            })
-            if (!atomRes.ok) {
-              const body = await atomRes.text().catch(() => '')
-              console.error(`[db/interviews] content_plan_atoms insert ${atomRes.status} for interview=${id} ws=${ws.slug}: ${body.slice(0, 500)}`)
+      // Dispatched via waitUntil so it never blocks the response AND is not
+      // dropped when the Node instance freezes on response send — a bare
+      // inline await here can be cut short under load (see CLAUDE.md
+      // "fire-and-forget enrichment off a handler must use waitUntil()").
+      waitUntil((async () => {
+        try {
+          const planExistsRes = await sb(
+            `content_plan_atoms?interview_id=eq.${id}&${wsFilter}&select=id&limit=1`
+          )
+          const planExists = planExistsRes.ok && (await planExistsRes.json()).length > 0
+          if (!planExists) {
+            // Per-story selection (interviews.selected_outputs) overrides the
+            // workspace default when set; null inherits ws.enabled_outputs.
+            const planRows = buildPlanRows(id, ws.id, rows[0].selected_outputs ?? ws.enabled_outputs ?? [])
+            if (planRows.length > 0) {
+              const atomRes = await sb('content_plan_atoms', {
+                method: 'POST',
+                body: JSON.stringify(planRows),
+                headers: { Prefer: 'return=minimal' },
+              })
+              if (!atomRes.ok) {
+                const body = await atomRes.text().catch(() => '')
+                console.error(`[db/interviews] content_plan_atoms insert ${atomRes.status} for interview=${id} ws=${ws.slug}: ${body.slice(0, 500)}`)
+              }
             }
           }
+        } catch (e) {
+          console.error(`[db/interviews] content_plan_atoms block threw for interview=${id} ws=${ws.slug}: ${e?.message}`)
         }
-      } catch (e) {
-        console.error(`[db/interviews] content_plan_atoms block threw for interview=${id} ws=${ws.slug}: ${e?.message}`)
-      }
+      })())
 
       // Mark the workspace's book stale so the next cron run (or a manual
       // regenerate click) weaves this newly-completed interview in. Covers

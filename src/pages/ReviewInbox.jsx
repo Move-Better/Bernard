@@ -272,7 +272,7 @@ export default function ReviewInbox() {
           {/* Bulk action bar — appears once anything is selected. Warm-orange
               "act now" treatment matching the publisher-inbox surfaces. */}
           {selected.size > 0 && (
-            <div className="sticky top-14 z-30 rounded-xl border border-primary/40 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_8px_24px_-18px_rgba(16,185,129,0.5)] px-4 py-2.5 flex items-center gap-3">
+            <div className="sticky top-14 z-30 rounded-xl border border-primary/40 bg-gradient-to-b from-white to-[hsl(var(--primary)/0.05)] shadow-[0_8px_24px_-18px_rgba(12,117,128,0.5)] px-4 py-2.5 flex items-center gap-3">
               <span className="inline-block w-1 h-6 rounded-full bg-primary shrink-0" aria-hidden="true" />
               <span className="text-sm font-bold">{selected.size} selected</span>
               <button

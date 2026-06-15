@@ -81,9 +81,9 @@ export default function Overview() {
 
       {/* "What needs me" banner — role-aware, hides when queue is empty */}
       {showPublisherBanner && readyToDistribute.length > 0 && (
-        <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[#f4fbf8] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.22)] px-5 py-4 flex items-center gap-3">
-          <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-primary" aria-hidden="true" />
-          <Inbox className="h-4 w-4 text-primary shrink-0" />
+        <div className="rounded-2xl border border-action/30 bg-gradient-to-b from-white to-[#fffbf2] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(217,119,6,0.22)] px-5 py-4 flex items-center gap-3">
+          <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
+          <Inbox className="h-4 w-4 text-action shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground">
               Your queue: {readyToDistribute.length} post{readyToDistribute.length === 1 ? '' : 's'} ready to go out the door.
@@ -94,7 +94,7 @@ export default function Overview() {
           </div>
           <Link
             to="/publish"
-            className="shrink-0 inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             Work the inbox →
           </Link>

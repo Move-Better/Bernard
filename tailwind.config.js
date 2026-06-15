@@ -62,7 +62,7 @@ export default {
         'warning':          'hsl(var(--warning) / <alpha-value>)',
         'info':             'hsl(var(--info) / <alpha-value>)',
         // Act-now signal (amber) — see src/index.css. Distinct from --primary
-        // (emerald brand) and --success (emerald "done") so "do this now" never
+        // (Blue Spruce brand) and --success (emerald "done") so "do this now" never
         // reads as "already done". Enables bg-action/10, border-action/40, etc.
         'action': {
           DEFAULT:    'hsl(var(--action) / <alpha-value>)',
