@@ -18,6 +18,7 @@ import {
 export const PLATFORM_META = {
   blog:         { label: 'Blog Post',       icon: FileText,   color: 'text-slate-600',  bg: 'bg-slate-100' },
   instagram:    { label: 'Instagram',       icon: Instagram,  color: 'text-pink-600',   bg: 'bg-pink-50' },
+  instagram_story:{ label: 'Instagram Story', icon: Instagram, color: 'text-pink-600',   bg: 'bg-pink-50' },
   facebook:     { label: 'Facebook',        icon: Facebook,   color: 'text-blue-600',   bg: 'bg-blue-50' },
   linkedin:     { label: 'LinkedIn',        icon: Linkedin,   color: 'text-sky-700',    bg: 'bg-sky-50' },
   gbp:          { label: 'Google Business', icon: MapPin,     color: 'text-green-700',  bg: 'bg-green-50' },
@@ -59,7 +60,7 @@ export const PLATFORM_FAMILY_PILL = {
 const PLATFORM_TO_FAMILY = {
   blog: 'blog', landing_page: 'blog',
   email: 'email',
-  instagram: 'social', facebook: 'social', linkedin: 'social',
+  instagram: 'social', instagram_story: 'social', facebook: 'social', linkedin: 'social',
   tiktok: 'social', youtube: 'social', twitter: 'social',
   gbp: 'local',
 }

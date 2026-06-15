@@ -80,7 +80,7 @@ export function suggestHashtags(contentItemId) {
 // to Buffer GBP profile IDs via workspace_locations.gbp_location_id. Empty/
 // missing means "fan out to every active location with a Buffer GBP channel".
 const BUFFER_PLATFORMS = [
-  'instagram', 'facebook', 'linkedin',
+  'instagram', 'instagram_story', 'facebook', 'linkedin',
   'tiktok', 'youtube_short', 'youtube', 'twitter', 'threads', 'bluesky', 'mastodon',
   'gbp',
 ]
