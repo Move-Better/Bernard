@@ -649,6 +649,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
     try {
       const data = await apiFetch('/api/workspace/credentials/test', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ service: 'searchconsole' }),
       })
       setTestResult({ ok: data.ok, message: data.ok ? (data.info?.endpoint || 'Connection verified.') : data.error })
