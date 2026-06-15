@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useCarouselThemes,
   useCreateCarouselTheme,
@@ -13,6 +14,15 @@ import {
   FONT_WEIGHT_CSS,
   defaultBlockConfig,
 } from '@/lib/carouselThemes'
+
+// Resolve the brand accent the SAME way the canvas renderer does
+// (brandAccent() in overlayTemplates.js reads brand_style.accent_color), so a
+// `bgColor: null` CTA previews in the workspace's real accent — not a stray
+// hardcoded orange. Falls back to the Bernard product color when unset.
+function useBrandAccent() {
+  const workspace = useWorkspace()
+  return workspace?.brand_style?.accent_color || workspace?.colors?.primary || '#0c7580'
+}
 
 const BLOCK_ROLES_ORDERED = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
 const ROLE_LABELS = { hook: 'Hook', body: 'Body', caption: 'Caption', cta: 'CTA', attribution: 'Attribution', page: 'Page #' }
@@ -30,7 +40,7 @@ function emptyThemeConfig() {
 
 // ── Mini slide preview (CSS-based, no canvas) ────────────────────────────────
 
-function ThemePreview({ theme, size = 'md' }) {
+function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
   const b = theme?.blocks || {}
   const hook = b.hook || {}
   const body = b.body || {}
@@ -45,21 +55,27 @@ function ThemePreview({ theme, size = 'md' }) {
     color: hook.color || '#fff',
     textShadow: hook.shadow && hook.shadow !== 'none' ? '0 1px 3px rgba(0,0,0,.6)' : 'none',
     textTransform: hook.uppercase ? 'uppercase' : 'none',
-    lineHeight: 1.2,
-    ...(hook.background === 'rect' && hook.bgColor ? { background: hook.bgColor, padding: '2px 4px' } : {}),
+    lineHeight: 1.2, alignSelf: 'flex-start',
+    ...(hook.background === 'rect' ? { background: hook.bgColor || brandAccent, padding: '2px 4px' } : {}),
   }
   const bodyStyle = {
     fontSize: s.bd, fontWeight: FONT_WEIGHT_CSS[body.fontWeight] || '500',
     color: body.color || 'rgba(255,255,255,.8)',
-    lineHeight: 1.3, marginTop: 3,
-    ...(body.background === 'rect' && body.bgColor ? { background: body.bgColor, padding: '2px 4px' } : {}),
+    lineHeight: 1.3, marginTop: 3, alignSelf: 'flex-start',
+    ...(body.background === 'rect' ? { background: body.bgColor || brandAccent, padding: '2px 4px' } : {}),
   }
+  // A CTA with background pill/rect and no explicit bgColor inherits the brand
+  // accent — matching the canvas renderer's `bgColor: null` behavior.
+  const ctaBg = cta.bgColor || brandAccent
   const ctaStyle = cta.background === 'pill'
     ? { display: 'inline-block', fontSize: s.ct, fontWeight: FONT_WEIGHT_CSS[cta.fontWeight] || '700',
-        color: cta.color || '#fff', background: cta.bgColor || '#f97316',
+        color: cta.color || '#fff', background: ctaBg,
         padding: `${s.pill * 0.2}px ${s.pill * 0.55}px`, borderRadius: 999 }
-    : { fontSize: s.ct, fontWeight: '700', color: cta.color || '#fff', textDecoration: 'none',
-        ...(cta.background === 'rect' && cta.bgColor ? { background: cta.bgColor, padding: '2px 6px' } : {}) }
+    : cta.background === 'rect'
+    ? { display: 'inline-block', fontSize: s.ct, fontWeight: FONT_WEIGHT_CSS[cta.fontWeight] || '700',
+        color: cta.color || '#fff', background: ctaBg, padding: '2px 8px', borderRadius: 3,
+        textTransform: cta.uppercase ? 'uppercase' : 'none' }
+    : { fontSize: s.ct, fontWeight: '700', color: cta.color || '#fff', textDecoration: 'none' }
 
   return (
     <div style={{
@@ -67,7 +83,7 @@ function ThemePreview({ theme, size = 'md' }) {
       background: 'linear-gradient(160deg, #6b7fa6 0%, #3a4a6a 100%)',
     }}>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%)' }} />
-      <div style={{ position: 'absolute', inset: 0, padding: s.p, display: 'flex', flexDirection: 'column', zIndex: 1 }}>
+      <div style={{ position: 'absolute', inset: 0, padding: s.p, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', zIndex: 1 }}>
         <div style={hookStyle}>Why your hips lie</div>
         <div style={bodyStyle}>Most pain starts upstream.</div>
         <div style={{ marginTop: 'auto' }}>
@@ -80,7 +96,7 @@ function ThemePreview({ theme, size = 'md' }) {
 
 // ── Per-block-role style editor ───────────────────────────────────────────────
 
-function BlockEditor({ role, config, onChange }) {
+function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
   const c = config || defaultBlockConfig(role)
   function set(key, val) { onChange({ ...c, [key]: val }) }
 
@@ -130,7 +146,7 @@ function BlockEditor({ role, config, onChange }) {
         <div>
           <label className="text-2xs font-medium text-muted-foreground block mb-1">Background color</label>
           <div className="flex items-center gap-2">
-            <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.bgColor || '') ? c.bgColor : '#f97316'}
+            <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.bgColor || '') ? c.bgColor : brandAccent}
               onChange={(e) => set('bgColor', e.target.value)}
               className="h-7 w-7 rounded cursor-pointer border border-input p-0.5" />
             <input type="text" value={c.bgColor || ''} placeholder="null = brand accent"
@@ -152,6 +168,7 @@ function BlockEditor({ role, config, onChange }) {
 // ── Theme editor form (create or edit a custom theme) ────────────────────────
 
 function ThemeEditor({ initial, onSave, onCancel, saving }) {
+  const brandAccent = useBrandAccent()
   const [name, setName]       = useState(initial?.name || '')
   const [isDefault, setIsDefault] = useState(initial?.is_default || false)
   const [config, setConfig]   = useState(initial?.config || emptyThemeConfig())
@@ -221,6 +238,7 @@ function ThemeEditor({ initial, onSave, onCancel, saving }) {
                 role={activeRole}
                 config={config.blocks?.[activeRole]}
                 onChange={(val) => setBlock(activeRole, val)}
+                brandAccent={brandAccent}
               />
             </div>
           </div>
@@ -236,7 +254,7 @@ function ThemeEditor({ initial, onSave, onCancel, saving }) {
         {/* Preview */}
         <div className="shrink-0">
           <div className="text-2xs font-medium text-muted-foreground mb-2">Preview</div>
-          <ThemePreview theme={previewTheme} size="md" />
+          <ThemePreview theme={previewTheme} size="md" brandAccent={brandAccent} />
         </div>
       </div>
     </form>
@@ -250,6 +268,7 @@ export default function CarouselThemes() {
   const createTheme  = useCreateCarouselTheme()
   const updateTheme  = useUpdateCarouselTheme()
   const deleteTheme  = useDeleteCarouselTheme()
+  const brandAccent  = useBrandAccent()
 
   const builtins = allThemes.filter((t) => t.builtin)
   const custom   = allThemes.filter((t) => t.custom)
@@ -307,7 +326,7 @@ export default function CarouselThemes() {
         <div className="grid grid-cols-5 gap-3">
           {builtins.map((t) => (
             <div key={t.id} className="flex flex-col gap-1.5">
-              <ThemePreview theme={t} size="sm" />
+              <ThemePreview theme={t} size="sm" brandAccent={brandAccent} />
               <div className="text-xs font-semibold text-foreground">{t.name}</div>
               <div className="text-2xs text-muted-foreground">Built-in</div>
             </div>
@@ -360,7 +379,7 @@ export default function CarouselThemes() {
                   />
                 ) : (
                   <div className="flex items-center gap-4 rounded-xl border bg-card p-4 hover:border-primary/20 transition-colors">
-                    <ThemePreview theme={t.config ? { blocks: t.config.blocks } : {}} size="sm" />
+                    <ThemePreview theme={t.config ? { blocks: t.config.blocks } : {}} size="sm" brandAccent={brandAccent} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-sm font-semibold text-foreground">{t.name}</span>
