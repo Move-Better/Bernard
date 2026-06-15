@@ -32,7 +32,11 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 //   engagement/outcome loop (refresh-engagement cron → engagement_snapshots).
 //   The numeric property ID is mirrored to workspaces.ga4_property_id on save
 //   because the cron reads it from the workspace row.
-const KNOWN_SERVICES = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'tdc', 'drive', 'beehiiv', 'ga4'])
+// 'searchconsole' read-only analytics (Google Search Console API), not a
+// publish target. Service-account JSON + site URL fuel the insights/search-queries
+// endpoint. The site URL is mirrored to workspaces.gsc_site_url on save/delete
+// so the SPA can check ws.gsc_site_url without hitting this admin-gated endpoint.
+const KNOWN_SERVICES = new Set(['buffer', 'wordpress', 'astro_github', 'website', 'tdc', 'drive', 'beehiiv', 'ga4', 'searchconsole'])
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -131,9 +135,22 @@ async function handler(req, res) {
       if (!wr.ok) {
         const text = await wr.text().catch(() => '')
         console.error('[credentials PUT] ga4_property_id mirror failed:', wr.status, text)
-        // The credential row saved; surface a soft warning so the admin knows
-        // the cron won't pick it up until the property ID lands.
         return res.status(200).json({ ok: true, service, warning: 'property-id-mirror-failed' })
+      }
+    }
+
+    // Search Console: mirror the site URL onto the workspace row so the SPA
+    // can gate the Search Console read card without hitting this admin endpoint.
+    if (service === 'searchconsole') {
+      const siteUrl = String(safeConfig.site_url ?? '').trim()
+      const wr = await sb(`workspaces?id=eq.${workspace.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ gsc_site_url: siteUrl || null }),
+      })
+      if (!wr.ok) {
+        const text = await wr.text().catch(() => '')
+        console.error('[credentials PUT] gsc_site_url mirror failed:', wr.status, text)
+        return res.status(200).json({ ok: true, service, warning: 'site-url-mirror-failed' })
       }
     }
 
@@ -158,6 +175,14 @@ async function handler(req, res) {
       await sb(`workspaces?id=eq.${workspace.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ ga4_property_id: null }),
+      }).catch(() => {})
+    }
+
+    // Search Console: clear the mirrored site URL.
+    if (service === 'searchconsole') {
+      await sb(`workspaces?id=eq.${workspace.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ gsc_site_url: null }),
       }).catch(() => {})
     }
 

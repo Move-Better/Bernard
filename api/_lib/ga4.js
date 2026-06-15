@@ -161,6 +161,119 @@ export async function testGA4Access({ serviceAccountJson, propertyId }) {
   return { propertyId: String(propertyId), pageviews }
 }
 
+// Fetch landing-page analysis: top pages by sessions, with engagement rate
+// and optional key-event (booking/inquiry) counts. Used by the Insights
+// "which pages people land on first" read. Returns { pages, hasKeyEvents }.
+//
+// We request keyEvents alongside sessions + engagementRate. GA4 returns an
+// error when there are no key events configured on the property — in that
+// case we silently retry without keyEvents and set hasKeyEvents=false, so
+// the UI falls back to engagement rate as the quality proxy.
+export async function fetchGA4LandingPages({ serviceAccountJson, propertyId, days = 30 }) {
+  if (!propertyId) throw new Error('ga4: propertyId is required')
+  const token = await getAccessToken(serviceAccountJson)
+
+  const baseBody = {
+    dateRanges: [{ startDate: `${days}daysAgo`, endDate: 'today' }],
+    dimensions: [{ name: 'landingPage' }],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'engagementRate' },
+      { name: 'keyEvents' },
+    ],
+    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    limit: '25',
+  }
+
+  let data
+  let hasKeyEvents = true
+  const r = await fetch(REPORT_URL(propertyId), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify(baseBody),
+  })
+
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    // GA4 returns 400 when the property has no key events configured.
+    if (r.status === 400) {
+      hasKeyEvents = false
+      const r2 = await fetch(REPORT_URL(propertyId), {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ ...baseBody, metrics: [{ name: 'sessions' }, { name: 'engagementRate' }] }),
+      })
+      if (!r2.ok) {
+        const t2 = await r2.text().catch(() => '')
+        throw new Error(`ga4: landingPages report failed (${r2.status}) — ${t2.slice(0, 300)}`)
+      }
+      data = await r2.json()
+    } else {
+      throw new Error(`ga4: landingPages report failed (${r.status}) — ${text.slice(0, 300)}`)
+    }
+  } else {
+    data = await r.json()
+  }
+
+  const pages = []
+  for (const row of data.rows || []) {
+    const path = row.dimensionValues?.[0]?.value
+    if (!path) continue
+    const vals = (row.metricValues || []).map((m) => Number(m.value) || 0)
+    pages.push({
+      path,
+      sessions:       vals[0],
+      engagementRate: vals[1], // 0–1 decimal (0.63 = 63%)
+      keyEvents:      hasKeyEvents ? (vals[2] || 0) : null,
+    })
+  }
+  return { pages, hasKeyEvents }
+}
+
+// Fetch exit/bounce analysis for our specific published page paths.
+// Returns an array of { path, sessions, bounceRate, engagementRate } sorted
+// by bounceRate descending. Callers filter to sessions >= MIN to avoid noise.
+export async function fetchGA4ExitAnalysis({ serviceAccountJson, propertyId, pagePaths, days = 30 }) {
+  if (!propertyId) throw new Error('ga4: propertyId is required')
+  if (!Array.isArray(pagePaths) || pagePaths.length === 0) return []
+
+  const token = await getAccessToken(serviceAccountJson)
+  const r = await fetch(REPORT_URL(propertyId), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      dateRanges: [{ startDate: `${days}daysAgo`, endDate: 'today' }],
+      dimensions: [{ name: 'pagePath' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'bounceRate' },
+        { name: 'engagementRate' },
+      ],
+      dimensionFilter: {
+        filter: {
+          fieldName:    'pagePath',
+          inListFilter: { values: pagePaths },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'bounceRate' }, desc: true }],
+      limit: '25',
+    }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new Error(`ga4: exitAnalysis report failed (${r.status}) — ${text.slice(0, 300)}`)
+  }
+  const data = await r.json()
+  const pages = []
+  for (const row of data.rows || []) {
+    const path = row.dimensionValues?.[0]?.value
+    if (!path) continue
+    const [sessions, bounceRate, engagementRate] = (row.metricValues || []).map((m) => Number(m.value) || 0)
+    pages.push({ path, sessions, bounceRate, engagementRate })
+  }
+  return pages
+}
+
 // Convenience: turn a stored content_items.resolved_url into the pagePath
 // shape GA4 reports on (no protocol, no host, leading slash, no query/hash).
 // GA4's pagePath dimension is the pathname only — so a URL like

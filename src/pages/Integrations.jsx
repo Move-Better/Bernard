@@ -126,6 +126,33 @@ const INTEGRATIONS = [
     ],
     docsUrl: 'https://developers.google.com/analytics/devguides/reporting/data/v1',
   },
+  {
+    id: 'searchconsole',
+    label: 'Google Search Console',
+    description:
+      'Read-only. Connects your Google Search Console property so Bernard can see what people type into Google to find you — surfacing high-impression queries you aren\'t ranking for yet, and suggesting posts to close those keyword gaps.',
+    platforms: ['Search analytics'],
+    secretLabel: 'Service-account JSON',
+    secretIsTextarea: true,
+    secretPlaceholder: '{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…", … }',
+    fields: [
+      {
+        key: 'site_url',
+        label: 'Search Console Site URL',
+        placeholder: 'https://movebetter.co/ or sc-domain:movebetter.co',
+        helpText: 'Must match your property in Search Console exactly — URL-prefix properties need a trailing slash.',
+      },
+    ],
+    setupSteps: [
+      'Open Google Search Console (search.google.com/search-console) and confirm your site is verified.',
+      'In Google Cloud Console (console.cloud.google.com), open the same project you used for GA4 (or create a new one) and enable the "Google Search Console API" under APIs & Services → Library.',
+      'Under IAM & Admin → Service Accounts, use the existing service account you created for GA4 (or create a new one). Open it → Keys → Add key → Create new key → JSON if you need a new file.',
+      'Back in Search Console → your property → Settings → Users and permissions → Add user. Enter the service account email (client_email from the JSON) and grant "Full" or "Restricted" access.',
+      'Copy your property URL from Search Console (e.g. "https://movebetter.co/" for a URL-prefix property, or "sc-domain:movebetter.co" for a domain property). Paste it in the Site URL field above.',
+      'Paste the JSON key file contents below, then Save. Click Test connection to confirm Bernard can read your search data.',
+    ],
+    docsUrl: 'https://developers.google.com/webmaster-tools/v1/searchanalytics/query',
+  },
 ]
 
 const EMAIL_MERGE_TAGS = [
