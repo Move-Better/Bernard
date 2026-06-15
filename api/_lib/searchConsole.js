@@ -91,7 +91,7 @@ export async function fetchSearchQueries({ credential, serviceAccountJson, siteU
   })
   if (!r.ok) {
     const text = await r.text().catch(() => '')
-    if (r.status === 403) throw new Error(`gsc: access denied for ${url} (403). Reconnect Search Console via Settings → Integrations.`)
+    if (r.status === 403) throw new Error(`gsc: access denied for ${url} (403) — ${text.slice(0, 300)}`)
     if (r.status === 400 || r.status === 404) throw new Error(`gsc: site not found (${r.status}) — check the Site URL matches your Search Console property exactly.`)
     throw new Error(`gsc: searchAnalytics query failed (${r.status}) — ${text.slice(0, 300)}`)
   }
@@ -125,7 +125,7 @@ export async function testSearchConsoleAccess({ credential, serviceAccountJson, 
   })
   if (!r.ok) {
     const text = await r.text().catch(() => '')
-    if (r.status === 403) throw new Error(`Search Console denied access to ${url} (403). Reconnect via Settings → Integrations.`)
+    if (r.status === 403) throw new Error(`Search Console denied access to ${url} (403) — ${text.slice(0, 300)}`)
     if (r.status === 400 || r.status === 404) throw new Error(`Site "${url}" not found (${r.status}). Check the property URL matches exactly.`)
     throw new Error(`Search Console request failed (${r.status}) — ${text.slice(0, 200)}`)
   }
