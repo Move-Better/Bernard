@@ -75,7 +75,7 @@ export default async function handler(req, res) {
 
   // Load the content item, scoped to this workspace.
   const itemRes = await sb(
-    `content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}&select=id,media_urls,staff_id,photo_treatment`,
+    `content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}&select=id,media_urls,staff_id,photo_treatment,photo_template_id`,
   )
   if (!itemRes.ok) {
     const txt = await itemRes.text().catch(() => '')
@@ -86,7 +86,11 @@ export default async function handler(req, res) {
   const item = itemRows?.[0]
   if (!item) return res.status(404).json({ error: 'piece_not_found' })
 
-  const templateId = String(treatment.templateId || 'editorial')
+  // Explicit body.treatment.templateId wins; then fall back to the piece's
+  // saved photo_template_id (if it's a WHOOP built-in); then default to 'editorial'.
+  const explicitId = treatment.templateId
+  const rowTemplateId = WHOOP_TEMPLATE_IDS.includes(item.photo_template_id) ? item.photo_template_id : null
+  const templateId = String(explicitId || rowTemplateId || 'editorial')
   const isWhoop = WHOOP_TEMPLATE_IDS.includes(templateId)
   const needsPhoto = !NO_PHOTO_TEMPLATES.has(templateId)
 

@@ -13,6 +13,7 @@ import {
 import {
   FONT_SIZE_PX,
   FONT_WEIGHT_CSS,
+  BUILTIN_THEME_IDS,
   defaultBlockConfig,
 } from '@/lib/carouselThemes'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
@@ -92,16 +93,122 @@ function emptyThemeConfig() {
   return { blocks }
 }
 
-// ── Mini slide preview (CSS-based, no canvas) ────────────────────────────────
+// ── Layout-diagram thumbnail — SVG skeleton of each WHOOP layout family ──────
+//
+// Built-in templates get a precise layout diagram (not a text swatch) so the
+// user can distinguish the 6 families at a glance. Custom templates fall back
+// to the CSS swatch below.
 
-function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
+const NAVY_T  = '#0c1a2e'
+const SAGE_T  = '#83957c'
+const PAPER_T = '#f0ede6'
+
+function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) {
+  const dim = size === 'sm' ? { w: 48, h: 60 } : { w: 96, h: 120 }
+  const { w, h } = dim
+  const p = Math.round(w * 0.10)        // padding
+  const ruleW = Math.round(w * 0.20)
+  const ruleH = 2
+  const ruleY = p + 2
+
+  // Shared label + text stubs helper
+  function textLines(x, y, lineW, lineH, gap, color, count) {
+    return Array.from({ length: count }, (_, i) => (
+      <rect key={i} x={x} y={y + i * (lineH + gap)} width={lineW * (1 - i * 0.18)} height={lineH} rx={1} fill={color} opacity={0.9 - i * 0.15} />
+    ))
+  }
+
+  const layout = templateId?.split('-')[1]    // claim | badge | split
+  const isDark = templateId?.startsWith('dark')
+
+  if (layout === 'claim') {
+    const bg    = isDark ? NAVY_T : PAPER_T
+    const ink   = isDark ? '#ffffff' : NAVY_T
+    const label = isDark ? 'rgba(255,255,255,0.55)' : SAGE_T
+    const textY = Math.round(h * 0.35)
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ borderRadius: 6, flexShrink: 0, display: 'block' }}>
+        <rect width={w} height={h} fill={bg} />
+        <rect x={p} y={ruleY} width={ruleW} height={ruleH} rx={1} fill={brandAccent} />
+        {/* label stub */}
+        <rect x={p + ruleW + 4} y={ruleY} width={Math.round(w * 0.22)} height={ruleH} rx={1} fill={label} />
+        {/* headline stubs */}
+        {textLines(p, textY, w - p * 2, Math.round(h * 0.065), Math.round(h * 0.020), ink, 3)}
+        {/* CTA pill */}
+        <rect x={p} y={h - p - Math.round(h * 0.11)} width={Math.round(w * 0.45)} height={Math.round(h * 0.09)} rx={999} fill={brandAccent} opacity={0.9} />
+      </svg>
+    )
+  }
+
+  if (layout === 'split') {
+    const photoH  = Math.round(h * 0.44)
+    const panelBg = isDark ? NAVY_T : SAGE_T
+    const panelInk = isDark ? '#ffffff' : NAVY_T
+    const photoBg = isDark ? '#3a4a62' : '#8fa4b8'
+    const textY = photoH + Math.round(h * 0.075)
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ borderRadius: 6, flexShrink: 0, display: 'block' }}>
+        {/* photo area */}
+        <rect width={w} height={photoH} fill={photoBg} />
+        {/* gradient on photo */}
+        <defs><linearGradient id={`pg-${templateId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#000" stopOpacity="0.05"/><stop offset="1" stopColor="#000" stopOpacity="0.18"/></linearGradient></defs>
+        <rect width={w} height={photoH} fill={`url(#pg-${templateId})`} />
+        {/* panel */}
+        <rect y={photoH} width={w} height={h - photoH} fill={panelBg} />
+        {/* rule */}
+        <rect x={p} y={photoH + Math.round(h * 0.025)} width={ruleW} height={ruleH} rx={1} fill={brandAccent} />
+        {/* headline stubs */}
+        {textLines(p, textY, w - p * 2, Math.round(h * 0.065), Math.round(h * 0.018), panelInk, 2)}
+        {/* CTA pill */}
+        <rect x={p} y={h - p - Math.round(h * 0.10)} width={Math.round(w * 0.40)} height={Math.round(h * 0.08)} rx={999} fill={brandAccent} opacity={0.85} />
+      </svg>
+    )
+  }
+
+  // badge
+  const photoH  = isDark ? h : Math.round(h * 0.56)
+  const panelBg = isDark ? 'transparent' : '#ffffff'
+  const ink      = isDark ? '#ffffff' : NAVY_T
+  const photoBg  = isDark ? '#3a4a62' : '#8fa4b8'
+  const badgeR   = Math.round(w * 0.12)
+  const badgeCx  = w - p - badgeR
+  const badgeCy  = p + badgeR
+  const circ     = 2 * Math.PI * badgeR
+  const textY    = isDark ? h - Math.round(h * 0.35) : photoH + Math.round(h * 0.065)
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ borderRadius: 6, flexShrink: 0, display: 'block' }}>
+      {/* photo area */}
+      <rect width={w} height={photoH} fill={photoBg} />
+      {isDark && (
+        <>
+          <defs><linearGradient id={`bg-${templateId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stopColor={NAVY_T} stopOpacity="0"/><stop offset="1" stopColor={NAVY_T} stopOpacity="0.85"/></linearGradient></defs>
+          <rect width={w} height={h} fill={`url(#bg-${templateId})`} />
+        </>
+      )}
+      {!isDark && <rect y={photoH} width={w} height={h - photoH} fill={panelBg} />}
+      {/* badge ring */}
+      <circle cx={badgeCx} cy={badgeCy} r={badgeR} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={Math.round(badgeR * 0.20)} />
+      <circle cx={badgeCx} cy={badgeCy} r={badgeR} fill="none" stroke={brandAccent} strokeWidth={Math.round(badgeR * 0.20)} strokeLinecap="round"
+        strokeDasharray={`${circ * 0.78} ${circ}`} transform={`rotate(-90 ${badgeCx} ${badgeCy})`} />
+      {/* rule */}
+      <rect x={p} y={isDark ? textY - Math.round(h * 0.065) : photoH + Math.round(h * 0.022)} width={ruleW} height={ruleH} rx={1} fill={brandAccent} />
+      {/* headline stubs */}
+      {textLines(p, textY, w - p * 2 - badgeR * 2 - 4, Math.round(h * 0.065), Math.round(h * 0.018), ink, 2)}
+      {/* CTA pill */}
+      <rect x={p} y={h - p - Math.round(h * 0.10)} width={Math.round(w * 0.40)} height={Math.round(h * 0.08)} rx={999} fill={brandAccent} opacity={0.85} />
+    </svg>
+  )
+}
+
+// CSS swatch fallback for custom templates (no fixed layout to diagram)
+function CustomThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
   const b = theme?.blocks || {}
   const hook = b.hook || {}
   const body = b.body || {}
   const cta  = b.cta  || {}
 
-  const sizeMap = { sm: { w: 64, p: '6px 7px', hk: 9, bd: 6.5, ct: 6.5, pill: 16 },
-                    md: { w: 120, p: '10px 11px', hk: 14, bd: 10, ct: 10, pill: 22 } }
+  const sizeMap = { sm: { w: 48, p: '5px 6px', hk: 8, bd: 6, ct: 6, pill: 14 },
+                    md: { w: 96, p: '9px 10px', hk: 13, bd: 9, ct: 9, pill: 20 } }
   const s = sizeMap[size] || sizeMap.md
 
   const hookStyle = {
@@ -118,8 +225,6 @@ function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
     lineHeight: 1.3, marginTop: 3, alignSelf: 'flex-start',
     ...(body.background === 'rect' ? { background: body.bgColor || brandAccent, padding: '2px 4px' } : {}),
   }
-  // A CTA with background pill/rect and no explicit bgColor inherits the brand
-  // accent — matching the canvas renderer's `bgColor: null` behavior.
   const ctaBg = cta.bgColor || brandAccent
   const ctaStyle = cta.background === 'pill'
     ? { display: 'inline-block', fontSize: s.ct, fontWeight: FONT_WEIGHT_CSS[cta.fontWeight] || '700',
@@ -129,11 +234,11 @@ function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
     ? { display: 'inline-block', fontSize: s.ct, fontWeight: FONT_WEIGHT_CSS[cta.fontWeight] || '700',
         color: cta.color || '#fff', background: ctaBg, padding: '2px 8px', borderRadius: 3,
         textTransform: cta.uppercase ? 'uppercase' : 'none' }
-    : { fontSize: s.ct, fontWeight: '700', color: cta.color || '#fff', textDecoration: 'none' }
+    : { fontSize: s.ct, fontWeight: '700', color: cta.color || '#fff' }
 
   return (
     <div style={{
-      width: s.w, aspectRatio: '4/5', borderRadius: 8, overflow: 'hidden', position: 'relative', flexShrink: 0,
+      width: s.w, aspectRatio: '4/5', borderRadius: 6, overflow: 'hidden', position: 'relative', flexShrink: 0,
       background: 'linear-gradient(160deg, #6b7fa6 0%, #3a4a6a 100%)',
     }}>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%)' }} />
@@ -146,6 +251,15 @@ function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
       </div>
     </div>
   )
+}
+
+// Dispatcher: built-ins get the SVG layout diagram; custom get the CSS swatch.
+function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
+  const id = theme?.id
+  if (id && BUILTIN_THEME_IDS.includes(id)) {
+    return <WhoopLayoutThumb templateId={id} size={size} brandAccent={brandAccent} />
+  }
+  return <CustomThemePreview theme={themeRenderObject(theme)} size={size} brandAccent={brandAccent} />
 }
 
 // ── Per-block-role style editor ───────────────────────────────────────────────
@@ -378,7 +492,7 @@ export default function PhotoTemplates() {
       <div>
         <h1 className="text-xl font-bold text-foreground">Photo Templates</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Control how text overlays look on photo slides. One theme applies per carousel — clinicians pick it in the slide editor.
+          Six built-in WHOOP-style layouts — claim cards, split panels, and badge overlays — in dark and light palettes. Templates apply per carousel slide and to standalone photos. Create custom templates to override the block typography.
         </p>
       </div>
 
@@ -422,7 +536,7 @@ export default function PhotoTemplates() {
             ))}
           </div>
 
-          <div className="text-2xs font-medium text-muted-foreground mb-1.5">Theme</div>
+          <div className="text-2xs font-medium text-muted-foreground mb-1.5">Template</div>
           <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0">
             {allThemes.map((t) => {
               const sel = t.id === selectedTheme?.id
@@ -438,7 +552,7 @@ export default function PhotoTemplates() {
                     onClick={() => setSelectedThemeId(t.id)}
                     className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
                   >
-                    <ThemePreview theme={themeRenderObject(t)} size="sm" brandAccent={brandAccent} />
+                    <ThemePreview theme={t} size="sm" brandAccent={brandAccent} />
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-foreground truncate flex items-center gap-1.5">
                         {t.name}
