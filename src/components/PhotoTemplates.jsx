@@ -51,6 +51,16 @@ function sampleSlides(workspaceName) {
 }
 const SLIDE_KEYS = ['cover', 'explainer', 'cta']
 
+// Platform format presets — changes the preview container's aspect ratio so you
+// can see how the template looks at each platform's native crop.
+const PREVIEW_W = 248
+const FORMATS = [
+  { id: 'square',    label: '1:1',  ratio: 1,       title: 'Square — Instagram post (1080×1080)' },
+  { id: 'portrait',  label: '4:5',  ratio: 5 / 4,   title: 'Portrait — Instagram post (1080×1350)' },
+  { id: 'story',     label: '9:16', ratio: 16 / 9,  title: 'Story — Instagram / Facebook (1080×1920)' },
+  { id: 'landscape', label: '16:9', ratio: 9 / 16,  title: 'Landscape — Facebook / LinkedIn (1920×1080)' },
+]
+
 // Normalize a theme record so renderFreeformSlide gets layout, palette AND
 // blocks. The old themeRenderObject only returned { blocks }, which silently
 // stripped layout/palette from built-in themes — WHOOP geometry never fired.
@@ -462,6 +472,10 @@ export default function PhotoTemplates() {
   const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || allThemes[0] || null
 
   const [editing, setEditing] = useState(null)  // null | 'new' | { theme }
+  const [formatId, setFormatId] = useState('square')
+  const format    = FORMATS.find((f) => f.id === formatId) || FORMATS[0]
+  const formatH   = Math.round(PREVIEW_W * format.ratio)
+  const canvasSize = Math.min(PREVIEW_W, formatH)
 
   async function handleCreate(body) {
     try {
@@ -506,24 +520,48 @@ export default function PhotoTemplates() {
       </div>
 
       {/* Live preview panel */}
-      <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-start">
+      <div className="rounded-xl border bg-card p-4 flex flex-row gap-4 items-start">
 
-        {/* Left — square 1:1 preview (actual canvas size) + photo picker */}
-        <div className="shrink-0 flex flex-col gap-2" style={{ width: 288 }}>
-          {/* 1:1 square — no clipping, text stays in frame */}
-          <div className="aspect-square w-full overflow-hidden rounded-lg shadow-sm bg-muted">
-            <LiveThemePreview
-              theme={normalizeTheme(selectedTheme)}
-              slide={slides[slideKey]}
-              brandStyle={brandStyle}
-              photoUrl={previewPhotoUrl}
-            />
+        {/* Format picker — vertical stack, one button per platform ratio */}
+        <div className="shrink-0 flex flex-col gap-1">
+          <div className="text-2xs font-medium text-muted-foreground text-center mb-0.5">Format</div>
+          {FORMATS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFormatId(f.id)}
+              title={f.title}
+              className={`w-10 rounded py-1.5 text-2xs font-semibold text-center transition-colors ${
+                formatId === f.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Center — canvas letterboxed to selected format + photo picker + slide tabs */}
+        <div className="shrink-0 flex flex-col gap-2" style={{ width: PREVIEW_W }}>
+          {/* Canvas container — black letterbox bars for non-square formats */}
+          <div
+            className="rounded-lg shadow-sm flex items-center justify-center overflow-hidden"
+            style={{ width: PREVIEW_W, height: formatH, background: '#111' }}
+          >
+            <div style={{ width: canvasSize, height: canvasSize, flexShrink: 0 }}>
+              <LiveThemePreview
+                theme={normalizeTheme(selectedTheme)}
+                slide={slides[slideKey]}
+                brandStyle={brandStyle}
+                photoUrl={previewPhotoUrl}
+              />
+            </div>
           </div>
 
-          {/* Photo picker — click a thumbnail to swap the backdrop */}
+          {/* Photo picker — gradient chip + workspace recent photos */}
           {recentPhotos.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Gradient chip */}
               <button
                 type="button"
                 onClick={() => setPreviewPhotoIdx(-1)}
@@ -553,7 +591,7 @@ export default function PhotoTemplates() {
             </div>
           )}
 
-          {/* Slide type toggle below picker */}
+          {/* Slide type toggle */}
           <div className="inline-flex rounded-lg border border-input overflow-hidden self-start">
             {SLIDE_KEYS.map((k) => (
               <button
