@@ -156,7 +156,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
   }
 
   if (layout === 'split') {
-    const photoH  = Math.round(h * 0.44)
+    const photoH  = Math.round(h * 0.67)
     const panelBg = isDark ? NAVY_T : SAGE_T
     const panelInk = isDark ? '#ffffff' : NAVY_T
     const photoBg = isDark ? '#3a4a62' : '#8fa4b8'
@@ -510,7 +510,7 @@ export default function PhotoTemplates() {
   if (isLoading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading templates…</div>
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">Photo Templates</h1>
