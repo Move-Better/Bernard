@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,12 +8,14 @@ import {
   useCreateCarouselTheme,
   useUpdateCarouselTheme,
   useDeleteCarouselTheme,
+  useMediaInfinite,
 } from '@/lib/queries'
 import {
   FONT_SIZE_PX,
   FONT_WEIGHT_CSS,
   defaultBlockConfig,
 } from '@/lib/carouselThemes'
+import { renderFreeformSlide } from '@/lib/overlayTemplates'
 
 // Resolve the brand accent the SAME way the canvas renderer does
 // (brandAccent() in overlayTemplates.js reads brand_style.accent_color), so a
@@ -22,6 +24,58 @@ import {
 function useBrandAccent() {
   const workspace = useWorkspace()
   return workspace?.brand_style?.accent_color || workspace?.colors?.primary || '#0c7580'
+}
+
+// Representative slides for the live preview, one per common slide type.
+// attribution uses the workspace name when available.
+function sampleSlides(workspaceName) {
+  const who = workspaceName || 'Your clinic'
+  return {
+    cover: { label: 'Cover', blocks: [
+      { role: 'page', text: 'Mobility', position: 'top-left' },
+      { role: 'hook', text: 'Why your hips lie', position: 'center' },
+      { role: 'attribution', text: who, position: 'bottom-left' },
+    ] },
+    explainer: { label: 'Explainer', blocks: [
+      { role: 'hook', text: 'Train the hip', position: 'top' },
+      { role: 'body', text: 'The hips drive the whole chain — load them right and the complaints get quiet.', position: 'center' },
+      { role: 'page', text: '2 / 6', position: 'bottom-right' },
+    ] },
+    cta: { label: 'CTA', blocks: [
+      { role: 'hook', text: 'Ready when you are', position: 'top' },
+      { role: 'body', text: 'Book a movement assessment and we’ll map the real driver.', position: 'center' },
+      { role: 'cta', text: 'Book now →', position: 'bottom' },
+    ] },
+  }
+}
+const SLIDE_KEYS = ['cover', 'explainer', 'cta']
+
+// Normalize a theme record (built-in has .blocks; custom has .config.blocks)
+// into the { blocks } shape renderFreeformSlide + ThemePreview expect.
+function themeRenderObject(t) {
+  if (!t) return { blocks: {} }
+  return { blocks: t.blocks || t.config?.blocks || {} }
+}
+
+// Full-size live preview rendered by the REAL slide renderer (same code path as
+// the slide editor), so it's WYSIWYG with what publishes — not a CSS chip.
+function LiveThemePreview({ theme, slide, brandStyle, photoUrl }) {
+  const canvasRef = useRef(null)
+  useEffect(() => {
+    let cancelled = false
+    async function draw() {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      try {
+        await renderFreeformSlide({ sourceUrl: photoUrl || null, slide, brandStyle: brandStyle || {}, canvas, theme })
+      } catch (e) {
+        if (!cancelled) console.warn('[LiveThemePreview] render failed', e.message)
+      }
+    }
+    draw()
+    return () => { cancelled = true }
+  }, [theme, slide, brandStyle, photoUrl])
+  return <canvas ref={canvasRef} className="w-full aspect-square rounded-xl border bg-muted shadow-sm" />
 }
 
 const BLOCK_ROLES_ORDERED = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
@@ -269,9 +323,23 @@ export default function CarouselThemes() {
   const updateTheme  = useUpdateCarouselTheme()
   const deleteTheme  = useDeleteCarouselTheme()
   const brandAccent  = useBrandAccent()
+  const workspace    = useWorkspace()
+  const brandStyle   = workspace?.brand_style || {}
 
   const builtins = allThemes.filter((t) => t.builtin)
   const custom   = allThemes.filter((t) => t.custom)
+
+  // Live-preview state: which theme + slide type to render full-size, and the
+  // backdrop photo (most-recent workspace photo, else the renderer's gradient).
+  const [selectedThemeId, setSelectedThemeId] = useState(null)
+  const [slideKey, setSlideKey] = useState('cover')
+  const { data: mediaPages } = useMediaInfinite({ kind: 'photo' }, { pageSize: 1 })
+  const previewPhotoUrl = useMemo(() => {
+    const a = mediaPages?.pages?.[0]?.[0]
+    return a ? (a.rendered_url || a.web_blob_url || a.blob_url || null) : null
+  }, [mediaPages])
+  const slides = useMemo(() => sampleSlides(workspace?.display_name), [workspace?.display_name])
+  const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || builtins[0] || allThemes[0] || null
 
   const [editing, setEditing] = useState(null)  // null | 'new' | { theme }
 
@@ -317,20 +385,72 @@ export default function CarouselThemes() {
         </p>
       </div>
 
-      {/* Built-in themes */}
+      {/* Live preview + theme selector (Layout A: preview left, theme rail right) */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Built-in themes</h2>
-          <span className="text-2xs text-muted-foreground">Read-only · always available</span>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live preview</h2>
+          <span className="text-2xs text-muted-foreground">Rendered like a real slide</span>
         </div>
-        <div className="grid grid-cols-5 gap-3">
-          {builtins.map((t) => (
-            <div key={t.id} className="flex flex-col gap-1.5">
-              <ThemePreview theme={t} size="sm" brandAccent={brandAccent} />
-              <div className="text-xs font-semibold text-foreground">{t.name}</div>
-              <div className="text-2xs text-muted-foreground">Built-in</div>
+        <div className="rounded-xl border bg-card p-4 flex flex-col sm:flex-row gap-5">
+          {/* Big preview */}
+          <div className="w-full sm:w-[340px] shrink-0">
+            <LiveThemePreview
+              theme={themeRenderObject(selectedTheme)}
+              slide={slides[slideKey]}
+              brandStyle={brandStyle}
+              photoUrl={previewPhotoUrl}
+            />
+            {!previewPhotoUrl && (
+              <p className="mt-2 text-2xs text-muted-foreground">
+                No workspace photos yet — showing a neutral backdrop. Text styling is accurate.
+              </p>
+            )}
+          </div>
+
+          {/* Controls + theme rail */}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold text-foreground">{selectedTheme?.name || '—'}</div>
+            <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
+
+            <div className="text-2xs font-medium text-muted-foreground mb-1.5">Slide type</div>
+            <div className="inline-flex rounded-lg border border-input overflow-hidden mb-4">
+              {SLIDE_KEYS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setSlideKey(k)}
+                  className={`px-3 py-1.5 text-xs font-semibold capitalize border-r border-input last:border-r-0 transition-colors ${
+                    slideKey === k ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {slides[k].label}
+                </button>
+              ))}
             </div>
-          ))}
+
+            <div className="text-2xs font-medium text-muted-foreground mb-1.5">Theme</div>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+              {allThemes.map((t) => {
+                const sel = t.id === selectedTheme?.id
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSelectedThemeId(t.id)}
+                    className={`flex items-center gap-3 w-full rounded-lg border p-1.5 text-left transition-colors ${
+                      sel ? 'border-primary bg-primary/5' : 'border-transparent hover:border-primary/30'
+                    }`}
+                  >
+                    <ThemePreview theme={themeRenderObject(t)} size="sm" brandAccent={brandAccent} />
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground truncate">{t.name}</div>
+                      <div className="text-2xs text-muted-foreground">{t.builtin ? 'Built-in' : 'Custom'}</div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
