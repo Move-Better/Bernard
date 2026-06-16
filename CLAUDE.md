@@ -15,16 +15,9 @@ Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (
 
 (Q confirmed 2026-06-04 — "this keeps happening." Chrome-tab-as-standard + keep-e2e-thin confirmed 2026-06-04.)
 
-## Session Focus
-At the start of EVERY new conversation, before doing anything else, ask:
-"What are we working on today?" then confirm it fits one of these session types:
+## Design interview before building
 
-- **Planning / Architecture** — decisions, structure, roadmap
-- **Feature: [name]** — building one specific feature end to end
-- **Prompts** — writing or tuning AI prompts
-- **Debug: [issue]** — one specific problem
-
-If the work drifts into a second unrelated area mid-session, name it and suggest: "That's a good next session — want to note it and come back to it?"
+Before scoping or implementing any non-trivial change, interview Q moderately about every relevant aspect of the planned work. Walk down each branch of the design tree, resolving dependencies between decisions one by one — don't ask about a downstream detail until the upstream choice is settled. If a question can be answered by exploring the codebase (checking how something is currently wired, what shape data is in, whether a path is live end-to-end), explore the codebase instead of asking. Ask only what the code can't answer.
 
 ## Verify feature wiring before scoping changes
 
