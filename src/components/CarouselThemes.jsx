@@ -75,7 +75,7 @@ function LiveThemePreview({ theme, slide, brandStyle, photoUrl }) {
     draw()
     return () => { cancelled = true }
   }, [theme, slide, brandStyle, photoUrl])
-  return <canvas ref={canvasRef} className="w-full h-full rounded-xl border bg-muted shadow-sm" />
+  return <canvas ref={canvasRef} className="h-full w-auto" />
 }
 
 const BLOCK_ROLES_ORDERED = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
@@ -326,9 +326,6 @@ export default function CarouselThemes() {
   const workspace    = useWorkspace()
   const brandStyle   = workspace?.brand_style || {}
 
-  const builtins = allThemes.filter((t) => t.builtin)
-  const custom   = allThemes.filter((t) => t.custom)
-
   // Live-preview state: which theme + slide type to render full-size, and the
   // backdrop photo (most-recent workspace photo, else the renderer's gradient).
   const [selectedThemeId, setSelectedThemeId] = useState(null)
@@ -339,7 +336,7 @@ export default function CarouselThemes() {
     return a ? (a.rendered_url || a.web_blob_url || a.blob_url || null) : null
   }, [mediaPages])
   const slides = useMemo(() => sampleSlides(workspace?.display_name), [workspace?.display_name])
-  const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || builtins[0] || allThemes[0] || null
+  const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || allThemes[0] || null
 
   const [editing, setEditing] = useState(null)  // null | 'new' | { theme }
 
@@ -376,7 +373,7 @@ export default function CarouselThemes() {
   if (isLoading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading themes…</div>
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-3xl space-y-4">
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">Carousel Themes</h1>
@@ -385,150 +382,119 @@ export default function CarouselThemes() {
         </p>
       </div>
 
-      {/* Live preview + theme selector (Layout A: preview left, theme rail right) */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live preview</h2>
-          <span className="text-2xs text-muted-foreground">Rendered like a real slide</span>
-        </div>
-        <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch h-[460px]">
-          {/* Big preview — height = panel height (460px); width = height (square) */}
-          <div className="h-full aspect-square shrink-0 flex flex-col">
-            <div className="flex-1 min-h-0">
-              <LiveThemePreview
-                theme={themeRenderObject(selectedTheme)}
-                slide={slides[slideKey]}
-                brandStyle={brandStyle}
-                photoUrl={previewPhotoUrl}
-              />
-            </div>
-            {!previewPhotoUrl && (
-              <p className="mt-2 text-2xs text-muted-foreground">
-                No workspace photos yet — showing a neutral backdrop. Text styling is accurate.
-              </p>
-            )}
-          </div>
+      {/* Live preview panel: portrait photo left, rail right */}
+      <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch h-[480px]">
 
-          {/* Controls + theme rail */}
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="text-sm font-bold text-foreground">{selectedTheme?.name || '—'}</div>
-            <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
-
-            <div className="text-2xs font-medium text-muted-foreground mb-1.5">Slide type</div>
-            <div className="inline-flex rounded-lg border border-input overflow-hidden mb-4">
-              {SLIDE_KEYS.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setSlideKey(k)}
-                  className={`px-3 py-1.5 text-xs font-semibold capitalize border-r border-input last:border-r-0 transition-colors ${
-                    slideKey === k ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {slides[k].label}
-                </button>
-              ))}
-            </div>
-
-            <div className="text-2xs font-medium text-muted-foreground mb-1.5">Theme</div>
-            <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
-              {allThemes.map((t) => {
-                const sel = t.id === selectedTheme?.id
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setSelectedThemeId(t.id)}
-                    className={`flex items-center gap-3 w-full rounded-lg border p-1.5 text-left transition-colors ${
-                      sel ? 'border-primary bg-primary/5' : 'border-transparent hover:border-primary/30'
-                    }`}
-                  >
-                    <ThemePreview theme={themeRenderObject(t)} size="sm" brandAccent={brandAccent} />
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-foreground truncate">{t.name}</div>
-                      <div className="text-2xs text-muted-foreground">{t.builtin ? 'Built-in' : 'Custom'}</div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Custom themes */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Custom themes</h2>
-          {editing !== 'new' && (
-            <Button size="sm" onClick={() => setEditing('new')}>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              New theme
-            </Button>
+        {/* Portrait preview — canvas is square (1080×1080) displayed in a 4:5 CSS
+            container with overflow-hidden, so left/right edges clip to portrait */}
+        <div className="h-full aspect-[4/5] shrink-0 overflow-hidden rounded-lg shadow-sm">
+          <LiveThemePreview
+            theme={themeRenderObject(selectedTheme)}
+            slide={slides[slideKey]}
+            brandStyle={brandStyle}
+            photoUrl={previewPhotoUrl}
+          />
+          {!previewPhotoUrl && (
+            <p className="absolute bottom-2 left-2 right-2 text-2xs text-white/70 text-center">
+              No photos yet — backdrop only
+            </p>
           )}
         </div>
 
-        {editing === 'new' && (
-          <div className="mb-4">
-            <ThemeEditor
-              onSave={handleCreate}
-              onCancel={() => setEditing(null)}
-              saving={createTheme.isPending}
-            />
-          </div>
-        )}
+        {/* Right rail: name, slide-type toggle, scrollable theme list, + New theme at bottom */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="text-sm font-bold text-foreground leading-tight">{selectedTheme?.name || '—'}</div>
+          <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
 
-        {custom.length === 0 && editing !== 'new' && (
-          <div className="rounded-xl border-2 border-dashed border-muted py-8 text-center">
-            <p className="text-sm text-muted-foreground">No custom themes yet.</p>
-            <button type="button" onClick={() => setEditing('new')}
-              className="mt-2 text-sm text-primary font-semibold hover:underline">
-              Create your first theme →
-            </button>
-          </div>
-        )}
-
-        {custom.length > 0 && (
-          <div className="space-y-3">
-            {custom.map((t) => (
-              <div key={t.id}>
-                {editing?.theme?.id === t.id ? (
-                  <ThemeEditor
-                    initial={{ name: t.name, is_default: t.is_default, config: t.config }}
-                    onSave={(body) => handleUpdate(t.id, body)}
-                    onCancel={() => setEditing(null)}
-                    saving={updateTheme.isPending}
-                  />
-                ) : (
-                  <div className="flex items-center gap-4 rounded-xl border bg-card p-4 hover:border-primary/20 transition-colors">
-                    <ThemePreview theme={t.config ? { blocks: t.config.blocks } : {}} size="sm" brandAccent={brandAccent} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-foreground">{t.name}</span>
-                        {t.is_default && (
-                          <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-2xs font-semibold text-green-800">Default</span>
-                        )}
-                      </div>
-                      <p className="text-2xs text-muted-foreground">
-                        Hook: {t.config?.blocks?.hook?.fontSize || '2xl'} · {t.config?.blocks?.hook?.fontWeight || 'extrabold'} · {t.config?.blocks?.hook?.color || '#ffffff'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button size="sm" variant="ghost" onClick={() => setEditing({ theme: t })}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(t)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+          <div className="text-2xs font-medium text-muted-foreground mb-1.5">Slide type</div>
+          <div className="inline-flex rounded-lg border border-input overflow-hidden mb-4 self-start">
+            {SLIDE_KEYS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setSlideKey(k)}
+                className={`px-3 py-1.5 text-xs font-semibold capitalize border-r border-input last:border-r-0 transition-colors ${
+                  slideKey === k ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {slides[k].label}
+              </button>
             ))}
           </div>
-        )}
-      </section>
+
+          <div className="text-2xs font-medium text-muted-foreground mb-1.5">Theme</div>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0">
+            {allThemes.map((t) => {
+              const sel = t.id === selectedTheme?.id
+              return (
+                <div
+                  key={t.id}
+                  className={`group flex items-center gap-2.5 w-full rounded-lg border p-1.5 transition-colors ${
+                    sel ? 'border-primary bg-primary/5' : 'border-transparent hover:border-primary/20 hover:bg-muted/40'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedThemeId(t.id)}
+                    className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                  >
+                    <ThemePreview theme={themeRenderObject(t)} size="sm" brandAccent={brandAccent} />
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground truncate flex items-center gap-1.5">
+                        {t.name}
+                        {t.is_default && (
+                          <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-2xs font-semibold text-green-700">Default</span>
+                        )}
+                      </div>
+                      <div className="text-2xs text-muted-foreground">{t.builtin ? 'Built-in' : 'Custom'}</div>
+                    </div>
+                  </button>
+                  {t.custom && (
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditing({ theme: t })}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(t)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* + New theme at bottom of rail */}
+          {editing !== 'new' && (
+            <button
+              type="button"
+              onClick={() => setEditing('new')}
+              className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors py-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New theme
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Theme editor — inline below the panel when creating or editing */}
+      {editing === 'new' && (
+        <ThemeEditor
+          onSave={handleCreate}
+          onCancel={() => setEditing(null)}
+          saving={createTheme.isPending}
+        />
+      )}
+      {editing?.theme && (
+        <ThemeEditor
+          initial={{ name: editing.theme.name, is_default: editing.theme.is_default, config: editing.theme.config }}
+          onSave={(body) => handleUpdate(editing.theme.id, body)}
+          onCancel={() => setEditing(null)}
+          saving={updateTheme.isPending}
+        />
+      )}
     </div>
   )
 }
