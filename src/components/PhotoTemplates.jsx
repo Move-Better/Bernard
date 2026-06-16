@@ -51,11 +51,16 @@ function sampleSlides(workspaceName) {
 }
 const SLIDE_KEYS = ['cover', 'explainer', 'cta']
 
-// Normalize a theme record (built-in has .blocks; custom has .config.blocks)
-// into the { blocks } shape renderFreeformSlide + ThemePreview expect.
-function themeRenderObject(t) {
+// Normalize a theme record so renderFreeformSlide gets layout, palette AND
+// blocks. The old themeRenderObject only returned { blocks }, which silently
+// stripped layout/palette from built-in themes — WHOOP geometry never fired.
+function normalizeTheme(t) {
   if (!t) return { blocks: {} }
-  return { blocks: t.blocks || t.config?.blocks || {} }
+  return {
+    layout:  t.layout,          // from built-in; undefined for custom
+    palette: t.palette,
+    blocks:  t.blocks || t.config?.blocks || {},
+  }
 }
 
 // Full-size live preview rendered by the REAL slide renderer (same code path as
@@ -76,7 +81,7 @@ function LiveThemePreview({ theme, slide, brandStyle, photoUrl }) {
     draw()
     return () => { cancelled = true }
   }, [theme, slide, brandStyle, photoUrl])
-  return <canvas ref={canvasRef} className="h-full w-auto" />
+  return <canvas ref={canvasRef} className="block w-full h-auto" />
 }
 
 const BLOCK_ROLES_ORDERED = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
@@ -259,7 +264,7 @@ function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
   if (id && BUILTIN_THEME_IDS.includes(id)) {
     return <WhoopLayoutThumb templateId={id} size={size} brandAccent={brandAccent} />
   }
-  return <CustomThemePreview theme={themeRenderObject(theme)} size={size} brandAccent={brandAccent} />
+  return <CustomThemePreview theme={normalizeTheme(theme)} size={size} brandAccent={brandAccent} />
 }
 
 // ── Per-block-role style editor ───────────────────────────────────────────────
@@ -441,14 +446,18 @@ export default function PhotoTemplates() {
   const brandStyle   = workspace?.brand_style || {}
 
   // Live-preview state: which theme + slide type to render full-size, and the
-  // backdrop photo (most-recent workspace photo, else the renderer's gradient).
+  // backdrop photo (workspace recent photos, else the renderer's gradient).
   const [selectedThemeId, setSelectedThemeId] = useState(null)
   const [slideKey, setSlideKey] = useState('cover')
-  const { data: mediaPages } = useMediaInfinite({ kind: 'photo' }, { pageSize: 1 })
-  const previewPhotoUrl = useMemo(() => {
-    const a = mediaPages?.pages?.[0]?.[0]
-    return a ? (a.rendered_url || a.web_blob_url || a.blob_url || null) : null
+  const [previewPhotoIdx, setPreviewPhotoIdx] = useState(0) // 0 = first photo; -1 = gradient
+  const { data: mediaPages } = useMediaInfinite({ kind: 'photo' }, { pageSize: 6 })
+  const recentPhotos = useMemo(() => {
+    return (mediaPages?.pages?.flat() || [])
+      .slice(0, 6)
+      .map((a) => a.rendered_url || a.web_blob_url || a.blob_url || null)
+      .filter(Boolean)
   }, [mediaPages])
+  const previewPhotoUrl = previewPhotoIdx >= 0 ? (recentPhotos[previewPhotoIdx] ?? null) : null
   const slides = useMemo(() => sampleSlides(workspace?.display_name), [workspace?.display_name])
   const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || allThemes[0] || null
 
@@ -496,32 +505,56 @@ export default function PhotoTemplates() {
         </p>
       </div>
 
-      {/* Live preview panel: portrait photo left, rail right */}
-      <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch h-[480px]">
+      {/* Live preview panel */}
+      <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-start">
 
-        {/* Portrait preview — canvas is square (1080×1080) displayed in a 4:5 CSS
-            container with overflow-hidden, so left/right edges clip to portrait */}
-        <div className="h-full aspect-[4/5] shrink-0 overflow-hidden rounded-lg shadow-sm">
-          <LiveThemePreview
-            theme={themeRenderObject(selectedTheme)}
-            slide={slides[slideKey]}
-            brandStyle={brandStyle}
-            photoUrl={previewPhotoUrl}
-          />
-          {!previewPhotoUrl && (
-            <p className="absolute bottom-2 left-2 right-2 text-2xs text-white/70 text-center">
-              No photos yet — backdrop only
-            </p>
+        {/* Left — square 1:1 preview (actual canvas size) + photo picker */}
+        <div className="shrink-0 flex flex-col gap-2" style={{ width: 288 }}>
+          {/* 1:1 square — no clipping, text stays in frame */}
+          <div className="aspect-square w-full overflow-hidden rounded-lg shadow-sm bg-muted">
+            <LiveThemePreview
+              theme={normalizeTheme(selectedTheme)}
+              slide={slides[slideKey]}
+              brandStyle={brandStyle}
+              photoUrl={previewPhotoUrl}
+            />
+          </div>
+
+          {/* Photo picker — click a thumbnail to swap the backdrop */}
+          {recentPhotos.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Gradient chip */}
+              <button
+                type="button"
+                onClick={() => setPreviewPhotoIdx(-1)}
+                title="No photo (gradient)"
+                className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${
+                  previewPhotoIdx === -1
+                    ? 'border-primary'
+                    : 'border-transparent hover:border-primary/40'
+                }`}
+                style={{ background: 'linear-gradient(135deg,#475569 0%,#1e293b 100%)' }}
+              />
+              {recentPhotos.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setPreviewPhotoIdx(i)}
+                  title={`Photo ${i + 1}`}
+                  className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${
+                    previewPhotoIdx === i
+                      ? 'border-primary'
+                      : 'border-transparent hover:border-primary/40'
+                  }`}
+                >
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
           )}
-        </div>
 
-        {/* Right rail: name, slide-type toggle, scrollable theme list, + New template at bottom */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <div className="text-sm font-bold text-foreground leading-tight">{selectedTheme?.name || '—'}</div>
-          <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
-
-          <div className="text-2xs font-medium text-muted-foreground mb-1.5">Slide type</div>
-          <div className="inline-flex rounded-lg border border-input overflow-hidden mb-4 self-start">
+          {/* Slide type toggle below picker */}
+          <div className="inline-flex rounded-lg border border-input overflow-hidden self-start">
             {SLIDE_KEYS.map((k) => (
               <button
                 key={k}
@@ -535,9 +568,15 @@ export default function PhotoTemplates() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Right rail: selected template name, scrollable list, + New template */}
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+          <div className="text-sm font-bold text-foreground leading-tight">{selectedTheme?.name || '—'}</div>
+          <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
 
           <div className="text-2xs font-medium text-muted-foreground mb-1.5">Template</div>
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0">
+          <div className="space-y-1 pr-1">
             {allThemes.map((t) => {
               const sel = t.id === selectedTheme?.id
               return (
@@ -579,7 +618,7 @@ export default function PhotoTemplates() {
             })}
           </div>
 
-          {/* + New template at bottom of rail */}
+          {/* + New template */}
           {editing !== 'new' && (
             <button
               type="button"
