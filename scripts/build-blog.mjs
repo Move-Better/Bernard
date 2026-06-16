@@ -24,6 +24,18 @@ import { readFile, writeFile, readdir, mkdir, rm, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, basename, extname } from 'node:path'
 import { marked } from 'marked'
+import { deriveSeoTitle, composePageTitle, cleanBlogMarkdown } from '../src/lib/blogOutput.js'
+
+const SITE = 'https://withbernard.ai'
+const BRAND_SUFFIX = ' — Bernard'
+const PUBLISHER_LOGO = `${SITE}/brand/bernard-icon-1024.png`
+
+// Serialize a JSON-LD object into a <script> body, escaping "<" so a stray
+// "</script>" or "<" in any string field can't break out of the tag.
+function jsonLdScript(obj) {
+  const json = JSON.stringify(obj).replace(/</g, '\\u003c')
+  return `<script type="application/ld+json">${json}</script>`
+}
 
 const ROOT = process.cwd()
 const SRC_DIR = join(ROOT, 'src/content/blog')
@@ -130,17 +142,46 @@ const HEAD_COMMON = `<meta charset="utf-8" />
   <link rel="stylesheet" href="/site.css" />`
 
 function renderPostHtml({ data, body }) {
-  const title = data.title || 'Untitled'
+  // headline = the on-page <h1> (may be long). seoTitle = the ≤60-char <title>
+  // / og:title. pageTitle keeps the brand suffix only when it still fits in 60.
+  const headline = data.title || 'Untitled'
+  const seoTitle = data.seoTitle || deriveSeoTitle(headline)
+  const pageTitle = composePageTitle(seoTitle, BRAND_SUFFIX, 60)
   const description = data.description || ''
   const slug = data.slug || data._defaultSlug
   const pubDate = data.pubDate || ''
   const updatedDate = data.updatedDate || ''
-  const canonical = `https://withbernard.ai/blog/${slug}`
+  const canonical = `${SITE}/blog/${slug}`
   const dateLabel = formatDate(pubDate)
   const updatedLabel = updatedDate ? `Updated ${formatDate(updatedDate)}` : ''
-  const ogImage = data.hero || 'https://withbernard.ai/brand/bernard-icon-1024.png'
+  const ogImage = data.hero || PUBLISHER_LOGO
 
-  const bodyHtml = marked.parse(body, { gfm: true, breaks: false })
+  // Body hygiene (defense for legacy posts): strip a redundant leading "# "
+  // headline and demote any stray body "# " so the page has exactly one <h1>
+  // (the headline rendered from frontmatter below). New posts arrive clean.
+  const { body: cleanedBody } = cleanBlogMarkdown(body)
+  const bodyHtml = marked.parse(cleanedBody, { gfm: true, breaks: false })
+
+  // JSON-LD Article — headline matches the rendered <h1> (not the truncated
+  // seoTitle). dateModified always emitted, falling back to datePublished so
+  // it's never absent. author is a Person; publisher an Organization w/ logo.
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline,
+    description,
+    ...(ogImage ? { image: { '@type': 'ImageObject', url: ogImage } } : {}),
+    ...(pubDate ? { datePublished: pubDate } : {}),
+    dateModified: updatedDate || pubDate || undefined,
+    author: { '@type': 'Person', name: data.author || 'Bernard' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Bernard',
+      logo: { '@type': 'ImageObject', url: PUBLISHER_LOGO },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+  }
+  const jsonLd = jsonLdScript(articleSchema)
 
   // Hero rendered between the title hero and the body — gives every post
   // a visual anchor without forcing the writer to put `![](...)` inline.
@@ -159,13 +200,13 @@ function renderPostHtml({ data, body }) {
   const heroSrc = data.hero || ''
   const heroAltCandidate = data.heroAlt || ''
   const looksLikeFilename = /\.(jpe?g|png|gif|webp|avif|heic)$/i.test(heroAltCandidate) || /^[A-F0-9-]{20,}_/i.test(heroAltCandidate)
-  const heroAlt = (heroAltCandidate && !looksLikeFilename) ? heroAltCandidate : title
+  const heroAlt = (heroAltCandidate && !looksLikeFilename) ? heroAltCandidate : headline
 
   let heroBlock = ''
   if (heroVideo && heroVideo.policy !== 'signed') {
     const vAlt = heroVideo.alt && !/\.(mov|mp4|m4v|webm)$/i.test(heroVideo.alt)
       ? heroVideo.alt
-      : title
+      : headline
     heroBlock = `
 <section class="upost-hero-image">
   <div class="container">
@@ -200,17 +241,19 @@ function renderPostHtml({ data, body }) {
 <head>
   ${HEAD_COMMON}
   ${muxPlayerScript}
-  <title>${escapeHtml(title)} — Bernard</title>
+  <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <link rel="canonical" href="${canonical}" />
-  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:title" content="${escapeHtml(seoTitle)}" />
   <meta property="og:description" content="${escapeHtml(description)}" />
   <meta property="og:url" content="${canonical}" />
   <meta property="og:type" content="article" />
   <meta property="og:image" content="${escapeHtml(ogImage)}" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapeHtml(seoTitle)}" />
   ${pubDate ? `<meta property="article:published_time" content="${pubDate}" />` : ''}
-  ${updatedDate ? `<meta property="article:modified_time" content="${updatedDate}" />` : ''}
+  <meta property="article:modified_time" content="${updatedDate || pubDate}" />
+  ${jsonLd}
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
@@ -221,7 +264,7 @@ ${HEADER}
   <div class="container">
     <div class="upage-hero-inner">
       <p class="upage-eyebrow"><span class="dot"></span> <a href="/blog">Blog</a></p>
-      <h1>${escapeHtml(title)}</h1>
+      <h1>${escapeHtml(headline)}</h1>
       <p class="upost-meta">
         ${dateLabel ? `<time datetime="${pubDate}">${dateLabel}</time>` : ''}
         ${dateLabel ? ' · ' : ''}<span>${readTime(body)}</span>
@@ -280,6 +323,29 @@ function renderIndexHtml(posts) {
         <p>No posts yet. First piece is on its way.</p>
       </li>`
 
+  // Blog / collection schema — lists every post so crawlers see the index as a
+  // blog with its members, not a bare page. Each entry mirrors the per-post
+  // Article (headline = the post's <h1>, dateModified falling back to pub date).
+  const blogSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    '@id': `${SITE}/blog`,
+    name: 'Bernard Blog',
+    description: 'Field notes from building Bernard — voice-faithful content for hands-on and integrative care providers.',
+    url: `${SITE}/blog`,
+    blogPost: posts.map((p) => {
+      const s = p.data.slug || p.data._defaultSlug
+      return {
+        '@type': 'BlogPosting',
+        headline: p.data.title,
+        url: `${SITE}/blog/${s}`,
+        ...(p.data.pubDate ? { datePublished: p.data.pubDate } : {}),
+        dateModified: p.data.updatedDate || p.data.pubDate || undefined,
+      }
+    }),
+  }
+  const blogJsonLd = posts.length ? jsonLdScript(blogSchema) : ''
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -292,6 +358,7 @@ function renderIndexHtml(posts) {
   <meta property="og:url" content="https://withbernard.ai/blog" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
+  ${blogJsonLd}
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>

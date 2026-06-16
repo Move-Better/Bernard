@@ -36,6 +36,7 @@ import { publishBlogToWebsite, sendBlogToBeehiiv, cancelBufferPost } from '@/lib
 import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { suggestScheduleTime, explainPlatformSlot, findScheduleConflict } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
+import { slugifyTitle, deriveSeoTitle, cleanBlogMarkdown } from '@/lib/blogOutput'
 import { extractProvenanceBlock } from '@/lib/provenance'
 import { toast, runWithToast } from '@/lib/toast'
 import { apiFetch } from '@/lib/api'
@@ -1345,29 +1346,30 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
     try {
       const markdown = typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)
       if (piece.platform === 'blog') {
-        const lines = markdown.split('\n')
-        const titleLine = lines.find((l) => /^#\s/.test(l))
-        const title = titleLine ? titleLine.replace(/^#+\s+/, '').trim() : (piece.topic || 'Blog Post')
-        // Cap slug at ~60 chars on a hyphen boundary so URLs stay readable.
-        // Falls back to a hard cut if the title is one very long word.
-        const SLUG_MAX = 60
-        const rawSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-        let slug = rawSlug
-        if (rawSlug.length > SLUG_MAX) {
-          const truncated = rawSlug.slice(0, SLUG_MAX)
-          const lastHyphen = truncated.lastIndexOf('-')
-          slug = (lastHyphen > SLUG_MAX / 2 ? truncated.slice(0, lastHyphen) : truncated).replace(/-+$/, '')
-        }
-        const descLine = lines.find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
-        const description = descLine?.trim().slice(0, 200) || title
+        // Blog output hygiene (see src/lib/blogOutput.js + the 2026-06 SEO
+        // audit): the headline is the first body "# " line and becomes the page
+        // title (the receiver renders the single <h1>), so we strip it from the
+        // published body and demote any stray body "# " — the body never ships
+        // an <h1>. Slug + SEO title are derived deterministically so the same
+        // article always yields the same URL and a <title> that fits in SERPs.
+        const { headline, body } = cleanBlogMarkdown(markdown)
+        const title = headline || (piece.topic || 'Blog Post')
+        const slug = slugifyTitle(title)
+        const seoTitle = deriveSeoTitle(title)
+        const descLine = body.split('\n').find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
+        const description = descLine?.trim().slice(0, 200) || seoTitle
         const pubDate = new Date().toISOString().slice(0, 10)
         // Mirror-on-publish image manifest — hero from media_urls[0], inline
-        // body images parsed from the markdown. Server-side WP path uploads
-        // each into the Media Library and rewrites the body; the Astro
+        // body images parsed from the (cleaned) markdown. Server-side WP path
+        // uploads each into the Media Library and rewrites the body; the Astro
         // webhook receives the manifest and is responsible for committing the
         // bytes into the destination repo. See src/lib/publishImageMirror.js.
-        const manifest = buildImagesManifest({ markdown, mediaUrls: piece.media_urls, slug })
-        const payload = { slug, title, description, pubDate, markdown, ...manifest }
+        const manifest = buildImagesManifest({ markdown: body, mediaUrls: piece.media_urls, slug })
+        // title = on-page <h1> headline (long ok); seoTitle = ≤60-char <title>.
+        const payload = { slug, title, seoTitle, headline: title, description, pubDate, markdown: body, ...manifest }
+        // dateModified — only on a genuine re-publish (the row already has a
+        // published_at). Never fabricated: a first publish carries pubDate only.
+        if (piece.published_at) payload.updatedDate = pubDate
         if (piece.staff_name) payload.author = piece.staff_name
         if (piece.topic) {
           const topicSlug = piece.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -1452,25 +1454,19 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
     setBeehiivPublishing(true)
     try {
       const markdown = typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)
-      const lines = markdown.split('\n')
-      const titleLine = lines.find((l) => /^#\s/.test(l))
-      const title = titleLine ? titleLine.replace(/^#+\s+/, '').trim() : (piece.topic || 'Blog Post')
-      const descLine = lines.find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
+      // Same hygiene as the website path: strip the redundant leading "# " so
+      // the body Beehiiv renders carries no <h1>, and derive the slug from the
+      // headline deterministically (Beehiiv assigns its own slug, but we echo
+      // ours so logs correlate). See src/lib/blogOutput.js.
+      const { headline, body } = cleanBlogMarkdown(markdown)
+      const title = headline || (piece.topic || 'Blog Post')
+      const descLine = body.split('\n').find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
       const description = descLine?.trim().slice(0, 200) || title
-      // Slug isn't required by Beehiiv (it assigns its own) but we echo it so
-      // logs correlate; mirrors the slug derivation in handlePublish.
-      const SLUG_MAX = 60
-      const rawSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      let slug = rawSlug
-      if (rawSlug.length > SLUG_MAX) {
-        const truncated = rawSlug.slice(0, SLUG_MAX)
-        const lastHyphen = truncated.lastIndexOf('-')
-        slug = (lastHyphen > SLUG_MAX / 2 ? truncated.slice(0, lastHyphen) : truncated).replace(/-+$/, '')
-      }
+      const slug = slugifyTitle(title)
       const heroImage = Array.isArray(piece.media_urls) && piece.media_urls[0]?.url
         ? piece.media_urls[0].url
         : undefined
-      const payload = { title, description, markdown, slug }
+      const payload = { title, description, markdown: body, slug }
       if (heroImage) payload.heroImage = heroImage
       const result = await runWithToast(sendBlogToBeehiiv(payload), {
         loading: 'Sending draft to Beehiiv…',

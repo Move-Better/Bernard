@@ -25,6 +25,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 30 }
 
 import { enforceLimit } from '../_lib/ratelimit.js'
+import { findSlugPrefixCollision } from '../../src/lib/blogOutput.js'
 
 const REPO_OWNER = 'Move-Better'
 const REPO_NAME  = 'Bernard'
@@ -41,6 +42,9 @@ function yamlQuote(s) {
 function buildMarkdownFile(data) {
   const fm = []
   fm.push(`title: ${yamlQuote(data.title)}`)
+  // seoTitle — the ≤60-char <title>/og:title. `title` stays the on-page <h1>
+  // (it may be longer). build-blog.mjs falls back to deriving one when absent.
+  if (data.seoTitle) fm.push(`seoTitle: ${yamlQuote(data.seoTitle)}`)
   fm.push(`description: ${yamlQuote(data.description)}`)
   fm.push(`pubDate: ${data.pubDate}`)
   if (data.updatedDate)  fm.push(`updatedDate: ${data.updatedDate}`)
@@ -90,6 +94,27 @@ const GH_HEADERS_BASE = {
 async function githubGet(token, path) {
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}?ref=${encodeURIComponent(REPO_BRANCH)}`
   return fetch(url, { headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` } })
+}
+
+// List the published blog slugs by reading the content directory. Returns an
+// array of slugs (filenames minus the .md extension), or null if the directory
+// can't be read (treated as "can't verify" — the caller skips the prefix guard
+// rather than blocking a legitimate publish on a transient GitHub error).
+async function githubListSlugs(token) {
+  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CONTENT_PATH_PREFIX}?ref=${encodeURIComponent(REPO_BRANCH)}`
+  let resp
+  try {
+    resp = await fetch(url, { headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` } })
+  } catch {
+    return null
+  }
+  if (!resp.ok) return null
+  let listing
+  try { listing = await resp.json() } catch { return null }
+  if (!Array.isArray(listing)) return null
+  return listing
+    .filter((e) => e?.type === 'file' && typeof e.name === 'string' && e.name.endsWith('.md'))
+    .map((e) => e.name.replace(/\.md$/, ''))
 }
 
 async function githubPut(token, path, content, message) {
@@ -175,6 +200,26 @@ export default async function handler(req, res) {
     const body = await existsResp.text().catch(() => '')
     console.error(tag, `github existence-check ${existsResp.status}:`, body.slice(0, 500))
     return res.status(502).json({ error: 'github_error', message: `GitHub returned ${existsResp.status} on existence check.`, retriable: true })
+  }
+
+  // 1b. Prefix-collision guard — halt for human review when this slug is a
+  // truncation-prefix of (or extends) an already-published slug. This is the
+  // shape of the live duplicate the 2026-06 audit found: two URLs for one
+  // article (`…-your-only` and `…-your-only-option`) from run-to-run slug
+  // truncation drift. A transient list failure returns null → guard skipped
+  // (we never block a publish on an unreadable directory).
+  const existingSlugs = await githubListSlugs(ghToken)
+  if (existingSlugs) {
+    const collision = findSlugPrefixCollision(slug, existingSlugs)
+    if (collision) {
+      console.error(tag, `slug_prefix_collision with "${collision}"`)
+      return res.status(409).json({
+        error: 'slug_prefix_collision',
+        slug,
+        collidesWith: collision,
+        message: `The slug "${slug}" is a near-duplicate of the already-published "${collision}" (one is a prefix of the other). This usually means the same article is being published twice under different truncations. Rename the title, or update the existing post instead of creating a second URL.`,
+      })
+    }
   }
 
   // 2. Build the markdown file content.

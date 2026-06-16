@@ -48,6 +48,7 @@ import { getCredential } from '../_lib/getCredential.js'
 import { workspaceScope } from '../_lib/workspaceScope.js'
 import { requireRole } from '../_lib/auth.js'
 import { rewriteMarkdownImageUrls } from '../_lib/publishImageMirror.js'
+import { findBodyH1, deriveSeoTitle, SEO_TITLE_MAX } from '../../src/lib/blogOutput.js'
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
@@ -59,6 +60,31 @@ async function handler(req, res) {
   const missing = required.filter((k) => !payload[k] || (typeof payload[k] === 'string' && !payload[k].trim()))
   if (missing.length) {
     return res.status(400).json({ error: 'invalid_payload', message: `Missing required field(s): ${missing.join(', ')}` })
+  }
+
+  // Blog output hygiene gate (see src/lib/blogOutput.js + the 2026-06 SEO
+  // audit). Defense-in-depth: the frontend already cleans the body, but a bad
+  // article must be blocked here, not shipped, regardless of caller.
+  //
+  // body-h1 lint — the body must never carry an <h1>. The headline belongs in
+  // the title field; the receiver renders the single page <h1>. A stray "# "
+  // in the body is exactly what produced the 2–7 <h1> pages the audit found.
+  const bodyH1s = findBodyH1(payload.markdown)
+  if (bodyH1s.length) {
+    return res.status(400).json({
+      error: 'body_has_h1',
+      message: `The article body must not contain a top-level "# " heading (found ${bodyH1s.length}). The title goes in the title field; use "## " for sections so the page has exactly one <h1>.`,
+      issues: bodyH1s.map((h) => `line ${h.line}: ${h.text}`),
+    })
+  }
+  // title-length — repair (not block): derive a ≤60-char SEO title when the
+  // caller didn't send one, or when the one it sent overflows. The long
+  // `title` stays the on-page <h1>; `seoTitle` drives <title>/og:title.
+  if (typeof payload.seoTitle !== 'string' || !payload.seoTitle.trim() || payload.seoTitle.length > SEO_TITLE_MAX) {
+    payload.seoTitle = deriveSeoTitle(payload.title)
+  }
+  if (typeof payload.headline !== 'string' || !payload.headline.trim()) {
+    payload.headline = payload.title
   }
 
   const scope = await workspaceScope(req)
@@ -109,6 +135,11 @@ async function publishToAstro(res, payload, cred, workspaceSlug) {
     pubDate:     payload.pubDate,
     markdown:    payload.markdown,
   }
+  // SEO title (≤60) and headline (the on-page <h1>) — receivers that know about
+  // them map seoTitle → <title>/og:title and headline → <h1> + Article.headline.
+  // Older receivers ignore unknown fields and fall back to `title`.
+  if (payload.seoTitle)     body.seoTitle     = payload.seoTitle
+  if (payload.headline)     body.headline     = payload.headline
   if (payload.updatedDate)  body.updatedDate  = payload.updatedDate
   if (payload.author)       body.author       = payload.author
   if (payload.heroImage)    body.heroImage    = payload.heroImage
