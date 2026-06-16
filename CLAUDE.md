@@ -65,6 +65,23 @@ Rule: for an audit/redesign that will touch multiple surfaces, after the assessm
 
 **Save every rendered mockup screenshot.** Each time `preview_screenshot` captures a mockup state, immediately write the PNG to `.claude/mockups/screenshots/<YYYY-MM-DD>-<slug>-<screen>.png` (e.g. `2026-06-15-media-flow-slate.png`). Do this for every distinct screen or iteration, not just the final. These PNGs are keep files — they're the visual record of design decisions and Q's sign-off points. Never let a `preview_screenshot` call be the only copy; the preview browser state is ephemeral.
 
+## Mockup-to-build fidelity gate
+
+Every PR built from a mockup requires a two-part fidelity check **before** the PR is opened. Do not open the PR and declare it done without completing both parts.
+
+**Part 1 — Visual diff.** Screenshot the built UI at the same viewport width as the mockup (1360px). Read the saved mockup PNG from `.claude/mockups/screenshots/`. Compare them screen by screen:
+- Spacing and density — gaps, padding, component sizing
+- Typography hierarchy — weights, sizes, color roles
+- Component behavior — does the built component match the mockup's implied interaction (e.g. a dropdown vs. a modal, inline edit vs. separate form)?
+
+If a screen diverges in any of these, fix it before opening the PR. For authed surfaces (which can only be verified post-deploy): deploy first, drive Q's Chrome tab to screenshot the live page, compare against the mockup PNG, and fix before declaring done.
+
+**Part 2 — Capabilities audit.** Read the signed-off mockup HTML (`.claude/mockups/*.html`) and enumerate every interactive element visible on each screen — buttons, links, toggles, inputs, menus, cards that open things. For each one, confirm it is either:
+- **Wired** — connected to a real action, API call, or navigation
+- **Explicitly deferred** — noted in the PR description as out of scope with a reason
+
+Anything visible in the mockup that is neither wired nor explicitly deferred is a gap. Fix or document it before the PR opens. A UI element that does nothing is worse than one that doesn't exist — it trains Q to distrust the product.
+
 ## The quality metric itself can be the bug — validate the validator
 
 We gate caption work on an LLM-judge fidelity scorer (`api/_lib/captionFidelity.js` + the offline `scripts/voice-fidelity-captions.mjs`, sharing one rubric module `api/_lib/captionFidelityRubric.js`; CI gate `scripts/verify-caption-fidelity.mjs`). On 2026-05-31 the U1 keystone (feed the clip transcript into captions) measured a **−0.68 regression** — and that number was wrong. The grader was the broken thing: it **never received the transcript** it claimed to judge faithfulness against, and two of its dimensions rewarded clinical register ("real anatomy, technique names"), so it actively penalized faithful warm/personal captions. After the grader was rewritten to grade `said_fidelity` against the transcript with a register-neutral `voice_match` (PR #1081), the same change measured **+1.74**.
