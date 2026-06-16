@@ -621,7 +621,8 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
     else                        rectX = anchorX - maxLineW / 2 - PAD_W
     const rectY = y - typo.lineH - PAD_H
     ctx.fillStyle = rectColor
-    ctx.fillRect(rectX, rectY, rectW, blockH)
+    drawRoundedRect(ctx, rectX, rectY, rectW, blockH, 18)
+    ctx.fill()
   }
 
   ctx.fillStyle = typo.color
@@ -734,17 +735,27 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
       ctx.fillRect(FREEFORM_PAD, ruleY, SIZE - FREEFORM_PAD * 2, 4)
 
     } else {
-      // light-badge: photo top ~58%, white panel below
+      // light-badge: full-bleed photo that fades softly into a white panel
+      // below — mirrors the dark-badge scrim treatment (fade, not a hard seam).
       const panelY = Math.round(SIZE * 0.58)
       if (img) {
-        drawCover(ctx, img, 0, 0, SIZE, panelY)
+        drawCover(ctx, img, 0, 0, SIZE, SIZE)
       } else {
-        const grad = ctx.createLinearGradient(0, 0, 0, panelY)
+        const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
         grad.addColorStop(0, '#e2e8f0')
         grad.addColorStop(1, '#cbd5e1')
         ctx.fillStyle = grad
-        ctx.fillRect(0, 0, SIZE, panelY)
+        ctx.fillRect(0, 0, SIZE, SIZE)
       }
+      // White scrim fading the photo's lower region into the panel
+      const scrimStart = Math.round(SIZE * 0.40)
+      const scrim = ctx.createLinearGradient(0, scrimStart, 0, panelY)
+      scrim.addColorStop(0, 'rgba(255,255,255,0)')
+      scrim.addColorStop(0.7, 'rgba(255,255,255,0.85)')
+      scrim.addColorStop(1, 'rgba(255,255,255,1)')
+      ctx.fillStyle = scrim
+      ctx.fillRect(0, scrimStart, SIZE, panelY - scrimStart)
+      // Solid white panel below the fade
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, panelY, SIZE, SIZE - panelY)
       // Orange rule at the panel top
