@@ -73,6 +73,7 @@ import UploadTray from '@/components/UploadTray'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import { setSentryUser, setSentryWorkspace } from '@/lib/sentry'
+import { initPosthog, posthogIdentify, posthogGroup, posthogPageview } from '@/lib/posthog'
 import { FeedbackWidget } from '@/components/FeedbackWidget'
 import { Toaster } from '@/lib/toast'
 import UpdateAvailableModal from '@/components/UpdateAvailableModal'
@@ -566,6 +567,7 @@ function HomeOrSlateForProducer() {
 // Routes shared between org-gated and domain-gated modes.
 function AppRoutes() {
   const location = useLocation()
+  useEffect(() => { posthogPageview(location.pathname) }, [location.pathname])
   // /welcome renders standalone (no app chrome) so the intro feels like its
   // own surface rather than another dashboard tab. /onboard/brand-kit is the
   // final wizard step on the new subdomain; same treatment so it doesn't
@@ -696,6 +698,10 @@ function ProtectedApp() {
 
   useEffect(() => { setSentryUser(user?.id ?? null) }, [user?.id])
   useEffect(() => { setSentryWorkspace(ws?.slug ?? null) }, [ws?.slug])
+  useEffect(() => { if (user?.id) posthogIdentify(user.id) }, [user?.id])
+  useEffect(() => {
+    if (ws?.id) posthogGroup(ws.id, ws.slug, ws.app_name)
+  }, [ws?.id, ws?.slug, ws?.app_name])
 
   // workspace row from context (DB on shared deployment; static-shaped fallback otherwise).
   const signInName  = ws?.app_name      ?? workspace.appName
@@ -804,6 +810,10 @@ function VersionUpdateHost() {
     />
   )
 }
+
+// Init PostHog once at module load so the first pageview is captured even if
+// the React tree mounts slowly. Safe to call multiple times (posthog-js guards).
+initPosthog()
 
 export default function App() {
   useEffect(() => {
