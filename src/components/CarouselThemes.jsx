@@ -75,7 +75,7 @@ function LiveThemePreview({ theme, slide, brandStyle, photoUrl }) {
     draw()
     return () => { cancelled = true }
   }, [theme, slide, brandStyle, photoUrl])
-  return <canvas ref={canvasRef} className="w-full aspect-square rounded-xl border bg-muted shadow-sm" />
+  return <canvas ref={canvasRef} className="w-full h-full rounded-xl border bg-muted shadow-sm" />
 }
 
 const BLOCK_ROLES_ORDERED = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
@@ -376,7 +376,7 @@ export default function CarouselThemes() {
   if (isLoading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading themes…</div>
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className="max-w-4xl space-y-8">
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">Carousel Themes</h1>
@@ -391,15 +391,17 @@ export default function CarouselThemes() {
           <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live preview</h2>
           <span className="text-2xs text-muted-foreground">Rendered like a real slide</span>
         </div>
-        <div className="rounded-xl border bg-card p-4 flex flex-col sm:flex-row gap-5">
-          {/* Big preview */}
-          <div className="w-full sm:w-[340px] shrink-0">
-            <LiveThemePreview
-              theme={themeRenderObject(selectedTheme)}
-              slide={slides[slideKey]}
-              brandStyle={brandStyle}
-              photoUrl={previewPhotoUrl}
-            />
+        <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch">
+          {/* Big preview — height driven by the right rail; width = height (square) */}
+          <div className="self-stretch aspect-square shrink-0 flex flex-col">
+            <div className="flex-1 min-h-0">
+              <LiveThemePreview
+                theme={themeRenderObject(selectedTheme)}
+                slide={slides[slideKey]}
+                brandStyle={brandStyle}
+                photoUrl={previewPhotoUrl}
+              />
+            </div>
             {!previewPhotoUrl && (
               <p className="mt-2 text-2xs text-muted-foreground">
                 No workspace photos yet — showing a neutral backdrop. Text styling is accurate.
@@ -408,7 +410,7 @@ export default function CarouselThemes() {
           </div>
 
           {/* Controls + theme rail */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col">
             <div className="text-sm font-bold text-foreground">{selectedTheme?.name || '—'}</div>
             <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
 
@@ -429,7 +431,7 @@ export default function CarouselThemes() {
             </div>
 
             <div className="text-2xs font-medium text-muted-foreground mb-1.5">Theme</div>
-            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
               {allThemes.map((t) => {
                 const sel = t.id === selectedTheme?.id
                 return (
