@@ -641,9 +641,9 @@ ${workspace.brand_voice}
 
 ${formatPatientContextForPrompt(workspace, prototypeId)}
 ${internalLinksBlock}${externalLinksLine}${bookingLine}
-HEADLINE: write one compelling, specific headline. Never include ${staffName}'s name in the headline.
+HEADLINE: write one compelling, specific headline that front-loads the primary topic/keyword in its first ~60 characters (a shorter SEO title is derived from its opening, so lead with the substance). Never include ${staffName}'s name in the headline.
 
-FORMAT: Markdown. Use ## headings only where the content actually shifts thread. No fixed section count.
+FORMAT: Markdown. The first line is the headline as a single "# " heading — that is the ONLY single-"#" (h1) line allowed. Every section heading in the body uses "## " (and "### " for subsections); never start another line with a single "# ". Use headings only where the content actually shifts thread. No fixed section count.
 
 ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words, but voice fidelity beats length. If the interview only has 500 words of real material, write 500. Never pad.')}${PROVENANCE_INSTRUCTION}`
 }
@@ -1083,9 +1083,9 @@ ${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}${ownHistoryBloc
 ${workspace.display_name.toUpperCase()} BRAND VOICE:
 ${brandVoice}
 ${internalLinks}${bookingLine}
-HEADLINE: one compelling, specific headline. Never include ${expertName}'s name in the headline.
+HEADLINE: one compelling, specific headline that front-loads the primary topic/keyword in its first ~60 characters (a shorter SEO title is derived from its opening, so lead with the substance). Never include ${expertName}'s name in the headline.
 
-FORMAT: Markdown. Use ## headings only where the content actually shifts thread. No fixed section count.
+FORMAT: Markdown. The first line is the headline as a single "# " heading — that is the ONLY single-"#" (h1) line allowed. Every section heading in the body uses "## " (and "### " for subsections); never start another line with a single "# ". Use headings only where the content actually shifts thread. No fixed section count.
 
 ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 900–1200 words, but voice fidelity beats length. If the interview only has 600 words of real material, write 600. Never pad.')}${PROVENANCE_INSTRUCTION}`
 }
@@ -1241,7 +1241,7 @@ THIS PART'S ANGLE:
   Title: ${partTitle}
   Brief: ${brief}
 ${anchorsBlock}${quotesBlock}${siblingsBlock}
-STRUCTURE — this is a series part, NOT a generic blog. The structure should follow the brief above, not a fixed template. Use as many content-specific section headings as the material warrants. Do NOT use generic section headings ("Introduction," "What's Going On," "Our Approach," "Conclusion") — every heading must describe what the section is actually about.
+STRUCTURE — this is a series part, NOT a generic blog. The structure should follow the brief above, not a fixed template. Use as many content-specific section headings as the material warrants. Do NOT use generic section headings ("Introduction," "What's Going On," "Our Approach," "Conclusion") — every heading must describe what the section is actually about. The first line is the part's headline as a single "# " heading (the only single-"#" line allowed); every section heading below it uses "## " (and "### " for subsections) — never start another line with a single "# ".
 
 LINK BUILDING — internal links to other ${workspace.display_name} content where the topic fits. Use descriptive anchor text (never "click here"):
 
