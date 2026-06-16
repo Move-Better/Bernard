@@ -52,8 +52,10 @@ function sampleSlides(workspaceName) {
 const SLIDE_KEYS = ['cover', 'explainer', 'cta']
 
 // Platform format presets — changes the preview container's aspect ratio so you
-// can see how the template looks at each platform's native crop.
-const PREVIEW_W = 248
+// can see how the template looks at each platform's native crop. `ratio` is
+// height/width. The preview box is fully responsive (CSS aspect-ratio), capped
+// by PREVIEW_MAX_H so tall formats don't run away vertically.
+const PREVIEW_MAX_H = 540
 const FORMATS = [
   { id: 'square',    label: '1:1',  ratio: 1,       title: 'Square — Instagram post (1080×1080)' },
   { id: 'portrait',  label: '4:5',  ratio: 5 / 4,   title: 'Portrait — Instagram post (1080×1350)' },
@@ -474,8 +476,8 @@ export default function PhotoTemplates() {
   const [editing, setEditing] = useState(null)  // null | 'new' | { theme }
   const [formatId, setFormatId] = useState('square')
   const format    = FORMATS.find((f) => f.id === formatId) || FORMATS[0]
-  const formatH   = Math.round(PREVIEW_W * format.ratio)
-  const canvasSize = Math.min(PREVIEW_W, formatH)
+  // Cap the box WIDTH so a tall format (9:16) stays within PREVIEW_MAX_H.
+  const maxBoxW   = Math.round(PREVIEW_MAX_H / format.ratio)
 
   async function handleCreate(body) {
     try {
@@ -542,14 +544,16 @@ export default function PhotoTemplates() {
           ))}
         </div>
 
-        {/* Center — canvas letterboxed to selected format + photo picker + slide tabs */}
-        <div className="shrink-0 flex flex-col gap-2" style={{ width: PREVIEW_W }}>
-          {/* Canvas container — black letterbox bars for non-square formats */}
+        {/* Center — responsive canvas, letterboxed to selected format. Grows to
+            fill the space freed by the fixed-width template list. */}
+        <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
+          {/* Canvas container — fluid width, capped so tall formats fit; black
+              letterbox bars frame the square 1080×1080 canvas at any ratio. */}
           <div
-            className="rounded-lg shadow-sm flex items-center justify-center overflow-hidden"
-            style={{ width: PREVIEW_W, height: formatH, background: '#111' }}
+            className="rounded-lg shadow-sm flex items-center justify-center overflow-hidden mx-auto"
+            style={{ width: '100%', maxWidth: maxBoxW, aspectRatio: `1 / ${format.ratio}`, background: '#111' }}
           >
-            <div style={{ width: canvasSize, height: canvasSize, flexShrink: 0 }}>
+            <div className={`${format.ratio >= 1 ? 'w-full' : 'h-full'} aspect-square`}>
               <LiveThemePreview
                 theme={normalizeTheme(selectedTheme)}
                 slide={slides[slideKey]}
@@ -561,7 +565,7 @@ export default function PhotoTemplates() {
 
           {/* Photo picker — gradient chip + workspace recent photos */}
           {recentPhotos.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center justify-center gap-1.5 flex-wrap" style={{ maxWidth: maxBoxW }}>
               <button
                 type="button"
                 onClick={() => setPreviewPhotoIdx(-1)}
@@ -592,7 +596,7 @@ export default function PhotoTemplates() {
           )}
 
           {/* Slide type toggle */}
-          <div className="inline-flex rounded-lg border border-input overflow-hidden self-start">
+          <div className="inline-flex rounded-lg border border-input overflow-hidden">
             {SLIDE_KEYS.map((k) => (
               <button
                 key={k}
@@ -608,8 +612,9 @@ export default function PhotoTemplates() {
           </div>
         </div>
 
-        {/* Right rail: selected template name, scrollable list, + New template */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+        {/* Right rail: fixed-width so the freed space goes to the preview, not
+            to uselessly-wide template rows. */}
+        <div className="w-72 shrink-0 flex flex-col min-h-0">
           <div className="text-sm font-bold text-foreground leading-tight">{selectedTheme?.name || '—'}</div>
           <div className="text-2xs text-muted-foreground mb-3">{selectedTheme?.builtin ? 'Built-in' : 'Custom'}</div>
 
