@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { posthogCapture } from '@/lib/posthog'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { ArrowLeft, ArrowRight, Loader2, Sparkles, AlertCircle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight, CheckCircle2, Circle, Check, RefreshCw, Send, Keyboard, Video } from 'lucide-react'
@@ -836,7 +837,10 @@ export default function InterviewSession() {
       if (isComplete) { clearLocalMessages(interviewId); clearDraft(interviewId) }
     }
 
-    if (isComplete) setInterviewComplete(true)
+    if (isComplete) {
+      setInterviewComplete(true)
+      posthogCapture('interview_completed', { interviewId })
+    }
     setStreamingText('')
     setIsStreaming(false)
 
@@ -1447,6 +1451,7 @@ export default function InterviewSession() {
       if (recap) outputs.coveredSummary = recap
       // Clear session_state: completed interviews don't need resume capability.
       await updateInterview(interviewId, { outputs, status: 'completed', session_state: null, paused_at: null })
+      posthogCapture('story_generated', { interviewId, type: isNewsletter ? 'email' : 'blog' })
       // The PATCH above triggers a server-side cascade in api/db/interviews.js
       // that creates the content_items rows. Flush caches so ContentHub /
       // Calendar pick those up on next read.

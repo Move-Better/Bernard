@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { posthogCapture } from '@/lib/posthog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
@@ -1393,6 +1394,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           publishedAt: new Date().toISOString(),
           resolvedUrl: result.postUrl || undefined,
         })
+        posthogCapture('published', { platform: 'blog', pieceId: piece.id })
       } else {
         // Social publish runs through the shared publishPieceToBuffer helper —
         // the single source of truth for the Buffer path (incl. carousel
@@ -1434,6 +1436,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           publishedAt: scheduling ? null : new Date().toISOString(),
           scheduledAt: scheduling ? finalScheduledAt : null,
         })
+        posthogCapture(scheduling ? 'publish_scheduled' : 'published', { platform: piece.platform, pieceId: piece.id })
         qc.invalidateQueries({ queryKey: queryKeys.stories.detail(piece.interview_id) })
       }
     } catch {

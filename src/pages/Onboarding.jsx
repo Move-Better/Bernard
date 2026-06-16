@@ -35,6 +35,7 @@ import {
 } from '@/lib/outputChannels'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { BERNARD_LOGO_URL } from '@/lib/brand'
+import { posthogCapture } from '@/lib/posthog'
 
 export default function Onboarding() {
   useDocumentTitle('Get started')
@@ -291,6 +292,7 @@ export default function Onboarding() {
                   return
                 }
                 const data = await r.json()
+                posthogCapture('onboard_complete', { slug: form.slug, channels: form.enabled_outputs?.length ?? 0 })
                 setRedirectUrl(data.redirect_url)
                 setStep('launching')
               } catch {

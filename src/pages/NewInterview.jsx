@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { posthogCapture } from '@/lib/posthog'
 import { useUser, useAuth } from '@clerk/react'
 import {
   ArrowLeft, ArrowRight, Loader2, TrendingUp, Sparkles, Plus,
@@ -195,6 +196,7 @@ export default function NewInterview() {
         cleanupLevel,
         topicBacklogId: searchParams.get('topicBacklogId') || undefined,
       })
+      posthogCapture('capture_started', { topic: pending.topic })
       navigate(`/interview/${staffMember.id}/${interview.id}`, { state: { micChecked: true } })
     } catch (e) {
       // Drop back to the form so the user can retry without re-running the
