@@ -510,18 +510,28 @@ function roleTypography(role, brandStyle, themeBlock) {
   }
 }
 
-// Resolve a position spec to { anchorX, anchorY, align } in canvas pixels.
-// Preset keys snap to a 3×3 grid inset by FREEFORM_PAD. Custom {x,y} is the
-// fraction of the canvas (0..1) for the block's anchor point, where the
+// Resolve a position spec to { anchorX, anchorY, align, vAnchor } in canvas
+// pixels. Preset keys snap to a 3×3 grid inset by FREEFORM_PAD. Custom {x,y} is
+// the fraction of the canvas (0..1) for the block's anchor point, where the
 // anchor sits at the block's text-bottom-left for left/start aligns and
 // text-bottom-center for centered aligns.
+//
+// `vAnchor` ('top' | 'center' | 'bottom') tells drawFreeformBlock how a
+// multi-line block grows around anchorY: 'top' grows DOWN (first baseline at
+// anchorY) so it never clips off the top safe area, 'center' centers the block
+// around anchorY, and 'bottom' grows UP (last baseline at anchorY) so it sits
+// in the bottom safe area. Single-line blocks render identically in all three
+// modes (the first line IS the last line, at anchorY). Custom {x,y} keeps the
+// historical bottom/grow-up anchor — Text Post Studio (src/lib/textCard.js)
+// stacks blocks at fixed y-fractions tuned to that behavior, and the editor's
+// position picker is WYSIWYG so a top-clip self-corrects on drag.
 function resolvePosition(position) {
   if (position && typeof position === 'object' && Number.isFinite(position.x) && Number.isFinite(position.y)) {
     const x = Math.max(0, Math.min(1, position.x))
     const y = Math.max(0, Math.min(1, position.y))
     // Custom: align by which third of the canvas the anchor sits in
     const align = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'center'
-    return { anchorX: Math.round(x * SIZE), anchorY: Math.round(y * SIZE), align }
+    return { anchorX: Math.round(x * SIZE), anchorY: Math.round(y * SIZE), align, vAnchor: 'bottom' }
   }
   const preset = typeof position === 'string' ? position : 'center'
   const [vert, horiz] = preset.includes('-') ? preset.split('-') : [preset, null]
@@ -534,7 +544,7 @@ function resolvePosition(position) {
           : rowName === 'bottom' ? SIZE - FREEFORM_PAD
           :                        SIZE / 2
   const align = colName === 'left' ? 'left' : colName === 'right' ? 'right' : 'center'
-  return { anchorX: Math.round(x), anchorY: Math.round(y), align }
+  return { anchorX: Math.round(x), anchorY: Math.round(y), align, vAnchor: rowName }
 }
 
 function drawTextWithShadow(ctx, text, x, y, level = 'medium') {
@@ -554,7 +564,7 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
   const raw = (block.text || '').trim()
   if (!raw) return
   const display = typo.uppercase ? raw.toUpperCase() : raw
-  const { anchorX, anchorY, align } = resolvePosition(block.position)
+  const { anchorX, anchorY, align, vAnchor } = resolvePosition(block.position)
 
   ctx.font = typo.font
   ctx.fillStyle = typo.color
@@ -584,12 +594,19 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
 
   const maxW = Math.round(SIZE * typo.maxWidthFrac)
   const lines = wrapLines(ctx, display, maxW, typo.maxLines)
-  // Block grows UP from anchorY so "bottom" preset means the last line sits at
-  // the bottom safe-area.
+  // Vertical anchoring is zone-aware (see resolvePosition's vAnchor):
+  //   top    → first baseline at anchorY, block grows DOWN (never clips the top)
+  //   center → block centered around anchorY
+  //   bottom → last baseline at anchorY, block grows UP (sits in bottom safe area)
+  // `y` is the FIRST line's baseline; the rect-background math below is relative
+  // to it, so it wraps the text correctly in every mode.
   const PAD_H = 20  // vertical padding inside rect backgrounds
   const PAD_W = 36  // horizontal padding inside rect backgrounds
   const blockH = lines.length * typo.lineH + PAD_H * 2
-  let y = anchorY - (lines.length - 1) * typo.lineH
+  const lastLineOffset = (lines.length - 1) * typo.lineH
+  let y = vAnchor === 'top'    ? anchorY
+        : vAnchor === 'center' ? anchorY - lastLineOffset / 2
+        :                        anchorY - lastLineOffset
 
   if (typo.background === 'rect' && typo.bgColor) {
     // Measure widest line for the background rect
