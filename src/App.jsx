@@ -41,7 +41,7 @@ const LocationsSettings = lazy(() => import('@/pages/settings/LocationsSettings'
 const BillingSettings = lazy(() => import('@/pages/settings/BillingSettings'))
 const BrandKitPreview = lazy(() => import('@/pages/BrandKitPreview'))
 const BrandKitSettings = lazy(() => import('@/pages/BrandKitSettings'))
-const CarouselThemesSettings = lazy(() => import('@/pages/settings/CarouselThemesSettings'))
+const PhotoTemplatesSettings  = lazy(() => import('@/pages/settings/PhotoTemplatesSettings'))
 const CampaignsSettings = lazy(() => import('@/pages/settings/CampaignsSettings'))
 const AutoPublishSettings = lazy(() => import('@/pages/settings/AutoPublishSettings'))
 import SettingsLayout from '@/components/SettingsLayout'
@@ -665,7 +665,8 @@ function AppRoutes() {
               <Route path="/settings/integrations" element={guarded(<Integrations />)} />
               <Route path="/settings/brand-kit" element={guarded(<BrandKitSettings />)} />
               <Route path="/settings/brand-kit-preview" element={guarded(<BrandKitPreview />)} />
-              <Route path="/settings/carousel-themes" element={guarded(<CarouselThemesSettings />)} />
+              <Route path="/settings/photo-templates" element={guarded(<PhotoTemplatesSettings />)} />
+              <Route path="/settings/carousel-themes" element={<Navigate to="/settings/photo-templates" replace />} />
               <Route path="/settings/campaigns" element={guarded(<CampaignsSettings />)} />
               <Route path="/settings/workspace/auto-publish" element={guarded(<AutoPublishSettings />)} />
               {/* Clerk-mounted pages use routing="path" so their deep links resolve. */}

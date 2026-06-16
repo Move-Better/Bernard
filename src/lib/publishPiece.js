@@ -23,13 +23,13 @@ import { isInstagramReel } from '@/lib/mediaEntry'
  * carousel's slides were freshly baked, `renderedSlides` is returned so the
  * caller can persist them on the row for reuse on the next publish.
  *
- * @param {object} piece content_items row (platform, content, media_urls, slides, carousel_theme_id, …)
+ * @param {object} piece content_items row (platform, content, media_urls, slides, photo_template_id, …)
  * @param {object} opts
  * @param {string|null} [opts.scheduledAt] ISO string for a specific slot, or null
  * @param {boolean} [opts.useQueue] add to the channel's Buffer queue (Buffer picks the slot)
  * @param {string} opts.userEmail approver/publisher identity
  * @param {object} opts.workspace workspace row (for brand_style on baked slides)
- * @param {Array} [opts.themes] carousel themes (resolveTheme custom-theme lookup)
+ * @param {Array} [opts.themes] photo templates (resolveTheme custom-template lookup)
  * @returns {Promise<{result:any, scheduling:boolean, scheduledAt:(string|null), renderedSlides:(Array|null)}>}
  */
 export async function publishPieceToBuffer(
@@ -47,13 +47,13 @@ export async function publishPieceToBuffer(
   const reelHasVideo = isInstagramReel(piece.media_urls)
   if (!reelHasVideo && Array.isArray(piece.slides) && piece.slides.length) {
     const customThemes = themes.filter((t) => t.custom)
-    const theme = resolveTheme(piece.carousel_theme_id || null, customThemes)
+    const theme = resolveTheme(piece.photo_template_id || null, customThemes)
     const { slides, publishMediaUrls, changed } = await ensureRenderedSlides({
       slides: piece.slides,
       mediaUrls: piece.media_urls,
       brandStyle: workspace?.brand_style || {},
       theme,
-      themeId: piece.carousel_theme_id || null,
+      themeId: piece.photo_template_id || null,
       pieceId: piece.id,
     })
     if (publishMediaUrls.length) mediaUrls = publishMediaUrls
