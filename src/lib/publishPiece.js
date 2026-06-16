@@ -1,5 +1,5 @@
 import { publishAndTrack } from '@/lib/publish'
-import { resolveTheme } from '@/lib/carouselThemes'
+import { resolveTheme } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { isInstagramReel } from '@/lib/mediaEntry'
 
@@ -54,6 +54,7 @@ export async function publishPieceToBuffer(
       brandStyle: workspace?.brand_style || {},
       theme,
       themeId: piece.photo_template_id || null,
+      customThemes,
       pieceId: piece.id,
     })
     if (publishMediaUrls.length) mediaUrls = publishMediaUrls

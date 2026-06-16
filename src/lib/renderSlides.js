@@ -16,6 +16,7 @@
 
 import { apiFetch } from '@/lib/api'
 import { renderFreeformSlide, SIZE } from '@/lib/overlayTemplates'
+import { resolveTheme } from '@/lib/photoTemplates'
 
 // Photos the editor exposes for binding: non-video media with a URL. photo_idx
 // on a slide indexes into THIS filtered list (must match SlideEditor's filter).
@@ -45,7 +46,7 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     blocks: (slide.blocks || []).map((b) => ({ text: b.text, role: b.role, position: b.position })),
     template: slide.template || null,
     photoUrl: photoUrl || null,
-    themeId: themeId || null,
+    themeId: slide.template_id || themeId || null,
     brand: brandStyle || null,
   }))
 }
@@ -75,7 +76,7 @@ async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, p
 //   { slides }            — slides with rendered_url + rendered_sig populated
 //   { publishMediaUrls }  — [{ url, type:'photo' }] in slide order, ready for Buffer
 //   { changed }           — true if any slide was (re)rendered (caller persists)
-export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, theme, themeId, pieceId }) {
+export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, theme, themeId, customThemes = [], pieceId }) {
   const photos = slidePhotos(mediaUrls)
   const out = []
   let changed = false
@@ -91,7 +92,11 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
       out.push(slide)
       continue
     }
-    const url = await renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, pieceId, idx })
+    // Per-slide template_id overrides the piece-level theme for this slide only
+    const slideTheme = slide.template_id
+      ? resolveTheme(slide.template_id, customThemes)
+      : theme
+    const url = await renderAndUploadSlide({ slide, photoUrl, brandStyle, theme: slideTheme, sig, pieceId, idx })
     out.push({ ...slide, rendered_url: url, rendered_sig: sig })
     changed = true
   }

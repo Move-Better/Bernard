@@ -12,7 +12,7 @@ import {
   TEMPLATE_DEFAULT_POSITIONS,
   renderFreeformSlide,
 } from '@/lib/overlayTemplates'
-import { resolveTheme } from '@/lib/carouselThemes'
+import { resolveTheme } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 
 // Role label + chip colors. Mirrors the mockup palette.
@@ -293,9 +293,12 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme }) {
 }
 
 function SlideCard({
-  slide, slideIdx, totalSlides, photoUrl, mediaUrls, brandStyle, theme,
+  slide, slideIdx, totalSlides, photoUrl, mediaUrls, brandStyle,
+  allThemes, globalThemeId,
   onChange, onMoveLeft, onMoveRight, onRemove, onBindPhoto,
 }) {
+  const customThemes = allThemes.filter((t) => t.custom)
+  const theme = resolveTheme(slide.template_id || globalThemeId, customThemes)
   function updateBlock(blockIdx, next) {
     const blocks = slide.blocks.slice()
     blocks[blockIdx] = next
@@ -369,6 +372,17 @@ function SlideCard({
         >
           {Object.entries(SLIDE_TEMPLATES).map(([k, t]) => (
             <option key={k} value={k}>{t.label}</option>
+          ))}
+        </select>
+        <select
+          value={slide.template_id || ''}
+          onChange={(e) => onChange({ ...slide, template_id: e.target.value || null })}
+          title="Per-slide theme override"
+          className="rounded-full bg-muted px-2 py-0.5 text-3xs text-muted-foreground hover:text-foreground cursor-pointer max-w-[80px] truncate"
+        >
+          <option value="">Global</option>
+          {allThemes.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
           ))}
         </select>
         <button
@@ -831,7 +845,7 @@ export default function SlideEditor({ piece }) {
 
   // ChangeTheLookPanel callbacks
   function handleThemeChange(newThemeId) {
-    setThemeId(newThemeId === 'bold-dark' ? null : newThemeId)
+    setThemeId(newThemeId || null)
   }
   function handleFontSizeStep(step) {
     setGlobalFontSizeStep((prev) => Math.max(-2, Math.min(2, prev + step)))
@@ -880,6 +894,7 @@ export default function SlideEditor({ piece }) {
         brandStyle,
         theme,
         themeId,
+        customThemes,
         pieceId:   piece.id,
       })
       toPersist = rendered
@@ -974,16 +989,16 @@ export default function SlideEditor({ piece }) {
         onSlideCountTarget={handleSlideCountTarget}
       />
 
-      {/* 3. Theme picker */}
+      {/* 3. Theme picker — sets the global theme for all slides (overridable per-slide) */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Theme</span>
         {allThemes.map((t) => {
-          const active = (themeId || 'bold-dark') === t.id
+          const active = (themeId || 'dark-split') === t.id
           return (
             <button
               key={t.id}
               type="button"
-              onClick={() => setThemeId(t.id === 'bold-dark' ? null : t.id)}
+              onClick={() => setThemeId(t.id)}
               className={`rounded-full px-2.5 py-0.5 text-2xs font-semibold transition-colors ${
                 active
                   ? 'bg-primary text-primary-foreground'
@@ -1012,7 +1027,8 @@ export default function SlideEditor({ piece }) {
                 photoUrl={photoUrl}
                 mediaUrls={mediaUrls}
                 brandStyle={brandStyle}
-                theme={theme}
+                allThemes={allThemes}
+                globalThemeId={themeId}
                 onChange={(next) => updateSlide(idx, next)}
                 onMoveLeft={() => moveSlide(idx, -1)}
                 onMoveRight={() => moveSlide(idx, 1)}
