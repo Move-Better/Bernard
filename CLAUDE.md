@@ -19,6 +19,15 @@ Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (
 
 Before scoping or implementing any non-trivial change, interview Q moderately about every relevant aspect of the planned work. Walk down each branch of the design tree, resolving dependencies between decisions one by one — don't ask about a downstream detail until the upstream choice is settled. If a question can be answered by exploring the codebase (checking how something is currently wired, what shape data is in, whether a path is live end-to-end), explore the codebase instead of asking. Ask only what the code can't answer.
 
+## Minimize Q's typing — ask with clickable options, and ask more often
+
+Q's input should be a click whenever the decision can be expressed as a choice. Don't make him type a sentence to answer something that's really "this or that."
+
+- **Default to the `AskUserQuestion` tool for any decision point.** Whenever you'd otherwise write "Do you want A or B?", "Should I do X?", "Which approach — …?", or "Ready to proceed?" in prose and wait for a typed reply, use `AskUserQuestion` instead so Q clicks a button. This includes yes/no confirmations, picking between approaches, scoping toggles, and prioritization — anything with a small, enumerable set of answers. Q can always still type a custom answer via "Other," so offering buttons never costs him flexibility.
+- **Ask on branches where guessing wrong means rework; proceed on low-stakes, reversible calls.** For any decision where building the wrong thing would cost real work — the design-interview decisions above, architecture/scoping forks, anything hard to undo — surface a quick multiple-choice question rather than guessing. A 10-second click is cheaper than a wrong build. For genuinely low-stakes, easily-reversible calls (a rename, an obvious default), just proceed and note what you chose. When several decisions that *do* warrant asking are pending, batch them into one `AskUserQuestion` call (up to 4 questions) so Q resolves them in a single pass instead of a back-and-forth.
+- **Write self-contained options.** Each option's label is short (1–5 words) and its description states the tradeoff/consequence, so Q can decide from the buttons alone without asking you to explain. Put a recommendation first and tag it "(Recommended)" when you have a clear lean.
+- **When to still use prose:** open-ended creative/strategic input that genuinely has no enumerable answer (e.g. "what should this headline say?"), or when Q has explicitly told you to just proceed. Don't force free-form questions into buttons when the answer space is truly unbounded — but that's the exception, not the default.
+
 ## Verify feature wiring before scoping changes
 
 Before scoping a change to an "existing" feature, confirm it's actually wired. Pre-launch sprints in this codebase left a number of half-built scaffolds where a function exists, has a sensible signature, even has parameters for the thing you're about to add — but nobody calls it. Examples discovered during the seminar-CTA work (May 2026):
