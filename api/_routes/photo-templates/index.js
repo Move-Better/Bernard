@@ -7,7 +7,7 @@ import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { CAP_SETTINGS_EDIT } from '../../_lib/capabilities.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
-import { BUILTIN_THEMES } from '../../../src/lib/carouselThemes.js'
+import { BUILTIN_THEMES } from '../../../src/lib/photoTemplates.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY

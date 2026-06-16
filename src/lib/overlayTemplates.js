@@ -443,7 +443,7 @@ export const POSITION_PRESETS = [
 
 export const BLOCK_ROLES = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
 
-import { FONT_SIZE_PX, FONT_WEIGHT_CSS } from './carouselThemes.js'
+import { FONT_SIZE_PX, FONT_WEIGHT_CSS } from './photoTemplates.js'
 
 const SHADOW_LEVELS = {
   soft:   { color: 'rgba(0,0,0,0.40)', blur: 4,  offsetY: 1 },
@@ -654,6 +654,106 @@ export const TEMPLATE_DEFAULT_POSITIONS = {
   custom:        {},
 }
 
+// ── WHOOP layout geometry ───────────────────────────────────────────────────
+//
+// Implements the six built-in layout families directly in canvas so preview
+// matches the Sharp server compositor (Option B fidelity fix). Each layout
+// paints its own background + structural elements (panels, rules, scrims).
+// The text blocks are still drawn by drawFreeformBlock after this returns.
+//
+// Layouts:
+//   claim  — full-bleed solid ground (navy dark, paper light); no photo;
+//             4px orange rule at ~11% from top
+//   split  — photo top ~46%, solid panel below (navy dark, sage light);
+//             4px orange rule at the seam
+//   badge  — dark: full-bleed photo + dark overlay + gradient scrim + rule @58%;
+//             light: photo top ~58%, white panel below + rule at seam
+
+const WHOOP_NAVY      = '#0c1a2e'
+const WHOOP_PAPER     = '#f6f4ef'
+const WHOOP_SAGE_FILL = '#eaeeea'
+
+function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
+  const accent = brandAccent(brandStyle)
+
+  if (layout === 'claim') {
+    if (palette === 'dark') {
+      const grad = ctx.createRadialGradient(SIZE * 0.5, SIZE * 0.42, 0, SIZE * 0.5, SIZE * 0.5, SIZE * 0.72)
+      grad.addColorStop(0, '#1b2f4a')
+      grad.addColorStop(1, WHOOP_NAVY)
+      ctx.fillStyle = grad
+    } else {
+      ctx.fillStyle = WHOOP_PAPER
+    }
+    ctx.fillRect(0, 0, SIZE, SIZE)
+    // Orange rule near the top
+    const ruleY = Math.round(SIZE * 0.11)
+    ctx.fillStyle = accent
+    ctx.fillRect(FREEFORM_PAD, ruleY, SIZE - FREEFORM_PAD * 2, 4)
+
+  } else if (layout === 'split') {
+    const splitY = Math.round(SIZE * 0.46)
+    if (img) {
+      drawCover(ctx, img, 0, 0, SIZE, splitY)
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 0, splitY)
+      grad.addColorStop(0, '#475569')
+      grad.addColorStop(1, '#1e293b')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, SIZE, splitY)
+    }
+    ctx.fillStyle = palette === 'dark' ? WHOOP_NAVY : WHOOP_SAGE_FILL
+    ctx.fillRect(0, splitY, SIZE, SIZE - splitY)
+    // Orange rule at the photo/panel seam
+    ctx.fillStyle = accent
+    ctx.fillRect(0, splitY, SIZE, 4)
+
+  } else {
+    // badge
+    if (palette === 'dark') {
+      if (img) {
+        drawCover(ctx, img, 0, 0, SIZE, SIZE)
+      } else {
+        ctx.fillStyle = WHOOP_NAVY
+        ctx.fillRect(0, 0, SIZE, SIZE)
+      }
+      // Dark overlay to anchor the gradient
+      ctx.fillStyle = 'rgba(12,26,46,0.30)'
+      ctx.fillRect(0, 0, SIZE, SIZE)
+      // Gradient scrim anchoring text at the bottom
+      const scrimStart = Math.round(SIZE * 0.48)
+      const scrim = ctx.createLinearGradient(0, scrimStart, 0, SIZE)
+      scrim.addColorStop(0, 'rgba(12,26,46,0)')
+      scrim.addColorStop(0.45, 'rgba(12,26,46,0.80)')
+      scrim.addColorStop(1, 'rgba(12,26,46,0.97)')
+      ctx.fillStyle = scrim
+      ctx.fillRect(0, scrimStart, SIZE, SIZE - scrimStart)
+      // Orange rule above the text zone
+      const ruleY = Math.round(SIZE * 0.57)
+      ctx.fillStyle = accent
+      ctx.fillRect(FREEFORM_PAD, ruleY, SIZE - FREEFORM_PAD * 2, 4)
+
+    } else {
+      // light-badge: photo top ~58%, white panel below
+      const panelY = Math.round(SIZE * 0.58)
+      if (img) {
+        drawCover(ctx, img, 0, 0, SIZE, panelY)
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, 0, panelY)
+        grad.addColorStop(0, '#e2e8f0')
+        grad.addColorStop(1, '#cbd5e1')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, 0, SIZE, panelY)
+      }
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, panelY, SIZE, SIZE - panelY)
+      // Orange rule at the panel top
+      ctx.fillStyle = accent
+      ctx.fillRect(0, panelY, SIZE, 4)
+    }
+  }
+}
+
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
 // canvas so callers can either display it directly (DOM canvas preview) or
 // call toBlob() to produce a baked PNG.
@@ -663,7 +763,14 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   target.height = SIZE
   const ctx = target.getContext('2d')
 
-  if (sourceUrl) {
+  const layout = theme?.layout
+  const palette = theme?.palette
+
+  if (layout && palette) {
+    // WHOOP built-in — paint structural geometry (background, panel, rule)
+    const img = sourceUrl ? await loadImage(sourceUrl) : null
+    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {} })
+  } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
     drawCover(ctx, img, 0, 0, SIZE, SIZE)
   } else if (background) {
@@ -678,11 +785,10 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     ctx.fillRect(0, 0, SIZE, SIZE)
   }
 
-  // Light vignette so any-position text stays legible over a PHOTO. A solid /
-  // brand-color card background shouldn't be darkened at the edges, so skip it
-  // when there's no photo.
+  // Light vignette so any-position text stays legible over a plain photo.
+  // WHOOP layouts have their own scrim/panel geometry so skip the generic one.
   const blocks = Array.isArray(slide?.blocks) ? slide.blocks : []
-  if (sourceUrl && blocks.length > 0) {
+  if (!layout && sourceUrl && blocks.length > 0) {
     const vignette = ctx.createRadialGradient(SIZE / 2, SIZE / 2, SIZE * 0.35, SIZE / 2, SIZE / 2, SIZE * 0.75)
     vignette.addColorStop(0, 'rgba(0,0,0,0)')
     vignette.addColorStop(1, 'rgba(0,0,0,0.45)')

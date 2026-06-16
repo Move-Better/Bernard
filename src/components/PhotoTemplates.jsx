@@ -15,7 +15,7 @@ import {
   FONT_WEIGHT_CSS,
   BUILTIN_THEME_IDS,
   defaultBlockConfig,
-} from '@/lib/carouselThemes'
+} from '@/lib/photoTemplates'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
 
 // Resolve the brand accent the SAME way the canvas renderer does
