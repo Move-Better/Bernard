@@ -391,9 +391,9 @@ export default function CarouselThemes() {
           <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live preview</h2>
           <span className="text-2xs text-muted-foreground">Rendered like a real slide</span>
         </div>
-        <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch">
-          {/* Big preview — height driven by the right rail; width = height (square) */}
-          <div className="self-stretch aspect-square shrink-0 flex flex-col">
+        <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch h-[460px]">
+          {/* Big preview — height = panel height (460px); width = height (square) */}
+          <div className="h-full aspect-square shrink-0 flex flex-col">
             <div className="flex-1 min-h-0">
               <LiveThemePreview
                 theme={themeRenderObject(selectedTheme)}
