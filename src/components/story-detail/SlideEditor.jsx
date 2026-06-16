@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Loader2, Move, Maximize, Wand2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useUpdateContentItem, useCarouselThemes } from '@/lib/queries'
+import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { apiFetch } from '@/lib/api'
 import {
@@ -773,7 +773,7 @@ export default function SlideEditor({ piece }) {
 
   const [slides, setSlides] = useState(seedSlides)
   const [savedSlidesJson, setSavedSlidesJson] = useState(() => JSON.stringify(seedSlides()))
-  const [themeId, setThemeId] = useState(() => piece?.carousel_theme_id || null)
+  const [themeId, setThemeId] = useState(() => piece?.photo_template_id || null)
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
 
@@ -781,19 +781,19 @@ export default function SlideEditor({ piece }) {
     const next = seedSlides()
     setSlides(next)
     setSavedSlidesJson(JSON.stringify(next))
-    setThemeId(piece?.carousel_theme_id || null)
+    setThemeId(piece?.photo_template_id || null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piece?.id, JSON.stringify(piece?.slides)])
 
-  // Fetch workspace custom themes for the picker
-  const { data: allThemes = [] } = useCarouselThemes()
+  // Fetch workspace custom templates for the picker
+  const { data: allThemes = [] } = usePhotoTemplates()
   const customThemes = allThemes.filter((t) => t.custom)
   const theme = resolveTheme(themeId, customThemes)
 
-  // Global font size step applied on top of the active theme (0 = theme default)
+  // Global font size step applied on top of the active template (0 = template default)
   const [_globalFontSizeStep, setGlobalFontSizeStep] = useState(0)
 
-  const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.carousel_theme_id || null)
+  const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.photo_template_id || null)
   const updateItem = useUpdateContentItem()
   const [rendering, setRendering] = useState(false)
   const busy = updateItem.isPending || rendering
@@ -895,7 +895,7 @@ export default function SlideEditor({ piece }) {
     try {
       await updateItem.mutateAsync({
         id: piece.id,
-        patch: { slides: toPersist, carousel_theme_id: themeId || null },
+        patch: { slides: toPersist, photo_template_id: themeId || null },
       })
       setSavedSlidesJson(JSON.stringify(cleaned))
       if (renderFailed) {

@@ -1051,39 +1051,45 @@ export function useDeleteStaffRecipe() {
   })
 }
 
-// ── Carousel themes ────────────────────────────────────────────────────────
+// ── Photo templates ────────────────────────────────────────────────────────
 
-export function useCarouselThemes() {
+export function usePhotoTemplates() {
   return useQuery({
     queryKey: queryKeys.carouselThemes.list(),
-    queryFn:  () => apiFetch('/api/carousel-themes').then((d) => d.themes ?? []),
+    queryFn:  () => apiFetch('/api/photo-templates').then((d) => d.themes ?? []),
     staleTime: 5 * 60 * 1000,
   })
 }
 
-export function useCreateCarouselTheme() {
+export function useCreatePhotoTemplate() {
   const qc = useQueryClient()
   return useAppMutation({
-    errorMessage: "Couldn't create theme",
-    mutationFn: (body) => apiFetch('/api/carousel-themes', { method: 'POST', body: JSON.stringify(body) }),
+    errorMessage: "Couldn't create template",
+    mutationFn: (body) => apiFetch('/api/photo-templates', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
   })
 }
 
-export function useUpdateCarouselTheme() {
+export function useUpdatePhotoTemplate() {
   const qc = useQueryClient()
   return useAppMutation({
-    errorMessage: "Couldn't update theme",
-    mutationFn: ({ id, patch }) => apiFetch(`/api/carousel-themes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    errorMessage: "Couldn't update template",
+    mutationFn: ({ id, patch }) => apiFetch(`/api/photo-templates/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
   })
 }
 
-export function useDeleteCarouselTheme() {
+export function useDeletePhotoTemplate() {
   const qc = useQueryClient()
   return useAppMutation({
-    errorMessage: "Couldn't delete theme",
-    mutationFn: (id) => apiFetch(`/api/carousel-themes/${id}`, { method: 'DELETE' }),
+    errorMessage: "Couldn't delete template",
+    mutationFn: (id) => apiFetch(`/api/photo-templates/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
   })
 }
+
+// Back-compat aliases — remove after all callers are updated
+export const useCarouselThemes       = usePhotoTemplates
+export const useCreateCarouselTheme  = useCreatePhotoTemplate
+export const useUpdateCarouselTheme  = useUpdatePhotoTemplate
+export const useDeleteCarouselTheme  = useDeletePhotoTemplate
