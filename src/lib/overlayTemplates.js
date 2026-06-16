@@ -558,13 +558,37 @@ function drawTextWithShadow(ctx, text, x, y, level = 'medium') {
   ctx.restore()
 }
 
-function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
+// WHOOP layouts have a dedicated text surface (panel / scrim) — content text
+// (hook/body/caption/cta) should sit IN that surface, not float over the photo.
+// Returns [topFrac, bottomFrac] of the canvas for the layout's text zone, or
+// null to leave positions untouched. Labels (page/attribution) are never
+// remapped — they stay in their corners.
+const WHOOP_CONTENT_ROLES = new Set(['hook', 'body', 'caption', 'cta'])
+function whoopTextZone(layout, palette) {
+  if (layout === 'split') return [0.70, 0.95]                  // navy/sage panel (starts 0.67)
+  if (layout === 'badge') return palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93]
+  return null                                                  // claim: full solid ground, leave as-is
+}
+
+function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null) {
   const role = BLOCK_ROLES.includes(block.role) ? block.role : 'body'
   const typo = roleTypography(role, brandStyle, themeBlock)
   const raw = (block.text || '').trim()
   if (!raw) return
   const display = typo.uppercase ? raw.toUpperCase() : raw
-  const { anchorX, anchorY, align, vAnchor } = resolvePosition(block.position)
+  const isWhoop = !!layout
+  let { anchorX, anchorY, align, vAnchor } = resolvePosition(block.position)
+
+  // Pull content text into the layout's panel/scrim zone (Q sign-off 2026-06-16,
+  // option B): a split/badge headline anchored to canvas-center otherwise floats
+  // over the photo while the panel sits empty.
+  const zone = whoopTextZone(layout, palette)
+  if (zone && WHOOP_CONTENT_ROLES.has(role)) {
+    const [zt, zb] = zone
+    anchorY = vAnchor === 'top'    ? Math.round(SIZE * zt)
+            : vAnchor === 'bottom' ? Math.round(SIZE * zb)
+            :                        Math.round(SIZE * (zt + zb) / 2)
+  }
 
   ctx.font = typo.font
   ctx.fillStyle = typo.color
@@ -607,7 +631,12 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
         : vAnchor === 'center' ? anchorY - lastLineOffset / 2
         :                        anchorY - lastLineOffset
 
-  if (typo.background === 'rect') {
+  // Skip the per-block text bubble on WHOOP layouts — the panel / scrim / solid
+  // ground already provides the contrast, so a `rect` chip is redundant and
+  // reads as a floating blob (Q sign-off 2026-06-16, option B). The bubble stays
+  // for plain-photo overlays (custom templates / free-positioned editor text),
+  // where it's the only contrast. The CTA `pill` button is unaffected (above).
+  if (typo.background === 'rect' && !isWhoop) {
     // A `rect` block with no explicit bgColor inherits the brand accent —
     // same `null = brand accent` semantic the pill background already uses.
     const rectColor = typo.bgColor || brandAccent(brandStyle)
@@ -820,7 +849,7 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
 
   for (const block of blocks) {
     const themeBlock = theme?.blocks?.[block.role] ?? null
-    drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock)
+    drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, layout, palette)
   }
 
   return target
