@@ -75,7 +75,7 @@ function LiveThemePreview({ theme, slide, brandStyle, photoUrl }) {
     draw()
     return () => { cancelled = true }
   }, [theme, slide, brandStyle, photoUrl])
-  return <canvas ref={canvasRef} className="h-full w-auto" />
+  return <canvas ref={canvasRef} className="w-full" />
 }
 
 const BLOCK_ROLES_ORDERED = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
@@ -385,20 +385,16 @@ export default function CarouselThemes() {
       {/* Live preview panel: portrait photo left, rail right */}
       <div className="rounded-xl border bg-card p-4 flex flex-row gap-5 items-stretch h-[480px]">
 
-        {/* Portrait preview — canvas is square (1080×1080) displayed in a 4:5 CSS
-            container with overflow-hidden, so left/right edges clip to portrait */}
-        <div className="h-full aspect-[4/5] shrink-0 overflow-hidden rounded-lg shadow-sm">
+        {/* Portrait preview — 4:5 frame, dark bg as pillarbox bars.
+            Canvas is square (1080×1080), w-full fits the portrait width,
+            flex centering adds equal dark bars top+bottom. Nothing clips. */}
+        <div className="h-full aspect-[4/5] shrink-0 rounded-lg shadow-sm bg-[#0c1a2e] flex items-center justify-center overflow-hidden">
           <LiveThemePreview
             theme={themeRenderObject(selectedTheme)}
             slide={slides[slideKey]}
             brandStyle={brandStyle}
             photoUrl={previewPhotoUrl}
           />
-          {!previewPhotoUrl && (
-            <p className="absolute bottom-2 left-2 right-2 text-2xs text-white/70 text-center">
-              No photos yet — backdrop only
-            </p>
-          )}
         </div>
 
         {/* Right rail: name, slide-type toggle, scrollable theme list, + New theme at bottom */}
