@@ -664,7 +664,7 @@ export const TEMPLATE_DEFAULT_POSITIONS = {
 // Layouts:
 //   claim  — full-bleed solid ground (navy dark, paper light); no photo;
 //             4px orange rule at ~11% from top
-//   split  — photo top ~46%, solid panel below (navy dark, sage light);
+//   split  — photo top ~67%, solid panel bottom third (navy dark, sage light);
 //             4px orange rule at the seam
 //   badge  — dark: full-bleed photo + dark overlay + gradient scrim + rule @58%;
 //             light: photo top ~58%, white panel below + rule at seam
@@ -692,7 +692,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
     ctx.fillRect(FREEFORM_PAD, ruleY, SIZE - FREEFORM_PAD * 2, 4)
 
   } else if (layout === 'split') {
-    const splitY = Math.round(SIZE * 0.46)
+    const splitY = Math.round(SIZE * 0.67)
     if (img) {
       drawCover(ctx, img, 0, 0, SIZE, splitY)
     } else {
