@@ -602,7 +602,6 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
   // to it, so it wraps the text correctly in every mode.
   const PAD_H = 20  // vertical padding inside rect backgrounds
   const PAD_W = 36  // horizontal padding inside rect backgrounds
-  const blockH = lines.length * typo.lineH + PAD_H * 2
   const lastLineOffset = (lines.length - 1) * typo.lineH
   let y = vAnchor === 'top'    ? anchorY
         : vAnchor === 'center' ? anchorY - lastLineOffset / 2
@@ -612,16 +611,25 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock) {
     // A `rect` block with no explicit bgColor inherits the brand accent —
     // same `null = brand accent` semantic the pill background already uses.
     const rectColor = typo.bgColor || brandAccent(brandStyle)
-    // Measure widest line for the background rect
+    // Width = widest wrapped line + even horizontal padding.
     const maxLineW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0)
     const rectW = maxLineW + PAD_W * 2
     let rectX
     if (align === 'left')       rectX = anchorX - PAD_W
     else if (align === 'right') rectX = anchorX - maxLineW - PAD_W
     else                        rectX = anchorX - maxLineW / 2 - PAD_W
-    const rectY = y - typo.lineH - PAD_H
+    // Height bounds ALL wrapped lines via real glyph metrics: from the first
+    // line's top (baseline − ascent) to the last line's bottom (last baseline +
+    // descent), with even PAD_H on both ends. Fixes the old box that hugged only
+    // the first line and let wrapped lines spill outside it.
+    const gm = ctx.measureText(lines[0] || 'Mg')
+    const ascent  = gm.actualBoundingBoxAscent  || typo.lineH * 0.74
+    const descent = gm.actualBoundingBoxDescent || typo.lineH * 0.24
+    const rectY = y - ascent - PAD_H
+    const rectH = ascent + (lines.length - 1) * typo.lineH + descent + PAD_H * 2
+    const radius = Math.min(36, rectH / 2)
     ctx.fillStyle = rectColor
-    drawRoundedRect(ctx, rectX, rectY, rectW, blockH, 18)
+    drawRoundedRect(ctx, rectX, rectY, rectW, rectH, radius)
     ctx.fill()
   }
 
@@ -747,16 +755,19 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
         ctx.fillStyle = grad
         ctx.fillRect(0, 0, SIZE, SIZE)
       }
-      // White scrim fading the photo's lower region into the panel
+      // White scrim fading the photo into a TRANSLUCENT panel (not solid), so
+      // the photo keeps ghosting through below the seam — mirrors the dark-badge
+      // see-through treatment (Q sign-off 2026-06-16, option 1B).
+      const PANEL_ALPHA = 0.72
       const scrimStart = Math.round(SIZE * 0.40)
       const scrim = ctx.createLinearGradient(0, scrimStart, 0, panelY)
       scrim.addColorStop(0, 'rgba(255,255,255,0)')
-      scrim.addColorStop(0.7, 'rgba(255,255,255,0.85)')
-      scrim.addColorStop(1, 'rgba(255,255,255,1)')
+      scrim.addColorStop(0.7, `rgba(255,255,255,${PANEL_ALPHA * 0.85})`)
+      scrim.addColorStop(1, `rgba(255,255,255,${PANEL_ALPHA})`)
       ctx.fillStyle = scrim
       ctx.fillRect(0, scrimStart, SIZE, panelY - scrimStart)
-      // Solid white panel below the fade
-      ctx.fillStyle = '#ffffff'
+      // Translucent white panel below the fade — photo shows through faintly
+      ctx.fillStyle = `rgba(255,255,255,${PANEL_ALPHA})`
       ctx.fillRect(0, panelY, SIZE, SIZE - panelY)
       // Orange rule at the panel top
       ctx.fillStyle = accent
