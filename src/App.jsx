@@ -14,8 +14,6 @@ import {
 } from '@clerk/react'
 import Layout from '@/components/Layout'
 import Home from '@/pages/Home'
-import { useCapability } from '@/lib/usePermission'
-import { CAP_INTERVIEW_START } from '@/lib/capabilities'
 import { getPendingAnnouncement } from '@/lib/announcements'
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
@@ -554,17 +552,6 @@ function LegacyStoryboardPublishRedirect() {
   return <Navigate to={`/publish/${pieceId}/schedule`} replace />
 }
 
-// Phase 4: users without interview.start capability (producers in the default
-// template, viewers, etc.) land on /slate as their home. Users with the
-// capability see Home as before. Wrapped at the / route so the redirect
-// happens at the routing layer, not after Home's data fetches kick off.
-function HomeOrSlateForProducer() {
-  const { isLoading } = useWorkspaceState()
-  const canStartInterview = useCapability(CAP_INTERVIEW_START)
-  if (isLoading) return null
-  if (!canStartInterview) return <Navigate to="/slate" replace />
-  return <Home />
-}
 
 // Routes shared between org-gated and domain-gated modes.
 function AppRoutes() {
@@ -591,7 +578,7 @@ function AppRoutes() {
       <Layout>
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/" element={guarded(<HomeOrSlateForProducer />)} />
+            <Route path="/" element={guarded(<Home />)} />
             <Route path="/new" element={guarded(<CapturePicker />)} />
             <Route path="/new/interview" element={guarded(<NewInterview />)} />
             <Route path="/new/newsletter" element={guarded(<NewNewsletter />)} />
