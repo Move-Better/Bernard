@@ -160,8 +160,8 @@ export default async function handler(req, res) {
   async function patchByAssetOrPassthrough(patch) {
     const wsId = await resolveWorkspaceId()
     if (!wsId) {
-      console.warn('[mux-webhook] no workspace resolved for asset', assetId, '— skipping PATCH')
-      return res.status(200).json({ ok: true, skipped: 'no_workspace' })
+      console.warn('[mux-webhook] no workspace resolved for asset', assetId, 'event', type, '— skipping PATCH (race or orphaned asset)')
+      return res.status(200).json({ ok: true, skipped: 'no_workspace', asset_id: assetId, event_type: type })
     }
     const wsFilter = `&workspace_id=eq.${encodeURIComponent(wsId)}`
 

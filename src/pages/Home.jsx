@@ -236,13 +236,6 @@ export default function Home() {
         <GettingStarted />
       )}
 
-      {/* Stat row — context, not the primary action. Sits below the
-          action-oriented pre-roll so the founder's first glance lands on
-          "what to do next", with performance stats as supporting context.
-          Pulled from useStories, no extra fetch. Hidden when the workspace
-          has no stories yet so onboarding stays focused. */}
-      {stories.length > 0 ? <HomeStats stories={stories} /> : null}
-
       {/* Main content: task buckets left, right rail right. Stacks to a single
           column below lg (rail drops under the buckets with a separator);
           becomes a two-column row at lg+ where the rail is a fixed sidebar. */}
@@ -355,6 +348,10 @@ export default function Home() {
               Your week at a glance
             </h2>
           </div>
+          {/* Stat row — context, not primary action. Lives in the rail so it
+              sits alongside task buckets on desktop and below them on mobile,
+              keeping "what to do next" above the fold in the main column. */}
+          {stories.length > 0 ? <HomeStats stories={stories} /> : null}
           <HomeRightRail stories={stories} />
         </div>
       </div>

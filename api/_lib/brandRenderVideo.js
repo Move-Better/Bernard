@@ -410,6 +410,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         captionPos: effectiveCaptionPos,
         accentColor,
         fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
+        fontName: workspace?.brand_style?.heading_font || 'Inter',
       })
       if (ass) {
         await writeFileP(tmpAss, ass, 'utf8')

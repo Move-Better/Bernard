@@ -985,8 +985,8 @@ function VoiceDock({
           </>
         ) : isSpeaking ? (
           <>
-            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" aria-hidden="true" />
-            <span className="text-sm font-medium text-blue-600">
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">
               {interviewerName} is speaking — listen, then it&apos;s your turn
             </span>
           </>
@@ -1131,8 +1131,8 @@ function TypedDock({ typedAnswer, streaming, isSpeaking, onChange, onSubmit, onK
           </>
         ) : isSpeaking ? (
           <>
-            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
-            <span className="text-sm font-medium text-blue-600">Speaking…</span>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">Speaking…</span>
           </>
         ) : (
           <>
