@@ -19,8 +19,9 @@
 // (Sharp SVG→PNG path was falling through to a tofu fallback font).
 
 import sharp from 'sharp'
+import satori from 'satori'
 import { Readable } from 'node:stream'
-import { getBrandFont, ensureFontconfig } from './brandFonts.js'
+import { getBrandFont, ensureFontconfig, getFallbackFontBuffer } from './brandFonts.js'
 
 // Channel specs. Width × height in pixels. Add new channels here.
 export const CHANNEL_SPECS = {
@@ -71,6 +72,30 @@ function svgEscape(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;')
+}
+
+// ── Satori helpers ───────────────────────────────────────────────────────────
+// Minimal hyperscript so we can build Satori element trees without a JSX
+// transform — Vercel Node functions don't transpile JSX in api/. Produces the
+// React-element-like `{ type, props }` shape Satori consumes.
+function h(type, props, ...children) {
+  const kids = children.flat().filter((c) => c != null && c !== false)
+  return {
+    type,
+    props: {
+      ...(props || {}),
+      children: kids.length === 0 ? undefined : kids.length === 1 ? kids[0] : kids,
+    },
+  }
+}
+
+function hexToRgba(hex, a) {
+  const m = String(hex || '').replace('#', '')
+  if (m.length < 6) return `rgba(0,0,0,${a})`
+  const r = parseInt(m.slice(0, 2), 16)
+  const g = parseInt(m.slice(2, 4), 16)
+  const b = parseInt(m.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${a})`
 }
 
 /**
@@ -335,6 +360,78 @@ export function buildEditorialOverlaySvg({
 }
 
 /**
+ * Satori (flexbox + real font metrics) version of buildEditorialOverlaySvg.
+ *
+ * Returns an SVG STRING with text baked to vector <path> elements, so there is
+ * no font dependency at raster time — this removes the @font-face data-URI /
+ * fontconfig workaround the legacy builder needs and the tofu-fallback risk.
+ * The headline wraps by measured glyph widths (vs the legacy `fs * 0.52`
+ * char-count estimate) and the "· workspace" run lays out via a flex row
+ * (vs the legacy `staffName.length * nameFontSize * 0.5` position guess).
+ */
+export async function buildEditorialOverlaySvgSatori({
+  width,
+  height,
+  headline,
+  headlineSize = 'm',
+  staffName,
+  workspaceName,
+  accentColor,
+  scrimColor = DEFAULT_SCRIM,
+  fontBuffer,
+}) {
+  const baseDim = Math.min(width, height)
+  const pad = Math.round(width * 0.06)
+  const fs = Math.round(width * (HEADLINE_SIZE_FACTOR[headlineSize] || HEADLINE_SIZE_FACTOR.m))
+  const nameFs = Math.round(baseDim * 0.026)
+  const ruleW = Math.round(width * 0.045)
+  const ruleH = Math.max(3, Math.round(baseDim * 0.005))
+
+  const scrim = h('div', {
+    style: {
+      position: 'absolute', top: 0, left: 0, width, height, display: 'flex',
+      backgroundImage: `linear-gradient(180deg, ${hexToRgba(scrimColor, 0)} 42%, ${hexToRgba(scrimColor, 0.55)} 78%, ${hexToRgba(scrimColor, 0.86)} 100%)`,
+    },
+  })
+
+  const headlineEl = headline
+    ? h('div', {
+      style: {
+        display: 'flex', maxWidth: width - 2 * pad, color: '#fff', fontFamily: 'Brand',
+        fontWeight: 800, fontSize: fs, lineHeight: 1.12, letterSpacing: -0.5,
+      },
+    }, String(headline))
+    : null
+
+  const nameRow = (staffName || workspaceName)
+    ? h('div', { style: { display: 'flex', alignItems: 'center', marginTop: Math.round(height * 0.03) } },
+      h('div', { style: { width: ruleW, height: ruleH, borderRadius: ruleH / 2, backgroundColor: accentColor, marginRight: Math.round(width * 0.018), display: 'flex' } }),
+      staffName ? h('div', { style: { display: 'flex', color: '#fff', fontFamily: 'Brand', fontWeight: 600, fontSize: nameFs } }, String(staffName)) : null,
+      (staffName && workspaceName)
+        ? h('div', { style: { display: 'flex', color: 'rgba(255,255,255,0.72)', fontFamily: 'Brand', fontWeight: 400, fontSize: nameFs, marginLeft: Math.round(width * 0.012) } }, `· ${workspaceName}`)
+        : (workspaceName ? h('div', { style: { display: 'flex', color: 'rgba(255,255,255,0.85)', fontFamily: 'Brand', fontWeight: 500, fontSize: nameFs } }, String(workspaceName)) : null),
+    )
+    : null
+
+  const tree = h('div', {
+    style: {
+      width, height, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      position: 'relative', paddingLeft: pad, paddingRight: pad, paddingBottom: Math.round(height * 0.055),
+    },
+  }, scrim, headlineEl, nameRow)
+
+  return satori(tree, {
+    width,
+    height,
+    fonts: [
+      { name: 'Brand', data: fontBuffer, weight: 400, style: 'normal' },
+      { name: 'Brand', data: fontBuffer, weight: 600, style: 'normal' },
+      { name: 'Brand', data: fontBuffer, weight: 800, style: 'normal' },
+    ],
+  })
+}
+
+/**
  * Render one editorial composite from a source photo + treatment spec.
  * Applies a subtle grade (brightness/saturation) and a subject-aware ("smart")
  * crop, then composites the editorial overlay.
@@ -373,9 +470,11 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
     .toBuffer()
 
   const { primaryColor, accentColor } = resolveBrandColors(workspace)
-  const { buffer: fontBuffer } = await getBrandFont(workspace).catch(() => ({ buffer: null }))
+  const { buffer: brandFontBuffer } = await getBrandFont(workspace).catch(() => ({ buffer: null }))
+  // Satori requires a non-null font; guarantee the bundled Inter as last resort.
+  const fontBuffer = brandFontBuffer || await getFallbackFontBuffer().catch(() => null)
 
-  const overlaySvg = buildEditorialOverlaySvg({
+  const overlayParams = {
     width,
     height,
     headline: treatment.headline || '',
@@ -385,10 +484,24 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
     accentColor,
     scrimColor: treatment.scrim === 'brand' ? primaryColor : DEFAULT_SCRIM,
     fontBuffer,
-  })
+  }
+
+  // Satori (real font metrics, vector text) first; fall back to the legacy
+  // SVG-string overlay if Satori/yoga is unavailable at runtime so the publish
+  // path never breaks. Satori output is rasterised to PNG, then composited the
+  // same way the legacy SVG buffer is.
+  let overlayInput
+  try {
+    if (!fontBuffer) throw new Error('no font buffer available for satori')
+    const satoriSvg = await buildEditorialOverlaySvgSatori(overlayParams)
+    overlayInput = await sharp(Buffer.from(satoriSvg)).png().toBuffer()
+  } catch (e) {
+    console.warn('[brandRender] satori overlay failed, using legacy overlay:', e?.message || e)
+    overlayInput = buildEditorialOverlaySvg(overlayParams)
+  }
 
   const out = await sharp(photoLayer)
-    .composite([{ input: overlaySvg, top: 0, left: 0 }])
+    .composite([{ input: overlayInput, top: 0, left: 0 }])
     .jpeg({ quality: 90, progressive: true })
     .toBuffer()
 
