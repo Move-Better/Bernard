@@ -37,7 +37,7 @@ export default function TaskBucketCard({
           aria-hidden="true"
         />
         <span className="text-muted-foreground">{icon}</span>
-        <h2 className="text-lg font-bold tracking-tight flex-1">{title}</h2>
+        <h2 className="text-base font-semibold tracking-tight flex-1">{title}</h2>
         {items.length > 0 && (
           <span
             className={

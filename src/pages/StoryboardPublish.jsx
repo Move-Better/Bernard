@@ -81,9 +81,9 @@ export default function StoryboardPublish() {
           Publish you can step back to the media picker, not just the queue. */}
       <Breadcrumb
         items={[
-          { label: 'Publish', to: '/publish' },
+          { label: 'Publish queue', to: '/publish' },
           { label: pieceLabel(piece), to: `/publish/${piece.id}` },
-          { label: 'Publish' },
+          { label: 'Schedule & publish' },
         ]}
       />
 

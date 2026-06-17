@@ -12,7 +12,7 @@ function assTime(sec) {
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   const ss = Math.floor(s % 60)
-  const cs = Math.min(99, Math.round((s - Math.floor(s)) * 100))
+  const cs = Math.floor((s - Math.floor(s)) * 100)
   return `${h}:${pad2(m)}:${pad2(ss)}.${pad2(cs)}`
 }
 
@@ -37,7 +37,7 @@ export function groupWordsIntoLines(words, maxWords = 5, maxChars = 26) {
   let cur = []
   let chars = 0
   for (const w of words) {
-    const wLen = w.word.length + 1
+    const wLen = (w?.word?.length ?? 0) + 1
     if (cur.length && (cur.length >= maxWords || chars + wLen > maxChars)) {
       lines.push(cur)
       cur = []

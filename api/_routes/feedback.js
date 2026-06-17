@@ -10,10 +10,10 @@
 //   pageUrl         string  optional
 //   userName        string  optional
 //   userEmail       string  optional
-//   workspaceSlug   string  optional
 
-import { enforceLimit } from '../_lib/ratelimit.js'
-import { requireRole }  from '../_lib/auth.js'
+import { enforceLimit }     from '../_lib/ratelimit.js'
+import { requireRole }      from '../_lib/auth.js'
+import { workspaceContext } from '../_lib/workspaceContext.js'
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'feedback'))) return
 
-  const { message, screenshotDataUrl, pageUrl, userName, userEmail, workspaceSlug } = req.body ?? {}
+  const { message, screenshotDataUrl, pageUrl, userName, userEmail } = req.body ?? {}
 
   if (!message?.trim()) return res.status(400).json({ error: 'message is required' })
 
@@ -36,6 +36,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true })
   }
 
+  // Resolve workspace server-side so the slug in the admin email is verified,
+  // not caller-supplied (an authenticated user could otherwise inject any slug).
+  const wsCtx = await workspaceContext(req).catch(() => null)
+
   const attachments = []
   if (screenshotDataUrl?.startsWith('data:image/')) {
     const [header, base64] = screenshotDataUrl.split(',')
@@ -43,7 +47,7 @@ export default async function handler(req, res) {
     attachments.push({ filename: `screenshot.${ext}`, content: base64 })
   }
 
-  const ws    = workspaceSlug || 'unknown'
+  const ws    = wsCtx?.slug || 'unknown'
   const user  = [userName, userEmail].filter(Boolean).join(' — ') || 'unknown user'
   const page  = pageUrl || 'unknown page'
 

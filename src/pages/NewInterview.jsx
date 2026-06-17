@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
@@ -320,11 +320,7 @@ export default function NewInterview() {
       )}
 
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Pre-interview setup</CardTitle>
-          <CardDescription>Topic is the only required field.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           {/* Staff member — avatar pill picker */}
           <div className="space-y-1.5">
             <Label>Who&apos;s talking?</Label>
@@ -397,6 +393,7 @@ export default function NewInterview() {
             <Label htmlFor="condition">
               Topic <span className="text-destructive">*</span>
             </Label>
+            <p className="text-2xs text-muted-foreground">Only required field — everything else is optional.</p>
             <Input
               id="condition"
               placeholder="e.g. Low back pain, IT band rehab, postpartum recovery…"

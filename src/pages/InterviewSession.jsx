@@ -2119,8 +2119,8 @@ function InterviewVoiceDock({
           </>
         ) : isSpeaking ? (
           <>
-            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" aria-hidden="true" />
-            <span className="text-sm font-medium text-blue-600">Speaking — your turn is next</span>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">Speaking — your turn is next</span>
           </>
         ) : isListening ? (
           <>
@@ -2295,8 +2295,8 @@ function InterviewTypedDock({
           </>
         ) : isSpeaking ? (
           <>
-            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" aria-hidden="true" />
-            <span className="text-sm font-medium text-blue-600">Speaking — your turn is next</span>
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-primary">Speaking — your turn is next</span>
           </>
         ) : (
           <>

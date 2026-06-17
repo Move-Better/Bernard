@@ -94,7 +94,6 @@ function SidebarSubGroup({ item }) {
   return (
     <div className="space-y-0.5">
       <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground/70">
-        <item.icon className="h-3 w-3 shrink-0" />
         {item.label}
       </div>
       <div className="pl-3 space-y-0.5">
