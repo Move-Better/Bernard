@@ -585,7 +585,12 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   const zone = whoopTextZone(layout, palette)
   if (zone && WHOOP_CONTENT_ROLES.has(role)) {
     const [zt, zb] = zone
-    anchorY = vAnchor === 'top'    ? Math.round(SIZE * zt)
+    // `anchorY` is a BASELINE. A `top` block's glyphs rise ABOVE the baseline by
+    // ~one ascent, so anchoring the baseline at the zone top pushes the text up
+    // across the seam onto the photo. Offset the baseline down by the ascent so
+    // the text's TOP edge sits at the zone top, fully inside the panel.
+    const ascent = Math.round((typo.lineH || 60) * 0.8)
+    anchorY = vAnchor === 'top'    ? Math.round(SIZE * zt) + ascent
             : vAnchor === 'bottom' ? Math.round(SIZE * zb)
             :                        Math.round(SIZE * (zt + zb) / 2)
   }
