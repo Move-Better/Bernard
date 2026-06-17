@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import Moveable from 'moveable'
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Loader2, Move, Maximize, Wand2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
@@ -55,6 +56,9 @@ function normalizeSlide(s, idx) {
           role:     typeof b?.role === 'string' && ROLE_META[b.role] ? b.role : 'body',
           text:     typeof b?.text === 'string' ? b.text : '',
           position: b?.position ?? 'center',
+          // Per-block wrap width (fraction of canvas), set by the editor's resize
+          // handle. Optional — renderer falls back to the role default when absent.
+          ...(Number.isFinite(b?.width) ? { width: b.width } : {}),
         }))
       : [],
   }
@@ -71,7 +75,7 @@ function emptyBlockFor(template, role) {
 
 // ── Position picker (preset grid + custom drag) ───────────────────────────────
 
-function PositionPickerPopover({ anchorRef, photoUrl, value, onChange, onClose }) {
+function PositionPickerPopover({ anchorRef, photoUrl, value, width, text, roleLabel, onChange, onClose }) {
   const ref = useRef(null)
   useEffect(() => {
     function handleClick(e) {
@@ -85,36 +89,12 @@ function PositionPickerPopover({ anchorRef, photoUrl, value, onChange, onClose }
   }, [anchorRef, onClose])
 
   const stageRef = useRef(null)
-  const [dragXY, setDragXY] = useState(null)
   const isCustom = value && typeof value === 'object'
-
-  function startDrag(e) {
-    e.preventDefault()
-    const stage = stageRef.current
-    if (!stage) return
-    function update(ev) {
-      const rect = stage.getBoundingClientRect()
-      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX
-      const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY
-      const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-      setDragXY({ x, y })
-      onChange({ x, y })
-    }
-    function stop() {
-      document.removeEventListener('mousemove', update)
-      document.removeEventListener('mouseup', stop)
-      document.removeEventListener('touchmove', update)
-      document.removeEventListener('touchend', stop)
-    }
-    document.addEventListener('mousemove', update)
-    document.addEventListener('mouseup', stop)
-    document.addEventListener('touchmove', update)
-    document.addEventListener('touchend', stop)
-    update(e)
+  const initial = {
+    xFrac: isCustom ? value.x : 0.5,
+    yFrac: isCustom ? value.y : 0.5,
+    widthFrac: Number.isFinite(width) ? width : 0.62,
   }
-
-  const customXY = isCustom ? value : (dragXY || { x: 0.5, y: 0.5 })
 
   return (
     <div
@@ -132,7 +112,7 @@ function PositionPickerPopover({ anchorRef, photoUrl, value, onChange, onClose }
             <button
               key={p}
               type="button"
-              onClick={() => { onChange(p); onClose() }}
+              onClick={() => { onChange({ position: p }); onClose() }}
               className={`aspect-square rounded border text-3xs font-medium transition-colors ${
                 selected
                   ? 'border-primary bg-primary/10 text-primary'
@@ -145,28 +125,88 @@ function PositionPickerPopover({ anchorRef, photoUrl, value, onChange, onClose }
         })}
       </div>
       <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Custom — drag the dot
+        Custom — drag to move, pull the side handles to set width
       </p>
       <div
         ref={stageRef}
-        onMouseDown={startDrag}
-        onTouchStart={startDrag}
-        className="relative aspect-square w-full overflow-hidden rounded border bg-muted cursor-crosshair select-none"
+        className="relative aspect-square w-full overflow-hidden rounded border bg-muted select-none"
         style={photoUrl ? { backgroundImage: `url(${photoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         <div className="absolute inset-0 bg-black/25 pointer-events-none" />
-        <div
-          className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary border-2 border-white shadow-lg pointer-events-none"
-          style={{ left: `${customXY.x * 100}%`, top: `${customXY.y * 100}%` }}
+        <PositionMoveableBox
+          stageRef={stageRef}
+          initial={initial}
+          text={text}
+          roleLabel={roleLabel}
+          onCommit={({ x, y, width: w }) => onChange({ position: { x, y }, width: w })}
         />
-        {!isCustom && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="rounded bg-black/60 px-2 py-1 text-3xs font-medium text-white">
-              Click + drag to set custom position
-            </span>
-          </div>
-        )}
       </div>
+    </div>
+  )
+}
+
+// Vanilla `moveable` (the framework-agnostic core that react-moveable wraps —
+// chosen over the React binding to avoid a transitive dual-React dependency)
+// driving a WYSIWYG text proxy on the photo stage. Dragging sets the block's
+// {x,y} anchor (the box center); the side handles set block.width (fraction of
+// the canvas). The live SlidePreview canvas remains the true render — this box
+// is just the manipulation surface. Seeded once on mount; moveable owns the DOM
+// thereafter and reports fractions back on drag/resize end.
+function PositionMoveableBox({ stageRef, initial, text, roleLabel, onCommit }) {
+  const boxRef = useRef(null)
+  useEffect(() => {
+    const stage = stageRef.current
+    const box = boxRef.current
+    if (!stage || !box) return
+    const sw = stage.clientWidth || 1
+    const sh = stage.clientHeight || 1
+    const w = Math.max(0.15, Math.min(1, initial.widthFrac || 0.62)) * sw
+    box.style.width = `${w}px`
+    const bh = box.offsetHeight
+    const tx = Math.max(0, Math.min(sw - w, (initial.xFrac ?? 0.5) * sw - w / 2))
+    const ty = Math.max(0, Math.min(sh - bh, (initial.yFrac ?? 0.5) * sh - bh / 2))
+    box.style.transform = `translate(${tx}px, ${ty}px)`
+
+    const m = new Moveable(stage, {
+      target: box,
+      container: stage,
+      draggable: true,
+      resizable: true,
+      renderDirections: ['w', 'e'],
+      origin: false,
+      keepRatio: false,
+      throttleDrag: 0,
+      throttleResize: 0,
+      bounds: { left: 0, top: 0, right: sw, bottom: sh, position: 'css' },
+    })
+    const commit = () => {
+      const sr = stage.getBoundingClientRect()
+      const br = box.getBoundingClientRect()
+      const cx = ((br.left + br.width / 2) - sr.left) / sr.width
+      const cy = ((br.top + br.height / 2) - sr.top) / sr.height
+      const wf = br.width / sr.width
+      onCommit({
+        x: Math.max(0, Math.min(1, cx)),
+        y: Math.max(0, Math.min(1, cy)),
+        width: Math.max(0.15, Math.min(1, wf)),
+      })
+    }
+    m.on('drag', ({ target, transform }) => { target.style.transform = transform })
+      .on('dragEnd', commit)
+      .on('resize', ({ target, width: rw, drag }) => { target.style.width = `${rw}px`; target.style.transform = drag.transform; m.updateRect() })
+      .on('resizeEnd', commit)
+    return () => m.destroy()
+    // Seed once on mount; the box is uncontrolled thereafter (moveable owns it).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <div
+      ref={boxRef}
+      className="absolute left-0 top-0 box-border px-1.5 py-1 rounded-sm bg-primary/20 border border-primary text-white text-2xs font-bold leading-snug shadow"
+      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
+    >
+      {(text && text.trim()) || roleLabel || 'Text'}
     </div>
   )
 }
@@ -232,7 +272,10 @@ function BlockRow({ block, photoUrl, canMoveUp, canMoveDown, onChange, onMoveUp,
                   anchorRef={triggerRef}
                   photoUrl={photoUrl}
                   value={block.position}
-                  onChange={(p) => onChange({ ...block, position: p })}
+                  width={block.width}
+                  text={block.text}
+                  roleLabel={meta.label}
+                  onChange={(patch) => onChange({ ...block, ...patch })}
                   onClose={() => setPosOpen(false)}
                 />
               )}
