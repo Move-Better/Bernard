@@ -59,10 +59,6 @@ async function resolveTarget(req) {
   if (!ws) {
     return { ok: false, status: 400, reason: 'no_workspace' }
   }
-  if (!ws.video_pipeline_enabled) {
-    return { ok: false, status: 403, reason: 'feature_disabled' }
-  }
-
   const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) {
     return { ok: false, status: auth.reason === 'forbidden' ? 403 : 401, reason: auth.reason }

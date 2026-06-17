@@ -8,7 +8,6 @@ import {
   ChevronRight, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
@@ -172,7 +171,6 @@ export default function SlateClipEditor() {
   useDocumentTitle('Clip Editor · Slate')
   const { assetId } = useParams()
   const navigate = useNavigate()
-  const ws = useWorkspace()
   const queryClient = useQueryClient()
 
   // --- Source asset ---
@@ -532,15 +530,6 @@ export default function SlateClipEditor() {
   const busy = rendering || asPostMutation.isPending || brollMutation.isPending || wholeRendering
   const consentBlocked = asset?.consent_status === 'pending' || asset?.consent_status === 'revoked'
   const ok = !consentBlocked
-
-  if (!ws?.video_pipeline_enabled) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-        <Film className="h-10 w-10 text-muted-foreground" />
-        <p className="font-semibold text-lg">Slate is not enabled for this workspace</p>
-      </div>
-    )
-  }
 
   if (isLoading) {
     return (

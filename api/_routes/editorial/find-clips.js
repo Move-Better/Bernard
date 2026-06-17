@@ -14,7 +14,7 @@
 // caller's short-lived Clerk token. The source asset's segment_status flips
 // 'detecting' → 'ready' | 'failed'; poll GET /api/editorial/segments?assetId=…
 //
-// Auth: Clerk JWT + workspace org-id + video_pipeline_enabled.
+// Auth: Clerk JWT + workspace org-id.
 //
 // Responses:
 //   202 { assetId, status: 'detecting' }
@@ -51,10 +51,6 @@ export default async function handler(req, res) {
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(404).json({ error: 'no_workspace' })
-  if (!ws.video_pipeline_enabled) {
-    return res.status(403).json({ error: 'feature_disabled' })
-  }
-
   const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })

@@ -33,12 +33,10 @@ export async function authByCaptureToken(token) {
   }
 
   const wr = await sb(
-    `workspaces?id=eq.${staffMember.workspace_id}&status=eq.active&select=id,slug,video_pipeline_enabled`,
+    `workspaces?id=eq.${staffMember.workspace_id}&status=eq.active&select=id,slug`,
   )
   if (!wr.ok) return null
   const wsRows = await wr.json()
   const workspace = wsRows?.[0]
-  if (!workspace?.video_pipeline_enabled) return null
-
   return { staffMember, workspace }
 }

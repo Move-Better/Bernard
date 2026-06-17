@@ -70,14 +70,14 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'detection env (AI_GATEWAY_API_KEY / OPENAI_API_KEY) not configured' })
   }
 
-  // 1. Which workspaces have the video pipeline turned on.
-  const wsRes = await sb('workspaces?status=eq.active&video_pipeline_enabled=eq.true&select=id')
+  // 1. Fetch all active workspaces.
+  const wsRes = await sb('workspaces?status=eq.active&select=id')
   if (!wsRes.ok) {
     console.error('[auto-detect-clips] workspace query failed:', wsRes.status, await wsRes.text().catch(() => ''))
     return res.status(500).json({ error: 'workspace_query_failed' })
   }
   const wsIds = (await wsRes.json()).map((w) => w.id)
-  if (wsIds.length === 0) return res.status(200).json({ claimed: 0, reason: 'no_pipeline_workspaces' })
+  if (wsIds.length === 0) return res.status(200).json({ claimed: 0, reason: 'no_active_workspaces' })
   const inList = `(${wsIds.join(',')})`
 
   // 2. Candidates: never-detected sources, plus stale 'detecting' rescues.
