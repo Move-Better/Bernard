@@ -621,7 +621,14 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     return
   }
 
-  const maxW = Math.round(SIZE * typo.maxWidthFrac)
+  // Per-block width override (editor's resize handle): block.width is a fraction
+  // of the canvas. Falls back to the role typography's default wrap width. This
+  // renderer is shared by preview AND publish (src/lib/renderSlides.js), so the
+  // chosen width ships to the baked carousel — no preview≠publish divergence.
+  const widthFrac = (Number.isFinite(block.width) && block.width > 0)
+    ? Math.max(0.15, Math.min(1, block.width))
+    : typo.maxWidthFrac
+  const maxW = Math.round(SIZE * widthFrac)
   const lines = wrapLines(ctx, display, maxW, typo.maxLines)
   // Vertical anchoring is zone-aware (see resolvePosition's vAnchor):
   //   top    → first baseline at anchorY, block grows DOWN (never clips the top)

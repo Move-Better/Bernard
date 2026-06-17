@@ -55,6 +55,7 @@
     "heic2any": "^0.0.4",
     "lucide-react": "^0.344.0",
     "marked": "^12.0.2",
+    "moveable": "^0.53.0",
     "posthog-js": "^1.387.0",
     "react": "^18.2.0",
     "react-advanced-cropper": "^0.20.1",
