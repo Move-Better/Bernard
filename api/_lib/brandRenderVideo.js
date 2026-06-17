@@ -27,7 +27,8 @@ import ffmpegPath from 'ffmpeg-static'
 import sharp from 'sharp'
 import { buildBrandOverlaySvg, resolveBrandColors } from './brandRender.js'
 import { getBrandFont, ensureFontconfig } from './brandFonts.js'
-import { transcribeToSrt } from './whisper.js'
+import { transcribeToSrt, transcribeToWords } from './whisper.js'
+import { buildKaraokeAss } from './karaokeCaptions.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
 // original is preserved for the render). ZV-1F 4K clips can be large.
@@ -306,6 +307,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   const tmpAudio   = `/tmp/vid-audio-${id}.mp3`
   const tmpOverlay = `/tmp/vid-ov-${id}.png`
   const tmpSrt     = `/tmp/vid-sub-${id}.srt`
+  const tmpAss     = `/tmp/vid-sub-${id}.ass`
   const tmpOutput  = `/tmp/vid-out-${id}.mp4`
 
   // HEAD the source once to get declared size (used for cache-key logic).
@@ -343,6 +345,8 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // skipped — no audio extract, no Whisper — and only the brand overlay burns.
     // No usable audio → nothing to transcribe; skip straight to the silent render.
     let hadSubtitles = false
+    let useAss = false
+    let karaokeWords = null
     if (subtitles && audioMap) {
       try {
         const audioArgs = []
@@ -360,10 +364,21 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         )
         await runFfmpeg(audioArgs)
 
-        const srt = await transcribeToSrt(tmpAudio)
-        if (srt && srt.trim()) {
-          await writeFileP(tmpSrt, srt, 'utf8')
-          hadSubtitles = true
+        // Prefer word-level timestamps → karaoke ASS (words fill to the brand
+        // accent as spoken). Fall back to segment SRT if the word pass is
+        // unavailable, so captions never silently disappear.
+        try {
+          const words = await transcribeToWords(tmpAudio)
+          if (words && words.length) karaokeWords = words
+        } catch (e) {
+          console.error(`[brandRenderVideo] word transcribe skip (${channel}):`, e.message)
+        }
+        if (!karaokeWords) {
+          const srt = await transcribeToSrt(tmpAudio)
+          if (srt && srt.trim()) {
+            await writeFileP(tmpSrt, srt, 'utf8')
+            hadSubtitles = true
+          }
         }
       } catch (e) {
         // Non-fatal: continue with brand overlay only, no spoken-word captions.
@@ -383,6 +398,25 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
 
     const effectiveCaptionPos = overlayPosition ?? spec.captionPos
     const captionSizeScale = OVERLAY_SIZE_SCALE[overlaySize] ?? 1.0
+
+    // Karaoke ASS captions (built here because it needs the resolved accent
+    // colour + caption position). Falls back to the SRT path written above if
+    // the word-timestamp pass didn't produce a usable track.
+    if (karaokeWords) {
+      const ass = buildKaraokeAss({
+        words: karaokeWords,
+        width: spec.width,
+        height: spec.height,
+        captionPos: effectiveCaptionPos,
+        accentColor,
+        fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
+      })
+      if (ass) {
+        await writeFileP(tmpAss, ass, 'utf8')
+        hadSubtitles = true
+        useAss = true
+      }
+    }
 
     const overlaySvg = buildBrandOverlaySvg({
       width:         spec.width,
@@ -421,22 +455,29 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
 
     let finalOutput = '[branded]'
     if (hadSubtitles) {
-      // The subtitles filter path must not contain colons (fine — /tmp/vid-sub-uuid.srt has none).
-      // force_style overrides: white text, black outline, positioned above lower-third.
-      // When the caption band is at the bottom (e.g. blog_hero_video) bump MarginV so the
-      // last subtitle line clears the band — otherwise the bottom subtitle line overlaps it.
-      //
-      // FontSize in libass scales with video height — FontSize=N at 1080px gives roughly
-      // N*(1080/PlayRes) px of actual text. We normalise against 1080 so the visual size
-      // stays consistent across 1:1, 9:16, and 16:9 channels. Target ≈ 10px ref units at
-      // 1080p; tune via workspace.brand_style.subtitle_font_size (future setting).
-      const subtitleFontSize = Math.round(
-        (workspace?.brand_style?.subtitle_font_size ?? 10) * (1080 / spec.height)
-      )
-      const marginV = effectiveCaptionPos === 'bottom' ? 220 : effectiveCaptionPos === 'center' ? 160 : 120
-      filterComplex.push(
-        `[branded]subtitles=${tmpSrt}:force_style='PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H80000000,Bold=1,FontSize=${subtitleFontSize},Outline=1,Shadow=0,MarginV=${marginV}'[vout]`,
-      )
+      if (useAss) {
+        // Karaoke ASS carries its own styling (PlayRes, font, colours, margins,
+        // per-word \k timing) — no force_style needed; the .ass defines it all.
+        filterComplex.push(`[branded]ass=${tmpAss}[vout]`)
+      } else {
+        // SRT fallback. The subtitles filter path must not contain colons (fine —
+        // /tmp/vid-sub-uuid.srt has none). force_style overrides: white text, black
+        // outline, positioned above the lower-third. When the caption band is at the
+        // bottom (e.g. blog_hero_video) bump MarginV so the last subtitle line clears
+        // the band.
+        //
+        // FontSize in libass scales with video height — FontSize=N at 1080px gives
+        // roughly N*(1080/PlayRes) px of actual text. We normalise against 1080 so the
+        // visual size stays consistent across 1:1, 9:16, and 16:9 channels. Target ≈
+        // 10px ref units at 1080p; tune via workspace.brand_style.subtitle_font_size.
+        const subtitleFontSize = Math.round(
+          (workspace?.brand_style?.subtitle_font_size ?? 10) * (1080 / spec.height)
+        )
+        const marginV = effectiveCaptionPos === 'bottom' ? 220 : effectiveCaptionPos === 'center' ? 160 : 120
+        filterComplex.push(
+          `[branded]subtitles=${tmpSrt}:force_style='PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H80000000,Bold=1,FontSize=${subtitleFontSize},Outline=1,Shadow=0,MarginV=${marginV}'[vout]`,
+        )
+      }
       finalOutput = '[vout]'
     }
 
@@ -488,7 +529,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // tmpInput is ref-counted — release (and unlink when last render is done).
     releaseSourceFile({ videoUrl, declaredLen, clipStart, clipDur })
     // Per-render scratch files are always unique — unlink immediately.
-    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpOutput]) {
+    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput]) {
       await unlinkP(f).catch(() => {})
     }
   }

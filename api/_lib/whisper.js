@@ -87,6 +87,27 @@ export async function transcribeToSegments(filePath) {
 }
 
 /**
+ * Transcribe a local file to word-level timestamps (for karaoke captions).
+ * Each entry is a single spoken word with start/end in seconds.
+ *
+ * @param {string} filePath — absolute path in /tmp (mp3 strongly preferred)
+ * @returns {Promise<Array<{word: string, start: number, end: number}>>}
+ */
+export async function transcribeToWords(filePath) {
+  const { buffer, fileName, mimeType } = await readLocalFile(filePath)
+  const form = new FormData()
+  form.append('file',                      new Blob([buffer], { type: mimeType }), fileName)
+  form.append('model',                     'whisper-1')
+  form.append('response_format',           'verbose_json')
+  form.append('timestamp_granularities[]', 'word')
+  const res  = await whisper(form)
+  const json = await res.json().catch(() => null)
+  return (json?.words ?? [])
+    .map((w) => ({ word: String(w.word || '').trim(), start: Number(w.start) || 0, end: Number(w.end) || 0 }))
+    .filter((w) => w.word && w.end > w.start)
+}
+
+/**
  * FUTURE — speaker-diarized transcription.
  * Stub until AssemblyAI / Deepgram provider is wired in.
  *
