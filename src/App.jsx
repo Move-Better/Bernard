@@ -559,7 +559,9 @@ function LegacyStoryboardPublishRedirect() {
 // capability see Home as before. Wrapped at the / route so the redirect
 // happens at the routing layer, not after Home's data fetches kick off.
 function HomeOrSlateForProducer() {
+  const { isLoading } = useWorkspaceState()
   const canStartInterview = useCapability(CAP_INTERVIEW_START)
+  if (isLoading) return null
   if (!canStartInterview) return <Navigate to="/slate" replace />
   return <Home />
 }
