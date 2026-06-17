@@ -197,7 +197,7 @@ async function processWorkspace(ws, summary) {
       }
     }
 
-    const result = evaluate({ pkg, workspace: ws })
+    const result = evaluate({ pkg, sourceAsset: pkg.source_asset, workspace: ws })
 
     // Write evaluation state back to the package row (so Slate badge is live).
     await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
@@ -258,6 +258,9 @@ async function processWorkspace(ws, summary) {
           continue
         }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
+        if (ciId == null) {
+          console.error('[auto-publish] markContentItemScheduled returned null — content_item may not have been created', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
+        }
 
         // Mark package auto_published_at so the cron skips it next run.
         await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {

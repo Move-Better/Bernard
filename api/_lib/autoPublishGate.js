@@ -56,7 +56,19 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
     })
     return results
   }
-  const assetQcFlags = sourceAsset?.qc_flags ?? pkg?.source_asset?.qc_flags
+  // Fail closed if the source asset is missing — we cannot verify QC flags are
+  // clear, so blocking is safer than silently passing. (A deleted source asset
+  // would leave both values null/undefined, making Array.isArray return false
+  // and the check appear to pass when it should not.)
+  const resolvedSourceAsset = sourceAsset ?? pkg?.source_asset
+  if (resolvedSourceAsset == null) {
+    results.reasons.push({
+      signal: 'source_asset_missing',
+      detail: 'Source asset is missing or deleted — cannot verify QC flags; blocking to prevent unsafe publish',
+    })
+    return results
+  }
+  const assetQcFlags = resolvedSourceAsset.qc_flags
   if (Array.isArray(assetQcFlags) && assetQcFlags.length > 0) {
     results.reasons.push({
       signal: 'qc_flag',
