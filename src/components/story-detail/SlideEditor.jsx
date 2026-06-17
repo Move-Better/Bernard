@@ -181,6 +181,7 @@ function PositionMoveableBox({ stageRef, initial, text, roleLabel, onCommit }) {
     })
     const commit = () => {
       const sr = stage.getBoundingClientRect()
+      if (!sr.width || !sr.height) return
       const br = box.getBoundingClientRect()
       const cx = ((br.left + br.width / 2) - sr.left) / sr.width
       const cy = ((br.top + br.height / 2) - sr.top) / sr.height
@@ -195,7 +196,14 @@ function PositionMoveableBox({ stageRef, initial, text, roleLabel, onCommit }) {
       .on('dragEnd', commit)
       .on('resize', ({ target, width: rw, drag }) => { target.style.width = `${rw}px`; target.style.transform = drag.transform; m.updateRect() })
       .on('resizeEnd', commit)
-    return () => m.destroy()
+    const ro = new ResizeObserver(() => {
+      const nsw = stage.clientWidth || 1
+      const nsh = stage.clientHeight || 1
+      m.bounds = { left: 0, top: 0, right: nsw, bottom: nsh, position: 'css' }
+      m.updateRect()
+    })
+    ro.observe(stage)
+    return () => { m.destroy(); ro.disconnect() }
     // Seed once on mount; the box is uncontrolled thereafter (moveable owns it).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
