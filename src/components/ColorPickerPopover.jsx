@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { HexColorPicker } from 'react-colorful'
 import { Pipette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
 const HEX_RE = /^#?[0-9a-fA-F]{6}$/
 
@@ -15,32 +16,18 @@ export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-1
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(normalize(value))
   const [hexInput, setHexInput] = useState(normalize(value))
-  const rootRef = useRef(null)
+  // True while the native EyeDropper is open, so Radix's close-on-interact-
+  // outside doesn't dismiss the popover (and reset the draft) mid-pick.
+  const eyedroppingRef = useRef(false)
 
+  // When closed, re-sync draft to the committed value. Radix fires onOpenChange
+  // (false) on Escape / outside-click, so this also gives "cancel on dismiss".
   useEffect(() => {
     if (!open) {
       setDraft(normalize(value))
       setHexInput(normalize(value))
     }
   }, [value, open])
-
-  useEffect(() => {
-    if (!open) return
-    function onDocClick(e) {
-      if (rootRef.current && !rootRef.current.contains(e.target)) {
-        setOpen(false)
-      }
-    }
-    function onKey(e) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDocClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
 
   function commit() {
     onChange(draft.toUpperCase())
@@ -63,6 +50,7 @@ export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-1
 
   async function pickWithEyeDropper() {
     if (!eyeDropperSupported) return
+    eyedroppingRef.current = true
     try {
       const result = await new window.EyeDropper().open()
       if (result?.sRGBHex) {
@@ -71,49 +59,58 @@ export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-1
       }
     } catch {
       // user cancelled — no-op
+    } finally {
+      eyedroppingRef.current = false
     }
   }
 
+  const guardEyedropper = (e) => { if (eyedroppingRef.current) e.preventDefault() }
+
   return (
-    <div ref={rootRef} className="relative inline-block">
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        onClick={() => setOpen((o) => !o)}
-        className={`${swatchClassName} rounded border cursor-pointer block`}
-        style={{ background: normalize(value) }}
-      />
-      {open && (
-        <div className="absolute z-50 mt-1 left-0 rounded-lg border bg-card shadow-lg p-3 w-[232px]">
-          <HexColorPicker color={draft} onChange={(c) => { setDraft(c); setHexInput(c) }} style={{ width: '100%', height: 160 }} />
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-7 w-9 rounded border shrink-0" style={{ background: draft }} />
-            <input
-              value={hexInput}
-              onChange={onHexInputChange}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
-              className="flex h-7 w-full rounded-md border bg-background px-2 text-xs font-mono"
-              placeholder="#000000"
-              spellCheck={false}
-            />
-            {eyeDropperSupported && (
-              <button
-                type="button"
-                onClick={pickWithEyeDropper}
-                title="Pick color from screen"
-                aria-label="Pick color from screen"
-                className="h-7 w-7 rounded border flex items-center justify-center hover:bg-accent shrink-0"
-              >
-                <Pipette className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <div className="mt-2 flex items-center justify-end gap-1.5">
-            <Button size="sm" variant="ghost" className="h-7 text-2xs" onClick={cancel}>Cancel</Button>
-            <Button size="sm" className="h-7 text-2xs" onClick={commit}>Done</Button>
-          </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className={`${swatchClassName} rounded border cursor-pointer block`}
+          style={{ background: normalize(value) }}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[232px] p-3"
+        onInteractOutside={guardEyedropper}
+        onFocusOutside={guardEyedropper}
+        onPointerDownOutside={guardEyedropper}
+      >
+        <HexColorPicker color={draft} onChange={(c) => { setDraft(c); setHexInput(c) }} style={{ width: '100%', height: 160 }} />
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-7 w-9 rounded border shrink-0" style={{ background: draft }} />
+          <input
+            value={hexInput}
+            onChange={onHexInputChange}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
+            className="flex h-7 w-full rounded-md border bg-background px-2 text-xs font-mono"
+            placeholder="#000000"
+            spellCheck={false}
+          />
+          {eyeDropperSupported && (
+            <button
+              type="button"
+              onClick={pickWithEyeDropper}
+              title="Pick color from screen"
+              aria-label="Pick color from screen"
+              className="h-7 w-7 rounded border flex items-center justify-center hover:bg-accent shrink-0"
+            >
+              <Pipette className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-      )}
-    </div>
+        <div className="mt-2 flex items-center justify-end gap-1.5">
+          <Button size="sm" variant="ghost" className="h-7 text-2xs" onClick={cancel}>Cancel</Button>
+          <Button size="sm" className="h-7 text-2xs" onClick={commit}>Done</Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
