@@ -239,7 +239,7 @@ async function handler(req, res) {
             if (r.ok) {
               const rows = await r.json()
               if (rows[0]?.id) {
-                await updateWorkspace(rows[0].id, { plan: 'past_due' })
+                await updateWorkspace(rows[0].id, { plan: 'past_due' }, customerId)
                 console.warn(`[billing/webhook] invoice.payment_failed: workspace ${rows[0].id} marked past_due`)
               } else {
                 console.info(`[billing/webhook] invoice.payment_failed: no active workspace for customer ${customerId} — likely cancelled, ignoring`)
@@ -250,7 +250,7 @@ async function handler(req, res) {
           }
           break
         }
-        await updateWorkspace(workspaceId, { plan: 'past_due' })
+        await updateWorkspace(workspaceId, { plan: 'past_due' }, invoice.customer)
         console.warn(`[billing/webhook] invoice.payment_failed: workspace ${workspaceId} marked past_due`)
         break
       }
