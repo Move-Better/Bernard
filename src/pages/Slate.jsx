@@ -267,7 +267,7 @@ export default function Slate() {
   } = useQuery({
     queryKey: ['slate-source-videos', searchQ],
     queryFn: () => listMedia({ kind: 'video', limit: 100, q: searchQ || undefined }),
-    enabled: ws?.video_pipeline_enabled === true,
+    enabled: !!ws,
     refetchInterval: (q) => {
       // Only poll while a source video is mid-detection; hard-cap at 5 min so a
       // stuck 'detecting' row can't poll for the life of the tab.
@@ -283,7 +283,7 @@ export default function Slate() {
   const { data: clipCounts } = useQuery({
     queryKey: ['slate-clip-counts'],
     queryFn: () => apiFetch('/api/editorial/clip-counts'),
-    enabled: ws?.video_pipeline_enabled === true,
+    enabled: !!ws,
     refetchInterval: () => {
       // The count map has no job-state of its own; gate on the source videos'
       // detection state (counts only change while detection or its follow-on
@@ -300,7 +300,7 @@ export default function Slate() {
   const { data: proposalCounts } = useQuery({
     queryKey: ['slate-proposal-counts'],
     queryFn: () => apiFetch('/api/editorial/proposal-counts'),
-    enabled: ws?.video_pipeline_enabled === true,
+    enabled: !!ws,
     refetchInterval: () => {
       // Same gating as clip counts: proposals appear when detection lands, so
       // poll only while a source video is detecting, capped at 5 min.
@@ -390,24 +390,6 @@ export default function Slate() {
     } finally {
       setRepurposingId(null)
     }
-  }
-
-  if (!ws?.video_pipeline_enabled) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-        <Scissors className="h-10 w-10 text-muted-foreground" />
-        <p className="font-semibold text-lg">Slate is coming soon</p>
-        <p className="text-sm text-muted-foreground max-w-sm">
-          {"The video pipeline isn't enabled for this workspace yet."}
-        </p>
-        <a
-          href="/settings/workspace"
-          className="text-sm text-primary underline underline-offset-2 hover:opacity-80"
-        >
-          Open workspace settings to enable it
-        </a>
-      </div>
-    )
   }
 
   return (

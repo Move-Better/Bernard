@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Clapperboard, MapPin, Instagram, Facebook, Linkedin, Music2, Youtube, FileText, Info, Zap } from 'lucide-react'
+import { MapPin, Instagram, Facebook, Linkedin, Music2, Youtube, FileText, Info, Zap } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { SaveBar } from '@/components/settings/helpers'
@@ -96,18 +96,6 @@ export default function AutoPublishSettings() {
       ...prev,
       [channelId]: { ...prev[channelId], ...patch },
     }))
-  }
-
-  if (!ws?.video_pipeline_enabled) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-        <Clapperboard className="h-10 w-10 text-muted-foreground" />
-        <p className="font-semibold text-lg">Auto-publish is part of the video pipeline</p>
-        <p className="text-sm text-muted-foreground max-w-sm">
-          {"The video pipeline isn't enabled for this workspace yet. Contact your workspace admin to turn it on."}
-        </p>
-      </div>
-    )
   }
 
   if (!state) return null

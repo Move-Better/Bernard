@@ -5,7 +5,6 @@ import {
   Sliders, Target, Zap, LayoutGrid, Shield,
 } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
-import { useWorkspace } from '@/lib/WorkspaceContext'
 import { LoadingState } from '@/components/ui/LoadingState'
 
 // Flat list used for the mobile chip rail. Order mirrors the desktop
@@ -164,7 +163,6 @@ function MobileNavRail({ visibleItems }) {
 
 export default function SettingsLayout() {
   const { role, isLoading } = useUserRole()
-  const ws = useWorkspace()
 
   // Non-admin users can still reach integrations and account pages, but the
   // workspace-scoped sections gate themselves internally.
@@ -179,9 +177,7 @@ export default function SettingsLayout() {
   const isAdmin = role === 'admin'
   // Mobile rail filters the same way the sidebar groups do — hide
   // workspace/people entries from non-admins.
-  const autoPublishMobileEntry = ws?.video_pipeline_enabled
-    ? [{ to: '/settings/workspace/auto-publish', label: 'Auto-publish', icon: Zap }]
-    : []
+  const autoPublishMobileEntry = [{ to: '/settings/workspace/auto-publish', label: 'Auto-publish', icon: Zap }]
   const mobileVisible = [...MOBILE_NAV, ...autoPublishMobileEntry].filter((it) => {
     if (!isAdmin) {
       return ['/settings/integrations', '/settings/brand-kit', '/settings/workspace/billing'].includes(it.to)
@@ -212,10 +208,9 @@ export default function SettingsLayout() {
             const workspaceGroup = group.label === 'Workspace' || group.label === 'People'
             if (workspaceGroup && !isAdmin) return null
 
-            // Inject the auto-publish nav item after Campaigns when the
-            // video pipeline is enabled for this workspace.
+            // Inject the auto-publish nav item after Campaigns.
             let items = group.items
-            if (group.label === 'Workspace' && ws?.video_pipeline_enabled) {
+            if (group.label === 'Workspace') {
               const campaignsIdx = items.findIndex((it) => it.to === '/settings/campaigns')
               if (campaignsIdx !== -1) {
                 items = [

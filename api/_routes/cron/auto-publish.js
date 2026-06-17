@@ -316,9 +316,9 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase env not configured' })
   }
 
-  // Enumerate workspaces with video_pipeline_enabled and non-empty auto_publish_settings.
+  // Enumerate active workspaces with non-empty auto_publish_settings.
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&video_pipeline_enabled=eq.true&select=id,slug,auto_publish_settings`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,auto_publish_settings`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
