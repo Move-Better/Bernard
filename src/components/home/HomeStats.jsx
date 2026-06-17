@@ -95,7 +95,7 @@ export default function HomeStats({ stories = [] }) {
   }, [stories])
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       {/* This week */}
       <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center justify-between">
