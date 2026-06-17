@@ -79,6 +79,15 @@ function loadFallbackFont() {
 }
 
 /**
+ * The bundled Inter-Bold TTF Buffer — a guaranteed, network-free font.
+ * Satori requires at least one non-null font; callers use this as the last
+ * resort when getBrandFont's buffer is unavailable.
+ */
+export function getFallbackFontBuffer() {
+  return loadFallbackFont()
+}
+
+/**
  * Fetch a font's TTF from Google Fonts.
  * Uses the CSS API with a non-browser User-Agent so Google returns TTF URLs
  * (instead of woff2, which librsvg sometimes struggles with).
