@@ -86,6 +86,7 @@ async function findReusableOrg(userId, displayName) {
   return null
 }
 
+// eslint-disable-next-line bernard/require-workspace-scope -- Onboarding — creates the workspace row itself; no workspace exists yet to scope by
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,

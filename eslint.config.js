@@ -8,6 +8,7 @@ import noRawUseMutation from './eslint/rules/no-raw-use-mutation.js'
 import noArbitraryTextSize from './eslint/rules/no-arbitrary-text-size.js'
 import noRawApiFetch from './eslint/rules/no-raw-api-fetch.js'
 import noHardcodedBrandColor from './eslint/rules/no-hardcoded-brand-color.js'
+import requireWorkspaceScope from './eslint/rules/require-workspace-scope.js'
 
 export default [
   { ignores: ['dist/**', 'node_modules/**', 'playwright-report/**', 'api/_routes/_manifest.generated.js'] },
@@ -50,10 +51,19 @@ export default [
     files: ['api/**/*.js', 'middleware.js'],
     ignores: ['api/_lib/**'],
     plugins: {
-      bernard: { rules: { 'api-handler-shape': apiHandlerShape } },
+      bernard: {
+        rules: {
+          'api-handler-shape': apiHandlerShape,
+          'require-workspace-scope': requireWorkspaceScope,
+        },
+      },
     },
     rules: {
       'bernard/api-handler-shape': 'error',
+      // Any handler that defines a local sb() PostgREST wrapper must import
+      // workspaceContext, workspaceScope, or workspaceById — the tenant filter
+      // must be in scope. Suppression requires an inline reason comment.
+      'bernard/require-workspace-scope': 'error',
     },
   },
   // Local rules for client code (src/**):

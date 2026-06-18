@@ -72,6 +72,7 @@ async function rehostMuxThumbnail(playbackId, assetId, workspaceId) {
   }
 }
 
+// eslint-disable-next-line bernard/require-workspace-scope -- Mux webhook — workspace resolved from media_assets.workspace_id via Mux asset ID, not Host header
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,

@@ -26,6 +26,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // only genuinely-stranded rows are swept.
 const STUCK_THRESHOLD_MS = 20 * 60 * 1000
 
+// eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; each DB query is scoped by workspace_id from the workspace list
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,

@@ -37,6 +37,7 @@ const SNAPSHOT_MAX_AGE_H = 24 // skip refetch if we have a snapshot newer than t
 // flagging still requires score > 2× median ON TOP of clearing this bar.
 const GA4_MIN_PAGEVIEWS = 50
 
+// eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; each DB query is scoped by workspace_id from the workspace list
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,

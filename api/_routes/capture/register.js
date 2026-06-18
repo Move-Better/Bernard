@@ -30,6 +30,7 @@ const ALLOWED_VIDEO_MIME = new Set([
   'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v',
 ])
 
+// eslint-disable-next-line bernard/require-workspace-scope -- Capture token auth — workspace resolved from clinicians.workspace_id via capture token, not Host header
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
