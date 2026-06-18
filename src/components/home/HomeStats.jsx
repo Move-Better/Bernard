@@ -96,62 +96,9 @@ export default function HomeStats({ stories = [] }) {
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      {/* This week */}
-      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between">
-          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">This week</div>
-          {metrics.thisWeek > 0 ? (
-            <span className="text-2xs font-bold text-slate-400">↗ {metrics.thisWeek}</span>
-          ) : null}
-        </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 tabular-nums">{metrics.thisWeek}</div>
-        <div className="text-sm text-muted-foreground">interviews captured</div>
-      </div>
-
-      {/* Drafts — neutral stat. The warm "do this now" treatment lives on
-          DraftsReadyRow (piece-level cards below), so this card stays a
-          plain stat to avoid two warm-tinted surfaces competing for the
-          same action. The primary-colored number + "action" badge still
-          carry the signal. */}
-      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between">
-          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Drafts</div>
-          {metrics.drafts > 0 ? (
-            <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-2xs font-bold px-2 py-0.5">action</span>
-          ) : null}
-        </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 text-primary tabular-nums">{metrics.drafts}</div>
-        <div className="text-sm text-muted-foreground">awaiting your review</div>
-        {metrics.drafts > 0 && (metrics.breakdown.blog + metrics.breakdown.email + metrics.breakdown.social + metrics.breakdown.other > 0) ? (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {metrics.breakdown.blog > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700">{metrics.breakdown.blog} blog</span>
-            )}
-            {metrics.breakdown.email > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-amber-50 text-amber-700">{metrics.breakdown.email} email</span>
-            )}
-            {metrics.breakdown.social > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-violet-50 text-violet-700">{metrics.breakdown.social} social</span>
-            )}
-          </div>
-        ) : null}
-      </div>
-
-      {/* Published */}
-      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between">
-          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Published</div>
-          {metrics.publishedDelta !== 0 ? (
-            <span className={`text-2xs font-bold ${metrics.publishedDelta > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {metrics.publishedDelta > 0 ? '↗' : '↘'} {metrics.publishedDelta > 0 ? '+' : ''}{metrics.publishedDelta}
-            </span>
-          ) : null}
-        </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 tabular-nums">{metrics.publishedThis}</div>
-        <div className="text-sm text-muted-foreground">last 30 days</div>
-      </div>
-
-      {/* Voice match — dark "flex" card with grad-text number */}
+      {/* Voice match — dark "flex" card. First position: it's the app's
+          core differentiator KPI — how faithfully content sounds like the
+          clinician. Grad-text number on the ink card matches the mockup. */}
       <div
         className="rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
         style={{ background: 'hsl(var(--foreground))', borderColor: 'hsl(var(--foreground))', color: '#fff' }}
@@ -173,6 +120,61 @@ export default function HomeStats({ stories = [] }) {
         <div className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>
           {typeof metrics.voiceMatch === 'number' ? 'across your last 20 pieces' : 'Run an interview to start tracking'}
         </div>
+      </div>
+
+      {/* Drafts — neutral stat. The warm "do this now" treatment lives on
+          DraftsReadyRow (piece-level cards below), so this card stays a
+          plain stat to avoid two warm-tinted surfaces competing for the
+          same action. The action badge uses amber (--action) to match the
+          act-now signal used everywhere else on this page. */}
+      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center justify-between">
+          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Drafts</div>
+          {metrics.drafts > 0 ? (
+            <span className="inline-flex items-center justify-center rounded-full bg-action text-action-foreground text-2xs font-bold px-2 py-0.5">action</span>
+          ) : null}
+        </div>
+        <div className="text-4xl font-extrabold tracking-tight mt-2 text-primary tabular-nums">{metrics.drafts}</div>
+        <div className="text-sm text-muted-foreground">in your pipeline</div>
+        {metrics.drafts > 0 && (metrics.breakdown.blog + metrics.breakdown.email + metrics.breakdown.social + metrics.breakdown.other > 0) ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {metrics.breakdown.blog > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700">{metrics.breakdown.blog} blog</span>
+            )}
+            {metrics.breakdown.email > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-amber-50 text-amber-700">{metrics.breakdown.email} email</span>
+            )}
+            {metrics.breakdown.social > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-violet-50 text-violet-700">{metrics.breakdown.social} social</span>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      {/* This week */}
+      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center justify-between">
+          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">This week</div>
+          {metrics.thisWeek > 0 ? (
+            <span className="text-2xs font-bold text-slate-400">↗ {metrics.thisWeek}</span>
+          ) : null}
+        </div>
+        <div className="text-4xl font-extrabold tracking-tight mt-2 tabular-nums">{metrics.thisWeek}</div>
+        <div className="text-sm text-muted-foreground">interviews captured</div>
+      </div>
+
+      {/* Published */}
+      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center justify-between">
+          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Published</div>
+          {metrics.publishedDelta !== 0 ? (
+            <span className={`text-2xs font-bold ${metrics.publishedDelta > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {metrics.publishedDelta > 0 ? '↗' : '↘'} {metrics.publishedDelta > 0 ? '+' : ''}{metrics.publishedDelta}
+            </span>
+          ) : null}
+        </div>
+        <div className="text-4xl font-extrabold tracking-tight mt-2 tabular-nums">{metrics.publishedThis}</div>
+        <div className="text-sm text-muted-foreground">last 30 days</div>
       </div>
     </div>
   )

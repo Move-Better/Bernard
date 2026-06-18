@@ -541,7 +541,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
                 </Button>
                 <Button
                   size="sm"
-                  className="flex-1 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={() => handleApprove('publish')}
                   disabled={approving}
                 >
@@ -571,7 +571,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
               </Button>
               <Button
                 size="sm"
-                className="flex-1 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+                className="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
                 onClick={() => setChoosingApprove(true)}
                 disabled={approving || consentBlocks}
                 title={consentBlocks

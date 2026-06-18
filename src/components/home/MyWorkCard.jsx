@@ -21,7 +21,7 @@ const STAGE = {
   capture:   { label: 'Capturing', pill: 'nx-pill-ink',     action: 'Resume' },
   drafting:  { label: 'Drafting',  pill: 'nx-pill-amber',   action: 'Edit text' },
   review:    { label: 'In review', pill: 'nx-pill-tint',    action: 'View' },
-  scheduled: { label: 'Scheduled', pill: 'nx-pill-sky',     action: 'Preview' },
+  scheduled: { label: 'Scheduled', pill: 'nx-pill-violet',  action: 'Preview' },
   published: { label: '🎉 Live',   pill: 'nx-pill-emerald', action: 'View post' },
 }
 

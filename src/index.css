@@ -95,10 +95,11 @@
   a {
     @apply text-primary;
   }
-  /* Underline on hover instead of the old opacity-80 — the prior rule read
-     as "disabled" rather than "interactive." underline-offset-2 keeps the
-     underline off the descenders so the type stays legible. */
-  a:hover {
+  /* Underline on hover for bare text links only. Scoped to a:not([class])
+     so Link/Button components with Tailwind classes (all interactive
+     elements) are excluded — they use hover:bg / hover:opacity instead.
+     underline-offset-2 keeps the underline off the descenders. */
+  a:not([class]):hover {
     @apply underline underline-offset-2;
   }
 }

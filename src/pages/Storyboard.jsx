@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send, Trash2 } from 'lucide-react'
+import LoadingState from '@/components/LoadingState'
 import { Badge } from '@/components/ui/badge'
 import { useContentItems, useDeleteContentItem } from '@/lib/queries'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -132,9 +133,7 @@ export default function Storyboard() {
       {!isLoading && <PublisherInboxBanner needsMediaCount={rows.length} readyCount={ready.length} />}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading your drafts…
-        </div>
+        <LoadingState />
       ) : nothingToShow ? (
         <div className="rounded-lg border bg-muted/20 py-12 text-center">
           <Check className="mx-auto h-8 w-8 text-success" />
@@ -146,7 +145,7 @@ export default function Storyboard() {
           {/* Draft — the work queue. Pieces that still need media attached. */}
           {rows.length > 0 && (
             <section className="space-y-3">
-              <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Draft · {rows.length}
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
