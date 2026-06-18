@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { posthogCapture } from '@/lib/posthog'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
-import { ArrowLeft, ArrowRight, Loader2, Sparkles, AlertCircle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight, CheckCircle2, Circle, Check, RefreshCw, Send, Keyboard, Video } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, Sparkles, AlertCircle, AlertTriangle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight, CheckCircle2, Circle, Check, RefreshCw, Send, Keyboard, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -1649,17 +1649,21 @@ export default function InterviewSession() {
           <p className="font-medium text-sm leading-none">{staffMember.name}</p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate" title={interview.topic}>{interview.topic}</p>
         </div>
-        {saveStatus && saveStatus !== 'error' && (
-          <span
-            className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-amber-600' : 'text-muted-foreground'}`}
-          >
-            {saveStatus === 'saving'
-              ? <><Loader2 className="h-3 w-3 animate-spin" />Saving…</>
-              : saveStatus === 'saved'
-              ? <><Check className="h-3 w-3" />Saved</>
-              : <><RefreshCw className="h-3 w-3" />Recovered locally</>
-            }
-          </span>
+        {saveStatus && (
+          saveStatus === 'error'
+            ? <span className="text-xs shrink-0 inline-flex items-center gap-1 text-destructive font-medium">
+                <AlertTriangle className="h-3 w-3" />Save failed — your progress may not be saved
+              </span>
+            : <span
+                className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-amber-600' : 'text-muted-foreground'}`}
+              >
+                {saveStatus === 'saving'
+                  ? <><Loader2 className="h-3 w-3 animate-spin" />Saving…</>
+                  : saveStatus === 'saved'
+                  ? <><Check className="h-3 w-3" />Saved</>
+                  : <><RefreshCw className="h-3 w-3" />Recovered locally</>
+                }
+              </span>
         )}
         {interviewComplete
           ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><CheckCircle2 className="h-4 w-4" />Interview complete</span>
