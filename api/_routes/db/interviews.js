@@ -53,19 +53,16 @@ export default async function handler(req, res) {
   if (!ws) return err(res, 'Workspace not resolved', 400)
   const wsFilter = `workspace_id=eq.${ws.id}`
 
-  // All interview CRUD requires a verified Clerk session bound to this
-  // workspace's org. Previously trusted the x-user-id header for ownership
-  // checks on PATCH/DELETE — spoofable by any workspace member, who could
-  // PATCH or DELETE another user's interview by setting the header. Fixed
-  // 2026-05-21 (audit P0 #4). GET stays open to any workspace member.
-  let userId = null
-  if (req.method !== 'GET') {
-    const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
-    if (!auth.ok) {
-      return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
-    }
-    userId = auth.userId
+  // All interview access requires a verified Clerk session bound to this
+  // workspace's org. Passing null for allowedRoles means "any authenticated
+  // workspace member" (no role restriction). Previously GET was exempt, which
+  // exposed full transcripts, session_state, outputs, and owner_email to
+  // unauthenticated callers. Fixed 2026-06-17 (audit P0).
+  const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
+  if (!auth.ok) {
+    return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+  let userId = auth.userId
 
   if (req.method === 'GET') {
     if (id) {
