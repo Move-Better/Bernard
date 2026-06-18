@@ -28,7 +28,7 @@ const STAGES = [
 const QUICK_FILTERS = [
   { key: '',            label: 'All' },
   { key: 'needs_words', label: 'Draft',                stages: ['capture', 'drafting'] },
-  { key: 'ready',       label: 'Ready to Distribute',  stages: ['review'] },
+  { key: 'ready',       label: 'In Review',             stages: ['review'] },
   { key: 'published',   label: 'Published',             stages: ['published'] },
 ]
 

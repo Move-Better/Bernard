@@ -130,9 +130,10 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const currentStaff = staff.find((c) => c.id === (asset.staff_id || ''))
 
   // Track when polling started for this asset, so we can cap at ~60s even if
-  // the pipeline silently errored. Resets on asset.id change via the effect
-  // below that already reseeds form state.
-  const pollStartRef = useRef(Date.now())
+  // the pipeline silently errored. Initialized lazily (null until first pending
+  // poll) so the cap starts when the pipeline is observed pending, not when the
+  // drawer mounts — avoids expiring early on large files that take >60s.
+  const pollStartRef = useRef(null)
 
   // Poll the row until the pipeline lands. The list view refetches on
   // upload-done, but the detail drawer doesn't see that signal — so without
@@ -145,6 +146,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     refetchInterval: (q) => {
       const row = q.state.data
       if (!pipelinePending(row)) return false
+      if (!pollStartRef.current) pollStartRef.current = Date.now()
       if (Date.now() - pollStartRef.current > 60_000) return false
       return 2000
     },
@@ -166,12 +168,12 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     wasOptimizingRef.current = isOptimizing
   }, [isOptimizing, onChange])
 
-  const isArchived  = asset.status === 'archived'
-  const archivedAge = daysSince(asset.archived_at)
+  const isArchived  = a.status === 'archived'
+  const archivedAge = daysSince(a.archived_at)
   const cooldownLeft = archivedAge != null
     ? Math.max(0, Math.ceil(PURGE_COOLDOWN_DAYS - archivedAge))
     : PURGE_COOLDOWN_DAYS
-  const purgeReady  = isArchived && asset.archived_at && cooldownLeft === 0 && canPurge
+  const purgeReady  = isArchived && a.archived_at && cooldownLeft === 0 && canPurge
 
   // Sync local state if a different asset is loaded into the same drawer.
   // Intentional: reseeds ONLY on asset.id change. Listing every asset.* field
@@ -194,7 +196,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setError('')
     setShowPurge(false)
     setPurgeConfirm('')
-    pollStartRef.current = Date.now()
+    pollStartRef.current = null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.id])
 

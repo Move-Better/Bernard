@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarClock, Sparkles, Bot, RefreshCw, TrendingUp } from 'lucide-react'
+import { CalendarClock, Sparkles, RefreshCw, TrendingUp } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTopicSuggestions, useTopPerformers, queryKeys } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
@@ -208,17 +208,6 @@ export default function HomeRightRail({ stories = [] }) {
         )}
       </div>
 
-      {/* Bernard nudge — stub */}
-      <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: 'hsl(var(--action))' }} aria-hidden="true" />
-          <Bot className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-base font-bold tracking-tight flex-1">Bernard</h2>
-        </div>
-        <p className="px-4 py-4 text-sm text-muted-foreground">
-          Bernard is analyzing your workspace…
-        </p>
-      </div>
     </div>
   )
 }

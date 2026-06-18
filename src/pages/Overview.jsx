@@ -101,8 +101,9 @@ export default function Overview() {
         </div>
       )}
       {showClinicianBanner && (
-        <div className="rounded-2xl border border-border bg-card px-5 py-4 flex items-center gap-3 shadow-sm">
-          <CheckCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="rounded-2xl border border-action/30 bg-gradient-to-b from-white to-[#fffbf2] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(217,119,6,0.22)] px-5 py-4 flex items-center gap-3">
+          <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
+          <CheckCircle className="h-4 w-4 text-action shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground">
               {blogsToApprove.length} blog{blogsToApprove.length === 1 ? '' : 's'} waiting on your approval.
@@ -113,7 +114,7 @@ export default function Overview() {
           </div>
           <Link
             to="/stories?stage=review"
-            className="shrink-0 inline-flex items-center gap-1.5 border border-border bg-muted text-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:bg-accent transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             Validate your words →
           </Link>

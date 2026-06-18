@@ -501,6 +501,7 @@ function SidebarNavLink({ to, label, hint, badge, active, icon: Icon, collapsed 
   return (
     <Link
       to={to}
+      aria-label={collapsed ? label : undefined}
       className={`${base} ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
     >
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
