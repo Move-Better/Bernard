@@ -41,3 +41,21 @@ jobs:
       # below VOICE_FIDELITY_GATE_BASELINE. Skips (exit 2) when the fixture is
       # absent, so first-run PRs aren't blocked. Tunable via env.
       - run: npm run verify-caption-fidelity
+
+  review:
+    runs-on: ubuntu-latest
+    # Non-blocking: build is the required gate; review is informational.
+    # To make it block merges, add "review" to branch protection required checks.
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: "/code-review medium --comment"
+          allowed_tools: "Bash,Read,Glob,Grep"
