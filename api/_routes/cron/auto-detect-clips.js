@@ -77,8 +77,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'workspace_query_failed' })
   }
   const wsIds = (await wsRes.json()).map((w) => w.id)
-  if (wsIds.length === 0) return res.status(200).json({ claimed: 0, reason: 'no_active_workspaces' })
-  const inList = `(${wsIds.map((id) => `"${id}"`).join(',')})`
+  if (wsIds.length === 0) {
+    console.info('[auto-detect-clips] no active workspaces — skipping')
+    return res.status(200).json({ claimed: 0, reason: 'no_active_workspaces' })
+  }
+  const inList = `(${wsIds.join(',')})`
 
   // 2. Candidates: never-detected sources, plus stale 'detecting' rescues.
   const staleBefore = new Date(Date.now() - STALE_DETECTING_MS).toISOString()
