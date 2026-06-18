@@ -114,6 +114,7 @@ export default async function handler(req, res) {
     }
     if (platform && !VALID_PLATFORMS.has(platform)) return err(res, 'Invalid platform', 400)
     if (interviewId && !UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
+    if (staffId && !UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
 
     const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
