@@ -32,6 +32,8 @@ const VALID_PLATFORMS = new Set([
 
 const MAX_LIMIT = 100
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -111,14 +113,15 @@ export default async function handler(req, res) {
       if (statuses.some((s) => !VALID_STATUSES.has(s.trim()))) return err(res, 'Invalid status', 400)
     }
     if (platform && !VALID_PLATFORMS.has(platform)) return err(res, 'Invalid platform', 400)
+    if (interviewId && !UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
 
     const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
     if (status)      qs += status.includes(',') ? `&status=in.(${status})` : `&status=eq.${status}`
     if (platform)    qs += `&platform=eq.${platform}`
-    if (from)        qs += `&scheduled_at=gte.${from}`
-    if (to)          qs += `&scheduled_at=lte.${to}`
-    if (interviewId) qs += `&interview_id=eq.${interviewId}`
+    if (from)        qs += `&scheduled_at=gte.${encodeURIComponent(from)}`
+    if (to)          qs += `&scheduled_at=lte.${encodeURIComponent(to)}`
+    if (interviewId) qs += `&interview_id=eq.${encodeURIComponent(interviewId)}`
     if (staffId) qs += `&staff_id=eq.${encodeURIComponent(staffId)}`
     // Archive filter — archived items are hidden by default so the Hub stays
     // focused on live work. `archived=only` flips to the Archived view;
@@ -139,6 +142,13 @@ export default async function handler(req, res) {
 
     // Bulk insert
     if (Array.isArray(body)) {
+      const interviewIds = [...new Set(body.map((row) => row.interview_id).filter(Boolean))]
+      if (interviewIds.some((iid) => !UUID_RE.test(iid))) return err(res, 'Invalid interview_id', 400)
+      if (interviewIds.length > 0) {
+        const ck = await sb(`interviews?id=in.(${interviewIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
+        if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+        if ((await ck.json()).length !== interviewIds.length) return err(res, 'Interview not found in workspace', 422)
+      }
       const rows = body.map((r) => ({ ...r, workspace_id: ws.id }))
       const r = await sb('content_items', {
         method: 'POST',
@@ -151,6 +161,11 @@ export default async function handler(req, res) {
     // Single insert
     const { interviewId, staffId, staffName, topic, platform, content, status } = body || {}
     if (!interviewId || !platform || !content) return err(res, 'Missing required fields')
+    if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
+
+    const ck = await sb(`interviews?id=eq.${interviewId}&workspace_id=eq.${ws.id}&select=id`)
+    if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+    if (!(await ck.json()).length) return err(res, 'Interview not found in workspace', 422)
 
     const row = { workspace_id: ws.id, interview_id: interviewId, staff_id: staffId, staff_name: staffName, topic, platform, content }
     if (status) row.status = status
