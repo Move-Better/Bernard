@@ -22,6 +22,7 @@ const LOOKBACK_DAYS = 30
 // Cap items processed per run to keep latency predictable.
 const MAX_ITEMS = 100
 
+// eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; each DB query is scoped by workspace_id from the workspace list
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
