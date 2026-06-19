@@ -63,6 +63,7 @@ const Book = lazy(() => import('@/pages/Book'))
 const EditorialTest = lazy(() => import('@/pages/EditorialTest'))
 const Slate = lazy(() => import('@/pages/Slate'))
 const SlateClipEditor = lazy(() => import('@/pages/SlateClipEditor'))
+const Ads = lazy(() => import('@/pages/Ads'))
 const Capture = lazy(() => import('@/pages/Capture'))
 import { workspace } from '@/lib/workspace'
 import { WorkspaceProvider, useWorkspaceState } from '@/lib/WorkspaceContext'
@@ -632,6 +633,7 @@ function AppRoutes() {
                 routes resolve correctly (see CLAUDE.md Router conventions). */}
             <Route path="/slate" element={guarded(<Slate />)} />
             <Route path="/slate/clip/:assetId" element={guarded(<SlateClipEditor />)} />
+            <Route path="/ads" element={guarded(<Ads />)} />
             {/* Internal dev surface — Phase 2 editorial pipeline test (search clips + render). */}
             <Route path="/internal/editorial-test" element={guarded(<EditorialTest />)} />
             {/* Legacy redirects — /review/:itemId and /review-queue → new IA paths */}

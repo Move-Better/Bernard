@@ -7,7 +7,7 @@ import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, GalleryHorizontalEnd,
-  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, Inbox,
+  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, Inbox, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,6 +59,10 @@ const NAV_SECTIONS = [
       // media + schedule. Ungated like Library so producers see it. Old
       // /storyboard and /needs-media routes redirect.
       { to: '/publish',    label: 'Publish',    hint: 'Media · schedule', match: (p) => p.startsWith('/publish') || p.startsWith('/storyboard') || p.startsWith('/needs-media'), icon: GalleryHorizontalEnd },
+      // Ads — ad-creative export hub (Library/Slate exports collect here,
+      // grouped by campaign). Editor-gated like the other producer surfaces.
+      { to: '/ads',        label: 'Ads',        hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone,
+        requiresEditor: true },
       // Review Inbox — the producer's single review→schedule queue (P4).
       // Editor-gated like Overview; individual clinicians never see it.
       { to: '/review-inbox', label: 'Review Inbox', hint: 'Approve & schedule', match: (p) => p.startsWith('/review-inbox'), icon: Inbox,
