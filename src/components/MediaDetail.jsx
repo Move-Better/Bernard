@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown, Scissors } from 'lucide-react'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown, Scissors, Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,6 +25,8 @@ import ContentBriefDetail from './ContentBriefDetail'
 import CollectionPicker from './CollectionPicker'
 import MediaEditModal from './MediaEditModal'
 import MediaVideoPlayer from './MediaVideoPlayer'
+import AdExportModal from './AdExportModal'
+import { downloadFromUrl } from '@/lib/download'
 
 const STATUSES = ['raw', 'tagged', 'rendered', 'approved', 'archived']
 // Purpose is the primary fork (see MediaUploader for the source of truth).
@@ -119,6 +121,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [rotatingQuick, setRotatingQuick] = useState(false)
   const [downloadingOriginal, setDownloadingOriginal] = useState(false)
+  const [adExportOpen, setAdExportOpen] = useState(false)
 
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
 
@@ -406,18 +409,6 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     }
   }
 
-  // Vercel Blob public URLs are CORS-enabled, so a direct <a download> works.
-  // Avoids buffering the entire file into browser RAM (kills tabs on large videos).
-  function downloadFromUrl(url, filename) {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.rel = 'noopener'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-  }
-
   async function downloadAsset() {
     setDownloading(true); setError('')
     try {
@@ -530,6 +521,18 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 : <Download className="h-3.5 w-3.5" />}
               Download
             </Button>
+            {asset.kind === 'photo' && canEdit && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAdExportOpen(true)}
+                className="h-7 gap-1.5 text-2xs border-action/40 text-action hover:bg-action/10"
+                title="Render this photo into every ad size (1:1, 4:5, 9:16, 16:9) and download the pack"
+              >
+                <Megaphone className="h-3.5 w-3.5" />
+                Export for ads
+              </Button>
+            )}
             {hasOriginal && (
               <Button
                 size="sm"
@@ -1072,6 +1075,10 @@ export default function MediaDetail({ asset, onClose, onChange }) {
           onClose={() => setShowEdit(false)}
           onSaved={() => { refreshVariants(); onChange?.() }}
         />
+      )}
+
+      {adExportOpen && (
+        <AdExportModal asset={a} onClose={() => setAdExportOpen(false)} />
       )}
     </div>
   )

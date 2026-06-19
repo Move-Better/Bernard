@@ -288,6 +288,7 @@ const EDITORIAL_ASPECTS = {
   '4:5':  [1080, 1350],
   '9:16': [1080, 1920],
   '1:1':  [1080, 1080],
+  '16:9': [1920, 1080], // YouTube in-stream / Google Display — added for ad export
 }
 const HEADLINE_SIZE_FACTOR = { s: 0.058, m: 0.070, l: 0.084 }
 const DEFAULT_SCRIM = '#10243f' // brand navy
@@ -502,6 +503,39 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
 
   const out = await sharp(photoLayer)
     .composite([{ input: overlayInput, top: 0, left: 0 }])
+    .jpeg({ quality: 90, progressive: true })
+    .toBuffer()
+
+  return { buffer: out, width, height }
+}
+
+/**
+ * Plain ad-size render: subject-aware crop to an ad aspect + gentle brand grade,
+ * with NO editorial overlay. Used by the ad-export pack so a Library photo
+ * becomes a clean, correctly-sized ad image. When you want baked headline/accent
+ * furniture (an already-composed editorial piece), call renderEditorialPhoto /
+ * renderWhoopPhoto with a full treatment instead.
+ *
+ * @param {{ photoUrl: string, aspect?: string, grade?: number }} params
+ * @returns {Promise<{ buffer: Buffer, width: number, height: number }>}
+ */
+export async function renderAdPhoto({ photoUrl, aspect, grade }) {
+  const [width, height] = EDITORIAL_ASPECTS[aspect] || EDITORIAL_ASPECTS['1:1']
+
+  const response = await fetch(photoUrl)
+  if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
+  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
+  if (contentLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${contentLength} bytes`)
+  const arrayBuf = await response.arrayBuffer()
+  if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
+  const buffer = Buffer.from(arrayBuf)
+
+  // Same gentle, on-brand grade as the editorial path (default 40).
+  const g = Math.min(Math.max(Number(grade ?? 40), 0), 100) / 100
+  const out = await sharp(buffer)
+    .rotate() // honor EXIF orientation
+    .resize(width, height, { fit: 'cover', position: 'attention' }) // subject-aware crop
+    .modulate({ brightness: 1 + g * 0.12, saturation: 1 + g * 0.18 })
     .jpeg({ quality: 90, progressive: true })
     .toBuffer()
 
