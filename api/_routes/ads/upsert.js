@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     campaign_id: campaignId,
     source_asset_id: sourceAssetId,
     source_piece_id: sourcePieceId,
-    media_type: b.mediaType === 'video' ? 'video' : 'photo',
+    media_type: ['video', 'carousel'].includes(b.mediaType) ? b.mediaType : 'photo',
     sizes,
     caption: typeof b.caption === 'string' ? b.caption.slice(0, 2000) : null,
     title: typeof b.title === 'string' ? b.title.slice(0, 300) : null,

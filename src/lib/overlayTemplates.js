@@ -820,6 +820,44 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
   }
 }
 
+// Panel-template (WHOOP) slides anchor their content to a square bottom panel.
+// When such a slide is exported to a non-square ad aspect we can't use the panel
+// geometry, so re-stack the content blocks (hook → body → caption → CTA) bottom-
+// up in the lower zone, measured so nothing overlaps. Labels keep their corners.
+// (Q sign-off 2026-06-19, .claude/mockups/carousel-whoop-stack.html.)
+const STACK_ROLE_ORDER = { hook: 0, body: 1, caption: 2, cta: 3 }
+function stackContentBottom(ctx, blocks, brandStyle, theme, W, H) {
+  const content = blocks
+    .filter((b) => b && b.role in STACK_ROLE_ORDER && (b.text || '').trim() !== '')
+    .sort((a, b) => STACK_ROLE_ORDER[a.role] - STACK_ROLE_ORDER[b.role])
+  const labels = blocks.filter((b) => b && !(b.role in STACK_ROLE_ORDER))
+  if (content.length === 0) return blocks
+
+  const gap = Math.round(H * 0.018)
+  const measured = content.map((b) => {
+    const typo = roleTypography(b.role, brandStyle, theme?.blocks?.[b.role] ?? null)
+    if (typo.pill || typo.background === 'pill') return { b, h: 80 }
+    ctx.font = typo.font
+    const display = typo.uppercase ? (b.text || '').toUpperCase() : (b.text || '')
+    const widthFrac = (Number.isFinite(b.width) && b.width > 0)
+      ? Math.max(0.15, Math.min(1, b.width))
+      : typo.maxWidthFrac
+    const lines = wrapLines(ctx, display, Math.round(W * widthFrac), typo.maxLines)
+    const ascent = Math.round((typo.lineH || 60) * 0.8)
+    return { b, h: (lines.length - 1) * typo.lineH + ascent }
+  })
+
+  // Place bottom-up: cursor is the bottom-most block's last baseline / pill bottom.
+  let cursor = H - FREEFORM_PAD
+  const placed = []
+  for (let i = measured.length - 1; i >= 0; i--) {
+    const m = measured[i]
+    placed.unshift({ ...m.b, position: { x: 0.5, y: cursor / H } })
+    cursor = cursor - m.h - gap
+  }
+  return [...placed, ...labels]
+}
+
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
 // canvas so callers can either display it directly (DOM canvas preview) or
 // call toBlob() to produce a baked PNG.
@@ -837,6 +875,8 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // canvas. The carousel ad export (non-square) renders photo + blocks instead,
   // so every card shares the chosen aspect.
   const useWhoop = layout && palette && square
+  // A panel-template slide exported non-square: bottom-stack the content (below).
+  const whoopNonSquare = !!(layout && palette) && !square
 
   if (useWhoop) {
     // WHOOP built-in — paint structural geometry (background, panel, rule)
@@ -870,6 +910,13 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
       scrim = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75)
       scrim.addColorStop(0, 'rgba(0,0,0,0)')
       scrim.addColorStop(1, 'rgba(0,0,0,0.45)')
+    } else if (whoopNonSquare) {
+      // Stronger bottom panel-ish scrim behind the bottom-stacked content.
+      scrim = ctx.createLinearGradient(0, 0, 0, H)
+      scrim.addColorStop(0, 'rgba(0,0,0,0.35)')
+      scrim.addColorStop(0.45, 'rgba(0,0,0,0.05)')
+      scrim.addColorStop(0.6, 'rgba(0,0,0,0.45)')
+      scrim.addColorStop(1, 'rgba(0,0,0,0.85)')
     } else {
       scrim = ctx.createLinearGradient(0, 0, 0, H)
       scrim.addColorStop(0, 'rgba(0,0,0,0.55)')
@@ -881,7 +928,10 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     ctx.fillRect(0, 0, W, H)
   }
 
-  for (const block of blocks) {
+  // Panel-template slides → non-square: re-stack content blocks bottom-up so the
+  // panel-anchored text doesn't collide. Square/freeform render unchanged.
+  const renderBlocks = whoopNonSquare ? stackContentBottom(ctx, blocks, brandStyle || {}, theme, W, H) : blocks
+  for (const block of renderBlocks) {
     const themeBlock = theme?.blocks?.[block.role] ?? null
     drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, useWhoop ? layout : null, useWhoop ? palette : null, W, H)
   }
