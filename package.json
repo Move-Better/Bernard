@@ -46,6 +46,7 @@
     "@vercel/blob": "^2.3.3",
     "@vercel/functions": "^3.5.0",
     "ai": "^6.0.175",
+    "bundlesocial": "^2.55.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "diff": "^9.0.0",
