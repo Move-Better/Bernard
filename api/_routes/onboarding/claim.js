@@ -397,6 +397,10 @@ async function handler(req, res) {
     capabilities: {},
     enabled_outputs,
     publish_intent,
+    // Route social publishing to the provider the tenant picked. 'bundle' =
+    // bundle.social; anything else keeps the Buffer default (the column also
+    // defaults to 'buffer', so this is a no-op until the UI offers bundle).
+    publish_provider: publish_intent.social === 'bundle' ? 'bundle' : 'buffer',
     video_pipeline_enabled: true,
     clerk_org_id: org.id,
     is_founding: true,

@@ -38,6 +38,10 @@ const PLATFORM_TO_BUNDLE_TYPE = {
 // spike: IG and GBP rejected text-only; Facebook/X/etc. accept text-only).
 const MEDIA_REQUIRED_TYPES = new Set(['INSTAGRAM', 'GOOGLE_BUSINESS'])
 
+// Default networks the hosted connect portal lets a clinic link — the
+// spike-proven, clinic-relevant set. Overridable per call via connect({networks}).
+const CLINIC_NETWORKS = ['INSTAGRAM', 'FACEBOOK', 'GOOGLE_BUSINESS']
+
 export class BundlePublisher extends SocialPublisher {
   constructor(workspace) {
     super(workspace)
@@ -69,17 +73,19 @@ export class BundlePublisher extends SocialPublisher {
     return { teamId: res?.id ?? null, raw: res }
   }
 
-  async connect({ network, redirectUrl, withBusinessScope = true, disableAutoLogin = false, serverUrl } = {}) {
-    if (!redirectUrl) throw publishError('connect requires a redirectUrl', 400)
-    const type = this._bundleType(network)
-    const res = await this.sdk.socialAccount.socialAccountConnect({
+  // Hosted-portal connect (Phase 1 decision): hand the tenant ONE bundle-hosted
+  // link to connect AND manage all their accounts, instead of a per-network
+  // redirect. bundle owns the connect + reconnect UI, so Bernard never sees a
+  // platform password. `networks` defaults to the clinic-relevant set; the
+  // optional `redirectUrl` is where bundle returns the tenant afterward.
+  async connect({ networks, redirectUrl, disableAutoLogin = false } = {}) {
+    const socialAccountTypes = (networks?.length ? networks : CLINIC_NETWORKS).map((n) => this._bundleType(n))
+    const res = await this.sdk.socialAccount.socialAccountCreatePortalLink({
       requestBody: {
         teamId: this.teamId,
-        type,
-        redirectUrl,
-        withBusinessScope,
+        socialAccountTypes,
         disableAutoLogin,
-        ...(serverUrl ? { serverUrl } : {}), // Mastodon/Bluesky only
+        ...(redirectUrl ? { redirectUrl } : {}),
       },
     })
     return { url: res?.url }
