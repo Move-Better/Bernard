@@ -58,5 +58,5 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          direct_prompt: "/code-review medium --comment"
+          prompt: "Review this PR for bugs, security issues, and correctness. Focus on logic errors, missing validation, race conditions, and API contract violations. Post findings as a PR review comment."
           allowed_tools: "Bash,Read,Glob,Grep"
