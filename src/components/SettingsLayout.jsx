@@ -135,29 +135,34 @@ function MobileNavRail({ visibleItems }) {
   }, [location.pathname])
 
   return (
-    <nav
-      aria-label="Settings sections"
-      className="md:hidden sticky top-14 z-30 -mx-6 px-6 -mt-6 pt-3 pb-2 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border/60 flex items-center gap-2 overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {visibleItems.map((item) => {
-        const isActive = isItemActive(item, location.pathname)
-        return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            ref={isActive ? activeRef : undefined}
-            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
-              isActive
-                ? 'border-primary/20 bg-primary/10 text-primary'
-                : 'border-border bg-white text-muted-foreground active:bg-accent/40 hover:text-foreground hover:border-slate-300'
-            }`}
-          >
-            <item.icon className="h-3.5 w-3.5 shrink-0" />
-            {item.label}
-          </NavLink>
-        )
-      })}
-    </nav>
+    <div className="md:hidden relative -mx-6 -mt-6">
+      <nav
+        aria-label="Settings sections"
+        className="sticky top-14 z-30 px-6 pt-3 pb-2 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border/60 flex items-center gap-2 overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {visibleItems.map((item) => {
+          const isActive = isItemActive(item, location.pathname)
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              ref={isActive ? activeRef : undefined}
+              className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
+                isActive
+                  ? 'border-primary/20 bg-primary/10 text-primary'
+                  : 'border-border bg-white text-muted-foreground active:bg-accent/40 hover:text-foreground hover:border-slate-300'
+              }`}
+            >
+              <item.icon className="h-3.5 w-3.5 shrink-0" />
+              {item.label}
+            </NavLink>
+          )
+        })}
+      </nav>
+      {/* Right-edge fade — signals that chips extend beyond the viewport
+          on narrower phones without needing a visible scrollbar. */}
+      <div className="pointer-events-none sticky top-14 z-40 absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
+    </div>
   )
 }
 
