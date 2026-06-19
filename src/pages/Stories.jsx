@@ -141,7 +141,7 @@ export default function Stories() {
                     type="button"
                     onClick={() => setParam('stage', 'review')}
                     title="Filter to stories awaiting review"
-                    className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 text-primary px-2 py-0.5 text-2xs font-bold uppercase tracking-wide hover:bg-primary/20 transition-colors"
+                    className="inline-flex items-center gap-1 rounded-full border border-action/30 bg-action/10 text-action px-2 py-0.5 text-2xs font-bold uppercase tracking-wide hover:bg-action/20 transition-colors"
                   >
                     {awaitingReviewCount} awaiting review
                     <span aria-hidden="true">→</span>
