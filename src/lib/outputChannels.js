@@ -281,7 +281,10 @@ export function exportShapeForPlatform(platform) {
 // (src/pages/Integrations.jsx), and the claim handler (api/onboarding/claim.js).
 export const PUBLISH_INTENT_OPTIONS = Object.freeze({
   website:    ['wordpress', 'astro', 'none'],
-  social:     ['buffer', 'manual'],
+  // 'bundle' = bundle.social (Bernard connects + posts directly); 'buffer' =
+  // bring-your-own Buffer; 'manual' = copy & paste. The choice maps to
+  // workspaces.publish_provider (bundle|buffer) at claim time.
+  social:     ['buffer', 'bundle', 'manual'],
   newsletter: ['beehiiv', 'other', 'skip'],
 })
 
