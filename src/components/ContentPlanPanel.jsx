@@ -315,7 +315,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece,
           <span className="text-xs text-muted-foreground">· Long-form source piece</span>
         </div>
         {isPublished ? (
-          <Badge className="text-xs bg-blue-100 text-blue-700 border-0 px-1.5 py-0">
+          <Badge className="text-xs bg-success/10 text-success border-0 px-1.5 py-0">
             Published{publishedDateLabel ? ` · ${publishedDateLabel}` : ''}
           </Badge>
         ) : isApproved ? (
@@ -489,7 +489,7 @@ function AtomRow({ atom, interviewId, slotLabel, dateHint, isDrafting, error, on
             {slotLabel}{dateHint ? ` · ${dateHint}` : ''}
           </Badge>
           {isPublished ? (
-            <Badge className="text-xs bg-blue-100 text-blue-700 border-0 px-1.5 py-0">
+            <Badge className="text-xs bg-success/10 text-success border-0 px-1.5 py-0">
               Published{publishedDateLabel ? ` · ${publishedDateLabel}` : ''}
             </Badge>
           ) : isScheduled ? (

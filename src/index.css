@@ -127,7 +127,7 @@
   .nx-pill-sky     { background: #e0f2fe; color: #0284c7; }
   .nx-pill-violet  { background: #f5f3ff; color: #7c3aed; }
   .nx-pill-rose    { background: #fff1f2; color: #e11d48; }
-  .nx-pill-tint    { background: #fff7f0; color: #c04d18; border: 1px solid #fde0d2; }
+  .nx-pill-tint    { background: hsl(var(--action) / 0.10); color: hsl(var(--action)); border: 1px solid hsl(var(--action) / 0.25); }
   .nx-pill-ink     { background: #f1f5f9; color: #475569; }
   .nx-pill-primary { background: hsl(var(--primary)); color: #fff; }
 
