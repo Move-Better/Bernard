@@ -36,6 +36,15 @@ async function persistTeamId(workspaceId, teamId) {
   return r.ok
 }
 
+// A deleted / unknown bundle Team surfaces as a 404 "No team found" from the
+// SDK (teams can be deleted out-of-band in the bundle dashboard).
+function isMissingTeam(e) {
+  const status = e?.status ?? e?.statusCode ?? e?.body?.statusCode
+  let blob = e?.message || ''
+  try { blob += ' ' + JSON.stringify(e?.body) } catch { /* non-serializable */ }
+  return status === 404 || /no team found/i.test(blob)
+}
+
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method-not-allowed' })
 
@@ -61,32 +70,41 @@ async function handler(req, res) {
     return res.status(503).json({ error: 'bundle-not-configured', message: e?.message })
   }
 
-  // 1. Ensure a bundle Team exists for this workspace (idempotent). Mutate the
-  //    in-scope workspace so publisher.teamId resolves for the connect call.
-  try {
-    if (!workspace.bundle_team_id) {
-      const { teamId } = await publisher.createTeam({ name: workspace.display_name || workspace.slug })
-      if (!teamId) return res.status(502).json({ error: 'team-create-failed' })
-      if (!(await persistTeamId(workspace.id, teamId))) {
-        return res.status(500).json({ error: 'team-persist-failed' })
-      }
-      workspace.bundle_team_id = teamId
-      invalidateWorkspaceCacheById(workspace.id)
+  // Ensure a LIVE bundle Team, then return the hosted-portal link. teamId is an
+  // authorization boundary — created + persisted on the workspace row, never from
+  // client input. Self-heals a dead team (deleted in the bundle dashboard leaves
+  // bundle_team_id pointing at a 404): create on first use, and if the stored
+  // team is gone, recreate it once and retry.
+  async function ensureTeam() {
+    const { teamId } = await publisher.createTeam({ name: workspace.display_name || workspace.slug })
+    if (!teamId) throw Object.assign(new Error('team-create-failed'), { code: 'team-create-failed', status: 502 })
+    if (!(await persistTeamId(workspace.id, teamId))) {
+      throw Object.assign(new Error('team-persist-failed'), { code: 'team-persist-failed', status: 500 })
     }
-  } catch (e) {
-    console.error('[bundle/connect] ensure-team failed:', e?.stack || e?.message)
-    return res.status(502).json({ error: 'team-create-failed', message: e?.message })
+    workspace.bundle_team_id = teamId // so publisher.teamId resolves for the connect call
+    invalidateWorkspaceCacheById(workspace.id)
   }
 
-  // 2. Hosted-portal link for connecting/managing accounts.
+  const redirectUrl = `https://${workspace.slug}.withbernard.ai/settings/integrations?bundle=connected`
   try {
-    const redirectUrl = `https://${workspace.slug}.withbernard.ai/settings/integrations?bundle=connected`
-    const { url } = await publisher.connect({ redirectUrl })
+    if (!workspace.bundle_team_id) await ensureTeam()
+
+    let url = null
+    try {
+      const r = await publisher.connect({ redirectUrl })
+      url = r?.url
+    } catch (e) {
+      if (!isMissingTeam(e)) throw e
+      console.warn('[bundle/connect] stored bundle Team is gone — recreating:', workspace.bundle_team_id)
+      await ensureTeam()
+      const r = await publisher.connect({ redirectUrl })
+      url = r?.url
+    }
     if (!url) return res.status(502).json({ error: 'portal-link-failed' })
     return res.status(200).json({ url })
   } catch (e) {
-    console.error('[bundle/connect] portal link failed:', e?.stack || e?.message)
-    return res.status(502).json({ error: 'portal-link-failed', message: e?.message })
+    console.error('[bundle/connect] failed:', e?.stack || e?.message)
+    return res.status(e?.status || 502).json({ error: e?.code || 'portal-link-failed', message: e?.message })
   }
 }
 
