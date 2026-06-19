@@ -420,12 +420,9 @@ export default function MediaHub() {
 
       {/* Filters — search + actions on top; one chip strip below */}
       <div className="space-y-3">
-        {/* Search field, status, and primary actions.
-            Mobile: stacks into search → scrollable status track → action row
-            so nothing wraps into an ambiguous pile and Upload stays reachable.
-            Desktop (sm+): single row with actions pinned right via ml-auto. */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:w-56 sm:flex-1 sm:min-w-[200px]">
+        {/* Search + primary actions — one row at all widths. */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
@@ -440,30 +437,8 @@ export default function MediaHub() {
             )}
           </div>
 
-          {/* Status chips — horizontal scroll track on mobile so 6 chips never
-              wrap into multiple rows. */}
-          <div className="-mx-1 px-1 overflow-x-auto sm:overflow-visible">
-            <div className="flex items-center gap-1.5 flex-nowrap">
-              <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              {STATUS_FILTERS.map((s) => (
-                <button
-                  key={s.id || 'all-status'}
-                  type="button"
-                  onClick={() => setStatus(s.id)}
-                  className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    status === s.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Primary actions — pinned right on desktop, own row on mobile. */}
-          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:ml-auto sm:shrink-0">
+          {/* Primary actions — always right of the search bar. */}
+          <div className="flex items-center gap-2 shrink-0">
             {canUpload && (
               <Button
                 size="sm"
@@ -503,6 +478,25 @@ export default function MediaHub() {
               </Button>
             )}
           </div>
+        </div>
+
+        {/* Status chips — wrapping row so they scale to any screen width. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {STATUS_FILTERS.map((s) => (
+            <button
+              key={s.id || 'all-status'}
+              type="button"
+              onClick={() => setStatus(s.id)}
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                status === s.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
         {/* Consolidated chip strip: kind · clinician. Auto-tagging + search
