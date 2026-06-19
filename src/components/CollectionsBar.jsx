@@ -160,7 +160,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
                 </button>
                 {canEdit && (
                   <span className={`flex items-center border-r border-y rounded-r-full ${
-                    active ? 'border-primary' : 'border-border'
+                    active ? 'border-primary bg-primary' : 'border-border'
                   }`}>
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditing(c); setEditName(c.name) }}
