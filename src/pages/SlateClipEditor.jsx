@@ -5,7 +5,7 @@ import {
   Scissors, Loader2, AlertCircle, ShieldAlert, ShieldCheck, ArrowLeft,
   Play, Pause, Film, Sparkles, Wand2, Quote, SlidersHorizontal,
   ChevronDown, FileText, FolderOpen, Maximize, CornerDownLeft,
-  ChevronRight, X,
+  ChevronRight, X, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -14,6 +14,7 @@ import { getMediaAsset } from '@/lib/mediaLib'
 import { getSegments, updateSegment, findClips, renderWholeVideo } from '@/lib/clipsLib'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import AdVideoExportModal from '@/components/AdVideoExportModal'
 
 // Default render channel for "As a post" — one clip per session in Phase 1.
 const DEFAULT_CHANNEL = 'instagram_reel'
@@ -238,6 +239,9 @@ export default function SlateClipEditor() {
   const [rendering, setRendering] = useState(false)
   const [renderedBlobUrl, setRenderedBlobUrl] = useState(null)
   const [renderDims, setRenderDims] = useState({ width: null, height: null, sizeBytes: null })
+
+  // --- Ad export ---
+  const [adExportOpen, setAdExportOpen] = useState(false)
 
   // --- AI-proposed moments (video_segments from ClipFinder detection) ---
   // This is the seam fix: the Slate grid's "Review N clips" badge counts these
@@ -1061,14 +1065,45 @@ export default function SlateClipEditor() {
                 <div className="text-xs font-semibold mt-1">Whole video</div>
                 <div className="text-3xs text-muted-foreground">→ Skip cutting — full source, letterboxed, never cropped</div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => !consentBlocked && setAdExportOpen(true)}
+                disabled={consentBlocked}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  consentBlocked
+                    ? 'border-border opacity-45 cursor-not-allowed'
+                    : 'border-action/40 bg-action/5 hover:bg-action/10'
+                }`}
+                title="Render this clip into ad sizes (9:16, 1:1, 4:5, 16:9) and download for Meta / Google / paid social"
+              >
+                <Megaphone className="h-4 w-4 text-action" />
+                <div className="text-xs font-semibold mt-1">Export for ads</div>
+                <div className="text-3xs text-muted-foreground">→ Download ad sizes for paid social</div>
+              </button>
             </div>
 
             <p className="text-3xs text-muted-foreground mt-2">
-              Slate never publishes. It hands off to the one pipeline — exactly two ways out.
+              Slate never publishes. It hands off to the one pipeline, or exports ad creative to download.
             </p>
           </div>
         </div>
       </div>
+
+      {adExportOpen && (
+        <AdVideoExportModal
+          clip={{
+            assetId,
+            startSec,
+            durationSec,
+            captionText,
+            overlayPosition,
+            overlaySize,
+            title: asset?.display_title || asset?.filename,
+          }}
+          onClose={() => setAdExportOpen(false)}
+        />
+      )}
 
       {/* Edge-to-edge full preview overlay */}
       {fullPreview && (
