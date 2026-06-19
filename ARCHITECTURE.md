@@ -58,6 +58,21 @@ Reference handlers: `api/content-pieces/*`, `api/media/*`, `api/db/*`.
 Required for any handler importing `@sentry/node`, `@clerk/backend`, `@vercel/blob`, or any
 `node:*` built-in.
 
+### Consolidated `_routes` vs standalone physical handlers
+
+Most light JSON routes live in `api/_routes/**` and are served by the single consolidated
+Express app (`api/index.js`, routed via the generated `_manifest.generated.js`). But
+**heavy-render handlers (ffmpeg / `includeFiles` / large uploads / SSE/streaming) MUST stay as
+their own physical `api/**/*.js` files — NOT in `api/_routes`.** They win Vercel's filesystem
+phase over the `/api/(.*) → /api/index` rewrite, so each gets its own function bundle that
+carries the per-function dep (e.g. the `ffmpeg-static` binary). A heavy handler placed under
+`api/_routes` would load into the shared function without its bundle and fail at runtime.
+Reference: `api/editorial/render-clip.js` and `api/ads/render-video.js` (both import
+`renderVideoChannel` → ffmpeg) live outside `_routes` for exactly this reason; the photo
+`api/_routes/ads/render-pack.js` (Sharp only) is fine consolidated. Adding a new `api/_routes/*`
+file requires regenerating the manifest (`node scripts/build-api-manifest.mjs`, also run in
+prebuild); a standalone physical file needs no manifest change.
+
 ### Edge runtime
 ```js
 export const config = { runtime: 'edge' }
