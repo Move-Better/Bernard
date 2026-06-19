@@ -412,6 +412,8 @@ Three complementary commands cover code/UI/prod health:
 
 Pair `/audit` with `/schedule` for an automated weekly run; reserve `/auditfull` for monthly or pre-release passes.
 
+**Pre-merge Claude review** (`pr.yml` `review` job) — runs `/code-review medium --comment` on every PR via `anthropics/claude-code-action@beta`, posting inline findings before merge. Non-blocking (`continue-on-error: true`); `build` is still the only required gate. To promote it to a required check, add `review` to branch protection status checks. Requires two GitHub Actions secrets: `ANTHROPIC_API_KEY` + the action's own `github_token: ${{ secrets.GITHUB_TOKEN }}` passed explicitly — without `github_token`, the action silently gets a Bad credentials 401 when posting comments (hit 2026-06-19, #1393).
+
 ## `.claude/` directory — scratch vs. keep
 
 The untracked `.claude/` directory mixes two kinds of files; do NOT bulk-delete it as "scratch." Before deleting anything here, classify:
