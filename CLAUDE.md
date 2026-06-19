@@ -412,7 +412,9 @@ Three complementary commands cover code/UI/prod health:
 
 Pair `/audit` with `/schedule` for an automated weekly run; reserve `/auditfull` for monthly or pre-release passes.
 
-**Pre-merge Claude review** (`pr.yml` `review` job) — runs `/code-review medium --comment` on every PR via `anthropics/claude-code-action@beta`, posting inline findings before merge. Non-blocking (`continue-on-error: true`); `build` is still the only required gate. To promote it to a required check, add `review` to branch protection status checks. Requires two GitHub Actions secrets: `ANTHROPIC_API_KEY` + the action's own `github_token: ${{ secrets.GITHUB_TOKEN }}` passed explicitly — without `github_token`, the action silently gets a Bad credentials 401 when posting comments (hit 2026-06-19, #1393).
+**Pre-merge Claude review** (`pr.yml` `review` job) — runs an inline `prompt` on every PR via `anthropics/claude-code-action@beta`, posting inline findings before merge. Non-blocking (`continue-on-error: true`); `build` is still the only required gate. To promote it to a required check, add `review` to branch protection status checks. Two pitfalls found in initial wiring:
+- `github_token` must be passed explicitly — without it, the action silently gets a Bad credentials 401 when posting comments (#1393, 2026-06-18).
+- The input is `prompt:`, NOT `direct_prompt:` — the wrong key causes `IS_PR: false` / `CLAUDE_SUCCESS: false` and a 26s no-op exit with no error surfaced (#1399, 2026-06-19). Skills (e.g. `/code-review`) are not available in the headless CI context; use an inline prompt string instead.
 
 ## `.claude/` directory — scratch vs. keep
 
