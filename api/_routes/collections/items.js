@@ -96,6 +96,17 @@ async function handler(req, res) {
 
   if (!assetIds.length) return res.status(400).json({ error: 'assetId or assetIds[] required' })
 
+  // Defense-in-depth + accurate count: confirm every asset belongs to this
+  // workspace before deleting (mirrors the POST path). The collection_id is
+  // already workspace-verified above, so a cross-workspace asset_id can't
+  // actually match a join row — but verifying here keeps the contract honest
+  // and rejects foreign ids with a 404 instead of silently reporting them
+  // "removed".
+  const assetCheck = await verifyScope(scope, 'media_assets', assetIds)
+  if (!assetCheck.ok) {
+    return res.status(404).json({ error: 'One or more assets not found', missing: assetCheck.missing })
+  }
+
   const idList = assetIds.map(encodeURIComponent).join(',')
   const r = await sb(`collection_items?collection_id=eq.${collectionId}&asset_id=in.(${idList})`, {
     method: 'DELETE',
@@ -104,7 +115,11 @@ async function handler(req, res) {
     const text = await r.text()
     return res.status(500).json({ error: 'Delete failed', detail: text })
   }
-  return res.status(200).json({ removed: assetIds.length })
+  // sb() sets Prefer: return=representation, so the body is the rows actually
+  // deleted — report that, not the requested count (an asset valid for the
+  // workspace but absent from THIS collection deletes nothing).
+  const deleted = await r.json().catch(() => null)
+  return res.status(200).json({ removed: Array.isArray(deleted) ? deleted.length : assetIds.length })
 }
 
 export default withSentry(handler)

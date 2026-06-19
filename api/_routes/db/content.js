@@ -33,6 +33,10 @@ const VALID_PLATFORMS = new Set([
 const MAX_LIMIT = 100
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Accepts a date (YYYY-MM-DD) or a full ISO timestamp. Guards the from/to
+// range filters so a garbage value (e.g. `from=is.null`) can't reach PostgREST
+// and surface as an opaque 500.
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -115,6 +119,8 @@ export default async function handler(req, res) {
     if (platform && !VALID_PLATFORMS.has(platform)) return err(res, 'Invalid platform', 400)
     if (interviewId && !UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
     if (staffId && !UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
+    if (from && !ISO_DATE_RE.test(from)) return err(res, 'Invalid from date', 400)
+    if (to && !ISO_DATE_RE.test(to)) return err(res, 'Invalid to date', 400)
 
     const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
