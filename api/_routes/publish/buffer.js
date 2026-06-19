@@ -17,6 +17,7 @@ import { getCredential } from '../../_lib/getCredential.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { requireRole } from '../../_lib/auth.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
+import { BundlePublisher } from '../../_lib/social/index.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -120,6 +121,16 @@ async function handler(req, res) {
   const scope = await workspaceScope(req)
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+
+  // Provider routing: a workspace set to publish_provider='bundle' posts through
+  // the bundle.social adapter. Buffer (the default) falls through to the
+  // unchanged path below — byte-for-byte identical, so no Buffer tenant is
+  // affected. (Dedup of the inline Buffer logic into BufferPublisher is a later
+  // cleanup; kept inline here to make this routing flip provably safe.)
+  if ((scope.workspace.publish_provider || 'buffer') === 'bundle') {
+    return handleBundlePublish(req, res, scope.workspace)
+  }
+
   const workspaceId = scope?.workspace?.id
   const cred = await getCredential(workspaceId, 'buffer')
   if (!cred?.secret) {
@@ -299,6 +310,58 @@ async function handler(req, res) {
     status: first?.status,
     profileCount: fanOut.length,
   })
+}
+
+// Bundle.social publish path — invoked for workspaces with publish_provider='bundle'.
+// Mirrors the Buffer handler's request/response contract so the client
+// (src/lib/publish.js) needs no change: DELETE { bufferUpdateId }; POST
+// { platform, content, mediaUrls, scheduledAt }; response { success, bufferId, … }
+// where bufferId carries the bundle post id (stored as buffer_update_id downstream).
+//
+// ponytail: multi-location GBP fan-out (one bundle Team per workspace_locations
+// row) is NOT handled here yet — a bundle GBP post targets the workspace's single
+// Team / active GBP location. Build the fan-out before trialing multi-location GBP.
+// The Buffer-specific sync/engagement crons also don't understand bundle post ids;
+// for the manual-publish trial that's acceptable (they degrade, not corrupt).
+async function handleBundlePublish(req, res, workspace) {
+  let publisher
+  try {
+    publisher = new BundlePublisher(workspace)
+  } catch (e) {
+    return res.status(503).json({ error: e?.message || 'bundle.social is not configured for this workspace.' })
+  }
+
+  if (req.method === 'DELETE') {
+    const body = (typeof req.body === 'object' && req.body) ? req.body : {}
+    const postId = body.bufferUpdateId
+    if (!postId || typeof postId !== 'string') {
+      return res.status(400).json({ error: 'Missing bufferUpdateId' })
+    }
+    try {
+      const r = await publisher.deletePost({ postId })
+      return res.status(200).json({ success: true, ...(r.alreadyGone ? { alreadyGone: true } : {}) })
+    } catch (e) {
+      console.error('[publish/bundle DELETE] failed:', e?.stack || e?.message)
+      return res.status(e?.status || 502).json({ error: e?.message || 'bundle cancel failed' })
+    }
+  }
+
+  const body = (typeof req.body === 'object' && req.body) ? req.body : {}
+  const { platform, content, mediaUrls = [], scheduledAt } = body
+  if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
+  try {
+    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt })
+    return res.status(200).json({
+      success: result.success,
+      bufferId: result.postId,
+      scheduledAt: result.scheduledAt,
+      status: result.status,
+      profileCount: result.profileCount,
+    })
+  } catch (e) {
+    console.error('[publish/bundle] failed:', e?.stack || e?.message)
+    return res.status(e?.status || 502).json({ error: e?.message || 'bundle post failed' })
+  }
 }
 
 export default withSentry(handler)
