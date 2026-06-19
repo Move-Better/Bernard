@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { X, Megaphone, ShieldAlert, Download, Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
-import { renderAdPack } from '@/lib/ads'
+import { renderAdPack, saveAdCreative } from '@/lib/ads'
+import { useCampaigns } from '@/lib/queries'
 import { downloadMany, downloadBlobFile } from '@/lib/download'
 import { AD_FORMATS } from '@/lib/adFormats'
 import { toast } from '@/lib/toast'
@@ -36,7 +37,9 @@ export default function AdExportModal({ asset, onClose }) {
 
   const [selected, setSelected] = useState(() => new Set(AD_FORMATS.map((f) => f.aspect)))
   const [complies, setComplies] = useState(false)
+  const [campaignId, setCampaignId] = useState('')
   const [files, setFiles] = useState(/** @type {Array<{aspect:string,url:string}>|null} */ (null))
+  const { data: campaigns = [] } = useCampaigns()
 
   const render = useAppMutation({
     errorMessage: "Couldn't render the ad pack",
@@ -46,6 +49,16 @@ export default function AdExportModal({ asset, onClose }) {
       setFiles(out)
       await downloadMany(out.map((f) => ({ url: f.url, filename: `${base}-${f.aspect.replace(':', 'x')}.jpg` })))
       toast.success(`Exported ${out.length} ad ${out.length === 1 ? 'size' : 'sizes'}`)
+      // Persist to the /ads surface (non-fatal — the files already downloaded).
+      try {
+        await saveAdCreative({
+          mediaType: 'photo',
+          sizes: out,
+          campaignId: campaignId || null,
+          sourceAssetId: asset?.id || null,
+          title: asset?.display_title || asset?.filename || null,
+        })
+      } catch { /* surfaced on the Ads page when it next loads; don't block download */ }
     },
   })
 
@@ -74,6 +87,23 @@ export default function AdExportModal({ asset, onClose }) {
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
+          {/* Campaign tag — optional grouping on the Ads surface */}
+          {campaigns.length > 0 && (
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Group under campaign:</span>
+              <select
+                value={campaignId}
+                onChange={(e) => setCampaignId(e.target.value)}
+                className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/40"
+              >
+                <option value="">— none —</option>
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Healthcare guardrail */}
           <div className="mb-4 flex gap-2.5 rounded-lg border border-warning bg-warning/10 p-3">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />

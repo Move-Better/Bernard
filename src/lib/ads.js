@@ -31,3 +31,22 @@ export function renderAdVideo({ assetId, aspect, startSec, durationSec, captionT
     body: JSON.stringify({ assetId, aspect, startSec, durationSec, captionText, overlayPosition, overlaySize }),
   }))
 }
+
+/** List saved ad creatives for the workspace (newest first, campaign embedded). */
+export function listAdCreatives() {
+  return /** @type {Promise<any[]>} */ (apiFetch('/api/ads/list').catch(() => []))
+}
+
+/** Save an exported ad creative so it shows on the /ads surface. */
+export function saveAdCreative(payload) {
+  return /** @type {any} */ (apiFetch('/api/ads/upsert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }))
+}
+
+/** @param {string} id */
+export function deleteAdCreative(id) {
+  return apiFetch(`/api/ads/delete?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+}

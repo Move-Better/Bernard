@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { X, Megaphone, ShieldAlert, Download, Loader2, Check, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { renderAdVideo } from '@/lib/ads'
+import { renderAdVideo, saveAdCreative } from '@/lib/ads'
+import { useCampaigns } from '@/lib/queries'
 import { downloadBlobFile } from '@/lib/download'
 import { AD_FORMATS } from '@/lib/adFormats'
 import { toast } from '@/lib/toast'
@@ -34,9 +35,11 @@ export default function AdVideoExportModal({ clip, onClose }) {
   const base = baseName(clip?.title)
   const [selected, setSelected] = useState(() => new Set(DEFAULT_VIDEO_ASPECTS))
   const [complies, setComplies] = useState(false)
+  const [campaignId, setCampaignId] = useState('')
   const [running, setRunning] = useState(false)
   // { [aspect]: { status: 'rendering'|'done'|'error', url?, error? } }
   const [results, setResults] = useState({})
+  const { data: campaigns = [] } = useCampaigns()
 
   function toggle(aspect) {
     if (running) return
@@ -51,7 +54,7 @@ export default function AdVideoExportModal({ clip, onClose }) {
   async function renderSelected() {
     setRunning(true)
     const aspects = AD_FORMATS.map((f) => f.aspect).filter((a) => selected.has(a))
-    let ok = 0
+    const done = []
     for (const aspect of aspects) {
       setResults((r) => ({ ...r, [aspect]: { status: 'rendering' } }))
       try {
@@ -66,7 +69,7 @@ export default function AdVideoExportModal({ clip, onClose }) {
         })
         setResults((r) => ({ ...r, [aspect]: { status: 'done', url: out.url } }))
         await downloadBlobFile(out.url, `${base}-${aspect.replace(':', 'x')}.mp4`)
-        ok += 1
+        done.push({ aspect, url: out.url, width: out.width, height: out.height })
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
         setResults((r) => ({ ...r, [aspect]: { status: 'error', error: message } }))
@@ -74,7 +77,20 @@ export default function AdVideoExportModal({ clip, onClose }) {
       }
     }
     setRunning(false)
-    if (ok > 0) toast.success(`Exported ${ok} video ${ok === 1 ? 'size' : 'sizes'}`)
+    if (done.length > 0) {
+      toast.success(`Exported ${done.length} video ${done.length === 1 ? 'size' : 'sizes'}`)
+      // Persist to the /ads surface (non-fatal — the files already downloaded).
+      try {
+        await saveAdCreative({
+          mediaType: 'video',
+          sizes: done,
+          campaignId: campaignId || null,
+          sourceAssetId: clip.assetId || null,
+          title: clip.title || null,
+          caption: clip.captionText || null,
+        })
+      } catch { /* don't block the download path */ }
+    }
   }
 
   const canRender = complies && selected.size > 0 && !running
@@ -90,6 +106,24 @@ export default function AdVideoExportModal({ clip, onClose }) {
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
+          {/* Campaign tag — optional grouping on the Ads surface */}
+          {campaigns.length > 0 && (
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Group under campaign:</span>
+              <select
+                value={campaignId}
+                onChange={(e) => setCampaignId(e.target.value)}
+                disabled={running}
+                className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
+              >
+                <option value="">— none —</option>
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Healthcare guardrail */}
           <div className="mb-4 flex gap-2.5 rounded-lg border border-warning bg-warning/10 p-3">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />

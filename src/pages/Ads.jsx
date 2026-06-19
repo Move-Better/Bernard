@@ -1,0 +1,161 @@
+import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Megaphone, Download, Trash2, Film, Plus, Target, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useAppMutation } from '@/lib/useAppMutation'
+import { listAdCreatives, deleteAdCreative } from '@/lib/ads'
+import { downloadBlobFile } from '@/lib/download'
+import { AD_ASPECTS } from '@/lib/adFormats'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { toast } from '@/lib/toast'
+
+// Order a creative's sizes by the canonical ad-format order for stable chips.
+function orderedSizes(sizes) {
+  const arr = Array.isArray(sizes) ? sizes : []
+  return [...arr].sort((a, b) => AD_ASPECTS.indexOf(a.aspect) - AD_ASPECTS.indexOf(b.aspect))
+}
+
+function baseName(title) {
+  const n = String(title || 'ad-creative')
+  const dot = n.lastIndexOf('.')
+  return (dot > 0 ? n.slice(0, dot) : n) || 'ad-creative'
+}
+
+function CreativeCard({ creative, onDelete, deleting }) {
+  const sizes = orderedSizes(creative.sizes)
+  const isVideo = creative.media_type === 'video'
+  const ext = isVideo ? 'mp4' : 'jpg'
+  const base = baseName(creative.title)
+  const preview = sizes[0]?.url
+
+  return (
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="relative aspect-[4/5] bg-muted">
+        {isVideo ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+            <Film className="h-6 w-6" />
+            <span className="text-3xs">video</span>
+          </div>
+        ) : preview ? (
+          <img src={preview} alt="" className="h-full w-full object-cover" />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => onDelete(creative.id)}
+          disabled={deleting}
+          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-black/50 text-white transition-colors hover:bg-destructive disabled:opacity-50"
+          title="Remove from Ads"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="p-2">
+        <p className="truncate text-2xs font-medium" title={creative.title || ''}>{creative.title || 'Untitled'}</p>
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {sizes.map((s) => (
+            <button
+              key={s.aspect}
+              type="button"
+              onClick={() => downloadBlobFile(s.url, `${base}-${s.aspect.replace(':', 'x')}.${ext}`)}
+              className="flex items-center gap-0.5 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-3xs font-semibold text-action hover:bg-action/20"
+              title={`Download ${s.aspect}`}
+            >
+              <Download className="h-2.5 w-2.5" /> {s.aspect}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Ads() {
+  useDocumentTitle('Ads · Bernard')
+  const queryClient = useQueryClient()
+
+  const { data: creatives = [], isLoading } = useQuery({
+    queryKey: ['ad-creatives'],
+    queryFn: listAdCreatives,
+    staleTime: 30_000,
+  })
+
+  const del = useAppMutation({
+    errorMessage: "Couldn't remove that ad creative",
+    mutationFn: (id) => deleteAdCreative(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ad-creatives'] })
+      toast.success('Removed from Ads')
+    },
+  })
+
+  // Group by campaign; campaigns with creatives first (alpha), Ungrouped last.
+  const groups = []
+  const byKey = new Map()
+  for (const c of creatives) {
+    const key = c.campaign_id || 'none'
+    let g = byKey.get(key)
+    if (!g) {
+      g = { key, campaign: c.campaigns || null, items: [] }
+      byKey.set(key, g)
+      groups.push(g)
+    }
+    g.items.push(c)
+  }
+  groups.sort((a, b) => {
+    if (a.key === 'none') return 1
+    if (b.key === 'none') return -1
+    return (a.campaign?.name || '').localeCompare(b.campaign?.name || '')
+  })
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="mt-1 flex items-end gap-2">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+          <Megaphone className="h-6 w-6 text-action" /> Ads
+        </h1>
+        <span className="mb-0.5 text-sm text-muted-foreground">ad-ready creative, grouped by campaign</span>
+        <Button asChild size="sm" className="mb-0.5 ml-auto gap-1.5">
+          <Link to="/library"><Plus className="h-3.5 w-3.5" /> New ad creative</Link>
+        </Button>
+      </div>
+
+      <p className="-mt-2 text-xs text-muted-foreground">
+        Export ad sizes from any photo in the <Link to="/library" className="text-primary">Library</Link> or any clip in <Link to="/slate" className="text-primary">Slate</Link> — they collect here, ready to download for Meta, Google, and paid social.
+      </p>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </div>
+      ) : creatives.length === 0 ? (
+        <div className="rounded-xl border border-dashed py-16 text-center">
+          <Megaphone className="mx-auto h-8 w-8 text-muted-foreground/50" />
+          <p className="mt-2 text-sm font-medium">No ad creative yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Open a photo in the Library or a clip in Slate and hit <span className="font-semibold text-action">Export for ads</span>.
+          </p>
+          <Button asChild size="sm" className="mt-3 gap-1.5">
+            <Link to="/library"><Plus className="h-3.5 w-3.5" /> Go to Library</Link>
+          </Button>
+        </div>
+      ) : (
+        groups.map((g) => (
+          <section key={g.key}>
+            <div className="mb-2 flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold">{g.campaign?.name || 'Ungrouped'}</h2>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-3xs text-muted-foreground">
+                {g.items.length} creative{g.items.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+              {g.items.map((c) => (
+                <CreativeCard key={c.id} creative={c} onDelete={del.mutate} deleting={del.isPending} />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
+  )
+}
