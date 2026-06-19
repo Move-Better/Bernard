@@ -107,3 +107,42 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
 
   return { slides: out, publishMediaUrls, changed }
 }
+
+// Carousel ad aspects → pixel dims. All 1080 wide (only height varies), so the
+// renderer's width-relative fonts/wrap stay correct across aspects.
+export const AD_CAROUSEL_DIMS = {
+  '1:1':  [1080, 1080],
+  '4:5':  [1080, 1350],
+  '9:16': [1080, 1920],
+}
+
+// Render every slide of a carousel at ONE chosen ad aspect (uniform across all
+// cards, per Meta's carousel requirement) and upload each. Returns [{ slide, url }]
+// in slide order. The aspect is folded into the upload signature so these never
+// collide with the 1:1 publish slides (different blob path).
+export async function renderCarouselAds({ slides, mediaUrls, brandStyle, theme, themeId, customThemes = [], pieceId, aspect }) {
+  const [width, height] = AD_CAROUSEL_DIMS[aspect] || AD_CAROUSEL_DIMS['4:5']
+  const photos = slidePhotos(mediaUrls)
+  const out = []
+  for (let idx = 0; idx < slides.length; idx++) {
+    const slide = slides[idx]
+    const photoUrl = typeof slide.photo_idx === 'number' && photos[slide.photo_idx]
+      ? photos[slide.photo_idx].url
+      : null
+    const slideTheme = slide.template_id ? resolveTheme(slide.template_id, customThemes) : theme
+    const sig = slideSignature({ slide, photoUrl, themeId, brandStyle }) + 'ad' + aspect.replace(':', 'x')
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    await renderFreeformSlide({ sourceUrl: photoUrl || null, slide, brandStyle: brandStyle || {}, canvas, theme: slideTheme, width, height })
+    const dataUrl = canvasToJpegDataUrl(canvas)
+    const { url } = await apiFetch('/api/editorial/upload-slide', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pieceId, idx, sig, dataUrl }),
+    })
+    if (!url) throw new Error('Slide upload returned no URL')
+    out.push({ slide: idx, url })
+  }
+  return out
+}

@@ -22,11 +22,26 @@ function baseName(title) {
 }
 
 function CreativeCard({ creative, onDelete, deleting }) {
-  const sizes = orderedSizes(creative.sizes)
   const isVideo = creative.media_type === 'video'
+  const isCarousel = creative.media_type === 'carousel'
   const ext = isVideo ? 'mp4' : 'jpg'
   const base = baseName(creative.title)
-  const preview = sizes[0]?.url
+
+  // Carousel: many slides at one aspect → order by slide, label per slide.
+  // Photo/video: one image per aspect → order by aspect, label per aspect.
+  const raw = Array.isArray(creative.sizes) ? creative.sizes : []
+  const items = isCarousel
+    ? [...raw].sort((a, b) => (a.slide ?? 0) - (b.slide ?? 0)).map((s, i) => ({
+        key: `s${s.slide ?? i}`, url: s.url,
+        label: `S${(s.slide ?? i) + 1}`,
+        filename: `${base}-${(s.aspect || 'ad').replace(':', 'x')}-slide${(s.slide ?? i) + 1}.jpg`,
+      }))
+    : orderedSizes(raw).map((s) => ({
+        key: s.aspect, url: s.url, label: s.aspect,
+        filename: `${base}-${s.aspect.replace(':', 'x')}.${ext}`,
+      }))
+  const preview = items[0]?.url
+  const subtitle = isCarousel ? `carousel · ${raw[0]?.aspect || ''} · ${items.length} slides` : null
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
@@ -39,6 +54,11 @@ function CreativeCard({ creative, onDelete, deleting }) {
         ) : preview ? (
           <img src={preview} alt="" className="h-full w-full object-cover" />
         ) : null}
+        {isCarousel && (
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 py-0.5 text-3xs font-medium text-white">
+            {items.length} slides
+          </span>
+        )}
         <button
           type="button"
           onClick={() => onDelete(creative.id)}
@@ -51,16 +71,17 @@ function CreativeCard({ creative, onDelete, deleting }) {
       </div>
       <div className="p-2">
         <p className="truncate text-2xs font-medium" title={creative.title || ''}>{creative.title || 'Untitled'}</p>
+        {subtitle && <p className="truncate text-3xs text-muted-foreground">{subtitle}</p>}
         <div className="mt-1.5 flex flex-wrap gap-1">
-          {sizes.map((s) => (
+          {items.map((it) => (
             <button
-              key={s.aspect}
+              key={it.key}
               type="button"
-              onClick={() => downloadBlobFile(s.url, `${base}-${s.aspect.replace(':', 'x')}.${ext}`)}
+              onClick={() => downloadBlobFile(it.url, it.filename)}
               className="flex items-center gap-0.5 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-3xs font-semibold text-action hover:bg-action/20"
-              title={`Download ${s.aspect}`}
+              title={`Download ${it.label}`}
             >
-              <Download className="h-2.5 w-2.5" /> {s.aspect}
+              <Download className="h-2.5 w-2.5" /> {it.label}
             </button>
           ))}
         </div>

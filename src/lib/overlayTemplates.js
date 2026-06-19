@@ -525,24 +525,27 @@ function roleTypography(role, brandStyle, themeBlock) {
 // historical bottom/grow-up anchor — Text Post Studio (src/lib/textCard.js)
 // stacks blocks at fixed y-fractions tuned to that behavior, and the editor's
 // position picker is WYSIWYG so a top-clip self-corrects on drag.
-function resolvePosition(position) {
+// W/H default to the square SIZE so existing callers are byte-identical; the
+// carousel ad export passes non-square dims. Horizontal anchors use W, vertical
+// use H, so preset/custom positions adapt to any aspect.
+function resolvePosition(position, W = SIZE, H = SIZE) {
   if (position && typeof position === 'object' && Number.isFinite(position.x) && Number.isFinite(position.y)) {
     const x = Math.max(0, Math.min(1, position.x))
     const y = Math.max(0, Math.min(1, position.y))
     // Custom: align by which third of the canvas the anchor sits in
     const align = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'center'
-    return { anchorX: Math.round(x * SIZE), anchorY: Math.round(y * SIZE), align, vAnchor: 'bottom' }
+    return { anchorX: Math.round(x * W), anchorY: Math.round(y * H), align, vAnchor: 'bottom' }
   }
   const preset = typeof position === 'string' ? position : 'center'
   const [vert, horiz] = preset.includes('-') ? preset.split('-') : [preset, null]
   const colName = horiz || (vert === 'center' ? 'center' : 'center')
   const rowName = (vert === 'top' || vert === 'bottom' || vert === 'center') ? vert : 'center'
   const x = colName === 'left'  ? FREEFORM_PAD
-          : colName === 'right' ? SIZE - FREEFORM_PAD
-          :                       SIZE / 2
+          : colName === 'right' ? W - FREEFORM_PAD
+          :                       W / 2
   const y = rowName === 'top'    ? FREEFORM_PAD * 1.5
-          : rowName === 'bottom' ? SIZE - FREEFORM_PAD
-          :                        SIZE / 2
+          : rowName === 'bottom' ? H - FREEFORM_PAD
+          :                        H / 2
   const align = colName === 'left' ? 'left' : colName === 'right' ? 'right' : 'center'
   return { anchorX: Math.round(x), anchorY: Math.round(y), align, vAnchor: rowName }
 }
@@ -570,14 +573,14 @@ function whoopTextZone(layout, palette) {
   return null                                                  // claim: full solid ground, leave as-is
 }
 
-function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null) {
+function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null, W = SIZE, H = SIZE) {
   const role = BLOCK_ROLES.includes(block.role) ? block.role : 'body'
   const typo = roleTypography(role, brandStyle, themeBlock)
   const raw = (block.text || '').trim()
   if (!raw) return
   const display = typo.uppercase ? raw.toUpperCase() : raw
   const isWhoop = !!layout
-  let { anchorX, anchorY, align, vAnchor } = resolvePosition(block.position)
+  let { anchorX, anchorY, align, vAnchor } = resolvePosition(block.position, W, H)
 
   // Pull content text into the layout's panel/scrim zone (Q sign-off 2026-06-16,
   // option B): a split/badge headline anchored to canvas-center otherwise floats
@@ -590,9 +593,9 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     // across the seam onto the photo. Offset the baseline down by the ascent so
     // the text's TOP edge sits at the zone top, fully inside the panel.
     const ascent = Math.round((typo.lineH || 60) * 0.8)
-    anchorY = vAnchor === 'top'    ? Math.round(SIZE * zt) + ascent
-            : vAnchor === 'bottom' ? Math.round(SIZE * zb)
-            :                        Math.round(SIZE * (zt + zb) / 2)
+    anchorY = vAnchor === 'top'    ? Math.round(H * zt) + ascent
+            : vAnchor === 'bottom' ? Math.round(H * zb)
+            :                        Math.round(H * (zt + zb) / 2)
   }
 
   ctx.font = typo.font
@@ -604,7 +607,7 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     // Pill background — single line, rounded rect behind text
     const bgColor = typo.bgColor || brandAccent(brandStyle)
     const textW = ctx.measureText(display).width
-    const pillW = Math.min(textW + 80, Math.round(SIZE * typo.maxWidthFrac))
+    const pillW = Math.min(textW + 80, Math.round(W * typo.maxWidthFrac))
     const pillH = 80
     let pillX
     if (align === 'left')       pillX = anchorX
@@ -628,7 +631,7 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   const widthFrac = (Number.isFinite(block.width) && block.width > 0)
     ? Math.max(0.15, Math.min(1, block.width))
     : typo.maxWidthFrac
-  const maxW = Math.round(SIZE * widthFrac)
+  const maxW = Math.round(W * widthFrac)
   const lines = wrapLines(ctx, display, maxW, typo.maxLines)
   // Vertical anchoring is zone-aware (see resolvePosition's vAnchor):
   //   top    → first baseline at anchorY, block grows DOWN (never clips the top)
@@ -820,48 +823,67 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
 // canvas so callers can either display it directly (DOM canvas preview) or
 // call toBlob() to produce a baked PNG.
-export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas, theme, background }) {
+export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas, theme, background, width = SIZE, height = SIZE }) {
   const target = canvas || document.createElement('canvas')
-  target.width  = SIZE
-  target.height = SIZE
+  const W = width, H = height
+  const square = W === H
+  target.width  = W
+  target.height = H
   const ctx = target.getContext('2d')
 
   const layout = theme?.layout
   const palette = theme?.palette
+  // WHOOP built-in panel geometry is square-designed; only use it on a square
+  // canvas. The carousel ad export (non-square) renders photo + blocks instead,
+  // so every card shares the chosen aspect.
+  const useWhoop = layout && palette && square
 
-  if (layout && palette) {
+  if (useWhoop) {
     // WHOOP built-in — paint structural geometry (background, panel, rule)
     const img = sourceUrl ? await loadImage(sourceUrl) : null
     drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {} })
   } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
-    drawCover(ctx, img, 0, 0, SIZE, SIZE)
+    drawCover(ctx, img, 0, 0, W, H)
   } else if (background) {
     // Text-only card (Text Post Studio): paint a brand-aware background.
     paintCardBackground(ctx, background, brandStyle)
   } else {
     // No photo bound — render a neutral placeholder so text is still legible
-    const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
+    const grad = ctx.createLinearGradient(0, 0, 0, H)
     grad.addColorStop(0, '#475569')
     grad.addColorStop(1, '#1e293b')
     ctx.fillStyle = grad
-    ctx.fillRect(0, 0, SIZE, SIZE)
+    ctx.fillRect(0, 0, W, H)
   }
 
-  // Light vignette so any-position text stays legible over a plain photo.
-  // WHOOP layouts have their own scrim/panel geometry so skip the generic one.
+  // Scrim so any-position text stays legible over a plain photo. WHOOP layouts
+  // have their own panel/scrim geometry so skip the generic one. Square keeps
+  // the historical radial vignette (byte-identical to existing 1:1 renders);
+  // non-square (carousel ad aspects) uses a linear top+bottom scrim — the radial
+  // is concentric-on-center and loses contrast at the top/bottom text zones on
+  // tall/wide canvases (Q sign-off 2026-06-19).
   const blocks = Array.isArray(slide?.blocks) ? slide.blocks : []
-  if (!layout && sourceUrl && blocks.length > 0) {
-    const vignette = ctx.createRadialGradient(SIZE / 2, SIZE / 2, SIZE * 0.35, SIZE / 2, SIZE / 2, SIZE * 0.75)
-    vignette.addColorStop(0, 'rgba(0,0,0,0)')
-    vignette.addColorStop(1, 'rgba(0,0,0,0.45)')
-    ctx.fillStyle = vignette
-    ctx.fillRect(0, 0, SIZE, SIZE)
+  if (!useWhoop && sourceUrl && blocks.length > 0) {
+    let scrim
+    if (square) {
+      scrim = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75)
+      scrim.addColorStop(0, 'rgba(0,0,0,0)')
+      scrim.addColorStop(1, 'rgba(0,0,0,0.45)')
+    } else {
+      scrim = ctx.createLinearGradient(0, 0, 0, H)
+      scrim.addColorStop(0, 'rgba(0,0,0,0.55)')
+      scrim.addColorStop(0.28, 'rgba(0,0,0,0.05)')
+      scrim.addColorStop(0.72, 'rgba(0,0,0,0.05)')
+      scrim.addColorStop(1, 'rgba(0,0,0,0.62)')
+    }
+    ctx.fillStyle = scrim
+    ctx.fillRect(0, 0, W, H)
   }
 
   for (const block of blocks) {
     const themeBlock = theme?.blocks?.[block.role] ?? null
-    drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, layout, palette)
+    drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, useWhoop ? layout : null, useWhoop ? palette : null, W, H)
   }
 
   return target

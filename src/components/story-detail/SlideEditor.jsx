@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import Moveable from 'moveable'
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Loader2, Move, Maximize, Wand2, Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Loader2, Move, Maximize, Wand2, Layers, Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -15,6 +15,7 @@ import {
 } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
+import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 
 // Role label + chip colors. Mirrors the mockup palette.
 const ROLE_META = {
@@ -841,6 +842,7 @@ export default function SlideEditor({ piece }) {
   const [themeId, setThemeId] = useState(() => piece?.photo_template_id || null)
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
+  const [adExportOpen, setAdExportOpen] = useState(false)
 
   useEffect(() => {
     const next = seedSlides()
@@ -991,6 +993,19 @@ export default function SlideEditor({ piece }) {
         />
       )}
 
+      {adExportOpen && (
+        <AdCarouselExportModal
+          piece={piece}
+          slides={slides}
+          mediaUrls={piece?.media_urls}
+          brandStyle={brandStyle}
+          theme={theme}
+          themeId={themeId}
+          customThemes={customThemes}
+          onClose={() => setAdExportOpen(false)}
+        />
+      )}
+
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
         <div>
@@ -1011,6 +1026,17 @@ export default function SlideEditor({ piece }) {
             <Maximize className="h-3 w-3" />
             Full preview
           </button>
+          {hasMedia && (
+            <button
+              type="button"
+              onClick={() => setAdExportOpen(true)}
+              className="flex items-center gap-1 rounded-md border border-action/40 px-2 py-1 text-2xs text-action hover:bg-action/10 transition-colors"
+              title="Render this carousel into ad sizes (9:16, 1:1, 4:5) and download for paid social"
+            >
+              <Megaphone className="h-3 w-3" />
+              Export for ads
+            </button>
+          )}
           {dirty && (
             <>
               <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
