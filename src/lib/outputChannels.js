@@ -289,11 +289,12 @@ export const PUBLISH_INTENT_OPTIONS = Object.freeze({
 })
 
 // Defaults match the recommended path: no website yet, social one-click on
-// (Buffer is recommended), newsletter via export. Used to pre-fill the wizard
-// and as the fallback when a stored value is malformed.
+// (bundle.social is recommended for new tenants — better analytics, no token
+// paste; existing Buffer tenants pick Buffer), newsletter via export. Used to
+// pre-fill the wizard and as the fallback when a stored value is malformed.
 export const DEFAULT_PUBLISH_INTENT = Object.freeze({
   website: 'none',
-  social: 'buffer',
+  social: 'bundle',
   newsletter: 'other',
 })
 
