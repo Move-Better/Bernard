@@ -182,7 +182,12 @@ export default async function handler(req, res) {
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
-    if (rows[0].owner_id !== userId) return err(res, 'Forbidden', 403)
+    if (rows[0].owner_id !== userId) {
+      // Workspace owners can edit any story in their workspace (mirrors DELETE path).
+      const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
+      const tierRows = tierChk.ok ? await tierChk.json() : []
+      if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
+    }
 
     const body = req.body || {}
     const patch = { updated_at: new Date().toISOString() }
@@ -229,6 +234,8 @@ export default async function handler(req, res) {
     // nothing in vercel logs to root-cause from. The interview row itself
     // already saved before this branch ran — we never want any of the
     // enrichment paths to bubble up and 500 the PATCH.
+    // Both outputs AND status='completed' must be in the same PATCH for the
+    // cascade to fire. A retry that sends only outputs won't re-trigger it.
     if (body.outputs && body.status === 'completed') {
       const { staff_id, topic, location_id, capture_mode, source_audio_url, source_published_at } = rows[0]
       const o = body.outputs
@@ -308,8 +315,8 @@ export default async function handler(req, res) {
               headers: { Prefer: 'return=minimal' },
             })
             if (!insRes.ok) {
-              const body = await insRes.text().catch(() => '')
-              console.error(`[db/interviews] content_items insert ${insRes.status} for interview=${id} ws=${ws.slug}: ${body.slice(0, 500)}`)
+              const errBody = await insRes.text().catch(() => '')
+              console.error(`[db/interviews] content_items insert ${insRes.status} for interview=${id} ws=${ws.slug}: ${errBody.slice(0, 500)}`)
             }
           }
         }
@@ -423,8 +430,8 @@ export default async function handler(req, res) {
                 headers: { Prefer: 'return=minimal' },
               })
               if (!atomRes.ok) {
-                const body = await atomRes.text().catch(() => '')
-                console.error(`[db/interviews] content_plan_atoms insert ${atomRes.status} for interview=${id} ws=${ws.slug}: ${body.slice(0, 500)}`)
+                const errBody = await atomRes.text().catch(() => '')
+                console.error(`[db/interviews] content_plan_atoms insert ${atomRes.status} for interview=${id} ws=${ws.slug}: ${errBody.slice(0, 500)}`)
               }
             }
           }

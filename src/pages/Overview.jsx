@@ -62,7 +62,7 @@ export default function Overview() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
             <LayoutGrid className="h-5 w-5 text-primary" aria-hidden="true" />
             Overview
           </h1>
@@ -81,7 +81,7 @@ export default function Overview() {
 
       {/* "What needs me" banner — role-aware, hides when queue is empty */}
       {showPublisherBanner && readyToDistribute.length > 0 && (
-        <div className="rounded-2xl border border-action/30 bg-gradient-to-b from-white to-[#fffbf2] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(217,119,6,0.22)] px-5 py-4 flex items-center gap-3">
+        <div className="nx-card-action px-5 py-4 flex items-center gap-3">
           <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
           <Inbox className="h-4 w-4 text-action shrink-0" />
           <div className="flex-1 min-w-0">
@@ -101,7 +101,7 @@ export default function Overview() {
         </div>
       )}
       {showClinicianBanner && (
-        <div className="rounded-2xl border border-action/30 bg-gradient-to-b from-white to-[#fffbf2] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(217,119,6,0.22)] px-5 py-4 flex items-center gap-3">
+        <div className="nx-card-action px-5 py-4 flex items-center gap-3">
           <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
           <CheckCircle className="h-4 w-4 text-action shrink-0" />
           <div className="flex-1 min-w-0">

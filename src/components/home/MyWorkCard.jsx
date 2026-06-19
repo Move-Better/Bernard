@@ -62,7 +62,10 @@ function statusLine(story) {
 export default function MyWorkCard({ stories = [], userId }) {
   const mine = stories
     .filter((s) => userId && s.owner_id === userId)
-    .sort((a, b) => new Date(b.last_activity_at || b.updated_at || 0) - new Date(a.last_activity_at || a.updated_at || 0))
+    .sort((a, b) => {
+      const safeMs = (v) => { const d = v ? Date.parse(v) : 0; return Number.isFinite(d) ? d : 0 }
+      return safeMs(b.last_activity_at || b.updated_at) - safeMs(a.last_activity_at || a.updated_at)
+    })
 
   if (mine.length === 0) return null
   const rows = mine.slice(0, MAX_ROWS)
