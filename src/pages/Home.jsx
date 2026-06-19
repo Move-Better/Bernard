@@ -339,18 +339,16 @@ export default function Home() {
           />
         </div>
 
-        {/* Right rail — fixed sidebar at lg+, stacks full-width below the
-            buckets on smaller viewports with a labelled separator so it reads
-            as its own section rather than running straight into the buckets. */}
-        <div className="w-full lg:w-72 lg:flex-shrink-0">
-          <div className="lg:hidden mb-4 pt-2 border-t border-border/60">
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70 pt-3">
+        {/* Right rail — fixed sidebar at lg+. On mobile, CSS order-first moves
+            this above the task buckets so the Voice Match KPI is reachable
+            without scrolling past the whole queue. Desktop layout is unaffected
+            (lg:order-none resets, DOM order keeps tasks on left / stats on right). */}
+        <div className="w-full lg:w-72 lg:flex-shrink-0 order-first lg:order-none">
+          <div className="lg:hidden mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
               Your week at a glance
             </h2>
           </div>
-          {/* Stat row — context, not primary action. Lives in the rail so it
-              sits alongside task buckets on desktop and below them on mobile,
-              keeping "what to do next" above the fold in the main column. */}
           {stories.length > 0 ? <HomeStats stories={stories} /> : null}
           <HomeRightRail stories={stories} />
         </div>
