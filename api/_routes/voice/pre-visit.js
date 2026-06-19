@@ -11,7 +11,7 @@
 //      warm pre-visit script
 //   4. POST the script to ElevenLabs TTS (non-streaming — we need the full
 //      buffer to upload to Blob)
-//   5. PUT the MP3 buffer to Vercel Blob at voice/pre-visit/<uuid>.mp3
+//   5. PUT the MP3 buffer to Vercel Blob at voice/pre-visit/<workspace-id>/<uuid>.mp3
 //   6. Return { url, script }
 //
 // Body: { patientName?: string, appointmentType: string, note?: string }
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
   const uuid = randomUUID()
   let blobUrl
   try {
-    const blob = await put(`voice/pre-visit/${uuid}.mp3`, audioBuffer, {
+    const blob = await put(`voice/pre-visit/${ws.id}/${uuid}.mp3`, audioBuffer, {
       access: 'public',
       contentType: 'audio/mpeg',
     })
