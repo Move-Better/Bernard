@@ -3,7 +3,7 @@ import { X, Megaphone, ShieldAlert, Download, Loader2, Check } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { renderAdPack } from '@/lib/ads'
-import { downloadMany, downloadFromUrl } from '@/lib/download'
+import { downloadMany, downloadBlobFile } from '@/lib/download'
 import { AD_FORMATS } from '@/lib/adFormats'
 import { toast } from '@/lib/toast'
 
@@ -159,7 +159,7 @@ export default function AdExportModal({ asset, onClose }) {
                 size="sm"
                 variant="outline"
                 className="h-7 gap-1 text-2xs"
-                onClick={() => downloadFromUrl(f.url, `${base}-${f.aspect.replace(':', 'x')}.jpg`)}
+                onClick={() => downloadBlobFile(f.url, `${base}-${f.aspect.replace(':', 'x')}.jpg`)}
               >
                 <Download className="h-3 w-3" /> {f.aspect}
               </Button>
