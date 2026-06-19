@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { SignIn, SignUp, useAuth, useUser, useOrganizationList } from '@clerk/react'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3, Search } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3, Search, Rss, ClipboardCopy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1299,20 +1299,41 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
 // badges. Nothing here blocks anyone — every group has a "not yet / I'll paste
 // myself" path, and every channel still works as a clean export regardless.
 
-function IntentOption({ selected, title, body, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`flex flex-col items-start gap-0.5 rounded-lg border p-3 text-left transition ${
-        selected
-          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-          : 'border-input hover:border-primary/40 hover:bg-accent/30'
-      }`}
-    >
+function IntentOption({ selected, title, body, onClick, icon: Icon, badge }) {
+  const base = `rounded-lg border p-3 text-left transition ${
+    selected
+      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+      : 'border-input hover:border-primary/40 hover:bg-accent/30'
+  }`
+  const titleRow = (
+    <span className="flex items-center gap-2 flex-wrap">
       <span className="text-sm font-medium leading-snug">{title}</span>
-      <span className="text-xs text-muted-foreground leading-snug">{body}</span>
+      {badge && (
+        <span className="text-3xs uppercase tracking-wide bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+          {badge}
+        </span>
+      )}
+    </span>
+  )
+  // No icon → the original compact title/body card (website + newsletter groups).
+  if (!Icon) {
+    return (
+      <button type="button" onClick={onClick} aria-pressed={selected} className={`flex flex-col items-start gap-0.5 ${base}`}>
+        {titleRow}
+        <span className="text-xs text-muted-foreground leading-snug">{body}</span>
+      </button>
+    )
+  }
+  // Icon → richer row layout for the social provider choice.
+  return (
+    <button type="button" onClick={onClick} aria-pressed={selected} className={`flex items-start gap-3 ${base}`}>
+      <span className={`mt-0.5 h-8 w-8 shrink-0 rounded-md grid place-items-center ${selected ? 'bg-primary/10' : 'bg-muted'}`}>
+        <Icon className={`h-4 w-4 ${selected ? 'text-primary' : 'text-muted-foreground'}`} />
+      </span>
+      <span className="flex flex-col gap-0.5 min-w-0">
+        {titleRow}
+        <span className="text-xs text-muted-foreground leading-snug">{body}</span>
+      </span>
     </button>
   )
 }
@@ -1348,11 +1369,19 @@ function PublishIntentScreen({ form, setForm, onBack, onContinue }) {
           title="No site yet / not sure" body="Fine — blog posts still export as clean text." />
       </IntentGroup>
 
-      <IntentGroup icon={Share2} title="Social media — Instagram, Facebook, LinkedIn, GBP…" colsClass="sm:grid-cols-2">
+      <IntentGroup icon={Share2} title="Social media — Instagram, Facebook, LinkedIn, GBP…" colsClass="">
+        <IntentOption selected={intent.social === 'bundle'} onClick={() => set('social', 'bundle')}
+          icon={Share2} badge="Recommended"
+          title="Let Bernard post for me — bundle.social"
+          body="Connect your accounts once. Bernard posts directly to Instagram, Facebook & Google Business — and reads back real performance stats. No third-party tool to manage." />
         <IntentOption selected={intent.social === 'buffer'} onClick={() => set('social', 'buffer')}
-          title="Yes — set up one-click posting" body="We use a free tool called Buffer that posts to all your accounts at once." />
+          icon={Rss}
+          title="I already use Buffer"
+          body="Connect your existing Buffer account and Bernard publishes through it." />
         <IntentOption selected={intent.social === 'manual'} onClick={() => set('social', 'manual')}
-          title="I'll copy & paste myself for now" body="You can switch on one-click any time later." />
+          icon={ClipboardCopy}
+          title="I'll copy & paste myself for now"
+          body="Export clean, ready-to-post copy and paste it yourself. Switch on one-click anytime." />
       </IntentGroup>
 
       <IntentGroup icon={Mail} title="Email newsletter" colsClass="sm:grid-cols-3">

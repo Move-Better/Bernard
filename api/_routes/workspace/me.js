@@ -41,6 +41,7 @@ const PATCHABLE_FIELDS = new Set([
   'publish_topics',
   'skip_review',
   'buffer_use_queue',
+  'publish_provider',
   'schedule_prefs',
   'realtime_voice_daily_cap_min',
   'auto_publish_settings',
@@ -491,6 +492,15 @@ async function handler(req, res) {
           return res.status(400).json({ error: 'invalid-auto-publish-settings' })
         }
         patch.auto_publish_settings = cleaned
+        continue
+      }
+      if (key === 'publish_provider') {
+        // Which social publisher routes this workspace's posts. Constrained to
+        // the same values as the DB CHECK so a bad value 400s, not 500s.
+        if (value !== 'buffer' && value !== 'bundle') {
+          return res.status(400).json({ error: 'invalid-publish-provider' })
+        }
+        patch.publish_provider = value
         continue
       }
       patch[key] = value

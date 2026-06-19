@@ -168,6 +168,23 @@ export class BundlePublisher extends SocialPublisher {
     return { ok: !!res?.success, info: res }
   }
 
+  // List the accounts connected to this workspace's bundle Team, each with a
+  // coarse health flag for the settings status surface + reconnect prompt. NOT
+  // part of the SocialPublisher contract — bundle-specific.
+  // ponytail: the socialAccount health-field names aren't spike-verified; map
+  // defensively (unknown status = connected) and confirm live when Move Better
+  // connects in Phase 2.
+  async listAccounts() {
+    const team = await this.sdk.team.teamGetTeam({ id: this.teamId })
+    const accounts = Array.isArray(team?.socialAccounts) ? team.socialAccounts : []
+    return accounts.map((a) => ({
+      type: a?.type ?? null,
+      displayName: a?.displayName ?? a?.name ?? a?.username ?? null,
+      status: a?.status ?? null,
+      connected: a?.status ? !/disconnect|expired|error|revok|invalid/i.test(String(a.status)) : true,
+    }))
+  }
+
   // ── bundle-specific helpers ────────────────────────────────────────────────
 
   _bundleType(network) {

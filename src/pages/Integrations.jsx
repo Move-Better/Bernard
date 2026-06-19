@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   Lightbulb,
+  Share2,
+  Rss,
+  AlertTriangle,
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -166,13 +169,18 @@ export default function Integrations() {
   // onboarded before the publish-intent step have an empty intent → all shown.
   const intent = ws?.publish_intent
   const connectedSet = new Set(ws?.connected_publish_services || [])
-  const visible = capable.filter(
+  // Buffer is presented in the dedicated "Social publishing" section below (a
+  // provider choice alongside bundle.social), so keep it out of the generic list.
+  const bufferIntegration = INTEGRATIONS.find((i) => i.id === 'buffer') || null
+  const bufferRow = services?.find?.((s) => s.service === 'buffer') || null
+  const capableListed = capable.filter((i) => i.id !== 'buffer')
+  const visible = capableListed.filter(
     (i) =>
       showAllIntegrations ||
       connectedSet.has(i.id) ||
       isIntegrationRelevantForIntent(i.id, intent)
   )
-  const hiddenByIntent = capable.length - visible.length
+  const hiddenByIntent = capableListed.length - visible.length
   const intentFiltering = hasPublishIntent(intent) && !showAllIntegrations
   const showTdc = hasCapability(ws, 'tdcPublish')
   const isAdmin = role === 'admin'
@@ -251,6 +259,19 @@ export default function Integrations() {
         </div>
       )}
 
+      {isAdmin && (
+        <SocialPublishingSection
+          ws={ws}
+          isAdmin={isAdmin}
+          getToken={getToken}
+          bufferIntegration={bufferIntegration}
+          bufferRow={bufferRow}
+          onChange={reload}
+        />
+      )}
+
+      {isAdmin && <h2 className="text-sm font-semibold pt-1">Other integrations</h2>}
+
       <div className="space-y-4">
         {visible.map((integration) => {
           const row = services?.find?.((s) => s.service === integration.id) || null
@@ -283,6 +304,189 @@ export default function Integrations() {
       </div>
 
       {showTdc && <TrustDrivenCareCard />}
+    </div>
+  )
+}
+
+// Social-publishing provider choice — Buffer OR bundle.social (both permanent;
+// the tenant picks). Owns the Buffer card too (filtered out of the list below to
+// avoid duplication). The active provider routes all social publishing; the
+// switch persists workspaces.publish_provider via /api/workspace/me.
+function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, bufferRow, onChange }) {
+  const provider = ws?.publish_provider || 'buffer'
+  const [switching, setSwitching] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState(null) // { connected, accounts } | null while loading
+  const [err, setErr] = useState(null)
+
+  // Load bundle connection status, and refetch when the tab regains focus (the
+  // connect portal opens in a new tab, so accounts may have changed on return).
+  useEffect(() => {
+    if (provider !== 'bundle' || !isAdmin) { setStatus(null); return }
+    let cancelled = false
+    const load = () => apiFetch('/api/integrations/bundle/status')
+      .then((d) => { if (!cancelled) setStatus(d || { connected: false, accounts: [] }) })
+      .catch(() => { if (!cancelled) setStatus({ connected: false, accounts: [] }) })
+    load()
+    window.addEventListener('focus', load)
+    return () => { cancelled = true; window.removeEventListener('focus', load) }
+  }, [provider, isAdmin])
+
+  async function switchProvider(next) {
+    if (!isAdmin || switching) return
+    setSwitching(true); setErr(null)
+    try {
+      await apiFetch('/api/workspace/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publish_provider: next }),
+      })
+      window.location.reload() // refresh workspace context so the new provider takes effect
+    } catch (e) {
+      setErr(e?.payload?.error || e?.message || 'Could not switch provider.')
+      setSwitching(false)
+    }
+  }
+
+  async function openPortal() {
+    if (busy) return
+    setBusy(true); setErr(null)
+    try {
+      const d = await apiFetch('/api/integrations/bundle/connect', { method: 'POST' })
+      if (d?.url) window.open(d.url, '_blank', 'noopener')
+      else setErr('Could not open the bundle.social portal.')
+    } catch (e) {
+      setErr(e?.payload?.error || e?.message || 'Could not open the bundle.social portal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const bundleActive = provider === 'bundle'
+  const bufferActive = provider === 'buffer'
+  const accounts = status?.accounts || []
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold">Social publishing</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Choose how Bernard posts to Instagram, Facebook, Google Business &amp; more. Pick one — you can switch anytime.
+        </p>
+      </div>
+
+      {/* bundle.social */}
+      <div className={`rounded-lg border bg-card ${bundleActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
+        <div className="px-5 py-4 flex items-start gap-3">
+          <span className="h-9 w-9 shrink-0 rounded-md bg-primary/10 grid place-items-center">
+            <Share2 className="h-5 w-5 text-primary" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm">bundle.social</span>
+              {bundleActive && (
+                <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
+              )}
+              {bundleActive && (
+                <span className={`text-3xs uppercase tracking-wide px-1.5 py-0.5 rounded ${status?.connected ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                  {status == null ? 'Checking…' : status.connected ? 'Connected' : 'Not connected yet'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground leading-snug mt-1">
+              Bernard posts directly to your accounts and pulls back likes, reach &amp; impressions. Connect in bundle’s secure portal — Bernard never sees your passwords.
+            </p>
+            {!bundleActive ? (
+              <button
+                type="button" disabled={!isAdmin || switching} onClick={() => switchProvider('bundle')}
+                className="mt-3 text-sm bg-primary text-primary-foreground px-3.5 py-2 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90"
+              >
+                {switching ? 'Switching…' : 'Use bundle.social'}
+              </button>
+            ) : (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <button
+                  type="button" disabled={!isAdmin || busy} onClick={openPortal}
+                  className="text-sm bg-primary text-primary-foreground px-3.5 py-2 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90 inline-flex items-center gap-1.5"
+                >
+                  {busy ? 'Opening…' : (status?.connected ? 'Manage accounts' : 'Connect accounts')}
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+                <span className="text-2xs text-muted-foreground">Opens bundle.social in a new tab</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {bundleActive && accounts.length > 0 && (
+          <div className="px-5 py-3 border-t border-border space-y-2.5">
+            {accounts.map((a, i) => (
+              <div key={a.type || i} className="flex items-center gap-3">
+                <span className="text-sm flex-1 truncate capitalize">
+                  {a.type ? a.type.replace(/_/g, ' ').toLowerCase() : 'account'}
+                  {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
+                </span>
+                {a.connected ? (
+                  <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                    <CheckCircle2 className="h-3.5 w-3.5" />Connected
+                  </span>
+                ) : (
+                  <button type="button" onClick={openPortal} disabled={!isAdmin} className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action disabled:opacity-60">
+                    <AlertTriangle className="h-3.5 w-3.5" />Reconnect
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Buffer */}
+      <div className={`rounded-lg border bg-card ${bufferActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
+        <div className="px-5 py-4 flex items-start gap-3">
+          <span className="h-9 w-9 shrink-0 rounded-md bg-muted grid place-items-center"><Rss className="h-5 w-5 text-muted-foreground" /></span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm">Buffer</span>
+              {bufferActive && (
+                <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
+              )}
+              {bufferActive && bufferRow && (
+                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">Connected</span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground leading-snug mt-1">
+              Already use Buffer? Post through your existing Buffer account by pasting an access token.
+            </p>
+            {!bufferActive && (
+              <button
+                type="button" disabled={!isAdmin || switching} onClick={() => switchProvider('buffer')}
+                className="mt-3 text-sm border border-border px-3 py-1.5 rounded-md hover:bg-muted disabled:opacity-60"
+              >
+                {switching ? 'Switching…' : 'Switch to Buffer'}
+              </button>
+            )}
+          </div>
+        </div>
+        {bufferActive && bufferIntegration && (
+          <div className="px-5 pb-4 border-t border-border pt-4">
+            <CredentialForm
+              service={bufferIntegration}
+              row={bufferRow}
+              disabled={!isAdmin}
+              getToken={getToken}
+              tokenOpts={{ skipCache: true }}
+              onChange={onChange}
+              removeLabel="Disconnect"
+              saveLabel={({ configured }) => (configured ? 'Update token' : 'Connect Buffer')}
+              secretPlaceholder={bufferIntegration.secretPlaceholder}
+              confirmMessage={(svc) => `Disconnect ${svc.label} for this workspace?`}
+            />
+          </div>
+        )}
+      </div>
+
+      {err && <p className="text-xs text-destructive">{err}</p>}
     </div>
   )
 }
