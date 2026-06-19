@@ -1202,7 +1202,7 @@ export default function InterviewSession() {
   // the tip never appears. We intentionally only consider user-role
   // messages so the verbatim guarantee in the prompt is honest.
   function getUserTranscript() {
-    return (interview?.messages || [])
+    return (messagesRef.current || [])
       .filter((m) => m.role === 'user')
       .map((m) => m.content || '')
       .join('\n\n')
@@ -1655,18 +1655,18 @@ export default function InterviewSession() {
                 <AlertTriangle className="h-3 w-3" />Save failed — your progress may not be saved
               </span>
             : <span
-                className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-amber-600' : 'text-muted-foreground'}`}
+                className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-action' : 'text-muted-foreground'}`}
               >
                 {saveStatus === 'saving'
                   ? <><Loader2 className="h-3 w-3 animate-spin" />Saving…</>
                   : saveStatus === 'saved'
                   ? <><Check className="h-3 w-3" />Saved</>
-                  : <><RefreshCw className="h-3 w-3" />Recovered locally</>
+                  : <><RefreshCw className="h-3 w-3" />Saved to this device</>
                 }
               </span>
         )}
         {interviewComplete
-          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><CheckCircle2 className="h-4 w-4" />Interview complete</span>
+          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><CheckCircle2 className="h-4 w-4" />Interview complete</span>
           : isOwner && (
             // Desktop header keeps the action buttons. On mobile they live
             // in the bottom dock so they're within thumb reach next to the

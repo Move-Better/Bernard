@@ -406,21 +406,16 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     }
   }
 
-  // Cross-origin <a download> doesn't reliably trigger a save in browsers, so
-  // fetch the blob first and create an object URL. Vercel Blob public URLs are
-  // CORS-enabled, so this works without a proxy.
-  async function downloadFromUrl(url, filename) {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
-    const blob = await res.blob()
-    const objUrl = URL.createObjectURL(blob)
+  // Vercel Blob public URLs are CORS-enabled, so a direct <a download> works.
+  // Avoids buffering the entire file into browser RAM (kills tabs on large videos).
+  function downloadFromUrl(url, filename) {
     const link = document.createElement('a')
-    link.href = objUrl
+    link.href = url
     link.download = filename
+    link.rel = 'noopener'
     document.body.appendChild(link)
     link.click()
     link.remove()
-    URL.revokeObjectURL(objUrl)
   }
 
   async function downloadAsset() {

@@ -177,6 +177,15 @@
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(12,117,128,0.22);
   }
+  /* Amber "act now" inbox card — used by DraftsReadyRow, PublisherInboxBanner,
+     and Overview's publisher queue banner. Single source of truth for the
+     warm amber gradient + shadow so implementations stay in sync. */
+  .nx-card-action {
+    background: linear-gradient(180deg, #fff, hsl(var(--action) / 0.06));
+    border: 1px solid hsl(var(--action) / 0.3);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px hsl(var(--action) / 0.22);
+  }
 
   /* Buttons — solid Blue Spruce primary with a subtle shadow, neutral
      secondary, ink-dark variant for finish/destructive-ish surfaces. */
