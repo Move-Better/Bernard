@@ -25,6 +25,20 @@ function sb(path, init = {}) {
   })
 }
 
+// Filters land directly in PostgREST `eq.` clauses — allowlist them so a crafted
+// value like `status=neq.suggested` can't flip the operator and bypass the
+// intended filter. Workspace isolation (scope.id) is enforced separately, so
+// this is filter-integrity defense, not a cross-tenant guard.
+const VALID_STATUSES = [
+  'suggested', 'accepted', 'in_progress', 'returned',
+  'rejected', 'archived', 'published',
+]
+const VALID_PLATFORMS = [
+  'instagram', 'instagram_story', 'facebook', 'linkedin', 'twitter', 'threads',
+  'tiktok', 'youtube_short', 'bluesky', 'mastodon', 'gbp', 'newsletter',
+]
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SELECT_COMMON =
   'id,source_asset_id,source_trim_start,source_trim_end,source_quote,' +
   'ai_suggested_platform,ai_caption,ai_hashtags,ai_cta_text,ai_reasoning,' +
@@ -45,6 +59,16 @@ async function handler(req, res) {
   const assignedTo  = searchParams.get('assignedTo')    // email
   const limit       = Math.min(parseInt(searchParams.get('limit') || '60', 10), 200)
   const offset      = parseInt(searchParams.get('offset') || '0', 10)
+
+  if (status && !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'invalid_status' })
+  }
+  if (platform && !VALID_PLATFORMS.includes(platform)) {
+    return res.status(400).json({ error: 'invalid_platform' })
+  }
+  if (sourceId && !UUID_RE.test(sourceId)) {
+    return res.status(400).json({ error: 'invalid_source_id' })
+  }
 
   const scope = await workspaceScope(req)
 

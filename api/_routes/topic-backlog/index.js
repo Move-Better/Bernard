@@ -47,6 +47,10 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     if (!(await enforceLimit(req, res, 'read'))) return
     const status = searchParams.get('status')
+    // Allowlist the status filter — it lands raw in a PostgREST `eq.` clause, so a
+    // crafted value (e.g. `neq.pending`) could otherwise flip the operator and
+    // bypass the intended filter. Workspace isolation (wsFilter) is separate.
+    if (status && !ALLOWED_STATUS.has(status)) return err(res, 'invalid_status', 400)
     let qs = `topic_backlog?${wsFilter}&select=${SELECT}&order=priority.desc,created_at.desc`
     if (status) qs += `&status=eq.${status}`
     const r = await sb(qs)
