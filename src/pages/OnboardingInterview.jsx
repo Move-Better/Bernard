@@ -825,7 +825,7 @@ export default function OnboardingInterview() {
                     {interviewerName} is thinking…
                   </span>
                 ) : (streaming && streamingText) || isSpeaking ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-info/10 text-info">
                     <Volume2 className="h-3.5 w-3.5" />
                     {interviewerName} is asking
                   </span>

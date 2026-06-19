@@ -49,7 +49,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
   if (readyCount > 0)
     parts.push(`${readyCount} ready to send`)
   return (
-    <div className="rounded-2xl border border-action/30 bg-gradient-to-b from-white to-[#fffbf2] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(217,119,6,0.22)] px-5 py-4 flex items-center gap-3">
+    <div className="nx-card-action px-5 py-4 flex items-center gap-3">
       <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
       <Inbox className="h-4 w-4 text-action shrink-0" />
       <div className="flex-1 min-w-0">
@@ -97,7 +97,10 @@ export default function Storyboard() {
       items
         .filter(NEEDS_MEDIA)
         .slice()
-        .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)),
+        .sort((a, b) => {
+          const safeMs = (v) => { const d = v ? Date.parse(v) : 0; return Number.isFinite(d) ? d : 0 }
+          return safeMs(a.created_at) - safeMs(b.created_at)
+        }),
     [items],
   )
 
@@ -110,7 +113,10 @@ export default function Storyboard() {
       items
         .filter((p) => !NEEDS_MEDIA(p))
         .slice()
-        .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)),
+        .sort((a, b) => {
+          const safeMs = (v) => { const d = v ? Date.parse(v) : 0; return Number.isFinite(d) ? d : 0 }
+          return safeMs(b.updated_at || b.created_at) - safeMs(a.updated_at || a.created_at)
+        }),
     [items],
   )
 

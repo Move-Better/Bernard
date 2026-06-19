@@ -118,7 +118,14 @@ export default async function handler(req, res) {
 
     const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
-    if (status)      qs += status.includes(',') ? `&status=in.(${status})` : `&status=eq.${status}`
+    if (status) {
+      if (status.includes(',')) {
+        const trimmed = status.split(',').map((s) => s.trim()).join(',')
+        qs += `&status=in.(${trimmed})`
+      } else {
+        qs += `&status=eq.${status}`
+      }
+    }
     if (platform)    qs += `&platform=eq.${platform}`
     if (from)        qs += `&scheduled_at=gte.${encodeURIComponent(from)}`
     if (to)          qs += `&scheduled_at=lte.${encodeURIComponent(to)}`

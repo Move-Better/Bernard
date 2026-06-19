@@ -53,6 +53,11 @@ async function rehostMuxThumbnail(playbackId, assetId, workspaceId) {
       return null
     }
     const buf = Buffer.from(await res.arrayBuffer())
+    // Guard for missing Content-Length header — cap after buffering.
+    if (buf.length > 25 * 1024 * 1024) {
+      console.error(`[mux/webhook] thumbnail too large after buffer (${buf.length} bytes); skipping rehost`)
+      return null
+    }
     // Namespace the blob key by the immutable workspace UUID so thumbnail keys
     // aren't a flat, cross-tenant-predictable namespace (CLAUDE.md blob rule).
     // Fall back to the unscoped key if the workspace couldn't be resolved.

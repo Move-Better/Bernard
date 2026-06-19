@@ -181,7 +181,7 @@ export default function Home() {
     ready:        'hsl(var(--action))', // act-now — drafting needed (your turn)
     review:       'hsl(var(--action))', // act-now — your review queue
     distribute:   'hsl(var(--action))', // act-now — publisher surface
-    overdue:      '#64748b',            // slate — informational, not an urgent action
+    overdue:      'hsl(var(--muted-foreground))', // informational, not an urgent action
   }
 
   return (
