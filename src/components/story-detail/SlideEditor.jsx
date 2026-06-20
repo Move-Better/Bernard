@@ -440,13 +440,38 @@ function LayersList({ slide, mediaUrls, selection, onSelect }) {
   )
 }
 
+// ── Mini slide render — a real renderFreeformSlide miniature for the theme grid
+// (so theme tiles look like what they actually produce, not a placeholder). The
+// canvas bitmap is set by the renderer; CSS scales it down. `renderKey` gates
+// re-renders so we don't redraw 6 canvases on every keystroke.
+
+function MiniSlideCanvas({ renderSlide, photoUrl, brandStyle, theme, renderKey }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const c = ref.current
+    if (!c) return
+    renderFreeformSlide({
+      sourceUrl: photoUrl || null,
+      slide: renderSlide,
+      brandStyle: brandStyle || {},
+      canvas: c,
+      theme,
+    }).catch(() => { /* thumbnail render best-effort */ })
+    // renderKey encodes every input that affects the pixels — intentional sole dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderKey])
+  return <canvas ref={ref} className="block h-full w-full" />
+}
+
 // ── SLIDE inspector body — layout + theme (nothing else selected) ────────────
 
 function SlideInspector({
-  slide, slideIdx, totalSlides, allThemes, customThemes, globalThemeId,
+  slide, slideIdx, totalSlides, photoUrl, brandStyle, allThemes, customThemes, globalThemeId,
   onChange, onApplyThemeToAll, onAddBlock, onMoveLeft, onMoveRight, onRemove,
 }) {
   const [addOpen, setAddOpen] = useState(false)
+  // Signature of everything (besides the theme) that changes a thumbnail's pixels.
+  const thumbSig = `${photoUrl || ''}|${slide.photo_zoom || 1}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}`
   function changeTemplate(template) {
     // Switching templates updates default positions for blocks whose current
     // position is a preset that matches the old template default; user-customized
@@ -545,7 +570,6 @@ function SlideInspector({
         <div className="grid grid-cols-2 gap-1.5">
           {allThemes.map((t) => {
             const resolved = resolveTheme(t.id, customThemes)
-            const isDark = resolved?.palette !== 'light'
             const selected = slide.template_id === t.id
             return (
               <button
@@ -557,11 +581,15 @@ function SlideInspector({
                 }`}
                 title={`${t.name}${selected ? ' (this slide only)' : ''}`}
               >
-                <div
-                  className="h-9 w-full flex items-end px-1.5 pb-1"
-                  style={{ background: isDark ? '#0c1a2e' : '#f6f4ef' }}
-                >
-                  <span className="h-1.5 w-8 rounded-full" style={{ background: 'hsl(var(--action))' }} />
+                {/* Real rendered miniature of THIS slide in this theme */}
+                <div className="aspect-[4/5] w-full bg-muted">
+                  <MiniSlideCanvas
+                    renderSlide={slide}
+                    photoUrl={photoUrl}
+                    brandStyle={brandStyle}
+                    theme={resolved}
+                    renderKey={`${t.id}|${thumbSig}`}
+                  />
                 </div>
                 <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">
                   {t.name}
@@ -1288,6 +1316,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     slide={activeSlide}
                     slideIdx={activeSlideIdx}
                     totalSlides={slides.length}
+                    photoUrl={activePhotoUrl}
+                    brandStyle={brandStyle}
                     allThemes={allThemes}
                     customThemes={customThemes}
                     globalThemeId={themeId}
