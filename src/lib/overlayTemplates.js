@@ -905,12 +905,17 @@ function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOf
       }
 
       case 'bg-radial': {
-        const x0 = W * (p.x0Frac ?? 0.5)
-        const y0 = H * (p.y0Frac ?? 0.42)
-        const r0 = p.r0 ?? 0
-        const x1 = W * (p.x1Frac ?? 0.5)
-        const y1 = H * (p.y1Frac ?? 0.5)
-        const r1 = W * (p.r1Frac ?? 0.72)
+        // Full form uses x0Frac/y0Frac/r0/x1Frac/y1Frac/r1Frac (built-in themes).
+        // Simplified model form uses yCenterFrac only — sensible defaults for the rest.
+        let x0, y0, r0, x1, y1, r1
+        if (p.x0Frac != null) {
+          x0 = W * p.x0Frac; y0 = H * p.y0Frac; r0 = p.r0 ?? 0
+          x1 = W * p.x1Frac; y1 = H * p.y1Frac; r1 = W * (p.r1Frac ?? 0.72)
+        } else {
+          const yc = p.yCenterFrac ?? 0.45
+          x0 = W * 0.5; y0 = H * yc; r0 = 0
+          x1 = W * 0.5; y1 = H * yc; r1 = W * 0.72
+        }
         const grad = ctx.createRadialGradient(x0, y0, r0, x1, y1, r1)
         grad.addColorStop(0, resolveColor(p.colorCenter, brandStyle))
         grad.addColorStop(1, resolveColor(p.colorEdge,   brandStyle))
@@ -947,7 +952,16 @@ function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOf
         const sy1 = Math.round(H * p.yFrac)
         const sy2 = Math.round(H * (p.yEndFrac ?? 1.0))
         const grad = ctx.createLinearGradient(0, sy1, 0, sy2)
-        for (const [pos, color] of (p.stops || [])) grad.addColorStop(pos, color)
+        if (p.stops?.length) {
+          // Full form (built-in themes): explicit stop array
+          for (const [pos, color] of p.stops) grad.addColorStop(pos, color)
+        } else {
+          // Simplified model form: single opacity → black-transparent gradient
+          const op = Math.min(1, Math.max(0, p.opacity ?? 0.7))
+          grad.addColorStop(0,    'rgba(0,0,0,0)')
+          grad.addColorStop(0.55, `rgba(0,0,0,${(op * 0.6).toFixed(2)})`)
+          grad.addColorStop(1.0,  `rgba(0,0,0,${op.toFixed(2)})`)
+        }
         ctx.fillStyle = grad
         ctx.fillRect(0, sy1, W, sy2 - sy1)
         break
@@ -970,6 +984,27 @@ function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOf
         } else {
           ctx.fillRect(0, rY, W, thick)
         }
+        break
+      }
+
+      case 'gradient-panel': {
+        const panY = Math.round(H * p.yFrac)
+        const grad = ctx.createLinearGradient(0, panY, 0, H)
+        grad.addColorStop(0, resolveColor(p.colorFrom, brandStyle))
+        grad.addColorStop(1, resolveColor(p.colorTo,   brandStyle))
+        ctx.fillStyle = grad
+        ctx.fillRect(0, panY, W, H - panY)
+        break
+      }
+
+      case 'circle': {
+        const cx = W * (p.cxFrac ?? 0.5)
+        const cy = H * (p.cyFrac ?? 0.5)
+        const r  = W * (p.rFrac  ?? 0.1)
+        ctx.fillStyle = resolveColor(p.color, brandStyle)
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, 0, Math.PI * 2)
+        ctx.fill()
         break
       }
 
@@ -1170,7 +1205,9 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // non-square (carousel ad aspects) uses a linear top+bottom scrim — the radial
   // is concentric-on-center and loses contrast at the top/bottom text zones on
   // tall/wide canvases (Q sign-off 2026-06-19).
-  const blocks = Array.isArray(slide?.blocks) ? slide.blocks : []
+  // Ad-mode templates render the structural background only — no text blocks —
+  // so the canvas is a clean background for ad copy set elsewhere.
+  const blocks = theme?.mode === 'ad' ? [] : (Array.isArray(slide?.blocks) ? slide.blocks : [])
   if (!useWhoop && sourceUrl && blocks.length > 0) {
     let scrim
     if (square) {
