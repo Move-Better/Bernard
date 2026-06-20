@@ -13,6 +13,7 @@ export const config = { runtime: 'nodejs' }
 
 import { getCredential } from '../../_lib/getCredential.js'
 import { fetchPostStats } from '../../_lib/bufferPostStats.js'
+import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -93,9 +94,10 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase env not configured' })
   }
 
-  const wsRes = await sb('workspaces?status=eq.active&select=id')
+  const wsRes = await sb('workspaces?status=eq.active&select=id,publish_provider,bundle_team_id')
   const wsRows = await wsRes.json().catch(() => [])
-  const activeIds = (Array.isArray(wsRows) ? wsRows : []).map(w => w.id)
+  const wsMap = {}
+  const activeIds = (Array.isArray(wsRows) ? wsRows : []).map((w) => { wsMap[w.id] = w; return w.id })
   const wsScope = activeIds.length ? `&workspace_id=in.(${activeIds.map(id => `"${id}"`).join(',')})` : ''
   const items = await fetchOverdueItems(wsScope)
   if (items.length === 0) {
@@ -106,49 +108,90 @@ export default async function handler(req, res) {
   const summary = { checked: items.length, promoted: 0, skipped: 0, errors: 0, workspaces: [] }
 
   for (const [workspaceId, wsItems] of Object.entries(byWorkspace)) {
-    const cred = await getCredential(workspaceId, 'buffer')
-    if (!cred?.secret) {
-      console.warn('[sync-buffer-published] no Buffer token for workspace:', workspaceId)
-      summary.skipped += wsItems.length
-      summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'no-token' })
-      continue
-    }
-
+    const wsRow = wsMap[workspaceId] || {}
     const wsResult = { workspaceId, promoted: 0, skipped: 0, errors: 0, notFound: 0 }
 
-    for (const item of wsItems) {
-      const { ok, post, errors } = await fetchPostStats(cred.secret, item.buffer_update_id)
-
-      if (!ok) {
-        console.error('[sync-buffer-published] Buffer API error for item:', item.id, errors)
-        summary.errors++
-        wsResult.errors++
+    if (wsRow.publish_provider === 'bundle') {
+      // bundle.social path: postGet({ id }) returns { status, postedDate }.
+      // bundle transitions SCHEDULED → POSTED autonomously within seconds/minutes.
+      let publisher
+      try {
+        publisher = new BundlePublisher(wsRow)
+      } catch (e) {
+        console.warn('[sync-buffer-published] bundle init failed for workspace:', workspaceId, e?.message)
+        summary.skipped += wsItems.length
+        summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'bundle-init-failed' })
         continue
       }
 
-      if (!post) {
-        // Buffer returned null — post was deleted or ID is no longer valid.
-        // Leave the row as-is; don't promote, don't corrupt.
-        wsResult.notFound++
+      for (const item of wsItems) {
+        try {
+          const status = await publisher.getPostStatus({ postId: item.buffer_update_id })
+          if (!status?.status) {
+            // Null response — post not found or deleted; leave as-is.
+            wsResult.notFound++
+            continue
+          }
+          if (!status.isPosted) {
+            // SCHEDULED / PROCESSING / REVIEW / RETRYING — still in flight, check next run.
+            // ERROR / DELETED — permanent failure; leave as scheduled so it's visible in the UI.
+            if (!status.isFailed) { summary.skipped++; wsResult.skipped++ }
+            else wsResult.notFound++
+            continue
+          }
+          const promoted = await promoteToPublished(
+            item.id, workspaceId,
+            status.postedAt || new Date().toISOString()
+          )
+          if (promoted) { summary.promoted++; wsResult.promoted++ }
+          else { summary.errors++; wsResult.errors++ }
+        } catch (e) {
+          console.error('[sync-buffer-published] bundle postGet error for item:', item.id, e?.message)
+          summary.errors++
+          wsResult.errors++
+        }
+      }
+    } else {
+      // Buffer path (unchanged).
+      const cred = await getCredential(workspaceId, 'buffer')
+      if (!cred?.secret) {
+        console.warn('[sync-buffer-published] no Buffer token for workspace:', workspaceId)
+        summary.skipped += wsItems.length
+        summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'no-token' })
         continue
       }
 
-      // Buffer sets sentAt when the post has been delivered to the platform.
-      if (!post.sentAt) {
-        // Still pending in Buffer's queue (e.g. dueAt is slightly in the future,
-        // or Buffer is processing). Check again next run.
-        summary.skipped++
-        wsResult.skipped++
-        continue
-      }
+      for (const item of wsItems) {
+        const { ok, post, errors } = await fetchPostStats(cred.secret, item.buffer_update_id)
 
-      const promoted = await promoteToPublished(item.id, workspaceId, post.sentAt)
-      if (promoted) {
-        summary.promoted++
-        wsResult.promoted++
-      } else {
-        summary.errors++
-        wsResult.errors++
+        if (!ok) {
+          console.error('[sync-buffer-published] Buffer API error for item:', item.id, errors)
+          summary.errors++
+          wsResult.errors++
+          continue
+        }
+
+        if (!post) {
+          // Buffer returned null — post was deleted or ID is no longer valid.
+          wsResult.notFound++
+          continue
+        }
+
+        // Buffer sets sentAt when the post has been delivered to the platform.
+        if (!post.sentAt) {
+          summary.skipped++
+          wsResult.skipped++
+          continue
+        }
+
+        const promoted = await promoteToPublished(item.id, workspaceId, post.sentAt)
+        if (promoted) {
+          summary.promoted++
+          wsResult.promoted++
+        } else {
+          summary.errors++
+          wsResult.errors++
+        }
       }
     }
 

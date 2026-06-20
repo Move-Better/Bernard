@@ -23,6 +23,7 @@ export const config = { runtime: 'nodejs' }
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
 import { fetchGA4Metrics, urlToPagePath } from '../../_lib/ga4.js'
 import { fetchPostStats } from '../../_lib/bufferPostStats.js'
+import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -101,6 +102,7 @@ async function fetchBufferStats(token, updateId, platform) {
 }
 
 async function processWorkspace(ws, summary) {
+  if (ws.publish_provider === 'bundle') return  // bundle workspaces handled by processWorkspaceBundle
   const token = await getBufferToken(ws.id)
   if (!token) {
     summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'no-buffer-token' })
@@ -201,6 +203,108 @@ async function processWorkspace(ws, summary) {
     refreshed,
     flagged: flagged.length,
     flagged_detail: flagged,
+  })
+}
+
+// bundle.social walker — same shape as processWorkspace (Buffer), different source.
+// Walks bundle workspaces only; called in parallel with the GA4 walker in the
+// main loop. Analytics for Twitter/GBP are known to return empty from bundle
+// (GBP: bundle has no data; Twitter: omitted from analytics enum) — empty
+// metrics are silently skipped, same as Buffer's "statistics always empty" guard.
+async function processWorkspaceBundle(ws, summary) {
+  if (ws.publish_provider !== 'bundle') return
+
+  let publisher
+  try {
+    publisher = new BundlePublisher(ws)
+  } catch (e) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', skipped: 'bundle-init-failed', error: e?.message })
+    return
+  }
+
+  const sinceIso = new Date(Date.now() - SCAN_WINDOW_D * 24 * 60 * 60 * 1000).toISOString()
+  const itemsRes = await sb(
+    `content_items?workspace_id=eq.${ws.id}` +
+    `&status=eq.published` +
+    `&buffer_update_id=not.is.null` +
+    `&published_at=gte.${encodeURIComponent(sinceIso)}` +
+    `&select=id,platform,buffer_update_id,performed_well,published_at`
+  )
+  if (!itemsRes.ok) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', error: `items fetch ${itemsRes.status}` })
+    return
+  }
+  const items = await itemsRes.json()
+  if (!Array.isArray(items) || items.length === 0) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', items: 0 })
+    return
+  }
+
+  const freshCutoff = new Date(Date.now() - SNAPSHOT_MAX_AGE_H * 60 * 60 * 1000).toISOString()
+  let refreshed = 0
+  for (const item of items) {
+    const latestRes = await sb(
+      `engagement_snapshots?content_item_id=eq.${item.id}&workspace_id=eq.${ws.id}&source=eq.bundle&order=fetched_at.desc&limit=1&select=fetched_at,stats`
+    )
+    const latestRows = latestRes.ok ? await latestRes.json().catch(() => []) : []
+    const latest = latestRows?.[0]
+    if (latest && latest.fetched_at > freshCutoff) {
+      item._stats = latest.stats
+      continue
+    }
+
+    let analytics
+    try {
+      analytics = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform })
+    } catch {
+      // Platform unsupported for analytics (Twitter, GBP) or temporary error — skip.
+      continue
+    }
+    const metrics = analytics?.metrics
+    const hasData = metrics && Object.values(metrics).some((v) => typeof v === 'number' && v > 0)
+    if (!hasData) continue
+
+    // Store under `statistics` key so scoreOf() sums correctly (same shape as Buffer walker).
+    const stats = { statistics: { ...metrics }, source: 'bundle', service: item.platform }
+    const ins = await sb('engagement_snapshots', {
+      method: 'POST',
+      body: JSON.stringify({ workspace_id: ws.id, content_item_id: item.id, source: 'bundle', stats }),
+    })
+    if (ins.ok) {
+      refreshed++
+      item._stats = stats
+    }
+  }
+
+  // Auto-flag: same median heuristic as the Buffer walker.
+  const byPlatform = {}
+  for (const item of items) {
+    if (!item._stats) continue
+    if (!byPlatform[item.platform]) byPlatform[item.platform] = []
+    byPlatform[item.platform].push(item)
+  }
+  const flagged = []
+  for (const [platform, pool] of Object.entries(byPlatform)) {
+    if (pool.length < MIN_SAMPLES) continue
+    const scores = pool.map((i) => scoreOf(i._stats))
+    const med = median(scores)
+    if (med <= 0) continue
+    const bar = med * SCORE_MULT
+    for (let i = 0; i < pool.length; i++) {
+      const item = pool[i]
+      const score = scores[i]
+      if (item.performed_well || score <= bar) continue
+      const r = await sb(`content_items?id=eq.${item.id}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ performed_well: true }),
+      })
+      if (r.ok) flagged.push({ id: item.id, platform, score, median: med })
+    }
+  }
+
+  summary.workspaces.push({
+    id: ws.id, slug: ws.slug, source: 'bundle',
+    items: items.length, refreshed, flagged: flagged.length, flagged_detail: flagged,
   })
 }
 
@@ -369,7 +473,7 @@ async function handler(req, res) {
 
   // Enumerate active workspaces.
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,ga4_property_id`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,ga4_property_id,publish_provider,bundle_team_id`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
@@ -381,6 +485,11 @@ async function handler(req, res) {
       await processWorkspace(ws, summary)
     } catch (e) {
       summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'buffer', error: e?.message || 'unknown' })
+    }
+    try {
+      await processWorkspaceBundle(ws, summary)
+    } catch (e) {
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', error: e?.message || 'unknown' })
     }
     try {
       await processWorkspaceGA4(ws, summary)
