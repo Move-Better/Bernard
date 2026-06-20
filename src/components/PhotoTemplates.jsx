@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
@@ -8,6 +8,7 @@ import {
   useCreatePhotoTemplate,
   useUpdatePhotoTemplate,
   useDeletePhotoTemplate,
+  useGenerateBrandTemplates,
   useMediaInfinite,
 } from '@/lib/queries'
 import {
@@ -466,6 +467,7 @@ export default function PhotoTemplates() {
   const createTheme  = useCreatePhotoTemplate()
   const updateTheme  = useUpdatePhotoTemplate()
   const deleteTheme  = useDeletePhotoTemplate()
+  const generateThemes = useGenerateBrandTemplates()
   const brandAccent  = useBrandAccent()
   const workspace    = useWorkspace()
   const brandStyle   = workspace?.brand_style || {}
@@ -519,6 +521,15 @@ export default function PhotoTemplates() {
       toast.success('Template deleted')
     } catch (e) {
       toast.error('Failed to delete template', { description: e.message })
+    }
+  }
+
+  async function handleGenerate() {
+    try {
+      const { count } = await generateThemes.mutateAsync({ count: 4 })
+      toast.success(`Added ${count} brand template${count === 1 ? '' : 's'}`)
+    } catch (e) {
+      toast.error('Failed to generate templates', { description: e.message })
     }
   }
 
@@ -674,17 +685,28 @@ export default function PhotoTemplates() {
             })}
           </div>
 
-          {/* + New template */}
-          {editing !== 'new' && (
+          {/* Generate from brand + New template */}
+          <div className="mt-2 flex flex-col gap-1.5">
             <button
               type="button"
-              onClick={() => setEditing('new')}
-              className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors py-1"
+              onClick={handleGenerate}
+              disabled={generateThemes.isPending}
+              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-60"
             >
-              <Plus className="h-3.5 w-3.5" />
-              New template
+              <Sparkles className="h-3.5 w-3.5" />
+              {generateThemes.isPending ? 'Generating…' : 'Generate from my brand'}
             </button>
-          )}
+            {editing !== 'new' && (
+              <button
+                type="button"
+                onClick={() => setEditing('new')}
+                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors py-0.5 px-1"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New template
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
