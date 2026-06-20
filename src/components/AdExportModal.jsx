@@ -42,7 +42,15 @@ export default function AdExportModal({ asset, onClose, treatment, templateId, s
   const sourceUrl = asset?.original_blob_url || asset?.blob_url || asset?.web_blob_url || ''
   const base = baseName(asset?.filename)
 
-  const [selected, setSelected] = useState(() => new Set(AD_FORMATS.map((f) => f.aspect)))
+  // When a baked overlay is in play (an editorial headline or a non-default
+  // template), 16:9 starts unchecked: the overlay is laid out for portrait/square
+  // and a long headline overflows the short landscape canvas. Still selectable —
+  // just not a broken default. A bare crop (Library export) keeps all four on.
+  const hasBakedOverlay = !!String(treatment?.headline || '').trim()
+    || (!!templateId && templateId !== 'editorial')
+  const [selected, setSelected] = useState(() => new Set(
+    AD_FORMATS.map((f) => f.aspect).filter((a) => !(hasBakedOverlay && a === '16:9')),
+  ))
   const [complies, setComplies] = useState(false)
   const [campaignId, setCampaignId] = useState('')
   const [files, setFiles] = useState(/** @type {Array<{aspect:string,url:string}>|null} */ (null))
@@ -168,6 +176,11 @@ export default function AdExportModal({ asset, onClose, treatment, templateId, s
           <p className="mt-3 text-3xs text-muted-foreground">
             Each size is a subject-aware crop + brand grade of the original — your source piece is never changed.
           </p>
+          {hasBakedOverlay && (
+            <p className="mt-1 text-3xs text-muted-foreground">
+              16:9 starts off — the headline is laid out for portrait/square and can overflow a wide frame. Turn it on if you need it.
+            </p>
+          )}
         </div>
 
         {/* Footer */}
