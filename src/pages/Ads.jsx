@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Megaphone, Download, Trash2, Film, Plus, Target, Loader2 } from 'lucide-react'
@@ -8,6 +9,7 @@ import { downloadBlobFile } from '@/lib/download'
 import { AD_ASPECTS } from '@/lib/adFormats'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
+import AdCreateFlow from '@/components/AdCreateFlow'
 
 // Order a creative's sizes by the canonical ad-format order for stable chips.
 function orderedSizes(sizes) {
@@ -93,6 +95,7 @@ function CreativeCard({ creative, onDelete, deleting }) {
 export default function Ads() {
   useDocumentTitle('Ads · Bernard')
   const queryClient = useQueryClient()
+  const [creating, setCreating] = useState(false)
 
   const { data: creatives = [], isLoading } = useQuery({
     queryKey: ['ad-creatives'],
@@ -135,8 +138,8 @@ export default function Ads() {
           <Megaphone className="h-6 w-6 text-action" /> Ads
         </h1>
         <span className="mb-0.5 text-sm text-muted-foreground">ad-ready creative, grouped by campaign</span>
-        <Button asChild size="sm" className="mb-0.5 ml-auto gap-1.5">
-          <Link to="/library"><Plus className="h-3.5 w-3.5" /> New ad creative</Link>
+        <Button size="sm" className="mb-0.5 ml-auto gap-1.5" onClick={() => setCreating(true)}>
+          <Plus className="h-3.5 w-3.5" /> New ad creative
         </Button>
       </div>
 
@@ -153,10 +156,10 @@ export default function Ads() {
           <Megaphone className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-2 text-sm font-medium">No ad creative yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Open a photo in the Library or a clip in Slate and hit <span className="font-semibold text-action">Export for ads</span>.
+            Hit <span className="font-semibold text-action">New ad creative</span> to pick a photo or clip, or export from any photo in the Library or clip in Slate.
           </p>
-          <Button asChild size="sm" className="mt-3 gap-1.5">
-            <Link to="/library"><Plus className="h-3.5 w-3.5" /> Go to Library</Link>
+          <Button size="sm" className="mt-3 gap-1.5" onClick={() => setCreating(true)}>
+            <Plus className="h-3.5 w-3.5" /> New ad creative
           </Button>
         </div>
       ) : (
@@ -176,6 +179,16 @@ export default function Ads() {
             </div>
           </section>
         ))
+      )}
+
+      {creating && (
+        <AdCreateFlow
+          onClose={() => {
+            setCreating(false)
+            // A new creative may have been saved mid-flow — refresh the grid.
+            queryClient.invalidateQueries({ queryKey: ['ad-creatives'] })
+          }}
+        />
       )}
     </div>
   )
