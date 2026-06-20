@@ -842,9 +842,10 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     if (img) {
       drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
     } else {
+      const base = brandInk(brandStyle, '#1e293b')
       const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
-      grad.addColorStop(0, '#475569')
-      grad.addColorStop(1, '#1e293b')
+      grad.addColorStop(0, shadeHex(base, 0.28))
+      grad.addColorStop(1, base)
       ctx.fillStyle = grad
       ctx.fillRect(0, 0, SIZE, SIZE)
     }
@@ -862,9 +863,10 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     if (img) {
       drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
     } else {
+      const base = brandInk(brandStyle, '#1e293b')
       const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
-      grad.addColorStop(0, '#475569')
-      grad.addColorStop(1, '#1e293b')
+      grad.addColorStop(0, shadeHex(base, 0.28))
+      grad.addColorStop(1, base)
       ctx.fillStyle = grad
       ctx.fillRect(0, 0, SIZE, SIZE)
     }
@@ -916,9 +918,10 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
       if (img) {
         drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
       } else {
+        const base = brandPaper(brandStyle, '#cbd5e1')
         const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
-        grad.addColorStop(0, '#e2e8f0')
-        grad.addColorStop(1, '#cbd5e1')
+        grad.addColorStop(0, shadeHex(base, 0.06))
+        grad.addColorStop(1, shadeHex(base, -0.08))
         ctx.fillStyle = grad
         ctx.fillRect(0, 0, SIZE, SIZE)
       }

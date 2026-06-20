@@ -37,3 +37,24 @@ export function brandSwatches(workspace) {
 // White + black are the two most-used text colors; append them after the brand
 // chips so a picker row always offers them without polluting the brand list.
 export const NEUTRAL_SWATCHES = ['#FFFFFF', '#000000']
+
+// Relative luminance of a #rrggbb hex (0 = black … 1 = white), or null if invalid.
+function hexLum(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '')
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255
+}
+
+// The workspace's darkest / lightest brand color — the SAME derivation the
+// renderer uses for template grounds (overlayTemplates.js brandInk/brandPaper),
+// so the rail thumbnail diagrams match what actually renders. Falls back to the
+// supplied default when the workspace has no brand palette.
+export function brandInk(workspace, fallback = '#0c1a2e') {
+  const cols = brandSwatches(workspace)
+  return cols.length ? cols.reduce((a, b) => (hexLum(b) < hexLum(a) ? b : a)) : fallback
+}
+export function brandPaper(workspace, fallback = '#f0ede6') {
+  const cols = brandSwatches(workspace)
+  return cols.length ? cols.reduce((a, b) => (hexLum(b) > hexLum(a) ? b : a)) : fallback
+}

@@ -19,7 +19,7 @@ import {
 } from '@/lib/photoTemplates'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
-import { brandSwatches, NEUTRAL_SWATCHES } from '@/lib/brandSwatches'
+import { brandSwatches, NEUTRAL_SWATCHES, brandInk, brandPaper } from '@/lib/brandSwatches'
 
 // Resolve the brand accent the SAME way the canvas renderer does
 // (brandAccent() in overlayTemplates.js reads brand_style.accent_color), so a
@@ -119,11 +119,12 @@ function emptyThemeConfig() {
 // user can distinguish the 6 families at a glance. Custom templates fall back
 // to the CSS swatch below.
 
+// Fallback ground colors for workspaces with no Brand Kit palette (the thumbnail
+// otherwise derives ink/paper from the brand, matching the real renderer).
 const NAVY_T  = '#0c1a2e'
-const SAGE_T  = '#83957c'
 const PAPER_T = '#f0ede6'
 
-function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) {
+function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580', ink = NAVY_T, paper = PAPER_T }) {
   const dim = size === 'sm' ? { w: 48, h: 60 } : { w: 96, h: 120 }
   const { w, h } = dim
   const p = Math.round(w * 0.10)        // padding
@@ -142,9 +143,9 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
   const isDark = templateId?.startsWith('dark')
 
   if (layout === 'claim') {
-    const bg    = isDark ? NAVY_T : PAPER_T
-    const ink   = isDark ? '#ffffff' : NAVY_T
-    const label = isDark ? 'rgba(255,255,255,0.55)' : SAGE_T
+    const bg    = isDark ? ink : paper
+    const textC = isDark ? '#ffffff' : ink
+    const label = isDark ? 'rgba(255,255,255,0.55)' : brandAccent
     const textY = Math.round(h * 0.35)
     return (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ borderRadius: 6, flexShrink: 0, display: 'block' }}>
@@ -153,7 +154,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
         {/* label stub */}
         <rect x={p + ruleW + 4} y={ruleY} width={Math.round(w * 0.22)} height={ruleH} rx={1} fill={label} />
         {/* headline stubs */}
-        {textLines(p, textY, w - p * 2, Math.round(h * 0.065), Math.round(h * 0.020), ink, 3)}
+        {textLines(p, textY, w - p * 2, Math.round(h * 0.065), Math.round(h * 0.020), textC, 3)}
         {/* CTA pill */}
         <rect x={p} y={h - p - Math.round(h * 0.11)} width={Math.round(w * 0.45)} height={Math.round(h * 0.09)} rx={999} fill={brandAccent} opacity={0.9} />
       </svg>
@@ -162,8 +163,8 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
 
   if (layout === 'split') {
     const photoH  = Math.round(h * 0.67)
-    const panelBg = isDark ? NAVY_T : SAGE_T
-    const panelInk = isDark ? '#ffffff' : NAVY_T
+    const panelBg = isDark ? ink : paper
+    const panelInk = isDark ? '#ffffff' : ink
     const photoBg = isDark ? '#3a4a62' : '#8fa4b8'
     const textY = photoH + Math.round(h * 0.075)
     return (
@@ -187,8 +188,8 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
 
   // badge
   const photoH  = isDark ? h : Math.round(h * 0.56)
-  const panelBg = isDark ? 'transparent' : '#ffffff'
-  const ink      = isDark ? '#ffffff' : NAVY_T
+  const panelBg = isDark ? 'transparent' : paper
+  const textC    = isDark ? '#ffffff' : ink
   const photoBg  = isDark ? '#3a4a62' : '#8fa4b8'
   const badgeR   = Math.round(w * 0.12)
   const badgeCx  = w - p - badgeR
@@ -201,7 +202,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
       <rect width={w} height={photoH} fill={photoBg} />
       {isDark && (
         <>
-          <defs><linearGradient id={`bg-${templateId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stopColor={NAVY_T} stopOpacity="0"/><stop offset="1" stopColor={NAVY_T} stopOpacity="0.85"/></linearGradient></defs>
+          <defs><linearGradient id={`bg-${templateId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stopColor={ink} stopOpacity="0"/><stop offset="1" stopColor={ink} stopOpacity="0.85"/></linearGradient></defs>
           <rect width={w} height={h} fill={`url(#bg-${templateId})`} />
         </>
       )}
@@ -213,7 +214,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580' }) 
       {/* rule */}
       <rect x={p} y={isDark ? textY - Math.round(h * 0.065) : photoH + Math.round(h * 0.022)} width={ruleW} height={ruleH} rx={1} fill={brandAccent} />
       {/* headline stubs */}
-      {textLines(p, textY, w - p * 2 - badgeR * 2 - 4, Math.round(h * 0.065), Math.round(h * 0.018), ink, 2)}
+      {textLines(p, textY, w - p * 2 - badgeR * 2 - 4, Math.round(h * 0.065), Math.round(h * 0.018), textC, 2)}
       {/* CTA pill */}
       <rect x={p} y={h - p - Math.round(h * 0.10)} width={Math.round(w * 0.40)} height={Math.round(h * 0.08)} rx={999} fill={brandAccent} opacity={0.85} />
     </svg>
@@ -275,9 +276,11 @@ function CustomThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
 
 // Dispatcher: built-ins get the SVG layout diagram; custom get the CSS swatch.
 function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
+  const workspace = useWorkspace()
   const id = theme?.id
   if (id && BUILTIN_THEME_IDS.includes(id)) {
-    return <WhoopLayoutThumb templateId={id} size={size} brandAccent={brandAccent} />
+    return <WhoopLayoutThumb templateId={id} size={size} brandAccent={brandAccent}
+      ink={brandInk(workspace, NAVY_T)} paper={brandPaper(workspace, PAPER_T)} />
   }
   return <CustomThemePreview theme={normalizeTheme(theme)} size={size} brandAccent={brandAccent} />
 }
