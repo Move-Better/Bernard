@@ -1114,6 +1114,21 @@ export function useGenerateBrandTemplates() {
   })
 }
 
+// "Design with AI": conversational template designer. Each turn sends the
+// conversation + current draft config; returns { name, config, reply, summary }.
+// Does NOT persist — the client saves the draft via useCreatePhotoTemplate when
+// the user clicks "Save as template".
+export function useDesignTemplateChat() {
+  return useAppMutation({
+    errorMessage: "Couldn't reach the designer",
+    mutationFn: ({ messages, currentConfig }) =>
+      apiFetch('/api/photo-templates/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages, currentConfig: currentConfig ?? null }),
+      }),
+  })
+}
+
 // Back-compat aliases — remove after all callers are updated
 export const useCarouselThemes       = usePhotoTemplates
 export const useCreateCarouselTheme  = useCreatePhotoTemplate

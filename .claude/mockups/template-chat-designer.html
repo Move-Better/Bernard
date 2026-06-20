@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bernard — Chat Template Designer (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* Bernard real HSL design tokens (src/index.css) so this looks like the app */
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%; --secondary-foreground:222 47% 12%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --border:214 32% 91%; --input:214 32% 91%; --ring:160 84% 39%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+  }
+  body{ background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .text-muted{ color:hsl(var(--muted-foreground)); }
+  .bg-card{ background:hsl(var(--card)); }
+  .border-app{ border-color:hsl(var(--border)); }
+  .text-primary{ color:hsl(var(--primary)); }
+  .bg-primary{ background:hsl(var(--primary)); }
+  .ring-primary{ box-shadow:0 0 0 2px hsl(var(--primary)); }
+  .text-2xs{ font-size:11px; line-height:1.3; }
+  .text-3xs{ font-size:10px; line-height:1.3; }
+  /* slide preview is rendered with a real font stack approximating Titillium */
+  .slidefont{ font-family:"Titillium Web",ui-sans-serif,system-ui,sans-serif; }
+  .legend{ border:1px dashed hsl(var(--action)); background:hsl(var(--action)/0.06); }
+  .chip{ transition:all .12s; }
+  .chip:hover{ background:hsl(var(--muted)); }
+  .msg-enter{ animation:fade .25s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+  .thinking span{ animation:blink 1s infinite; }
+  .thinking span:nth-child(2){ animation-delay:.2s; }
+  .thinking span:nth-child(3){ animation-delay:.4s; }
+  @keyframes blink{ 0%,60%,100%{opacity:.25;} 30%{opacity:1;} }
+</style>
+</head>
+<body class="min-h-screen">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+<div class="max-w-[1180px] mx-auto px-6 py-6">
+
+  <!-- Page header (matches PhotoTemplates.jsx) -->
+  <div class="mb-4">
+    <h1 class="text-xl font-bold">Photo Templates</h1>
+    <p class="mt-1 text-sm text-muted">Built-in layouts plus your own. <span class="text-primary font-semibold">New:</span> design a custom template by chatting with an AI designer — describe what you want, then refine by conversation.</p>
+  </div>
+
+  <!-- Mode toggle: existing form editor vs the new chat designer -->
+  <div class="inline-flex rounded-lg border border-app overflow-hidden mb-4 text-sm">
+    <button class="px-3 py-1.5 font-semibold text-muted">Browse &amp; edit</button>
+    <button class="px-3 py-1.5 font-semibold bg-primary text-white flex items-center gap-1.5">
+      <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Design with AI
+    </button>
+  </div>
+
+  <!-- ── The chat designer panel ────────────────────────────────────── -->
+  <div class="rounded-xl border border-app bg-card overflow-hidden grid" style="grid-template-columns: 420px 1fr;">
+
+    <!-- LEFT: chat column -->
+    <div class="border-r border-app flex flex-col" style="height:640px;">
+
+      <!-- Seed row: start from scratch OR an existing template -->
+      <div id="seedRow" class="p-3 border-b border-app">
+        <div class="text-2xs font-medium text-muted mb-1.5">Start from</div>
+        <div class="flex items-center gap-2">
+          <button id="seedScratch" class="chip flex-1 rounded-lg border border-primary bg-primary/5 px-3 py-2 text-xs font-semibold text-primary text-left">
+            Scratch — describe it and I'll design it
+          </button>
+          <div class="relative">
+            <button id="seedTplBtn" class="chip rounded-lg border border-app px-3 py-2 text-xs font-semibold text-left flex items-center gap-1.5">
+              <span id="seedTplLabel">A template ▾</span>
+            </button>
+            <div id="seedTplMenu" class="hidden absolute right-0 mt-1 w-44 rounded-lg border border-app bg-card shadow-lg z-10 p-1">
+              <button data-tpl="dark-claim"  class="chip block w-full text-left rounded px-2 py-1.5 text-xs">Dark Claim</button>
+              <button data-tpl="light-claim" class="chip block w-full text-left rounded px-2 py-1.5 text-xs">Light Claim</button>
+              <button data-tpl="dark-split"  class="chip block w-full text-left rounded px-2 py-1.5 text-xs">Dark Split</button>
+              <button data-tpl="dark-badge"  class="chip block w-full text-left rounded px-2 py-1.5 text-xs">Dark Badge</button>
+              <button data-tpl="photo-dark"  class="chip block w-full text-left rounded px-2 py-1.5 text-xs">Full Photo</button>
+            </div>
+          </div>
+        </div>
+        <div class="legend mt-2 rounded px-2 py-1 text-3xs text-muted">What changed: the conversation seeds blank, or from a chosen template you want to refine.</div>
+      </div>
+
+      <!-- Transcript -->
+      <div id="transcript" class="flex-1 overflow-y-auto p-3 space-y-3">
+        <div class="text-center text-2xs text-muted py-8">
+          <i data-lucide="message-square-text" class="w-5 h-5 mx-auto mb-2 opacity-50"></i>
+          Tell me the look you want — e.g.<br><span class="italic">"bold dark template, big headline, my orange accent"</span>
+        </div>
+      </div>
+
+      <!-- Suggestion chips + input -->
+      <div class="border-t border-app p-3 space-y-2">
+        <div id="suggestions" class="flex flex-wrap gap-1.5">
+          <button class="suggestion chip rounded-full border border-app px-2.5 py-1 text-3xs font-medium">make the headline bigger</button>
+          <button class="suggestion chip rounded-full border border-app px-2.5 py-1 text-3xs font-medium">make the orange line thicker</button>
+          <button class="suggestion chip rounded-full border border-app px-2.5 py-1 text-3xs font-medium">give me a squiggly line</button>
+          <button class="suggestion chip rounded-full border border-app px-2.5 py-1 text-3xs font-medium">add a bottom gradient from orange to black</button>
+          <button class="suggestion chip rounded-full border border-app px-2.5 py-1 text-3xs font-medium">try it on a light background</button>
+          <button class="suggestion chip rounded-full border border-app px-2.5 py-1 text-3xs font-medium">use my sage instead of orange</button>
+        </div>
+        <div class="flex items-end gap-2">
+          <textarea id="input" rows="1" placeholder="Describe a change…" class="flex-1 resize-none rounded-lg border border-app bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
+          <button id="send" class="shrink-0 rounded-lg bg-primary text-white px-3 py-2 text-sm font-semibold flex items-center gap-1">
+            <i data-lucide="arrow-up" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: live preview + save -->
+    <div class="flex flex-col p-4" style="height:640px;">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <div id="draftName" class="text-sm font-bold">Untitled draft</div>
+          <div class="text-2xs text-muted">Live preview · same renderer that publishes (WYSIWYG)</div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="saveCopy" class="rounded-lg border border-app px-2.5 py-1.5 text-xs font-semibold text-muted chip">Save a copy</button>
+          <button id="saveTpl" class="rounded-lg bg-primary text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i> Save as template
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 flex gap-3 min-h-0">
+        <!-- format picker -->
+        <div class="shrink-0 flex flex-col gap-1">
+          <div class="text-3xs font-medium text-muted text-center mb-0.5">Format</div>
+          <button data-fmt="square"    class="fmt w-10 rounded py-1.5 text-3xs font-semibold bg-primary text-white">1:1</button>
+          <button data-fmt="portrait"  class="fmt w-10 rounded py-1.5 text-3xs font-semibold text-muted chip">4:5</button>
+          <button data-fmt="story"     class="fmt w-10 rounded py-1.5 text-3xs font-semibold text-muted chip">9:16</button>
+        </div>
+
+        <!-- canvas -->
+        <div class="flex-1 min-w-0 flex flex-col items-center gap-3 justify-center">
+          <div id="canvasBox" class="rounded-lg shadow-sm overflow-hidden mx-auto flex items-center justify-center" style="background:#111; width:100%; max-width:380px; aspect-ratio:1/1;">
+            <!-- slide is ALWAYS the 1080×1080 square; the box letterboxes it (mirrors PhotoTemplates.jsx) -->
+            <div id="slide" class="slidefont relative overflow-hidden w-full" style="aspect-ratio:1/1;"></div>
+          </div>
+
+          <!-- photo picker -->
+          <div class="flex items-center justify-center gap-1.5">
+            <button data-photo="-1" class="photo h-8 w-8 rounded-md border-2 border-transparent overflow-hidden" style="background:linear-gradient(135deg,#475569,#1e293b);" title="No photo"></button>
+            <button data-photo="0" class="photo h-8 w-8 rounded-md border-2 border-primary overflow-hidden" title="Photo 1"><img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=60" class="w-full h-full object-cover"></button>
+            <button data-photo="1" class="photo h-8 w-8 rounded-md border-2 border-transparent overflow-hidden" title="Photo 2"><img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=200&q=60" class="w-full h-full object-cover"></button>
+          </div>
+
+          <!-- slide type -->
+          <div class="inline-flex rounded-lg border border-app overflow-hidden text-xs">
+            <button data-slide="cover"     class="slidekey px-3 py-1.5 font-semibold bg-primary text-white border-r border-app">Cover</button>
+            <button data-slide="explainer" class="slidekey px-3 py-1.5 font-semibold text-muted border-r border-app chip">Explainer</button>
+            <button data-slide="cta"       class="slidekey px-3 py-1.5 font-semibold text-muted chip">CTA</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend mt-2 rounded px-2 py-1.5 text-3xs text-muted">
+        <span class="font-semibold">What changed here:</span> the AI emits a full validated config each turn (Zod-bounded → always renders); this canvas is the real <code>renderFreeformSlide</code> path, so preview == publish. Colors are sanitized to your Brand Kit palette — the model can't invent off-brand hues.
+      </div>
+    </div>
+  </div>
+
+  <p class="text-2xs text-muted mt-3">Mockup · movebetter Brand Kit (accent #E36525, ink #000, paper #FFF, sage #83957C). Click the suggestion chips or type anything to advance the scripted conversation.</p>
+</div>
+
+<script>
+// ── Brand palette (movebetter, pulled live) ──────────────────────────
+const BRAND = { accent:'#E36525', ink:'#0c0c0c', paper:'#FFFFFF', sage:'#83957C', grey:'#6E7072' };
+const PHOTOS = [
+  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&q=70',
+  'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=900&q=70',
+];
+
+// ── Draft config (mirrors {layout, palette, blocks}) — mockup uses a
+//    simplified block set the CSS renderer understands ─────────────────
+let draft = {
+  name: 'Untitled draft',
+  layout: 'photo',       // photo | claim | badge | split
+  palette: 'dark',
+  hookSize: 'xl',        // sm|base|lg|xl|2xl|3xl
+  hookColor: '#FFFFFF',
+  accent: BRAND.accent,  // cta + rule color
+  textPos: 'bottom',     // bottom | center
+  ground: BRAND.ink,
+  // ── graphic primitives (the proposed schema extension) ──
+  rule: { show:true, thickness:3, lengthPct:18, style:'solid' }, // style: solid | wave
+  bottomGradient: { show:false, from:'#E36525', to:'#000000' },
+};
+let state = { fmt:'square', photo:0, slide:'cover', started:false };
+
+const SIZEPX = { sm:18, base:22, lg:28, xl:34, '2xl':40, '3xl':48 };
+
+const SLIDES = {
+  cover:     { page:'Mobility', hook:'Why your hips lie', body:'', cta:'', attr:'Move Better' },
+  explainer: { page:'2 / 6', hook:'Train the hip', body:'The hips drive the whole chain — load them right and the complaints get quiet.', cta:'', attr:'' },
+  cta:       { page:'', hook:'Ready when you are', body:'Book a movement assessment and we’ll map the real driver.', cta:'Book now →', attr:'' },
+};
+
+// ── Render the slide via DOM (approximates renderFreeformSlide) ───────
+function render(){
+  const s = SLIDES[state.slide];
+  const el = document.getElementById('slide');
+  const photoUrl = state.photo >= 0 ? PHOTOS[state.photo] : null;
+  const isDark = draft.palette === 'dark';
+  const hookPx = SIZEPX[draft.hookSize];
+  const groundCol = draft.ground;
+
+  // base layers
+  let bg = '', scrim = '', panel = '', pad = '24px', justify = draft.textPos === 'center' ? 'center' : 'flex-end';
+  let textColor = draft.hookColor;
+  let bodyColor = isDark ? 'rgba(255,255,255,.82)' : 'rgba(0,0,0,.66)';
+  let pageColor = isDark ? 'rgba(255,255,255,.8)' : BRAND.sage;
+
+  if (draft.layout === 'claim'){
+    bg = `background:${groundCol};`;
+    textColor = isDark ? (draft.hookColor === '#FFFFFF' ? '#FFFFFF' : draft.hookColor) : '#0c0c0c';
+    bodyColor = isDark ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,.6)';
+    justify = 'center';
+  } else if (draft.layout === 'split'){
+    bg = `background:${isDark ? '#33373c' : '#cfd2d6'};`;
+    panel = `<div style="position:absolute;left:0;right:0;bottom:0;height:54%;background:${groundCol};"></div>`;
+    justify = 'flex-end';
+    textColor = isDark ? '#FFFFFF' : '#0c0c0c';
+    bodyColor = isDark ? 'rgba(255,255,255,.75)' : 'rgba(0,0,0,.6)';
+  } else { // photo & badge — photo full-bleed
+    bg = photoUrl ? `background:#222 url('${photoUrl}') center/cover;` : `background:linear-gradient(135deg,#475569,#1e293b);`;
+    scrim = draft.textPos === 'center'
+      ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);"></div>`
+      : `<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 40%,rgba(0,0,0,.72));"></div>`;
+  }
+
+  // ── Rule (accent line) — configurable thickness, length, solid|wave ──
+  let ruleEl = '';
+  if (draft.rule.show){
+    const len = Math.round(380 * (draft.rule.lengthPct/100)); // px on the ~380 preview
+    const th = draft.rule.thickness;
+    if (draft.rule.style === 'wave'){
+      const w = Math.max(len, 60), h = th*4 + 6, amp = th*2, mid = h/2;
+      // a squiggle path
+      let d = `M0 ${mid}`;
+      const segs = Math.max(3, Math.round(w/22));
+      for (let i=0;i<segs;i++){ const x0=(w/segs)*i, x1=(w/segs)*(i+1); const cx=(x0+x1)/2; d+=` Q ${cx} ${i%2? mid+amp: mid-amp} ${x1} ${mid}`; }
+      ruleEl = `<svg width="${w}" height="${h}" style="display:block;margin-bottom:8px;overflow:visible;"><path d="${d}" fill="none" stroke="${draft.accent}" stroke-width="${th}" stroke-linecap="round"/></svg>`;
+    } else {
+      ruleEl = `<div style="width:${len}px;height:${th}px;border-radius:${th}px;background:${draft.accent};margin-bottom:8px;"></div>`;
+    }
+  }
+  // ── Bottom gradient overlay (from→to, fades up from the bottom) ──
+  const gradEl = draft.bottomGradient.show
+    ? `<div style="position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(to top, ${draft.bottomGradient.to} 0%, ${draft.bottomGradient.from}cc 38%, transparent 100%);"></div>`
+    : '';
+  const badgeEl = draft.layout === 'badge'
+    ? `<div style="position:absolute;top:18px;right:18px;width:54px;height:54px;border-radius:50%;border:4px solid ${draft.accent};opacity:.95;"></div>` : '';
+
+  const pageEl = s.page ? `<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${pageColor};position:absolute;top:20px;left:24px;">${s.page}</div>` : '';
+  const hookEl = `<div style="font-size:${hookPx}px;font-weight:900;line-height:1.08;color:${textColor};text-shadow:${(draft.layout==='photo'||draft.layout==='badge')?'0 2px 8px rgba(0,0,0,.5)':'none'};">${s.hook}</div>`;
+  const bodyEl = s.body ? `<div style="font-size:14px;font-weight:500;line-height:1.35;margin-top:8px;color:${bodyColor};max-width:84%;">${s.body}</div>` : '';
+  const ctaEl  = s.cta ? `<div style="margin-top:14px;"><span style="display:inline-block;background:${draft.accent};color:#fff;font-weight:700;font-size:13px;padding:7px 16px;border-radius:999px;">${s.cta}</span></div>` : '';
+  const attrEl = s.attr ? `<div style="font-size:11px;font-weight:600;color:${isDark?'rgba(255,255,255,.85)':'#0c0c0c'};position:absolute;bottom:18px;left:24px;">${s.attr}</div>` : '';
+
+  el.innerHTML = `
+    <div style="position:absolute;inset:0;${bg}"></div>
+    ${panel}
+    ${scrim}
+    ${gradEl}
+    ${badgeEl}
+    ${pageEl}
+    <div style="position:absolute;inset:0;padding:${pad};padding-bottom:${s.attr?'46px':pad};display:flex;flex-direction:column;justify-content:${justify};align-items:flex-start;">
+      ${ruleEl}${hookEl}${bodyEl}${ctaEl}
+    </div>
+    ${attrEl}
+  `;
+  document.getElementById('draftName').textContent = draft.name;
+}
+
+// ── Scripted "AI" interpreter: map a request → config mutation + reply ─
+function interpret(text){
+  const t = text.toLowerCase();
+  let reply, changed;
+  if (!state.started){
+    // first turn: produce an initial design from the description
+    state.started = true;
+    if (t.includes('light')) { draft.palette='light'; draft.ground=BRAND.paper; draft.hookColor='#0c0c0c'; }
+    else { draft.palette='dark'; draft.ground=BRAND.ink; draft.hookColor='#FFFFFF'; }
+    if (t.includes('claim')||t.includes('card')||t.includes('no photo')) draft.layout='claim';
+    else if (t.includes('split')||t.includes('panel')) draft.layout='split';
+    else if (t.includes('badge')) draft.layout='badge';
+    else draft.layout='photo';
+    if (t.includes('big')||t.includes('bold')) draft.hookSize='2xl';
+    draft.name = 'Bold ' + (draft.palette==='dark'?'Dark':'Light') + ' ' + (draft.layout.charAt(0).toUpperCase()+draft.layout.slice(1));
+    reply = `Here's a ${draft.palette} ${draft.layout} template with a big headline and your orange accent (#E36525). The card ground is your brand ${draft.palette==='dark'?'black':'white'}. What should I change?`;
+    changed = `${draft.layout} layout · ${draft.palette} palette · headline ${draft.hookSize} · accent #E36525`;
+    return { reply, changed };
+  }
+  // ── graphic primitives (visual thought) ──
+  if ((t.includes('line')||t.includes('rule')) && (t.includes('wid')||t.includes('thick')||t.includes('bold')||t.includes('big'))){
+    draft.rule.show=true; draft.rule.thickness=Math.min(14, draft.rule.thickness+3);
+    reply=`Made the accent line thicker (${draft.rule.thickness}px). Bolder.`; changed=`rule thickness → ${draft.rule.thickness}px`; return {reply,changed}; }
+  if ((t.includes('line')||t.includes('rule')) && (t.includes('long')||t.includes('wider across')||t.includes('full'))){
+    draft.rule.show=true; draft.rule.lengthPct=Math.min(100, draft.rule.lengthPct+22);
+    reply=`Lengthened the accent line to ${draft.rule.lengthPct}% width.`; changed=`rule length → ${draft.rule.lengthPct}%`; return {reply,changed}; }
+  if (t.includes('squiggl')||t.includes('wavy')||t.includes('wave')||t.includes('squiggle')){
+    draft.rule.show=true; draft.rule.style='wave'; if(draft.rule.lengthPct<30)draft.rule.lengthPct=40;
+    reply=`Turned the accent line into a squiggle in your orange. Playful.`; changed=`rule style → wave (squiggle)`; return {reply,changed}; }
+  if (t.includes('straight')&&t.includes('line')){ draft.rule.style='solid'; reply=`Back to a straight line.`; changed=`rule style → solid`; return {reply,changed}; }
+  if (t.includes('gradient')){
+    draft.bottomGradient.show=true;
+    // crude color parse for the demo
+    if (t.includes('black')) draft.bottomGradient.to='#000000';
+    if (t.includes('white')) draft.bottomGradient.to='#FFFFFF';
+    if (t.includes('orange')) draft.bottomGradient.from=BRAND.accent;
+    if (t.includes('sage')) draft.bottomGradient.from=BRAND.sage;
+    reply=`Added a bottom gradient from ${draft.bottomGradient.from} fading up into ${draft.bottomGradient.to}. Grounds the text.`;
+    changed=`bottom gradient → ${draft.bottomGradient.from} → ${draft.bottomGradient.to}`; return {reply,changed}; }
+  if (t.includes('remove')&&t.includes('gradient')){ draft.bottomGradient.show=false; reply=`Removed the bottom gradient.`; changed=`bottom gradient → off`; return {reply,changed}; }
+  if ((t.includes('remove')||t.includes('no ')||t.includes('hide'))&&(t.includes('line')||t.includes('rule'))){ draft.rule.show=false; reply=`Hid the accent line.`; changed=`rule → hidden`; return {reply,changed}; }
+
+  if (t.includes('big')){ draft.hookSize = draft.hookSize==='3xl'?'3xl':(['lg','xl','2xl','3xl'][Math.min(3,['lg','xl','2xl','3xl'].indexOf(draft.hookSize)+1>0?['lg','xl','2xl','3xl'].indexOf(draft.hookSize)+1:2)]); draft.hookSize = draft.hookSize==='lg'?'2xl':draft.hookSize; if(draft.hookSize==='lg')draft.hookSize='2xl'; const order=['base','lg','xl','2xl','3xl']; const i=order.indexOf(draft.hookSize); draft.hookSize=order[Math.min(order.length-1,(i<0?2:i)+1)];
+    reply = `Bumped the headline up to ${draft.hookSize}. Bigger and louder.`; changed = `headline → ${draft.hookSize}`; }
+  else if (t.includes('smaller')){ const order=['base','lg','xl','2xl','3xl']; const i=order.indexOf(draft.hookSize); draft.hookSize=order[Math.max(0,(i<0?2:i)-1)]; reply=`Dialed the headline down to ${draft.hookSize}.`; changed=`headline → ${draft.hookSize}`; }
+  else if (t.includes('light')){ draft.palette='light'; draft.ground=BRAND.paper; draft.hookColor='#0c0c0c'; if(draft.layout==='photo')draft.layout='claim'; reply=`Switched to a light background — your brand white ground with dark text for contrast.`; changed=`palette → light · ground brand white`; }
+  else if (t.includes('dark')){ draft.palette='dark'; draft.ground=BRAND.ink; draft.hookColor='#FFFFFF'; reply=`Back to a dark template on your brand black.`; changed=`palette → dark · ground brand black`; }
+  else if (t.includes('bottom')){ draft.textPos='bottom'; reply=`Anchored the headline to the bottom of the frame.`; changed=`text position → bottom`; }
+  else if (t.includes('center')||t.includes('centre')||t.includes('middle')){ draft.textPos='center'; reply=`Centered the text block.`; changed=`text position → center`; }
+  else if (t.includes('sage')){ draft.accent=BRAND.sage; reply=`Swapped the accent to your sage (#83957C) — rule + CTA pill now sage.`; changed=`accent → #83957C (sage)`; }
+  else if (t.includes('orange')||t.includes('accent')){ draft.accent=BRAND.accent; reply=`Accent back to your orange (#E36525).`; changed=`accent → #E36525 (orange)`; }
+  else if (t.includes('split')||t.includes('panel')){ draft.layout='split'; reply=`Made it a split layout — photo on top, a solid ${draft.palette==='dark'?'black':'white'} panel below carrying the headline.`; changed=`layout → split`; }
+  else if (t.includes('claim')||t.includes('card')||t.includes('no photo')){ draft.layout='claim'; reply=`Turned it into a full-bleed claim card — works with or without a photo.`; changed=`layout → claim`; }
+  else if (t.includes('badge')){ draft.layout='badge'; reply=`Added a badge ring up top with the headline anchored at the bottom.`; changed=`layout → badge`; }
+  else if (t.includes('photo')||t.includes('full')){ draft.layout='photo'; reply=`Full-bleed photo with the text overlaid.`; changed=`layout → photo`; }
+  else { reply=`Tweaked the design toward "${text}". (In the real build, the model emits a full validated config and I'd describe exactly what shifted.)`; changed=`refined per request`; }
+  return { reply, changed };
+}
+
+// ── Transcript helpers ───────────────────────────────────────────────
+const transcript = document.getElementById('transcript');
+function clearPlaceholder(){ if(transcript.querySelector('.text-center')) transcript.innerHTML=''; }
+function addUser(text){
+  clearPlaceholder();
+  const d=document.createElement('div'); d.className='msg-enter flex justify-end';
+  d.innerHTML=`<div class="max-w-[80%] rounded-2xl rounded-br-sm bg-primary text-white px-3 py-2 text-sm">${text}</div>`;
+  transcript.appendChild(d); transcript.scrollTop=transcript.scrollHeight;
+}
+function addThinking(){
+  const d=document.createElement('div'); d.id='thinking'; d.className='flex justify-start';
+  d.innerHTML=`<div class="rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm thinking" style="background:hsl(var(--muted));"><span>●</span><span>●</span><span>●</span></div>`;
+  transcript.appendChild(d); transcript.scrollTop=transcript.scrollHeight;
+}
+function addAssistant(reply, changed){
+  const d=document.createElement('div'); d.className='msg-enter flex justify-start';
+  d.innerHTML=`<div class="max-w-[85%] rounded-2xl rounded-bl-sm border border-app bg-card px-3 py-2 text-sm">
+    <div>${reply}</div>
+    <div class="mt-1.5 flex items-center gap-1.5 text-3xs font-semibold text-primary"><i data-lucide="git-commit-horizontal" class="w-3 h-3"></i> ${changed}</div>
+  </div>`;
+  transcript.appendChild(d); transcript.scrollTop=transcript.scrollHeight;
+  lucide.createIcons();
+}
+function send(text){
+  if(!text.trim()) return;
+  addUser(text); addThinking();
+  setTimeout(()=>{
+    document.getElementById('thinking')?.remove();
+    const { reply, changed } = interpret(text);
+    addAssistant(reply, changed);
+    render();
+  }, 520);
+}
+
+// ── Wiring ───────────────────────────────────────────────────────────
+document.getElementById('send').addEventListener('click',()=>{ const i=document.getElementById('input'); send(i.value); i.value=''; });
+document.getElementById('input').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); document.getElementById('send').click(); }});
+document.querySelectorAll('.suggestion').forEach(b=> b.addEventListener('click',()=> send(b.textContent.trim())));
+
+document.querySelectorAll('.fmt').forEach(b=> b.addEventListener('click',()=>{
+  state.fmt=b.dataset.fmt;
+  document.querySelectorAll('.fmt').forEach(x=>{ x.className=x.className.replace('bg-primary text-white','text-muted chip'); });
+  b.className=b.className.replace('text-muted chip','bg-primary text-white');
+  const box=document.getElementById('canvasBox');
+  // Box takes the platform ratio; the square slide stays square and letterboxes
+  // inside it (top/bottom bars for tall formats) — exactly like the real page.
+  const ratio = state.fmt==='square'?'1 / 1':state.fmt==='portrait'?'4 / 5':'9 / 16';
+  const maxW = state.fmt==='story'? '300px': state.fmt==='portrait'?'330px':'380px';
+  box.style.aspectRatio=ratio; box.style.maxWidth=maxW;
+  // slide stays square (w-full aspect-square) — do NOT change its ratio
+}));
+document.querySelectorAll('.photo').forEach(b=> b.addEventListener('click',()=>{
+  state.photo=parseInt(b.dataset.photo);
+  document.querySelectorAll('.photo').forEach(x=> x.classList.replace('border-primary','border-transparent'));
+  b.classList.replace('border-transparent','border-primary'); render();
+}));
+document.querySelectorAll('.slidekey').forEach(b=> b.addEventListener('click',()=>{
+  state.slide=b.dataset.slide;
+  document.querySelectorAll('.slidekey').forEach(x=>{ x.className=x.className.replace('bg-primary text-white','text-muted chip'); });
+  b.className=b.className.replace('text-muted chip','bg-primary text-white'); render();
+}));
+
+// seed buttons
+document.getElementById('seedScratch').addEventListener('click',()=>{ document.getElementById('input').focus(); });
+document.getElementById('seedTplBtn').addEventListener('click',()=> document.getElementById('seedTplMenu').classList.toggle('hidden'));
+document.querySelectorAll('[data-tpl]').forEach(b=> b.addEventListener('click',()=>{
+  const map={ 'dark-claim':{layout:'claim',palette:'dark',ground:BRAND.ink,hookColor:'#FFFFFF',name:'Dark Claim (copy)'},
+              'light-claim':{layout:'claim',palette:'light',ground:BRAND.paper,hookColor:'#0c0c0c',name:'Light Claim (copy)'},
+              'dark-split':{layout:'split',palette:'dark',ground:BRAND.ink,hookColor:'#FFFFFF',name:'Dark Split (copy)'},
+              'dark-badge':{layout:'badge',palette:'dark',ground:BRAND.ink,hookColor:'#FFFFFF',name:'Dark Badge (copy)'},
+              'photo-dark':{layout:'photo',palette:'dark',ground:BRAND.ink,hookColor:'#FFFFFF',name:'Full Photo (copy)'} };
+  Object.assign(draft, map[b.dataset.tpl]); state.started=true;
+  document.getElementById('seedTplLabel').textContent = b.textContent + ' ▾';
+  document.getElementById('seedTplMenu').classList.add('hidden');
+  clearPlaceholder();
+  addAssistant(`Loaded ${b.textContent} as your starting point. Tell me what to change and I'll refine it.`, `seeded from ${b.dataset.tpl}`);
+  render();
+}));
+
+document.getElementById('saveTpl').addEventListener('click',()=>{ alert('Mockup: would POST one row to workspace_photo_templates with this {layout,palette,blocks} config and add it to your template rail.'); });
+document.getElementById('saveCopy').addEventListener('click',()=>{ alert('Mockup: snapshots the current draft as a copy so you can keep iterating without losing this version.'); });
+
+render();
+lucide.createIcons();
+</script>
+</body>
+</html>
