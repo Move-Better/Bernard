@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Photo experience redesign (U2.1)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
+        colors: {
+          background: 'hsl(var(--background) / <alpha-value>)',
+          foreground: 'hsl(var(--foreground) / <alpha-value>)',
+          card: 'hsl(var(--card) / <alpha-value>)',
+          primary: { DEFAULT: 'hsl(var(--primary) / <alpha-value>)', foreground: 'hsl(var(--primary-foreground) / <alpha-value>)' },
+          muted: { DEFAULT: 'hsl(var(--muted) / <alpha-value>)', foreground: 'hsl(var(--muted-foreground) / <alpha-value>)' },
+          accent: 'hsl(var(--accent) / <alpha-value>)',
+          border: 'hsl(var(--border) / <alpha-value>)',
+          action: { DEFAULT: 'hsl(var(--action) / <alpha-value>)', foreground: 'hsl(var(--action-foreground) / <alpha-value>)' },
+          info: 'hsl(var(--info) / <alpha-value>)',
+          success: 'hsl(var(--success) / <alpha-value>)',
+          destructive: 'hsl(var(--destructive) / <alpha-value>)',
+        },
+      },
+    },
+  }
+</script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --border:214 32% 91%; --ring:160 84% 39%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+    --info:199 95% 40%; --success:152 76% 40%; --destructive:0 84% 60%;
+  }
+  body{ font-family:Inter,system-ui,sans-serif; background:hsl(var(--background)); color:hsl(var(--foreground)); }
+  .text-3xs{ font-size:10px; line-height:1.3; }
+  .text-2xs{ font-size:11px; line-height:1.35; }
+  .stage{ background:hsl(220 16% 91%); }
+  /* dashed "what changed" annotation */
+  .ann{ border:1.5px dashed hsl(var(--action)); }
+  .ann-label{ background:hsl(var(--action)); color:#fff; }
+  .seg-on{ background:hsl(var(--primary)); color:#fff; }
+  ::-webkit-scrollbar{ width:8px;height:8px } ::-webkit-scrollbar-thumb{ background:hsl(var(--border));border-radius:8px }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Top explainer -->
+<div class="mx-auto max-w-[1500px] px-4 pt-5 pb-3">
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-lg font-bold">Photo experience redesign <span class="text-muted-foreground font-medium">· U2.1 · proposed</span></h1>
+    <span class="rounded-full bg-primary/10 px-2.5 py-1 text-2xs font-semibold text-primary">Option A — react-easy-crop framing, our pipeline kept</span>
+    <span class="rounded-full bg-action/10 px-2.5 py-1 text-2xs font-semibold text-action">Dashed amber = what changed vs today</span>
+  </div>
+  <p class="mt-1.5 text-2xs text-muted-foreground max-w-3xl">
+    Built from your click-through notes + the live Sciatica carousel. Real Move Better photos. Click slide thumbnails, “Replace photo”, the <b>+ Add</b> slide, the format pill, and <b>Preview</b> (phone mockup). The “What changed” strip at the bottom maps each move to your feedback.
+  </p>
+</div>
+
+<!-- ======================= EDITOR ======================= -->
+<div class="mx-auto max-w-[1500px] px-4">
+<div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+
+  <!-- TOP BAR -->
+  <header class="flex items-center gap-3 border-b border-border bg-card px-4 py-2.5">
+    <button class="text-muted-foreground hover:text-foreground"><i data-lucide="arrow-left" class="h-4 w-4"></i></button>
+    <span class="text-sm font-semibold">Sciatica</span>
+
+    <!-- FORMAT / OUTPUT-TYPE SELECTOR (explicit + switchable) -->
+    <div class="relative">
+      <button id="fmtBtn" onclick="toggleFmt()" class="ann inline-flex items-center gap-1.5 rounded-full bg-info/10 px-2.5 py-1 text-2xs font-semibold text-info">
+        <i data-lucide="instagram" class="h-3.5 w-3.5"></i>
+        <span id="fmtLabel">Instagram · Carousel</span>
+        <span id="fmtCount" class="font-normal text-info/70">· 3 slides</span>
+        <i data-lucide="chevron-down" class="h-3 w-3"></i>
+      </button>
+      <span class="ann-label absolute -top-2.5 left-2 rounded px-1 text-[9px] font-bold">1 · pick the output type</span>
+      <div id="fmtMenu" class="absolute left-0 top-9 z-40 hidden w-56 rounded-lg border border-border bg-card p-1.5 shadow-xl">
+        <p class="px-2 pb-1 pt-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Instagram output</p>
+        <button onclick="setFmt('Post','· 1 image','post')" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"><i data-lucide="square" class="h-3.5 w-3.5 text-muted-foreground"></i> Instagram Post <span class="ml-auto text-3xs text-muted-foreground">single</span></button>
+        <button onclick="setFmt('Carousel','· 3 slides','carousel')" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted bg-muted/60"><i data-lucide="layers" class="h-3.5 w-3.5 text-primary"></i> Instagram Carousel <span class="ml-auto text-3xs text-primary">current</span></button>
+        <button onclick="setFmt('Story','· 1 frame','story')" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"><i data-lucide="rectangle-vertical" class="h-3.5 w-3.5 text-muted-foreground"></i> Instagram Story <span class="ml-auto text-3xs text-muted-foreground">9:16</span></button>
+        <button onclick="setFmt('Reel','· 1 video','reel')" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"><i data-lucide="clapperboard" class="h-3.5 w-3.5 text-muted-foreground"></i> Instagram Reel <span class="ml-auto text-3xs text-muted-foreground">video</span></button>
+      </div>
+    </div>
+
+    <div class="ml-auto flex items-center gap-2">
+      <button onclick="openPreview()" class="ann relative rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
+        <i data-lucide="smartphone" class="mr-1 inline h-3.5 w-3.5"></i>Preview
+        <span class="ann-label absolute -top-2.5 -right-1 rounded px-1 text-[9px] font-bold">3 · phone</span>
+      </button>
+      <button class="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action hover:bg-action/10"><i data-lucide="megaphone" class="mr-1 inline h-3.5 w-3.5"></i>Ads</button>
+      <button class="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground">Saved</button>
+      <button class="rounded-lg bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:bg-action/90"><i data-lucide="calendar-clock" class="mr-1 inline h-3.5 w-3.5"></i>Schedule</button>
+    </div>
+  </header>
+
+  <!-- WORK AREA -->
+  <div class="flex" style="height:620px">
+
+    <!-- LEFT RAIL -->
+    <aside class="flex w-[92px] shrink-0 flex-col border-r border-border bg-card">
+      <div class="flex items-center px-2 py-2 border-b border-border">
+        <span class="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span>
+        <span id="railCount" class="ml-auto text-3xs text-muted-foreground">3</span>
+      </div>
+      <div id="rail" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+    </aside>
+
+    <!-- CENTER STAGE -->
+    <section class="stage relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5">
+      <div class="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
+        <span id="slideCounter" class="font-semibold">Slide 1 of 3</span>
+        <label class="flex items-center gap-1"><input type="checkbox" checked class="accent-[hsl(var(--primary))]"> safe zones</label>
+      </div>
+
+      <!-- 4:5 canvas -->
+      <div class="relative" style="height:540px;aspect-ratio:4/5">
+        <div id="canvas" class="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted shadow-lg"></div>
+        <!-- safe zones -->
+        <div class="pointer-events-none absolute inset-0 rounded-xl">
+          <div class="absolute inset-[7%] rounded border border-dashed border-white/50"></div>
+          <div class="absolute inset-x-0 top-0 h-[10%] bg-rose-500/10"></div>
+          <div class="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10"></div>
+        </div>
+        <span class="ann-label absolute -top-2.5 left-3 rounded px-1 text-[9px] font-bold">2 · full-bleed photo (not a shrunk panel)</span>
+      </div>
+    </section>
+
+    <!-- RIGHT INSPECTOR -->
+    <aside class="flex w-[320px] shrink-0 flex-col border-l border-border bg-card">
+      <!-- Layers -->
+      <div class="border-b border-border px-3 py-2.5">
+        <div class="mb-1.5 flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <i data-lucide="layers" class="h-3.5 w-3.5"></i> Layers
+          <span class="ml-auto font-normal normal-case text-muted-foreground/70">click to select</span>
+        </div>
+        <div class="space-y-1">
+          <button onclick="selectLayer('caption')" id="lyr-caption" class="flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-2xs text-foreground hover:bg-muted">
+            <i data-lucide="text" class="h-3.5 w-3.5 text-muted-foreground"></i><span class="truncate">Caption / words</span><span class="ml-auto rounded bg-muted px-1 text-[9px] text-muted-foreground">U3</span>
+          </button>
+          <button onclick="selectLayer('slide')" id="lyr-slide" class="flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-2xs text-foreground hover:bg-muted">
+            <i data-lucide="layers" class="h-3.5 w-3.5 text-muted-foreground"></i><span class="truncate">Slide — layout &amp; theme</span>
+          </button>
+          <button onclick="selectLayer('photo')" id="lyr-photo" class="flex w-full items-center gap-2 rounded-md border border-primary bg-primary/10 px-2 py-1.5 text-left text-2xs font-semibold text-primary">
+            <i data-lucide="image" class="h-3.5 w-3.5 text-primary"></i><span class="truncate">Photo</span>
+          </button>
+          <button onclick="selectLayer('text')" id="lyr-text" class="flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-2xs text-foreground hover:bg-muted">
+            <i data-lucide="type" class="h-3.5 w-3.5 text-muted-foreground"></i><span class="truncate">Hook — YOUR PIRIFORMIS…</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PHOTO inspector (unified) -->
+      <div id="photoPanel" class="min-h-0 flex-1 overflow-y-auto p-3 space-y-3">
+        <div class="flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+          <i data-lucide="image" class="h-4 w-4 text-primary"></i>
+          <span class="text-xs font-semibold text-primary">This slide’s photo</span>
+        </div>
+
+        <!-- UNIFIED: current photo + replace/remove (no separate "use attached photo" dropdown) -->
+        <div class="ann relative rounded-lg p-2.5">
+          <span class="ann-label absolute -top-2.5 left-2 rounded px-1 text-[9px] font-bold">4 · one photo control (dropdown removed)</span>
+          <div id="photoChosen">
+            <div class="flex items-center gap-2.5">
+              <img id="chosenThumb" src="" class="h-16 w-16 shrink-0 rounded-md object-cover border border-border" />
+              <div class="min-w-0 flex-1">
+                <p class="text-2xs font-semibold">Photo on this slide</p>
+                <p class="text-3xs text-muted-foreground">From your library · graded</p>
+                <div class="mt-1.5 flex gap-1.5">
+                  <button onclick="showPicker(true)" class="rounded-md bg-primary px-2 py-1 text-3xs font-semibold text-primary-foreground hover:bg-primary/90"><i data-lucide="repeat" class="mr-0.5 inline h-3 w-3"></i>Replace</button>
+                  <button onclick="removePhoto()" class="rounded-md border border-border px-2 py-1 text-3xs text-muted-foreground hover:text-destructive hover:border-destructive/40">Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- empty state (shown for a brand-new slide) -->
+          <div id="photoEmpty" class="hidden rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-4 text-center">
+            <i data-lucide="image-plus" class="mx-auto mb-1 h-5 w-5 text-primary"></i>
+            <p class="text-2xs font-semibold text-primary">Add a photo to this slide</p>
+            <p class="mt-0.5 text-3xs text-muted-foreground">Pick from AI picks, your library, or upload — it lands straight on the slide.</p>
+            <button onclick="showPicker(true)" class="mt-2 rounded-md bg-primary px-3 py-1.5 text-3xs font-semibold text-primary-foreground">Choose a photo</button>
+          </div>
+
+          <!-- picker (AI picks · describe · library/upload) — inline, the ONE place to set a photo -->
+          <div id="picker" class="mt-2.5 hidden space-y-2 border-t border-action/30 pt-2.5">
+            <div class="flex gap-1 rounded-lg border border-border p-0.5 text-2xs">
+              <button id="ptab-ai" onclick="ptab('ai')" class="seg-on flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 font-medium"><i data-lucide="sparkles" class="h-3 w-3"></i>AI picks</button>
+              <button id="ptab-lib" onclick="ptab('lib')" class="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 font-medium text-muted-foreground hover:text-foreground"><i data-lucide="folder-open" class="h-3 w-3"></i>Library</button>
+            </div>
+            <div id="ptab-ai-body">
+              <div class="mb-1.5 flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
+                <i data-lucide="search" class="h-3.5 w-3.5 shrink-0 text-muted-foreground"></i>
+                <input placeholder="Describe the shot…" class="min-w-0 flex-1 bg-transparent text-2xs outline-none" />
+              </div>
+              <div id="aiGrid" class="grid grid-cols-3 gap-1.5"></div>
+              <p class="mt-1.5 text-3xs text-muted-foreground">Picks re-rank from your words. Click one — it attaches to this slide.</p>
+            </div>
+            <div id="ptab-lib-body" class="hidden">
+              <button class="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-3 text-2xs font-semibold text-primary"><i data-lucide="upload" class="h-3.5 w-3.5"></i>Browse library / upload</button>
+            </div>
+            <button onclick="showPicker(false)" class="w-full text-center text-3xs text-muted-foreground hover:text-foreground">cancel</button>
+          </div>
+        </div>
+
+        <!-- Frame (zoom + reposition) -->
+        <div class="space-y-1.5">
+          <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Frame <span class="font-normal normal-case text-action">· the photo is the photo — zoom &amp; drag to fit</span></p>
+          <div class="flex items-center gap-2 text-2xs text-muted-foreground">
+            <span class="shrink-0">Zoom</span>
+            <input type="range" min="1" max="3" step="0.01" value="1.15" class="flex-1 accent-[hsl(var(--primary))]" />
+            <button class="shrink-0 text-primary hover:underline">reset</button>
+          </div>
+          <p class="text-3xs text-muted-foreground">Drag the photo on the canvas to reposition · scroll to zoom.</p>
+        </div>
+
+        <!-- Colorist -->
+        <div class="space-y-2 border-t border-border/60 pt-3">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="wand-2" class="h-3.5 w-3.5 text-primary"></i>
+            <span class="text-2xs font-semibold uppercase tracking-wide text-primary">AI Photo Editor</span>
+          </div>
+          <div class="flex gap-1.5">
+            <input placeholder="Describe a look — bright, warm, clinical" class="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-2xs outline-none" />
+            <button class="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-2xs font-semibold text-primary-foreground">Apply</button>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="rounded-full border border-border px-2 py-0.5 text-3xs text-muted-foreground">Bright &amp; clean</span>
+            <span class="rounded-full border border-border px-2 py-0.5 text-3xs text-muted-foreground">Warm</span>
+            <span class="rounded-full border border-border px-2 py-0.5 text-3xs text-muted-foreground">Moody</span>
+            <span class="rounded-full border border-border px-2 py-0.5 text-3xs text-muted-foreground">Editorial</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+</div>
+
+<!-- ======================= WHAT CHANGED ======================= -->
+<div class="mx-auto max-w-[1500px] px-4 py-6">
+  <h2 class="mb-3 text-sm font-bold">What changed vs today <span class="font-medium text-muted-foreground">— each maps to your click-through notes</span></h2>
+  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+    <div class="rounded-lg border border-border bg-card p-3">
+      <p class="text-2xs font-bold text-action">1 · Output type is explicit</p>
+      <p class="mt-1 text-2xs text-muted-foreground"><b>Today:</b> a static “Instagram Carousel” badge — you couldn’t tell Post vs Story vs Reel, or switch.</p>
+      <p class="mt-1 text-2xs text-foreground"><b>Now:</b> a clickable pill — Instagram <b>Post / Carousel / Story / Reel</b> (and the same pattern for every platform with multiple output types).</p>
+    </div>
+    <div class="rounded-lg border border-border bg-card p-3">
+      <p class="text-2xs font-bold text-action">2 · Photo is full-bleed by default</p>
+      <p class="mt-1 text-2xs text-muted-foreground"><b>Today:</b> the “Dark Claim” theme shrank the photo into the top, with a navy text-card band below — it looked “scaled to fit.”</p>
+      <p class="mt-1 text-2xs text-foreground"><b>Now:</b> the photo owns the whole slide; text sits on top with a soft scrim. The navy claim-card is one <i>optional</i> layout, not the default.</p>
+    </div>
+    <div class="rounded-lg border border-border bg-card p-3">
+      <p class="text-2xs font-bold text-action">3 · Preview is a phone mockup that matches the render</p>
+      <p class="mt-1 text-2xs text-muted-foreground"><b>Today:</b> a full-screen overlay that drew a <i>different</i> CSS approximation — not what publishes.</p>
+      <p class="mt-1 text-2xs text-foreground"><b>Now:</b> an IG phone frame showing the <b>real</b> baked slide — “how people actually see it.” Phone/Desktop toggle for LinkedIn &amp; Facebook.</p>
+    </div>
+    <div class="rounded-lg border border-border bg-card p-3">
+      <p class="text-2xs font-bold text-action">4 · One photo control</p>
+      <p class="mt-1 text-2xs text-muted-foreground"><b>Today:</b> “Swap / add a photo” <i>and</i> a separate “Use an attached photo” dropdown — two ways to set one slide’s photo.</p>
+      <p class="mt-1 text-2xs text-foreground"><b>Now:</b> one panel — the slide’s photo, with Replace (AI picks / library / upload / describe). The redundant dropdown is gone.</p>
+    </div>
+    <div class="rounded-lg border border-border bg-card p-3">
+      <p class="text-2xs font-bold text-action">5 · Per-slide model</p>
+      <p class="mt-1 text-2xs text-muted-foreground"><b>Today:</b> media is attached to a pool, then bound per slide — redundant.</p>
+      <p class="mt-1 text-2xs text-foreground"><b>Now:</b> pick a photo → it lands on the slide (attach + bind in one step). <b>+ Add</b> = a blank slide that prompts “Add a photo.” Reuse across slides OK; deleting a slide drops its photo.</p>
+    </div>
+    <div class="rounded-lg border border-dashed border-border bg-muted/30 p-3">
+      <p class="text-2xs font-bold text-muted-foreground">Parked (your call)</p>
+      <p class="mt-1 text-2xs text-muted-foreground">Bulk multi-select (long carousels) — noted for later; we make “a few slides” great first. Real font picker stays in the Brand Kit (text revision is U2.2, next).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= PHONE PREVIEW OVERLAY ======================= -->
+<div id="previewOverlay" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/70 p-6">
+  <div class="relative flex flex-col items-center">
+    <!-- phone/desktop toggle -->
+    <div class="mb-3 flex items-center gap-1 rounded-full bg-white/10 p-1 text-2xs">
+      <button class="seg-on rounded-full px-3 py-1 font-medium"><i data-lucide="smartphone" class="mr-1 inline h-3 w-3"></i>Phone</button>
+      <button class="rounded-full px-3 py-1 font-medium text-white/60" title="Used for LinkedIn / Facebook">Desktop</button>
+    </div>
+    <!-- iPhone frame -->
+    <div class="relative rounded-[2.5rem] border-[10px] border-black bg-black shadow-2xl" style="width:300px">
+      <div class="absolute left-1/2 top-0 z-20 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-black"></div>
+      <div class="overflow-hidden rounded-[1.9rem] bg-white">
+        <!-- IG header -->
+        <div class="flex items-center gap-2 px-3 py-2">
+          <div class="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-pink-500 p-[2px]"><div class="h-full w-full rounded-full bg-white p-[1px]"><div class="h-full w-full rounded-full bg-muted"></div></div></div>
+          <span class="text-[11px] font-semibold">movebetter</span>
+          <i data-lucide="more-horizontal" class="ml-auto h-4 w-4 text-foreground"></i>
+        </div>
+        <!-- the real slide (full-bleed photo + hook) -->
+        <div class="relative aspect-[4/5] w-full overflow-hidden bg-muted">
+          <img id="pvImg" src="" class="absolute inset-0 h-full w-full object-cover" />
+          <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent"></div>
+          <p class="absolute inset-x-0 bottom-8 px-5 text-center text-[19px] font-extrabold leading-tight text-white">YOUR PIRIFORMIS MIGHT NOT BE TIGHT</p>
+          <!-- carousel dots -->
+          <div class="absolute right-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white">1/3</div>
+        </div>
+        <!-- IG actions -->
+        <div class="flex items-center gap-4 px-3 py-2">
+          <i data-lucide="heart" class="h-5 w-5"></i><i data-lucide="message-circle" class="h-5 w-5"></i><i data-lucide="send" class="h-5 w-5"></i>
+          <i data-lucide="bookmark" class="ml-auto h-5 w-5"></i>
+        </div>
+        <div class="flex justify-center gap-1 pb-1">
+          <span class="h-1.5 w-1.5 rounded-full bg-primary"></span><span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/30"></span><span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/30"></span>
+        </div>
+        <div class="px-3 pb-3 pt-1 text-[11px] leading-snug">
+          <span class="font-semibold">movebetter</span> Sciatic pain often isn’t about a tight piriformis at all. Here’s what we look for first… <span class="text-muted-foreground">more</span>
+        </div>
+      </div>
+    </div>
+    <p class="mt-3 text-2xs text-white/70">This is the real baked slide — what actually publishes.</p>
+    <button onclick="closePreview()" class="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-foreground shadow-lg"><i data-lucide="x" class="h-5 w-5"></i></button>
+  </div>
+</div>
+
+<script>
+  // Real Move Better photos (public blob URLs from the live Sciatica carousel)
+  const HERO = 'https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/3873ac62-07f5-44fc-9f4b-e38d219231fb-X2LUlV0OOupdG1koBWe82h3btDRSbj.jpg';
+  const T = (id) => `https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/thumbs/${id}.jpg`;
+  const PHOTOS = [HERO, T('8545d1e4-448d-4587-aefc-eb26ec613a91'), T('25bc9ea9-1a81-490d-bb84-28dd455b02ac')];
+  const AIPICKS = ['a545bd55-98f2-4d3b-8774-6d2669324ad1','7e1e4b8a-d60c-43b9-8dc2-88a474cfd8dc','bf9df847-7c22-4251-8f0b-c2062f0d432f','e218e00c-3a6a-4804-9177-905bf03c1c68','8545d1e4-448d-4587-aefc-eb26ec613a91','25bc9ea9-1a81-490d-bb84-28dd455b02ac'].map(T);
+  const HOOKS = ['YOUR PIRIFORMIS MIGHT NOT BE TIGHT','IT MIGHT BE YOUR NERVE','HERE’S WHAT TO CHECK FIRST'];
+
+  let slides = [
+    { photo: PHOTOS[0], hook: HOOKS[0] },
+    { photo: PHOTOS[1], hook: HOOKS[1] },
+    { photo: PHOTOS[2], hook: HOOKS[2] },
+  ];
+  let active = 0;
+
+  function renderRail(){
+    const rail = document.getElementById('rail');
+    rail.innerHTML = '';
+    slides.forEach((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'flex items-start gap-1';
+      div.innerHTML = `
+        <span class="pt-0.5 text-3xs font-semibold text-muted-foreground">${i+1}</span>
+        <button onclick="goSlide(${i})" class="relative aspect-[4/5] w-full overflow-hidden rounded-md border ${i===active?'border-primary ring-1 ring-primary/40':'border-border hover:border-primary/40'}">
+          ${s.photo ? `<img src="${s.photo}" class="absolute inset-0 h-full w-full object-cover"/>` : `<div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-500 text-white/70"><span class="text-3xs">empty</span></div>`}
+          <div class="absolute inset-0 bg-black/10"></div>
+        </button>`;
+      rail.appendChild(div);
+    });
+    const add = document.createElement('button');
+    add.onclick = addSlide;
+    add.className = 'ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed border-muted-foreground/30 py-3 text-muted-foreground hover:border-primary/40 hover:text-primary';
+    add.innerHTML = `<i data-lucide="plus" class="h-4 w-4"></i><span class="text-3xs mt-0.5">Add</span>`;
+    rail.appendChild(add);
+    document.getElementById('railCount').textContent = slides.length;
+    lucide.createIcons();
+  }
+
+  function renderCanvas(){
+    const s = slides[active];
+    const c = document.getElementById('canvas');
+    if (!s.photo){
+      c.innerHTML = `<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-slate-700 to-slate-500 text-center">
+        <i data-lucide="image-plus" class="h-10 w-10 text-white/80"></i>
+        <p class="text-sm font-semibold text-white">Add a photo to this slide</p>
+        <button onclick="showPicker(true)" class="rounded-md bg-white px-3 py-1.5 text-2xs font-semibold text-foreground">AI picks · Library · Upload</button>
+      </div>`;
+    } else {
+      c.innerHTML = `
+        <img src="${s.photo}" class="absolute inset-0 h-full w-full object-cover"/>
+        <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+        <p class="absolute inset-x-0 bottom-[14%] px-8 text-center text-[30px] font-extrabold leading-[1.05] text-white drop-shadow">${s.hook||''}</p>`;
+    }
+    document.getElementById('slideCounter').textContent = `Slide ${active+1} of ${slides.length}`;
+    document.getElementById('pvImg').src = s.photo || PHOTOS[0];
+    lucide.createIcons();
+  }
+
+  function renderPhotoPanel(){
+    const s = slides[active];
+    const hasPhoto = !!s.photo;
+    document.getElementById('photoChosen').classList.toggle('hidden', !hasPhoto);
+    document.getElementById('photoEmpty').classList.toggle('hidden', hasPhoto);
+    if (hasPhoto) document.getElementById('chosenThumb').src = s.photo;
+    if (!hasPhoto) showPicker(false);
+  }
+
+  function goSlide(i){ active = i; showPicker(false); renderRail(); renderCanvas(); renderPhotoPanel(); }
+  function addSlide(){ slides.push({ photo:null, hook:'' }); active = slides.length-1; selectLayer('photo'); renderRail(); renderCanvas(); renderPhotoPanel(); showPicker(true); }
+  function removePhoto(){ slides[active].photo = null; renderRail(); renderCanvas(); renderPhotoPanel(); }
+
+  function showPicker(open){
+    document.getElementById('picker').classList.toggle('hidden', !open);
+    if (open){
+      const grid = document.getElementById('aiGrid');
+      grid.innerHTML = AIPICKS.map(u=>`<button onclick="choosePhoto('${u}')" class="relative aspect-square overflow-hidden rounded-md border border-border hover:border-primary"><img src="${u}" class="h-full w-full object-cover"/><span class="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] font-bold leading-tight text-primary-foreground">AI</span></button>`).join('');
+      lucide.createIcons();
+    }
+  }
+  function choosePhoto(u){ slides[active].photo = u; if(!slides[active].hook) slides[active].hook = HOOKS[active%HOOKS.length]; showPicker(false); renderRail(); renderCanvas(); renderPhotoPanel(); }
+  function ptab(which){
+    document.getElementById('ptab-ai').classList.toggle('seg-on', which==='ai');
+    document.getElementById('ptab-ai').classList.toggle('text-muted-foreground', which!=='ai');
+    document.getElementById('ptab-lib').classList.toggle('seg-on', which==='lib');
+    document.getElementById('ptab-lib').classList.toggle('text-muted-foreground', which!=='lib');
+    document.getElementById('ptab-ai-body').classList.toggle('hidden', which!=='ai');
+    document.getElementById('ptab-lib-body').classList.toggle('hidden', which!=='lib');
+  }
+
+  function selectLayer(which){
+    ['caption','slide','photo','text'].forEach(k=>{
+      const el = document.getElementById('lyr-'+k);
+      const on = k===which;
+      el.className = `flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-2xs ${on?'border-primary bg-primary/10 text-primary font-semibold':'border-transparent text-foreground hover:bg-muted'}`;
+    });
+    lucide.createIcons();
+  }
+
+  // format menu
+  function toggleFmt(){ document.getElementById('fmtMenu').classList.toggle('hidden'); }
+  function setFmt(label, count, kind){
+    document.getElementById('fmtLabel').textContent = 'Instagram · ' + label;
+    document.getElementById('fmtCount').textContent = count;
+    document.getElementById('fmtMenu').classList.add('hidden');
+  }
+  document.addEventListener('click', (e)=>{ if(!e.target.closest('#fmtBtn') && !e.target.closest('#fmtMenu')) document.getElementById('fmtMenu').classList.add('hidden'); });
+
+  function openPreview(){ document.getElementById('previewOverlay').classList.remove('hidden'); document.getElementById('previewOverlay').classList.add('flex'); lucide.createIcons(); }
+  function closePreview(){ document.getElementById('previewOverlay').classList.add('hidden'); document.getElementById('previewOverlay').classList.remove('flex'); }
+
+  renderRail(); renderCanvas(); renderPhotoPanel(); lucide.createIcons();
+</script>
+</body>
+</html>
