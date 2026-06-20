@@ -52,6 +52,10 @@ function normalizeSlide(s, idx) {
   return {
     photo_idx: typeof s?.photo_idx === 'number' ? s.photo_idx : idx,
     template:  typeof s?.template === 'string' && SLIDE_TEMPLATES[s.template] ? s.template : 'custom',
+    // Preserve the per-slide theme override on load — without this it was
+    // stripped when slides were read back from the DB, so a saved per-slide
+    // theme never survived a reload (the load-side half of the P0 fix).
+    template_id: s?.template_id || null,
     blocks: Array.isArray(s?.blocks)
       ? s.blocks.map((b) => ({
           role:     typeof b?.role === 'string' && ROLE_META[b.role] ? b.role : 'body',
@@ -878,9 +882,22 @@ export default function SlideEditor({ piece }) {
     setSlides(out)
   }
   function removeSlide(idx) {
+    const removed = slides[idx]
     const next = slides.filter((_, i) => i !== idx)
     setSlides(next)
     setActiveSlideIdx((prev) => Math.min(prev, Math.max(0, next.length - 1)))
+    // Delete is recoverable until the next action — an undo toast instead of a
+    // silent, instant, soon-permanent removal of the slide's block text.
+    toast('Slide deleted', {
+      action: {
+        label: 'Undo',
+        onClick: () => setSlides((cur) => {
+          const out = cur.slice()
+          out.splice(Math.min(idx, out.length), 0, removed)
+          return out
+        }),
+      },
+    })
   }
   function addSlide() {
     // New slide binds to the first un-bound photo, falling back to last photo
@@ -931,6 +948,11 @@ export default function SlideEditor({ piece }) {
     const cleaned = slides.map((s) => ({
       photo_idx: typeof s.photo_idx === 'number' ? s.photo_idx : null,
       template:  s.template,
+      // Preserve the per-slide theme override. Without this it was silently
+      // dropped on save — the picker set slide.template_id, the resolver and the
+      // bake honored it, but handleSave rebuilt slides without it, so a per-slide
+      // theme never persisted. (P0 data-loss fix.)
+      template_id: s.template_id || null,
       blocks:    s.blocks.filter((b) => (b.text || '').trim() !== ''),
     }))
 

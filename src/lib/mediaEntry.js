@@ -65,3 +65,36 @@ export function isVideoEntry(entry) {
 export function isInstagramReel(mediaUrls) {
   return Array.isArray(mediaUrls) && mediaUrls.some(isVideoEntry)
 }
+
+// Single source of truth for "what format is this piece?" — consumed by both the
+// page chrome and the preview so they can never disagree (the header used to
+// count SOURCE PHOTOS while the editor rendered one card per SLIDE, so "1 media
+// attached" sat next to 5 slide cards, and the word Post/Carousel/Reel appeared
+// nowhere). Returns { kind, label, count, unit } where count/unit drive a
+// human badge like "Instagram Carousel · 5 slides".
+//   - reel:     Instagram piece with any video attached
+//   - carousel: Instagram piece with 2+ slides (or 2+ photos)
+//   - post:     a single image/photo piece
+const PLATFORM_LABEL = {
+  instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn',
+  gbp: 'Google Business', tiktok: 'TikTok', instagram_story: 'Instagram Story',
+}
+export function postFormat(piece) {
+  const platform = piece?.platform || ''
+  const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+  const slideCount = Array.isArray(piece?.slides) ? piece.slides.length : 0
+  const platformLabel = PLATFORM_LABEL[platform] || (platform ? platform[0].toUpperCase() + platform.slice(1) : '')
+
+  if (platform === 'instagram' && isInstagramReel(media)) {
+    return { kind: 'reel', label: `${platformLabel} Reel`, count: 1, unit: 'video' }
+  }
+  if (platform === 'instagram') {
+    // Slides are the output unit; fall back to the source-photo count for fresh
+    // drafts that haven't been turned into slides yet.
+    const n = slideCount || media.length
+    if (n > 1) return { kind: 'carousel', label: `${platformLabel} Carousel`, count: n, unit: 'slides' }
+    return { kind: 'post', label: `${platformLabel} Post`, count: n, unit: 'slides' }
+  }
+  // Non-Instagram: a simple post; count attached media.
+  return { kind: 'post', label: platformLabel || 'Post', count: media.length, unit: 'media' }
+}

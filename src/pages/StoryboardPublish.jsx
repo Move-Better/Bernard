@@ -6,7 +6,7 @@ import PipelineStepper from '@/components/PipelineStepper'
 import BackLink from '@/components/ui/BackLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pieceLabel } from '@/lib/pieceLabel'
-import { isInstagramReel } from '@/lib/mediaEntry'
+import { isInstagramReel, postFormat } from '@/lib/mediaEntry'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import PostPreview from '@/components/PostPreview'
@@ -71,7 +71,10 @@ export default function StoryboardPublish() {
   // composer for an Instagram piece that is NOT a reel.
   const isReel = piece.platform === 'instagram' && isInstagramReel(piece.media_urls)
   const isCarousel = piece.platform === 'instagram' && !isReel
-  const mediaCount = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
+  // Named format + slide-count badge from the shared helper — the header used to
+  // count source photos ("1 media attached") next to N slide cards.
+  const fmt = postFormat(piece)
+  const photoCount = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
 
   return (
     <div className="space-y-5 py-6">
@@ -98,7 +101,12 @@ export default function StoryboardPublish() {
             {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
             <span className="truncate">{title}</span>
           </h1>
-          <p className="text-xs text-muted-foreground">{meta.label} · {mediaCount} media attached</p>
+          <p className="text-xs text-muted-foreground">
+            {fmt.label} · {fmt.count} {fmt.unit}
+            {fmt.kind === 'carousel' && photoCount !== fmt.count && (
+              <span className="text-muted-foreground/70"> · from {photoCount} photo{photoCount === 1 ? '' : 's'}</span>
+            )}
+          </p>
         </div>
         {piece.interview_id && (
           <Button
@@ -129,6 +137,7 @@ export default function StoryboardPublish() {
               slides={Array.isArray(piece.slides) ? piece.slides : null}
               overlayText={piece.overlay_text || null}
               locationOverrides={piece.location_overrides || null}
+              photoTemplateId={piece.photo_template_id || null}
             />
           </div>
         </div>

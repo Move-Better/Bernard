@@ -896,6 +896,7 @@ function InspectDrawer({ piece, story }) {
               slides={Array.isArray(piece.slides) ? piece.slides : null}
               overlayText={piece.overlay_text || null}
               locationOverrides={piece.location_overrides || null}
+              photoTemplateId={piece.photo_template_id || null}
             />
           </div>
         </div>
