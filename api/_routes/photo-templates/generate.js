@@ -57,17 +57,30 @@ const sb = (path, init = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
   },
 })
 
-// Pull the brand palette from the post-#1458 Brand Kit buckets, with legacy
-// fallback. Used both to prime the prompt and to validate generated colors.
+// Relative luminance of a #rrggbb hex (0 = black … 1 = white), for ink/paper.
+function hexLum(hex) {
+  const m = /^#([0-9a-fA-F]{6})$/.exec((hex || '').trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255
+}
+
+// Pull the brand palette from the Brand Kit (stored on brand_style:
+// primary_colors + secondary_colors + accent_color), with legacy fallback. Also
+// returns the darkest (ink) and lightest (paper) palette colors so the prompt
+// can tell the model what the renderer will paint as the dark/light ground.
 function brandPalette(ws) {
-  const ks = ws?.brand_kit_style || {}
+  const bs = ws?.brand_style || {}
   const list = [
-    ...(Array.isArray(ks.primary_colors) ? ks.primary_colors : []),
-    ...(Array.isArray(ks.secondary_colors) ? ks.secondary_colors : []),
-    ks.accent_color, ws?.brand_style?.accent_color, ws?.colors?.primary,
-  ].filter((c) => typeof c === 'string' && HEX6.test(c.trim()))
-  const accent = (ks.accent_color || ws?.brand_style?.accent_color || ws?.colors?.primary || '#0c7580')
-  return { accent, all: [...new Set(list.map((c) => c.toUpperCase()))] }
+    ...(Array.isArray(bs.primary_colors) ? bs.primary_colors : []),
+    ...(Array.isArray(bs.secondary_colors) ? bs.secondary_colors : []),
+    bs.accent_color, ws?.colors?.primary,
+  ].filter((c) => typeof c === 'string' && HEX6.test(c.trim())).map((c) => c.trim().toUpperCase())
+  const all = [...new Set(list)]
+  const accent = (bs.accent_color || ws?.colors?.primary || all[0] || '#333333').toUpperCase()
+  const ink   = all.length ? all.reduce((a, b) => (hexLum(b) < hexLum(a) ? b : a)) : null
+  const paper = all.length ? all.reduce((a, b) => (hexLum(b) > hexLum(a) ? b : a)) : null
+  return { accent, all, ink, paper }
 }
 
 const pick = (val, allowed, fallback) => (allowed.includes(val) ? val : fallback)
@@ -118,7 +131,7 @@ export default async function handler(req, res) {
 
   const count = Math.max(1, Math.min(6, Number(req.body?.count) || 4))
   const hint  = String(req.body?.prompt || '').trim().slice(0, 280)
-  const { accent, all } = brandPalette(ws)
+  const { accent, all, ink, paper } = brandPalette(ws)
 
   const exemplar = BUILTIN_THEMES['dark-claim']
   const system = [
@@ -131,15 +144,17 @@ export default async function handler(req, res) {
     'Layout families: photo (text over a full-bleed photo — use shadows so text stays legible),',
     'claim (full-bleed card, works with or without a photo), badge (photo with a bottom-anchored',
     'headline), split (photo on top, a solid color panel below carrying the headline).',
+    'IMPORTANT — the renderer paints the card/panel GROUND from THIS brand only:',
+    ink ? `a DARK-palette template renders on the brand dark color ${ink};` : 'a DARK-palette template renders on a dark ground;',
+    paper ? `a LIGHT-palette template renders on the brand light color ${paper}.` : 'a LIGHT-palette template renders on a light ground.',
     `Brand accent color: ${accent}.`,
-    all.length ? `Brand palette to draw from: ${all.join(', ')}.` : 'No extra brand palette; lean on the accent + clean neutrals.',
+    all.length ? `Brand palette — use ONLY these colors (plus #FFFFFF / #000000 when needed): ${all.join(', ')}.` : 'No extra brand palette; use the accent + clean black/white neutrals.',
     `Clinic name: ${ws.display_name || 'the clinic'}.`,
-    'Rules: every color is #RRGGBB hex. Ensure strong text/background contrast and legibility.',
-    'Critical contrast rule: in split layouts the headline sits ON the lower color panel, and in light claim/badge layouts text sits on a light card —',
-    'so on LIGHT palettes use DARK text (e.g. brand navy) for hook/body/attribution, and on DARK palettes use light/near-white text. Never near-white text on a light panel.',
-    'Use the brand colors for pills, panels and accents — not random hues. Vary the set:',
-    'mix layouts and both dark + light palettes so the user gets a genuine range.',
-    'Reference shape of one good block config (do not copy verbatim): ' + JSON.stringify(exemplar.blocks.hook) + '.',
+    'Rules: every color is #RRGGBB hex from the brand palette above — never invent colors (no navy, no random hues).',
+    'Contrast: on a DARK palette the ground is dark, so hook/body/attribution text must be LIGHT (use the brand light color or #FFFFFF).',
+    'On a LIGHT palette the ground is light, so that text must be DARK (use the brand dark color or #000000). Never light text on a light ground.',
+    'Use the brand colors for CTA pills and accents. Vary the set: mix layouts and both dark + light palettes for a genuine range.',
+    'Reference shape of one good block config (do not copy its colors): ' + JSON.stringify(exemplar.blocks.hook) + '.',
     hint ? `Extra direction from the user: "${hint}".` : '',
   ].filter(Boolean).join(' ')
 

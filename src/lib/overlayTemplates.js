@@ -30,6 +30,38 @@ function brandAccent(brandStyle, fallback = FALLBACK_ACCENT) {
   return brandStyle?.accent_color || fallback
 }
 
+// Relative luminance of a #rrggbb hex (0 = black … 1 = white), or null if invalid.
+function hexLum(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '')
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255
+}
+
+// Every valid brand palette color from the workspace Brand Kit (stored on the
+// brand_style JSONB: primary_colors + secondary_colors + accent_color).
+function brandPaletteColors(brandStyle) {
+  return [
+    ...(Array.isArray(brandStyle?.primary_colors) ? brandStyle.primary_colors : []),
+    ...(Array.isArray(brandStyle?.secondary_colors) ? brandStyle.secondary_colors : []),
+    brandStyle?.accent_color,
+  ].filter((c) => hexLum(c) != null)
+}
+
+// The brand's darkest / lightest palette color — used for template grounds so a
+// "dark" template uses the workspace's OWN dark color, not a hardcoded navy.
+// Falls back to the supplied WHOOP default ONLY when the workspace has no usable
+// brand palette, so tenants without a Brand Kit keep the original look and no
+// off-brand color is ever invented.
+function brandInk(brandStyle, fallback) {
+  const cols = brandPaletteColors(brandStyle)
+  return cols.length ? cols.reduce((a, b) => (hexLum(b) < hexLum(a) ? b : a)) : fallback
+}
+function brandPaper(brandStyle, fallback) {
+  const cols = brandPaletteColors(brandStyle)
+  return cols.length ? cols.reduce((a, b) => (hexLum(b) > hexLum(a) ? b : a)) : fallback
+}
+
 // Darken (amt < 0) or lighten (amt > 0) a #rrggbb hex by a fraction. Used to
 // derive a gradient end-stop from the brand accent. Returns input unchanged if
 // it isn't a 6-digit hex.
@@ -787,12 +819,13 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
 
   if (layout === 'claim') {
     if (palette === 'dark') {
+      const ink = brandInk(brandStyle, WHOOP_NAVY)
       const grad = ctx.createRadialGradient(SIZE * 0.5, SIZE * 0.42, 0, SIZE * 0.5, SIZE * 0.5, SIZE * 0.72)
-      grad.addColorStop(0, '#1b2f4a')
-      grad.addColorStop(1, WHOOP_NAVY)
+      grad.addColorStop(0, shadeHex(ink, 0.13))
+      grad.addColorStop(1, ink)
       ctx.fillStyle = grad
     } else {
-      ctx.fillStyle = WHOOP_PAPER
+      ctx.fillStyle = brandPaper(brandStyle, WHOOP_PAPER)
     }
     ctx.fillRect(0, 0, SIZE, SIZE)
     // Orange rule near the top
@@ -816,7 +849,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
       ctx.fillRect(0, 0, SIZE, SIZE)
     }
     // Solid brand panel overlays the bottom third (full-bleed photo behind it)
-    ctx.fillStyle = palette === 'dark' ? WHOOP_NAVY : WHOOP_SAGE_FILL
+    ctx.fillStyle = palette === 'dark' ? brandInk(brandStyle, WHOOP_NAVY) : brandPaper(brandStyle, WHOOP_SAGE_FILL)
     ctx.fillRect(0, splitY, SIZE, SIZE - splitY)
     // Orange rule at the photo/panel seam
     ctx.fillStyle = accent
@@ -857,18 +890,18 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
       if (img) {
         drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
       } else {
-        ctx.fillStyle = WHOOP_NAVY
+        ctx.fillStyle = brandInk(brandStyle, WHOOP_NAVY)
         ctx.fillRect(0, 0, SIZE, SIZE)
       }
-      // Dark overlay to anchor the gradient
-      ctx.fillStyle = 'rgba(12,26,46,0.30)'
+      // Dark overlay to anchor the gradient (neutral black, not a navy tint)
+      ctx.fillStyle = 'rgba(0,0,0,0.30)'
       ctx.fillRect(0, 0, SIZE, SIZE)
       // Gradient scrim anchoring text at the bottom
       const scrimStart = Math.round(SIZE * 0.48)
       const scrim = ctx.createLinearGradient(0, scrimStart, 0, SIZE)
-      scrim.addColorStop(0, 'rgba(12,26,46,0)')
-      scrim.addColorStop(0.45, 'rgba(12,26,46,0.80)')
-      scrim.addColorStop(1, 'rgba(12,26,46,0.97)')
+      scrim.addColorStop(0, 'rgba(0,0,0,0)')
+      scrim.addColorStop(0.45, 'rgba(0,0,0,0.80)')
+      scrim.addColorStop(1, 'rgba(0,0,0,0.97)')
       ctx.fillStyle = scrim
       ctx.fillRect(0, scrimStart, SIZE, SIZE - scrimStart)
       // Orange rule above the text zone
