@@ -53,6 +53,11 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     photoUrl: photoUrl || null,
     themeId: slide.template_id || themeId || null,
     brand: brandStyle || null,
+    // Photo reframe + colorist grade also change the pixels — without these a
+    // pan/zoom or grade edit kept the stale cached bake.
+    photoZoom: slide.photo_zoom || null,
+    photoOffset: slide.photo_offset || null,
+    grade: slide.grade || null,
   }))
 }
 
