@@ -16,7 +16,6 @@ import {
   Share2,
   Rss,
   AlertTriangle,
-  MapPin,
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -444,8 +443,8 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
             <div className="px-5 py-3.5 border-t border-border">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <h3 className="text-xs font-semibold">Social accounts</h3>
-                  <p className="text-2xs text-muted-foreground mt-0.5">Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Bluesky &amp; Mastodon.</p>
+                  <h3 className="text-sm font-semibold">Social accounts</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Bluesky &amp; Mastodon.</p>
                 </div>
                 <button
                   type="button" disabled={!isAdmin || busy} onClick={openPortal}
@@ -456,10 +455,10 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                 </button>
               </div>
               {accounts.length > 0 && (
-                <div className="mt-2.5 space-y-2">
+                <div className="mt-2.5 space-y-1.5 pl-2">
                   {accounts.map((a, i) => (
                     <div key={a.type || i} className="flex items-center gap-3">
-                      <span className="text-sm flex-1 truncate capitalize">
+                      <span className="text-xs flex-1 truncate capitalize text-foreground/80">
                         {a.type ? a.type.replace(/_/g, ' ').toLowerCase() : 'account'}
                         {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
                       </span>
@@ -482,24 +481,21 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
             {/* Google Business — one Team per location (bundle allows one active GBP per Team) */}
             {locations.length > 0 && (
               <div className="px-5 py-3.5 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-xs font-semibold">Google Business — by location</h3>
-                </div>
-                <p className="text-2xs text-muted-foreground mt-0.5">
+                <h3 className="text-sm font-semibold">Google Business — by location</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Each location connects its own Google Business listing. Posts to Google fan out to every connected location.
                 </p>
-                <div className="mt-2.5 space-y-2">
+                <div className="mt-2.5 space-y-1.5 pl-2">
                   {locations.map((loc) => (
                     <div key={loc.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">{loc.label}</span>
+                          <span className="text-xs font-medium truncate text-foreground/80">{loc.label}</span>
                           {loc.isPrimary && (
                             <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Primary</span>
                           )}
                         </div>
-                        <span className="block text-2xs text-muted-foreground truncate">
+                        <span className="block text-2xs text-muted-foreground truncate mt-0.5">
                           {loc.connected
                             ? `Google Business${loc.displayName ? ` · ${loc.displayName}` : ''}`
                             : loc.hasTeam ? 'Google Business · connection needs attention' : 'Google Business · not connected yet'}
