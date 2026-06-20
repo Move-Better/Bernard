@@ -19,6 +19,7 @@ import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGra
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
+import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 
 // Role label + chip colors. Mirrors the mockup palette.
 const ROLE_META = {
@@ -1022,14 +1023,12 @@ function TextStyleControls({ block, onSet }) {
               style={{ background: c.value }}
             />
           ))}
-          <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border border-border" title="Custom">
-            <span className="absolute inset-0" style={{ background: 'conic-gradient(red,orange,yellow,lime,cyan,blue,magenta,red)' }} />
-            <input
-              type="color" value={(/^#[0-9a-f]{6}$/i.test(block.color || '') ? block.color : '#ffffff')}
-              onChange={(e) => onSet('color', e.target.value)}
-              className="absolute inset-0 cursor-pointer opacity-0"
-            />
-          </label>
+          <ColorPickerPopover
+            value={/^#[0-9a-f]{6}$/i.test(block.color || '') ? block.color : '#ffffff'}
+            onChange={(hex) => onSet('color', hex)}
+            swatchClassName="h-6 w-6 rounded-full"
+            ariaLabel="Custom text color"
+          />
         </div>
       </div>
 

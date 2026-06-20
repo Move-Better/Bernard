@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import {
   usePhotoTemplates,
   useCreatePhotoTemplate,
@@ -305,12 +306,13 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
       </div>
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Text color</label>
-        <div className="flex items-center gap-2">
-          <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#ffffff'}
-            onChange={(e) => set('color', e.target.value)}
-            className="h-7 w-7 rounded cursor-pointer border border-input p-0.5" />
-          <input type="text" value={c.color || '#ffffff'} onChange={(e) => set('color', e.target.value)}
-            className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary" />
+        <div className="flex items-center gap-2 mt-1">
+          <ColorPickerPopover
+            value={/^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#ffffff'}
+            onChange={(hex) => set('color', hex)}
+            ariaLabel="Pick text color"
+          />
+          <span className="text-xs font-mono text-muted-foreground">{c.color || '#ffffff'}</span>
         </div>
       </div>
       <div>
@@ -330,13 +332,13 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
       {(c.background === 'pill' || c.background === 'rect') && (
         <div>
           <label className="text-2xs font-medium text-muted-foreground block mb-1">Background color</label>
-          <div className="flex items-center gap-2">
-            <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.bgColor || '') ? c.bgColor : brandAccent}
-              onChange={(e) => set('bgColor', e.target.value)}
-              className="h-7 w-7 rounded cursor-pointer border border-input p-0.5" />
-            <input type="text" value={c.bgColor || ''} placeholder="null = brand accent"
-              onChange={(e) => set('bgColor', e.target.value || null)}
-              className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary" />
+          <div className="flex items-center gap-2 mt-1">
+            <ColorPickerPopover
+              value={/^#[0-9a-f]{6}$/i.test(c.bgColor || '') ? c.bgColor : brandAccent}
+              onChange={(hex) => set('bgColor', hex)}
+              ariaLabel="Pick background color"
+            />
+            <span className="text-xs font-mono text-muted-foreground">{c.bgColor || 'brand accent'}</span>
           </div>
         </div>
       )}
