@@ -61,3 +61,26 @@ Goal: collapse 4 screens (Edit words → Choose media → Compose → Publish) i
 - ✅ **U2.1c SHIPPED + prod-verified** (#1456): phone-mockup Preview rendering the REAL slide (retired the fullscreen CSS approximation = a preview≠publish gap); bottom-anchored text on full-bleed (`whoopTextZone`/`blockFraction` `photo` zone [0.58,0.92]).
 - U2.1d finding: output-type LABEL already explicit (`postFormat` → "Instagram Carousel/Post/Reel/Story" in editor top bar + publish header). The remaining value is (a) prominence polish, (b) a true Post↔Story↔Reel SWITCHER = U4 scope (editor must host each format). 
 - NEXT (Q to steer): U2.2 (text styling: drop Case/Font, add bold/italic/underline + inline colour runs, fix selection-highlighter) vs U2.1d label-prominence polish.
+
+## 2026-06-20 (afternoon) — editor redesign pivot (Q design pass)
+Q drove a big reframe of the carousel editor's template/photo model — SUPERSEDES the U2.1d/U2.2 framing above. Core principles + decisions:
+
+**Photo = full-bleed base LAYER; template = overlay. "Layer, not container."** The template (brand design — panels, rules, labels, text) draws ON TOP of a full-bleed photo. It must NEVER crop, shrink, hide, or scale the photo. (Old Split shrank the photo into a top box; Claim hid it — those were the "awkward photo" complaints.) Photo is user-framed (zoom/move); "added at native size, then zoom to fit" (start showing the whole image, then zoom in — refinement, not yet built).
+
+**TWO template families, both first-class, from the REAL workspace templates (NOT invented):**
+- **Text cards** — NO photo, branded card (e.g. Claim). Deliberate, not a bug. (@imovehp uses these.)
+- **Photo templates** — full-bleed photo + overlay (Full Photo, Badge, Split-reworked).
+`templateFamily(theme)` in photoTemplates.js: `claim` layout ⇒ 'text', else 'photo'; a template may declare `family` explicitly (forward-compat for custom). DON'T restyle templates — Q tunes the designs himself (his "trial case" for template editing; he already has changes in mind).
+
+**Aspect-adaptive (Phase 2, not built):** a template fills whatever container/aspect (1:1 / 4:5 / 9:16). This is the unlock for ONE editor across **Post / Story / Reel** (output type → aspect → template adapts). Renderer is square-designed today (ad-export re-stacks for non-square); making it fluid is real work.
+
+**Text simplification (Moderate — still TODO):** kill the Layout-templates ⇄ role overlap; obvious "+ Add text" (multi-box, esp. for Ads); presets (Headline/Body/Button) on-brand-by-default + overridable; direct styling (size / B / I / U + **inline colour runs** — net-new in the canvas renderer; add to slideSignature); **FIX the drag bug** (selection box doesn't follow the text — it jumps preset→custom + the box ≠ the rendered text bounds).
+
+**Out of scope for me (parallel session):** raw `<input type="color">` → `ColorPickerPopover` in `SlideEditor.jsx:1028` + `PhotoTemplates.jsx:309/334`. (Q said another session handles it; NO PR existed as of 2026-06-20 — verify before touching those 3 spots.) NB: #1458 was BrandKit colour buckets, NOT the editor picker swap.
+
+**Research (Q asked):** @imovehp IG = the two-family reference (text cards + bold-text-on-photo). Data: carousels favoured (algorithm rewards swipe-depth), Reels = discovery/reach, static/text = connection+saves (low reach). Build templates as **editable presets** (not locked) to ride/adapt the trend.
+
+**Status:**
+- ✅ **Phase 1 SHIPPED (#1460):** two-group picker (Photo templates / Text cards via `templateFamily`) + Split reworked to full-bleed photo + bottom panel overlay. Structure only; no restyle. (Chrome-verify pending.) Caveat: a piece EXPLICITLY on Split keeps its cached bake until content changes (renderer-only edit ≠ sig change); deck default is full-bleed so ~no impact.
+- NEXT: Phase 2 (aspect-adaptive 1:1/4:5/9:16) → text simplification + drag fix. Q tunes template designs.
+- Signed-off structure mockup: `mockups/editor-templates-v1.html` (two families; designs are placeholders). Earlier rounds: `photo-experience-v1.html`, `editor-layers-v1.html`.

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Two template families on a layer model</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Anton&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config={theme:{extend:{
+    fontFamily:{sans:['Inter','system-ui'],impact:['Anton','Inter','sans-serif']},
+    colors:{
+      background:'hsl(var(--background)/<alpha-value>)',foreground:'hsl(var(--foreground)/<alpha-value>)',card:'hsl(var(--card)/<alpha-value>)',
+      primary:{DEFAULT:'hsl(var(--primary)/<alpha-value>)',foreground:'hsl(var(--primary-foreground)/<alpha-value>)'},
+      muted:{DEFAULT:'hsl(var(--muted)/<alpha-value>)',foreground:'hsl(var(--muted-foreground)/<alpha-value>)'},
+      accent:'hsl(var(--accent)/<alpha-value>)',border:'hsl(var(--border)/<alpha-value>)',
+      action:{DEFAULT:'hsl(var(--action)/<alpha-value>)',foreground:'hsl(var(--action-foreground)/<alpha-value>)'},
+      info:'hsl(var(--info)/<alpha-value>)',success:'hsl(var(--success)/<alpha-value>)',destructive:'hsl(var(--destructive)/<alpha-value>)',
+    },
+  }}}
+</script>
+<style>
+  :root{--background:220 22% 97%;--foreground:222 47% 8%;--card:0 0% 100%;--primary:186 83% 27%;--primary-foreground:0 0% 100%;--muted:220 14% 96%;--muted-foreground:215 16% 47%;--accent:160 60% 95%;--border:214 32% 91%;--action:32 95% 44%;--action-foreground:0 0% 100%;--info:199 95% 40%;--success:152 76% 40%;--destructive:0 84% 60%;}
+  body{font-family:Inter,system-ui,sans-serif;background:hsl(var(--background));color:hsl(var(--foreground))}
+  .text-3xs{font-size:10px;line-height:1.3}.text-2xs{font-size:11px;line-height:1.35}
+  .stage{background:hsl(220 16% 91%)}
+  .ann{border:1.5px dashed hsl(var(--action))}.ann-label{background:hsl(var(--action));color:#fff}
+  .navy{background:#0c1a2e}.paper{background:#f6f4ef}
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:8px}
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="mx-auto max-w-[1500px] px-4 pt-5 pb-3">
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-lg font-bold">Two template families <span class="text-muted-foreground font-medium">· on a layer model · structure only (you tune the designs)</span></h1>
+    <span class="rounded-full bg-action/10 px-2.5 py-1 text-2xs font-semibold text-action">Dashed amber = the principle</span>
+  </div>
+  <p class="mt-1.5 max-w-4xl text-2xs text-muted-foreground">
+    The picker has <b>two groups</b> — <b>Photo templates</b> (full-bleed photo + overlay; the photo is the base layer and a look never resizes it) and <b>Text cards</b> (no photo, branded — deliberate, like @imovehp). Templates are <b>editable presets</b> on a layer stack, not locked designs. Click templates in both groups and watch the canvas + the Layers panel change. Placeholder looks in Bernard colours — you'll tune the actual designs.
+  </p>
+</div>
+
+<div class="mx-auto max-w-[1500px] px-4">
+<div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+  <header class="flex items-center gap-3 border-b border-border bg-card px-4 py-2.5">
+    <button class="text-muted-foreground hover:text-foreground"><i data-lucide="arrow-left" class="h-4 w-4"></i></button>
+    <span class="text-sm font-semibold">Sciatica</span>
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-info/10 px-2.5 py-1 text-2xs font-semibold text-info"><i data-lucide="instagram" class="h-3.5 w-3.5"></i> Instagram · Carousel <span class="font-normal text-info/70">· 3 slides</span></span>
+    <div class="ml-auto flex items-center gap-2">
+      <button class="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"><i data-lucide="smartphone" class="mr-1 inline h-3.5 w-3.5"></i>Preview</button>
+      <button class="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action"><i data-lucide="megaphone" class="mr-1 inline h-3.5 w-3.5"></i>Ads</button>
+      <button class="rounded-lg bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground"><i data-lucide="calendar-clock" class="mr-1 inline h-3.5 w-3.5"></i>Schedule</button>
+    </div>
+  </header>
+
+  <div class="flex" style="height:640px">
+    <aside class="flex w-[92px] shrink-0 flex-col border-r border-border bg-card">
+      <div class="flex items-center px-2 py-2 border-b border-border"><span class="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span><span class="ml-auto text-3xs text-muted-foreground">3</span></div>
+      <div id="rail" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+    </aside>
+
+    <section class="stage relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5">
+      <div class="absolute right-4 top-3 z-10 rounded-md bg-white/80 px-2 py-1 text-3xs font-semibold text-muted-foreground backdrop-blur">Slide 1 of 3</div>
+      <div class="relative" style="height:560px;aspect-ratio:4/5">
+        <div id="canvas" class="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted shadow-lg"></div>
+        <span id="canvasAnn" class="ann-label absolute -top-2.5 left-3 rounded px-1 text-[9px] font-bold"></span>
+      </div>
+    </section>
+
+    <aside class="flex w-[340px] shrink-0 flex-col border-l border-border bg-card overflow-y-auto">
+      <!-- LAYERS -->
+      <div class="border-b border-border px-3 py-2.5">
+        <div class="mb-1.5 flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground"><i data-lucide="layers" class="h-3.5 w-3.5"></i> Layers</div>
+        <div id="layers" class="space-y-1"></div>
+        <button class="ann mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md bg-primary/5 px-2 py-1.5 text-2xs font-semibold text-primary"><i data-lucide="type" class="h-3.5 w-3.5"></i> + Add text</button>
+      </div>
+
+      <!-- TEMPLATE PICKER — two groups -->
+      <div class="px-3 py-3">
+        <div class="mb-1.5 flex items-center gap-1.5"><i data-lucide="image" class="h-3.5 w-3.5 text-primary"></i><p class="text-2xs font-semibold uppercase tracking-wide text-foreground">Photo templates</p><span class="text-3xs text-muted-foreground">· full-bleed photo + overlay</span></div>
+        <div id="photoTpl" class="grid grid-cols-3 gap-1.5"></div>
+
+        <div class="mt-4 mb-1.5 flex items-center gap-1.5"><i data-lucide="square" class="h-3.5 w-3.5 text-primary"></i><p class="text-2xs font-semibold uppercase tracking-wide text-foreground">Text cards</p><span class="text-3xs text-muted-foreground">· no photo</span></div>
+        <div id="textTpl" class="grid grid-cols-3 gap-1.5"></div>
+
+        <p class="mt-3 rounded-md bg-muted/40 px-2 py-1.5 text-3xs text-muted-foreground"><i data-lucide="sliders-horizontal" class="mr-1 -mt-0.5 inline h-3 w-3"></i> Templates are <b>editable presets</b> — open any one to change its text styling, colours, and graphic elements. (You'll tune these.)</p>
+      </div>
+
+      <div id="inspector" class="border-t border-border px-3 py-3"></div>
+    </aside>
+  </div>
+</div>
+</div>
+
+<div class="mx-auto max-w-[1500px] px-4 py-6 text-2xs text-muted-foreground">
+  <b class="text-foreground">What's the structure?</b> Every slide is a layer stack. A <b>Photo template</b> = a full-bleed Photo base layer + text/graphic overlay layers (photo is framed with zoom/reposition; the look never touches it). A <b>Text card</b> = no Photo layer, a brand background + text/graphic layers. Switching template only swaps the overlay layers — your photo + its framing stay put.
+</div>
+
+<script>
+  const HERO='https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/3873ac62-07f5-44fc-9f4b-e38d219231fb-X2LUlV0OOupdG1koBWe82h3btDRSbj.jpg';
+  const T=(id)=>`https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/thumbs/${id}.jpg`;
+  const PHOTOS=[HERO,T('8545d1e4-448d-4587-aefc-eb26ec613a91'),T('25bc9ea9-1a81-490d-bb84-28dd455b02ac')];
+
+  const HEAD='YOUR PIRIFORMIS MIGHT NOT BE TIGHT';
+  const STATEMENT=`If you're in <b class="text-primary">pain</b> and still pushing yourself <b class="text-primary">harder</b>…<br><br>that grind <b class="text-action">isn't going to fix</b> it.`;
+  const QUOTE='“Stretching more was making my sciatica worse.”';
+  const CTA='Reserve your free seat';
+  const LOGO='https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/brand-assets/2026-05-14T17-37-32-322Z-mb_logo-library-pixel-perfect_240827_mb-logo-horz-stkd-std.svg';
+
+  const PHOTO_TPL=[
+    {id:'bold',   name:'Bold Hook'},
+    {id:'refined',name:'Refined'},
+    {id:'quote',  name:'Quote'},
+    {id:'cta',    name:'CTA'},
+  ];
+  const TEXT_TPL=[
+    {id:'statement',name:'Statement'},
+    {id:'quotecard',name:'Quote'},
+    {id:'ctacard',  name:'CTA'},
+  ];
+
+  let sel = 'bold';   // selected template id
+  const isText = (id)=>TEXT_TPL.some(t=>t.id===id);
+
+  // Returns inner HTML for a template. `s` = font scale (1 canvas, smaller for minis).
+  function tplHTML(id, photo, s=1){
+    const scrimB = `<div class="absolute inset-x-0 bottom-0 h-1/2" style="background:linear-gradient(to top,rgba(0,0,0,.72),transparent)"></div>`;
+    const px=(n)=>`${n*s}px`;
+    if(id==='bold')
+      return `<img src="${photo}" class="absolute inset-0 h-full w-full object-cover"/>${scrimB}
+        <p class="absolute inset-x-0 bottom-[7%] px-[6%] text-center font-impact uppercase leading-[0.95] text-white" style="font-size:${px(34)};text-shadow:0 2px 10px rgba(0,0,0,.45)">${HEAD}</p>`;
+    if(id==='refined')
+      return `<img src="${photo}" class="absolute inset-0 h-full w-full object-cover"/>${scrimB}
+        <p class="absolute inset-x-0 bottom-[9%] px-[8%] text-center font-extrabold leading-tight text-white" style="font-size:${px(26)};text-shadow:0 2px 8px rgba(0,0,0,.5)">Your piriformis might not be tight</p>`;
+    if(id==='quote')
+      return `<img src="${photo}" class="absolute inset-0 h-full w-full object-cover"/>${scrimB}
+        <div class="absolute inset-x-0 bottom-[10%] px-[9%] text-center"><div class="mx-auto mb-[3%] h-[3px] w-[12%]" style="background:hsl(var(--action))"></div>
+        <p class="font-semibold italic leading-snug text-white" style="font-size:${px(22)};text-shadow:0 2px 8px rgba(0,0,0,.5)">${QUOTE}</p>
+        <p class="mt-[3%] font-medium uppercase tracking-widest text-white/80" style="font-size:${px(11)}">— Dr. Q, Move Better</p></div>`;
+    if(id==='cta')
+      return `<img src="${photo}" class="absolute inset-0 h-full w-full object-cover"/>${scrimB}
+        <div class="absolute inset-x-0 bottom-[9%] px-[8%] text-center">
+        <p class="mb-[4%] font-extrabold leading-tight text-white" style="font-size:${px(24)};text-shadow:0 2px 8px rgba(0,0,0,.5)">Fix the root cause</p>
+        <span class="inline-block rounded-full px-[6%] py-[2.5%] font-bold text-white" style="background:hsl(var(--action));font-size:${px(15)}">${CTA}</span></div>`;
+    // ── text cards (no photo) ──
+    if(id==='statement')
+      return `<div class="paper absolute inset-0"></div>
+        <img src="${LOGO}" class="absolute left-1/2 top-[7%] h-[7%] -translate-x-1/2 object-contain"/>
+        <p class="absolute inset-x-0 top-[28%] px-[10%] font-medium leading-relaxed text-foreground" style="font-size:${px(17)}">${STATEMENT}</p>`;
+    if(id==='quotecard')
+      return `<div class="navy absolute inset-0"></div>
+        <div class="absolute left-1/2 top-[10%] h-[3px] w-[14%] -translate-x-1/2" style="background:hsl(var(--action))"></div>
+        <p class="absolute inset-x-0 top-[34%] px-[10%] text-center font-extrabold italic leading-snug text-white" style="font-size:${px(24)}">${QUOTE}</p>
+        <p class="absolute inset-x-0 bottom-[12%] text-center font-medium uppercase tracking-widest text-white/70" style="font-size:${px(11)}">— Dr. Q, Move Better</p>`;
+    if(id==='ctacard')
+      return `<div class="absolute inset-0" style="background:hsl(var(--primary))"></div>
+        <img src="${LOGO}" class="absolute left-1/2 top-[8%] h-[7%] -translate-x-1/2 object-contain" style="filter:brightness(0) invert(1)"/>
+        <div class="absolute inset-x-0 top-[36%] px-[10%] text-center">
+        <p class="mb-[6%] font-extrabold leading-tight text-white" style="font-size:${px(26)}">Stop grinding through the pain.</p>
+        <span class="inline-block rounded-full px-[7%] py-[3%] font-bold" style="background:hsl(var(--action));color:#fff;font-size:${px(15)}">${CTA}</span></div>`;
+    return '';
+  }
+
+  function renderRail(){
+    const r=document.getElementById('rail');r.innerHTML='';
+    PHOTOS.forEach((p,i)=>{const d=document.createElement('div');d.className='flex items-start gap-1';
+      d.innerHTML=`<span class="pt-0.5 text-3xs font-semibold text-muted-foreground">${i+1}</span>
+        <button class="relative aspect-[4/5] w-full overflow-hidden rounded-md border ${i===0?'border-primary ring-1 ring-primary/40':'border-border'}"><img src="${p}" class="absolute inset-0 h-full w-full object-cover"/></button>`;
+      r.appendChild(d);});
+    const a=document.createElement('button');a.className='ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed border-muted-foreground/30 py-3 text-muted-foreground hover:text-primary';
+    a.innerHTML='<i data-lucide="plus" class="h-4 w-4"></i><span class="text-3xs mt-0.5">Add</span>';r.appendChild(a);lucide.createIcons();
+  }
+
+  function renderCanvas(){
+    document.getElementById('canvas').innerHTML=tplHTML(sel, PHOTOS[0], 1.55);
+    const ann=document.getElementById('canvasAnn');
+    ann.textContent = isText(sel) ? 'Text card · no photo (deliberate)' : 'Photo = full-bleed base · overlay never resizes it';
+    lucide.createIcons();
+  }
+
+  function renderPicker(){
+    const ph=document.getElementById('photoTpl');ph.innerHTML='';
+    PHOTO_TPL.forEach(t=>{const on=sel===t.id;const b=document.createElement('button');b.onclick=()=>{sel=t.id;renderAll()};
+      b.className=`overflow-hidden rounded-md border text-left ${on?'border-primary ring-1 ring-primary/40':'border-border hover:border-primary/40'}`;
+      b.innerHTML=`<div class="relative aspect-[4/5] w-full bg-muted">${tplHTML(t.id,PHOTOS[0],0.42)}</div><div class="px-1 py-0.5 text-3xs font-medium ${on?'text-primary':'text-foreground'}">${t.name}</div>`;
+      ph.appendChild(b);});
+    const tx=document.getElementById('textTpl');tx.innerHTML='';
+    TEXT_TPL.forEach(t=>{const on=sel===t.id;const b=document.createElement('button');b.onclick=()=>{sel=t.id;renderAll()};
+      b.className=`overflow-hidden rounded-md border text-left ${on?'border-primary ring-1 ring-primary/40':'border-border hover:border-primary/40'}`;
+      b.innerHTML=`<div class="relative aspect-[4/5] w-full bg-muted">${tplHTML(t.id,PHOTOS[0],0.42)}</div><div class="px-1 py-0.5 text-3xs font-medium ${on?'text-primary':'text-foreground'}">${t.name}</div>`;
+      tx.appendChild(b);});
+    lucide.createIcons();
+  }
+
+  function renderLayers(){
+    const l=document.getElementById('layers');l.innerHTML='';
+    const rows = isText(sel)
+      ? [['type','Body — text','text'],['image','Logo','el'],['square','Background — brand','bg']]
+      : [['type','Headline — text','text'],['image','Photo — full-bleed base','photo']];
+    rows.forEach((r,i)=>{const b=document.createElement('div');
+      const active=i===0;
+      b.className=`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-2xs ${active?'border-primary bg-primary/10 text-primary font-semibold':'border-transparent'}`;
+      b.innerHTML=`<i data-lucide="${r[0]}" class="h-3.5 w-3.5 ${active?'text-primary':'text-muted-foreground'}"></i><span class="truncate">${r[1]}</span>${r[2]==='photo'?'<i data-lucide="lock" class="ml-auto h-3 w-3 text-muted-foreground/50"></i>':''}`;
+      l.appendChild(b);});
+    lucide.createIcons();
+  }
+
+  function renderInspector(){
+    const i=document.getElementById('inspector');
+    if(isText(sel)){
+      i.innerHTML=`<div class="mb-2 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)"><i data-lucide="square" class="h-4 w-4 text-primary"></i><span class="text-xs font-semibold text-primary">Text card</span></div>
+        <p class="text-3xs text-muted-foreground">No photo — a branded card (background + logo + copy). Edit the copy and the keyword accents; tune the card's colours in the template.</p>`;
+    } else {
+      i.innerHTML=`<div class="mb-2 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)"><i data-lucide="image" class="h-4 w-4 text-primary"></i><span class="text-xs font-semibold text-primary">Photo</span></div>
+        <div class="flex items-center gap-2.5"><img src="${PHOTOS[0]}" class="h-14 w-14 shrink-0 rounded-md border border-border object-cover"/>
+        <div class="flex-1"><p class="text-2xs font-semibold">Full-bleed base layer</p><p class="text-3xs text-muted-foreground">Frame it: zoom + drag. The template never resizes it.</p>
+        <button class="mt-1.5 rounded-md bg-primary px-2 py-1 text-3xs font-semibold text-primary-foreground"><i data-lucide="repeat" class="mr-0.5 inline h-3 w-3"></i>Replace</button></div></div>`;
+    }
+    lucide.createIcons();
+  }
+
+  function renderAll(){renderRail();renderCanvas();renderPicker();renderLayers();renderInspector();}
+  renderAll();
+</script>
+</body>
+</html>
