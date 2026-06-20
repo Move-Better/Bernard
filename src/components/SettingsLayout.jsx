@@ -73,7 +73,7 @@ function SidebarItem({ item }) {
   return (
     <NavLink
       to={item.to}
-      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap ${
         isActive
           ? 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -103,7 +103,7 @@ function SidebarSubGroup({ item }) {
             <NavLink
               key={child.to}
               to={child.to}
-              className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+              className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap ${
                 isActive
                   ? 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -191,9 +191,9 @@ export default function SettingsLayout() {
   })
 
   return (
-    <div className="flex flex-col md:flex-row md:gap-8 min-h-[calc(100dvh-3.5rem)] md:min-h-screen max-w-[1200px] mx-auto md:px-4 lg:px-6">
+    <div className="flex flex-col md:flex-row md:gap-8 min-h-[calc(100dvh-3.5rem)] md:min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="hidden md:block w-44 shrink-0 pt-6 pr-2 border-r border-border">
+      <aside className="hidden md:block w-fit shrink-0 pt-6 pr-2 border-r border-border">
         <div className="sticky top-8 space-y-6">
           <div className="flex items-center gap-2 px-2.5 mb-1">
             <span
