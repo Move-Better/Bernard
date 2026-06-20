@@ -27,11 +27,18 @@ const ASPECT_BOX = {
 /**
  * Ad-creative export modal. Re-renders a source photo into the selected ad
  * sizes and downloads the pack. Shared entry point — opened from the Library
- * item drawer (and, later, the Ads surface).
+ * item drawer, the Ads "New ad creative" flow, and the Storyboard compositor.
  *
- * @param {{ asset: any, onClose: () => void }} props
+ * When a `treatment` (+ optional WHOOP `templateId`) is supplied — as the
+ * Storyboard "Export for ads" action does — the SAME editorial/WHOOP overlay
+ * the piece was baked with is re-applied at each ad aspect, so the exported
+ * sizes carry the baked headline. Without a treatment (the Library case) each
+ * size is a clean subject-aware crop. `sourcePieceId` links the saved creative
+ * back to the originating piece.
+ *
+ * @param {{ asset: any, onClose: () => void, treatment?: object, templateId?: string, sourcePieceId?: string }} props
  */
-export default function AdExportModal({ asset, onClose }) {
+export default function AdExportModal({ asset, onClose, treatment, templateId, sourcePieceId }) {
   const sourceUrl = asset?.original_blob_url || asset?.blob_url || asset?.web_blob_url || ''
   const base = baseName(asset?.filename)
 
@@ -43,7 +50,7 @@ export default function AdExportModal({ asset, onClose }) {
 
   const render = useAppMutation({
     errorMessage: "Couldn't render the ad pack",
-    mutationFn: (aspects) => renderAdPack({ sourceUrl, aspects }),
+    mutationFn: (aspects) => renderAdPack({ sourceUrl, aspects, treatment, templateId }),
     onSuccess: async (data) => {
       const out = data?.files || []
       setFiles(out)
@@ -56,7 +63,9 @@ export default function AdExportModal({ asset, onClose }) {
           sizes: out,
           campaignId: campaignId || null,
           sourceAssetId: asset?.id || null,
+          sourcePieceId: sourcePieceId || null,
           title: asset?.display_title || asset?.filename || null,
+          treatment: treatment || null,
         })
       } catch { /* surfaced on the Ads page when it next loads; don't block download */ }
     },
