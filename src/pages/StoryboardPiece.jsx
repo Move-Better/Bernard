@@ -20,7 +20,7 @@ import MediaPreviewDialog from '@/components/storyboard/MediaPreviewDialog'
 import {
   useContentItem, useContentItems, useInterview, useMediaSuggestions, useUpdateContentItem,
 } from '@/lib/queries'
-import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
+import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, isInstagramReel } from '@/lib/mediaEntry'
 import { mediaKindForPlatform, mediaKindLabel, isKindMismatch, isTextOnlyPlatform } from '@/lib/platformMediaKind'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { toast } from '@/lib/toast'
@@ -360,6 +360,18 @@ export default function StoryboardPiece() {
   const primaryIsVideo = primaryMedia?.type === 'video' || primaryMedia?.kind === 'video'
   const primaryThumb = primaryMedia?.thumbnailUrl || (!primaryIsVideo ? primaryMedia?.url : null)
 
+  // Post-format label for Instagram — Reel when any attached item is a video,
+  // carousel when 2+ photos, single post otherwise. Shown live so the user
+  // knows what will actually publish as they attach/remove media.
+  const isReel = piece.platform === 'instagram' && isInstagramReel(media)
+  const instagramFormat = !hasMedia
+    ? null
+    : isReel
+      ? 'Reel'
+      : media.length > 1
+        ? 'Carousel'
+        : 'Photo post'
+
   return (
     <div className="space-y-5 py-6">
       <PipelineStepper current="media" />
@@ -475,6 +487,17 @@ export default function StoryboardPiece() {
               <span className="text-sm font-semibold">{meta.label}</span>
               {piece.staff_name && (
                 <span className="text-xs text-muted-foreground">· {piece.staff_name}</span>
+              )}
+              {instagramFormat && (
+                <span className={`rounded-full px-2 py-0.5 text-3xs font-semibold ${
+                  instagramFormat === 'Reel'
+                    ? 'bg-purple-100 text-purple-700'
+                    : instagramFormat === 'Carousel'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'bg-muted text-muted-foreground'
+                }`}>
+                  {instagramFormat}
+                </span>
               )}
               {!textOnly && (
                 <span className="ml-auto text-3xs text-muted-foreground">
