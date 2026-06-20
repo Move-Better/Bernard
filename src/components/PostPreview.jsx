@@ -4,7 +4,7 @@ import { Heart, MessageCircle, Send, Bookmark, ThumbsUp, Repeat2, Globe, MapPin,
 import emailTemplateHtml from '../email-template.html?raw'
 import { workspace } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { renderFreeformSlide } from '@/lib/overlayTemplates'
+import { renderFreeformSlide, SLIDE_W, SLIDE_H } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
@@ -73,6 +73,8 @@ function SlideCanvas({ slide, photo, brandStyle, theme }) {
           brandStyle: brandStyle || {},
           canvas,
           theme,
+          width: SLIDE_W,
+          height: SLIDE_H,
         })
       } catch (e) {
         if (!cancelled) console.warn('[SlideCanvas] render failed', e?.message)
@@ -103,7 +105,7 @@ function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   const theme = resolveTheme(slide.template_id || photoTemplateId, customThemes)
 
   return (
-    <div className="relative aspect-square overflow-hidden bg-black select-none">
+    <div className="relative aspect-[4/5] overflow-hidden bg-black select-none">
       <SlideCanvas slide={slide} photo={photo} brandStyle={brandStyle} theme={theme} />
 
       {total > 1 && (
