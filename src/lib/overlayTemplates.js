@@ -113,15 +113,29 @@ function drawRoundedRect(ctx, x, y, w, h, r) {
 
 // Draw source image object-cover into a region. Assumes the image element is
 // already loaded (callers pre-load with crossOrigin='anonymous').
-function drawCover(ctx, img, x, y, w, h) {
-  const scale = Math.max(w / img.width, h / img.height)
+// Draw `img` to fully cover the (x,y,w,h) frame. `zoom` (>=1) crops in for a
+// tighter framing; `offset` {x,y} in -0.5..0.5 pans the focal point (fraction of
+// the overflow on each axis). The result is clamped so the frame always stays
+// fully covered — panning can never reveal an empty edge. Defaults (zoom 1, no
+// offset) reproduce the historical centered cover exactly, so existing callers
+// are byte-identical.
+function drawCover(ctx, img, x, y, w, h, zoom = 1, offset = null) {
+  const z = zoom > 0 ? zoom : 1
+  const scale = Math.max(w / img.width, h / img.height) * z
   const sw = img.width  * scale
   const sh = img.height * scale
+  const ox = offset && Number.isFinite(offset.x) ? offset.x : 0
+  const oy = offset && Number.isFinite(offset.y) ? offset.y : 0
+  let dx = x + (w - sw) / 2 + ox * (sw - w)
+  let dy = y + (h - sh) / 2 + oy * (sh - h)
+  // Clamp to keep the frame covered (sw>=w and sh>=h by construction).
+  dx = Math.min(x, Math.max(x + w - sw, dx))
+  dy = Math.min(y, Math.max(y + h - sh, dy))
   ctx.save()
   ctx.beginPath()
   ctx.rect(x, y, w, h)
   ctx.clip()
-  ctx.drawImage(img, x + (w - sw) / 2, y + (h - sh) / 2, sw, sh)
+  ctx.drawImage(img, dx, dy, sw, sh)
   ctx.restore()
 }
 
@@ -726,7 +740,7 @@ const WHOOP_NAVY      = '#0c1a2e'
 const WHOOP_PAPER     = '#f6f4ef'
 const WHOOP_SAGE_FILL = '#eaeeea'
 
-function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
+function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null }) {
   const accent = brandAccent(brandStyle)
 
   if (layout === 'claim') {
@@ -747,7 +761,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
   } else if (layout === 'split') {
     const splitY = Math.round(SIZE * 0.67)
     if (img) {
-      drawCover(ctx, img, 0, 0, SIZE, splitY)
+      drawCover(ctx, img, 0, 0, SIZE, splitY, zoom, offset)
     } else {
       const grad = ctx.createLinearGradient(0, 0, 0, splitY)
       grad.addColorStop(0, '#475569')
@@ -765,7 +779,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
     // badge
     if (palette === 'dark') {
       if (img) {
-        drawCover(ctx, img, 0, 0, SIZE, SIZE)
+        drawCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset)
       } else {
         ctx.fillStyle = WHOOP_NAVY
         ctx.fillRect(0, 0, SIZE, SIZE)
@@ -791,7 +805,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle }) {
       // below — mirrors the dark-badge scrim treatment (fade, not a hard seam).
       const panelY = Math.round(SIZE * 0.58)
       if (img) {
-        drawCover(ctx, img, 0, 0, SIZE, SIZE)
+        drawCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset)
       } else {
         const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
         grad.addColorStop(0, '#e2e8f0')
@@ -878,13 +892,18 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // A panel-template slide exported non-square: bottom-stack the content (below).
   const whoopNonSquare = !!(layout && palette) && !square
 
+  // Per-slide photo reframe — drag-pan + zoom of the source photo, applied in
+  // the single shared renderer so preview, publish bake, and ad export all match.
+  const photoZoom = slide?.photo_zoom || 1
+  const photoOffset = slide?.photo_offset || null
+
   if (useWhoop) {
     // WHOOP built-in — paint structural geometry (background, panel, rule)
     const img = sourceUrl ? await loadImage(sourceUrl) : null
-    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {} })
+    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset })
   } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
-    drawCover(ctx, img, 0, 0, W, H)
+    drawCover(ctx, img, 0, 0, W, H, photoZoom, photoOffset)
   } else if (background) {
     // Text-only card (Text Post Studio): paint a brand-aware background.
     paintCardBackground(ctx, background, brandStyle)
