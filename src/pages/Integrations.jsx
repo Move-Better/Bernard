@@ -433,12 +433,12 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
 
         {bundleActive && (
           <>
-            {/* Brand accounts — Instagram + Facebook on the workspace Team */}
+            {/* Social accounts — Instagram/Facebook/X/LinkedIn/TikTok/YouTube/Threads/Bluesky/Mastodon on the workspace Team */}
             <div className="px-5 py-3.5 border-t border-border">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <h3 className="text-xs font-semibold">Brand accounts</h3>
-                  <p className="text-2xs text-muted-foreground mt-0.5">Instagram &amp; Facebook for the whole clinic.</p>
+                  <h3 className="text-xs font-semibold">Social accounts</h3>
+                  <p className="text-2xs text-muted-foreground mt-0.5">Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Bluesky &amp; Mastodon.</p>
                 </div>
                 <button
                   type="button" disabled={!isAdmin || busy} onClick={openPortal}
