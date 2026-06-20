@@ -18,6 +18,7 @@ import { getCredential } from '../../_lib/getCredential.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
+import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -48,6 +49,39 @@ async function gql(token, query, variables = {}) {
   })
   const json = await r.json().catch(() => ({}))
   return { ok: r.ok, status: r.status, data: json.data, errors: json.errors }
+}
+
+// Resolve bundle GBP location targets for a workspace: active locations with a bundle Team.
+async function resolveBundleGbpTargets(workspaceId) {
+  const r = await sb(
+    `workspace_locations?workspace_id=eq.${workspaceId}&status=eq.active&bundle_team_id=not.is.null&select=id,label,bundle_team_id`
+  )
+  if (!r.ok) return []
+  const rows = await r.json().catch(() => [])
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => typeof row.bundle_team_id === 'string' && row.bundle_team_id.trim())
+    .map((row) => ({ locationId: row.id, label: row.label, teamId: row.bundle_team_id }))
+}
+
+// Dispatch a GBP package via bundle.social (one post per location team).
+// Returns { bufferId: firstPostId } matching the Buffer return shape, or null on total failure.
+async function dispatchGbpBundle({ pkg, workspace, targets }) {
+  const text = pkg.caption_text || pkg.topic || ''
+  const mediaUrls = Array.isArray(pkg.renders)
+    ? pkg.renders.filter((r) => r.channel === 'gbp_post' && r.blobUrl).map((r) => ({ url: r.blobUrl, type: 'image' }))
+    : []
+
+  let firstPostId = null
+  for (const target of targets) {
+    const pub = new BundlePublisher(workspace, { teamId: target.teamId })
+    try {
+      const result = await pub.publish({ platform: 'gbp', content: text, mediaUrls })
+      if (!firstPostId && result?.postId) firstPostId = result.postId
+    } catch (e) {
+      console.error('[auto-publish] bundle GBP dispatch failed for location:', target.label, e?.message)
+    }
+  }
+  return firstPostId ? { bufferId: firstPostId } : null
 }
 
 // Resolve Buffer GBP channel IDs for a workspace (same logic as api/publish/buffer.js).
@@ -169,15 +203,22 @@ async function processWorkspace(ws, summary) {
     return
   }
 
-  // Resolve Buffer credential.
-  const cred = await getCredential(ws.id, 'buffer')
-  if (!cred?.secret) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'no-buffer-token' })
-    return
-  }
+  const isBundle = ws.publish_provider === 'bundle'
 
-  // Resolve GBP location channels once (same for all packages).
-  const gbpChannels = settings.gbp?.enabled ? await resolveGbpChannelIds(ws.id) : []
+  // Resolve provider credential / GBP targets once (same for all packages).
+  let cred = null
+  let gbpChannels = []
+  let bundleGbpTargets = []
+  if (isBundle) {
+    if (settings.gbp?.enabled) bundleGbpTargets = await resolveBundleGbpTargets(ws.id)
+  } else {
+    cred = await getCredential(ws.id, 'buffer')
+    if (!cred?.secret) {
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'no-buffer-token' })
+      return
+    }
+    if (settings.gbp?.enabled) gbpChannels = await resolveGbpChannelIds(ws.id)
+  }
 
   // Load active campaigns once — used to enforce target_staff_ids per package.
   const activeCampaigns = await getActiveCampaigns(ws.id).catch(() => [])
@@ -244,18 +285,27 @@ async function processWorkspace(ws, summary) {
     let dispatchedAny = false
     for (const channel of result.channels) {
       if (channel === 'gbp') {
-        if (gbpChannels.length === 0) {
-          held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No GBP locations configured' }] })
-          continue
+        let dispatch
+        if (isBundle) {
+          if (bundleGbpTargets.length === 0) {
+            held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No bundle GBP locations configured' }] })
+            continue
+          }
+          dispatch = await dispatchGbpBundle({ pkg, workspace: ws, targets: bundleGbpTargets })
+        } else {
+          if (gbpChannels.length === 0) {
+            held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No GBP locations configured' }] })
+            continue
+          }
+          dispatch = await dispatchGbp({
+            pkg,
+            token: cred.secret,
+            locationChannels: gbpChannels,
+            workspaceId: ws.id,
+          })
         }
-        const dispatch = await dispatchGbp({
-          pkg,
-          token: cred.secret,
-          locationChannels: gbpChannels,
-          workspaceId: ws.id,
-        })
         if (!dispatch) {
-          held.push({ id: pkg.id, reasons: [{ signal: 'buffer_error', detail: 'Buffer dispatch failed' }] })
+          held.push({ id: pkg.id, reasons: [{ signal: 'dispatch_error', detail: 'GBP dispatch failed' }] })
           continue
         }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
@@ -319,7 +369,7 @@ export default async function handler(req, res) {
 
   // Enumerate active workspaces with non-empty auto_publish_settings.
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,auto_publish_settings`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,auto_publish_settings,publish_provider,bundle_team_id`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })

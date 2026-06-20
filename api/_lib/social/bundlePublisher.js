@@ -182,6 +182,21 @@ export class BundlePublisher extends SocialPublisher {
     return { success: true }
   }
 
+  // Fetch the current publish status of a bundle post by its id. Used by
+  // sync-buffer-published cron to promote scheduled→published without a
+  // webhook. Note: postGet does NOT use teamId (post ids are globally unique
+  // within the org) — this works even before a workspace brand Team is set up.
+  async getPostStatus({ postId } = {}) {
+    if (!postId) throw publishError('getPostStatus requires postId', 400)
+    const res = await this.sdk.post.postGet({ id: postId })
+    return {
+      status:   res?.status ?? null,
+      postedAt: res?.postedDate ?? null,
+      isPosted: res?.status === 'POSTED',
+      isFailed: res?.status === 'ERROR' || res?.status === 'DELETED',
+    }
+  }
+
   async checkConnection({ network } = {}) {
     if (!network) throw publishError('bundle checkConnection requires a network', 400)
     const type = this._bundleType(network)
