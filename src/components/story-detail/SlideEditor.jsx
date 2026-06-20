@@ -340,6 +340,10 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
   function onPointerMove(e) {
     const d = dragRef.current
     if (!d) return
+    // Ignore sub-threshold movement so a plain click stays a click (selects the
+    // photo layer) instead of micro-reframing and dirtying the slide. Only a
+    // real drag (>4px from the press point) reframes.
+    if (!movedRef.current && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 4) return
     movedRef.current = true
     const nx = Math.max(-0.5, Math.min(0.5, d.ox + (e.clientX - d.sx) / d.w))
     const ny = Math.max(-0.5, Math.min(0.5, d.oy + (e.clientY - d.sy) / d.h))
