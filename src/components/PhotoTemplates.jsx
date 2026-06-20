@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Sparkles } from 'lucide-react'
+import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
@@ -9,12 +9,15 @@ import {
   useUpdatePhotoTemplate,
   useDeletePhotoTemplate,
   useGenerateBrandTemplates,
+  useDesignTemplateChat,
   useMediaInfinite,
 } from '@/lib/queries'
 import {
   FONT_SIZE_PX,
   FONT_WEIGHT_CSS,
   BUILTIN_THEME_IDS,
+  BUILTIN_THEMES,
+  DEFAULT_DECK_THEME,
   defaultBlockConfig,
 } from '@/lib/photoTemplates'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
@@ -463,6 +466,268 @@ function ThemeEditor({ initial, onSave, onCancel, saving }) {
   )
 }
 
+// ── Design with AI — conversational template designer ────────────────────────
+//
+// Chat column (seed row + transcript + suggestions + input) on the left; the
+// SAME WYSIWYG LiveThemePreview on the right (format/photo/slide pickers).
+// Each turn POSTs the conversation + current draft config to /api/photo-
+// templates/chat and gets back a full validated config (model proposes →
+// renderer applies), a conversational reply, and a terse change summary. The
+// draft is saved via the existing create endpoint when the user is happy.
+
+const CHAT_SUGGESTIONS = [
+  'make the headline bigger',
+  'try it on a light background',
+  'move the text to the bottom',
+  'use my sage instead of orange',
+]
+
+// A theme record → the {layout, palette, blocks} config shape the chat route
+// and renderer speak. Built-ins carry layout/palette at top level; custom
+// templates carry it (or just blocks) under .config.
+function themeToConfig(theme) {
+  if (!theme) return null
+  if (theme.config) {
+    return {
+      layout:  theme.config.layout  || theme.layout  || 'photo',
+      palette: theme.config.palette || theme.palette || 'dark',
+      blocks:  theme.config.blocks  || {},
+    }
+  }
+  return { layout: theme.layout || 'photo', palette: theme.palette || 'dark', blocks: theme.blocks || {} }
+}
+
+function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, saving }) {
+  const chat = useDesignTemplateChat()
+  const [messages, setMessages] = useState([])   // [{ role:'user'|'assistant', content, summary? }]
+  const [draftConfig, setDraftConfig] = useState(null)
+  const [draftName, setDraftName] = useState('Untitled draft')
+  const [input, setInput] = useState('')
+  const [seedOpen, setSeedOpen] = useState(false)
+  const inputRef = useRef(null)
+  const transcriptRef = useRef(null)
+
+  // Preview state (mirrors the browse view's preview stage)
+  const [formatId, setFormatId] = useState('square')
+  const [slideKey, setSlideKey] = useState('cover')
+  const [previewPhotoIdx, setPreviewPhotoIdx] = useState(0)
+  const { data: mediaPages } = useMediaInfinite({ kind: 'photo' }, { pageSize: 6 })
+  const recentPhotos = useMemo(() => (
+    (mediaPages?.pages?.flat() || []).slice(0, 6)
+      .map((a) => a.rendered_url || a.web_blob_url || a.blob_url || null).filter(Boolean)
+  ), [mediaPages])
+  const previewPhotoUrl = previewPhotoIdx >= 0 ? (recentPhotos[previewPhotoIdx] ?? null) : null
+  const slides = useMemo(() => sampleSlides(workspaceName), [workspaceName])
+
+  const format  = FORMATS.find((f) => f.id === formatId) || FORMATS[0]
+  const maxBoxW = Math.round(PREVIEW_MAX_H / format.ratio)
+
+  // The theme to render: the live draft, else the default deck theme so the
+  // canvas is never empty.
+  const previewTheme = draftConfig
+    ? normalizeTheme(draftConfig)
+    : normalizeTheme(BUILTIN_THEMES[DEFAULT_DECK_THEME])
+
+  useEffect(() => {
+    if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
+  }, [messages, chat.isPending])
+
+  async function send(text) {
+    const trimmed = (text || '').trim()
+    if (!trimmed || chat.isPending) return
+    setInput('')
+    const nextMessages = [...messages, { role: 'user', content: trimmed }]
+    setMessages(nextMessages)
+    try {
+      const apiMessages = nextMessages.map((m) => ({ role: m.role, content: m.content }))
+      const res = await chat.mutateAsync({ messages: apiMessages, currentConfig: draftConfig })
+      setDraftConfig(res.config)
+      if (res.name) setDraftName(res.name)
+      setMessages((m) => [...m, { role: 'assistant', content: res.reply || 'Updated the design.', summary: res.summary || '' }])
+    } catch (e) {
+      setMessages((m) => [...m, { role: 'assistant', content: `Sorry — I couldn't apply that (${e.message}). Try rephrasing?`, summary: '' }])
+    }
+  }
+
+  function seedFromTemplate(theme) {
+    setSeedOpen(false)
+    setDraftConfig(themeToConfig(theme))
+    setDraftName(`${theme.name} (copy)`)
+    setMessages([{ role: 'assistant', content: `Loaded ${theme.name} as your starting point. Tell me what to change and I'll refine it.`, summary: `seeded from ${theme.name}` }])
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  function handleSave(asCopy) {
+    if (!draftConfig) { toast.error('Design something first'); return }
+    const name = asCopy ? `${draftName} (copy)` : draftName
+    onSaveTemplate({ name: name.slice(0, 80), is_default: false, config: draftConfig })
+  }
+
+  const started = messages.length > 0 || draftConfig
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden grid" style={{ gridTemplateColumns: '420px 1fr' }}>
+      {/* LEFT — chat */}
+      <div className="border-r flex flex-col" style={{ height: 640 }}>
+        {/* Seed row */}
+        <div className="p-3 border-b">
+          <div className="text-2xs font-medium text-muted-foreground mb-1.5">Start from</div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.focus()}
+              className="flex-1 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary text-left hover:bg-primary/10 transition-colors"
+            >
+              Scratch — describe it and I&apos;ll design it
+            </button>
+            <div className="relative">
+              <button type="button" onClick={() => setSeedOpen((v) => !v)}
+                className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted transition-colors whitespace-nowrap">
+                A template ▾
+              </button>
+              {seedOpen && (
+                <div className="absolute right-0 mt-1 w-48 max-h-60 overflow-y-auto rounded-lg border bg-card shadow-lg z-10 p-1">
+                  {allThemes.map((t) => (
+                    <button key={t.id} type="button" onClick={() => seedFromTemplate(t)}
+                      className="block w-full text-left rounded px-2 py-1.5 text-xs hover:bg-muted">
+                      {t.name} <span className="text-2xs text-muted-foreground">{t.builtin ? 'Built-in' : 'Custom'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Transcript */}
+        <div ref={transcriptRef} className="flex-1 overflow-y-auto p-3 space-y-3">
+          {!started && (
+            <div className="text-center text-2xs text-muted-foreground py-10">
+              <MessageSquareText className="w-5 h-5 mx-auto mb-2 opacity-50" />
+              Tell me the look you want — e.g.<br />
+              <span className="italic">&ldquo;bold dark template, big headline, my orange accent&rdquo;</span>
+            </div>
+          )}
+          {messages.map((m, i) => (
+            m.role === 'user' ? (
+              <div key={i} className="flex justify-end">
+                <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-3 py-2 text-sm">{m.content}</div>
+              </div>
+            ) : (
+              <div key={i} className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl rounded-bl-sm border bg-card px-3 py-2 text-sm">
+                  <div>{m.content}</div>
+                  {m.summary && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-2xs font-semibold text-primary">↳ {m.summary}</div>
+                  )}
+                </div>
+              </div>
+            )
+          ))}
+          {chat.isPending && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-muted-foreground">Designing…</div>
+            </div>
+          )}
+        </div>
+
+        {/* Suggestions + input */}
+        <div className="border-t p-3 space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {CHAT_SUGGESTIONS.map((s) => (
+              <button key={s} type="button" onClick={() => send(s)} disabled={chat.isPending}
+                className="rounded-full border px-2.5 py-1 text-2xs font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50">
+                {s}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
+              placeholder="Describe a change…"
+              className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button type="button" onClick={() => send(input)} disabled={chat.isPending || !input.trim()}
+              className="shrink-0 rounded-lg bg-primary text-primary-foreground px-3 py-2 disabled:opacity-50">
+              <ArrowUp className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT — live preview + save */}
+      <div className="flex flex-col p-4" style={{ height: 640 }}>
+        <div className="flex items-center justify-between mb-2 gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-foreground truncate">{draftName}</div>
+            <div className="text-2xs text-muted-foreground">Live preview · same renderer that publishes (WYSIWYG)</div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button size="sm" variant="ghost" disabled={!draftConfig || saving} onClick={() => handleSave(true)}>Save a copy</Button>
+            <Button size="sm" disabled={!draftConfig || saving} loading={saving} onClick={() => handleSave(false)}>
+              <Check className="w-3.5 h-3.5 mr-1" /> Save as template
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex gap-3 min-h-0">
+          {/* format picker */}
+          <div className="shrink-0 flex flex-col gap-1">
+            <div className="text-2xs font-medium text-muted-foreground text-center mb-0.5">Format</div>
+            {FORMATS.map((f) => (
+              <button key={f.id} type="button" onClick={() => setFormatId(f.id)} title={f.title}
+                className={`w-10 rounded py-1.5 text-2xs font-semibold text-center transition-colors ${
+                  formatId === f.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* canvas + controls */}
+          <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-2">
+            <div className="rounded-lg shadow-sm flex items-center justify-center overflow-hidden mx-auto"
+              style={{ width: '100%', maxWidth: maxBoxW, aspectRatio: `1 / ${format.ratio}`, background: '#111' }}>
+              <div className={`${format.ratio >= 1 ? 'w-full' : 'h-full'} aspect-square`}>
+                <LiveThemePreview theme={previewTheme} slide={slides[slideKey]} brandStyle={brandStyle} photoUrl={previewPhotoUrl} />
+              </div>
+            </div>
+
+            {recentPhotos.length > 0 && (
+              <div className="flex items-center justify-center gap-1.5 flex-wrap" style={{ maxWidth: maxBoxW }}>
+                <button type="button" onClick={() => setPreviewPhotoIdx(-1)} title="No photo (gradient)"
+                  className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${previewPhotoIdx === -1 ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}
+                  style={{ background: 'linear-gradient(135deg,#475569 0%,#1e293b 100%)' }} />
+                {recentPhotos.map((url, i) => (
+                  <button key={i} type="button" onClick={() => setPreviewPhotoIdx(i)} title={`Photo ${i + 1}`}
+                    className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${previewPhotoIdx === i ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}>
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="inline-flex rounded-lg border border-input overflow-hidden">
+              {SLIDE_KEYS.map((k) => (
+                <button key={k} type="button" onClick={() => setSlideKey(k)}
+                  className={`px-3 py-1.5 text-xs font-semibold capitalize border-r border-input last:border-r-0 transition-colors ${
+                    slideKey === k ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
+                  }`}>
+                  {slides[k].label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main PhotoTemplates component ────────────────────────────────────────────
 
 export default function PhotoTemplates() {
@@ -474,6 +739,18 @@ export default function PhotoTemplates() {
   const brandAccent  = useBrandAccent()
   const workspace    = useWorkspace()
   const brandStyle   = workspace?.brand_style || {}
+
+  // 'browse' = the built-in/custom rail + form editor; 'chat' = Design with AI.
+  const [mode, setMode] = useState('browse')
+
+  async function handleChatSave(body) {
+    try {
+      await createTheme.mutateAsync(body)
+      toast.success('Template saved')
+    } catch (e) {
+      toast.error('Failed to save template', { description: e.message })
+    }
+  }
 
   // Live-preview state: which theme + slide type to render full-size, and the
   // backdrop photo (workspace recent photos, else the renderer's gradient).
@@ -544,10 +821,32 @@ export default function PhotoTemplates() {
       <div>
         <h1 className="text-xl font-bold text-foreground">Photo Templates</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Six built-in WHOOP-style layouts — claim cards, split panels, and badge overlays — in dark and light palettes. Templates apply per carousel slide and to standalone photos. Create custom templates to override the block typography.
+          Built-in layouts — claim cards, split panels, and badge overlays — in dark and light palettes, plus your own. Templates apply per carousel slide and to standalone photos. <span className="font-semibold text-foreground">Design with AI</span> to create a custom template by chatting with a designer.
         </p>
       </div>
 
+      {/* Mode toggle: browse/edit vs the AI chat designer */}
+      <div className="inline-flex rounded-lg border border-input overflow-hidden text-sm">
+        <button type="button" onClick={() => setMode('browse')}
+          className={`px-3 py-1.5 font-semibold transition-colors ${mode === 'browse' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+          Browse &amp; edit
+        </button>
+        <button type="button" onClick={() => setMode('chat')}
+          className={`px-3 py-1.5 font-semibold flex items-center gap-1.5 transition-colors ${mode === 'chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+          <Sparkles className="h-3.5 w-3.5" /> Design with AI
+        </button>
+      </div>
+
+      {mode === 'chat' ? (
+        <ChatDesigner
+          allThemes={allThemes}
+          brandStyle={brandStyle}
+          workspaceName={workspace?.display_name}
+          onSaveTemplate={handleChatSave}
+          saving={createTheme.isPending}
+        />
+      ) : (
+       <>
       {/* Live preview panel */}
       <div className="rounded-xl border bg-card p-4 flex flex-row gap-4 items-start">
 
@@ -728,6 +1027,8 @@ export default function PhotoTemplates() {
           onCancel={() => setEditing(null)}
           saving={updateTheme.isPending}
         />
+      )}
+       </>
       )}
     </div>
   )
