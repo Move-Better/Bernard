@@ -651,9 +651,12 @@ function resolvePosition(position, W = SIZE, H = SIZE) {
   if (position && typeof position === 'object' && Number.isFinite(position.x) && Number.isFinite(position.y)) {
     const x = Math.max(0, Math.min(1, position.x))
     const y = Math.max(0, Math.min(1, position.y))
-    // Custom: align by which third of the canvas the anchor sits in
-    const align = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'center'
-    return { anchorX: Math.round(x * W), anchorY: Math.round(y * H), align, vAnchor: 'bottom' }
+    // Custom (dragged on the canvas): the drop point IS the text's CENTRE, so the
+    // drag handle — which is centred on (x,y) via -translate-x/y-1/2 — always lines
+    // up with the rendered text. Centre both axes for predictable WYSIWYG dragging;
+    // the old left/right-by-third + bottom anchor made the text float off the handle
+    // and overflow the frame (Q 2026-06-20: "moving text boxes is still funky").
+    return { anchorX: Math.round(x * W), anchorY: Math.round(y * H), align: 'center', vAnchor: 'center' }
   }
   const preset = typeof position === 'string' ? position : 'center'
   const [vert, horiz] = preset.includes('-') ? preset.split('-') : [preset, null]
