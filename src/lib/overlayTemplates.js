@@ -16,6 +16,12 @@
 //   4. Bannerbear migration later: same picker JSON → Bannerbear modifications.
 
 export const SIZE = 1080
+// Carousel slide output is 4:5 portrait (1080×1350) — more feed space, the
+// modern carousel standard. The renderer is aspect-parametric (renderFreeformSlide
+// width/height + drawWhoopLayout W/H), so 1:1 / 9:16 are just different dims passed
+// by the caller. (Q 2026-06-20)
+export const SLIDE_W = SIZE
+export const SLIDE_H = Math.round(SIZE * 1.25)
 const FALLBACK_ACCENT  = '#0a7f3f'
 const FALLBACK_HEADING = '"Inter", "Helvetica Neue", Arial, sans-serif'
 const FALLBACK_BODY    = '"Inter", "Helvetica Neue", Arial, sans-serif'
@@ -857,174 +863,136 @@ function drawGradedCover(ctx, img, x, y, w, h, zoom, offset, photoFilter) {
   ctx.filter = prev || 'none'
 }
 
-function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null, photoFilter = 'none' }) {
+function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null, photoFilter = 'none', W = SIZE, H = SIZE }) {
   const accent = brandAccent(brandStyle)
 
   if (layout === 'claim') {
     if (palette === 'dark') {
       const ink = brandInk(brandStyle, WHOOP_NAVY)
-      const grad = ctx.createRadialGradient(SIZE * 0.5, SIZE * 0.42, 0, SIZE * 0.5, SIZE * 0.5, SIZE * 0.72)
+      const grad = ctx.createRadialGradient(W * 0.5, H * 0.42, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.72)
       grad.addColorStop(0, shadeHex(ink, 0.13))
       grad.addColorStop(1, ink)
       ctx.fillStyle = grad
     } else {
       ctx.fillStyle = brandPaper(brandStyle, WHOOP_PAPER)
     }
-    ctx.fillRect(0, 0, SIZE, SIZE)
+    ctx.fillRect(0, 0, W, H)
     // Orange rule near the top
-    const ruleY = Math.round(SIZE * 0.11)
+    const ruleY = Math.round(H * 0.11)
     ctx.fillStyle = accent
-    ctx.fillRect(FREEFORM_PAD, ruleY, SIZE - FREEFORM_PAD * 2, 4)
+    ctx.fillRect(FREEFORM_PAD, ruleY, W - FREEFORM_PAD * 2, 4)
 
   } else if (layout === 'split') {
-    const splitY = Math.round(SIZE * 0.67)
+    const splitY = Math.round(H * 0.67)
     // Photo is the FULL-BLEED base layer (fills the whole frame, framed by the
     // user's zoom/offset). The brand panel is an OVERLAY over the bottom third —
     // it does NOT crop the photo into a box. The photo never shrinks; you frame
     // the full image. (Structure fix, Q 2026-06-20; panel/rule styling unchanged.)
     if (img) {
-      drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
+      drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
     } else {
       const base = brandInk(brandStyle, '#1e293b')
-      const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
+      const grad = ctx.createLinearGradient(0, 0, 0, H)
       grad.addColorStop(0, shadeHex(base, 0.28))
       grad.addColorStop(1, base)
       ctx.fillStyle = grad
-      ctx.fillRect(0, 0, SIZE, SIZE)
+      ctx.fillRect(0, 0, W, H)
     }
     // Solid brand panel overlays the bottom third (full-bleed photo behind it)
     ctx.fillStyle = palette === 'dark' ? brandInk(brandStyle, WHOOP_NAVY) : brandPaper(brandStyle, WHOOP_SAGE_FILL)
-    ctx.fillRect(0, splitY, SIZE, SIZE - splitY)
+    ctx.fillRect(0, splitY, W, H - splitY)
     // Orange rule at the photo/panel seam
     ctx.fillStyle = accent
-    ctx.fillRect(0, splitY, SIZE, 4)
+    ctx.fillRect(0, splitY, W, 4)
 
   } else if (layout === 'photo') {
     // Clean full-bleed photo — "the photo is the photo". No global dim, no rule;
     // just edge scrims (stronger bottom for the hook, light top for labels/page)
     // so overlaid text stays legible. (U2.1b, Q sign-off 2026-06-20.)
     if (img) {
-      drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
+      drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
     } else {
       const base = brandInk(brandStyle, '#1e293b')
-      const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
+      const grad = ctx.createLinearGradient(0, 0, 0, H)
       grad.addColorStop(0, shadeHex(base, 0.28))
       grad.addColorStop(1, base)
       ctx.fillStyle = grad
-      ctx.fillRect(0, 0, SIZE, SIZE)
+      ctx.fillRect(0, 0, W, H)
     }
     // Bottom scrim — the primary text zone (hook / body / cta land here)
-    const botStart = Math.round(SIZE * 0.50)
-    const bot = ctx.createLinearGradient(0, botStart, 0, SIZE)
+    const botStart = Math.round(H * 0.50)
+    const bot = ctx.createLinearGradient(0, botStart, 0, H)
     bot.addColorStop(0, 'rgba(0,0,0,0)')
     bot.addColorStop(0.55, 'rgba(0,0,0,0.42)')
     bot.addColorStop(1, 'rgba(0,0,0,0.74)')
     ctx.fillStyle = bot
-    ctx.fillRect(0, botStart, SIZE, SIZE - botStart)
+    ctx.fillRect(0, botStart, W, H - botStart)
     // Light top scrim — labels / page number stay legible on bright photos
-    const topH = Math.round(SIZE * 0.22)
+    const topH = Math.round(H * 0.22)
     const top = ctx.createLinearGradient(0, 0, 0, topH)
     top.addColorStop(0, 'rgba(0,0,0,0.34)')
     top.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = top
-    ctx.fillRect(0, 0, SIZE, topH)
+    ctx.fillRect(0, 0, W, topH)
 
   } else {
     // badge
     if (palette === 'dark') {
       if (img) {
-        drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
+        drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
       } else {
         ctx.fillStyle = brandInk(brandStyle, WHOOP_NAVY)
-        ctx.fillRect(0, 0, SIZE, SIZE)
+        ctx.fillRect(0, 0, W, H)
       }
       // Dark overlay to anchor the gradient (neutral black, not a navy tint)
       ctx.fillStyle = 'rgba(0,0,0,0.30)'
-      ctx.fillRect(0, 0, SIZE, SIZE)
+      ctx.fillRect(0, 0, W, H)
       // Gradient scrim anchoring text at the bottom
-      const scrimStart = Math.round(SIZE * 0.48)
-      const scrim = ctx.createLinearGradient(0, scrimStart, 0, SIZE)
+      const scrimStart = Math.round(H * 0.48)
+      const scrim = ctx.createLinearGradient(0, scrimStart, 0, H)
       scrim.addColorStop(0, 'rgba(0,0,0,0)')
       scrim.addColorStop(0.45, 'rgba(0,0,0,0.80)')
       scrim.addColorStop(1, 'rgba(0,0,0,0.97)')
       ctx.fillStyle = scrim
-      ctx.fillRect(0, scrimStart, SIZE, SIZE - scrimStart)
+      ctx.fillRect(0, scrimStart, W, H - scrimStart)
       // Orange rule above the text zone
-      const ruleY = Math.round(SIZE * 0.57)
+      const ruleY = Math.round(H * 0.57)
       ctx.fillStyle = accent
-      ctx.fillRect(FREEFORM_PAD, ruleY, SIZE - FREEFORM_PAD * 2, 4)
+      ctx.fillRect(FREEFORM_PAD, ruleY, W - FREEFORM_PAD * 2, 4)
 
     } else {
       // light-badge: full-bleed photo that fades softly into a white panel
       // below — mirrors the dark-badge scrim treatment (fade, not a hard seam).
-      const panelY = Math.round(SIZE * 0.58)
+      const panelY = Math.round(H * 0.58)
       if (img) {
-        drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
+        drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
       } else {
         const base = brandPaper(brandStyle, '#cbd5e1')
-        const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
+        const grad = ctx.createLinearGradient(0, 0, 0, H)
         grad.addColorStop(0, shadeHex(base, 0.06))
         grad.addColorStop(1, shadeHex(base, -0.08))
         ctx.fillStyle = grad
-        ctx.fillRect(0, 0, SIZE, SIZE)
+        ctx.fillRect(0, 0, W, H)
       }
       // White scrim fading the photo into a TRANSLUCENT panel (not solid), so
       // the photo keeps ghosting through below the seam — mirrors the dark-badge
       // see-through treatment (Q sign-off 2026-06-16, option 1B).
       const PANEL_ALPHA = 0.72
-      const scrimStart = Math.round(SIZE * 0.40)
+      const scrimStart = Math.round(H * 0.40)
       const scrim = ctx.createLinearGradient(0, scrimStart, 0, panelY)
       scrim.addColorStop(0, 'rgba(255,255,255,0)')
       scrim.addColorStop(0.7, `rgba(255,255,255,${PANEL_ALPHA * 0.85})`)
       scrim.addColorStop(1, `rgba(255,255,255,${PANEL_ALPHA})`)
       ctx.fillStyle = scrim
-      ctx.fillRect(0, scrimStart, SIZE, panelY - scrimStart)
+      ctx.fillRect(0, scrimStart, W, panelY - scrimStart)
       // Translucent white panel below the fade — photo shows through faintly
       ctx.fillStyle = `rgba(255,255,255,${PANEL_ALPHA})`
-      ctx.fillRect(0, panelY, SIZE, SIZE - panelY)
+      ctx.fillRect(0, panelY, W, H - panelY)
       // Orange rule at the panel top
       ctx.fillStyle = accent
-      ctx.fillRect(0, panelY, SIZE, 4)
+      ctx.fillRect(0, panelY, W, 4)
     }
   }
-}
-
-// Panel-template (WHOOP) slides anchor their content to a square bottom panel.
-// When such a slide is exported to a non-square ad aspect we can't use the panel
-// geometry, so re-stack the content blocks (hook → body → caption → CTA) bottom-
-// up in the lower zone, measured so nothing overlaps. Labels keep their corners.
-// (Q sign-off 2026-06-19, .claude/mockups/carousel-whoop-stack.html.)
-const STACK_ROLE_ORDER = { hook: 0, body: 1, caption: 2, cta: 3 }
-function stackContentBottom(ctx, blocks, brandStyle, theme, W, H) {
-  const content = blocks
-    .filter((b) => b && b.role in STACK_ROLE_ORDER && (b.text || '').trim() !== '')
-    .sort((a, b) => STACK_ROLE_ORDER[a.role] - STACK_ROLE_ORDER[b.role])
-  const labels = blocks.filter((b) => b && !(b.role in STACK_ROLE_ORDER))
-  if (content.length === 0) return blocks
-
-  const gap = Math.round(H * 0.018)
-  const measured = content.map((b) => {
-    const typo = roleTypography(b.role, brandStyle, theme?.blocks?.[b.role] ?? null, blockStyleOf(b))
-    if (typo.pill || typo.background === 'pill') return { b, h: 80 }
-    ctx.font = typo.font
-    const display = typo.uppercase ? (b.text || '').toUpperCase() : (b.text || '')
-    const widthFrac = (Number.isFinite(b.width) && b.width > 0)
-      ? Math.max(0.15, Math.min(1, b.width))
-      : typo.maxWidthFrac
-    const lines = wrapLines(ctx, display, Math.round(W * widthFrac), typo.maxLines)
-    const ascent = Math.round((typo.lineH || 60) * 0.8)
-    return { b, h: (lines.length - 1) * typo.lineH + ascent }
-  })
-
-  // Place bottom-up: cursor is the bottom-most block's last baseline / pill bottom.
-  let cursor = H - FREEFORM_PAD
-  const placed = []
-  for (let i = measured.length - 1; i >= 0; i--) {
-    const m = measured[i]
-    placed.unshift({ ...m.b, position: { x: 0.5, y: cursor / H } })
-    cursor = cursor - m.h - gap
-  }
-  return [...placed, ...labels]
 }
 
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
@@ -1040,12 +1008,9 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
 
   const layout = theme?.layout
   const palette = theme?.palette
-  // WHOOP built-in panel geometry is square-designed; only use it on a square
-  // canvas. The carousel ad export (non-square) renders photo + blocks instead,
-  // so every card shares the chosen aspect.
-  const useWhoop = layout && palette && square
-  // A panel-template slide exported non-square: bottom-stack the content (below).
-  const whoopNonSquare = !!(layout && palette) && !square
+  // WHOOP built-in panel geometry is now ASPECT-AWARE (drawWhoopLayout takes
+  // W,H), so the same template renders at any container aspect — 1:1, 4:5, 9:16.
+  const useWhoop = layout && palette
 
   // Per-slide photo reframe — drag-pan + zoom of the source photo, applied in
   // the single shared renderer so preview, publish bake, and ad export all match.
@@ -1059,7 +1024,7 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   if (useWhoop) {
     // WHOOP built-in — paint structural geometry (background, panel, rule)
     const img = sourceUrl ? await loadImage(sourceUrl) : null
-    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter })
+    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter, W, H })
   } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
     const prevFilter = ctx.filter
@@ -1091,13 +1056,6 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
       scrim = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75)
       scrim.addColorStop(0, 'rgba(0,0,0,0)')
       scrim.addColorStop(1, 'rgba(0,0,0,0.45)')
-    } else if (whoopNonSquare) {
-      // Stronger bottom panel-ish scrim behind the bottom-stacked content.
-      scrim = ctx.createLinearGradient(0, 0, 0, H)
-      scrim.addColorStop(0, 'rgba(0,0,0,0.35)')
-      scrim.addColorStop(0.45, 'rgba(0,0,0,0.05)')
-      scrim.addColorStop(0.6, 'rgba(0,0,0,0.45)')
-      scrim.addColorStop(1, 'rgba(0,0,0,0.85)')
     } else {
       scrim = ctx.createLinearGradient(0, 0, 0, H)
       scrim.addColorStop(0, 'rgba(0,0,0,0.55)')
@@ -1109,10 +1067,9 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     ctx.fillRect(0, 0, W, H)
   }
 
-  // Panel-template slides → non-square: re-stack content blocks bottom-up so the
-  // panel-anchored text doesn't collide. Square/freeform render unchanged.
-  const renderBlocks = whoopNonSquare ? stackContentBottom(ctx, blocks, brandStyle || {}, theme, W, H) : blocks
-  for (const block of renderBlocks) {
+  // Blocks render at their (fractional) positions; drawWhoopLayout is aspect-aware
+  // so the panels line up with the text zones at any aspect.
+  for (const block of blocks) {
     const themeBlock = theme?.blocks?.[block.role] ?? null
     drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, useWhoop ? layout : null, useWhoop ? palette : null, W, H)
   }

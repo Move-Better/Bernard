@@ -15,7 +15,7 @@
 // so repeated saves/publishes don't re-upload unchanged slides.
 
 import { apiFetch } from '@/lib/api'
-import { renderFreeformSlide, SIZE } from '@/lib/overlayTemplates'
+import { renderFreeformSlide, SLIDE_W, SLIDE_H } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { photoSourceUrl } from '@/lib/mediaEntry'
 
@@ -58,10 +58,11 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     photoZoom: slide.photo_zoom || null,
     photoOffset: slide.photo_offset || null,
     grade: slide.grade || null,
-    // Renderer version — bump to force a one-time re-bake when the photo framing
-    // model changes. v2: fit-relative zoom (whole photo by default) + blurred
-    // backdrop when the photo doesn't fill the frame. (Q 2026-06-20)
-    _renderV: 2,
+    // Renderer version — bump to force a one-time re-bake when the render model
+    // changes. v2: fit-relative zoom (whole photo by default) + blurred backdrop
+    // when the photo doesn't fill the frame. v3: 4:5 portrait output (1080×1350,
+    // aspect-parametric renderer). (Q 2026-06-20)
+    _renderV: 3,
   }))
 }
 
@@ -72,9 +73,9 @@ function canvasToJpegDataUrl(canvas) {
 
 async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, pieceId, idx }) {
   const canvas = document.createElement('canvas')
-  canvas.width = SIZE
-  canvas.height = SIZE
-  await renderFreeformSlide({ sourceUrl: photoUrl || null, slide, brandStyle: brandStyle || {}, canvas, theme })
+  canvas.width = SLIDE_W
+  canvas.height = SLIDE_H
+  await renderFreeformSlide({ sourceUrl: photoUrl || null, slide, brandStyle: brandStyle || {}, canvas, theme, width: SLIDE_W, height: SLIDE_H })
   const dataUrl = canvasToJpegDataUrl(canvas)
   const { url } = await apiFetch('/api/editorial/upload-slide', {
     method: 'POST',

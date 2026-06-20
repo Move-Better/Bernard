@@ -15,6 +15,8 @@ import {
   SLIDE_TEMPLATES,
   TEMPLATE_DEFAULT_POSITIONS,
   renderFreeformSlide,
+  SLIDE_W,
+  SLIDE_H,
 } from '@/lib/overlayTemplates'
 import { resolveTheme, DEFAULT_DECK_THEME, templateFamily } from '@/lib/photoTemplates'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
@@ -139,6 +141,8 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
           brandStyle: brandStyle || {},
           canvas,
           theme,
+          width: SLIDE_W,
+          height: SLIDE_H,
         })
       } catch (e) {
         if (!cancelled) console.warn('[SlidePreview] render failed', e.message)
@@ -192,7 +196,7 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
       onWheel={onWheel}
       onClick={onClick}
       title={canReframe ? 'Click to select · drag to reposition · scroll to zoom' : 'Click to select the photo layer'}
-      className={className || `w-full aspect-square rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
+      className={className || `w-full aspect-[4/5] rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
   )
 }
@@ -353,6 +357,8 @@ function MiniSlideCanvas({ renderSlide, photoUrl, brandStyle, theme, renderKey }
       brandStyle: brandStyle || {},
       canvas: c,
       theme,
+      width: SLIDE_W,
+      height: SLIDE_H,
     }).catch(() => { /* thumbnail render best-effort */ })
     // renderKey encodes every input that affects the pixels — intentional sole dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -375,7 +381,7 @@ function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onC
       }`}
       title={`${t.name}${selected ? ' (this slide only)' : ''}`}
     >
-      <div className="aspect-square w-full bg-muted">
+      <div className="aspect-[4/5] w-full bg-muted">
         <MiniSlideCanvas
           renderSlide={slide}
           photoUrl={photoUrl}
@@ -1132,7 +1138,7 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
               <button
                 type="button"
                 onClick={() => onSelect(idx)}
-                className={`relative aspect-square w-full overflow-hidden rounded-md border transition-all ${
+                className={`relative aspect-[4/5] w-full overflow-hidden rounded-md border transition-all ${
                   isActive ? 'border-primary ring-1 ring-primary/40' : 'border-border hover:border-primary/40'
                 }`}
               >
@@ -1237,7 +1243,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
               <span className="text-2xs font-semibold text-foreground">{handle}</span>
             </div>
             {/* The real slide */}
-            <div className="relative aspect-square w-full bg-muted">
+            <div className="relative aspect-[4/5] w-full bg-muted">
               <MiniSlideCanvas
                 renderSlide={slide}
                 photoUrl={photoUrl}
@@ -1627,8 +1633,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
           {activeSlide ? (
             <div
-              className={`relative aspect-square rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
-              style={{ height: 'min(calc(100vh - 140px), calc(100vw - 480px))' }}
+              className={`relative aspect-[4/5] rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
+              style={{ height: 'min(calc(100vh - 140px), calc((100vw - 480px) * 1.25))' }}
             >
               <SlidePreview
                 slide={activeSlide}
