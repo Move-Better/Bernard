@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { PLATFORM_FAMILY_PILL } from '@/lib/contentMeta'
 
 // HomeStats — 4-card metric row that sits between the hero ribbon and the
 // task-bucket list on the Home dashboard. Pulls everything from the same
@@ -138,13 +139,13 @@ export default function HomeStats({ stories = [] }) {
         {metrics.drafts > 0 && (metrics.breakdown.blog + metrics.breakdown.email + metrics.breakdown.social + metrics.breakdown.other > 0) ? (
           <div className="mt-3 flex flex-wrap gap-1">
             {metrics.breakdown.blog > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700">{metrics.breakdown.blog} blog</span>
+              <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${PLATFORM_FAMILY_PILL.blog}`}>{metrics.breakdown.blog} blog</span>
             )}
             {metrics.breakdown.email > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-amber-50 text-amber-700">{metrics.breakdown.email} email</span>
+              <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${PLATFORM_FAMILY_PILL.email}`}>{metrics.breakdown.email} email</span>
             )}
             {metrics.breakdown.social > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 bg-violet-50 text-violet-700">{metrics.breakdown.social} social</span>
+              <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${PLATFORM_FAMILY_PILL.social}`}>{metrics.breakdown.social} social</span>
             )}
           </div>
         ) : null}
