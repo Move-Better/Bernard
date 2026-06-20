@@ -5,6 +5,8 @@ import emailTemplateHtml from '../email-template.html?raw'
 import { workspace } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
+import { resolveTheme } from '@/lib/photoTemplates'
+import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
 import { isVideoEntry } from '@/lib/mediaEntry'
 
@@ -54,7 +56,10 @@ function mediaSrc(m) {
 
 // ── Carousel — shared by Instagram and Facebook ───────────────────────────────
 // Per-slide canvas — draws photo + freeform text blocks via the renderer.
-function SlideCanvas({ slide, photo, brandStyle }) {
+// `theme` MUST be passed: renderFreeformSlide keys layout/palette/per-block
+// styling off it, so omitting it renders an un-themed fallback that doesn't
+// match the editor or the published bake.
+function SlideCanvas({ slide, photo, brandStyle, theme }) {
   const canvasRef = React.useRef(null)
   React.useEffect(() => {
     const canvas = canvasRef.current
@@ -67,6 +72,7 @@ function SlideCanvas({ slide, photo, brandStyle }) {
           slide,
           brandStyle: brandStyle || {},
           canvas,
+          theme,
         })
       } catch (e) {
         if (!cancelled) console.warn('[SlideCanvas] render failed', e?.message)
@@ -74,14 +80,18 @@ function SlideCanvas({ slide, photo, brandStyle }) {
     }
     draw()
     return () => { cancelled = true }
-  }, [slide, photo?.url, brandStyle])
+  }, [slide, photo?.url, brandStyle, theme])
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" aria-hidden="true" />
 }
 
-function SlidesCarousel({ slides, mediaUrls }) {
+function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   const [idx, setIdx] = React.useState(0)
   const ws = useWorkspace()
   const brandStyle = ws?.brand_style || {}
+  // Resolve the same theme the editor and the publish bake use: per-slide
+  // override (slide.template_id) falls back to the deck theme (photoTemplateId).
+  const { data: allThemes = [] } = usePhotoTemplates()
+  const customThemes = allThemes.filter((t) => t.custom)
   const total = slides.length
 
   if (total === 0) {
@@ -90,10 +100,11 @@ function SlidesCarousel({ slides, mediaUrls }) {
 
   const slide = slides[idx]
   const photo = typeof slide.photo_idx === 'number' ? mediaUrls[slide.photo_idx] : null
+  const theme = resolveTheme(slide.template_id || photoTemplateId, customThemes)
 
   return (
     <div className="relative aspect-square overflow-hidden bg-black select-none">
-      <SlideCanvas slide={slide} photo={photo} brandStyle={brandStyle} />
+      <SlideCanvas slide={slide} photo={photo} brandStyle={brandStyle} theme={theme} />
 
       {total > 1 && (
         <>
@@ -259,7 +270,7 @@ function ReelPreview({ video }) {
 }
 
 // ── Instagram ────────────────────────────────────────────────────────────────
-function InstagramPreview({ content, mediaUrls = [], slides = null }) {
+function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null }) {
   const [showFull, setShowFull] = React.useState(false)
   const lines = (content || '').split('\n')
   const preview = lines.slice(0, 4).join('\n')
@@ -295,7 +306,7 @@ function InstagramPreview({ content, mediaUrls = [], slides = null }) {
         {reelVideo
           ? <ReelPreview video={reelVideo} />
           : hasSlides
-            ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} />
+            ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} photoTemplateId={photoTemplateId} />
             : <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-square" />}
       </div>
 
@@ -820,7 +831,7 @@ function EmailPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText: _overlayText = null, locationOverrides = null }) {
+export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText: _overlayText = null, locationOverrides = null, photoTemplateId = null }) {
   if (!content?.trim()) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
@@ -830,7 +841,7 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
   }
 
   switch (platform) {
-    case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} />
+    case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} />
     case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} />
     case 'linkedin':    return <LinkedInPreview  content={content} />
     case 'gbp':         return <GBPPreview       content={content} locationOverrides={locationOverrides} />
