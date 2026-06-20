@@ -240,7 +240,17 @@ async function handler(req, res) {
               if (Object.keys(stylePatch).length > 0) {
                 const wsRow = await sb(`workspaces?id=eq.${scopeId}&select=brand_style`)
                 const currentStyle = wsRow.ok ? ((await wsRow.json())?.[0]?.brand_style || {}) : {}
-                const nextStyle = { ...currentStyle, ...stylePatch }
+                const nextStyle = {
+                  ...currentStyle,
+                  ...stylePatch,
+                  // Never overwrite manually-chosen color buckets — only set if empty.
+                  primary_colors: currentStyle.primary_colors?.length > 0
+                    ? currentStyle.primary_colors
+                    : (stylePatch.primary_colors || currentStyle.primary_colors),
+                  secondary_colors: currentStyle.secondary_colors?.length > 0
+                    ? currentStyle.secondary_colors
+                    : (stylePatch.secondary_colors || currentStyle.secondary_colors),
+                }
                 const styleUpd = await sb(`workspaces?id=eq.${scopeId}`, {
                   method: 'PATCH',
                   headers: { Prefer: 'return=minimal' },
@@ -250,6 +260,72 @@ async function handler(req, res) {
                 else invalidateWorkspaceCacheById(scopeId)
               }
             }).catch((e) => console.error('brand guideline extraction failed:', e?.message))
+          )
+        } else if (
+          inserted?.id &&
+          topCandidate &&
+          ['brand_logo', 'logo_icon', 'logo_lockup', 'logo_wordmark'].includes(topCandidate.role) &&
+          topCandidate.confidence >= AUTO_ASSIGN_MIN_CONFIDENCE
+        ) {
+          // Extract palette from logo assets so color pickers pre-populate even
+          // without a brand book. SVG: parse fill/stroke hex values. Raster:
+          // skip (Sharp stats give means, not discrete logo colors; brand book
+          // is the reliable source for raster palettes).
+          waitUntil(
+            (async () => {
+              if (blob.contentType !== 'image/svg+xml') return
+              try {
+                const svgRes = await fetch(blob.url)
+                if (!svgRes.ok) return
+                const svgText = await svgRes.text()
+                const HEX_RE = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g
+                const rawHits = [...svgText.matchAll(HEX_RE)].map((m) => {
+                  const h = m[1]
+                  const full = h.length === 3
+                    ? `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`
+                    : `#${h}`
+                  return full.toUpperCase()
+                })
+                // Deduplicate and drop near-white / near-black / near-grey utility values.
+                const isUtility = (hex) => {
+                  const r = parseInt(hex.slice(1, 3), 16)
+                  const g = parseInt(hex.slice(3, 5), 16)
+                  const b = parseInt(hex.slice(5, 7), 16)
+                  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+                  const lightness = (max + min) / 510  // 0-1
+                  const saturation = max === min ? 0 : (max - min) / (max + min < 255 ? max + min : 510 - max - min)
+                  return lightness > 0.92 || lightness < 0.06 || saturation < 0.08
+                }
+                const palette = [...new Set(rawHits)].filter((h) => !isUtility(h))
+                if (palette.length === 0) return
+                const wsRow = await sb(`workspaces?id=eq.${scopeId}&select=brand_style`)
+                const currentStyle = wsRow.ok ? ((await wsRow.json())?.[0]?.brand_style || {}) : {}
+                // Merge into suggested_palette without duplicates; only set
+                // primary/secondary if they're currently empty.
+                const existing = new Set((currentStyle.suggested_palette || []).map((c) => c.toUpperCase()))
+                const fresh = palette.filter((c) => !existing.has(c))
+                const merged = [...(currentStyle.suggested_palette || []), ...fresh]
+                const nextStyle = {
+                  ...currentStyle,
+                  suggested_palette: merged,
+                  primary_colors: currentStyle.primary_colors?.length > 0
+                    ? currentStyle.primary_colors
+                    : palette.slice(0, Math.min(3, palette.length)),
+                  secondary_colors: currentStyle.secondary_colors?.length > 0
+                    ? currentStyle.secondary_colors
+                    : (palette.length > 3 ? palette.slice(3) : currentStyle.secondary_colors),
+                }
+                const styleUpd = await sb(`workspaces?id=eq.${scopeId}`, {
+                  method: 'PATCH',
+                  headers: { Prefer: 'return=minimal' },
+                  body: JSON.stringify({ brand_style: nextStyle }),
+                })
+                if (!styleUpd.ok) console.error('logo palette patch failed:', styleUpd.status, await styleUpd.text())
+                else invalidateWorkspaceCacheById(scopeId)
+              } catch (e) {
+                console.error('logo SVG palette extraction failed:', e?.message)
+              }
+            })()
           )
         } else {
           waitUntil(Promise.resolve())

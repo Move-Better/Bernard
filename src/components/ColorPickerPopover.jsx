@@ -3,6 +3,7 @@ import { HexColorPicker } from 'react-colorful'
 import { Pipette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 
 const HEX_RE = /^#?[0-9a-fA-F]{6}$/
 
@@ -12,7 +13,16 @@ function normalize(hex) {
   return v.startsWith('#') ? v : `#${v}`
 }
 
-export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-12', ariaLabel = 'Pick color' }) {
+export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-12', ariaLabel = 'Pick color', extraSwatches = [] }) {
+  const workspace = useWorkspace?.() ?? null
+  const brandStyle = workspace?.brand_style || {}
+  const brandSwatches = [...new Set([
+    ...(brandStyle.primary_colors || []),
+    ...(brandStyle.secondary_colors || []),
+    ...(brandStyle.accent_color ? [brandStyle.accent_color] : []),
+    ...extraSwatches,
+  ])]
+
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(normalize(value))
   const [hexInput, setHexInput] = useState(normalize(value))
@@ -83,6 +93,20 @@ export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-1
         onFocusOutside={guardEyedropper}
         onPointerDownOutside={guardEyedropper}
       >
+        {brandSwatches.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {brandSwatches.map((c) => (
+              <button
+                key={c}
+                type="button"
+                title={c}
+                onClick={() => { setDraft(normalize(c)); setHexInput(normalize(c)) }}
+                className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform shrink-0"
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        )}
         <HexColorPicker color={draft} onChange={(c) => { setDraft(c); setHexInput(c) }} style={{ width: '100%', height: 160 }} />
         <div className="mt-2 flex items-center gap-2">
           <div className="h-7 w-9 rounded border shrink-0" style={{ background: draft }} />

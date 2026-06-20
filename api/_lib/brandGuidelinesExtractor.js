@@ -97,8 +97,11 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
     const stylePatch = {}
     if (suggestedPalette.length > 0) {
       stylePatch.suggested_palette = suggestedPalette
-      // First color in the palette is the primary/accent color.
       stylePatch.accent_color = suggestedPalette[0]
+      // Distribute into primary (first ≤3) and secondary (rest) so brand
+      // buckets auto-populate without requiring manual assignment.
+      stylePatch.primary_colors = suggestedPalette.slice(0, Math.min(3, suggestedPalette.length))
+      if (suggestedPalette.length > 3) stylePatch.secondary_colors = suggestedPalette.slice(3)
     }
     if (headingRaw && headingRaw !== 'Not specified') stylePatch.heading_font = headingRaw
     if (bodyRaw    && bodyRaw    !== 'Not specified') stylePatch.body_font    = bodyRaw
