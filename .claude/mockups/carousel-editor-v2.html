@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Carousel Editor v2 (top-tier rebuild)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --border:214 32% 91%; --info:199 95% 40%; --action:38 92% 50%;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+  .text-3xs{font-size:10px;line-height:13px}
+  .text-2xs{font-size:11px;line-height:15px}
+  .legend{border:1px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.05)}
+  ::-webkit-scrollbar{height:8px;width:8px}
+  ::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:8px}
+  input[type=range]{-webkit-appearance:none;height:4px;border-radius:4px;background:hsl(var(--border));outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:hsl(var(--primary));cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  /* canvas slide */
+  .slide{position:relative;overflow:hidden;border-radius:14px;box-shadow:0 18px 60px -12px rgba(12,26,46,.45)}
+  .slide-photo{position:absolute;inset:0;background-size:cover;background-position:center;transition:filter .15s}
+  .sel-ring{outline:2.5px solid hsl(var(--primary));outline-offset:2px}
+  .txt-box{position:absolute;cursor:move;border:1.5px dashed transparent;border-radius:6px;padding:2px 4px}
+  .txt-box.sel{border-color:#fff;box-shadow:0 0 0 1.5px hsl(var(--primary))}
+  .handle{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid hsl(var(--primary));border-radius:50%}
+  /* thumbs */
+  .mini{position:relative;overflow:hidden;border-radius:6px}
+  .seg{transition:all .12s}
+</style>
+</head>
+<body>
+<div class="flex h-full flex-col">
+
+  <!-- ════ TOP BAR ════ -->
+  <header class="flex items-center gap-3 border-b bg-white px-4" style="height:52px;border-color:hsl(var(--border))">
+    <button class="text-muted-foreground hover:text-foreground" style="color:hsl(var(--muted-foreground))"><i data-lucide="arrow-left" class="h-4 w-4"></i></button>
+    <span class="text-sm font-semibold" contenteditable spellcheck="false">Sciatica</span>
+    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold" style="background:hsl(var(--info)/.12);color:hsl(var(--info))">
+      <i data-lucide="gallery-horizontal-end" class="h-3.5 w-3.5"></i> Instagram Carousel · <span id="badgeCount">3</span> slides · 4:5
+    </span>
+    <div class="ml-auto flex items-center gap-1.5">
+      <div class="mr-1 flex items-center gap-1 rounded-lg border px-1 py-0.5 text-2xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">
+        <button onclick="zoomStep(-1)" class="rounded px-1 hover:bg-muted"><i data-lucide="minus" class="h-3 w-3"></i></button>
+        <button onclick="zoomFit()" id="zoomLabel" class="px-1 font-medium hover:bg-muted rounded">Fit</button>
+        <button onclick="zoomStep(1)" class="rounded px-1 hover:bg-muted"><i data-lucide="plus" class="h-3 w-3"></i></button>
+      </div>
+      <button onclick="toast('Phone-frame preview of the baked output')" class="rounded-lg border px-2.5 py-1.5 text-xs hover:bg-muted" style="border-color:hsl(var(--border))"><i data-lucide="smartphone" class="mr-1 inline h-3.5 w-3.5"></i>Preview</button>
+      <button onclick="toast('Saved ✓')" class="rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted" style="border-color:hsl(var(--border))">Save</button>
+      <button onclick="toast('→ Schedule & publish')" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style="background:hsl(var(--action));color:#3a2a00"><i data-lucide="calendar-clock" class="mr-1 inline h-3.5 w-3.5"></i>Schedule</button>
+    </div>
+  </header>
+
+  <!-- ════ WORK AREA ════ -->
+  <div class="flex min-h-0 flex-1">
+
+    <!-- VERTICAL SLIDE RAIL (replaces the bottom strip; side is toggleable) -->
+    <aside id="rail" class="flex w-[92px] shrink-0 flex-col border-r bg-white" style="border-color:hsl(var(--border));order:0">
+      <div class="flex items-center justify-between px-2 py-2 border-b" style="border-color:hsl(var(--border))">
+        <span class="text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Slides</span>
+        <button onclick="toggleRail()" title="Move rail to the other side" class="rounded p-0.5 hover:bg-muted" style="color:hsl(var(--muted-foreground))"><i data-lucide="arrow-left-right" class="h-3 w-3"></i></button>
+      </div>
+      <div id="railList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+    </aside>
+
+    <!-- CANVAS STAGE (dominant, scales to fit) -->
+    <section id="stage" class="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style="background:hsl(220 16% 91%);order:1">
+      <div class="absolute left-4 top-3 z-10 max-w-[260px] rounded-md px-2 py-1 text-3xs legend">
+        <b>What changed:</b> canvas fills the screen &amp; scales with the window. Click the <b>photo</b> or any <b>text</b> to select that layer — the right panel becomes its editor.
+      </div>
+      <div class="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs backdrop-blur" style="color:hsl(var(--muted-foreground))">
+        <span id="slideCounter" class="font-semibold">Slide 1 of 3</span>
+        <label class="flex cursor-pointer items-center gap-1"><input id="safeZone" type="checkbox" checked onchange="render()"> safe zones</label>
+      </div>
+
+      <!-- the active slide -->
+      <div id="canvasWrap" class="relative"><div id="canvas" class="slide"></div></div>
+    </section>
+
+    <!-- RIGHT CONTEXTUAL INSPECTOR -->
+    <aside class="flex w-[300px] shrink-0 flex-col border-l bg-white" style="border-color:hsl(var(--border));order:3">
+      <!-- Layers selector (always visible) -->
+      <div class="border-b px-3 py-2.5" style="border-color:hsl(var(--border))">
+        <div class="mb-1.5 flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">
+          <i data-lucide="layers" class="h-3.5 w-3.5"></i> Layers
+          <span class="ml-auto font-normal normal-case">click to select</span>
+        </div>
+        <div id="layerList" class="space-y-1"></div>
+      </div>
+      <!-- Contextual body -->
+      <div id="inspector" class="min-h-0 flex-1 overflow-auto p-3"></div>
+    </aside>
+  </div>
+
+</div>
+
+<div id="toast" class="pointer-events-none fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-black/85 px-4 py-2 text-sm text-white opacity-0 transition-opacity"></div>
+
+<script>
+const PHOTOS = [
+  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&q=75&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=900&q=75&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=75&auto=format&fit=crop',
+];
+const ORANGE='#e8843c', SAGE='#83957c';
+// themes render for real (mini + canvas share this spec)
+const THEMES = {
+  'dark-split':  {name:'Dark Split',  dark:true,  ground:'#0c1a2e', text:'#ffffff', sub:'rgba(255,255,255,.78)', rule:ORANGE, mode:'split'},
+  'light-split': {name:'Light Split', dark:false, ground:'#eef0ec', text:'#0c1a2e', sub:'#46566a',               rule:ORANGE, mode:'split'},
+  'dark-claim':  {name:'Dark Claim',  dark:true,  ground:'#0c1a2e', text:'#ffffff', sub:'rgba(255,255,255,.72)', rule:SAGE,   mode:'scrim'},
+  'light-claim': {name:'Light Claim', dark:false, ground:'#f6f4ef', text:'#0c1a2e', sub:'#46566a',               rule:SAGE,   mode:'card'},
+  'dark-badge':  {name:'Dark Badge',  dark:true,  ground:'#0c1a2e', text:'#ffffff', sub:'rgba(255,255,255,.82)', rule:SAGE,   mode:'badge'},
+  'light-badge': {name:'Light Badge', dark:false, ground:'#ffffff', text:'#0c1a2e', sub:'#46566a',               rule:SAGE,   mode:'badge'},
+};
+const THEME_IDS = Object.keys(THEMES);
+const LAYOUTS = [
+  ['cover','Cover'],['explainer','Explainer'],['demo','Demonstration'],
+  ['quote','Quote'],['cta','CTA'],['custom','Custom'],
+];
+
+let deckTheme = 'dark-split';
+let slides = [
+  {layout:'cover', theme:null, photo:0, grade:defGrade(), blocks:[
+    {id:'b1', role:'Hook', text:'Your "tight" piriformis might not be tight at all', x:.5, y:.6, size:.92},
+    {id:'b2', role:'Body', text:'Why stretching more could be making your sciatica worse', x:.5, y:.83, size:.72},
+  ]},
+  {layout:'explainer', theme:null, photo:1, grade:defGrade(), blocks:[
+    {id:'b3', role:'Hook', text:'The disc might not be the culprit', x:.5, y:.58, size:.9},
+    {id:'b4', role:'Body', text:'The nerve is often compressed lower in the chain, not at the disc.', x:.5, y:.82, size:.64},
+  ]},
+  {layout:'cta', theme:'light-split', photo:2, grade:defGrade(), blocks:[
+    {id:'b5', role:'Hook', text:'Move better, not just more', x:.5, y:.58, size:.92},
+    {id:'b6', role:'CTA', text:'Book an assessment →', x:.5, y:.83, size:.6},
+  ]},
+];
+function defGrade(){return {bright:0,warm:0,contrast:0,vibrance:0,depth:0}}
+
+let cur = 0;                 // active slide
+let sel = {type:'slide'};    // 'slide' | 'photo' | {type:'text', id}
+let zoom = 'fit';            // 'fit' or number (px height)
+
+const $ = (id)=>document.getElementById(id);
+
+// ───────── canvas render ─────────
+function gradeFilter(g){
+  const b = 1 + g.bright/100, c = 1 + g.contrast/100, s = 1 + g.vibrance/100;
+  const sep = Math.max(0, g.warm/100*0.25);
+  return `brightness(${b}) contrast(${c}) saturate(${s}) sepia(${sep})`;
+}
+function curSlide(){return slides[cur]}
+function themeOf(s){return THEMES[s.theme || deckTheme]}
+
+function sizeCanvas(){
+  const stage = $('stage');
+  const availH = stage.clientHeight - 40;
+  const availW = stage.clientWidth - 40;
+  let h = zoom==='fit' ? Math.min(availH, availW*1.25) : zoom;
+  h = Math.max(260, h);
+  const w = h*0.8;
+  const wrap = $('canvasWrap');
+  wrap.style.height = h+'px'; wrap.style.width = w+'px';
+  $('canvas').style.height = h+'px'; $('canvas').style.width = w+'px';
+  $('zoomLabel').textContent = zoom==='fit' ? 'Fit' : Math.round(h/ (availH) *100)+'%';
+}
+
+function render(){
+  const s = curSlide(), t = themeOf(s), c = $('canvas');
+  const h = c.clientHeight || 600;
+  c.style.background = t.ground;
+  const photoSel = sel.type==='photo';
+  c.className = 'slide' + (photoSel?' sel-ring':'');
+
+  // photo layer
+  let photoLayer = '';
+  if(s.photo!=null){
+    const showPhoto = t.mode!=='card'; // 'card' = paper, no photo
+    if(showPhoto){
+      // bottom-anchored scrim so headline always reads over the photo (top-tier
+      // editorial pattern). Dark themes darken toward the bottom; light themes lift.
+      const scrim = t.dark
+        ? `linear-gradient(to bottom, rgba(12,26,46,.30) 0%, rgba(12,26,46,0) 38%, rgba(12,26,46,.62) 64%, ${t.ground} 100%)`
+        : `linear-gradient(to bottom, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 40%, rgba(238,240,236,.85) 72%, ${t.ground} 100%)`;
+      photoLayer = `<div class="slide-photo" style="background-image:${'url('+PHOTOS[s.photo]+')'};filter:${gradeFilter(s.grade)}"></div>
+        <div class="slide-photo" style="background:${scrim}"></div>`;
+    }
+  }
+
+  // rule + blocks
+  const blocks = s.blocks.map(b=>{
+    const selb = sel.type==='text' && sel.id===b.id;
+    const fs = Math.round(h * (b.role==='Hook'?0.052:0.030) * b.size);
+    const col = b.role==='Body'?t.sub:t.text;
+    const weight = b.role==='Hook'?800:600;
+    const handles = selb ? ['-5px;-5px','-5px;calc(100% - 4px)','calc(100% - 4px);-5px','calc(100% - 4px);calc(100% - 4px)']
+      .map(p=>`<span class="handle" style="left:${p.split(';')[0]};top:${p.split(';')[1]}"></span>`).join('') : '';
+    return `<div class="txt-box ${selb?'sel':''}" data-bid="${b.id}"
+      style="left:${b.x*100}%;top:${b.y*100}%;transform:translate(-50%,-50%);max-width:84%;text-align:center;
+      font-size:${fs}px;font-weight:${weight};line-height:1.12;color:${col};
+      text-shadow:${t.dark&&t.mode!=='split'?'0 2px 12px rgba(0,0,0,.5)':'none'}">
+      ${b.role==='Hook'?`<div style="width:42px;height:3px;border-radius:2px;background:${t.rule};margin:0 auto 10px"></div>`:''}
+      ${b.text}${handles}</div>`;
+  }).join('');
+
+  const safe = $('safeZone').checked ? `<div class="slide-photo" style="pointer-events:none">
+      <div style="position:absolute;inset:7%;border:1px dashed rgba(255,255,255,.45);border-radius:8px"></div>
+      <div style="position:absolute;left:0;right:0;top:0;height:10%;background:rgba(255,80,80,.10)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;height:13%;background:rgba(255,80,80,.10)"></div></div>` : '';
+
+  c.innerHTML = photoLayer + safe + blocks;
+
+  // wire selection clicks
+  c.onclick = (e)=>{ const tb=e.target.closest('.txt-box'); if(tb){selectLayer('text', tb.dataset.bid)} else {selectLayer('photo')} };
+  c.querySelectorAll('.txt-box').forEach(el=>{ el.onclick=(e)=>{e.stopPropagation();selectLayer('text', el.dataset.bid)} });
+
+  $('slideCounter').textContent = `Slide ${cur+1} of ${slides.length}`;
+  $('badgeCount').textContent = slides.length;
+  renderLayers(); renderInspector(); renderFilmstrip();
+}
+
+// ───────── layers list ─────────
+function renderLayers(){
+  const s = curSlide();
+  const rows = [];
+  rows.push(layerRow('photo', 'image', s.photo!=null?`Photo ${s.photo+1}`:'No photo', sel.type==='photo'));
+  s.blocks.forEach(b=>rows.push(layerRow('text:'+b.id, 'type', `${b.role} — ${b.text.slice(0,22)}${b.text.length>22?'…':''}`, sel.type==='text'&&sel.id===b.id)));
+  $('layerList').innerHTML = rows.join('');
+}
+function layerRow(key, icon, label, active){
+  return `<button onclick="selectLayerKey('${key}')" class="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-2xs transition-colors ${active?'border-primary':'border-transparent hover:bg-muted'}"
+    style="${active?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08)':''}">
+    <i data-lucide="${icon}" class="h-3.5 w-3.5 shrink-0" style="color:hsl(var(--muted-foreground))"></i>
+    <span class="truncate" style="${active?'color:hsl(var(--primary));font-weight:600':'color:hsl(var(--foreground))'}">${label}</span>
+  </button>`;
+}
+function selectLayerKey(k){ if(k==='photo')selectLayer('photo'); else selectLayer('text', k.split(':')[1]) }
+function selectLayer(type, id){ sel = type==='text'?{type:'text',id}:{type}; render(); }
+
+// ───────── contextual inspector ─────────
+function renderInspector(){
+  const s = curSlide();
+  let html='';
+  if(sel.type==='photo'){ html = inspPhoto(s); }
+  else if(sel.type==='text'){ html = inspText(s); }
+  else { html = inspSlide(s); }
+  $('inspector').innerHTML = html;
+  if(window.lucide) lucide.createIcons();
+}
+
+// SLIDE-level: layout + theme (real renders)
+function inspSlide(s){
+  const layoutThumbs = LAYOUTS.map(([k,name])=>`
+    <button onclick="setLayout('${k}')" class="seg overflow-hidden rounded-md border text-left ${s.layout===k?'':''}"
+      style="border-color:${s.layout===k?'hsl(var(--primary))':'hsl(var(--border))'};${s.layout===k?'box-shadow:0 0 0 2px hsl(var(--primary)/.25)':''}">
+      ${layoutMini(k)}
+      <div class="px-1.5 py-1 text-3xs font-medium truncate">${name}</div>
+    </button>`).join('');
+  const themeThumbs = THEME_IDS.map(id=>{
+    const active = (s.theme||deckTheme)===id, override = s.theme===id;
+    return `<button onclick="setTheme('${id}')" class="seg relative overflow-hidden rounded-md border text-left"
+      style="border-color:${override?'hsl(var(--action))':active?'hsl(var(--primary))':'hsl(var(--border))'};${active?'box-shadow:0 0 0 2px '+(override?'hsl(var(--action)/.3)':'hsl(var(--primary)/.25)'):''}">
+      ${themeMini(id)}
+      <div class="px-1.5 py-1 text-3xs font-medium truncate">${THEMES[id].name}</div>
+      ${override?'<span class="absolute right-1 top-1 h-2 w-2 rounded-full" style="background:hsl(var(--action))"></span>':''}
+    </button>`;
+  }).join('');
+  return `
+    <div class="mb-3 rounded-md px-2 py-1 text-3xs legend"><b>Nothing selected → slide settings.</b> Layout &amp; theme thumbnails are <b>real renders</b> of this slide's text.</div>
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Layout <span class="font-normal normal-case">· structure</span></p>
+    <div class="mb-4 grid grid-cols-3 gap-1.5">${layoutThumbs}</div>
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Theme <span class="font-normal normal-case">· colour &amp; style</span></p>
+    <button onclick="setTheme(null)" class="mb-2 flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-2xs"
+      style="${!curSlide().theme?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary));font-weight:600':'border-color:hsl(var(--border))'}">
+      <span>Same as deck</span>${!curSlide().theme?'<span class="text-3xs">✓ inheriting</span>':''}</button>
+    <div class="grid grid-cols-2 gap-1.5">${themeThumbs}</div>
+    <button onclick="applyAll()" class="mt-2 w-full rounded-md border px-2 py-1.5 text-2xs font-medium hover:bg-muted" style="border-color:hsl(var(--border))">Apply this theme to all slides</button>
+    <p class="mt-3 text-3xs" style="color:hsl(var(--muted-foreground))">Tip: click the photo or any text on the canvas to edit that layer.</p>`;
+}
+// real mini render of a layout
+function layoutMini(k){
+  const bg='#0c1a2e', tx='#fff';
+  const bar = `<div style="width:60%;height:3px;border-radius:2px;background:${ORANGE};margin:0 auto 3px"></div>`;
+  let body='';
+  if(k==='cover') body=`${bar}<div style="font-size:9px;font-weight:800;line-height:1.05;text-align:center;color:${tx}">Your "tight"<br>piriformis</div>`;
+  else if(k==='explainer') body=`<div style="position:absolute;top:6px;left:6px;right:6px">${bar}<div style="font-size:8px;font-weight:800;color:${tx}">The disc isn't<br>the culprit</div></div><div style="position:absolute;bottom:6px;left:6px;right:6px;font-size:6px;color:rgba(255,255,255,.7)">The nerve is compressed lower…</div>`;
+  else if(k==='demo') body=`<div style="position:absolute;inset:6px 6px 22px;border-radius:3px;background:rgba(255,255,255,.12)"></div><div style="position:absolute;bottom:5px;left:6px;font-size:7px;font-weight:700;color:${tx}">Step 1 · Setup</div>`;
+  else if(k==='quote') body=`<div style="font-size:18px;line-height:.6;color:${ORANGE}">“</div><div style="font-size:8px;font-weight:700;text-align:center;color:${tx}">Move better,<br>not more</div>`;
+  else if(k==='cta') body=`<div style="font-size:8px;font-weight:800;text-align:center;color:${tx};margin-bottom:4px">Ready?</div><div style="margin:0 auto;width:60%;padding:2px;border-radius:20px;background:${ORANGE};font-size:6px;font-weight:700;text-align:center;color:#3a2a00">Book →</div>`;
+  else body=`<div style="display:flex;flex-direction:column;gap:3px;align-items:center"><div style="width:50%;height:2px;background:rgba(255,255,255,.4)"></div><div style="width:70%;height:2px;background:rgba(255,255,255,.25)"></div><div style="width:40%;height:2px;background:rgba(255,255,255,.25)"></div></div>`;
+  return `<div class="mini" style="aspect-ratio:4/5;background:${bg};display:flex;flex-direction:column;justify-content:center;padding:6px">${body}</div>`;
+}
+// real mini render of a theme (uses this slide's hook text)
+function themeMini(id){
+  const t=THEMES[id], s=curSlide(), hook=(s.blocks[0]?.text||'Headline').slice(0,38);
+  const photo = t.mode!=='card' && s.photo!=null;
+  const scrim = t.dark?'linear-gradient(to bottom,rgba(12,26,46,.2),rgba(12,26,46,.85))':'linear-gradient(to bottom,rgba(255,255,255,.1),rgba(255,255,255,.4))';
+  return `<div class="mini" style="aspect-ratio:4/5;background:${t.ground}">
+    ${photo?`<div style="position:absolute;inset:0;background:url(${PHOTOS[s.photo]}) center/cover"></div><div style="position:absolute;inset:0;background:${scrim}"></div>`:''}
+    <div style="position:absolute;left:7px;right:7px;bottom:8px">
+      <div style="width:34%;height:2.5px;border-radius:2px;background:${t.rule};margin-bottom:4px"></div>
+      <div style="font-size:8px;font-weight:800;line-height:1.05;color:${t.text}">${hook}</div>
+    </div></div>`;
+}
+
+// PHOTO-level: AI photo editor (replaces "Change the look")
+function inspPhoto(s){
+  const g=s.grade;
+  const vibes=[['Bright & clean',{bright:12,contrast:6,vibrance:10,warm:-4,depth:4}],['Warm & filmic',{warm:22,contrast:10,vibrance:6,bright:-2,depth:8}],['Editorial',{contrast:18,vibrance:-6,depth:14,warm:4,bright:-4}],['Moody',{bright:-14,contrast:16,vibrance:-4,depth:18,warm:6}]];
+  const chips = vibes.map(([n,p])=>`<button onclick='applyVibe(${JSON.stringify(p)})' class="rounded-full border px-2.5 py-1 text-2xs hover:border-primary hover:text-primary" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">${n}</button>`).join('');
+  const slider=(key,label)=>`<div class="mb-2"><div class="mb-1 flex justify-between text-2xs"><span style="color:hsl(var(--muted-foreground))">${label}</span><span style="color:hsl(var(--muted-foreground))">${g[key]>0?'+':''}${g[key]}</span></div>
+    <input type="range" min="-50" max="50" value="${g[key]}" oninput="setGrade('${key}',this.value)" class="w-full"></div>`;
+  return `
+    <div class="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+      <i data-lucide="wand-sparkles" class="h-4 w-4" style="color:hsl(var(--primary))"></i>
+      <span class="text-xs font-semibold" style="color:hsl(var(--primary))">AI Photo Editor</span>
+      <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">Photo ${s.photo+1}</span>
+    </div>
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Describe the look</p>
+    <div class="mb-2 flex gap-1.5"><input placeholder="e.g. bright, airy, clinical but warm" class="flex-1 rounded-md border px-2 py-1.5 text-xs outline-none" style="border-color:hsl(var(--border))" onkeydown="if(event.key==='Enter')toast('AI proposes a grade → review sliders below')">
+      <button onclick="toast('AI proposes a grade → review sliders')" class="rounded-md px-2.5 py-1.5 text-xs font-semibold text-white" style="background:hsl(var(--primary))">Apply</button></div>
+    <div class="mb-3 flex flex-wrap gap-1.5">${chips}</div>
+    <p class="mb-2 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Fine-tune</p>
+    ${slider('bright','Brightness')}${slider('warm','Warmth')}${slider('contrast','Contrast')}${slider('vibrance','Vibrance')}${slider('depth','Depth')}
+    <div class="my-3 border-t" style="border-color:hsl(var(--border))"></div>
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Frame</p>
+    <div class="mb-1 flex justify-between text-2xs"><span style="color:hsl(var(--muted-foreground))">Zoom &amp; drag photo on canvas to reposition</span></div>
+    <input type="range" min="100" max="300" value="100" oninput="toast('Reframe photo')" class="mb-3 w-full">
+    <div class="flex gap-1.5">
+      <button onclick="toast('→ replace photo')" class="flex-1 rounded-md border px-2 py-1.5 text-2xs hover:bg-muted" style="border-color:hsl(var(--border))"><i data-lucide="image" class="mr-1 inline h-3 w-3"></i>Replace</button>
+      <button onclick="toast('Saved as brand house look — auto-applies to every photo')" class="flex-1 rounded-md border px-2 py-1.5 text-2xs hover:bg-muted" style="border-color:hsl(var(--action));color:hsl(38 60% 35%)">★ Brand look</button>
+    </div>
+    <button onclick="resetGrade()" class="mt-2 w-full rounded-md px-2 py-1.5 text-2xs hover:bg-muted" style="color:hsl(var(--muted-foreground))">Reset adjustments</button>`;
+}
+
+// TEXT-level
+function inspText(s){
+  const b=s.blocks.find(x=>x.id===sel.id); if(!b) return inspSlide(s);
+  const roles=['Hook','Body','Caption','CTA','Attribution'];
+  const roleOpts=roles.map(r=>`<option ${b.role===r?'selected':''}>${r}</option>`).join('');
+  return `
+    <div class="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+      <i data-lucide="type" class="h-4 w-4" style="color:hsl(var(--primary))"></i>
+      <span class="text-xs font-semibold" style="color:hsl(var(--primary))">Text layer</span>
+    </div>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Role</p>
+    <select onchange="setRole(this.value)" class="mb-3 w-full rounded-md border px-2 py-1.5 text-xs" style="border-color:hsl(var(--border))">${roleOpts}</select>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Text</p>
+    <textarea rows="4" oninput="setText(this.value)" class="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm leading-snug outline-none" style="border-color:hsl(var(--border))">${b.text}</textarea>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Size</p>
+    <input type="range" min="40" max="140" value="${Math.round(b.size*100)}" oninput="setSize(this.value)" class="mb-3 w-full">
+    <div class="flex items-center gap-2 rounded-md border px-2.5 py-2 text-2xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">
+      <i data-lucide="move" class="h-4 w-4 shrink-0"></i><span><b>Drag the text</b> anywhere on the canvas — free placement, no presets.</span>
+    </div>
+    <button onclick="delBlock()" class="mt-3 w-full rounded-md border px-2 py-1.5 text-2xs" style="border-color:hsl(var(--border));color:hsl(0 70% 50%)"><i data-lucide="trash-2" class="mr-1 inline h-3 w-3"></i>Delete layer</button>`;
+}
+
+// ───────── vertical slide rail (real thumbs) ─────────
+function renderFilmstrip(){
+  const strip = slides.map((s,i)=>{
+    const t=THEMES[s.theme||deckTheme], hook=(s.blocks[0]?.text||'').slice(0,30);
+    const photo = t.mode!=='card' && s.photo!=null;
+    return `<div class="flex items-start gap-1.5">
+      <span class="pt-0.5 text-3xs font-semibold" style="color:hsl(var(--muted-foreground))">${i+1}</span>
+      <button onclick="goSlide(${i})" class="relative w-full overflow-hidden rounded-md border" style="aspect-ratio:4/5;${i===cur?'border-color:hsl(var(--primary));box-shadow:0 0 0 2px hsl(var(--primary)/.3)':'border-color:hsl(var(--border))'}">
+        <div style="position:absolute;inset:0;background:${t.ground}"></div>
+        ${photo?`<div style="position:absolute;inset:0;background:url(${PHOTOS[s.photo]}) center/cover;opacity:.9"></div><div style="position:absolute;inset:0;background:linear-gradient(${t.dark?'transparent 45%,rgba(12,26,46,.85)':'transparent 45%,rgba(238,240,236,.85)'})"></div>`:''}
+        <div style="position:absolute;left:4px;right:4px;bottom:4px;font-size:6px;font-weight:800;line-height:1.1;color:${t.text};text-align:left">${hook}</div>
+        ${s.theme?'<span style="position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:hsl(var(--action))"></span>':''}
+      </button>
+    </div>`;
+  }).join('');
+  $('railList').innerHTML = strip + `<button onclick="addSlide()" class="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed py-3" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))"><i data-lucide="plus" class="h-4 w-4"></i><span class="mt-0.5 text-3xs">Add</span></button>`;
+  if(window.lucide) lucide.createIcons();
+}
+let railSide='left';
+function toggleRail(){
+  railSide = railSide==='left'?'right':'left';
+  const rail=$('rail');
+  rail.style.order = railSide==='left'?'0':'2';
+  rail.style.borderRight = railSide==='left'?'1px solid hsl(var(--border))':'none';
+  rail.style.borderLeft  = railSide==='left'?'none':'1px solid hsl(var(--border))';
+  toast('Slide rail: '+railSide+' of the photo');
+}
+
+// ───────── actions ─────────
+function goSlide(i){cur=i;sel={type:'slide'};render()}
+function addSlide(){slides.push({layout:'custom',theme:null,photo:0,grade:defGrade(),blocks:[{id:'n'+Date.now(),role:'Hook',text:'New slide',x:.5,y:.5,size:.9}]});cur=slides.length-1;sel={type:'slide'};render()}
+function setLayout(k){curSlide().layout=k;render()}
+function setTheme(id){curSlide().theme=id;render()}
+function applyAll(){const id=curSlide().theme||deckTheme;deckTheme=id;slides.forEach(s=>s.theme=null);render();toast('Theme applied to all slides')}
+function setGrade(k,v){curSlide().grade[k]=+v;render()}
+function applyVibe(p){Object.assign(curSlide().grade,defGrade(),p);render();toast('Vibe applied — fine-tune below')}
+function resetGrade(){curSlide().grade=defGrade();render()}
+function setRole(v){const b=curSlide().blocks.find(x=>x.id===sel.id);b.role=v;render()}
+function setText(v){const b=curSlide().blocks.find(x=>x.id===sel.id);b.text=v;render()}
+function setSize(v){const b=curSlide().blocks.find(x=>x.id===sel.id);b.size=v/100;render()}
+function delBlock(){const s=curSlide();s.blocks=s.blocks.filter(x=>x.id!==sel.id);sel={type:'slide'};render()}
+function zoomFit(){zoom='fit';sizeCanvas();render()}
+function zoomStep(d){const cur=$('canvasWrap').clientHeight;zoom=Math.max(260,cur+d*80);sizeCanvas();render()}
+
+// drag text on canvas
+let drag=null;
+document.addEventListener('mousedown',e=>{const tb=e.target.closest('.txt-box');if(tb&&$('canvas').contains(tb)){drag={id:tb.dataset.bid};selectLayer('text',tb.dataset.bid);e.preventDefault()}});
+document.addEventListener('mousemove',e=>{if(!drag)return;const r=$('canvas').getBoundingClientRect();const b=curSlide().blocks.find(x=>x.id===drag.id);b.x=Math.max(.08,Math.min(.92,(e.clientX-r.left)/r.width));b.y=Math.max(.08,Math.min(.92,(e.clientY-r.top)/r.height));render()});
+document.addEventListener('mouseup',()=>drag=null);
+
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,1800)}
+window.addEventListener('resize',()=>{if(zoom==='fit'){sizeCanvas();render()}});
+
+// boot
+sizeCanvas(); render(); if(window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
