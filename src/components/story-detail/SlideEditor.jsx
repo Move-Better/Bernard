@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
@@ -554,25 +554,25 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
   return (
     <button
       type="button"
-      disabled={attached || attaching}
+      disabled={attaching}
       onClick={onAttach}
-      title={attached ? 'Already attached' : 'Use this photo'}
+      title={attached ? 'Already in this post — click to use it on this slide' : 'Use this photo'}
       className={`group relative aspect-square overflow-hidden rounded-md border transition-all ${
-        attached ? 'border-primary opacity-60' : 'border-border hover:border-primary'
+        attached ? 'border-primary' : 'border-border hover:border-primary'
       }`}
     >
       {thumb
         ? <img src={thumb} alt="" className="h-full w-full object-cover" />
         : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>}
       <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
-      <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attached || attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+      <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
         {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : attached ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
       </span>
     </button>
   )
 }
 
-function SwapAddPhoto({ pieceId, attachedKeys, onAttach }) {
+function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
   const [tab, setTab] = useState('ai')          // 'ai' | 'library'
   const [pickerOpen, setPickerOpen] = useState(false)
   const [attachingKey, setAttachingKey] = useState(null)
@@ -587,9 +587,11 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach }) {
 
   async function attach(entry) {
     const key = mediaEntryKey(entry)
-    if (attachedKeys.has(key)) return
     setAttachingKey(key)
     try {
+      // Always call through — onAttach (attachPhoto) dedupes the media_urls add
+      // and rebinds THIS slide, so picking an already-attached photo reuses it
+      // on the current slide (per-slide model; reuse across slides is allowed).
       await onAttach(entry)
     } finally {
       setAttachingKey(null)
@@ -721,16 +723,34 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach }) {
       {pickerOpen && (
         <MediaPicker onClose={() => setPickerOpen(false)} onSelect={handlePicked} />
       )}
+
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full text-center text-3xs text-muted-foreground hover:text-foreground"
+        >
+          cancel — keep current photo
+        </button>
+      )}
     </div>
   )
 }
 
 // ── PHOTO inspector body — swap/add + bind + reframe + colorist ──────────────
 
-function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, onBindPhoto }) {
-  const [photoOpen, setPhotoOpen] = useState(false)
+function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange }) {
+  // One photo control: the slide's current photo + Replace, or an empty state
+  // that prompts a pick. Picking ALWAYS attaches+binds in one step (per-slide
+  // model) — the old "use an attached photo" pool dropdown is gone. `replacing`
+  // reveals the picker over an existing photo; reset when the active slide changes.
+  const [replacing, setReplacing] = useState(false)
+  useEffect(() => { setReplacing(false) }, [photoUrl])
   const [vibePrompt, setVibePrompt] = useState('')
   const [proposing, setProposing] = useState(false)
+
+  const hasPhoto = !!photoUrl
+  const photoThumb = (typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]?.thumbnailUrl) || photoUrl
 
   const grade = slide.grade || NEUTRAL_GRADE
   const graded = !isNeutralGrade(grade)
@@ -742,6 +762,9 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
   }
   function resetGrade() {
     const s = { ...slide }; delete s.grade; onChange(s)
+  }
+  function removePhoto() {
+    const s = { ...slide }; s.photo_idx = null; onChange(s)
   }
   async function proposeFromText() {
     const prompt = vibePrompt.trim()
@@ -768,69 +791,56 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
 
   return (
     <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md bg-primary/8 px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+      <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
         <ImageIcon className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-primary">Photo</span>
-        {typeof slide.photo_idx === 'number' && (
-          <span className="ml-auto text-3xs text-muted-foreground">Photo {slide.photo_idx + 1}</span>
-        )}
+        <span className="text-xs font-semibold text-primary">This slide&apos;s photo</span>
       </div>
 
-      {/* Swap / add a photo — attach NEW media (AI picks · describe-the-shot ·
-          library/upload) and rebind this slide to it. Lifted from the choose-
-          media screen so you never have to leave the editor to add a photo. */}
-      <SwapAddPhoto pieceId={pieceId} attachedKeys={attachedKeys} onAttach={onAttachPhoto} />
-
-      {/* Bind photo — rebind this slide to an already-attached photo */}
-      <div className="space-y-1.5 border-t border-border/60 pt-3">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Use an attached photo
-        </p>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setPhotoOpen((o) => !o)}
-            className="flex w-full items-center justify-between rounded border bg-muted/40 px-2 py-1.5 text-2xs hover:bg-muted"
-          >
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <ImageIcon className="h-3 w-3" />
-              {photoUrl
-                ? `Photo ${(slide.photo_idx ?? 0) + 1} of ${mediaUrls.length}`
-                : 'No photo bound'}
-            </span>
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          </button>
-          {photoOpen && (
-            <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-white p-1.5 shadow-lg max-h-48 overflow-auto">
+      {/* The slide's photo — current photo + Replace/Remove, or an empty state.
+          ONE control: picking attaches+binds in one step (per-slide model). The
+          old "use an attached photo" pool dropdown is gone. */}
+      {hasPhoto ? (
+        <div className="flex items-center gap-2.5 rounded-md border border-border bg-background/50 p-2">
+          <img src={photoThumb} alt="" className="h-16 w-16 shrink-0 rounded-md border border-border object-cover" />
+          <div className="min-w-0 flex-1">
+            <p className="text-2xs font-semibold">Photo on this slide</p>
+            <p className="text-3xs text-muted-foreground">{graded ? 'From your library · graded' : 'From your library'}</p>
+            <div className="mt-1.5 flex gap-1.5">
               <button
                 type="button"
-                onClick={() => { onBindPhoto(null); setPhotoOpen(false) }}
-                className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted ${
-                  slide.photo_idx === null ? 'bg-muted' : ''
-                }`}
+                onClick={() => setReplacing((o) => !o)}
+                className="rounded-md bg-primary px-2 py-1 text-3xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
-                <span className="h-6 w-6 rounded bg-muted-foreground/20 flex items-center justify-center">
-                  <ImageIcon className="h-3 w-3 text-muted-foreground" />
-                </span>
-                No photo
+                <Repeat className="mr-0.5 inline h-3 w-3" />Replace
               </button>
-              {mediaUrls.map((m, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => { onBindPhoto(idx); setPhotoOpen(false) }}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted ${
-                    slide.photo_idx === idx ? 'bg-muted' : ''
-                  }`}
-                >
-                  <img src={m.thumbnailUrl || m.url} alt="" className="h-6 w-6 rounded object-cover" />
-                  Photo {idx + 1}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={removePhoto}
+                className="rounded-md border border-border px-2 py-1 text-3xs text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+              >
+                Remove
+              </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-4 text-center">
+          <ImagePlus className="mx-auto mb-1 h-5 w-5 text-primary" />
+          <p className="text-2xs font-semibold text-primary">Add a photo to this slide</p>
+          <p className="mt-0.5 text-3xs text-muted-foreground">Pick from AI picks, your library, or upload — it lands straight on the slide.</p>
+        </div>
+      )}
+
+      {/* Picker — AI picks · describe-the-shot · library/upload. Shown over the
+          empty state, or behind "Replace" for an existing photo. */}
+      {(!hasPhoto || replacing) && (
+        <SwapAddPhoto
+          pieceId={pieceId}
+          attachedKeys={attachedKeys}
+          onAttach={onAttachPhoto}
+          onCancel={hasPhoto ? () => setReplacing(false) : null}
+        />
+      )}
 
       {/* Reframe (zoom + reset). Drag-to-pan happens on the canvas. */}
       {photoUrl && (
@@ -1341,20 +1351,13 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     })
   }
   function addSlide() {
-    // New slide binds to the first un-bound photo, falling back to last photo
-    const usedIdxs = new Set(slides.map((s) => s.photo_idx).filter((p) => typeof p === 'number'))
-    const nextPhoto = mediaUrls.findIndex((_, i) => !usedIdxs.has(i))
-    const next = slides.concat([{
-      photo_idx: nextPhoto >= 0 ? nextPhoto : (mediaUrls.length > 0 ? mediaUrls.length - 1 : null),
-      template: 'custom',
-      blocks: [],
-    }])
+    // New slide starts BLANK — pick a photo onto it (per-slide model). No more
+    // auto-binding the next pool photo; select the Photo layer so the "Add a
+    // photo" picker is front-and-centre immediately.
+    const next = slides.concat([{ photo_idx: null, template: 'custom', blocks: [] }])
     setSlides(next)
     setActiveSlideIdx(next.length - 1)
-    setSelection({ type: 'slide' })
-  }
-  function bindPhoto(idx, photoIdx) {
-    updateSlide(idx, { ...slides[idx], photo_idx: photoIdx })
+    setSelection({ type: 'photo' })
   }
 
   // Attach a NEW photo to the piece (media_urls belongs to the content_item, not
@@ -1652,7 +1655,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     attachedKeys={attachedKeys}
                     onAttachPhoto={attachPhoto}
                     onChange={(next) => updateSlide(activeSlideIdx, next)}
-                    onBindPhoto={(photoIdx) => bindPhoto(activeSlideIdx, photoIdx)}
                   />
                 ) : selection.type === 'text' ? (
                   <TextInspector
