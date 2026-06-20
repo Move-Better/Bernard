@@ -58,6 +58,29 @@ const NAVY_PANEL  = 'rgba(12,26,46,0.94)'
 // IDs are stable — stories reference them by id, never rename them.
 // Names + block style values may change freely.
 
+// ── Structure primitive vocabulary ──────────────────────────────────────────
+//
+// Each theme's `structure` field is an ordered list of drawing primitives that
+// replace the hardcoded `drawWhoopLayout` switch. The renderer in
+// overlayTemplates.js interprets them generically.
+//
+// Color values may be:
+//   '$ink'   → brandInk(brandStyle)       (workspace darkest brand color)
+//   '$paper' → brandPaper(brandStyle)     (workspace lightest brand color)
+//   '$accent'→ brandAccent(brandStyle)    (workspace accent color)
+//   { token: '$ink'|'$paper'|'$accent', fallback?: string, lighten?: number }
+//   Any literal CSS color string
+//
+// Primitive types:
+//   bg-solid    { color }
+//   bg-radial   { colorCenter, colorEdge, x0Frac, y0Frac, r0, x1Frac, y1Frac, r1Frac }
+//   bg-linear   { colorFrom, colorTo }
+//   photo       { fallback? }              — draws source photo; fallback when none
+//   overlay     { color }                  — full-canvas solid overlay
+//   scrim       { yFrac, yEndFrac, stops } — gradient overlay from yFrac→yEndFrac
+//   panel       { color, yFrac }           — solid rect from yFrac to bottom
+//   rule        { color, yFrac, thickness, padded } — horizontal accent line
+
 export const BUILTIN_THEMES = {
 
   // ── FULL PHOTO ── clean full-bleed photo, text overlaid (the default)
@@ -68,6 +91,11 @@ export const BUILTIN_THEMES = {
   'photo-dark': {
     id: 'photo-dark', name: 'Full Photo', builtin: true,
     layout: 'photo', palette: 'dark',
+    structure: [
+      { type: 'photo', fallback: { type: 'bg-linear', colorFrom: { token: '$ink', fallback: '#1e293b', lighten: 0.28 }, colorTo: { token: '$ink', fallback: '#1e293b' } } },
+      { type: 'scrim', yFrac: 0.50, yEndFrac: 1.0,  stops: [[0, 'rgba(0,0,0,0)'], [0.55, 'rgba(0,0,0,0.42)'], [1.0, 'rgba(0,0,0,0.74)']] },
+      { type: 'scrim', yFrac: 0.0,  yEndFrac: 0.22, stops: [[0, 'rgba(0,0,0,0.34)'], [1.0, 'rgba(0,0,0,0)']] },
+    ],
     blocks: {
       hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',               shadow: 'strong', background: 'none',  bgColor: null,        uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.85)', shadow: 'medium', background: 'none',  bgColor: null,        uppercase: false },
@@ -79,11 +107,15 @@ export const BUILTIN_THEMES = {
   },
 
   // ── DARK-CLAIM ── editorial card, strong dark ground, brand font
-  //   Full-bleed navy (or dark photo). Hero headline in white with orange suffix.
-  //   Sage label + rule above. Works with or without a source photo.
+  //   Full-bleed dark (brand ink) radial-gradient ground. Works with or without
+  //   a source photo. Orange rule + sage label above the headline.
   'dark-claim': {
     id: 'dark-claim', name: 'Dark Claim', builtin: true,
     layout: 'claim', palette: 'dark',
+    structure: [
+      { type: 'bg-radial', colorCenter: { token: '$ink', lighten: 0.13 }, colorEdge: '$ink', x0Frac: 0.5, y0Frac: 0.42, r0: 0, x1Frac: 0.5, y1Frac: 0.5, r1Frac: 0.72 },
+      { type: 'rule', color: '$accent', yFrac: 0.11, thickness: 4, padded: true },
+    ],
     blocks: {
       hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',               shadow: 'strong', background: 'none',  bgColor: null,        uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.72)', shadow: 'soft',   background: 'none',  bgColor: null,        uppercase: false },
@@ -95,11 +127,15 @@ export const BUILTIN_THEMES = {
   },
 
   // ── LIGHT-CLAIM ── editorial card, paper ground, navy text
-  //   Warm cream background. Headline + body in navy, orange rule above headline,
-  //   sage for the label. CTA pill in brand accent.
+  //   Warm cream (brand paper) background. Headline + body in navy, orange rule
+  //   above headline, sage for the label. CTA pill in brand accent.
   'light-claim': {
     id: 'light-claim', name: 'Light Claim', builtin: true,
     layout: 'claim', palette: 'light',
+    structure: [
+      { type: 'bg-solid', color: '$paper' },
+      { type: 'rule', color: '$accent', yFrac: 0.11, thickness: 4, padded: true },
+    ],
     blocks: {
       hook:        { fontSize: 'xl',   fontWeight: 'extrabold', color: NAVY,                    shadow: 'none',   background: 'rect',  bgColor: PAPER,       uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: '#475569',               shadow: 'none',   background: 'rect',  bgColor: PAPER2,      uppercase: false },
@@ -116,6 +152,12 @@ export const BUILTIN_THEMES = {
   'dark-badge': {
     id: 'dark-badge', name: 'Dark Badge', builtin: true,
     layout: 'badge', palette: 'dark',
+    structure: [
+      { type: 'photo', fallback: { type: 'bg-solid', color: '$ink' } },
+      { type: 'overlay', color: 'rgba(0,0,0,0.30)' },
+      { type: 'scrim', yFrac: 0.48, yEndFrac: 1.0, stops: [[0, 'rgba(0,0,0,0)'], [0.45, 'rgba(0,0,0,0.80)'], [1.0, 'rgba(0,0,0,0.97)']] },
+      { type: 'rule', color: '$accent', yFrac: 0.57, thickness: 4, padded: true },
+    ],
     blocks: {
       hook:        { fontSize: 'xl',   fontWeight: 'extrabold', color: '#ffffff',               shadow: 'strong', background: 'none',  bgColor: null,        uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.80)', shadow: 'medium', background: 'none',  bgColor: null,        uppercase: false },
@@ -127,11 +169,17 @@ export const BUILTIN_THEMES = {
   },
 
   // ── LIGHT-BADGE ── bright photo, clean panel, metric badge at seam
-  //   Photo occupies the upper ~58%, white panel the lower ~42%. Headline in
-  //   navy on the panel; CTA in brand accent.
+  //   Photo occupies the upper ~58%; white panel the lower ~42% (translucent,
+  //   photo ghosting through). Headline in navy on the panel; CTA in brand accent.
   'light-badge': {
     id: 'light-badge', name: 'Light Badge', builtin: true,
     layout: 'badge', palette: 'light',
+    structure: [
+      { type: 'photo', fallback: { type: 'bg-linear', colorFrom: { token: '$paper', fallback: '#cbd5e1', lighten: 0.06 }, colorTo: { token: '$paper', fallback: '#cbd5e1', lighten: -0.08 } } },
+      { type: 'scrim',  yFrac: 0.40, yEndFrac: 0.58, stops: [[0, 'rgba(255,255,255,0)'], [0.7, 'rgba(255,255,255,0.612)'], [1.0, 'rgba(255,255,255,0.72)']] },
+      { type: 'panel',  color: 'rgba(255,255,255,0.72)', yFrac: 0.58 },
+      { type: 'rule',   color: '$accent', yFrac: 0.58, thickness: 4, padded: false },
+    ],
     blocks: {
       hook:        { fontSize: 'lg',   fontWeight: 'extrabold', color: NAVY,                    shadow: 'none',   background: 'none',  bgColor: null,        uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: '#475569',               shadow: 'none',   background: 'none',  bgColor: null,        uppercase: false },
@@ -142,12 +190,17 @@ export const BUILTIN_THEMES = {
     },
   },
 
-  // ── DARK-SPLIT ── photo top ~46%, navy panel below
-  //   Hard horizontal break: photo fills the top, a solid navy panel carries the
-  //   headline. Orange rule + sage label introduce the copy.
+  // ── DARK-SPLIT ── photo top ~67%, brand-ink panel below
+  //   Full-bleed photo base; solid brand panel overlays the bottom third.
+  //   Orange rule at the seam. Headline in white on the panel.
   'dark-split': {
     id: 'dark-split', name: 'Dark Split', builtin: true,
     layout: 'split', palette: 'dark',
+    structure: [
+      { type: 'photo', fallback: { type: 'bg-linear', colorFrom: { token: '$ink', fallback: '#1e293b', lighten: 0.28 }, colorTo: { token: '$ink', fallback: '#1e293b' } } },
+      { type: 'panel', color: '$ink', yFrac: 0.67 },
+      { type: 'rule',  color: '$accent', yFrac: 0.67, thickness: 4, padded: false },
+    ],
     blocks: {
       hook:        { fontSize: 'lg',   fontWeight: 'extrabold', color: '#ffffff',               shadow: 'none',   background: 'rect',  bgColor: NAVY_PANEL,  uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.75)', shadow: 'none',   background: 'rect',  bgColor: NAVY_PANEL,  uppercase: false },
@@ -158,12 +211,17 @@ export const BUILTIN_THEMES = {
     },
   },
 
-  // ── LIGHT-SPLIT ── photo top ~46%, sage-green panel below
-  //   Same split geometry; sage panel instead of navy. Navy text. Softer,
+  // ── LIGHT-SPLIT ── photo top ~67%, sage-green panel below
+  //   Same split geometry; brand-paper panel instead of ink. Navy text. Softer,
   //   editorial feel for health + wellness brands.
   'light-split': {
     id: 'light-split', name: 'Light Split', builtin: true,
     layout: 'split', palette: 'light',
+    structure: [
+      { type: 'photo', fallback: { type: 'bg-linear', colorFrom: { token: '$ink', fallback: '#1e293b', lighten: 0.28 }, colorTo: { token: '$ink', fallback: '#1e293b' } } },
+      { type: 'panel', color: { token: '$paper', fallback: '#eaeeea' }, yFrac: 0.67 },
+      { type: 'rule',  color: '$accent', yFrac: 0.67, thickness: 4, padded: false },
+    ],
     blocks: {
       hook:        { fontSize: 'lg',   fontWeight: 'bold',      color: NAVY,                    shadow: 'none',   background: 'rect',  bgColor: SAGE_PANEL,  uppercase: false },
       body:        { fontSize: 'sm',   fontWeight: 'medium',    color: '#475569',               shadow: 'none',   background: 'rect',  bgColor: SAGE_PANEL,  uppercase: false },
