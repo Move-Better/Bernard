@@ -165,7 +165,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580', in
     const photoH  = Math.round(h * 0.67)
     const panelBg = isDark ? ink : paper
     const panelInk = isDark ? '#ffffff' : ink
-    const photoBg = isDark ? '#3a4a62' : '#8fa4b8'
+    const photoBg = isDark ? '#3f4145' : '#9b9ea3'
     const textY = photoH + Math.round(h * 0.075)
     return (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ borderRadius: 6, flexShrink: 0, display: 'block' }}>
@@ -190,7 +190,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580', in
   const photoH  = isDark ? h : Math.round(h * 0.56)
   const panelBg = isDark ? 'transparent' : paper
   const textC    = isDark ? '#ffffff' : ink
-  const photoBg  = isDark ? '#3a4a62' : '#8fa4b8'
+  const photoBg  = isDark ? '#3f4145' : '#9b9ea3'
   const badgeR   = Math.round(w * 0.12)
   const badgeCx  = w - p - badgeR
   const badgeCy  = p + badgeR
