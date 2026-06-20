@@ -16,7 +16,7 @@ import {
   TEMPLATE_DEFAULT_POSITIONS,
   renderFreeformSlide,
 } from '@/lib/overlayTemplates'
-import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
+import { resolveTheme, DEFAULT_DECK_THEME, templateFamily } from '@/lib/photoTemplates'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
@@ -360,6 +360,38 @@ function MiniSlideCanvas({ renderSlide, photoUrl, brandStyle, theme, renderKey }
   return <canvas ref={ref} className="block h-full w-full" />
 }
 
+// One template tile — a real rendered miniature of the active slide in that
+// template. Module scope (react-hooks/static-components); reused by both the
+// Photo-templates and Text-cards groups in the picker.
+function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onChange }) {
+  const resolved = resolveTheme(t.id, customThemes)
+  const selected = slide.template_id === t.id
+  return (
+    <button
+      type="button"
+      onClick={() => onChange({ ...slide, template_id: t.id })}
+      className={`group relative overflow-hidden rounded-md border text-left transition-all ${
+        selected ? 'border-amber-400 ring-1 ring-amber-400/40' : 'border-border hover:border-primary/40'
+      }`}
+      title={`${t.name}${selected ? ' (this slide only)' : ''}`}
+    >
+      <div className="aspect-[4/5] w-full bg-muted">
+        <MiniSlideCanvas
+          renderSlide={slide}
+          photoUrl={photoUrl}
+          brandStyle={brandStyle}
+          theme={resolved}
+          renderKey={`${t.id}|${thumbSig}`}
+        />
+      </div>
+      <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">{t.name}</div>
+      {selected && (
+        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-1 ring-amber-400/40" />
+      )}
+    </button>
+  )
+}
+
 // ── SLIDE inspector body — layout + theme (nothing else selected) ────────────
 
 function SlideInspector({
@@ -464,39 +496,23 @@ function SlideInspector({
           <span>Same as deck</span>
           {!slide.template_id && <span className="text-3xs">✓ inheriting</span>}
         </button>
+        {/* Two families: Photo templates (full-bleed photo + overlay) and Text
+            cards (no photo, branded). Family derived via templateFamily. */}
+        <p className="pt-0.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+          Photo templates <span className="font-normal normal-case text-muted-foreground/60">· full-bleed photo</span>
+        </p>
         <div className="grid grid-cols-2 gap-1.5">
-          {allThemes.map((t) => {
-            const resolved = resolveTheme(t.id, customThemes)
-            const selected = slide.template_id === t.id
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onChange({ ...slide, template_id: t.id })}
-                className={`group relative overflow-hidden rounded-md border text-left transition-all ${
-                  selected ? 'border-amber-400 ring-1 ring-amber-400/40' : 'border-border hover:border-primary/40'
-                }`}
-                title={`${t.name}${selected ? ' (this slide only)' : ''}`}
-              >
-                {/* Real rendered miniature of THIS slide in this theme */}
-                <div className="aspect-[4/5] w-full bg-muted">
-                  <MiniSlideCanvas
-                    renderSlide={slide}
-                    photoUrl={photoUrl}
-                    brandStyle={brandStyle}
-                    theme={resolved}
-                    renderKey={`${t.id}|${thumbSig}`}
-                  />
-                </div>
-                <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">
-                  {t.name}
-                </div>
-                {selected && (
-                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-1 ring-amber-400/40" />
-                )}
-              </button>
-            )
-          })}
+          {allThemes.filter((t) => templateFamily(resolveTheme(t.id, customThemes)) === 'photo').map((t) => (
+            <ThemeTile key={t.id} t={t} slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} customThemes={customThemes} thumbSig={thumbSig} onChange={onChange} />
+          ))}
+        </div>
+        <p className="pt-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+          Text cards <span className="font-normal normal-case text-muted-foreground/60">· no photo</span>
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {allThemes.filter((t) => templateFamily(resolveTheme(t.id, customThemes)) === 'text').map((t) => (
+            <ThemeTile key={t.id} t={t} slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} customThemes={customThemes} thumbSig={thumbSig} onChange={onChange} />
+          ))}
         </div>
         <button
           type="button"

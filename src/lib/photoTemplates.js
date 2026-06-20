@@ -209,3 +209,13 @@ export function defaultBlockConfig(role) {
 export function mergeThemes(customThemes = []) {
   return [...Object.values(BUILTIN_THEMES), ...customThemes]
 }
+
+/** Which family a template belongs to, for the two-group picker:
+ *   'text'  — a branded card with NO photo (the Claim layouts; deliberate).
+ *   'photo' — full-bleed photo with the brand design overlaid on top.
+ *  Built-ins derive from layout (claim = text-only); a template may also declare
+ *  `family` explicitly (e.g. a custom workspace template). (Q 2026-06-20) */
+export function templateFamily(theme) {
+  if (theme?.family === 'text' || theme?.family === 'photo') return theme.family
+  return theme?.layout === 'claim' ? 'text' : 'photo'
+}

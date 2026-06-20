@@ -802,15 +802,20 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
 
   } else if (layout === 'split') {
     const splitY = Math.round(SIZE * 0.67)
+    // Photo is the FULL-BLEED base layer (fills the whole frame, framed by the
+    // user's zoom/offset). The brand panel is an OVERLAY over the bottom third —
+    // it does NOT crop the photo into a box. The photo never shrinks; you frame
+    // the full image. (Structure fix, Q 2026-06-20; panel/rule styling unchanged.)
     if (img) {
-      drawGradedCover(ctx, img, 0, 0, SIZE, splitY, zoom, offset, photoFilter)
+      drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
     } else {
-      const grad = ctx.createLinearGradient(0, 0, 0, splitY)
+      const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
       grad.addColorStop(0, '#475569')
       grad.addColorStop(1, '#1e293b')
       ctx.fillStyle = grad
-      ctx.fillRect(0, 0, SIZE, splitY)
+      ctx.fillRect(0, 0, SIZE, SIZE)
     }
+    // Solid brand panel overlays the bottom third (full-bleed photo behind it)
     ctx.fillStyle = palette === 'dark' ? WHOOP_NAVY : WHOOP_SAGE_FILL
     ctx.fillRect(0, splitY, SIZE, SIZE - splitY)
     // Orange rule at the photo/panel seam
