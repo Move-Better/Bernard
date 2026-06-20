@@ -42,6 +42,7 @@ import { extractProvenanceBlock } from '@/lib/provenance'
 import { toast, runWithToast } from '@/lib/toast'
 import { apiFetch } from '@/lib/api'
 import BufferMetricsRow from './BufferMetricsRow'
+import GbpInsightsRow from './GbpInsightsRow'
 import WinnerToggle from './WinnerToggle'
 import ContentPlanPanel from '@/components/ContentPlanPanel'
 import VoiceFidelityBadge from './VoiceFidelityBadge'
@@ -2118,6 +2119,10 @@ export default function AssetsPane({
             {/* Buffer performance metrics — shown for published pieces with a buffer_update_id */}
             {active.status === 'published' && active.buffer_update_id && (
               <BufferMetricsRow contentItemId={active.id} />
+            )}
+            {/* GBP post view metrics — shown for published GBP pieces once cron has matched them */}
+            {active.status === 'published' && active.platform === 'gbp' && (
+              <GbpInsightsRow contentItemId={active.id} />
             )}
 
             {/* V5 engagement loop: human "this worked" signal on published pieces.

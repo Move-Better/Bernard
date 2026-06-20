@@ -112,6 +112,7 @@ export const queryKeys = {
   websiteGA4:       ['website-ga4'],
   searchQueries:    ['search-queries'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
+  gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
   locations: {
     all:  ['locations'],
     list: () => ['locations', 'list'],
@@ -955,6 +956,20 @@ export function useBufferMetrics(contentItemId, options = {}) {
         .catch(() => null),
     enabled: !!contentItemId,
     staleTime: 1000 * 60 * 30, // 30min — Buffer stats don't update by the second
+    ...options,
+  })
+}
+
+// ── GBP Analytics ────────────────────────────────────────────────────────────
+
+export function useGbpMetrics(contentItemId, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.gbpMetrics(contentItemId),
+    queryFn: () =>
+      apiFetch(`/api/gbp-analytics?contentItemId=${encodeURIComponent(contentItemId)}`)
+        .catch(() => null),
+    enabled: !!contentItemId,
+    staleTime: 1000 * 60 * 30, // 30min — GBP stats are updated daily
     ...options,
   })
 }
