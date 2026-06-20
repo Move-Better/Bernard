@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Loader2, Scissors, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import MediaPicker from './MediaPicker'
@@ -34,6 +34,18 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
     return d > 0 ? Math.min(d, 30) : 30
   })
   const [caption, setCaption] = useState('')
+  const [metaFailed, setMetaFailed] = useState(false)
+
+  // Library videos here are raw iPhone .mov (HEVC) with no transcoded mp4, which
+  // Chrome often can't decode — so onLoadedMetadata may never fire. We seed the
+  // length from the asset's server-known duration_s (set by ffprobe); when that's
+  // also missing AND the browser can't read it, stop the spinner and say so
+  // rather than leaving the user on an indefinitely-disabled button.
+  useEffect(() => {
+    if (duration > 0) return
+    const id = setTimeout(() => setMetaFailed((f) => (duration > 0 ? f : true)), 6000)
+    return () => clearTimeout(id)
+  }, [duration])
 
   // Seek the preview so the sliders give visual feedback while dragging.
   const seek = useCallback((t) => {
@@ -44,6 +56,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
   function onMeta() {
     const d = vidRef.current?.duration
     if (Number.isFinite(d) && d > 0) {
+      setMetaFailed(false)
       setDuration(d)
       setEnd((e) => (e > d || e <= 0 ? Math.min(d, 30) : e))
     }
@@ -89,10 +102,19 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
             />
           </div>
 
-          {!ready && (
+          {!ready && !metaFailed && (
             <p className="mt-3 flex items-center gap-1.5 text-2xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading video length…
             </p>
+          )}
+          {!ready && metaFailed && (
+            <div className="mt-3 flex gap-1.5 rounded-lg border border-warning bg-warning/10 p-2.5 text-2xs text-muted-foreground">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+              <span>
+                Couldn&rsquo;t read this clip&rsquo;s length in the browser — it may still be processing.
+                Try another clip, or trim it in <span className="font-semibold">Slate</span> once it&rsquo;s ready.
+              </span>
+            </div>
           )}
 
           {/* Start / End sliders */}
