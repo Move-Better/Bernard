@@ -866,6 +866,118 @@ function drawGradedCover(ctx, img, x, y, w, h, zoom, offset, photoFilter) {
   ctx.filter = prev || 'none'
 }
 
+// ── Structure-primitive renderer ────────────────────────────────────────────
+//
+// Interprets the `structure` array on a theme config (see photoTemplates.js for
+// the full vocabulary). Each primitive is drawn in order onto `ctx`.
+// Color specs may be semantic tokens ('$ink', '$paper', '$accent') or objects
+// { token, fallback?, lighten? } — resolved to CSS colors at draw time.
+
+function resolveColor(spec, brandStyle) {
+  if (!spec) return '#000000'
+  if (typeof spec === 'string') {
+    if (spec === '$ink')    return brandInk(brandStyle, WHOOP_NAVY)
+    if (spec === '$paper')  return brandPaper(brandStyle, WHOOP_PAPER)
+    if (spec === '$accent') return brandAccent(brandStyle)
+    return spec
+  }
+  if (typeof spec === 'object') {
+    const fb = spec.fallback
+    let base
+    if (spec.token === '$ink')    base = brandInk(brandStyle,   fb || WHOOP_NAVY)
+    else if (spec.token === '$paper')  base = brandPaper(brandStyle, fb || WHOOP_PAPER)
+    else if (spec.token === '$accent') base = brandAccent(brandStyle)
+    else base = spec.color || '#000000'
+    if (spec.lighten != null) return shadeHex(base, spec.lighten)
+    return base
+  }
+  return '#000000'
+}
+
+function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOffset, photoFilter) {
+  for (const p of structure) {
+    switch (p.type) {
+
+      case 'bg-solid': {
+        ctx.fillStyle = resolveColor(p.color, brandStyle)
+        ctx.fillRect(0, 0, W, H)
+        break
+      }
+
+      case 'bg-radial': {
+        const x0 = W * (p.x0Frac ?? 0.5)
+        const y0 = H * (p.y0Frac ?? 0.42)
+        const r0 = p.r0 ?? 0
+        const x1 = W * (p.x1Frac ?? 0.5)
+        const y1 = H * (p.y1Frac ?? 0.5)
+        const r1 = W * (p.r1Frac ?? 0.72)
+        const grad = ctx.createRadialGradient(x0, y0, r0, x1, y1, r1)
+        grad.addColorStop(0, resolveColor(p.colorCenter, brandStyle))
+        grad.addColorStop(1, resolveColor(p.colorEdge,   brandStyle))
+        ctx.fillStyle = grad
+        ctx.fillRect(0, 0, W, H)
+        break
+      }
+
+      case 'bg-linear': {
+        const grad = ctx.createLinearGradient(0, 0, 0, H)
+        grad.addColorStop(0, resolveColor(p.colorFrom, brandStyle))
+        grad.addColorStop(1, resolveColor(p.colorTo,   brandStyle))
+        ctx.fillStyle = grad
+        ctx.fillRect(0, 0, W, H)
+        break
+      }
+
+      case 'photo': {
+        if (img) {
+          drawGradedCover(ctx, img, 0, 0, W, H, photoZoom, photoOffset, photoFilter)
+        } else if (p.fallback) {
+          drawStructure(ctx, [p.fallback], brandStyle, null, W, H, 1, null, 'none')
+        }
+        break
+      }
+
+      case 'overlay': {
+        ctx.fillStyle = resolveColor(p.color, brandStyle)
+        ctx.fillRect(0, 0, W, H)
+        break
+      }
+
+      case 'scrim': {
+        const sy1 = Math.round(H * p.yFrac)
+        const sy2 = Math.round(H * (p.yEndFrac ?? 1.0))
+        const grad = ctx.createLinearGradient(0, sy1, 0, sy2)
+        for (const [pos, color] of (p.stops || [])) grad.addColorStop(pos, color)
+        ctx.fillStyle = grad
+        ctx.fillRect(0, sy1, W, sy2 - sy1)
+        break
+      }
+
+      case 'panel': {
+        const panY = Math.round(H * p.yFrac)
+        ctx.fillStyle = resolveColor(p.color, brandStyle)
+        ctx.fillRect(0, panY, W, H - panY)
+        break
+      }
+
+      case 'rule': {
+        const rY    = Math.round(H * p.yFrac)
+        const thick = p.thickness ?? 4
+        ctx.fillStyle = resolveColor(p.color, brandStyle)
+        if (p.padded) {
+          const pad = Math.round(W * (FREEFORM_PAD / SIZE))
+          ctx.fillRect(pad, rY, W - pad * 2, thick)
+        } else {
+          ctx.fillRect(0, rY, W, thick)
+        }
+        break
+      }
+
+      default: break
+    }
+  }
+}
+
 function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null, photoFilter = 'none', W = SIZE, H = SIZE }) {
   const accent = brandAccent(brandStyle)
 
@@ -1025,9 +1137,15 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   const photoFilter = gradeToCanvasFilter(slide?.grade)
 
   if (useWhoop) {
-    // WHOOP built-in — paint structural geometry (background, panel, rule)
+    // Paint structural geometry: data-driven path when the theme declares a
+    // `structure` array; legacy drawWhoopLayout for older custom themes that
+    // have layout/palette but no structure field.
     const img = sourceUrl ? await loadImage(sourceUrl) : null
-    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter, W, H })
+    if (Array.isArray(theme?.structure)) {
+      drawStructure(ctx, theme.structure, brandStyle || {}, img, W, H, photoZoom, photoOffset, photoFilter)
+    } else {
+      drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter, W, H })
+    }
   } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
     const prevFilter = ctx.filter
