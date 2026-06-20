@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Brand Look (AI Colorist setup) mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%; --border:214 32% 91%; --ring:160 84% 39%;
+    --warning:38 92% 50%; --info:199 95% 40%; --success:152 76% 40%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;}
+  .text-3xs{font-size:10px;line-height:14px}
+  .text-2xs{font-size:11px;line-height:15px}
+  .legend{border:1px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.05)}
+  .gridimg{transition:filter .35s ease}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+  <!-- sidebar -->
+  <aside class="hidden w-56 shrink-0 flex-col border-r bg-white px-3 py-4 md:flex" style="border-color:hsl(var(--border))">
+    <div class="mb-5 flex items-center gap-2 px-1">
+      <div class="flex h-7 w-7 items-center justify-center rounded-lg text-white" style="background:hsl(var(--primary))"><i data-lucide="waves" class="h-4 w-4"></i></div>
+      <div><div class="text-sm font-bold leading-none">Bernard</div><div class="text-3xs" style="color:hsl(var(--muted-foreground))">Move Better</div></div>
+    </div>
+    <nav class="space-y-0.5 text-sm">
+      <a class="flex items-center gap-2 rounded-lg px-2 py-1.5" style="color:hsl(var(--muted-foreground))"><i data-lucide="layout-grid" class="h-4 w-4"></i>Publish</a>
+      <a class="flex items-center gap-2 rounded-lg px-2 py-1.5" style="color:hsl(var(--muted-foreground))"><i data-lucide="image" class="h-4 w-4"></i>Library</a>
+      <a class="flex items-center gap-2 rounded-lg px-2 py-1.5" style="color:hsl(var(--muted-foreground))"><i data-lucide="megaphone" class="h-4 w-4"></i>Ads</a>
+      <div class="px-2 pb-1 pt-3 text-3xs font-semibold uppercase tracking-wider" style="color:hsl(var(--muted-foreground))">Settings</div>
+      <a class="flex items-center gap-2 rounded-lg px-2 py-1.5 font-semibold" style="background:hsl(var(--accent));color:hsl(var(--accent-foreground))"><i data-lucide="wand-2" class="h-4 w-4"></i>Brand Look</a>
+      <a class="flex items-center gap-2 rounded-lg px-2 py-1.5" style="color:hsl(var(--muted-foreground))"><i data-lucide="sliders-horizontal" class="h-4 w-4"></i>Workspace</a>
+    </nav>
+    <div class="mt-auto space-y-2">
+      <a href="carousel-editor.html" class="block rounded-lg border px-2 py-1.5 text-2xs hover:bg-muted" style="border-color:hsl(var(--border))"><i data-lucide="arrow-right" class="mr-1 inline h-3 w-3"></i>See the carousel editor mockup</a>
+      <div class="rounded-lg p-2 text-3xs legend"><b>Mockup</b> · the colorist's primary home. Type a vibe or pick references → the whole library re-looks. Toggle Raw/Branded.</div>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main class="flex min-w-0 flex-1 flex-col p-6">
+    <div class="mb-1 text-2xs" style="color:hsl(var(--muted-foreground))">Settings › Brand Look</div>
+    <h1 class="flex items-center gap-2 text-xl font-bold"><i data-lucide="wand-2" class="h-5 w-5" style="color:hsl(var(--primary))"></i>Brand Look</h1>
+    <p class="mb-5 mt-1 max-w-2xl text-sm" style="color:hsl(var(--muted-foreground))">Set your photo look <b>once</b>. Every photo Bernard makes gets it automatically — Library, carousels, editorial, ads. Override any single photo in its editor. Non-destructive: originals are never touched.</p>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <!-- LEFT control -->
+      <section class="space-y-4 lg:col-span-5">
+        <!-- DESCRIBE (primary) -->
+        <div class="rounded-xl border bg-card p-4" style="border-color:hsl(var(--border))">
+          <div class="mb-2 flex items-center gap-1.5"><i data-lucide="sparkles" class="h-4 w-4" style="color:hsl(var(--primary))"></i><span class="text-sm font-semibold">Describe your look</span></div>
+          <div class="flex items-center gap-1.5">
+            <input id="vibeInput" type="text" placeholder="e.g. 'warm editorial, bright, filmic, muted background'"
+              onkeydown="if(event.key==='Enter')aiGrade(this.value)"
+              class="flex-1 rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2" style="border-color:hsl(var(--border))">
+            <button class="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-white" style="background:hsl(var(--primary))" onclick="aiGrade(document.getElementById('vibeInput').value)"><i data-lucide="wand-2" class="h-4 w-4"></i>Derive look</button>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <span class="text-3xs" style="color:hsl(var(--muted-foreground))">Try:</span>
+            <button class="rounded-full border px-2 py-0.5 text-3xs hover:border-primary" style="border-color:hsl(var(--border))" onclick="aiGrade('warm editorial')">warm editorial</button>
+            <button class="rounded-full border px-2 py-0.5 text-3xs hover:border-primary" style="border-color:hsl(var(--border))" onclick="aiGrade('bright & clean')">bright &amp; clean</button>
+            <button class="rounded-full border px-2 py-0.5 text-3xs hover:border-primary" style="border-color:hsl(var(--border))" onclick="aiGrade('filmic / moody')">filmic / moody</button>
+            <button class="rounded-full border px-2 py-0.5 text-3xs hover:border-primary" style="border-color:hsl(var(--border))" onclick="aiGrade('punchy')">punchy</button>
+          </div>
+        </div>
+
+        <!-- MATCH (secondary) -->
+        <div class="rounded-xl border bg-card p-4" style="border-color:hsl(var(--border))">
+          <div class="mb-1 flex items-center gap-1.5"><i data-lucide="images" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span class="text-sm font-semibold">…or match reference photos</span><span class="text-2xs" style="color:hsl(var(--muted-foreground))">· optional</span></div>
+          <p class="mb-2 text-2xs" style="color:hsl(var(--muted-foreground))">Drop 2–5 photos that already nail your look — Bernard derives the grade from them.</p>
+          <div class="grid grid-cols-4 gap-2">
+            <div class="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))" onclick="aiGrade('warm editorial')"><i data-lucide="plus" class="h-5 w-5"></i></div>
+            <div class="overflow-hidden rounded-lg border" style="border-color:hsl(var(--border))"><img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=160&q=70&auto=format&fit=crop" class="h-full w-full object-cover" style="filter:brightness(1.05) contrast(1.1) sepia(.12) saturate(1.12)"></div>
+            <div class="overflow-hidden rounded-lg border" style="border-color:hsl(var(--border))"><img src="https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=160&q=70&auto=format&fit=crop" class="h-full w-full object-cover" style="filter:brightness(1.05) contrast(1.1) sepia(.12) saturate(1.12)"></div>
+            <div class="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed text-3xs text-muted-foreground" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">+ add</div>
+          </div>
+        </div>
+
+        <!-- DERIVED essentials -->
+        <div class="rounded-xl border bg-card p-4" style="border-color:hsl(var(--border))">
+          <div class="mb-1 flex items-center gap-1.5"><i data-lucide="sliders-horizontal" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span class="text-sm font-semibold">Fine-tune</span><span id="lookName" class="ml-auto rounded-full px-2 py-0.5 text-3xs font-semibold" style="background:hsl(var(--primary)/.1);color:hsl(var(--primary))">Warm editorial</span></div>
+          <div class="mb-2 rounded-md px-2 py-1 text-3xs legend">The AI set the full pro grade; these are the by-feel essentials. Deeper curves/LUT live under the AI.</div>
+          <div id="sliders" class="space-y-2.5"></div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-white" style="background:hsl(var(--primary))" onclick="toast('Saved — house look now auto-applies to every photo')">Save as house look</button>
+          <button class="rounded-lg border px-3 py-2 text-sm hover:bg-muted" style="border-color:hsl(var(--border))" onclick="resetLook()">Reset</button>
+        </div>
+        <p class="text-3xs" style="color:hsl(var(--muted-foreground))"><i data-lucide="shield-check" class="mr-1 inline h-3 w-3"></i>Subject-safe: the grade is clamped so it can't distort how a clinician looks. (True background-only isolation is a later phase.)</p>
+      </section>
+
+      <!-- RIGHT consistency proof -->
+      <section class="lg:col-span-7">
+        <div class="rounded-xl border bg-card p-4" style="border-color:hsl(var(--border))">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="text-sm font-semibold">Your library, in this look</span>
+            <div class="ml-auto inline-flex overflow-hidden rounded-lg border text-2xs" style="border-color:hsl(var(--border))">
+              <button id="tabRaw" class="px-3 py-1.5" onclick="setMode('raw')">Raw photos</button>
+              <button id="tabBranded" class="px-3 py-1.5" onclick="setMode('branded')">Branded</button>
+            </div>
+          </div>
+          <p class="mb-3 text-2xs" style="color:hsl(var(--muted-foreground))">6 phone photos, 6 different lighting conditions → <b>one consistent brand look</b>, automatically. This is what every post inherits.</p>
+          <div id="grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+          <div class="mt-3 rounded-md px-2 py-1 text-3xs legend"><b>What changed:</b> grading moves from a single crude slider to an AI-set brand look that normalizes wildly varied phone shots — the consistency engine, applied at bake time for $0/photo.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="toast" class="pointer-events-none fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-black/85 px-4 py-2 text-sm text-white opacity-0 transition-opacity"></div>
+
+<script>
+const PHOTOS = [
+  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=360&q=70&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1534258936925-c58bed479fcb?w=360&q=70&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=360&q=70&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=360&q=70&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=360&q=70&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=360&q=70&auto=format&fit=crop',
+];
+// simulated raw phone-lighting problems, one per photo
+const RAW = [
+  'sepia(.4) saturate(1.25) brightness(.96)',          // too warm/yellow
+  'hue-rotate(-12deg) saturate(.82) brightness(1.06) contrast(.92)', // cool/blue
+  'brightness(.68) contrast(1.06)',                    // dark / underexposed
+  'contrast(.78) saturate(.82) brightness(1.12)',      // flat / washed out
+  'hue-rotate(18deg) saturate(1.12) brightness(1.0)',  // greenish gym light
+  'brightness(1.26) contrast(.9) saturate(.9)',        // blown / overexposed
+];
+const VIBES = {
+  'warm editorial': {b:1.06,w:30,c:1.10,v:1.14,d:14,name:'Warm editorial'},
+  'bright & clean': {b:1.13,w:-6,c:1.05,v:1.06,d:6,name:'Bright & clean'},
+  'filmic / moody': {b:0.97,w:12,c:1.20,v:0.92,d:26,name:'Filmic / moody'},
+  'punchy':         {b:1.05,w:10,c:1.22,v:1.26,d:12,name:'Punchy'},
+};
+let houseLook = {...VIBES['warm editorial']};
+let mode = 'branded';
+
+function filterFor(g){
+  const c=(g.c*(1+(g.d||0)/260)).toFixed(3);
+  let warm='';
+  if(g.w>0) warm=` sepia(${(g.w/100*0.42).toFixed(2)})`;
+  else if(g.w<0) warm=` hue-rotate(${(g.w*0.16).toFixed(0)}deg) saturate(1.05)`;
+  return `brightness(${g.b}) contrast(${c}) saturate(${g.v})${warm}`;
+}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,2000);}
+
+function renderGrid(){
+  const g=document.getElementById('grid');
+  const bf=filterFor(houseLook);
+  g.innerHTML=PHOTOS.map((src,i)=>{
+    const f = mode==='raw' ? RAW[i] : bf;
+    const tag = mode==='raw' ? '<span class="absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 py-0.5 text-3xs text-white">phone</span>' : '<span class="absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-3xs text-white" style="background:hsl(var(--primary))">on brand</span>';
+    return `<div class="relative overflow-hidden rounded-lg border" style="border-color:hsl(var(--border))">
+      <img src="${src}" class="gridimg aspect-[4/5] w-full object-cover" style="filter:${f}">${tag}</div>`;
+  }).join('');
+  // tabs
+  const on='background:hsl(var(--primary));color:#fff', off='color:hsl(var(--muted-foreground))';
+  document.getElementById('tabRaw').style.cssText = mode==='raw'?on:off;
+  document.getElementById('tabBranded').style.cssText = mode==='branded'?on:off;
+}
+function sliderRow(label, field, min, max, step, val, sub){
+  return `<div class="space-y-0.5">
+    <div class="flex items-center justify-between text-2xs"><span class="font-medium">${label}</span><span style="color:hsl(var(--muted-foreground))">${sub||''}</span></div>
+    <input type="range" min="${min}" max="${max}" step="${step}" value="${val}" oninput="setGrade('${field}',this.value)" class="w-full" style="accent-color:hsl(var(--primary))"></div>`;
+}
+function renderSliders(){
+  const g=houseLook;
+  document.getElementById('sliders').innerHTML=
+    sliderRow('Brightness','b',0.7,1.3,0.01,g.b)+
+    sliderRow('Warmth','w',-100,100,1,g.w,g.w>0?'warm':g.w<0?'cool':'')+
+    sliderRow('Contrast','c',0.8,1.35,0.01,g.c)+
+    sliderRow('Vibrance','v',0.7,1.4,0.01,g.v,'protects skin')+
+    sliderRow('Depth','d',0,40,1,g.d,'highlights/shadows');
+  document.getElementById('lookName').textContent=houseLook.name||'Custom';
+}
+function setGrade(f,v){ houseLook[f]= (f==='w'||f==='d')?parseInt(v,10):parseFloat(v); houseLook.name='Custom'; if(mode!=='branded'){mode='branded';} renderSliders(); renderGrid(); }
+function aiGrade(vibe){ const k=(vibe||'').toLowerCase().trim(); const p=VIBES[k]||Object.entries(VIBES).find(([key])=>k&&key.includes(k.split(' ')[0]))?.[1]||VIBES['warm editorial']; houseLook={...p}; mode='branded'; renderSliders(); renderGrid(); lucide.createIcons(); toast('AI derived '+(VIBES[k]?'"'+houseLook.name+'"':'closest look: '+houseLook.name)+' — whole library re-looked'); }
+function resetLook(){ houseLook={...VIBES['warm editorial']}; renderSliders(); renderGrid(); toast('Reset to Warm editorial'); }
+function setMode(m){ mode=m; renderGrid(); }
+
+renderSliders(); renderGrid(); lucide.createIcons();
+</script>
+</body>
+</html>

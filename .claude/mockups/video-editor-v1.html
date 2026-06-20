@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Reel / Short-Form Video Editor v1</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --border:214 32% 91%; --info:199 95% 40%; --action:38 92% 50%;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+  .text-3xs{font-size:10px;line-height:13px}
+  .text-2xs{font-size:11px;line-height:15px}
+  .legend{border:1px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.05)}
+  ::-webkit-scrollbar{height:8px;width:8px}
+  ::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:8px}
+  input[type=range]{-webkit-appearance:none;height:4px;border-radius:4px;background:hsl(var(--border));outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:hsl(var(--primary));cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  /* canvas (9:16 video frame) */
+  .frame{position:relative;overflow:hidden;border-radius:16px;box-shadow:0 18px 60px -12px rgba(12,26,46,.5);background:#000}
+  .frame-video{position:absolute;inset:0;background-size:cover;background-position:center;transition:filter .15s}
+  .sel-ring{outline:2.5px solid hsl(var(--primary));outline-offset:3px}
+  .ov-box{position:absolute;cursor:move;border:1.5px dashed transparent;border-radius:6px;padding:3px 7px}
+  .ov-box.sel{border-color:#fff;box-shadow:0 0 0 1.5px hsl(var(--primary))}
+  .handle{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid hsl(var(--primary));border-radius:50%}
+  /* caption karaoke word */
+  .cap-word{transition:color .1s}
+  /* timeline */
+  .tl-bar{position:absolute;height:100%;border-radius:5px;cursor:pointer;transition:filter .12s}
+  .tl-bar:hover{filter:brightness(1.07)}
+  .tl-handle{position:absolute;top:0;width:9px;height:100%;cursor:ew-resize;display:flex;align-items:center;justify-content:center}
+  .tl-handle::after{content:'';width:3px;height:46%;background:#fff;border-radius:2px;opacity:.85}
+  .layer-row{transition:background .12s}
+  .play-btn{transition:transform .12s, background .12s}
+  .play-btn:hover{transform:scale(1.06)}
+</style>
+</head>
+<body>
+<div class="flex h-full flex-col">
+
+  <!-- ════ TOP BAR ════ -->
+  <header class="flex items-center gap-3 border-b bg-white px-4" style="height:52px;border-color:hsl(var(--border))">
+    <button class="text-muted-foreground hover:text-foreground" style="color:hsl(var(--muted-foreground))" title="Back to Slate"><i data-lucide="arrow-left" class="h-4 w-4"></i></button>
+    <span class="text-sm font-semibold" contenteditable spellcheck="false">The real fix for a stiff neck</span>
+    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold" style="background:hsl(var(--info)/.12);color:hsl(var(--info))" title="Derived from the clip — read-only in v1">
+      <i data-lucide="video" class="h-3.5 w-3.5"></i> Instagram Reel · <span id="badgeDur">0:32</span> · 9:16
+    </span>
+    <div class="ml-auto flex items-center gap-1.5">
+      <!-- transport -->
+      <div class="mr-1 flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style="border-color:hsl(var(--border))">
+        <button onclick="togglePlay()" id="playToggle" class="rounded p-0.5 hover:bg-muted" style="color:hsl(var(--primary))"><i data-lucide="play" class="h-3.5 w-3.5"></i></button>
+        <span id="topTime" class="font-mono tabular-nums" style="color:hsl(var(--muted-foreground))">0:00 / 0:32</span>
+      </div>
+      <button onclick="toast('Phone-frame preview of the baked MP4 (same render path)')" class="rounded-lg border px-2.5 py-1.5 text-xs hover:bg-muted" style="border-color:hsl(var(--border))"><i data-lucide="smartphone" class="mr-1 inline h-3.5 w-3.5"></i>Preview</button>
+      <button onclick="toast('Saved ✓')" class="rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted" style="border-color:hsl(var(--border))">Save</button>
+      <button onclick="toast('→ Schedule &amp; publish to channels')" class="rounded-lg px-3 py-1.5 text-xs font-semibold" style="background:hsl(var(--action));color:#3a2a00"><i data-lucide="calendar-clock" class="mr-1 inline h-3.5 w-3.5"></i>Schedule</button>
+    </div>
+  </header>
+
+  <!-- ════ WORK AREA (top: rail + canvas + inspector) ════ -->
+  <div class="flex min-h-0 flex-1">
+
+    <!-- LEFT LAYERS RAIL (thin) -->
+    <aside class="flex w-[150px] shrink-0 flex-col border-r bg-white" style="border-color:hsl(var(--border))">
+      <!-- mode switch: Layers | Transcript -->
+      <div class="flex border-b text-3xs font-semibold" style="border-color:hsl(var(--border))">
+        <button id="modeLayers" onclick="setRailMode('layers')" class="flex flex-1 items-center justify-center gap-1 py-2"><i data-lucide="layers" class="h-3.5 w-3.5"></i>Layers</button>
+        <button id="modeTranscript" onclick="setRailMode('transcript')" class="flex flex-1 items-center justify-center gap-1 py-2"><i data-lucide="captions" class="h-3.5 w-3.5"></i>Transcript</button>
+      </div>
+      <div id="railBody" class="min-h-0 flex-1 overflow-y-auto p-2"></div>
+    </aside>
+
+    <!-- CENTER CANVAS STAGE (dominant 9:16) -->
+    <section id="stage" class="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-4" style="background:hsl(220 16% 91%)">
+      <div class="absolute left-4 top-3 z-10 max-w-[270px] rounded-md px-2 py-1 text-3xs legend">
+        <b>What changed:</b> ONE 9:16 canvas that <b>is</b> the live preview — same params the MP4 bake consumes (no preview-vs-publish drift). Click the <b>frame</b>, a <b>caption</b>, or an <b>overlay</b> to edit that layer.
+      </div>
+      <div class="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs backdrop-blur" style="color:hsl(var(--muted-foreground))">
+        <label class="flex cursor-pointer items-center gap-1"><input id="safeZone" type="checkbox" checked onchange="renderCanvas()"> safe zones</label>
+      </div>
+      <div id="frameWrap" class="relative"><div id="frame" class="frame"></div></div>
+    </section>
+
+    <!-- RIGHT CONTEXTUAL INSPECTOR -->
+    <aside class="flex w-[306px] shrink-0 flex-col border-l bg-white" style="border-color:hsl(var(--border))">
+      <div id="inspector" class="min-h-0 flex-1 overflow-auto p-3"></div>
+    </aside>
+  </div>
+
+  <!-- ════ BOTTOM TIMELINE (single track + layered bars) ════ -->
+  <div class="shrink-0 border-t bg-white px-3 pb-3 pt-2" style="border-color:hsl(var(--border));height:188px">
+    <div class="mb-1.5 flex items-center gap-3">
+      <button onclick="togglePlay()" class="play-btn flex h-7 w-7 items-center justify-center rounded-full text-white" style="background:hsl(var(--primary))"><i id="tlPlayIcon" data-lucide="play" class="h-3.5 w-3.5"></i></button>
+      <span id="tlTime" class="font-mono text-2xs tabular-nums" style="color:hsl(var(--muted-foreground))">0:00 / 0:32</span>
+      <div class="ml-1 rounded-md px-2 py-0.5 text-3xs legend"><b>Single-track timeline.</b> Trim handles on the clip · time-spanning bars BELOW for the caption track &amp; each overlay. Click a bar → selects that layer.</div>
+      <button onclick="addOverlay()" class="ml-auto flex items-center gap-1 rounded-md border px-2 py-1 text-2xs font-medium hover:bg-muted" style="border-color:hsl(var(--border))"><i data-lucide="type" class="h-3 w-3"></i>Add text overlay</button>
+    </div>
+
+    <!-- time ruler -->
+    <div class="relative ml-[78px] mb-1 h-3 select-none" id="ruler"></div>
+
+    <!-- tracks -->
+    <div class="relative" id="tracks">
+      <!-- CLIP track (with trim handles) -->
+      <div class="mb-1.5 flex items-center gap-2">
+        <span class="w-[70px] shrink-0 text-right text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Clip</span>
+        <div class="relative h-9 flex-1 rounded-md" id="clipTrack" style="background:hsl(220 14% 93%)"></div>
+      </div>
+      <!-- CAPTIONS track -->
+      <div class="mb-1.5 flex items-center gap-2">
+        <span class="w-[70px] shrink-0 text-right text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Captions</span>
+        <div class="relative h-7 flex-1 rounded-md" id="capTrack" style="background:hsl(220 14% 93%)"></div>
+      </div>
+      <!-- OVERLAYS track -->
+      <div class="flex items-center gap-2">
+        <span class="w-[70px] shrink-0 text-right text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Overlays</span>
+        <div class="relative h-7 flex-1 rounded-md" id="ovTrack" style="background:hsl(220 14% 93%)"></div>
+      </div>
+      <!-- playhead spanning all tracks -->
+      <div id="playhead" class="pointer-events-none absolute top-0 z-20" style="left:78px;width:2px;height:100%;background:hsl(0 80% 55%)">
+        <div style="position:absolute;top:-4px;left:-4px;width:10px;height:10px;border-radius:2px;background:hsl(0 80% 55%)"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg bg-black/85 px-4 py-2 text-sm text-white opacity-0 transition-opacity"></div>
+
+<script>
+// ───────── sample clip data ─────────
+// a real-ish portrait frame (clinic/fitness); the "video" is a still for the mock
+const FRAME = 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=720&q=75&auto=format&fit=crop';
+const DUR = 32; // seconds (0:32 reel)
+
+// caption track: phrase-level lines, each with word-level timestamps (karaoke).
+// Comes from the clip's Whisper transcript — Bernard already produces these word
+// timestamps; the model change is to PERSIST them so the editor can render + edit.
+let caption = {
+  source:'asr',
+  style:{ preset:'karaoke', font:'Inter', accent:'#0C7580', position:'bottom', size:'medium' },
+  lines:[
+    {start:0.4,  end:4.2,  text:"most people stretch a stiff neck", words:[['most',0.4,1.0],['people',1.0,1.7],['stretch',1.7,2.5],['a',2.5,2.7],['stiff',2.7,3.4],['neck',3.4,4.2]]},
+    {start:4.2,  end:8.6,  text:"but the tension is rarely where it hurts", words:[['but',4.2,4.6],['the',4.6,4.9],['tension',4.9,5.7],['is',5.7,6.0],['rarely',6.0,6.8],['where',6.8,7.4],['it',7.4,7.7],['hurts',7.7,8.6]]},
+    {start:8.6,  end:13.0, text:"it's your upper back that locked up", words:[["it's",8.6,9.2],['your',9.2,9.6],['upper',9.6,10.3],['back',10.3,11.0],['that',11.0,11.5],['locked',11.5,12.3],['up',12.3,13.0]]},
+    {start:13.0, end:17.4, text:"free that and the neck lets go", words:[['free',13.0,13.6],['that',13.6,14.1],['and',14.1,14.5],['the',14.5,14.8],['neck',14.8,15.6],['lets',15.6,16.4],['go',16.4,17.4]]},
+  ],
+};
+
+// manual text overlays — separate from captions; each has its own in/out window
+let overlays = [
+  {id:'o1', role:'title',       text:'The real fix for a stiff neck', x:.5, y:.16, size:1.0, anim:'fade',     in:0.0,  out:4.0,  color:'#ffffff'},
+];
+
+// frame grade — SAME schema as the photo colorist
+let grade = {bright:0, warm:0, contrast:0, vibrance:0, depth:0};
+// static reframe (9:16 crop) — source position/zoom inside the frame
+let reframe = {zoom:118, x:50, y:42};
+let speed = 1.0;
+
+// selection: 'clip' | 'grade' | 'caption' | {type:'overlay', id}
+let sel = 'clip';
+let railMode = 'layers';
+let playT = 0;        // playhead seconds
+let playing = false;
+let playTimer = null;
+
+const $ = (id)=>document.getElementById(id);
+const fmt = (s)=>{const m=Math.floor(s/60);const ss=Math.floor(s%60);return m+':'+String(ss).padStart(2,'0')};
+const selKey = ()=> (typeof sel==='object') ? 'overlay:'+sel.id : sel;
+const curOverlay = ()=> (typeof sel==='object') ? overlays.find(o=>o.id===sel.id) : null;
+
+// ───────── CSS filter for grade (mirrors photo editor) ─────────
+function gradeFilter(g){
+  const b = 1 + g.bright/100, c = 1 + g.contrast/100, s = 1 + g.vibrance/100;
+  const sep = Math.max(0, g.warm/100*0.28);
+  const cool = g.warm<0 ? `hue-rotate(${g.warm/100*18}deg)` : '';
+  // depth = a subtle contrast+darken on the floor of the image
+  const br = 1 - Math.max(0, g.depth/100*0.06);
+  return `brightness(${(b*br).toFixed(3)}) contrast(${c}) saturate(${s}) sepia(${sep}) ${cool}`.trim();
+}
+
+// ═════════════ CANVAS ═════════════
+function sizeCanvas(){
+  const stage = $('stage');
+  const availH = stage.clientHeight - 32;
+  const availW = stage.clientWidth - 32;
+  // 9:16 portrait
+  let h = Math.min(availH, availW * (16/9));
+  h = Math.max(280, h);
+  const w = h * (9/16);
+  const wrap = $('frameWrap'), f = $('frame');
+  wrap.style.height = h+'px'; wrap.style.width = w+'px';
+  f.style.height = h+'px';   f.style.width = w+'px';
+}
+
+function activeCaptionLine(){
+  return caption.lines.find(l => playT>=l.start && playT<l.end) || null;
+}
+
+function renderCanvas(){
+  const f = $('frame');
+  const h = f.clientHeight || 600;
+  const clipSel = sel==='clip', gradeSel = sel==='grade';
+
+  f.className = 'frame' + ((clipSel||gradeSel)?' sel-ring':'');
+
+  // video layer (still) with grade + reframe
+  const z = reframe.zoom/100;
+  const video = `<div class="frame-video" style="background-image:url('${FRAME}');
+    filter:${gradeFilter(grade)};
+    background-size:${z*100}% auto;background-position:${reframe.x}% ${reframe.y}%"></div>`;
+
+  // caption band (karaoke — current word filled to brand accent)
+  const line = activeCaptionLine();
+  let capHtml = '';
+  if(line && caption.style.preset!=='off'){
+    const posTop = caption.style.position==='top' ? '11%' : caption.style.position==='center' ? '46%' : 'auto';
+    const posBot = caption.style.position==='bottom' ? '15%' : 'auto';
+    const fs = Math.round(h * (caption.style.size==='large'?0.046:caption.style.size==='small'?0.030:0.038));
+    const words = line.words.map(([w,st,en])=>{
+      const spoken = playT>=st;
+      const active = playT>=st && playT<en;
+      const col = active ? caption.style.accent : (spoken ? caption.style.accent : '#ffffff');
+      return `<span class="cap-word" style="color:${col};${active?'text-shadow:0 0 1px '+caption.style.accent:''}">${w}</span>`;
+    }).join(' ');
+    const capSel = sel==='caption';
+    capHtml = `<div id="capBand" class="ov-box ${capSel?'sel':''}" data-sel="caption"
+      style="left:50%;${posTop!=='auto'?'top:'+posTop+';':''}${posBot!=='auto'?'bottom:'+posBot+';':''}transform:translateX(-50%);
+      max-width:86%;text-align:center;font-weight:800;line-height:1.18;font-size:${fs}px;
+      color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6);letter-spacing:-.01em">${words}</div>`;
+  }
+
+  // manual overlays visible at current time
+  const ovHtml = overlays.map(o=>{
+    if(playT < o.in || playT > o.out) return '';
+    const isSel = (typeof sel==='object' && sel.id===o.id);
+    const fs = Math.round(h * (o.role==='title'?0.044:o.role==='lower_third'?0.030:0.034) * o.size);
+    const weight = o.role==='title'?800:700;
+    const box = o.role==='lower_third'
+      ? `background:rgba(12,26,46,.62);backdrop-filter:blur(2px);border-radius:8px;padding:6px 12px;`
+      : o.role==='callout'
+      ? `background:${caption.style.accent};color:#fff;border-radius:8px;padding:5px 11px;`
+      : '';
+    const handles = isSel ? ['-5px;-5px','-5px;calc(100% - 4px)','calc(100% - 4px);-5px','calc(100% - 4px);calc(100% - 4px)']
+      .map(p=>`<span class="handle" style="left:${p.split(';')[0]};top:${p.split(';')[1]}"></span>`).join('') : '';
+    return `<div class="ov-box ${isSel?'sel':''}" data-sel="overlay:${o.id}"
+      style="left:${o.x*100}%;top:${o.y*100}%;transform:translate(-50%,-50%);max-width:84%;text-align:center;
+      font-size:${fs}px;font-weight:${weight};line-height:1.14;color:${o.color};${box}
+      text-shadow:${o.role==='title'?'0 2px 12px rgba(0,0,0,.55)':'none'}">${o.text}${handles}</div>`;
+  }).join('');
+
+  // safe zones (reel chrome)
+  const safe = $('safeZone').checked ? `<div class="frame-video" style="pointer-events:none">
+      <div style="position:absolute;inset:5% 4%;border:1px dashed rgba(255,255,255,.4);border-radius:10px"></div>
+      <div style="position:absolute;left:0;right:0;top:0;height:13%;background:rgba(255,80,80,.10)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;height:18%;background:rgba(255,80,80,.10)"></div></div>` : '';
+
+  // center play overlay (only when paused)
+  const playOv = !playing ? `<button onclick="togglePlay()" class="play-btn" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      width:64px;height:64px;border-radius:50%;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></button>` : '';
+
+  f.innerHTML = video + safe + capHtml + ovHtml + playOv;
+
+  // selection wiring on canvas
+  f.onclick = (e)=>{ const b=e.target.closest('.ov-box'); if(b){selectKey(b.dataset.sel)} else if(!e.target.closest('.play-btn')){selectKey('grade')} };
+  f.querySelectorAll('.ov-box').forEach(el=>{ el.onclick=(e)=>{e.stopPropagation();selectKey(el.dataset.sel)} });
+}
+
+// ═════════════ LEFT RAIL ═════════════
+function setRailMode(m){ railMode=m; renderRail(); }
+function renderRail(){
+  // tab styling
+  const on = 'color:hsl(var(--primary));border-bottom:2px solid hsl(var(--primary));background:hsl(var(--primary)/.06)';
+  const off = 'color:hsl(var(--muted-foreground));border-bottom:2px solid transparent';
+  $('modeLayers').style.cssText = railMode==='layers'?on:off;
+  $('modeTranscript').style.cssText = railMode==='transcript'?on:off;
+
+  if(railMode==='layers') renderLayers(); else renderTranscript();
+  if(window.lucide) lucide.createIcons();
+}
+
+function layerRow(key, icon, label, sub){
+  const active = selKey()===key;
+  return `<button onclick="selectKey('${key}')" class="layer-row mb-1 flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left"
+    style="${active?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08)':'border-color:transparent'}">
+    <i data-lucide="${icon}" class="h-3.5 w-3.5 shrink-0" style="color:${active?'hsl(var(--primary))':'hsl(var(--muted-foreground))'}"></i>
+    <span class="min-w-0">
+      <span class="block truncate text-2xs ${active?'font-semibold':''}" style="color:${active?'hsl(var(--primary))':'hsl(var(--foreground))'}">${label}</span>
+      ${sub?`<span class="block truncate text-3xs" style="color:hsl(var(--muted-foreground))">${sub}</span>`:''}
+    </span>
+  </button>`;
+}
+function renderLayers(){
+  let h = `<p class="mb-1.5 px-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Layers <span class="font-normal normal-case">· this clip</span></p>`;
+  h += layerRow('clip',  'film',     'Video clip', 'trim · reframe · speed');
+  h += layerRow('grade', 'wand-sparkles', 'Frame grade', 'AI colorist look');
+  h += layerRow('caption','captions','Captions', caption.style.preset==='off'?'off':'auto · '+caption.lines.length+' lines');
+  overlays.forEach(o=>{
+    h += layerRow('overlay:'+o.id, 'type', (o.role==='lower_third'?'Lower-third':o.role.charAt(0).toUpperCase()+o.role.slice(1)), '“'+o.text.slice(0,18)+(o.text.length>18?'…':'')+'” · '+fmt(o.in)+'–'+fmt(o.out));
+  });
+  h += `<button onclick="addOverlay()" class="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-dashed py-2 text-3xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))"><i data-lucide="plus" class="h-3.5 w-3.5"></i>Add overlay</button>`;
+  h += `<div class="mt-3 rounded-md px-2 py-1.5 text-3xs legend"><b>Mirrors the photo editor's slide rail</b> — a vertical selectable list, but of layers (one clip, not N slides).</div>`;
+  $('railBody').innerHTML = h;
+}
+function renderTranscript(){
+  let h = `<div class="mb-2 rounded-md px-2 py-1.5 text-3xs legend"><b>Transcript = caption editor.</b> Edit a line → the burned caption text updates. Click ▸ to seek. Built from the clip's Whisper word-timestamps (stop discarding them).</div>`;
+  caption.lines.forEach((l,i)=>{
+    const live = playT>=l.start && playT<l.end;
+    h += `<div class="mb-1.5 rounded-md border p-1.5" style="border-color:${live?'hsl(var(--primary))':'hsl(var(--border))'};${live?'background:hsl(var(--primary)/.05)':''}">
+      <div class="mb-1 flex items-center gap-1">
+        <button onclick="seekTo(${l.start})" title="Seek here" class="rounded p-0.5 hover:bg-muted" style="color:hsl(var(--primary))"><i data-lucide="play" class="h-3 w-3"></i></button>
+        <span class="font-mono text-3xs" style="color:hsl(var(--muted-foreground))">${l.start.toFixed(1)}–${l.end.toFixed(1)}s</span>
+        <button onclick="trimToLine(${i})" class="ml-auto rounded px-1 py-0.5 text-3xs hover:bg-muted" style="color:hsl(var(--muted-foreground))" title="Set clip in/out to this line">⊢ trim</button>
+      </div>
+      <input value="${l.text.replace(/"/g,'&quot;')}" oninput="editLine(${i}, this.value)"
+        class="w-full rounded border-0 bg-transparent px-1 py-0.5 text-2xs outline-none focus:bg-white" style="color:hsl(var(--foreground))">
+    </div>`;
+  });
+  h += `<div class="mt-1 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-3xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">
+      <i data-lucide="lock" class="h-3 w-3 shrink-0"></i> Delete-to-trim &amp; reorder (Descript-style) — <b style="color:hsl(var(--foreground))">later</b>. v1 is one contiguous clip.</div>`;
+  $('railBody').innerHTML = h;
+}
+
+// ═════════════ RIGHT INSPECTOR (4 states) ═════════════
+function renderInspector(){
+  let html;
+  if(sel==='clip') html=inspClip();
+  else if(sel==='grade') html=inspGrade();
+  else if(sel==='caption') html=inspCaption();
+  else html=inspOverlay();
+  $('inspector').innerHTML = html;
+  if(window.lucide) lucide.createIcons();
+}
+
+// STATE 1 — Clip & Reframe
+function inspClip(){
+  return `
+    <div class="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+      <i data-lucide="film" class="h-4 w-4" style="color:hsl(var(--primary))"></i>
+      <span class="text-xs font-semibold" style="color:hsl(var(--primary))">Clip &amp; reframe</span>
+      <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">Reel 9:16</span>
+    </div>
+    <div class="mb-3 rounded-md px-2 py-1 text-3xs legend"><b>Nothing/clip selected → clip settings.</b> Same role as the photo editor's slide-level inspector.</div>
+
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Trim <span class="font-normal normal-case">· in / out (mirrors timeline handles)</span></p>
+    <div class="mb-3 flex items-center gap-2 text-2xs">
+      <label class="flex flex-1 items-center gap-1 rounded-md border px-2 py-1.5" style="border-color:hsl(var(--border))">In <input value="0:00" class="w-full bg-transparent text-right font-mono outline-none" onchange="toast('Set clip in')"></label>
+      <label class="flex flex-1 items-center gap-1 rounded-md border px-2 py-1.5" style="border-color:hsl(var(--border))">Out <input value="0:32" class="w-full bg-transparent text-right font-mono outline-none" onchange="toast('Set clip out')"></label>
+    </div>
+
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Reframe <span class="font-normal normal-case">· position source in 9:16 (static crop)</span></p>
+    <div class="mb-1 flex justify-between text-2xs"><span style="color:hsl(var(--muted-foreground))">Zoom</span><span style="color:hsl(var(--muted-foreground))">${reframe.zoom}%</span></div>
+    <input type="range" min="100" max="220" value="${reframe.zoom}" oninput="setReframe('zoom',this.value)" class="mb-2 w-full">
+    <div class="mb-1 flex justify-between text-2xs"><span style="color:hsl(var(--muted-foreground))">Horizontal</span></div>
+    <input type="range" min="0" max="100" value="${reframe.x}" oninput="setReframe('x',this.value)" class="mb-2 w-full">
+    <div class="mb-1 flex justify-between text-2xs"><span style="color:hsl(var(--muted-foreground))">Vertical</span></div>
+    <input type="range" min="0" max="100" value="${reframe.y}" oninput="setReframe('y',this.value)" class="mb-3 w-full">
+    <div class="mb-3 flex items-center gap-2 rounded-md border px-2 py-1.5 text-3xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">
+      <i data-lucide="info" class="h-3.5 w-3.5 shrink-0"></i> Ken Burns / subject-tracking auto-reframe → <b style="color:hsl(var(--foreground))">later</b>.</div>
+
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Speed</p>
+    <div class="mb-3 flex gap-1.5">
+      ${[0.5,1,1.5,2].map(s=>`<button onclick="setSpeed(${s})" class="flex-1 rounded-md border py-1.5 text-2xs ${speed===s?'font-semibold':''}" style="${speed===s?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${s}×</button>`).join('')}
+    </div>
+
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Caption style pack <span class="font-normal normal-case">· whole clip</span></p>
+    <button onclick="selectKey('caption')" class="flex w-full items-center justify-between rounded-md border px-2 py-2 text-2xs hover:bg-muted" style="border-color:hsl(var(--border))">
+      <span><i data-lucide="captions" class="mr-1 inline h-3.5 w-3.5"></i>${caption.style.preset==='off'?'Captions off':'Karaoke · '+caption.style.position+' · '+caption.style.size}</span>
+      <i data-lucide="chevron-right" class="h-3.5 w-3.5" style="color:hsl(var(--muted-foreground))"></i>
+    </button>`;
+}
+
+// STATE 2 — AI Colorist (IDENTICAL to the photo editor's AI Photo Editor)
+function inspGrade(){
+  const g=grade;
+  const vibes=[['Bright & clean',{bright:12,contrast:6,vibrance:10,warm:-4,depth:4}],['Warm & filmic',{warm:22,contrast:10,vibrance:6,bright:-2,depth:8}],['Editorial',{contrast:18,vibrance:-6,depth:14,warm:4,bright:-4}],['Moody',{bright:-14,contrast:16,vibrance:-4,depth:18,warm:6}]];
+  const chips = vibes.map(([n,p])=>`<button onclick='applyVibe(${JSON.stringify(p)})' class="rounded-full border px-2.5 py-1 text-2xs hover:border-primary hover:text-primary" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">${n}</button>`).join('');
+  const slider=(key,label)=>`<div class="mb-2"><div class="mb-1 flex justify-between text-2xs"><span style="color:hsl(var(--muted-foreground))">${label}</span><span style="color:hsl(var(--muted-foreground))">${g[key]>0?'+':''}${g[key]}</span></div>
+    <input type="range" min="-50" max="50" value="${g[key]}" oninput="setGrade('${key}',this.value)" class="w-full"></div>`;
+  return `
+    <div class="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+      <i data-lucide="wand-sparkles" class="h-4 w-4" style="color:hsl(var(--primary))"></i>
+      <span class="text-xs font-semibold" style="color:hsl(var(--primary))">AI Colorist — Frame grade</span>
+      <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">whole clip</span>
+    </div>
+    <div class="mb-3 rounded-md px-2 py-1 text-3xs legend"><b>The SAME panel as the photo colorist.</b> One param schema, two emitters: Sharp (photo) · ffmpeg <code>eq/curves/colorbalance/lut3d</code> (video). Sliders tint every frame live.</div>
+    <p class="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Describe the vibe</p>
+    <div class="mb-2 flex gap-1.5"><input placeholder="e.g. bright, airy, clinical but warm" class="flex-1 rounded-md border px-2 py-1.5 text-xs outline-none" style="border-color:hsl(var(--border))" onkeydown="if(event.key==='Enter')toast('AI proposes a grade → review sliders below')">
+      <button onclick="toast('AI proposes a grade → review sliders')" class="rounded-md px-2.5 py-1.5 text-xs font-semibold text-white" style="background:hsl(var(--primary))">Apply</button></div>
+    <div class="mb-3 flex flex-wrap gap-1.5">${chips}</div>
+    <p class="mb-2 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Fine-tune</p>
+    ${slider('bright','Brightness')}${slider('warm','Warmth')}${slider('contrast','Contrast')}${slider('vibrance','Vibrance')}${slider('depth','Depth')}
+    <div class="my-3 border-t" style="border-color:hsl(var(--border))"></div>
+    <button onclick="toast('Saved as brand house look — auto-applies to every clip &amp; photo')" class="mb-2 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs" style="border-color:hsl(var(--action));color:hsl(38 60% 35%)">★ Save as brand look</button>
+    <button onclick="resetGrade()" class="w-full rounded-md py-1.5 text-2xs hover:bg-muted" style="color:hsl(var(--muted-foreground))">Reset adjustments</button>`;
+}
+
+// STATE 3 — Captions
+function inspCaption(){
+  const c=caption.style;
+  const seg=(label,opts,key)=>`<div class="mb-3"><p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">${label}</p>
+    <div class="flex gap-1.5">${opts.map(o=>`<button onclick="setCapStyle('${key}','${o}')" class="flex-1 rounded-md border py-1.5 text-2xs ${c[key]===o?'font-semibold':''}" style="${c[key]===o?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${o.charAt(0).toUpperCase()+o.slice(1)}</button>`).join('')}</div></div>`;
+  return `
+    <div class="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+      <i data-lucide="captions" class="h-4 w-4" style="color:hsl(var(--primary))"></i>
+      <span class="text-xs font-semibold" style="color:hsl(var(--primary))">Captions</span>
+      <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">${caption.source==='asr'?'auto · from transcript':'manual'}</span>
+    </div>
+    <div class="mb-3 rounded-md px-2 py-1 text-3xs legend"><b>Captions follow the spoken audio.</b> Word-synced karaoke (current word fills to brand accent). Style is ONE pack, not 12 knobs — defaults from your brand kit.</div>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Animation preset</p>
+    <div class="mb-3 flex gap-1.5">
+      ${['karaoke','pop_on','fade','off'].map(p=>`<button onclick="setCapPreset('${p}')" class="flex-1 rounded-md border py-1.5 text-3xs ${c.preset===p?'font-semibold':''}" style="${c.preset===p?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${p==='pop_on'?'Pop-on':p.charAt(0).toUpperCase()+p.slice(1)}</button>`).join('')}
+    </div>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Accent <span class="font-normal normal-case">· spoken-word fill</span></p>
+    <div class="mb-3 flex items-center gap-2">
+      <input type="color" value="${c.accent}" oninput="setCapStyle('accent',this.value)" style="width:34px;height:28px;border:1px solid hsl(var(--border));border-radius:6px;background:none;cursor:pointer">
+      <span class="text-2xs font-mono" style="color:hsl(var(--muted-foreground))">${c.accent}</span>
+      <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">brand default</span>
+    </div>
+    ${seg('Position','top center bottom'.split(' '),'position')}
+    ${seg('Size','small medium large'.split(' '),'size')}
+    <div class="my-2 border-t" style="border-color:hsl(var(--border))"></div>
+    <div class="mb-1 flex items-center justify-between">
+      <p class="text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Transcript <span class="font-normal normal-case">· edit text</span></p>
+      <div class="flex rounded-md border text-3xs" style="border-color:hsl(var(--border))">
+        <button id="wpWord" onclick="setWP('word')" class="px-1.5 py-0.5">Word</button>
+        <button id="wpPhrase" onclick="setWP('phrase')" class="px-1.5 py-0.5">Phrase</button>
+      </div>
+    </div>
+    <div id="miniTranscript" class="mb-2 space-y-1"></div>
+    <button onclick="setRailMode('transcript')" class="mb-2 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs hover:bg-muted" style="border-color:hsl(var(--border))"><i data-lucide="panel-left-open" class="h-3.5 w-3.5"></i>Open full transcript</button>
+    <button onclick="toast('Re-transcribe this clip')" class="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-2xs hover:bg-muted" style="color:hsl(var(--muted-foreground))"><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i>Regenerate captions</button>`;
+}
+
+// STATE 4 — Overlay
+function inspOverlay(){
+  const o=curOverlay(); if(!o) return inspClip();
+  const roles=[['title','Title'],['lower_third','Lower-third'],['callout','Callout']];
+  const anims=[['none','None'],['fade','Fade'],['slide_up','Slide up']];
+  return `
+    <div class="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style="background:hsl(var(--primary)/.08)">
+      <i data-lucide="type" class="h-4 w-4" style="color:hsl(var(--primary))"></i>
+      <span class="text-xs font-semibold" style="color:hsl(var(--primary))">Text overlay</span>
+      <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">manual</span>
+    </div>
+    <div class="mb-3 rounded-md px-2 py-1 text-3xs legend"><b>Overlays ≠ captions.</b> Independent of speech — a title / lower-third / callout with its OWN in/out window on the timeline. Same block model as a carousel text block + time.</div>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Text</p>
+    <textarea rows="2" oninput="setOv('text',this.value)" class="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm leading-snug outline-none" style="border-color:hsl(var(--border))">${o.text}</textarea>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Role</p>
+    <div class="mb-3 flex gap-1.5">${roles.map(([k,n])=>`<button onclick="setOv('role','${k}')" class="flex-1 rounded-md border py-1.5 text-3xs ${o.role===k?'font-semibold':''}" style="${o.role===k?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${n}</button>`).join('')}</div>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">In / out <span class="font-normal normal-case">· when it appears (drag the bar too)</span></p>
+    <div class="mb-3 flex items-center gap-2 text-2xs">
+      <label class="flex flex-1 items-center gap-1 rounded-md border px-2 py-1.5" style="border-color:hsl(var(--border))">In <input value="${fmt(o.in)}" onchange="setOvTime('in',this.value)" class="w-full bg-transparent text-right font-mono outline-none"></label>
+      <label class="flex flex-1 items-center gap-1 rounded-md border px-2 py-1.5" style="border-color:hsl(var(--border))">Out <input value="${fmt(o.out)}" onchange="setOvTime('out',this.value)" class="w-full bg-transparent text-right font-mono outline-none"></label>
+    </div>
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Size</p>
+    <input type="range" min="50" max="160" value="${Math.round(o.size*100)}" oninput="setOvSize(this.value)" class="mb-3 w-full">
+    <p class="mb-1 text-3xs font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Animation</p>
+    <div class="mb-3 flex gap-1.5">${anims.map(([k,n])=>`<button onclick="setOv('anim','${k}')" class="flex-1 rounded-md border py-1.5 text-3xs ${o.anim===k?'font-semibold':''}" style="${o.anim===k?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${n}</button>`).join('')}</div>
+    <div class="flex items-center gap-2 rounded-md border px-2.5 py-2 text-2xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">
+      <i data-lucide="move" class="h-4 w-4 shrink-0"></i><span><b>Drag the overlay</b> anywhere on the canvas — free placement (captions stay on presets).</span>
+    </div>
+    <button onclick="delOverlay()" class="mt-3 w-full rounded-md border px-2 py-1.5 text-2xs" style="border-color:hsl(var(--border));color:hsl(0 70% 50%)"><i data-lucide="trash-2" class="mr-1 inline h-3 w-3"></i>Delete overlay</button>`;
+}
+
+// mini transcript inside the captions inspector
+function renderMiniTranscript(){
+  const el=$('miniTranscript'); if(!el) return;
+  el.innerHTML = caption.lines.map((l,i)=>{
+    const live = playT>=l.start && playT<l.end;
+    return `<div class="flex items-center gap-1 rounded border px-1.5 py-1" style="border-color:${live?'hsl(var(--primary))':'hsl(var(--border))'}">
+      <span class="font-mono text-3xs shrink-0" style="color:hsl(var(--muted-foreground))">${l.start.toFixed(0)}s</span>
+      <input value="${l.text.replace(/"/g,'&quot;')}" oninput="editLine(${i},this.value)" class="w-full border-0 bg-transparent text-3xs outline-none" style="color:hsl(var(--foreground))">
+    </div>`;
+  }).join('');
+  // word/phrase toggle styling
+  const on='background:hsl(var(--primary)/.1);color:hsl(var(--primary));font-weight:600', off='color:hsl(var(--muted-foreground))';
+  if($('wpPhrase')){ $('wpPhrase').style.cssText='border-right:1px solid hsl(var(--border));'+ (wp==='phrase'?on:off); $('wpWord').style.cssText=(wp==='word'?on:off); }
+}
+let wp='phrase';
+function setWP(v){ wp=v; renderMiniTranscript(); toast(v==='word'?'Per-word editing (precise timing)':'Per-phrase editing (fast text fixes)'); }
+
+// ═════════════ BOTTOM TIMELINE ═════════════
+function pct(s){ return (s/DUR)*100; }
+function renderTimeline(){
+  // ruler
+  let r=''; for(let s=0;s<=DUR;s+=4){ r += `<span style="position:absolute;left:${pct(s)}%;top:0;transform:translateX(-50%);font-size:9px;color:hsl(var(--muted-foreground))">${fmt(s)}</span><span style="position:absolute;left:${pct(s)}%;bottom:-2px;width:1px;height:4px;background:hsl(var(--border))"></span>`; }
+  $('ruler').innerHTML = r;
+
+  // CLIP bar with trim handles (whole clip in v1)
+  const clipSel = sel==='clip';
+  $('clipTrack').innerHTML = `<div class="tl-bar" data-sel="clip" style="left:0;width:100%;display:flex;align-items:center;gap:6px;padding:0 12px;
+      background:linear-gradient(90deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6));${clipSel?'box-shadow:0 0 0 2px hsl(var(--primary)),0 0 0 4px hsl(var(--primary)/.25)':''}">
+      <i data-lucide="film" class="h-3.5 w-3.5" style="color:#fff"></i>
+      <span class="text-3xs font-semibold" style="color:#fff">stiff-neck-clip.mp4 · ${fmt(DUR)}</span>
+      <span class="tl-handle" style="left:0" title="Trim in"></span><span class="tl-handle" style="right:0" title="Trim out"></span></div>`;
+
+  // CAPTIONS bar (spans whole clip)
+  const capSel = sel==='caption';
+  $('capTrack').innerHTML = caption.style.preset==='off' ? `<span class="flex h-full items-center px-2 text-3xs" style="color:hsl(var(--muted-foreground))">captions off</span>`
+    : `<div class="tl-bar" data-sel="caption" style="left:1px;width:calc(100% - 2px);display:flex;align-items:center;gap:5px;padding:0 9px;
+      background:repeating-linear-gradient(90deg,hsl(var(--info)/.55),hsl(var(--info)/.55) 14px,hsl(var(--info)/.4) 14px,hsl(var(--info)/.4) 28px);${capSel?'box-shadow:0 0 0 2px hsl(var(--info))':''}">
+      <i data-lucide="captions" class="h-3 w-3" style="color:#fff"></i><span class="text-3xs font-semibold" style="color:#fff">Karaoke captions · ${caption.lines.length} lines</span></div>`;
+
+  // OVERLAYS bars (each its own in/out)
+  $('ovTrack').innerHTML = overlays.map(o=>{
+    const isSel = (typeof sel==='object' && sel.id===o.id);
+    return `<div class="tl-bar" data-sel="overlay:${o.id}" style="left:${pct(o.in)}%;width:${pct(o.out-o.in)}%;display:flex;align-items:center;gap:4px;padding:0 7px;
+      background:linear-gradient(90deg,hsl(var(--action)/.9),hsl(var(--action)/.7));${isSel?'box-shadow:0 0 0 2px hsl(var(--action))':''}">
+      <span class="tl-handle" style="left:0"></span>
+      <i data-lucide="type" class="h-3 w-3" style="color:#3a2a00"></i><span class="truncate text-3xs font-semibold" style="color:#3a2a00">${o.text.slice(0,16)}</span>
+      <span class="tl-handle" style="right:0"></span></div>`;
+  }).join('') || `<span class="flex h-full items-center px-2 text-3xs" style="color:hsl(var(--muted-foreground))">no overlays — “Add text overlay”</span>`;
+
+  // wire bar selection
+  document.querySelectorAll('.tl-bar').forEach(el=>{ el.onclick=(e)=>{ if(e.target.closest('.tl-handle')){toast('Drag to set in/out (mock)');return;} selectKey(el.dataset.sel); }; });
+
+  // playhead
+  $('playhead').style.left = `calc(78px + ${pct(playT)}% * (100% - 78px) / 100)`;
+  $('tlTime').textContent = `${fmt(playT)} / ${fmt(DUR)}`;
+  $('topTime').textContent = `${fmt(playT)} / ${fmt(DUR)}`;
+  $('tlPlayIcon').setAttribute('data-lucide', playing?'pause':'play');
+  $('playToggle').innerHTML = `<i data-lucide="${playing?'pause':'play'}" class="h-3.5 w-3.5"></i>`;
+
+  // make tracks clickable to scrub
+  ['clipTrack','capTrack','ovTrack'].forEach(id=>{
+    const t=$(id);
+    t.onmousedown=(e)=>{ if(e.target.closest('.tl-bar')) return; const r=t.getBoundingClientRect(); seekTo(Math.max(0,Math.min(DUR,(e.clientX-r.left)/r.width*DUR))); };
+  });
+}
+
+// ═════════════ SELECTION + STATE ═════════════
+function selectKey(k){
+  if(k==='overlay'||k.startsWith('overlay:')){ const id=k.split(':')[1]; sel = id?{type:'overlay',id}:'clip'; }
+  else sel = k;
+  renderAll();
+}
+function renderAll(){ renderCanvas(); renderRail(); renderInspector(); renderTimeline(); renderMiniTranscript(); if(window.lucide) lucide.createIcons(); }
+
+// ═════════════ ACTIONS ═════════════
+function setGrade(k,v){ grade[k]=+v; renderCanvas(); renderInspector(); }
+function applyVibe(p){ Object.assign(grade,{bright:0,warm:0,contrast:0,vibrance:0,depth:0},p); renderCanvas(); renderInspector(); toast('Vibe applied — fine-tune below'); }
+function resetGrade(){ grade={bright:0,warm:0,contrast:0,vibrance:0,depth:0}; renderCanvas(); renderInspector(); }
+function setReframe(k,v){ reframe[k]=+v; renderCanvas(); renderInspector(); }
+function setSpeed(s){ speed=s; renderInspector(); toast(s+'× speed'); }
+
+function setCapPreset(p){ caption.style.preset=p; renderAll(); toast(p==='off'?'Captions off':'Caption preset: '+p); }
+function setCapStyle(k,v){ caption.style[k]=v; renderCanvas(); renderInspector(); renderTimeline(); }
+function editLine(i,v){ caption.lines[i].text=v;
+  // re-split words naively so karaoke still demos after an edit (keep timings spread across the line)
+  const l=caption.lines[i]; const parts=v.trim().split(/\s+/).filter(Boolean); const span=l.end-l.start;
+  l.words = parts.map((w,idx)=>[w, +(l.start+span*idx/parts.length).toFixed(2), +(l.start+span*(idx+1)/parts.length).toFixed(2)]);
+  renderCanvas(); }
+
+function addOverlay(){
+  const id='o'+Date.now();
+  overlays.push({id, role:'callout', text:'New text', x:.5, y:.5, size:1.0, anim:'fade', in:Math.min(playT, DUR-3), out:Math.min(playT+3, DUR), color:'#ffffff'});
+  sel={type:'overlay',id}; renderAll(); toast('Overlay added — set its text & timing');
+}
+function setOv(k,v){ const o=curOverlay(); o[k]=v; renderCanvas(); renderInspector(); renderRail(); renderTimeline(); if(window.lucide) lucide.createIcons(); }
+function setOvSize(v){ const o=curOverlay(); o.size=v/100; renderCanvas(); }
+function setOvTime(k,v){ const o=curOverlay(); const m=v.split(':'); const s=(+m[0]||0)*60+(+m[1]||0); o[k]=Math.max(0,Math.min(DUR,s)); renderCanvas(); renderTimeline(); renderRail(); if(window.lucide) lucide.createIcons(); }
+function delOverlay(){ const o=curOverlay(); overlays=overlays.filter(x=>x.id!==o.id); sel='clip'; renderAll(); toast('Overlay deleted'); }
+
+function trimToLine(i){ const l=caption.lines[i]; toast(`Trim to “${l.text.slice(0,20)}…” → in ${l.start.toFixed(1)}s / out ${l.end.toFixed(1)}s`); seekTo(l.start); }
+
+// ═════════════ PLAYBACK ═════════════
+function seekTo(s){ playT=Math.max(0,Math.min(DUR,s)); renderCanvas(); renderTimeline(); renderRail(); renderMiniTranscript(); if(window.lucide) lucide.createIcons(); }
+function togglePlay(){
+  playing=!playing;
+  if(playing){ playTimer=setInterval(()=>{ playT += 0.1*speed; if(playT>=DUR){ playT=0; } renderCanvas(); renderTimeline(); if(railMode==='transcript') renderRail(); renderMiniTranscript(); if(window.lucide && Math.abs(playT%1)<0.1) lucide.createIcons(); }, 100); }
+  else { clearInterval(playTimer); }
+  renderCanvas(); renderTimeline(); if(window.lucide) lucide.createIcons();
+}
+
+// ═════════════ misc ═════════════
+function toast(m){const t=$('toast');t.innerHTML=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,1900)}
+
+// drag overlay on canvas
+let drag=null;
+document.addEventListener('mousedown',e=>{const b=e.target.closest('.ov-box');if(b&&b.dataset.sel.startsWith('overlay')&&$('frame').contains(b)){drag={id:b.dataset.sel.split(':')[1]};selectKey(b.dataset.sel);e.preventDefault()}});
+document.addEventListener('mousemove',e=>{if(!drag)return;const r=$('frame').getBoundingClientRect();const o=overlays.find(x=>x.id===drag.id);if(!o)return;o.x=Math.max(.08,Math.min(.92,(e.clientX-r.left)/r.width));o.y=Math.max(.06,Math.min(.94,(e.clientY-r.top)/r.height));renderCanvas()});
+document.addEventListener('mouseup',()=>drag=null);
+
+window.addEventListener('resize',()=>{ sizeCanvas(); renderCanvas(); });
+
+// boot
+sizeCanvas(); renderAll();
+</script>
+</body>
+</html>
