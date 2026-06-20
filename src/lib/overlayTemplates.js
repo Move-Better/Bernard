@@ -599,8 +599,13 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   // Pull content text into the layout's panel/scrim zone (Q sign-off 2026-06-16,
   // option B): a split/badge headline anchored to canvas-center otherwise floats
   // over the photo while the panel sits empty.
+  // A user-placed custom {x,y} (dragged on the canvas) is authoritative — skip
+  // the panel auto-zone so the text lands exactly where it was dropped. Preset/
+  // default positions still get pulled into the layout's panel/scrim zone.
+  const hasCustomPos = block.position && typeof block.position === 'object'
+    && Number.isFinite(block.position.x) && Number.isFinite(block.position.y)
   const zone = whoopTextZone(layout, palette)
-  if (zone && WHOOP_CONTENT_ROLES.has(role)) {
+  if (zone && WHOOP_CONTENT_ROLES.has(role) && !hasCustomPos) {
     const [zt, zb] = zone
     // `anchorY` is a BASELINE. A `top` block's glyphs rise ABOVE the baseline by
     // ~one ascent, so anchoring the baseline at the zone top pushes the text up

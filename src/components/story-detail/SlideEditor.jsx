@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import Moveable from 'moveable'
 import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,7 +8,6 @@ import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   BLOCK_ROLES,
-  POSITION_PRESETS,
   SLIDE_TEMPLATES,
   TEMPLATE_DEFAULT_POSITIONS,
   renderFreeformSlide,
@@ -26,25 +24,6 @@ const ROLE_META = {
   cta:         { label: 'CTA',         chip: 'bg-orange-100 text-orange-800' },
   attribution: { label: 'Attribution', chip: 'bg-green-100 text-green-800' },
   page:        { label: 'Page #',      chip: 'bg-slate-200 text-slate-700' },
-}
-
-const POSITION_LABEL = {
-  'top-left':      'Top L',
-  'top':           'Top',
-  'top-right':     'Top R',
-  'center-left':   'Center L',
-  'center':        'Center',
-  'center-right':  'Center R',
-  'bottom-left':   'Bot. L',
-  'bottom':        'Bottom',
-  'bottom-right':  'Bot. R',
-}
-
-function positionDisplay(pos) {
-  if (pos && typeof pos === 'object' && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
-    return `Custom (${Math.round(pos.x * 100)},${Math.round(pos.y * 100)})`
-  }
-  return POSITION_LABEL[pos] || POSITION_LABEL.center
 }
 
 // Normalize a slide loaded from the DB so the editor never has to defensively
@@ -85,201 +64,24 @@ function emptyBlockFor(template, role) {
   return { role, text: '', position: defaultPositionFor(template, role) }
 }
 
-// ── Position picker (preset grid + custom drag) ───────────────────────────────
-
-function PositionPickerPopover({ anchorRef, photoUrl, value, width, text, roleLabel, onChange, onClose }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
-        const anchor = anchorRef?.current
-        if (!anchor || !anchor.contains(e.target)) onClose()
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [anchorRef, onClose])
-
-  const stageRef = useRef(null)
-  const isCustom = value && typeof value === 'object'
-  const initial = {
-    xFrac: isCustom ? value.x : 0.5,
-    yFrac: isCustom ? value.y : 0.5,
-    widthFrac: Number.isFinite(width) ? width : 0.62,
-  }
-
-  return (
-    <div
-      ref={ref}
-      className="absolute z-50 mt-1 w-[280px] rounded-lg border bg-white p-3 shadow-lg"
-      style={{ top: '100%', left: 0 }}
-    >
-      <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Position
-      </p>
-      <div className="grid grid-cols-3 gap-1.5 mb-3">
-        {POSITION_PRESETS.map((p) => {
-          const selected = !isCustom && value === p
-          return (
-            <button
-              key={p}
-              type="button"
-              onClick={() => { onChange({ position: p }); onClose() }}
-              className={`aspect-square rounded border text-3xs font-medium transition-colors ${
-                selected
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-              }`}
-            >
-              {POSITION_LABEL[p]}
-            </button>
-          )
-        })}
-      </div>
-      <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Custom — drag to move, pull the side handles to set width
-      </p>
-      <div
-        ref={stageRef}
-        className="relative aspect-square w-full overflow-hidden rounded border bg-muted select-none"
-        style={photoUrl ? { backgroundImage: `url(${photoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-      >
-        <div className="absolute inset-0 bg-black/25 pointer-events-none" />
-        <PositionMoveableBox
-          stageRef={stageRef}
-          initial={initial}
-          text={text}
-          roleLabel={roleLabel}
-          onCommit={({ x, y, width: w }) => onChange({ position: { x, y }, width: w })}
-        />
-      </div>
-    </div>
-  )
-}
-
-// Vanilla `moveable` (the framework-agnostic core that react-moveable wraps —
-// chosen over the React binding to avoid a transitive dual-React dependency)
-// driving a WYSIWYG text proxy on the photo stage. Dragging sets the block's
-// {x,y} anchor (the box center); the side handles set block.width (fraction of
-// the canvas). The live SlidePreview canvas remains the true render — this box
-// is just the manipulation surface. Seeded once on mount; moveable owns the DOM
-// thereafter and reports fractions back on drag/resize end.
-function PositionMoveableBox({ stageRef, initial, text, roleLabel, onCommit }) {
-  const boxRef = useRef(null)
-  useEffect(() => {
-    const stage = stageRef.current
-    const box = boxRef.current
-    if (!stage || !box) return
-    const sw = stage.clientWidth || 1
-    const sh = stage.clientHeight || 1
-    const w = Math.max(0.15, Math.min(1, initial.widthFrac || 0.62)) * sw
-    box.style.width = `${w}px`
-    const bh = box.offsetHeight
-    const tx = Math.max(0, Math.min(sw - w, (initial.xFrac ?? 0.5) * sw - w / 2))
-    const ty = Math.max(0, Math.min(sh - bh, (initial.yFrac ?? 0.5) * sh - bh / 2))
-    box.style.transform = `translate(${tx}px, ${ty}px)`
-
-    const m = new Moveable(stage, {
-      target: box,
-      container: stage,
-      draggable: true,
-      resizable: true,
-      renderDirections: ['w', 'e'],
-      origin: false,
-      keepRatio: false,
-      throttleDrag: 0,
-      throttleResize: 0,
-      bounds: { left: 0, top: 0, right: sw, bottom: sh, position: 'css' },
-    })
-    const commit = () => {
-      const sr = stage.getBoundingClientRect()
-      if (!sr.width || !sr.height) return
-      const br = box.getBoundingClientRect()
-      const cx = ((br.left + br.width / 2) - sr.left) / sr.width
-      const cy = ((br.top + br.height / 2) - sr.top) / sr.height
-      const wf = br.width / sr.width
-      onCommit({
-        x: Math.max(0, Math.min(1, cx)),
-        y: Math.max(0, Math.min(1, cy)),
-        width: Math.max(0.15, Math.min(1, wf)),
-      })
-    }
-    m.on('drag', ({ target, transform }) => { target.style.transform = transform })
-      .on('dragEnd', commit)
-      .on('resize', ({ target, width: rw, drag }) => { target.style.width = `${rw}px`; target.style.transform = drag.transform; m.updateRect() })
-      .on('resizeEnd', commit)
-    const ro = new ResizeObserver(() => {
-      const nsw = stage.clientWidth || 1
-      const nsh = stage.clientHeight || 1
-      m.bounds = { left: 0, top: 0, right: nsw, bottom: nsh, position: 'css' }
-      m.updateRect()
-    })
-    ro.observe(stage)
-    return () => { m.destroy(); ro.disconnect() }
-    // Seed once on mount; the box is uncontrolled thereafter (moveable owns it).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  return (
-    <div
-      ref={boxRef}
-      className="absolute left-0 top-0 box-border px-1.5 py-1 rounded-sm bg-primary/20 border border-primary text-white text-2xs font-bold leading-snug shadow"
-      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
-    >
-      {(text && text.trim()) || roleLabel || 'Text'}
-    </div>
-  )
-}
-
 // ── Block row ─────────────────────────────────────────────────────────────────
 
-function BlockRow({ block, photoUrl, onChange, onRemove }) {
-  const [posOpen, setPosOpen] = useState(false)
-  const triggerRef = useRef(null)
+function BlockRow({ block, onChange, onRemove }) {
   const meta = ROLE_META[block.role] || ROLE_META.body
-  const isCustomPos = block.position && typeof block.position === 'object'
 
   return (
     <div className="flex items-start gap-2 rounded-md border bg-background/50 p-2">
       <div className="flex-1 min-w-0">
         <div className="mb-1 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <select
-              value={block.role}
-              onChange={(e) => onChange({ ...block, role: e.target.value })}
-              className={`rounded-full px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
-            >
-              {BLOCK_ROLES.map((r) => (
-                <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
-              ))}
-            </select>
-            <div className="relative">
-              <button
-                ref={triggerRef}
-                type="button"
-                onClick={() => setPosOpen((o) => !o)}
-                className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide hover:bg-muted ${
-                  isCustomPos ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                }`}
-                title="Set position"
-              >
-                {isCustomPos && <Move className="h-2.5 w-2.5" />}
-                {positionDisplay(block.position)}
-              </button>
-              {posOpen && (
-                <PositionPickerPopover
-                  anchorRef={triggerRef}
-                  photoUrl={photoUrl}
-                  value={block.position}
-                  width={block.width}
-                  text={block.text}
-                  roleLabel={meta.label}
-                  onChange={(patch) => onChange({ ...block, ...patch })}
-                  onClose={() => setPosOpen(false)}
-                />
-              )}
-            </div>
-          </div>
+          <select
+            value={block.role}
+            onChange={(e) => onChange({ ...block, role: e.target.value })}
+            className={`rounded-full px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
+          >
+            {BLOCK_ROLES.map((r) => (
+              <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={onRemove}
@@ -296,6 +98,9 @@ function BlockRow({ block, photoUrl, onChange, onRemove }) {
           className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50"
           placeholder={`${meta.label} text…`}
         />
+        <p className="mt-1 flex items-center gap-1 text-3xs text-muted-foreground">
+          <Move className="h-3 w-3" /> Drag the text on the canvas to place it.
+        </p>
       </div>
     </div>
   )
@@ -374,6 +179,82 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
       title={canReframe ? 'Click to select · drag to reposition · scroll to zoom' : 'Click to select the photo layer'}
       className={className || `w-full aspect-[4/5] rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
+  )
+}
+
+// Where a text block's anchor sits as a fraction of the canvas — mirrors the
+// renderer's resolvePosition + the WHOOP panel auto-zone, so the drag handle
+// starts over the actual text. A user-dragged custom {x,y} is used verbatim.
+const WHOOP_CONTENT = new Set(['hook', 'body', 'caption', 'cta'])
+function blockFraction(block, theme) {
+  const pos = block.position
+  if (pos && typeof pos === 'object' && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+    return { x: Math.max(0, Math.min(1, pos.x)), y: Math.max(0, Math.min(1, pos.y)) }
+  }
+  const preset = typeof pos === 'string' ? pos : 'center'
+  const [vert, horiz] = preset.includes('-') ? preset.split('-') : [preset, null]
+  const col = horiz || 'center'
+  let x = col === 'left' ? 0.1 : col === 'right' ? 0.9 : 0.5
+  const row = (vert === 'top' || vert === 'bottom' || vert === 'center') ? vert : 'center'
+  let y = row === 'top' ? 0.12 : row === 'bottom' ? 0.88 : 0.5
+  const layout = theme?.layout, palette = theme?.palette
+  const zone = layout === 'split' ? [0.70, 0.95]
+    : layout === 'badge' ? (palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93]) : null
+  if (zone && WHOOP_CONTENT.has(block.role)) {
+    y = row === 'top' ? zone[0] : row === 'bottom' ? zone[1] : (zone[0] + zone[1]) / 2
+  }
+  return { x, y }
+}
+
+// Draggable text-layer handles overlaid on the active canvas. Each text block
+// is a box you click to select and drag to place (free x/y) — text is a layer
+// like any other, no position presets. The canvas underneath is the true render.
+function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) {
+  const rootRef = useRef(null)
+  function startDrag(e, idx) {
+    e.stopPropagation()
+    e.preventDefault()
+    onSelectBlock(idx)
+    const rect = rootRef.current?.getBoundingClientRect()
+    if (!rect) return
+    function move(ev) {
+      const x = Math.max(0.06, Math.min(0.94, (ev.clientX - rect.left) / rect.width))
+      const y = Math.max(0.06, Math.min(0.94, (ev.clientY - rect.top) / rect.height))
+      onMoveBlock(idx, { x, y })
+    }
+    function up() {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  return (
+    <div ref={rootRef} className="pointer-events-none absolute inset-0 rounded-xl">
+      {(slide.blocks || []).map((b, idx) => {
+        if (!(b.text || '').trim()) return null
+        const f = blockFraction(b, theme)
+        const sel = selection.type === 'text' && selection.idx === idx
+        const w = Math.max(0.2, Math.min(1, Number.isFinite(b.width) ? b.width : 0.72))
+        return (
+          <div
+            key={idx}
+            onPointerDown={(e) => startDrag(e, idx)}
+            title="Drag to place"
+            className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move items-center justify-center rounded ${
+              sel ? 'border-2 border-dashed border-primary bg-primary/5' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
+            }`}
+            style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, width: `${w * 100}%`, minHeight: '8%' }}
+          >
+            {sel && (
+              <span className="absolute -top-5 left-0 inline-flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-3xs font-semibold text-primary-foreground">
+                <Move className="h-2.5 w-2.5" />{ROLE_META[b.role]?.label || b.role}
+              </span>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -750,7 +631,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
 
 // ── TEXT inspector body — single block via the shared BlockRow ───────────────
 
-function TextInspector({ slide, blockIdx, photoUrl, onChange, onRemoved }) {
+function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
   const block = slide.blocks[blockIdx]
   if (!block) return null
   function updateBlock(next) {
@@ -772,7 +653,6 @@ function TextInspector({ slide, blockIdx, photoUrl, onChange, onRemoved }) {
       </div>
       <BlockRow
         block={block}
-        photoUrl={photoUrl}
         onChange={updateBlock}
         onRemove={removeBlock}
       />
@@ -1278,6 +1158,17 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                   <div className="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10" />
                 </div>
               )}
+              {/* Draggable text-layer handles — click to select, drag to place */}
+              <TextDragLayer
+                slide={activeSlide}
+                theme={activeTheme}
+                selection={selection}
+                onSelectBlock={(idx) => setSelection({ type: 'text', idx })}
+                onMoveBlock={(idx, pos) => updateSlide(activeSlideIdx, {
+                  ...activeSlide,
+                  blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, position: pos } : b)),
+                })}
+              />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No slides yet</p>
