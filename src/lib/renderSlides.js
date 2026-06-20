@@ -61,8 +61,9 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     // Renderer version — bump to force a one-time re-bake when the render model
     // changes. v2: fit-relative zoom (whole photo by default) + blurred backdrop
     // when the photo doesn't fill the frame. v3: 4:5 portrait output (1080×1350,
-    // aspect-parametric renderer). (Q 2026-06-20)
-    _renderV: 3,
+    // aspect-parametric renderer). v4: dragged (custom {x,y}) text is centre-
+    // anchored both axes so it matches the drag handle. (Q 2026-06-20)
+    _renderV: 4,
   }))
 }
 
