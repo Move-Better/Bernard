@@ -113,6 +113,40 @@ from a backfill, not live writes — the live hook may be silently dropped.
 
 ---
 
+## Social-publishing provider adapter (Buffer / bundle.social)
+
+Bernard posts to social + local-listing platforms through a **swappable provider** behind a
+thin adapter seam in `api/_lib/social/` — `SocialPublisher` (the interface),
+`BufferPublisher` + `BundlePublisher` (the impls), `getPublisher(workspace)` (the resolver).
+
+- **One switch, not feature-wide.** Feature code calls `getPublisher(ws)` and the six
+  interface methods (`createTeam` / `connect` / `publish` / `getAnalytics` / `deletePost` /
+  `checkConnection`); it never imports a provider SDK. The provider is chosen by
+  `workspaces.publish_provider` (`'buffer'` default | `'bundle'`); unknown/absent → Buffer.
+- **The provider SDK stays in its adapter.** Only `bundlePublisher.js` imports `bundlesocial`;
+  only the Buffer files touch Buffer's GraphQL. Keeps the function graph (and `verify-bundles`)
+  clean.
+- **Flip a path with a SAFE ADDITIVE branch.** To route a path (publish, analytics) by
+  provider, add `if ((ws.publish_provider||'buffer')==='bundle') return handleBundleX(...)`
+  *after* the auth check and *before* any Buffer-specific logic, leaving the Buffer path
+  BYTE-FOR-BYTE unchanged (the diff should be `+N/-0`). That makes the flip provably safe for
+  every Buffer tenant; the "dedup the inline Buffer logic into BufferPublisher" cleanup is
+  deferred on purpose. See `api/_routes/publish/buffer.js` (`handleBundlePublish`) and
+  `api/_routes/buffer-analytics.js`.
+- **The provider scope id is an AUTHORIZATION boundary**, not a parameter. One bundle API key
+  reads/posts to every team in the org; derive the bundle `teamId` (or Buffer channel id) from
+  the workspace / `workspace_locations` row — bound at adapter construction — NEVER from client
+  input. A wrong id is a cross-tenant leak, same blast radius as a missing `workspace_id` filter.
+
+**External-resource ids go stale — self-heal, don't just create-if-absent.** A persisted id
+into an external system (`workspaces.bundle_team_id`, OAuth tokens, GBP channel ids) can point
+at a resource a tenant deleted out-of-band. A handler that reuses it must recover on the
+provider's not-found error, not just create-when-null. Reference: `api/_routes/integrations/
+bundle/connect.js` — on a bundle 404 "No team found" it recreates the team and retries once
+(`isMissingTeam`). Apply this to any handler that stores and later reuses an external id.
+
+---
+
 ## Router conventions (App.jsx)
 
 The outer `<Routes>` in `src/App.jsx` has this shape intentionally:
