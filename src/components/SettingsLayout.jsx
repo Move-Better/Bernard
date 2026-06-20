@@ -191,7 +191,7 @@ export default function SettingsLayout() {
   })
 
   return (
-    <div className="flex flex-col md:flex-row md:gap-8 min-h-[calc(100dvh-3.5rem)] md:min-h-screen max-w-[1600px] mx-auto md:px-4 xl:px-8">
+    <div className="flex flex-col md:flex-row md:gap-8 min-h-[calc(100dvh-3.5rem)] md:min-h-screen max-w-[1200px] mx-auto md:px-4 lg:px-6">
       {/* Desktop sidebar */}
       <aside className="hidden md:block w-52 shrink-0 pt-6 pr-2 border-r border-border">
         <div className="sticky top-8 space-y-6">
