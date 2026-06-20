@@ -44,7 +44,11 @@ function hashString(str) {
 // change, the cached rendered_url is stale and the slide is re-rendered.
 function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
   return hashString(JSON.stringify({
-    blocks: (slide.blocks || []).map((b) => ({ text: b.text, role: b.role, position: b.position })),
+    blocks: (slide.blocks || []).map((b) => ({
+      text: b.text, role: b.role, position: b.position, width: b.width,
+      // per-block style overrides also change the pixels
+      fontScale: b.fontScale, color: b.color, fontWeight: b.fontWeight, uppercase: b.uppercase, font: b.font,
+    })),
     template: slide.template || null,
     photoUrl: photoUrl || null,
     themeId: slide.template_id || themeId || null,
