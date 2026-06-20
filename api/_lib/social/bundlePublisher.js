@@ -34,17 +34,25 @@ const PLATFORM_TO_BUNDLE_TYPE = {
   gbp: 'GOOGLE_BUSINESS',
 }
 
-// bundle types whose post REQUIRES at least one media upload (proven live in the
-// spike: IG and GBP rejected text-only; Facebook/X/etc. accept text-only).
-const MEDIA_REQUIRED_TYPES = new Set(['INSTAGRAM', 'GOOGLE_BUSINESS'])
+// bundle types whose post REQUIRES at least one media upload (IG/GBP rejected
+// text-only live; TikTok and YouTube are video/image platforms and cannot post
+// text-only either). Facebook/X/LinkedIn/Threads/Bluesky/Mastodon accept text-only.
+const MEDIA_REQUIRED_TYPES = new Set(['INSTAGRAM', 'GOOGLE_BUSINESS', 'TIKTOK', 'YOUTUBE'])
 
-// Default networks the brand connect portal lets a clinic link. Google Business
-// is intentionally NOT here: bundle allows one active GBP per Team, so each
-// location's GBP connects through its OWN per-location Team (see
-// memory/project-bundle-social.md, Option B). The workspace ("brand") Team
-// carries Instagram + Facebook only; GBP is connected per location with
-// connect({ networks: ['gbp'] }) on a location-scoped publisher.
-const CLINIC_NETWORKS = ['INSTAGRAM', 'FACEBOOK']
+// Default networks the brand connect portal lets a clinic link — the full set
+// that connects AND posts end-to-end through this adapter (Buffer parity, Q's
+// 2026-06-20 call). Each was checked against the SDK PostCreateData type defs:
+// all post with text/media only (their extra fields are optional). Google
+// Business is intentionally NOT here: bundle allows one active GBP per Team, so
+// each location's GBP connects through its OWN per-location Team (see
+// memory/project-bundle-social.md, Option B), via connect({ networks: ['gbp'] })
+// on a location-scoped publisher. Pinterest/Reddit/Discord/Slack are also
+// excluded: they require a board/subreddit/channel the publish flow doesn't
+// collect yet (would 400) — a later add.
+const CLINIC_NETWORKS = [
+  'INSTAGRAM', 'FACEBOOK', 'TWITTER', 'THREADS',
+  'TIKTOK', 'YOUTUBE', 'LINKEDIN', 'BLUESKY', 'MASTODON',
+]
 
 export class BundlePublisher extends SocialPublisher {
   /**
@@ -237,11 +245,19 @@ export class BundlePublisher extends SocialPublisher {
     if (type === 'FACEBOOK') {
       return { type: 'POST', text, ...(uploadIds ? { uploadIds } : {}) }
     }
-    // ponytail: LinkedIn/TikTok/X/Threads/Bluesky/Mastodon/YouTube get a generic
-    // text+media block. Only FB/IG/GBP were proven live in the spike; verify each
-    // network's exact data shape against the SDK before enabling it for a bundle
-    // workspace (Phase 2 publish-routing). Limit: a network needing extra
-    // required fields (e.g. Pinterest boardName) will 400 until handled here.
+    if (type === 'YOUTUBE') {
+      // Bernard distinguishes long-form (youtube) from Shorts (youtube_short);
+      // both require a video upload (guarded by MEDIA_REQUIRED_TYPES).
+      return { type: platform === 'youtube_short' ? 'SHORT' : 'VIDEO', text, ...(uploadIds ? { uploadIds } : {}) }
+    }
+    // X/Twitter, Threads, LinkedIn, TikTok, Bluesky, Mastodon: a generic
+    // text(+media) block. Verified against the SDK PostCreateData type defs
+    // (2026-06-20) that each posts with only text/media — their other fields are
+    // optional (LinkedIn requires `text`, which the handler always provides;
+    // TikTok requires media, guarded above). Networks that need extra required
+    // fields (Pinterest boardName, Reddit sr, Discord/Slack channelId) are NOT
+    // offered for connect (see CLINIC_NETWORKS) so this block is never hit for
+    // them; adding one means collecting that field in the publish flow first.
     return { text, ...(uploadIds ? { uploadIds } : {}) }
   }
 }
