@@ -56,6 +56,12 @@ function normalizeSlide(s, idx) {
     // stripped when slides were read back from the DB, so a saved per-slide
     // theme never survived a reload (the load-side half of the P0 fix).
     template_id: s?.template_id || null,
+    // Photo reframe — focal pan + crop zoom of the bound photo. Optional;
+    // absent = centered cover at 1×.
+    ...(s?.photo_zoom > 1 ? { photo_zoom: s.photo_zoom } : {}),
+    ...(s?.photo_offset && (Number.isFinite(s.photo_offset.x) || Number.isFinite(s.photo_offset.y))
+      ? { photo_offset: { x: Number(s.photo_offset.x) || 0, y: Number(s.photo_offset.y) || 0 } }
+      : {}),
     blocks: Array.isArray(s?.blocks)
       ? s.blocks.map((b) => ({
           role:     typeof b?.role === 'string' && ROLE_META[b.role] ? b.role : 'body',
@@ -317,8 +323,9 @@ function BlockRow({ block, photoUrl, canMoveUp, canMoveDown, onChange, onMoveUp,
 
 // ── Slide card ────────────────────────────────────────────────────────────────
 
-function SlidePreview({ slide, photoUrl, brandStyle, theme }) {
+function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe }) {
   const canvasRef = useRef(null)
+  const dragRef = useRef(null)
   useEffect(() => {
     let cancelled = false
     async function draw() {
@@ -340,10 +347,41 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme }) {
     return () => { cancelled = true }
   }, [slide, photoUrl, brandStyle, theme])
 
+  // Drag to pan the photo's focal point; scroll to zoom. Reframe only applies to
+  // a bound photo (no-op for text-only slides).
+  const canReframe = !!photoUrl && !!onReframe
+  function onPointerDown(e) {
+    if (!canReframe) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const off = slide.photo_offset || { x: 0, y: 0 }
+    dragRef.current = { sx: e.clientX, sy: e.clientY, ox: off.x || 0, oy: off.y || 0, w: rect.width, h: rect.height }
+    e.preventDefault()
+  }
+  function onPointerMove(e) {
+    const d = dragRef.current
+    if (!d) return
+    const nx = Math.max(-0.5, Math.min(0.5, d.ox + (e.clientX - d.sx) / d.w))
+    const ny = Math.max(-0.5, Math.min(0.5, d.oy + (e.clientY - d.sy) / d.h))
+    onReframe({ ...slide, photo_offset: { x: nx, y: ny } })
+  }
+  function endDrag() { dragRef.current = null }
+  function onWheel(e) {
+    if (!canReframe) return
+    e.preventDefault()
+    const z = Math.max(1, Math.min(3, (slide.photo_zoom || 1) - e.deltaY * 0.0015))
+    onReframe({ ...slide, photo_zoom: z })
+  }
+
   return (
     <canvas
       ref={canvasRef}
-      className="w-full aspect-square rounded-md border bg-muted"
+      onMouseDown={onPointerDown}
+      onMouseMove={onPointerMove}
+      onMouseUp={endDrag}
+      onMouseLeave={endDrag}
+      onWheel={onWheel}
+      title={canReframe ? 'Drag to reposition · scroll to zoom' : undefined}
+      className={`w-full aspect-square rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
   )
 }
@@ -451,7 +489,33 @@ function SlideCard({
         </button>
       </div>
 
-      <SlidePreview slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} theme={theme} />
+      <SlidePreview slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} theme={theme} onReframe={onChange} />
+
+      {/* Photo reframe — drag the preview to pan; slider/scroll to zoom. */}
+      {photoUrl && (
+        <div className="flex items-center gap-2 text-2xs text-muted-foreground">
+          <span className="shrink-0">Zoom</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value={slide.photo_zoom || 1}
+            onChange={(e) => onChange({ ...slide, photo_zoom: parseFloat(e.target.value) })}
+            className="flex-1 accent-primary"
+            aria-label="Photo zoom"
+          />
+          {(slide.photo_zoom > 1 || slide.photo_offset) && (
+            <button
+              type="button"
+              onClick={() => { const s = { ...slide }; delete s.photo_zoom; delete s.photo_offset; onChange(s) }}
+              className="shrink-0 text-primary hover:underline"
+            >
+              reset
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="relative">
         <button
@@ -953,6 +1017,12 @@ export default function SlideEditor({ piece }) {
       // bake honored it, but handleSave rebuilt slides without it, so a per-slide
       // theme never persisted. (P0 data-loss fix.)
       template_id: s.template_id || null,
+      // Persist the photo reframe (pan/zoom) so it survives reload and ships in
+      // the bake. Omit when neutral to keep rows lean + legacy slides identical.
+      ...(s.photo_zoom > 1 ? { photo_zoom: s.photo_zoom } : {}),
+      ...(s.photo_offset && (s.photo_offset.x || s.photo_offset.y)
+        ? { photo_offset: { x: s.photo_offset.x || 0, y: s.photo_offset.y || 0 } }
+        : {}),
       blocks:    s.blocks.filter((b) => (b.text || '').trim() !== ''),
     }))
 
