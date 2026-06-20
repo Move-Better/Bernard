@@ -1124,6 +1124,9 @@ export function useDesignTemplateChat() {
     mutationFn: ({ messages, currentConfig }) =>
       apiFetch('/api/photo-templates/chat', {
         method: 'POST',
+        // Content-Type is required or Vercel's Node runtime leaves req.body empty
+        // (apiFetch does not auto-set it) — the handler needs the parsed messages.
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages, currentConfig: currentConfig ?? null }),
       }),
   })
