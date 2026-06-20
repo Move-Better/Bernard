@@ -58,6 +58,10 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     photoZoom: slide.photo_zoom || null,
     photoOffset: slide.photo_offset || null,
     grade: slide.grade || null,
+    // Renderer version — bump to force a one-time re-bake when the photo framing
+    // model changes. v2: fit-relative zoom (whole photo by default) + blurred
+    // backdrop when the photo doesn't fill the frame. (Q 2026-06-20)
+    _renderV: 2,
   }))
 }
 

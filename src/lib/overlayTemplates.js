@@ -171,6 +171,49 @@ function drawCover(ctx, img, x, y, w, h, zoom = 1, offset = null) {
   ctx.restore()
 }
 
+// Draw a photo into (x,y,w,h) framed by the user's zoom (relative to FIT) + pan.
+//   zoom = 1            → the WHOLE photo fits inside the frame (default)
+//   zoom = cover/fit    → the photo just covers the frame
+//   zoom > cover/fit    → cropped in tighter
+// When the photo doesn't cover the frame, a blurred enlarged copy of the SAME
+// photo fills the gaps (Instagram-style) so it always looks intentional. Honours
+// any colorist filter already set on ctx.filter for the sharp photo. (Q 2026-06-20)
+function drawPhotoFit(ctx, img, x, y, w, h, zoom = 1, offset = null) {
+  const z = zoom > 0 ? zoom : 1
+  const fitScale   = Math.min(w / img.width, h / img.height)
+  const coverScale = Math.max(w / img.width, h / img.height)
+  const scale = fitScale * z
+  const sw = img.width * scale, sh = img.height * scale
+  const ox = offset && Number.isFinite(offset.x) ? offset.x : 0
+  const oy = offset && Number.isFinite(offset.y) ? offset.y : 0
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  if (sw < w - 0.5 || sh < h - 0.5) {
+    // Doesn't fill the frame → blurred cover backdrop fills the gaps, sharp photo on top.
+    const base = ctx.filter && ctx.filter !== 'none' ? ctx.filter + ' ' : ''
+    const bs = coverScale * 1.12           // slight overscan so blurred edges clear the clip
+    const bw = img.width * bs, bh = img.height * bs
+    ctx.filter = base + 'blur(34px)'
+    ctx.drawImage(img, x + (w - bw) / 2, y + (h - bh) / 2, bw, bh)
+    ctx.filter = base || 'none'
+    let dx = x + (w - sw) / 2 + ox * (w - sw)   // pan the photo within the empty slack
+    let dy = y + (h - sh) / 2 + oy * (h - sh)
+    dx = Math.max(x, Math.min(x + w - sw, dx))
+    dy = Math.max(y, Math.min(y + h - sh, dy))
+    ctx.drawImage(img, dx, dy, sw, sh)
+  } else {
+    // Covers the frame → pan within the overflow, clamped so no empty edge shows.
+    let dx = x + (w - sw) / 2 + ox * (sw - w)
+    let dy = y + (h - sh) / 2 + oy * (sh - h)
+    dx = Math.min(x, Math.max(x + w - sw, dx))
+    dy = Math.min(y, Math.max(y + h - sh, dy))
+    ctx.drawImage(img, dx, dy, sw, sh)
+  }
+  ctx.restore()
+}
+
 // ── Template renderers ──────────────────────────────────────────────────────
 // Each takes (ctx, { img, text, brandStyle, options }) where:
 //   img         — pre-loaded HTMLImageElement
@@ -810,7 +853,7 @@ const WHOOP_SAGE_FILL = '#eaeeea'
 function drawGradedCover(ctx, img, x, y, w, h, zoom, offset, photoFilter) {
   const prev = ctx.filter
   if (photoFilter && photoFilter !== 'none') ctx.filter = photoFilter
-  drawCover(ctx, img, x, y, w, h, zoom, offset)
+  drawPhotoFit(ctx, img, x, y, w, h, zoom, offset)
   ctx.filter = prev || 'none'
 }
 
@@ -1021,7 +1064,7 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     const img = await loadImage(sourceUrl)
     const prevFilter = ctx.filter
     if (photoFilter !== 'none') ctx.filter = photoFilter
-    drawCover(ctx, img, 0, 0, W, H, photoZoom, photoOffset)
+    drawPhotoFit(ctx, img, 0, 0, W, H, photoZoom, photoOffset)
     ctx.filter = prevFilter || 'none'
   } else if (background) {
     // Text-only card (Text Post Studio): paint a brand-aware background.

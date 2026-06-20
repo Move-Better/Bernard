@@ -173,7 +173,7 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
   function onWheel(e) {
     if (!canReframe) return
     e.preventDefault()
-    const z = Math.max(1, Math.min(3, (slide.photo_zoom || 1) - e.deltaY * 0.0015))
+    const z = Math.max(1, Math.min(4, (slide.photo_zoom || 1) - e.deltaY * 0.0015))
     onReframe({ ...slide, photo_zoom: z })
   }
   // A click that wasn't a drag selects the photo layer (drives the inspector).
@@ -192,7 +192,7 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
       onWheel={onWheel}
       onClick={onClick}
       title={canReframe ? 'Click to select · drag to reposition · scroll to zoom' : 'Click to select the photo layer'}
-      className={className || `w-full aspect-[4/5] rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
+      className={className || `w-full aspect-square rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
   )
 }
@@ -375,7 +375,7 @@ function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onC
       }`}
       title={`${t.name}${selected ? ' (this slide only)' : ''}`}
     >
-      <div className="aspect-[4/5] w-full bg-muted">
+      <div className="aspect-square w-full bg-muted">
         <MiniSlideCanvas
           renderSlide={slide}
           photoUrl={photoUrl}
@@ -870,7 +870,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
             <input
               type="range"
               min="1"
-              max="3"
+              max="4"
               step="0.01"
               value={slide.photo_zoom || 1}
               onChange={(e) => onChange({ ...slide, photo_zoom: parseFloat(e.target.value) })}
@@ -887,7 +887,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
               </button>
             )}
           </div>
-          <p className="text-3xs text-muted-foreground">Drag the photo on the canvas to reposition · scroll to zoom.</p>
+          <p className="text-3xs text-muted-foreground">Slider far-left = whole photo fits (blurred backdrop fills the rest); zoom in to crop. Drag the photo to reposition · scroll to zoom.</p>
         </div>
       )}
 
@@ -1132,7 +1132,7 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
               <button
                 type="button"
                 onClick={() => onSelect(idx)}
-                className={`relative aspect-[4/5] w-full overflow-hidden rounded-md border transition-all ${
+                className={`relative aspect-square w-full overflow-hidden rounded-md border transition-all ${
                   isActive ? 'border-primary ring-1 ring-primary/40' : 'border-border hover:border-primary/40'
                 }`}
               >
@@ -1237,7 +1237,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
               <span className="text-2xs font-semibold text-foreground">{handle}</span>
             </div>
             {/* The real slide */}
-            <div className="relative aspect-[4/5] w-full bg-muted">
+            <div className="relative aspect-square w-full bg-muted">
               <MiniSlideCanvas
                 renderSlide={slide}
                 photoUrl={photoUrl}
@@ -1627,8 +1627,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
           {activeSlide ? (
             <div
-              className={`relative aspect-[4/5] rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
-              style={{ height: 'min(calc(100vh - 140px), calc((100vw - 480px) * 1.25))' }}
+              className={`relative aspect-square rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
+              style={{ height: 'min(calc(100vh - 140px), calc(100vw - 480px))' }}
             >
               <SlidePreview
                 slide={activeSlide}
