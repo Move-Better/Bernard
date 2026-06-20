@@ -14,6 +14,7 @@ import {
 } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
+import { photoSourceUrl } from '@/lib/mediaEntry'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 
 // Role label + chip colors. Mirrors the mockup palette.
@@ -672,7 +673,7 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {slides.map((slide, idx) => {
           const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
-            ? (mediaUrls[slide.photo_idx].thumbnailUrl || mediaUrls[slide.photo_idx].url)
+            ? (mediaUrls[slide.photo_idx].thumbnailUrl || photoSourceUrl(mediaUrls[slide.photo_idx]))
             : null
           const isActive = idx === activeIdx
           return (
@@ -728,7 +729,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
   if (!slide) return null
 
   const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
-    ? mediaUrls[slide.photo_idx].url
+    ? photoSourceUrl(mediaUrls[slide.photo_idx])
     : null
   const primaryBlock = slide.blocks?.[0]
   const primaryRole = primaryBlock?.role
@@ -1012,7 +1013,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // Active slide derived values — used by the canvas and the inspector.
   const activeSlide = slides[activeSlideIdx] || slides[0]
   const activePhotoUrl = typeof activeSlide?.photo_idx === 'number' && mediaUrls[activeSlide.photo_idx]
-    ? mediaUrls[activeSlide.photo_idx].url
+    ? photoSourceUrl(mediaUrls[activeSlide.photo_idx])
     : null
   const activeTheme = resolveTheme(activeSlide?.template_id || themeId, customThemes)
 

@@ -47,6 +47,17 @@ export function mediaEntryKey(entry) {
   return entry.mediaAssetId || entry.url
 }
 
+// The raw photo to draw UNDER live carousel text. For an entry baked via the
+// editorial "Bake to image" flow, `url` is a flattened composite (headline burned
+// into a navy card, photo hidden) and `sourceUrl` is the original photo — so the
+// carousel must use `sourceUrl` or it draws the baked card instead of the photo.
+// Raw (un-baked) entries have no sourceUrl, so this is a no-op for them. Mirrors
+// what ad export already does (StoryboardPiece.jsx → `sourceUrl || url`).
+export function photoSourceUrl(entry) {
+  if (!entry) return null
+  return entry.sourceUrl || entry.url || null
+}
+
 // True when a media_urls entry is a video. Checks both `kind` and `type`
 // because the two normalizers above set both, but older rows / other writers
 // may carry only one. One predicate so every surface (preview, composer gate,

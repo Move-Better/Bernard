@@ -8,7 +8,7 @@ import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
-import { isVideoEntry } from '@/lib/mediaEntry'
+import { isVideoEntry, photoSourceUrl } from '@/lib/mediaEntry'
 
 // Pull the best logo URL for previews, preferring Brand Kit (primary_logo_url
 // is resolved by api/workspace/me from brand_kit_roles), then any legacy
@@ -68,7 +68,7 @@ function SlideCanvas({ slide, photo, brandStyle, theme }) {
     async function draw() {
       try {
         await renderFreeformSlide({
-          sourceUrl: photo?.url || null,
+          sourceUrl: photoSourceUrl(photo),
           slide,
           brandStyle: brandStyle || {},
           canvas,
@@ -80,7 +80,7 @@ function SlideCanvas({ slide, photo, brandStyle, theme }) {
     }
     draw()
     return () => { cancelled = true }
-  }, [slide, photo?.url, brandStyle, theme])
+  }, [slide, photo, brandStyle, theme])
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" aria-hidden="true" />
 }
 

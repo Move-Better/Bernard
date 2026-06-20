@@ -17,6 +17,7 @@
 import { apiFetch } from '@/lib/api'
 import { renderFreeformSlide, SIZE } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
+import { photoSourceUrl } from '@/lib/mediaEntry'
 
 // Photos the editor exposes for binding: non-video media with a URL. photo_idx
 // on a slide indexes into THIS filtered list (must match SlideEditor's filter).
@@ -84,7 +85,7 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
   for (let idx = 0; idx < slides.length; idx++) {
     const slide = slides[idx]
     const photoUrl = typeof slide.photo_idx === 'number' && photos[slide.photo_idx]
-      ? photos[slide.photo_idx].url
+      ? photoSourceUrl(photos[slide.photo_idx])
       : null
     const sig = slideSignature({ slide, photoUrl, themeId, brandStyle })
 
@@ -127,7 +128,7 @@ export async function renderCarouselAds({ slides, mediaUrls, brandStyle, theme, 
   for (let idx = 0; idx < slides.length; idx++) {
     const slide = slides[idx]
     const photoUrl = typeof slide.photo_idx === 'number' && photos[slide.photo_idx]
-      ? photos[slide.photo_idx].url
+      ? photoSourceUrl(photos[slide.photo_idx])
       : null
     const slideTheme = slide.template_id ? resolveTheme(slide.template_id, customThemes) : theme
     const sig = slideSignature({ slide, photoUrl, themeId, brandStyle }) + 'ad' + aspect.replace(':', 'x')
