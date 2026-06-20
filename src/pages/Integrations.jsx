@@ -16,6 +16,7 @@ import {
   Share2,
   Rss,
   AlertTriangle,
+  MapPin,
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -316,7 +317,8 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
   const provider = ws?.publish_provider || 'buffer'
   const [switching, setSwitching] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [status, setStatus] = useState(null) // { connected, accounts } | null while loading
+  const [locBusy, setLocBusy] = useState(false)
+  const [status, setStatus] = useState(null) // { connected, accounts, locations } | null while loading
   const [err, setErr] = useState(null)
 
   // Load bundle connection status, and refetch when the tab regains focus (the
@@ -362,9 +364,31 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
     }
   }
 
+  // Per-location Google Business connect: opens a GBP-only bundle portal scoped to
+  // that location's own Team. Content-Type is set explicitly — apiFetch doesn't
+  // add it, and the Node handler reads req.body.locationId.
+  async function openLocationPortal(locationId) {
+    if (locBusy) return
+    setLocBusy(true); setErr(null)
+    try {
+      const d = await apiFetch('/api/integrations/bundle/connect-location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId }),
+      })
+      if (d?.url) window.open(d.url, '_blank', 'noopener')
+      else setErr('Could not open the Google Business portal.')
+    } catch (e) {
+      setErr(e?.payload?.error || e?.message || 'Could not open the Google Business portal.')
+    } finally {
+      setLocBusy(false)
+    }
+  }
+
   const bundleActive = provider === 'bundle'
   const bufferActive = provider === 'buffer'
   const accounts = status?.accounts || []
+  const locations = status?.locations || []
 
   return (
     <div className="space-y-3">
@@ -396,48 +420,119 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
             <p className="text-xs text-muted-foreground leading-snug mt-1">
               Bernard posts directly to your accounts and pulls back likes, reach &amp; impressions. Connect in bundle’s secure portal — Bernard never sees your passwords.
             </p>
-            {!bundleActive ? (
+            {!bundleActive && (
               <button
                 type="button" disabled={!isAdmin || switching} onClick={() => switchProvider('bundle')}
                 className="mt-3 text-sm bg-primary text-primary-foreground px-3.5 py-2 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90"
               >
                 {switching ? 'Switching…' : 'Use bundle.social'}
               </button>
-            ) : (
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <button
-                  type="button" disabled={!isAdmin || busy} onClick={openPortal}
-                  className="text-sm bg-primary text-primary-foreground px-3.5 py-2 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90 inline-flex items-center gap-1.5"
-                >
-                  {busy ? 'Opening…' : (status?.connected ? 'Manage accounts' : 'Connect accounts')}
-                  <ExternalLink className="h-4 w-4" />
-                </button>
-                <span className="text-2xs text-muted-foreground">Opens bundle.social in a new tab</span>
-              </div>
             )}
           </div>
         </div>
 
-        {bundleActive && accounts.length > 0 && (
-          <div className="px-5 py-3 border-t border-border space-y-2.5">
-            {accounts.map((a, i) => (
-              <div key={a.type || i} className="flex items-center gap-3">
-                <span className="text-sm flex-1 truncate capitalize">
-                  {a.type ? a.type.replace(/_/g, ' ').toLowerCase() : 'account'}
-                  {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
-                </span>
-                {a.connected ? (
-                  <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-                    <CheckCircle2 className="h-3.5 w-3.5" />Connected
-                  </span>
-                ) : (
-                  <button type="button" onClick={openPortal} disabled={!isAdmin} className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action disabled:opacity-60">
-                    <AlertTriangle className="h-3.5 w-3.5" />Reconnect
-                  </button>
-                )}
+        {bundleActive && (
+          <>
+            {/* Brand accounts — Instagram + Facebook on the workspace Team */}
+            <div className="px-5 py-3.5 border-t border-border">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-xs font-semibold">Brand accounts</h3>
+                  <p className="text-2xs text-muted-foreground mt-0.5">Instagram &amp; Facebook for the whole clinic.</p>
+                </div>
+                <button
+                  type="button" disabled={!isAdmin || busy} onClick={openPortal}
+                  className="text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90 inline-flex items-center gap-1.5"
+                >
+                  {busy ? 'Opening…' : (status?.connected ? 'Manage accounts' : 'Connect accounts')}
+                  <ExternalLink className="h-4 w-4" />
+                </button>
               </div>
-            ))}
-          </div>
+              {accounts.length > 0 && (
+                <div className="mt-2.5 space-y-2">
+                  {accounts.map((a, i) => (
+                    <div key={a.type || i} className="flex items-center gap-3">
+                      <span className="text-sm flex-1 truncate capitalize">
+                        {a.type ? a.type.replace(/_/g, ' ').toLowerCase() : 'account'}
+                        {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
+                      </span>
+                      {a.connected ? (
+                        <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" />Connected
+                        </span>
+                      ) : (
+                        <button type="button" onClick={openPortal} disabled={!isAdmin} className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action disabled:opacity-60">
+                          <AlertTriangle className="h-3.5 w-3.5" />Reconnect
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {status == null && <p className="text-2xs text-muted-foreground mt-2">Checking…</p>}
+            </div>
+
+            {/* Google Business — one Team per location (bundle allows one active GBP per Team) */}
+            {locations.length > 0 && (
+              <div className="px-5 py-3.5 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-xs font-semibold">Google Business — by location</h3>
+                </div>
+                <p className="text-2xs text-muted-foreground mt-0.5">
+                  Each location connects its own Google Business listing. Posts to Google fan out to every connected location.
+                </p>
+                <div className="mt-2.5 space-y-2">
+                  {locations.map((loc) => (
+                    <div key={loc.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">{loc.label}</span>
+                          {loc.isPrimary && (
+                            <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Primary</span>
+                          )}
+                        </div>
+                        <span className="block text-2xs text-muted-foreground truncate">
+                          {loc.connected
+                            ? `Google Business${loc.displayName ? ` · ${loc.displayName}` : ''}`
+                            : loc.hasTeam ? 'Google Business · connection needs attention' : 'Google Business · not connected yet'}
+                        </span>
+                      </div>
+                      {loc.connected ? (
+                        <>
+                          <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                            <CheckCircle2 className="h-3.5 w-3.5" />Connected
+                          </span>
+                          <button
+                            type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
+                            className="text-2xs text-primary inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-muted disabled:opacity-60"
+                          >
+                            Manage <ExternalLink className="h-3 w-3" />
+                          </button>
+                        </>
+                      ) : loc.hasTeam ? (
+                        <button
+                          type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
+                          className="text-2xs inline-flex items-center gap-1 px-2 py-1 rounded bg-action/10 text-action disabled:opacity-60"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />Reconnect
+                        </button>
+                      ) : (
+                        <button
+                          type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
+                          className="text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90 inline-flex items-center gap-1.5"
+                        >
+                          {locBusy ? 'Opening…' : 'Connect Google Business'}
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-3xs text-muted-foreground mt-2">Add or rename locations in Settings → Workspace → Locations.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

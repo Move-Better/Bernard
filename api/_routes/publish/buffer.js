@@ -22,6 +22,7 @@ import { BundlePublisher } from '../../_lib/social/index.js'
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Map our runtime platform IDs → Buffer service strings.
 // Service strings match Buffer's GraphQL Service enum exactly.
@@ -312,17 +313,51 @@ async function handler(req, res) {
   })
 }
 
+// Resolve the location → bundle Team targets for a GBP fan-out. Mirrors the
+// Buffer resolveGbpChannelIds shape, but the per-location scope is the location's
+// own bundle Team (workspace_locations.bundle_team_id) rather than a Buffer
+// channel id. Only active locations that have a connected bundle Team are
+// targeted; an unconnected location is silently skipped (the admin connects it in
+// Settings). Optionally narrows to an explicit locationIds set (validated UUIDs).
+async function resolveBundleGbpTargets(workspaceId, locationIds) {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !workspaceId) return []
+  const params = new URLSearchParams({
+    workspace_id: `eq.${workspaceId}`,
+    status: 'eq.active',
+    bundle_team_id: 'not.is.null',
+    select: 'id,label,bundle_team_id',
+  })
+  if (Array.isArray(locationIds) && locationIds.length > 0) {
+    // bare values inside in.() — quoted strings match zero rows (PostgREST gotcha)
+    const ids = locationIds.filter((id) => UUID_RE.test(String(id)))
+    if (ids.length === 0) return []
+    params.set('id', `in.(${ids.join(',')})`)
+  }
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_locations?${params.toString()}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  })
+  if (!r.ok) return []
+  const rows = await r.json().catch(() => [])
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => typeof row.bundle_team_id === 'string' && row.bundle_team_id.trim())
+    .map((row) => ({ id: row.id, label: row.label, teamId: row.bundle_team_id }))
+}
+
 // Bundle.social publish path — invoked for workspaces with publish_provider='bundle'.
 // Mirrors the Buffer handler's request/response contract so the client
 // (src/lib/publish.js) needs no change: DELETE { bufferUpdateId }; POST
-// { platform, content, mediaUrls, scheduledAt }; response { success, bufferId, … }
-// where bufferId carries the bundle post id (stored as buffer_update_id downstream).
+// { platform, content, mediaUrls, scheduledAt, locationIds?, locationContents? };
+// response { success, bufferId, … } where bufferId carries the bundle post id
+// (stored as buffer_update_id downstream).
 //
-// ponytail: multi-location GBP fan-out (one bundle Team per workspace_locations
-// row) is NOT handled here yet — a bundle GBP post targets the workspace's single
-// Team / active GBP location. Build the fan-out before trialing multi-location GBP.
-// The Buffer-specific sync/engagement crons also don't understand bundle post ids;
-// for the manual-publish trial that's acceptable (they degrade, not corrupt).
+// GBP multi-location fan-out: a Google Business post fans out across each active
+// location that has its own connected bundle Team (one Team per location — bundle
+// allows one active GBP per Team), mirroring the Buffer GBP fan-out. Non-GBP
+// platforms post once to the workspace brand Team (Instagram/Facebook).
+//
+// ponytail: the Buffer-specific sync/engagement crons don't understand bundle
+// post ids; for the manual-publish trial that's acceptable (they degrade, not
+// corrupt).
 async function handleBundlePublish(req, res, workspace) {
   let publisher
   try {
@@ -347,8 +382,42 @@ async function handleBundlePublish(req, res, workspace) {
   }
 
   const body = (typeof req.body === 'object' && req.body) ? req.body : {}
-  const { platform, content, mediaUrls = [], scheduledAt } = body
+  const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents } = body
   if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
+
+  // GBP fan-out: post to each active location that has its own connected bundle
+  // Team. Each post uses the location's body override (locationContents keyed by
+  // workspace_locations.id) or the canonical content. teamId for each post is
+  // the location row's bundle_team_id — server-resolved, never client input.
+  if (platform === 'gbp') {
+    try {
+      const targets = await resolveBundleGbpTargets(workspace.id, locationIds)
+      if (targets.length === 0) {
+        return res.status(404).json({
+          error: 'No Google Business location is connected to bundle.social. Open Settings → Integrations and connect each location’s Google Business listing.',
+        })
+      }
+      const posts = []
+      for (const loc of targets) {
+        const text = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
+        const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
+        const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls, scheduledAt })
+        posts.push(r)
+      }
+      const first = posts[0]
+      return res.status(200).json({
+        success: true,
+        bufferId: first?.postId,
+        scheduledAt: first?.scheduledAt,
+        status: first?.status,
+        profileCount: posts.length,
+      })
+    } catch (e) {
+      console.error('[publish/bundle gbp] failed:', e?.stack || e?.message)
+      return res.status(e?.status || 502).json({ error: e?.message || 'bundle Google Business post failed' })
+    }
+  }
+
   try {
     const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt })
     return res.status(200).json({
