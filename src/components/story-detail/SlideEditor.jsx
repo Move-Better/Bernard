@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import Moveable from 'moveable'
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Plus, Image as ImageIcon, Loader2, Move, Wand2, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram } from 'lucide-react'
+import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { apiFetch } from '@/lib/api'
 import {
   BLOCK_ROLES,
   POSITION_PRESETS,
@@ -234,7 +233,7 @@ function PositionMoveableBox({ stageRef, initial, text, roleLabel, onCommit }) {
 
 // ── Block row ─────────────────────────────────────────────────────────────────
 
-function BlockRow({ block, photoUrl, canMoveUp, canMoveDown, onChange, onMoveUp, onMoveDown, onRemove }) {
+function BlockRow({ block, photoUrl, onChange, onRemove }) {
   const [posOpen, setPosOpen] = useState(false)
   const triggerRef = useRef(null)
   const meta = ROLE_META[block.role] || ROLE_META.body
@@ -242,27 +241,6 @@ function BlockRow({ block, photoUrl, canMoveUp, canMoveDown, onChange, onMoveUp,
 
   return (
     <div className="flex items-start gap-2 rounded-md border bg-background/50 p-2">
-      <div className="flex flex-col">
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={!canMoveUp}
-          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-          title="Move up"
-        >
-          <ChevronUp className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={!canMoveDown}
-          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-          title="Move down"
-        >
-          <ChevronDown className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
       <div className="flex-1 min-w-0">
         <div className="mb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
@@ -325,9 +303,10 @@ function BlockRow({ block, photoUrl, canMoveUp, canMoveDown, onChange, onMoveUp,
 
 // ── Slide card ────────────────────────────────────────────────────────────────
 
-function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, className }) {
+function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className }) {
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
+  const movedRef = useRef(false)
   useEffect(() => {
     let cancelled = false
     async function draw() {
@@ -351,6 +330,7 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, className
 
   const canReframe = !!photoUrl && !!onReframe
   function onPointerDown(e) {
+    movedRef.current = false
     if (!canReframe) return
     const rect = canvasRef.current.getBoundingClientRect()
     const off = slide.photo_offset || { x: 0, y: 0 }
@@ -360,6 +340,7 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, className
   function onPointerMove(e) {
     const d = dragRef.current
     if (!d) return
+    movedRef.current = true
     const nx = Math.max(-0.5, Math.min(0.5, d.ox + (e.clientX - d.sx) / d.w))
     const ny = Math.max(-0.5, Math.min(0.5, d.oy + (e.clientY - d.sy) / d.h))
     onReframe({ ...slide, photo_offset: { x: nx, y: ny } })
@@ -371,6 +352,11 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, className
     const z = Math.max(1, Math.min(3, (slide.photo_zoom || 1) - e.deltaY * 0.0015))
     onReframe({ ...slide, photo_zoom: z })
   }
+  // A click that wasn't a drag selects the photo layer (drives the inspector).
+  function onClick() {
+    if (movedRef.current) { movedRef.current = false; return }
+    if (onSelectPhoto) onSelectPhoto()
+  }
 
   return (
     <canvas
@@ -380,47 +366,87 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, className
       onMouseUp={endDrag}
       onMouseLeave={endDrag}
       onWheel={onWheel}
-      title={canReframe ? 'Drag to reposition · scroll to zoom' : undefined}
+      onClick={onClick}
+      title={canReframe ? 'Click to select · drag to reposition · scroll to zoom' : 'Click to select the photo layer'}
       className={className || `w-full aspect-[4/5] rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
   )
 }
 
-// ── Active slide inspector (right panel) ─────────────────────────────────────
-// Houses all per-slide controls for the currently selected slide.
+// ── Layers list (top of the right inspector) ─────────────────────────────────
+// Always-visible list of the active slide's layers: Slide settings, Photo, and
+// one row per text block. Clicking a row drives the contextual `selection`.
 
-function ActiveSlideInspector({
-  slide, slideIdx, totalSlides, photoUrl, mediaUrls,
-  allThemes, customThemes, globalThemeId,
-  onChange, onRemove, onMoveLeft, onMoveRight, onBindPhoto, onApplyThemeToAll,
-  slideCount, onThemeChange, onFontSizeStep, onPageNumbers, onSlideCountTarget,
+function LayerRow({ icon: Icon, label, active, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-2xs transition-colors ${
+        active
+          ? 'border-primary bg-primary/10 text-primary font-semibold'
+          : 'border-transparent text-foreground hover:bg-muted'
+      }`}
+    >
+      <Icon className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+      <span className="truncate">{label}</span>
+    </button>
+  )
+}
+
+function LayersList({ slide, mediaUrls, selection, onSelect }) {
+  const photoLabel = typeof slide.photo_idx === 'number'
+    ? `Photo ${slide.photo_idx + 1}${mediaUrls.length ? ` of ${mediaUrls.length}` : ''}`
+    : 'No photo'
+  return (
+    <div className="border-b px-3 py-2.5">
+      <div className="mb-1.5 flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Layers className="h-3.5 w-3.5" /> Layers
+        <span className="ml-auto font-normal normal-case text-muted-foreground/70">click to select</span>
+      </div>
+      <div className="space-y-1">
+        <LayerRow
+          icon={Layers}
+          label="Slide — layout & theme"
+          active={selection.type === 'slide'}
+          onSelect={() => onSelect({ type: 'slide' })}
+        />
+        <LayerRow
+          icon={ImageIcon}
+          label={photoLabel}
+          active={selection.type === 'photo'}
+          onSelect={() => onSelect({ type: 'photo' })}
+        />
+        {slide.blocks.map((b, i) => {
+          const meta = ROLE_META[b.role] || ROLE_META.body
+          const snippet = (b.text || '').trim().slice(0, 22)
+          const label = `${meta.label}${snippet ? ` — ${snippet}${b.text.trim().length > 22 ? '…' : ''}` : ''}`
+          return (
+            <LayerRow
+              key={i}
+              icon={Type}
+              label={label}
+              active={selection.type === 'text' && selection.idx === i}
+              onSelect={() => onSelect({ type: 'text', idx: i })}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── SLIDE inspector body — layout + theme (nothing else selected) ────────────
+
+function SlideInspector({
+  slide, slideIdx, totalSlides, allThemes, customThemes, globalThemeId,
+  onChange, onApplyThemeToAll, onAddBlock, onMoveLeft, onMoveRight, onRemove,
 }) {
-  function updateBlock(blockIdx, next) {
-    const blocks = slide.blocks.slice()
-    blocks[blockIdx] = next
-    onChange({ ...slide, blocks })
-  }
-  function removeBlock(blockIdx) {
-    const blocks = slide.blocks.slice()
-    blocks.splice(blockIdx, 1)
-    onChange({ ...slide, blocks })
-  }
-  function moveBlock(blockIdx, dir) {
-    const blocks = slide.blocks.slice()
-    const swap = blockIdx + dir
-    if (swap < 0 || swap >= blocks.length) return
-    ;[blocks[blockIdx], blocks[swap]] = [blocks[swap], blocks[blockIdx]]
-    onChange({ ...slide, blocks })
-  }
-  function addBlock(role) {
-    const blocks = slide.blocks.concat(emptyBlockFor(slide.template, role))
-    onChange({ ...slide, blocks })
-  }
+  const [addOpen, setAddOpen] = useState(false)
   function changeTemplate(template) {
-    // Switching templates updates default positions for blocks whose
-    // current position is a preset that matches the old template default;
-    // user-customized positions stay. Also gives a sensible default block
-    // set if the slide was empty.
+    // Switching templates updates default positions for blocks whose current
+    // position is a preset that matches the old template default; user-customized
+    // positions stay. Also gives a sensible default block set if the slide was empty.
     const defaults = TEMPLATE_DEFAULT_POSITIONS[template] || {}
     const blocks = slide.blocks.length === 0
       ? (SLIDE_TEMPLATES[template]?.default_blocks || []).map((role) => emptyBlockFor(template, role))
@@ -434,322 +460,341 @@ function ActiveSlideInspector({
     onChange({ ...slide, template, blocks })
   }
 
-  const [addOpen, setAddOpen] = useState(false)
-  const [photoOpen, setPhotoOpen] = useState(false)
-
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Slide nav header */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b shrink-0">
+    <div className="space-y-4 p-3">
+      {/* Slide management — reorder + delete this slide */}
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={onMoveLeft}
           disabled={slideIdx === 0}
-          className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-0.5"
-          title="Move slide left"
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+          title="Move slide earlier"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <span className="flex-1 text-center text-xs font-semibold">
-          Slide {slideIdx + 1} <span className="text-muted-foreground font-normal">of {totalSlides}</span>
+          Slide {slideIdx + 1} <span className="font-normal text-muted-foreground">of {totalSlides}</span>
         </span>
         <button
           type="button"
           onClick={onMoveRight}
           disabled={slideIdx === totalSlides - 1}
-          className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-0.5"
-          title="Move slide right"
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+          title="Move slide later"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
         <button
           type="button"
           onClick={onRemove}
-          className="ml-1 text-muted-foreground hover:text-rose-600 p-0.5"
+          className="ml-1 rounded p-0.5 text-muted-foreground hover:text-rose-600"
           title="Delete slide"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* Scrollable inspector body */}
-      <div className="flex-1 overflow-y-auto divide-y divide-border/60">
-        {/* Layout — segmented control */}
-        <div className="px-3 py-2.5 space-y-1.5">
-          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Layout <span className="font-normal normal-case text-muted-foreground/70">· structure</span>
-          </p>
-          <div className="grid grid-cols-3 gap-1.5">
-            {Object.entries(SLIDE_TEMPLATES).map(([k, t]) => {
-              const active = slide.template === k
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => changeTemplate(k)}
-                  className={`rounded-md border px-2 py-1.5 text-2xs font-semibold transition-colors ${
-                    active
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
+      {/* Layout — segmented control */}
+      <div className="space-y-1.5">
+        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Layout <span className="font-normal normal-case text-muted-foreground/70">· structure</span>
+        </p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {Object.entries(SLIDE_TEMPLATES).map(([k, t]) => {
+            const active = slide.template === k
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => changeTemplate(k)}
+                className={`rounded-md border px-2 py-1.5 text-2xs font-semibold transition-colors ${
+                  active
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
+      </div>
 
-        {/* Theme — visual swatch grid with deck inheritance */}
-        <div className="px-3 py-2.5 space-y-2">
-          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Theme <span className="font-normal normal-case text-muted-foreground/70">· colour &amp; style</span>
-          </p>
-          {/* Inherit-from-deck row */}
+      {/* Theme — visual swatch grid with deck inheritance */}
+      <div className="space-y-2">
+        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Theme <span className="font-normal normal-case text-muted-foreground/70">· colour &amp; style</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => onChange({ ...slide, template_id: null })}
+          className={`flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-2xs transition-colors ${
+            !slide.template_id
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/40'
+          }`}
+        >
+          <span>Same as deck</span>
+          {!slide.template_id && <span className="text-3xs">✓ inheriting</span>}
+        </button>
+        <div className="grid grid-cols-2 gap-1.5">
+          {allThemes.map((t) => {
+            const resolved = resolveTheme(t.id, customThemes)
+            const isDark = resolved?.palette !== 'light'
+            const selected = slide.template_id === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onChange({ ...slide, template_id: t.id })}
+                className={`group relative overflow-hidden rounded-md border text-left transition-all ${
+                  selected ? 'border-amber-400 ring-1 ring-amber-400/40' : 'border-border hover:border-primary/40'
+                }`}
+                title={`${t.name}${selected ? ' (this slide only)' : ''}`}
+              >
+                <div
+                  className="h-9 w-full flex items-end px-1.5 pb-1"
+                  style={{ background: isDark ? '#0c1a2e' : '#f6f4ef' }}
+                >
+                  <span className="h-1.5 w-8 rounded-full" style={{ background: 'hsl(var(--action))' }} />
+                </div>
+                <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">
+                  {t.name}
+                </div>
+                {selected && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-1 ring-amber-400/40" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => onApplyThemeToAll(slide.template_id || globalThemeId)}
+          className="w-full rounded-md border border-border px-2 py-1.5 text-2xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          Apply this theme to all slides
+        </button>
+      </div>
+
+      {/* Add text block */}
+      <div className="space-y-1.5">
+        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Text</p>
+        <div className="relative">
           <button
             type="button"
-            onClick={() => onChange({ ...slide, template_id: null })}
-            className={`flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-2xs transition-colors ${
-              !slide.template_id
-                ? 'border-primary bg-primary/10 text-primary font-semibold'
-                : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/40'
-            }`}
+            onClick={() => setAddOpen((o) => !o)}
+            className="w-full rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-1.5 text-2xs font-semibold text-primary hover:bg-primary/10"
           >
-            <span>Same as deck</span>
-            {!slide.template_id && <span className="text-3xs">✓ inheriting</span>}
+            <Plus className="inline h-3 w-3 -mt-0.5 mr-0.5" />
+            Add text block
           </button>
-          <div className="grid grid-cols-2 gap-1.5">
-            {allThemes.map((t) => {
-              const resolved = resolveTheme(t.id, customThemes)
-              const isDark = resolved?.palette !== 'light'
-              const selected = slide.template_id === t.id
-              return (
+          {addOpen && (
+            <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-white p-1 shadow-lg">
+              {BLOCK_ROLES.map((role) => (
                 <button
-                  key={t.id}
+                  key={role}
                   type="button"
-                  onClick={() => onChange({ ...slide, template_id: t.id })}
-                  className={`group relative overflow-hidden rounded-md border text-left transition-all ${
-                    selected ? 'border-amber-400 ring-1 ring-amber-400/40' : 'border-border hover:border-primary/40'
-                  }`}
-                  title={`${t.name}${selected ? ' (this slide only)' : ''}`}
+                  onClick={() => { onAddBlock(role); setAddOpen(false) }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted"
                 >
-                  <div
-                    className="h-9 w-full flex items-end px-1.5 pb-1"
-                    style={{ background: isDark ? '#0c1a2e' : '#f6f4ef' }}
-                  >
-                    <span
-                      className="h-1.5 w-8 rounded-full"
-                      style={{ background: '#e8843c' }}
-                    />
-                  </div>
-                  <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">
-                    {t.name}
-                  </div>
-                  {selected && (
-                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-1 ring-amber-400/40" />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => onApplyThemeToAll(slide.template_id || globalThemeId)}
-            className="w-full rounded-md border border-border px-2 py-1.5 text-2xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            Apply this theme to all slides
-          </button>
-        </div>
-
-        {/* Photo */}
-        <div className="px-3 py-2.5 space-y-2">
-          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Photo</p>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setPhotoOpen((o) => !o)}
-              className="flex w-full items-center justify-between rounded border bg-muted/40 px-2 py-1 text-2xs hover:bg-muted"
-            >
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <ImageIcon className="h-3 w-3" />
-                {photoUrl
-                  ? `Photo ${(slide.photo_idx ?? 0) + 1} of ${mediaUrls.length}`
-                  : 'No photo bound'}
-              </span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
-            </button>
-            {photoOpen && (
-              <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-white p-1.5 shadow-lg max-h-48 overflow-auto">
-                <button
-                  type="button"
-                  onClick={() => { onBindPhoto(null); setPhotoOpen(false) }}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted ${
-                    slide.photo_idx === null ? 'bg-muted' : ''
-                  }`}
-                >
-                  <span className="h-6 w-6 rounded bg-muted-foreground/20 flex items-center justify-center">
-                    <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                  <span className={`inline-block rounded-full px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide ${ROLE_META[role].chip}`}>
+                    {ROLE_META[role].label}
                   </span>
-                  No photo
                 </button>
-                {mediaUrls.map((m, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => { onBindPhoto(idx); setPhotoOpen(false) }}
-                    className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted ${
-                      slide.photo_idx === idx ? 'bg-muted' : ''
-                    }`}
-                  >
-                    <img src={m.thumbnailUrl || m.url} alt="" className="h-6 w-6 rounded object-cover" />
-                    Photo {idx + 1}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {photoUrl && (
-            <div className="flex items-center gap-2 text-2xs text-muted-foreground">
-              <span className="shrink-0">Zoom</span>
-              <input
-                type="range"
-                min="1"
-                max="3"
-                step="0.01"
-                value={slide.photo_zoom || 1}
-                onChange={(e) => onChange({ ...slide, photo_zoom: parseFloat(e.target.value) })}
-                className="flex-1 accent-primary"
-                aria-label="Photo zoom"
-              />
-              {(slide.photo_zoom > 1 || slide.photo_offset) && (
-                <button
-                  type="button"
-                  onClick={() => { const s = { ...slide }; delete s.photo_zoom; delete s.photo_offset; onChange(s) }}
-                  className="shrink-0 text-primary hover:underline"
-                >
-                  reset
-                </button>
-              )}
+              ))}
             </div>
           )}
         </div>
-
-        {/* Text blocks */}
-        <div className="px-3 py-2.5 space-y-1.5">
-          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Text blocks</p>
-          {slide.blocks.map((block, blockIdx) => (
-            <BlockRow
-              key={blockIdx}
-              block={block}
-              photoUrl={photoUrl}
-              canMoveUp={blockIdx > 0}
-              canMoveDown={blockIdx < slide.blocks.length - 1}
-              onChange={(next) => updateBlock(blockIdx, next)}
-              onMoveUp={() => moveBlock(blockIdx, -1)}
-              onMoveDown={() => moveBlock(blockIdx, 1)}
-              onRemove={() => removeBlock(blockIdx)}
-            />
-          ))}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setAddOpen((o) => !o)}
-              className="w-full rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-1.5 text-2xs font-semibold text-primary hover:bg-primary/10"
-            >
-              <Plus className="inline h-3 w-3 -mt-0.5 mr-0.5" />
-              Add text block
-            </button>
-            {addOpen && (
-              <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-white p-1 shadow-lg">
-                {BLOCK_ROLES.map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => { addBlock(role); setAddOpen(false) }}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted"
-                  >
-                    <span className={`inline-block rounded-full px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide ${ROLE_META[role].chip}`}>
-                      {ROLE_META[role].label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* AI — change the look (collapsed, bottom of inspector) */}
-        <div>
-          <ChangeTheLookPanel
-            slideCount={slideCount}
-            onThemeChange={onThemeChange}
-            onFontSizeStep={onFontSizeStep}
-            onPageNumbers={onPageNumbers}
-            onSlideCountTarget={onSlideCountTarget}
-          />
-        </div>
+        <p className="text-3xs text-muted-foreground">
+          Click any layer above, or the photo/text on the canvas, to edit it.
+        </p>
       </div>
     </div>
   )
 }
 
-// ── Slide filmstrip (compact thumbnail strip) ────────────────────────────────
+// ── PHOTO inspector body — bind + reframe (functional controls only) ─────────
 
-function SlideFilmstrip({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
+function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
+  const [photoOpen, setPhotoOpen] = useState(false)
   return (
-    <div className="bg-card p-2.5">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span>
-        <span className="text-2xs text-muted-foreground">· click to switch</span>
-        <span className="ml-auto text-2xs text-muted-foreground">{slides.length} slide{slides.length === 1 ? '' : 's'}</span>
+    <div className="space-y-3 p-3">
+      <div className="flex items-center gap-2 rounded-md bg-primary/8 px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+        <ImageIcon className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-primary">Photo</span>
+        {typeof slide.photo_idx === 'number' && (
+          <span className="ml-auto text-3xs text-muted-foreground">Photo {slide.photo_idx + 1}</span>
+        )}
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+
+      {/* Bind photo */}
+      <div className="space-y-1.5">
+        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Source</p>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setPhotoOpen((o) => !o)}
+            className="flex w-full items-center justify-between rounded border bg-muted/40 px-2 py-1.5 text-2xs hover:bg-muted"
+          >
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <ImageIcon className="h-3 w-3" />
+              {photoUrl
+                ? `Photo ${(slide.photo_idx ?? 0) + 1} of ${mediaUrls.length}`
+                : 'No photo bound'}
+            </span>
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          </button>
+          {photoOpen && (
+            <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-white p-1.5 shadow-lg max-h-48 overflow-auto">
+              <button
+                type="button"
+                onClick={() => { onBindPhoto(null); setPhotoOpen(false) }}
+                className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted ${
+                  slide.photo_idx === null ? 'bg-muted' : ''
+                }`}
+              >
+                <span className="h-6 w-6 rounded bg-muted-foreground/20 flex items-center justify-center">
+                  <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                </span>
+                No photo
+              </button>
+              {mediaUrls.map((m, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => { onBindPhoto(idx); setPhotoOpen(false) }}
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted ${
+                    slide.photo_idx === idx ? 'bg-muted' : ''
+                  }`}
+                >
+                  <img src={m.thumbnailUrl || m.url} alt="" className="h-6 w-6 rounded object-cover" />
+                  Photo {idx + 1}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reframe (zoom + reset). Drag-to-pan happens on the canvas. */}
+      {photoUrl && (
+        <div className="space-y-1.5">
+          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Frame</p>
+          <div className="flex items-center gap-2 text-2xs text-muted-foreground">
+            <span className="shrink-0">Zoom</span>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.01"
+              value={slide.photo_zoom || 1}
+              onChange={(e) => onChange({ ...slide, photo_zoom: parseFloat(e.target.value) })}
+              className="flex-1 accent-primary"
+              aria-label="Photo zoom"
+            />
+            {(slide.photo_zoom > 1 || slide.photo_offset) && (
+              <button
+                type="button"
+                onClick={() => { const s = { ...slide }; delete s.photo_zoom; delete s.photo_offset; onChange(s) }}
+                className="shrink-0 text-primary hover:underline"
+              >
+                reset
+              </button>
+            )}
+          </div>
+          <p className="text-3xs text-muted-foreground">Drag the photo on the canvas to reposition · scroll to zoom.</p>
+        </div>
+      )}
+
+      {/* Phase 3 teaser — the only intentionally non-functional line. */}
+      <p className="rounded-md border border-dashed border-border px-2 py-1.5 text-3xs text-muted-foreground">
+        AI photo grading (brightness, warmth, vibrance) arrives in the next update.
+      </p>
+    </div>
+  )
+}
+
+// ── TEXT inspector body — single block via the shared BlockRow ───────────────
+
+function TextInspector({ slide, blockIdx, photoUrl, onChange, onRemoved }) {
+  const block = slide.blocks[blockIdx]
+  if (!block) return null
+  function updateBlock(next) {
+    const blocks = slide.blocks.slice()
+    blocks[blockIdx] = next
+    onChange({ ...slide, blocks })
+  }
+  function removeBlock() {
+    const blocks = slide.blocks.slice()
+    blocks.splice(blockIdx, 1)
+    onChange({ ...slide, blocks })
+    if (onRemoved) onRemoved()
+  }
+  return (
+    <div className="space-y-3 p-3">
+      <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+        <Type className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-primary">Text layer</span>
+      </div>
+      <BlockRow
+        block={block}
+        photoUrl={photoUrl}
+        onChange={updateBlock}
+        onRemove={removeBlock}
+      />
+    </div>
+  )
+}
+
+// ── Slide rail (left vertical thumbnail column, replaces bottom filmstrip) ────
+
+function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
+  return (
+    <aside className="flex w-[92px] shrink-0 flex-col border-r bg-white">
+      <div className="flex items-center px-2 py-2 border-b">
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span>
+        <span className="ml-auto text-3xs text-muted-foreground">{slides.length}</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {slides.map((slide, idx) => {
           const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
-            ? mediaUrls[slide.photo_idx].url
+            ? (mediaUrls[slide.photo_idx].thumbnailUrl || mediaUrls[slide.photo_idx].url)
             : null
           const isActive = idx === activeIdx
-          const primaryRole = slide.blocks?.[0]?.role
-          const roleMeta = primaryRole ? (ROLE_META[primaryRole] || null) : null
           return (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => onSelect(idx)}
-              className={`shrink-0 w-[60px] rounded border text-left transition-all ${
-                isActive
-                  ? 'border-primary ring-1 ring-primary/40'
-                  : 'border-border hover:border-primary/40'
-              }`}
-            >
-              <div className="aspect-[4/5] relative overflow-hidden rounded-sm bg-muted flex items-center justify-center">
+            <div key={idx} className="flex items-start gap-1">
+              <span className="pt-0.5 text-3xs font-semibold text-muted-foreground">{idx + 1}</span>
+              <button
+                type="button"
+                onClick={() => onSelect(idx)}
+                className={`relative aspect-[4/5] w-full overflow-hidden rounded-md border transition-all ${
+                  isActive ? 'border-primary ring-1 ring-primary/40' : 'border-border hover:border-primary/40'
+                }`}
+              >
                 {photoUrl
-                  ? <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  ? <img src={photoUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
                   : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-500" />
                 }
-                <div className="absolute inset-0 bg-black/20" />
-                {roleMeta && (
-                  <span className={`absolute top-0.5 left-0.5 text-3xs font-semibold uppercase tracking-wide px-1 py-0.5 rounded ${roleMeta.chip}`}>
-                    {roleMeta.label}
-                  </span>
+                <div className="absolute inset-0 bg-black/15" />
+                {slide.template_id && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ background: 'hsl(var(--action))' }} />
                 )}
-                <span className="absolute bottom-0.5 right-0.5 text-3xs text-white/70 font-medium">
-                  {idx + 1}
-                </span>
-              </div>
-            </button>
+              </button>
+            </div>
           )
         })}
         <button
           type="button"
           onClick={onAdd}
-          className="shrink-0 w-[60px] aspect-[4/5] rounded border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+          className="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed border-muted-foreground/30 py-3 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
         >
           <Plus className="h-4 w-4" />
           <span className="text-3xs mt-0.5">Add</span>
         </button>
       </div>
-    </div>
+    </aside>
   )
 }
 
@@ -876,105 +921,6 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
   )
 }
 
-// ── Change the look panel (collapsed accordion) ───────────────────────────────
-
-const CHANGE_THE_LOOK_CHIPS = [
-  { id: 'bigger', label: 'Bigger headlines' },
-  { id: 'pages', label: 'Add page numbers' },
-  { id: 'tighten', label: 'Tighten slides' },
-  { id: 'brand', label: 'Match brand book' },
-]
-
-function ChangeTheLookPanel({ slideCount, onThemeChange, onFontSizeStep, onPageNumbers, onSlideCountTarget }) {
-  const [open, setOpen] = useState(false)
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  async function fireRestyle(instruction) {
-    if (!instruction.trim() || loading) return
-    setLoading(true)
-    try {
-      const result = await apiFetch('/api/editorial/restyle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          surface: 'carousel',
-          instruction: instruction.trim(),
-          slideCount,
-        }),
-      })
-      const changes = result?.changes || {}
-      if (changes.themeId && onThemeChange) onThemeChange(changes.themeId)
-      if (typeof changes.fontSizeStep === 'number' && onFontSizeStep) onFontSizeStep(changes.fontSizeStep)
-      if (changes.addPageNumbers && onPageNumbers) onPageNumbers(true)
-      if (typeof changes.slideCountTarget === 'number' && onSlideCountTarget) onSlideCountTarget(changes.slideCountTarget)
-      toast.success(result?.explanation || 'Done!')
-    } catch (e) {
-      toast.error(`Could not apply: ${e?.message || 'unknown error'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="rounded-md border border-primary/30 bg-card overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-2.5 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
-      >
-        <Wand2 className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-xs font-semibold text-foreground">Change the look</span>
-        <span className="text-2xs text-muted-foreground">· works across all slides</span>
-        {loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
-        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="px-3 pb-3 pt-2 space-y-2 border-t border-border/50">
-          <div className="flex flex-wrap gap-1.5">
-            {CHANGE_THE_LOOK_CHIPS.map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                disabled={loading}
-                onClick={() => fireRestyle(chip.label)}
-                className="px-2.5 py-1 rounded-full border border-border text-2xs text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && input.trim()) {
-                  fireRestyle(input)
-                  setInput('')
-                }
-              }}
-              placeholder="e.g. bigger headlines, brand navy, add page numbers…"
-              className="flex-1 px-2.5 py-1.5 rounded-md border border-input bg-background text-xs outline-none focus:ring-1 focus:ring-primary/50"
-              disabled={loading}
-            />
-            <button
-              type="button"
-              disabled={loading || !input.trim()}
-              onClick={() => { fireRestyle(input); setInput('') }}
-              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Ask
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
 
 export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode }) {
@@ -999,12 +945,18 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
+  // Contextual selection driving the right inspector. One of:
+  //   { type: 'slide' } | { type: 'photo' } | { type: 'text', idx }
+  // Reset to slide whenever the active slide changes (see goToSlide).
+  const [selection, setSelection] = useState({ type: 'slide' })
 
   useEffect(() => {
     const next = seedSlides()
     setSlides(next)
     setSavedSlidesJson(JSON.stringify(next))
     setThemeId(piece?.photo_template_id || null)
+    setActiveSlideIdx(0)
+    setSelection({ type: 'slide' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piece?.id, JSON.stringify(piece?.slides)])
 
@@ -1012,9 +964,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const { data: allThemes = [] } = usePhotoTemplates()
   const customThemes = allThemes.filter((t) => t.custom)
   const theme = resolveTheme(themeId, customThemes)
-
-  // Global font size step applied on top of the active template (0 = template default)
-  const [_globalFontSizeStep, setGlobalFontSizeStep] = useState(0)
 
   const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.photo_template_id || null)
   const updateItem = useUpdateContentItem()
@@ -1038,6 +987,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const next = slides.filter((_, i) => i !== idx)
     setSlides(next)
     setActiveSlideIdx((prev) => Math.min(prev, Math.max(0, next.length - 1)))
+    setSelection({ type: 'slide' })
     // Delete is recoverable until the next action — an undo toast instead of a
     // silent, instant, soon-permanent removal of the slide's block text.
     toast('Slide deleted', {
@@ -1055,14 +1005,23 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     // New slide binds to the first un-bound photo, falling back to last photo
     const usedIdxs = new Set(slides.map((s) => s.photo_idx).filter((p) => typeof p === 'number'))
     const nextPhoto = mediaUrls.findIndex((_, i) => !usedIdxs.has(i))
-    setSlides(slides.concat([{
+    const next = slides.concat([{
       photo_idx: nextPhoto >= 0 ? nextPhoto : (mediaUrls.length > 0 ? mediaUrls.length - 1 : null),
       template: 'custom',
       blocks: [],
-    }]))
+    }])
+    setSlides(next)
+    setActiveSlideIdx(next.length - 1)
+    setSelection({ type: 'slide' })
   }
   function bindPhoto(idx, photoIdx) {
     updateSlide(idx, { ...slides[idx], photo_idx: photoIdx })
+  }
+
+  // Switch the active slide and reset the contextual selection to the slide.
+  function goToSlide(idx) {
+    setActiveSlideIdx(idx)
+    setSelection({ type: 'slide' })
   }
 
   // "Apply this theme to all slides" — set the deck theme to the chosen one and
@@ -1072,37 +1031,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setThemeId(id)
     setSlides((prev) => prev.map((s) => (s.template_id ? { ...s, template_id: null } : s)))
     toast.success('Theme applied to all slides')
-  }
-
-  // ChangeTheLookPanel callbacks
-  function handleThemeChange(newThemeId) {
-    setThemeId(newThemeId || null)
-  }
-  function handleFontSizeStep(step) {
-    setGlobalFontSizeStep((prev) => Math.max(-2, Math.min(2, prev + step)))
-  }
-  function handlePageNumbers(enabled) {
-    // Mark each slide to show page numbers by adding a 'page' block if not present
-    setSlides((prev) => prev.map((s) => {
-      const hasPage = s.blocks.some((b) => b.role === 'page')
-      if (enabled && !hasPage) {
-        return { ...s, blocks: [...s.blocks, emptyBlockFor(s.template, 'page')] }
-      }
-      return s
-    }))
-  }
-  function handleSlideCountTarget(target) {
-    setSlides((prev) => {
-      if (prev.length <= target) return prev
-      // Keep first slide (hook) and last slide (CTA), trim body slides from the middle
-      const first = prev[0]
-      const last = prev[prev.length - 1]
-      if (target <= 1) return [first]
-      if (target === 2) return [first, last]
-      const body = prev.slice(1, prev.length - 1)
-      const keep = body.slice(0, target - 2)
-      return [first, ...keep, last]
-    })
   }
 
   async function handleSave() {
@@ -1275,30 +1203,41 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         </div>
       </header>
 
-      {/* ── WORK AREA — canvas (dominant) + right inspector ──────────────── */}
+      {/* ── WORK AREA — left rail + scaling canvas + contextual inspector ── */}
       <div className="flex min-h-0 flex-1">
-        {/* Active slide canvas */}
-        <section className="relative flex min-w-0 flex-1 flex-col items-center justify-center gap-3 overflow-auto p-6" style={{ background: 'hsl(220 18% 94%)' }}>
-          <div className="flex items-center gap-2 text-2xs text-muted-foreground">
+        {/* Left vertical slide rail (replaces the old bottom filmstrip) */}
+        <SlideRail
+          slides={slides}
+          activeIdx={activeSlideIdx}
+          mediaUrls={mediaUrls}
+          onSelect={goToSlide}
+          onAdd={addSlide}
+        />
+
+        {/* Canvas stage — fills the available height, scales to fit */}
+        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(220 16% 91%)' }}>
+          {/* Slide counter + safe-zone toggle, floating over the stage */}
+          <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
             <span className="font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
-            <span>·</span>
             <label className="flex cursor-pointer items-center gap-1">
               <input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} className="accent-primary" />
               safe zones
             </label>
-            <span>·</span>
-            <span>4:5</span>
           </div>
 
           {activeSlide ? (
-            <div className="relative" style={{ width: 'min(360px, 60vh)' }}>
+            <div
+              className={`relative aspect-[4/5] rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
+              style={{ height: 'min(calc(100vh - 140px), calc((100vw - 480px) * 1.25))' }}
+            >
               <SlidePreview
                 slide={activeSlide}
                 photoUrl={activePhotoUrl}
                 brandStyle={brandStyle}
                 theme={activeTheme}
                 onReframe={(next) => updateSlide(activeSlideIdx, next)}
-                className={`w-full aspect-[4/5] rounded-xl border bg-muted shadow-lg ${activePhotoUrl ? 'cursor-move' : ''}`}
+                onSelectPhoto={() => setSelection({ type: 'photo' })}
+                className={`h-full w-full rounded-xl border bg-muted shadow-lg ${activePhotoUrl ? 'cursor-move' : 'cursor-pointer'}`}
               />
               {safeZones && (
                 <div className="pointer-events-none absolute inset-0 rounded-xl">
@@ -1311,56 +1250,69 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           ) : (
             <p className="text-sm text-muted-foreground">No slides yet</p>
           )}
-          <p className="text-3xs text-muted-foreground">Drag the photo to reposition · scroll to zoom · edit text in the panel →</p>
         </section>
 
-        {/* Right inspector */}
-        <aside className="flex w-80 shrink-0 flex-col border-l bg-white overflow-hidden">
+        {/* Right contextual inspector: Layers list (always) + selection body */}
+        <aside className="flex w-[300px] shrink-0 flex-col border-l bg-white overflow-hidden">
           {activeSlide ? (
-            <ActiveSlideInspector
-              slide={activeSlide}
-              slideIdx={activeSlideIdx}
-              totalSlides={slides.length}
-              photoUrl={activePhotoUrl}
-              mediaUrls={mediaUrls}
-              allThemes={allThemes}
-              customThemes={customThemes}
-              globalThemeId={themeId}
-              onChange={(next) => updateSlide(activeSlideIdx, next)}
-              onRemove={() => removeSlide(activeSlideIdx)}
-              onMoveLeft={() => {
-                moveSlide(activeSlideIdx, -1)
-                setActiveSlideIdx((i) => Math.max(0, i - 1))
-              }}
-              onMoveRight={() => {
-                moveSlide(activeSlideIdx, 1)
-                setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))
-              }}
-              onBindPhoto={(photoIdx) => bindPhoto(activeSlideIdx, photoIdx)}
-              onApplyThemeToAll={handleApplyThemeToAll}
-              slideCount={slides.length}
-              onThemeChange={handleThemeChange}
-              onFontSizeStep={handleFontSizeStep}
-              onPageNumbers={handlePageNumbers}
-              onSlideCountTarget={handleSlideCountTarget}
-            />
+            <>
+              <LayersList
+                slide={activeSlide}
+                mediaUrls={mediaUrls}
+                selection={selection}
+                onSelect={setSelection}
+              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {selection.type === 'photo' ? (
+                  <PhotoInspector
+                    slide={activeSlide}
+                    photoUrl={activePhotoUrl}
+                    mediaUrls={mediaUrls}
+                    onChange={(next) => updateSlide(activeSlideIdx, next)}
+                    onBindPhoto={(photoIdx) => bindPhoto(activeSlideIdx, photoIdx)}
+                  />
+                ) : selection.type === 'text' ? (
+                  <TextInspector
+                    slide={activeSlide}
+                    blockIdx={selection.idx}
+                    photoUrl={activePhotoUrl}
+                    onChange={(next) => updateSlide(activeSlideIdx, next)}
+                    onRemoved={() => setSelection({ type: 'slide' })}
+                  />
+                ) : (
+                  <SlideInspector
+                    slide={activeSlide}
+                    slideIdx={activeSlideIdx}
+                    totalSlides={slides.length}
+                    allThemes={allThemes}
+                    customThemes={customThemes}
+                    globalThemeId={themeId}
+                    onChange={(next) => updateSlide(activeSlideIdx, next)}
+                    onApplyThemeToAll={handleApplyThemeToAll}
+                    onAddBlock={(role) => {
+                      const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, role))
+                      updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                      setSelection({ type: 'text', idx: blocks.length - 1 })
+                    }}
+                    onMoveLeft={() => {
+                      moveSlide(activeSlideIdx, -1)
+                      setActiveSlideIdx((i) => Math.max(0, i - 1))
+                    }}
+                    onMoveRight={() => {
+                      moveSlide(activeSlideIdx, 1)
+                      setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))
+                    }}
+                    onRemove={() => removeSlide(activeSlideIdx)}
+                  />
+                )}
+              </div>
+            </>
           ) : (
             <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground p-4">
               Add a slide to start editing
             </div>
           )}
         </aside>
-      </div>
-
-      {/* ── BOTTOM filmstrip navigator ───────────────────────────────────── */}
-      <div className="border-t bg-white shrink-0">
-        <SlideFilmstrip
-          slides={slides}
-          activeIdx={activeSlideIdx}
-          mediaUrls={mediaUrls}
-          onSelect={(idx) => setActiveSlideIdx(idx)}
-          onAdd={addSlide}
-        />
       </div>
     </div>
   )
