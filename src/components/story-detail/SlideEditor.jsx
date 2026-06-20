@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
@@ -212,7 +212,8 @@ function blockFraction(block, theme) {
   let y = row === 'top' ? 0.12 : row === 'bottom' ? 0.88 : 0.5
   const layout = theme?.layout, palette = theme?.palette
   const zone = layout === 'split' ? [0.70, 0.95]
-    : layout === 'badge' ? (palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93]) : null
+    : layout === 'badge' ? (palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93])
+    : layout === 'photo' ? [0.58, 0.92] : null
   if (zone && WHOOP_CONTENT.has(block.role)) {
     y = row === 'top' ? zone[0] : row === 'bottom' ? zone[1] : (zone[0] + zone[1]) / 2
   }
@@ -1141,9 +1142,9 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
   )
 }
 
-// ── Full edge-to-edge preview overlay ────────────────────────────────────────
+// ── Phone-mockup preview overlay (renders the REAL slide) ────────────────────
 
-function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
+function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId, customThemes, workspace, caption, onClose, onNav }) {
   // Keyboard navigation + ESC
   useEffect(() => {
     function handleKey(e) {
@@ -1158,22 +1159,33 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
   const slide = slides[activeIdx]
   if (!slide) return null
 
+  // Render the REAL slide (renderFreeformSlide via MiniSlideCanvas) inside a
+  // phone frame — "how people actually see it", and identical to what publishes.
+  // Replaces the old fullscreen CSS approximation, which drew a DIFFERENT look
+  // from the canvas/bake (a preview != published gap).
   const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
     ? photoSourceUrl(mediaUrls[slide.photo_idx])
     : null
-  const primaryBlock = slide.blocks?.[0]
-  const primaryRole = primaryBlock?.role
-  const roleMeta = primaryRole ? (ROLE_META[primaryRole] || null) : null
+  const theme = resolveTheme(slide.template_id || themeId, customThemes)
+  const handle = workspace?.slug || workspace?.display_name || 'yourbrand'
+  const text = (caption || '').replace(/\s+/g, ' ').trim()
+  const snippet = text.slice(0, 90)
+  // Re-render the canvas when anything that affects the pixels changes.
+  const renderKey = [
+    activeIdx, photoUrl || '', slide.template_id || themeId || '',
+    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}`).join('~'),
+    slide.photo_zoom || 1,
+    slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
+    slide.grade ? JSON.stringify(slide.grade) : '',
+  ].join('|')
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 p-6">
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3">
-        <Layers className="h-4 w-4 text-white/70" />
-        <span className="text-sm font-medium text-white/90">Full preview</span>
-        <span className="text-xs text-white/50">
-          {activeIdx + 1} / {slides.length}
-        </span>
+        <Smartphone className="h-4 w-4 text-white/70" />
+        <span className="text-sm font-medium text-white/90">Preview — how it’ll appear</span>
+        <span className="text-xs text-white/50">{activeIdx + 1} / {slides.length}</span>
         <button
           type="button"
           onClick={onClose}
@@ -1184,82 +1196,74 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, onClose, onNav }) {
         </button>
       </div>
 
-      {/* Main slide area */}
-      <div className="flex-1 relative flex items-center justify-center">
-        {/* Background photo */}
-        {photoUrl && (
-          <img
-            src={photoUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-70"
-          />
-        )}
-        {!photoUrl && (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-600" />
-        )}
-        <div className="absolute inset-0 bg-black/40" />
-
-        {/* Prev / next */}
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => onNav(-1)}
           disabled={activeIdx === 0}
-          className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-30 transition-colors"
+          className="h-12 w-12 shrink-0 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-20 transition-colors"
         >
           <ChevronLeft className="h-7 w-7" />
         </button>
+
+        {/* iPhone frame with IG chrome + the real rendered slide */}
+        <div className="relative rounded-[2.5rem] border-[10px] border-black bg-black shadow-2xl" style={{ width: 320 }}>
+          <div className="absolute left-1/2 top-0 z-20 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-black" />
+          <div className="overflow-hidden rounded-[1.9rem] bg-white">
+            {/* IG header */}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 p-[2px]">
+                <div className="h-full w-full rounded-full bg-white p-[1.5px]"><div className="h-full w-full rounded-full bg-muted" /></div>
+              </div>
+              <span className="text-2xs font-semibold text-foreground">{handle}</span>
+            </div>
+            {/* The real slide */}
+            <div className="relative aspect-[4/5] w-full bg-muted">
+              <MiniSlideCanvas
+                renderSlide={slide}
+                photoUrl={photoUrl}
+                brandStyle={brandStyle}
+                theme={theme}
+                renderKey={renderKey}
+              />
+              {slides.length > 1 && (
+                <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-3xs font-semibold text-white">{activeIdx + 1}/{slides.length}</span>
+              )}
+            </div>
+            {/* IG actions */}
+            <div className="flex items-center gap-4 px-3 py-2 text-foreground">
+              <Heart className="h-5 w-5" />
+              <MessageCircle className="h-5 w-5" />
+              <Send className="h-5 w-5" />
+              <Bookmark className="ml-auto h-5 w-5" />
+            </div>
+            {slides.length > 1 && (
+              <div className="flex justify-center gap-1 pb-1">
+                {slides.map((_, i) => (
+                  <span key={i} className={`h-1.5 w-1.5 rounded-full ${i === activeIdx ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                ))}
+              </div>
+            )}
+            {snippet && (
+              <p className="px-3 pb-3 pt-1 text-2xs leading-snug text-foreground">
+                <span className="font-semibold">{handle}</span> {snippet}{text.length > 90 ? '… ' : ' '}
+                {text.length > 90 && <span className="text-muted-foreground">more</span>}
+              </p>
+            )}
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={() => onNav(1)}
           disabled={activeIdx === slides.length - 1}
-          className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-30 transition-colors"
+          className="h-12 w-12 shrink-0 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-20 transition-colors"
         >
           <ChevronRight className="h-7 w-7" />
         </button>
-
-        {/* Slide role badge */}
-        {roleMeta && (
-          <span className="absolute top-16 left-1/2 -translate-x-1/2 text-xs uppercase tracking-widest font-semibold px-3 py-1 rounded-full bg-white/15 text-white/90">
-            {roleMeta.label}
-          </span>
-        )}
-
-        {/* Text blocks */}
-        <div className="relative z-10 text-center px-12 max-w-3xl w-full space-y-3">
-          {slide.blocks?.length > 0
-            ? slide.blocks.map((block, bi) => (
-                <p
-                  key={bi}
-                  className={`font-semibold leading-tight text-white ${
-                    bi === 0 ? 'text-4xl md:text-5xl' : 'text-lg md:text-xl opacity-90'
-                  }`}
-                >
-                  {block.text || <span className="opacity-40 italic">No text</span>}
-                </p>
-              ))
-            : <p className="text-2xl text-white/50 italic">Slide {activeIdx + 1}</p>
-          }
-        </div>
       </div>
 
-      {/* Bottom: dots */}
-      <div className="shrink-0 px-5 pb-6 pt-3 flex flex-col items-center gap-2">
-        <div className="flex gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onNav(i - activeIdx)}
-              className={`rounded-full transition-all ${
-                i === activeIdx
-                  ? 'w-5 h-2 bg-white'
-                  : 'w-2 h-2 bg-white/40 hover:bg-white/60'
-              }`}
-            />
-          ))}
-        </div>
-        <p className="text-xs text-white/40">← → to navigate · Esc to close</p>
-      </div>
+      <p className="mt-4 text-xs text-white/45">← → to navigate · Esc to close · the real rendered slide — exactly what publishes</p>
     </div>
   )
 }
@@ -1488,6 +1492,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           slides={slides}
           activeIdx={activeSlideIdx}
           mediaUrls={mediaUrls}
+          brandStyle={brandStyle}
+          themeId={themeId}
+          customThemes={customThemes}
+          workspace={workspace}
+          caption={piece?.content}
           onClose={() => setFullPreviewOpen(false)}
           onNav={(delta) => setActiveSlideIdx((prev) => Math.max(0, Math.min(slides.length - 1, prev + delta)))}
         />

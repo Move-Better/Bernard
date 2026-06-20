@@ -608,6 +608,7 @@ const WHOOP_CONTENT_ROLES = new Set(['hook', 'body', 'caption', 'cta'])
 function whoopTextZone(layout, palette) {
   if (layout === 'split') return [0.70, 0.95]                  // navy/sage panel (starts 0.67)
   if (layout === 'badge') return palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93]
+  if (layout === 'photo') return [0.58, 0.92]                  // full-bleed: anchor text low, on the bottom scrim (U2.1c)
   return null                                                  // claim: full solid ground, leave as-is
 }
 
