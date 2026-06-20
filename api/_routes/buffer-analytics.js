@@ -17,6 +17,7 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { getCredential } from '../_lib/getCredential.js'
 import { fetchPostStats } from '../_lib/bufferPostStats.js'
+import { BundlePublisher } from '../_lib/social/index.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
 
   // Fetch the content item — must belong to this workspace
   const itemRes = await sb(
-    `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}&select=id,buffer_update_id,buffer_metrics,buffer_metrics_fetched_at&limit=1`,
+    `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}&select=id,platform,buffer_update_id,buffer_metrics,buffer_metrics_fetched_at&limit=1`,
   )
   if (!itemRes.ok) return res.status(500).json({ error: 'Database error' })
   const items = await itemRes.json().catch(() => [])
@@ -92,6 +93,12 @@ export default async function handler(req, res) {
         cached: true,
       })
     }
+  }
+
+  // Bundle.social workspaces read real engagement through the bundle adapter;
+  // Buffer (the default) falls through to the unchanged path below.
+  if ((ws.publish_provider || 'buffer') === 'bundle') {
+    return handleBundleMetrics(res, ws, contentItemId, item, force)
   }
 
   // Fetch fresh from Buffer
@@ -134,4 +141,49 @@ export default async function handler(req, res) {
   }).catch((e) => console.error('[buffer-analytics] cache write failed:', e?.message))
 
   return res.status(200).json({ metrics, fetchedAt, cached: false })
+}
+
+// Map bundle's normalized engagement set onto the Buffer-shaped object the UI
+// renders (BufferMetricsRow: reach, engagement, clicks, impressions, shares).
+// bundle reports no click metric, so clicks is always 0.
+function mapBundleMetrics(m = {}) {
+  const num = (v) => (typeof v === 'number' ? v : 0)
+  return {
+    clicks: 0,
+    reach: num(m.impressionsUnique),
+    impressions: num(m.impressions),
+    favorites: num(m.likes),
+    mentions: 0,
+    shares: num(m.shares),
+    comments: num(m.comments),
+    engagement: num(m.likes) + num(m.comments) + num(m.shares) + num(m.saves),
+  }
+}
+
+// Bundle.social engagement read, cached on the row like the Buffer path. Falls
+// back to cached metrics on error so a transient bundle hiccup doesn't blank the
+// chips. platformType derives from the item's platform (BundlePublisher maps it).
+async function handleBundleMetrics(res, ws, contentItemId, item, force) {
+  try {
+    const publisher = new BundlePublisher(ws)
+    const result = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force })
+    const metrics = mapBundleMetrics(result?.metrics)
+    const fetchedAt = new Date().toISOString()
+    sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ buffer_metrics: metrics, buffer_metrics_fetched_at: fetchedAt }),
+    }).catch((e) => console.error('[buffer-analytics/bundle] cache write failed:', e?.message))
+    return res.status(200).json({ metrics, fetchedAt, cached: false })
+  } catch (e) {
+    console.error('[buffer-analytics/bundle] failed:', e?.stack || e?.message)
+    if (item.buffer_metrics) {
+      return res.status(200).json({
+        metrics: item.buffer_metrics,
+        fetchedAt: item.buffer_metrics_fetched_at,
+        cached: true,
+        warning: 'bundle analytics error; returning cached metrics',
+      })
+    }
+    return res.status(200).json({ metrics: null, reason: 'bundle_analytics_error' })
+  }
 }
