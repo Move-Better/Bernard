@@ -466,61 +466,84 @@ const SHADOW_LEVELS = {
 }
 
 // Per-role typography defaults (no theme). Sizes tuned for 1080×1080 canvas.
-function roleTypography(role, brandStyle, themeBlock) {
+// Per-role defaults, decomposed into parts so per-block style overrides can be
+// applied cleanly. Assembling `${italic} ${weight} ${size}px ${family}` from
+// these reproduces the original baseFont strings exactly (byte-identical render
+// when there are no theme or block overrides).
+const ROLE_TYPO = {
+  hook:        { weight: 800, size: 84, family: 'heading', lineH: 96, color: 'white',                  uppercase: true,  maxLines: 4, shadow: 'medium', maxWidthFrac: 0.86, italic: false, pill: false },
+  body:        { weight: 600, size: 44, family: 'body',    lineH: 56, color: 'white',                  uppercase: false, maxLines: 5, shadow: 'medium', maxWidthFrac: 0.86, italic: false, pill: false },
+  caption:     { weight: 500, size: 36, family: 'body',    lineH: 46, color: 'rgba(255,255,255,0.92)', uppercase: false, maxLines: 3, shadow: 'medium', maxWidthFrac: 0.86, italic: true,  pill: false },
+  cta:         { weight: 700, size: 42, family: 'heading', lineH: 0,  color: 'white',                  uppercase: false, maxLines: 1, shadow: 'none',   maxWidthFrac: 0.82, italic: false, pill: true  },
+  attribution: { weight: 500, size: 30, family: 'body',    lineH: 38, color: 'rgba(255,255,255,0.9)',  uppercase: false, maxLines: 2, shadow: 'soft',   maxWidthFrac: 0.70, italic: false, pill: false },
+  page:        { weight: 600, size: 28, family: 'body',    lineH: 34, color: 'rgba(255,255,255,0.85)', uppercase: false, maxLines: 1, shadow: 'soft',   maxWidthFrac: 0.30, italic: false, pill: false },
+}
+const ROLE_TYPO_DEFAULT = { weight: 500, size: 36, family: 'body', lineH: 46, color: 'white', uppercase: false, maxLines: 3, shadow: 'medium', maxWidthFrac: 0.86, italic: false, pill: false }
+
+// Extract a per-block style override from a slide block (size/color/weight/
+// uppercase/font). Null when the block carries no overrides. Precedence in
+// roleTypography is block > theme > role default.
+function blockStyleOf(block) {
+  if (!block) return null
+  const s = {}
+  if (Number.isFinite(block.fontScale) && block.fontScale > 0 && block.fontScale !== 1) s.fontScale = block.fontScale
+  if (typeof block.color === 'string' && block.color) s.color = block.color
+  if (block.fontWeight) s.fontWeight = block.fontWeight
+  if (typeof block.uppercase === 'boolean') s.uppercase = block.uppercase
+  if (block.font === 'heading' || block.font === 'body') s.font = block.font
+  return Object.keys(s).length ? s : null
+}
+
+function roleTypography(role, brandStyle, themeBlock, blockStyle = null) {
   const { heading, body } = brandFonts(brandStyle)
+  const d = ROLE_TYPO[role] || ROLE_TYPO_DEFAULT
+  const famOf = (f) => (f === 'heading' ? heading : body)
+  const pill = d.pill
 
-  // Base defaults by role
-  let baseFont, lineH, color, uppercase, maxLines, shadowLevel, maxWidthFrac, pill
-  switch (role) {
-    case 'hook':
-      baseFont = `800 84px ${heading}`; lineH = 96; color = 'white'; uppercase = true;
-      maxLines = 4; shadowLevel = 'medium'; maxWidthFrac = 0.86; break
-    case 'body':
-      baseFont = `600 44px ${body}`; lineH = 56; color = 'white'; uppercase = false;
-      maxLines = 5; shadowLevel = 'medium'; maxWidthFrac = 0.86; break
-    case 'caption':
-      baseFont = `italic 500 36px ${body}`; lineH = 46; color = 'rgba(255,255,255,0.92)'; uppercase = false;
-      maxLines = 3; shadowLevel = 'medium'; maxWidthFrac = 0.86; break
-    case 'cta':
-      baseFont = `700 42px ${heading}`; lineH = 0; color = 'white'; uppercase = false;
-      maxLines = 1; shadowLevel = 'none'; maxWidthFrac = 0.82; pill = true; break
-    case 'attribution':
-      baseFont = `500 30px ${body}`; lineH = 38; color = 'rgba(255,255,255,0.9)'; uppercase = false;
-      maxLines = 2; shadowLevel = 'soft'; maxWidthFrac = 0.70; break
-    case 'page':
-      baseFont = `600 28px ${body}`; lineH = 34; color = 'rgba(255,255,255,0.85)'; uppercase = false;
-      maxLines = 1; shadowLevel = 'soft'; maxWidthFrac = 0.30; break
-    default:
-      baseFont = `500 36px ${body}`; lineH = 46; color = 'white'; uppercase = false;
-      maxLines = 3; shadowLevel = 'medium'; maxWidthFrac = 0.86
+  // 1) Role defaults
+  let weight = d.weight, size = d.size, family = famOf(d.family)
+  let color = d.color, uppercase = d.uppercase, italic = d.italic
+  let lineH = d.lineH, shadowLevel = d.shadow, bg = pill ? 'pill' : 'none', bgColor = null
+
+  // 2) Theme overrides (matches the pre-refactor theme branch exactly)
+  if (themeBlock) {
+    family = famOf(['hook', 'cta'].includes(role) ? 'heading' : 'body')
+    size = FONT_SIZE_PX[themeBlock.fontSize] ?? (pill ? 42 : 44)
+    weight = FONT_WEIGHT_CSS[themeBlock.fontWeight] ?? '600'
+    color = themeBlock.color ?? color
+    uppercase = themeBlock.uppercase ?? uppercase
+    shadowLevel = themeBlock.shadow ?? 'medium'
+    bg = themeBlock.background ?? (pill ? 'pill' : 'none')
+    bgColor = themeBlock.bgColor ?? null
+    italic = false // the theme path never applied italic
+    lineH = Math.round(size * 1.18)
   }
 
-  if (!themeBlock) {
-    return { font: baseFont, lineH, color, uppercase, maxLines,
-             shadow: shadowLevel !== 'none', shadowLevel, maxWidthFrac,
-             pill: !!pill, background: pill ? 'pill' : 'none', bgColor: null }
+  // 3) Per-block overrides win (the editor's Text-layer styling)
+  if (blockStyle) {
+    if (blockStyle.font === 'heading') family = heading
+    else if (blockStyle.font === 'body') family = body
+    if (Number.isFinite(blockStyle.fontScale) && blockStyle.fontScale > 0) {
+      size = Math.round(size * blockStyle.fontScale)
+      lineH = Math.round(size * 1.18)
+    }
+    if (blockStyle.fontWeight) weight = blockStyle.fontWeight
+    if (blockStyle.color) color = blockStyle.color
+    if (typeof blockStyle.uppercase === 'boolean') uppercase = blockStyle.uppercase
   }
-
-  // Apply theme overrides
-  const family = ['hook', 'cta'].includes(role) ? heading : body
-  const sz  = FONT_SIZE_PX[themeBlock.fontSize] ?? (pill ? 42 : 44)
-  const wt  = FONT_WEIGHT_CSS[themeBlock.fontWeight] ?? '600'
-  const font = `${wt} ${sz}px ${family}`
-  const tShadow = themeBlock.shadow ?? 'medium'
-  const bg      = themeBlock.background ?? (pill ? 'pill' : 'none')
 
   return {
-    font,
-    lineH: Math.round(sz * 1.18),
-    color:        themeBlock.color ?? color,
-    uppercase:    themeBlock.uppercase ?? uppercase,
-    maxLines,
-    shadow:       tShadow !== 'none',
-    shadowLevel:  tShadow,
-    maxWidthFrac,
-    pill:         bg === 'pill',
-    background:   bg,
-    bgColor:      themeBlock.bgColor ?? null,
+    font: `${italic ? 'italic ' : ''}${weight} ${size}px ${family}`,
+    lineH,
+    color,
+    uppercase,
+    maxLines: d.maxLines,
+    shadow: shadowLevel !== 'none',
+    shadowLevel,
+    maxWidthFrac: d.maxWidthFrac,
+    pill: bg === 'pill',
+    background: bg,
+    bgColor,
   }
 }
 
@@ -589,7 +612,7 @@ function whoopTextZone(layout, palette) {
 
 function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null, W = SIZE, H = SIZE) {
   const role = BLOCK_ROLES.includes(block.role) ? block.role : 'body'
-  const typo = roleTypography(role, brandStyle, themeBlock)
+  const typo = roleTypography(role, brandStyle, themeBlock, blockStyleOf(block))
   const raw = (block.text || '').trim()
   if (!raw) return
   const display = typo.uppercase ? raw.toUpperCase() : raw
@@ -854,7 +877,7 @@ function stackContentBottom(ctx, blocks, brandStyle, theme, W, H) {
 
   const gap = Math.round(H * 0.018)
   const measured = content.map((b) => {
-    const typo = roleTypography(b.role, brandStyle, theme?.blocks?.[b.role] ?? null)
+    const typo = roleTypography(b.role, brandStyle, theme?.blocks?.[b.role] ?? null, blockStyleOf(b))
     if (typo.pill || typo.background === 'pill') return { b, h: 80 }
     ctx.font = typo.font
     const display = typo.uppercase ? (b.text || '').toUpperCase() : (b.text || '')

@@ -51,6 +51,13 @@ function normalizeSlide(s, idx) {
           // Per-block wrap width (fraction of canvas), set by the editor's resize
           // handle. Optional — renderer falls back to the role default when absent.
           ...(Number.isFinite(b?.width) ? { width: b.width } : {}),
+          // Per-block text styling (Text-layer inspector). All optional; absent =
+          // inherit the role + theme. Renderer precedence: block > theme > role.
+          ...(Number.isFinite(b?.fontScale) && b.fontScale > 0 && b.fontScale !== 1 ? { fontScale: b.fontScale } : {}),
+          ...(typeof b?.color === 'string' && b.color ? { color: b.color } : {}),
+          ...(b?.fontWeight ? { fontWeight: b.fontWeight } : {}),
+          ...(typeof b?.uppercase === 'boolean' ? { uppercase: b.uppercase } : {}),
+          ...(b?.font === 'heading' || b?.font === 'body' ? { font: b.font } : {}),
         }))
       : [],
   }
@@ -632,6 +639,108 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
 
 // ── TEXT inspector body — single block via the shared BlockRow ───────────────
 
+// Per-block text styling — Size / Colour / Weight / Case / Font. All optional;
+// "Auto" clears the override so the block inherits the role + theme (renderer
+// precedence: block > theme > role). The swatch palette is the brand set.
+const TEXT_COLORS = [
+  { label: 'White',  value: '#ffffff' },
+  { label: 'Navy',   value: '#0c1a2e' },
+  { label: 'Sage',   value: '#83957c' },
+  { label: 'Orange', value: '#e8843c' },
+  { label: 'Paper',  value: '#f6f4ef' },
+  { label: 'Black',  value: '#111111' },
+]
+function SegRow({ label, options, value, onPick }) {
+  return (
+    <div>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <div className="flex gap-1">
+        {options.map((o) => {
+          const active = value === o.value || (value == null && o.value == null)
+          return (
+            <button
+              key={o.label}
+              type="button"
+              onClick={() => onPick(o.value)}
+              className={`flex-1 rounded-md border px-1.5 py-1 text-2xs font-medium transition-colors ${
+                active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
+              }`}
+            >
+              {o.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+function TextStyleControls({ block, onSet }) {
+  const scale = Number.isFinite(block.fontScale) && block.fontScale > 0 ? block.fontScale : 1
+  return (
+    <div className="space-y-2.5 rounded-md border border-border/60 p-2.5">
+      <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Style</p>
+
+      {/* Size */}
+      <div>
+        <div className="mb-0.5 flex justify-between text-3xs text-muted-foreground">
+          <span>Size</span><span>{Math.round(scale * 100)}%</span>
+        </div>
+        <input
+          type="range" min="0.6" max="1.8" step="0.05" value={scale}
+          onChange={(e) => onSet('fontScale', parseFloat(e.target.value))}
+          className="w-full accent-primary" aria-label="Text size"
+        />
+      </div>
+
+      {/* Colour */}
+      <div>
+        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Colour</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button" onClick={() => onSet('color', null)} title="Auto (theme)"
+            className={`h-6 rounded px-1.5 text-3xs font-medium ${!block.color ? 'bg-primary/10 text-primary ring-1 ring-primary' : 'bg-muted text-muted-foreground'}`}
+          >Auto</button>
+          {TEXT_COLORS.map((c) => (
+            <button
+              key={c.value} type="button" onClick={() => onSet('color', c.value)} title={c.label}
+              className={`h-6 w-6 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
+              style={{ background: c.value }}
+            />
+          ))}
+          <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border border-border" title="Custom">
+            <span className="absolute inset-0" style={{ background: 'conic-gradient(red,orange,yellow,lime,cyan,blue,magenta,red)' }} />
+            <input
+              type="color" value={(/^#[0-9a-f]{6}$/i.test(block.color || '') ? block.color : '#ffffff')}
+              onChange={(e) => onSet('color', e.target.value)}
+              className="absolute inset-0 cursor-pointer opacity-0"
+            />
+          </label>
+        </div>
+      </div>
+
+      <SegRow
+        label="Weight"
+        options={[{ label: 'Auto', value: null }, { label: 'Reg', value: '400' }, { label: 'Med', value: '500' }, { label: 'Bold', value: '700' }]}
+        value={block.fontWeight ?? null}
+        onPick={(v) => onSet('fontWeight', v)}
+      />
+      <SegRow
+        label="Case"
+        options={[{ label: 'Auto', value: null }, { label: 'ab', value: false }, { label: 'AB', value: true }]}
+        value={typeof block.uppercase === 'boolean' ? block.uppercase : null}
+        onPick={(v) => onSet('uppercase', v)}
+      />
+      <SegRow
+        label="Font"
+        options={[{ label: 'Auto', value: null }, { label: 'Heading', value: 'heading' }, { label: 'Body', value: 'body' }]}
+        value={block.font ?? null}
+        onPick={(v) => onSet('font', v)}
+      />
+      <p className="text-3xs text-muted-foreground">Auto = inherit the theme. Full font picker coming later.</p>
+    </div>
+  )
+}
+
 function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
   const block = slide.blocks[blockIdx]
   if (!block) return null
@@ -639,6 +748,12 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
     const blocks = slide.blocks.slice()
     blocks[blockIdx] = next
     onChange({ ...slide, blocks })
+  }
+  function setStyle(key, val) {
+    const next = { ...block }
+    if (val == null || val === '' || (key === 'fontScale' && val === 1)) delete next[key]
+    else next[key] = val
+    updateBlock(next)
   }
   function removeBlock() {
     const blocks = slide.blocks.slice()
@@ -657,6 +772,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
         onChange={updateBlock}
         onRemove={removeBlock}
       />
+      <TextStyleControls block={block} onSet={setStyle} />
     </div>
   )
 }
