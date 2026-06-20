@@ -36,6 +36,8 @@ import { resolvePriorCorpusSnippets } from '../../_lib/practiceMemory.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -70,6 +72,7 @@ export default async function handler(req, res) {
 
   const { contentItemId, trailer } = req.body || {}
   if (!contentItemId) return err(res, 'Missing contentItemId')
+  if (!UUID_RE.test(contentItemId)) return err(res, 'Invalid contentItemId', 400)
 
   // Load the target content_item (workspace-scoped).
   const itemRes = await sb(`content_items?id=eq.${contentItemId}&${wsFilter}&select=id,interview_id,staff_id,content,platform`)

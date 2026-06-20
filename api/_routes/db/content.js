@@ -91,6 +91,11 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
+  // `id` is interpolated into the PostgREST id filter on the GET-by-id, PATCH,
+  // and DELETE paths below. workspace_id is AND-combined so this is hardening,
+  // not an isolation fix — see CLAUDE.md (PR #1391).
+  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
+
   // ── GET ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     if (id) {

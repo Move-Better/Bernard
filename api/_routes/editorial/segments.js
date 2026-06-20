@@ -31,6 +31,8 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -58,6 +60,7 @@ export default async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const assetId = String(url.searchParams.get('assetId') || '').trim()
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
+  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
 
   // Asset lifecycle status (workspace-scoped).
   const assetRes = await sb(

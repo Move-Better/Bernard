@@ -23,6 +23,8 @@ import { auditContentItem } from '../../_lib/voiceAudit.js'
 
 const err = (res, msg, status = 400) => res.status(status).json({ error: msg })
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return err(res, 'Method not allowed', 405)
   if (!(await enforceLimit(req, res, 'media'))) return
@@ -34,6 +36,7 @@ export default async function handler(req, res) {
 
   const { contentItemId } = req.body || {}
   if (!contentItemId) return err(res, 'Missing contentItemId')
+  if (!UUID_RE.test(contentItemId)) return err(res, 'Invalid contentItemId', 400)
 
   const result = await auditContentItem(ws, contentItemId)
   const status = result.ok ? 200 : (result.reason === 'item_not_found' ? 404 : 200)
