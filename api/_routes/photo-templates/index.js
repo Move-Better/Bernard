@@ -59,7 +59,18 @@ export default async function handler(req, res) {
     const custom = await r.json()
 
     const builtins = Object.values(BUILTIN_THEMES).map((t) => ({ ...t, custom: false }))
-    const customOut = custom.map((t) => ({ ...t, builtin: false, custom: true }))
+    // Surface layout/palette/blocks at the top level for customs so resolveTheme()
+    // → renderFreeformSlide (publish + ad bake paths) reads them the same way it
+    // reads built-ins. Custom rows store these under `config`; without this the
+    // renderer falls back to default geometry/typography and customs render wrong.
+    const customOut = custom.map((t) => ({
+      ...t,
+      layout:  t.config?.layout || undefined,
+      palette: t.config?.palette || undefined,
+      blocks:  t.config?.blocks || {},
+      builtin: false,
+      custom:  true,
+    }))
     return ok(res, { themes: [...builtins, ...customOut] })
   }
 

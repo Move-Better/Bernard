@@ -12,7 +12,7 @@ function normalize(hex) {
   return v.startsWith('#') ? v : `#${v}`
 }
 
-export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-12', ariaLabel = 'Pick color' }) {
+export function ColorPickerPopover({ value, onChange, swatches = [], swatchClassName = 'h-8 w-12', ariaLabel = 'Pick color' }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(normalize(value))
   const [hexInput, setHexInput] = useState(normalize(value))
@@ -84,6 +84,24 @@ export function ColorPickerPopover({ value, onChange, swatchClassName = 'h-8 w-1
         onPointerDownOutside={guardEyedropper}
       >
         <HexColorPicker color={draft} onChange={(c) => { setDraft(c); setHexInput(c) }} style={{ width: '100%', height: 160 }} />
+        {swatches.length > 0 && (
+          <div className="mt-2">
+            <div className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Brand</div>
+            <div className="flex flex-wrap gap-1">
+              {swatches.map((hex) => (
+                <button
+                  key={hex}
+                  type="button"
+                  title={hex}
+                  aria-label={`Use ${hex}`}
+                  onClick={() => { onChange(normalize(hex).toUpperCase()); setOpen(false) }}
+                  className="h-5 w-5 rounded border cursor-pointer"
+                  style={{ background: normalize(hex) }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-2 flex items-center gap-2">
           <div className="h-7 w-9 rounded border shrink-0" style={{ background: draft }} />
           <input

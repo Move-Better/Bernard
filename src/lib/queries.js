@@ -1103,6 +1103,17 @@ export function useDeletePhotoTemplate() {
   })
 }
 
+// "From your brand": Claude generates N on-brand templates server-side and saves
+// them as editable custom templates. Returns { templates, count }.
+export function useGenerateBrandTemplates() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't generate templates",
+    mutationFn: (body = {}) => apiFetch('/api/photo-templates/generate', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
+  })
+}
+
 // Back-compat aliases — remove after all callers are updated
 export const useCarouselThemes       = usePhotoTemplates
 export const useCreateCarouselTheme  = useCreatePhotoTemplate
