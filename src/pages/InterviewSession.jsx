@@ -1897,8 +1897,8 @@ export default function InterviewSession() {
       {completionData && !isGenerating && !showVideoPrompt && (
         <div className="flex-1 flex items-center justify-center py-6">
           <div className="rounded-xl border bg-card p-6 max-w-md w-full text-center space-y-4">
-            <div className="mx-auto h-14 w-14 rounded-full bg-success/10 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-success" aria-hidden="true" />
+            <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-primary" aria-hidden="true" />
             </div>
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">

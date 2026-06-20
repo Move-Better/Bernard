@@ -156,7 +156,7 @@
     color: transparent;
   }
   .nx-grad-ribbon {
-    background: hsl(var(--primary));
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action)));
     color: #fff;
     border-radius: 12px;
     padding: 12px 18px;

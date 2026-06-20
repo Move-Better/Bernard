@@ -498,7 +498,7 @@ export default function StoryboardPiece() {
                   instagramFormat === 'Reel'
                     ? 'bg-purple-100 text-purple-700'
                     : instagramFormat === 'Carousel'
-                      ? 'bg-blue-50 text-blue-700'
+                      ? 'bg-info/10 text-info'
                       : 'bg-muted text-muted-foreground'
                 }`}>
                   {instagramFormat}

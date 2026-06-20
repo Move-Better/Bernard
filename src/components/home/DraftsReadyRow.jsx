@@ -51,12 +51,12 @@ export default function DraftsReadyRow({ stories = [] }) {
       <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
         <span
           className="inline-block w-1 h-6 rounded-full shrink-0"
-          style={{ background: 'hsl(var(--primary))' }}
+          style={{ background: 'hsl(var(--action))' }}
           aria-hidden="true"
         />
         <Eye className="h-4 w-4 text-primary" />
         <h2 className="text-lg font-bold tracking-tight flex-1">Drafts ready for review</h2>
-        <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-2xs font-bold px-1.5">
+        <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-action text-action-foreground text-2xs font-bold px-1.5">
           {pieces.length}
         </span>
       </div>
