@@ -14,7 +14,7 @@ import {
   TEMPLATE_DEFAULT_POSITIONS,
   renderFreeformSlide,
 } from '@/lib/overlayTemplates'
-import { resolveTheme } from '@/lib/photoTemplates'
+import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
@@ -29,12 +29,6 @@ const ROLE_META = {
   attribution: { label: 'Attribution', chip: 'bg-green-100 text-green-800' },
   page:        { label: 'Page #',      chip: 'bg-slate-200 text-slate-700' },
 }
-
-// Default deck theme for a carousel with no explicit photo_template_id — a clean
-// full-bleed photo (the photo owns the slide). Used for the editor's themeId
-// init + dirty baseline, so an un-themed deck opens full-bleed (not a panel)
-// without falsely marking the editor dirty. (U2.1b — Q sign-off 2026-06-20)
-const DEFAULT_DECK_THEME = 'photo-dark'
 
 // Normalize a slide loaded from the DB so the editor never has to defensively
 // re-check shape. Missing fields get sensible defaults.

@@ -179,14 +179,20 @@ export const BUILTIN_THEME_IDS = Object.keys(BUILTIN_THEMES)
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/** The default deck theme for a carousel with no explicit photo_template_id — a
+ *  clean full-bleed photo. Shared by the editor (themeId init + dirty baseline)
+ *  AND the publish bake, so a null deck resolves identically everywhere
+ *  (preview == publish). (U2.1b — Q sign-off 2026-06-20) */
+export const DEFAULT_DECK_THEME = 'photo-dark'
+
 /** Resolve a template ID (built-in slug or custom UUID) to a theme object.
- *  Falls back to dark-split if nothing matches. */
+ *  Falls back to the default deck theme (Full Photo) if nothing matches. */
 export function resolveTheme(themeId, customThemes = []) {
-  if (!themeId) return BUILTIN_THEMES['dark-split']
+  if (!themeId) return BUILTIN_THEMES[DEFAULT_DECK_THEME]
   if (BUILTIN_THEMES[themeId]) return BUILTIN_THEMES[themeId]
   const custom = customThemes.find((t) => t.id === themeId)
   if (custom) return custom
-  return BUILTIN_THEMES['dark-split']
+  return BUILTIN_THEMES[DEFAULT_DECK_THEME]
 }
 
 /** Return the style config for a specific role within a resolved theme. */

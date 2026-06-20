@@ -1,5 +1,5 @@
 import { publishAndTrack } from '@/lib/publish'
-import { resolveTheme } from '@/lib/photoTemplates'
+import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { isInstagramReel } from '@/lib/mediaEntry'
 
@@ -47,13 +47,17 @@ export async function publishPieceToBuffer(
   const reelHasVideo = isInstagramReel(piece.media_urls)
   if (!reelHasVideo && Array.isArray(piece.slides) && piece.slides.length) {
     const customThemes = themes.filter((t) => t.custom)
-    const theme = resolveTheme(piece.photo_template_id || null, customThemes)
+    // Resolve the deck theme the SAME way the editor does — a null deck means the
+    // full-bleed default (DEFAULT_DECK_THEME), not dark-split. Passing it
+    // explicitly (not null) also changes the slide signature, so a deck baked
+    // before U2.1b re-bakes full-bleed on publish (preview == publish). (U2.1b)
+    const theme = resolveTheme(piece.photo_template_id || DEFAULT_DECK_THEME, customThemes)
     const { slides, publishMediaUrls, changed } = await ensureRenderedSlides({
       slides: piece.slides,
       mediaUrls: piece.media_urls,
       brandStyle: workspace?.brand_style || {},
       theme,
-      themeId: piece.photo_template_id || null,
+      themeId: piece.photo_template_id || DEFAULT_DECK_THEME,
       customThemes,
       pieceId: piece.id,
     })
