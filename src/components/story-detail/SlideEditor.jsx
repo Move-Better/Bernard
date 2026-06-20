@@ -30,6 +30,12 @@ const ROLE_META = {
   page:        { label: 'Page #',      chip: 'bg-slate-200 text-slate-700' },
 }
 
+// Default deck theme for a carousel with no explicit photo_template_id — a clean
+// full-bleed photo (the photo owns the slide). Used for the editor's themeId
+// init + dirty baseline, so an un-themed deck opens full-bleed (not a panel)
+// without falsely marking the editor dirty. (U2.1b — Q sign-off 2026-06-20)
+const DEFAULT_DECK_THEME = 'photo-dark'
+
 // Normalize a slide loaded from the DB so the editor never has to defensively
 // re-check shape. Missing fields get sensible defaults.
 function normalizeSlide(s, idx) {
@@ -1290,7 +1296,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
   const [slides, setSlides] = useState(seedSlides)
   const [savedSlidesJson, setSavedSlidesJson] = useState(() => JSON.stringify(seedSlides()))
-  const [themeId, setThemeId] = useState(() => piece?.photo_template_id || null)
+  const [themeId, setThemeId] = useState(() => piece?.photo_template_id || DEFAULT_DECK_THEME)
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
@@ -1303,7 +1309,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const next = seedSlides()
     setSlides(next)
     setSavedSlidesJson(JSON.stringify(next))
-    setThemeId(piece?.photo_template_id || null)
+    setThemeId(piece?.photo_template_id || DEFAULT_DECK_THEME)
     setActiveSlideIdx(0)
     setSelection({ type: 'slide' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1314,7 +1320,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const customThemes = allThemes.filter((t) => t.custom)
   const theme = resolveTheme(themeId, customThemes)
 
-  const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.photo_template_id || null)
+  const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.photo_template_id || DEFAULT_DECK_THEME)
   const updateItem = useUpdateContentItem()
   const [rendering, setRendering] = useState(false)
   const busy = updateItem.isPending || rendering
@@ -1397,7 +1403,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // "Apply this theme to all slides" — set the deck theme to the chosen one and
   // clear every per-slide override so the whole deck reads uniformly again.
   function handleApplyThemeToAll(themeIdToApply) {
-    const id = themeIdToApply || 'dark-split'
+    const id = themeIdToApply || DEFAULT_DECK_THEME
     setThemeId(id)
     setSlides((prev) => prev.map((s) => (s.template_id ? { ...s, template_id: null } : s)))
     toast.success('Theme applied to all slides')

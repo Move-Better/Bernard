@@ -60,6 +60,24 @@ const NAVY_PANEL  = 'rgba(12,26,46,0.94)'
 
 export const BUILTIN_THEMES = {
 
+  // ── FULL PHOTO ── clean full-bleed photo, text overlaid (the default)
+  //   The photo owns the whole slide; edge scrims (stronger bottom, light top)
+  //   keep overlaid text legible without dimming the photo. "The photo is the
+  //   photo" — zoom/reposition to frame it. Default deck theme for carousels.
+  //   (U2.1b, Q sign-off mockups/photo-experience-v1.html 2026-06-20.)
+  'photo-dark': {
+    id: 'photo-dark', name: 'Full Photo', builtin: true,
+    layout: 'photo', palette: 'dark',
+    blocks: {
+      hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',               shadow: 'strong', background: 'none',  bgColor: null,        uppercase: false },
+      body:        { fontSize: 'sm',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.85)', shadow: 'medium', background: 'none',  bgColor: null,        uppercase: false },
+      caption:     { fontSize: 'xs',   fontWeight: 'medium',    color: 'rgba(255,255,255,0.72)', shadow: 'soft',   background: 'none',  bgColor: null,        uppercase: false },
+      cta:         { fontSize: 'base', fontWeight: 'bold',      color: '#ffffff',               shadow: 'none',   background: 'pill',  bgColor: null,        uppercase: false },
+      attribution: { fontSize: 'xs',   fontWeight: 'semibold',  color: 'rgba(255,255,255,0.85)', shadow: 'soft',   background: 'none',  bgColor: null,        uppercase: false },
+      page:        { fontSize: 'xs',   fontWeight: 'bold',      color: 'rgba(255,255,255,0.78)', shadow: 'soft',   background: 'none',  bgColor: null,        uppercase: true  },
+    },
+  },
+
   // ── DARK-CLAIM ── editorial card, strong dark ground, brand font
   //   Full-bleed navy (or dark photo). Hero headline in white with orange suffix.
   //   Sage label + rule above. Works with or without a source photo.
