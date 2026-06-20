@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowRight, Book, Calendar, Flag, ImagePlus, Images, Loader2, Pen, Search, Sliders,
-  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft, Repeat, Type,
+  Sparkles, Upload, Video, ImageIcon, Play, X, ChevronDown, CornerDownLeft, Repeat, Type, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PipelineStepper from '@/components/PipelineStepper'
@@ -12,6 +12,7 @@ import { pieceLabel } from '@/lib/pieceLabel'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import MediaPicker from '@/components/MediaPicker'
+import AdExportModal from '@/components/AdExportModal'
 import TextPostStudio from '@/components/TextPostStudio'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { BERNARD_EMERALD } from '@/lib/brand'
@@ -67,6 +68,10 @@ export default function StoryboardPiece() {
 
   // Manual-controls collapsible
   const [manualOpen, setManualOpen] = useState(false)
+
+  // "Export for ads" — re-renders this piece's composed photo (its baked
+  // headline/treatment) into the ad aspect sizes via AdExportModal.
+  const [adExportOpen, setAdExportOpen] = useState(false)
 
   // "Adjust by hand" look knobs (mockup-faithful). Editor-local: Reframe
   // changes the preview aspect ratio live; Headline/Captions are placeholders
@@ -841,6 +846,20 @@ export default function StoryboardPiece() {
                   <p className="text-3xs text-muted-foreground">
                     Smart crop + contrast-aware text. The baked image is exactly what publishes.
                   </p>
+                  {targetEntry && (
+                    <div className="mt-2 flex items-center gap-2 border-t pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setAdExportOpen(true)}
+                        className="flex items-center gap-1.5 rounded-lg border border-action/40 bg-action/10 px-3 py-1.5 font-medium text-action transition-colors hover:bg-action/20"
+                      >
+                        <Megaphone className="h-3.5 w-3.5" /> Export for ads
+                      </button>
+                      <span className="text-3xs text-muted-foreground">
+                        Re-render the baked headline into Meta/Google ad sizes.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1170,6 +1189,23 @@ export default function StoryboardPiece() {
             toast.success('Text post created & attached')
             setStudioOpen(false)
           }}
+        />
+      )}
+
+      {adExportOpen && targetEntry && (
+        <AdExportModal
+          asset={{
+            id: null,
+            // Always export from the ORIGINAL photo of this entry, never a prior
+            // composite — render-pack re-bakes the treatment itself per aspect.
+            blob_url: targetEntry.sourceUrl || targetEntry.url || null,
+            filename: `${treatment.headline || piece?.title || 'ad-creative'}.jpg`,
+            display_title: treatment.headline || piece?.title || 'Ad creative',
+          }}
+          treatment={treatment}
+          templateId={treatment.templateId}
+          sourcePieceId={pieceId}
+          onClose={() => setAdExportOpen(false)}
         />
       )}
     </div>
