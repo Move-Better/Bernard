@@ -72,14 +72,21 @@ const NAVY_PANEL  = 'rgba(12,26,46,0.94)'
 //   Any literal CSS color string
 //
 // Primitive types:
-//   bg-solid    { color }
-//   bg-radial   { colorCenter, colorEdge, x0Frac, y0Frac, r0, x1Frac, y1Frac, r1Frac }
-//   bg-linear   { colorFrom, colorTo }
-//   photo       { fallback? }              — draws source photo; fallback when none
-//   overlay     { color }                  — full-canvas solid overlay
-//   scrim       { yFrac, yEndFrac, stops } — gradient overlay from yFrac→yEndFrac
-//   panel       { color, yFrac }           — solid rect from yFrac to bottom
-//   rule        { color, yFrac, thickness, padded } — horizontal accent line
+//   bg-solid       { color }
+//   bg-radial      { colorCenter, colorEdge, x0Frac, y0Frac, r0, x1Frac, y1Frac, r1Frac }
+//                  — simplified model form: { colorCenter, colorEdge, yCenterFrac? }
+//   bg-linear      { colorFrom, colorTo }
+//   photo          { fallback? }                  — draws source photo; fallback when none
+//   overlay        { color }                      — full-canvas solid overlay
+//   scrim          { yFrac, yEndFrac, stops }     — explicit stop array
+//                  — simplified model form: { yFrac, yEndFrac?, opacity? }
+//   panel          { color, yFrac }               — solid rect from yFrac to bottom
+//   gradient-panel { colorFrom, colorTo, yFrac }  — gradient rect from yFrac to bottom
+//   rule           { color, yFrac, thickness, padded } — horizontal accent line
+//   circle         { color, cxFrac, cyFrac, rFrac }   — filled circle (decorative)
+//
+// Theme-level:
+//   mode: 'post' (default) | 'ad'   — 'ad' skips text block rendering (clean background)
 
 export const BUILTIN_THEMES = {
 

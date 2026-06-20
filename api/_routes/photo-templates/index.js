@@ -65,9 +65,11 @@ export default async function handler(req, res) {
     // renderer falls back to default geometry/typography and customs render wrong.
     const customOut = custom.map((t) => ({
       ...t,
-      layout:  t.config?.layout || undefined,
-      palette: t.config?.palette || undefined,
-      blocks:  t.config?.blocks || {},
+      layout:    t.config?.layout    || undefined,
+      palette:   t.config?.palette   || undefined,
+      blocks:    t.config?.blocks    || {},
+      structure: t.config?.structure || undefined,
+      mode:      t.config?.mode      || undefined,
       builtin: false,
       custom:  true,
     }))
