@@ -20,6 +20,8 @@ import { saveSlateBroll } from '../../_lib/saveSlateBroll.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -47,6 +49,7 @@ export default async function handler(req, res) {
 
   const { assetId, renderedBlobUrl, width, height, sizeBytes, captionText = '' } = req.body || {}
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
+  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
   if (!renderedBlobUrl) return res.status(400).json({ error: 'renderedBlobUrl_required' })
 
   // Fetch source asset — must belong to this workspace

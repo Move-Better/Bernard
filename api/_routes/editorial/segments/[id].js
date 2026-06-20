@@ -22,6 +22,8 @@ import { workspaceContext } from '../../../_lib/workspaceContext.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -49,6 +51,7 @@ export default async function handler(req, res) {
   if (!id || id === 'segments') {
     return res.status(400).json({ error: 'missing_id' })
   }
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(404).json({ error: 'no_workspace' })
