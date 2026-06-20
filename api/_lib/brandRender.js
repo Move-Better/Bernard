@@ -22,6 +22,7 @@ import sharp from 'sharp'
 import satori from 'satori'
 import { Readable } from 'node:stream'
 import { getBrandFont, ensureFontconfig, getFallbackFontBuffer } from './brandFonts.js'
+import { applyGradeParamsSharp } from './gradeParams.js'
 
 // Channel specs. Width × height in pixels. Add new channels here.
 export const CHANNEL_SPECS = {
@@ -459,16 +460,19 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
   if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
   const buffer = Buffer.from(arrayBuf)
 
-  // Grade: map 0-100 onto a restrained brightness/saturation lift. The default
-  // (40) is a gentle, on-brand normalization, not a heavy filter.
+  // Grade. NEW treatments carry a full `gradeParams` object (the colorist:
+  // exposure/contrast/saturation/warmth/tint/depth) applied by the shared,
+  // format-agnostic engine. LEGACY treatments (no gradeParams) keep the exact
+  // single-scalar brightness/saturation lift below so historical renders are
+  // byte-identical.
   const g = Math.min(Math.max(Number(treatment.grade ?? 40), 0), 100) / 100
-
-  const photoLayer = await sharp(buffer)
+  let gradePipe = sharp(buffer)
     .rotate() // honor EXIF orientation
     .resize(width, height, { fit: 'cover', position: 'attention' }) // subject-aware crop
-    .modulate({ brightness: 1 + g * 0.12, saturation: 1 + g * 0.18 })
-    .jpeg({ quality: 90 })
-    .toBuffer()
+  gradePipe = treatment.gradeParams
+    ? applyGradeParamsSharp(gradePipe, treatment.gradeParams)
+    : gradePipe.modulate({ brightness: 1 + g * 0.12, saturation: 1 + g * 0.18 })
+  const photoLayer = await gradePipe.jpeg({ quality: 90 }).toBuffer()
 
   const { primaryColor, accentColor } = resolveBrandColors(workspace)
   const { buffer: brandFontBuffer } = await getBrandFont(workspace).catch(() => ({ buffer: null }))
