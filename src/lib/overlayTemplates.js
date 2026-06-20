@@ -764,6 +764,8 @@ export const TEMPLATE_DEFAULT_POSITIONS = {
 //             4px orange rule at the seam
 //   badge  — dark: full-bleed photo + dark overlay + gradient scrim + rule @58%;
 //             light: photo top ~58%, white panel below + rule at seam
+//   photo  — clean full-bleed photo + edge scrims only (no dim, no rule); the
+//             default. Text overlaid; zoom/reposition frames the photo.
 
 const WHOOP_NAVY      = '#0c1a2e'
 const WHOOP_PAPER     = '#f6f4ef'
@@ -813,6 +815,35 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     // Orange rule at the photo/panel seam
     ctx.fillStyle = accent
     ctx.fillRect(0, splitY, SIZE, 4)
+
+  } else if (layout === 'photo') {
+    // Clean full-bleed photo — "the photo is the photo". No global dim, no rule;
+    // just edge scrims (stronger bottom for the hook, light top for labels/page)
+    // so overlaid text stays legible. (U2.1b, Q sign-off 2026-06-20.)
+    if (img) {
+      drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
+      grad.addColorStop(0, '#475569')
+      grad.addColorStop(1, '#1e293b')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, SIZE, SIZE)
+    }
+    // Bottom scrim — the primary text zone (hook / body / cta land here)
+    const botStart = Math.round(SIZE * 0.50)
+    const bot = ctx.createLinearGradient(0, botStart, 0, SIZE)
+    bot.addColorStop(0, 'rgba(0,0,0,0)')
+    bot.addColorStop(0.55, 'rgba(0,0,0,0.42)')
+    bot.addColorStop(1, 'rgba(0,0,0,0.74)')
+    ctx.fillStyle = bot
+    ctx.fillRect(0, botStart, SIZE, SIZE - botStart)
+    // Light top scrim — labels / page number stay legible on bright photos
+    const topH = Math.round(SIZE * 0.22)
+    const top = ctx.createLinearGradient(0, 0, 0, topH)
+    top.addColorStop(0, 'rgba(0,0,0,0.34)')
+    top.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = top
+    ctx.fillRect(0, 0, SIZE, topH)
 
   } else {
     // badge
