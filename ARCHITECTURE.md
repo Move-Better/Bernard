@@ -325,3 +325,16 @@ node-harnessed** — it uses `document`/`window`. Verification is post-deploy in
 This means subjective design sign-off for canvas changes requires a mockup, not a deploy-to-look
 loop. When the acceptance criterion is "looks right" and you are on the second ship-and-eyeball
 round on the same surface, stop and build an HTML mockup for Q to approve first.
+
+**Brand colors live in the `workspaces.brand_style` JSONB — NOT a `brand_kit_style` column**
+(that column does not exist; the BrandKit "Style" `style` object maps to `brand_style`). Shape:
+`{ primary_colors: [], secondary_colors: [], accent_color, suggested_palette: [], heading_font,
+body_font }`. `useWorkspace()` exposes the row, so the full palette is available client-side.
+Reading the wrong path silently yields only the accent (everything else is `undefined`) — this
+bit the photo-template swatches + AI generator in 2026-06-20 (#1462). One derivation feeds every
+surface: `src/lib/brandSwatches.js` exports `brandSwatches()` (picker chips), `brandInk()`
+(darkest palette color) and `brandPaper()` (lightest); the renderer has the SAME `brandInk`/
+`brandPaper` over `brandStyle`. **Template grounds are brand-derived, never hardcoded** — a
+"dark" template renders on `brandInk` (the workspace's darkest brand color), "light" on
+`brandPaper`, with the old WHOOP navy/paper/sage only as fallback when a workspace has no palette.
+Don't reintroduce a hardcoded ground color; route it through `brandInk`/`brandPaper`.
