@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react'
+import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
+import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { apiFetch } from '@/lib/api'
+import MediaPicker from '@/components/MediaPicker'
 import {
   BLOCK_ROLES,
   SLIDE_TEMPLATES,
@@ -16,7 +17,7 @@ import {
 import { resolveTheme } from '@/lib/photoTemplates'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
-import { photoSourceUrl } from '@/lib/mediaEntry'
+import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 
 // Role label + chip colors. Mirrors the mockup palette.
@@ -540,9 +541,193 @@ function SlideInspector({
   )
 }
 
-// ── PHOTO inspector body — bind + reframe (functional controls only) ─────────
+// ── SWAP / ADD A PHOTO — the media-attach capability lifted from the choose-
+// media screen (StoryboardPiece) INTO the editor's Photo inspector. AI picks +
+// describe-the-shot search (both via /api/content-items/suggest-media) and the
+// Library/Upload picker (MediaPicker). Selecting any of them ATTACHES the photo
+// to media_urls and rebinds the active slide via onAttach. Photos only here —
+// the carousel renderer only draws stills (videos publish as Reels).
 
-function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
+// One lightweight suggestion thumbnail (avoids importing the heavy CandidateCard).
+function SuggestionThumb({ clip, attached, attaching, onAttach }) {
+  const thumb = clip.thumbnailUrl || clip.blobUrl || clip.url
+  return (
+    <button
+      type="button"
+      disabled={attached || attaching}
+      onClick={onAttach}
+      title={attached ? 'Already attached' : 'Use this photo'}
+      className={`group relative aspect-square overflow-hidden rounded-md border transition-all ${
+        attached ? 'border-primary opacity-60' : 'border-border hover:border-primary'
+      }`}
+    >
+      {thumb
+        ? <img src={thumb} alt="" className="h-full w-full object-cover" />
+        : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>}
+      <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
+      <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attached || attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : attached ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+      </span>
+    </button>
+  )
+}
+
+function SwapAddPhoto({ pieceId, attachedKeys, onAttach }) {
+  const [tab, setTab] = useState('ai')          // 'ai' | 'library'
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [attachingKey, setAttachingKey] = useState(null)
+  // Describe-the-shot — a manual query into the same suggest-media brain.
+  const [shotQ, setShotQ] = useState('')
+  const [shotRes, setShotRes] = useState(null)
+  const [shotLoading, setShotLoading] = useState(false)
+
+  // AI picks — photos only. Lazily fetched (only when this panel renders).
+  const { data: sugg, isLoading: suggLoading, isError: suggError, refetch } =
+    useMediaSuggestions(pieceId, { enabled: !!pieceId, kind: 'photo', k: 6 })
+
+  async function attach(entry) {
+    const key = mediaEntryKey(entry)
+    if (attachedKeys.has(key)) return
+    setAttachingKey(key)
+    try {
+      await onAttach(entry)
+    } finally {
+      setAttachingKey(null)
+    }
+  }
+
+  async function runShotSearch() {
+    const q = shotQ.trim()
+    if (!q || shotLoading) return
+    setShotLoading(true)
+    try {
+      const resp = await apiFetch('/api/content-items/suggest-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: pieceId, query: q, k: 6, kind: 'photo' }),
+      })
+      setShotRes(resp?.clips || [])
+    } catch (e) {
+      toast.error('Search failed', { description: e?.message })
+    } finally {
+      setShotLoading(false)
+    }
+  }
+  function clearShot() { setShotRes(null); setShotQ('') }
+
+  // A describe-the-shot search overrides the automatic ranking until cleared.
+  const autoClips = (sugg?.clips || [])
+  const clips = shotRes ?? autoClips
+
+  function handlePicked(asset) {
+    setPickerOpen(false)
+    const list = (Array.isArray(asset) ? asset : [asset]).filter(Boolean)
+    // Photos only — the carousel renderer can't draw video frames.
+    const photo = list.map(pickerItemToMediaEntry).find((e) => e.type !== 'video')
+    if (!photo) {
+      toast.warning('Pick a photo — carousels are photo-only')
+      return
+    }
+    attach(photo)
+  }
+
+  const tabBtn = (k, label, Icon) => (
+    <button
+      type="button"
+      onClick={() => setTab(k)}
+      className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-2xs font-medium transition-colors ${
+        tab === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      <Icon className="h-3 w-3" />{label}
+    </button>
+  )
+
+  return (
+    <div className="space-y-2">
+      <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Swap / add a photo</p>
+      <div className="flex gap-1 rounded-lg border border-border p-0.5">
+        {tabBtn('ai', 'AI picks', Sparkles)}
+        {tabBtn('library', 'Library', FolderOpen)}
+      </div>
+
+      {tab === 'ai' ? (
+        <div className="space-y-1.5">
+          {/* Describe the shot — manual query into the same picks brain */}
+          <div className="flex items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              type="text"
+              value={shotQ}
+              onChange={(e) => setShotQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') runShotSearch() }}
+              placeholder="Describe the shot…"
+              className="min-w-0 flex-1 bg-transparent text-2xs outline-none"
+              disabled={shotLoading}
+            />
+            {shotRes != null && (
+              <button type="button" onClick={clearShot} className="shrink-0 text-3xs text-primary hover:underline">clear</button>
+            )}
+            {shotLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
+          </div>
+
+          {suggLoading && shotRes == null ? (
+            <div className="grid grid-cols-3 gap-1.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-square animate-pulse rounded-md bg-muted" />
+              ))}
+            </div>
+          ) : suggError && shotRes == null ? (
+            <p className="text-3xs text-muted-foreground">
+              Couldn&apos;t load picks.{' '}
+              <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>
+            </p>
+          ) : clips.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border bg-muted/20 px-2 py-3 text-center text-3xs text-muted-foreground">
+              {shotRes != null ? `Nothing matched “${shotQ}”.` : 'No photo picks — browse your library instead.'}
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {clips.slice(0, 6).map((clip) => {
+                const key = clip.assetId || clip.blobUrl || clip.url
+                return (
+                  <SuggestionThumb
+                    key={clip.chunkId || key}
+                    clip={clip}
+                    attached={attachedKeys.has(clip.assetId)}
+                    attaching={attachingKey === key}
+                    onAttach={() => attach(clipToMediaEntry(clip))}
+                  />
+                )
+              })}
+            </div>
+          )}
+          <p className="text-3xs text-muted-foreground">Picks re-rank from your words. Click one to attach &amp; bind it.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-3 text-2xs font-semibold text-primary hover:bg-primary/10"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Browse library / upload
+          </button>
+          <p className="text-3xs text-muted-foreground">Search your whole library or upload a new photo.</p>
+        </div>
+      )}
+
+      {pickerOpen && (
+        <MediaPicker onClose={() => setPickerOpen(false)} onSelect={handlePicked} />
+      )}
+    </div>
+  )
+}
+
+// ── PHOTO inspector body — swap/add + bind + reframe + colorist ──────────────
+
+function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, onBindPhoto }) {
   const [photoOpen, setPhotoOpen] = useState(false)
   const [vibePrompt, setVibePrompt] = useState('')
   const [proposing, setProposing] = useState(false)
@@ -591,9 +776,16 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
         )}
       </div>
 
-      {/* Bind photo */}
-      <div className="space-y-1.5">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Source</p>
+      {/* Swap / add a photo — attach NEW media (AI picks · describe-the-shot ·
+          library/upload) and rebind this slide to it. Lifted from the choose-
+          media screen so you never have to leave the editor to add a photo. */}
+      <SwapAddPhoto pieceId={pieceId} attachedKeys={attachedKeys} onAttach={onAttachPhoto} />
+
+      {/* Bind photo — rebind this slide to an already-attached photo */}
+      <div className="space-y-1.5 border-t border-border/60 pt-3">
+        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Use an attached photo
+        </p>
         <div className="relative">
           <button
             type="button"
@@ -1070,6 +1262,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const brandStyle = workspace?.brand_style || {}
   const mediaUrls = (piece?.media_urls || []).filter((m) => m && m.type !== 'video' && m.url)
   const hasMedia = mediaUrls.length > 0
+  // Keys of every already-attached entry (photo or video) — so the swap/add
+  // picks can mark which suggestions are already on the piece.
+  const attachedKeys = useMemo(
+    () => new Set((piece?.media_urls || []).map(mediaEntryKey)),
+    [piece?.media_urls],
+  )
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [safeZones, setSafeZones] = useState(true)
 
@@ -1157,6 +1355,34 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   }
   function bindPhoto(idx, photoIdx) {
     updateSlide(idx, { ...slides[idx], photo_idx: photoIdx })
+  }
+
+  // Attach a NEW photo to the piece (media_urls belongs to the content_item, not
+  // the slides) and rebind the ACTIVE slide to it. media_urls is the content_item
+  // field — mutate it via useUpdateContentItem, NOT the slides Save. After the
+  // attach, recompute the new photo's index in the PHOTO-ONLY filtered list
+  // (`photo_idx` indexes that filtered list, not raw media_urls) and bind it.
+  async function attachPhoto(entry) {
+    if (!entry || !piece?.id) return
+    const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+    const key = mediaEntryKey(entry)
+    const already = raw.some((m) => mediaEntryKey(m) === key)
+    const nextRaw = already ? raw : [...raw, entry]
+    try {
+      if (!already) {
+        await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw } })
+      }
+      // Index in the photo-only filtered list (videos excluded) — the same filter
+      // the editor uses for `mediaUrls`/`photo_idx` everywhere.
+      const photoOnly = nextRaw.filter((m) => m && m.type !== 'video' && m.url)
+      const photoIdx = photoOnly.findIndex((m) => mediaEntryKey(m) === key)
+      if (photoIdx >= 0) {
+        setSlides((cur) => cur.map((s, i) => (i === activeSlideIdx ? { ...s, photo_idx: photoIdx } : s)))
+      }
+      toast.success(already ? 'Photo swapped' : 'Photo attached')
+    } catch (e) {
+      toast.error('Could not attach photo', { description: e?.message })
+    }
   }
 
   // Switch the active slide and reset the contextual selection to the slide.
@@ -1422,6 +1648,9 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     slide={activeSlide}
                     photoUrl={activePhotoUrl}
                     mediaUrls={mediaUrls}
+                    pieceId={piece?.id}
+                    attachedKeys={attachedKeys}
+                    onAttachPhoto={attachPhoto}
                     onChange={(next) => updateSlide(activeSlideIdx, next)}
                     onBindPhoto={(photoIdx) => bindPhoto(activeSlideIdx, photoIdx)}
                   />
