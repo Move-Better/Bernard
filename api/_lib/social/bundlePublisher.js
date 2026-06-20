@@ -38,28 +38,43 @@ const PLATFORM_TO_BUNDLE_TYPE = {
 // spike: IG and GBP rejected text-only; Facebook/X/etc. accept text-only).
 const MEDIA_REQUIRED_TYPES = new Set(['INSTAGRAM', 'GOOGLE_BUSINESS'])
 
-// Default networks the hosted connect portal lets a clinic link — the
-// spike-proven, clinic-relevant set. Overridable per call via connect({networks}).
-const CLINIC_NETWORKS = ['INSTAGRAM', 'FACEBOOK', 'GOOGLE_BUSINESS']
+// Default networks the brand connect portal lets a clinic link. Google Business
+// is intentionally NOT here: bundle allows one active GBP per Team, so each
+// location's GBP connects through its OWN per-location Team (see
+// memory/project-bundle-social.md, Option B). The workspace ("brand") Team
+// carries Instagram + Facebook only; GBP is connected per location with
+// connect({ networks: ['gbp'] }) on a location-scoped publisher.
+const CLINIC_NETWORKS = ['INSTAGRAM', 'FACEBOOK']
 
 export class BundlePublisher extends SocialPublisher {
-  constructor(workspace) {
+  /**
+   * @param {Object} workspace Full `workspaces` row.
+   * @param {{teamId?: string}} [opts] teamId overrides the resolved bundle Team —
+   *   used to scope this publisher to a single LOCATION's GBP Team. The override
+   *   MUST be a team id read server-side from a `workspace_locations` row that was
+   *   already validated to belong to this workspace; it is NEVER caller input.
+   *   This keeps the same authorization discipline as the workspace-team path.
+   */
+  constructor(workspace, { teamId = null } = {}) {
     super(workspace)
     const key = process.env.BUNDLE_API_KEY
     if (!key) throw publishError('BUNDLE_API_KEY is not configured', 503)
     this.sdk = new Bundlesocial(key)
+    // Server-resolved location-Team override (see constructor doc). Defaults to
+    // the workspace brand Team via the getter below.
+    this._teamIdOverride = teamId
   }
 
   get provider() {
     return 'bundle'
   }
 
-  // bundle teamId is an AUTHORIZATION boundary — derive ONLY from the workspace
+  // bundle teamId is an AUTHORIZATION boundary — derive ONLY from a server-resolved
   // row, never from caller input (a wrong teamId posts/reads another tenant's
-  // accounts). The `bundle_team_id` column is added by a later onboarding phase;
-  // until then this throws, which is correct (no workspace is on bundle yet).
+  // accounts). Either the location-Team override (set at construction from a
+  // validated workspace_locations row) or the workspace brand Team.
   get teamId() {
-    const id = this.workspace.bundle_team_id
+    const id = this._teamIdOverride || this.workspace.bundle_team_id
     if (!id) {
       throw publishError(`Workspace ${this.workspace.id} is not onboarded to bundle.social (no bundle_team_id)`, 503)
     }
