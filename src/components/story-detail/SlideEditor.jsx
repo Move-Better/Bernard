@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { ColorPickerPopover } from '@/components/ColorPickerPopover'
+import { brandSwatches, NEUTRAL_SWATCHES } from '@/lib/brandSwatches'
 import { apiFetch } from '@/lib/api'
 import MediaPicker from '@/components/MediaPicker'
 import {
@@ -990,6 +992,8 @@ function SegRow({ label, options, value, onPick }) {
   )
 }
 function TextStyleControls({ block, onSet }) {
+  const workspace = useWorkspace()
+  const swatches = useMemo(() => [...brandSwatches(workspace), ...NEUTRAL_SWATCHES], [workspace])
   const scale = Number.isFinite(block.fontScale) && block.fontScale > 0 ? block.fontScale : 1
   return (
     <div className="space-y-2.5 rounded-md border border-border/60 p-2.5">
@@ -1022,14 +1026,13 @@ function TextStyleControls({ block, onSet }) {
               style={{ background: c.value }}
             />
           ))}
-          <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border border-border" title="Custom">
-            <span className="absolute inset-0" style={{ background: 'conic-gradient(red,orange,yellow,lime,cyan,blue,magenta,red)' }} />
-            <input
-              type="color" value={(/^#[0-9a-f]{6}$/i.test(block.color || '') ? block.color : '#ffffff')}
-              onChange={(e) => onSet('color', e.target.value)}
-              className="absolute inset-0 cursor-pointer opacity-0"
-            />
-          </label>
+          <ColorPickerPopover
+            value={/^#[0-9a-f]{6}$/i.test(block.color || '') ? block.color : '#ffffff'}
+            onChange={(hex) => onSet('color', hex)}
+            swatches={swatches}
+            swatchClassName="h-6 w-6 rounded-full"
+            ariaLabel="Pick custom text color"
+          />
         </div>
       </div>
 

@@ -17,6 +17,8 @@ import {
   defaultBlockConfig,
 } from '@/lib/photoTemplates'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
+import { ColorPickerPopover } from '@/components/ColorPickerPopover'
+import { brandSwatches, NEUTRAL_SWATCHES } from '@/lib/brandSwatches'
 
 // Resolve the brand accent the SAME way the canvas renderer does
 // (brandAccent() in overlayTemplates.js reads brand_style.accent_color), so a
@@ -281,7 +283,7 @@ function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
 
 // ── Per-block-role style editor ───────────────────────────────────────────────
 
-function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
+function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches = [] }) {
   const c = config || defaultBlockConfig(role)
   function set(key, val) { onChange({ ...c, [key]: val }) }
 
@@ -306,9 +308,13 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Text color</label>
         <div className="flex items-center gap-2">
-          <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#ffffff'}
-            onChange={(e) => set('color', e.target.value)}
-            className="h-7 w-7 rounded cursor-pointer border border-input p-0.5" />
+          <ColorPickerPopover
+            value={/^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#ffffff'}
+            onChange={(hex) => set('color', hex)}
+            swatches={swatches}
+            swatchClassName="h-7 w-7"
+            ariaLabel="Pick text color"
+          />
           <input type="text" value={c.color || '#ffffff'} onChange={(e) => set('color', e.target.value)}
             className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary" />
         </div>
@@ -331,9 +337,13 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
         <div>
           <label className="text-2xs font-medium text-muted-foreground block mb-1">Background color</label>
           <div className="flex items-center gap-2">
-            <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.bgColor || '') ? c.bgColor : brandAccent}
-              onChange={(e) => set('bgColor', e.target.value)}
-              className="h-7 w-7 rounded cursor-pointer border border-input p-0.5" />
+            <ColorPickerPopover
+              value={/^#[0-9a-f]{6}$/i.test(c.bgColor || '') ? c.bgColor : brandAccent}
+              onChange={(hex) => set('bgColor', hex)}
+              swatches={swatches}
+              swatchClassName="h-7 w-7"
+              ariaLabel="Pick background color"
+            />
             <input type="text" value={c.bgColor || ''} placeholder="null = brand accent"
               onChange={(e) => set('bgColor', e.target.value || null)}
               className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary" />
@@ -354,6 +364,8 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580' }) {
 
 function ThemeEditor({ initial, onSave, onCancel, saving }) {
   const brandAccent = useBrandAccent()
+  const workspace = useWorkspace()
+  const swatches = useMemo(() => [...brandSwatches(workspace), ...NEUTRAL_SWATCHES], [workspace])
   const [name, setName]       = useState(initial?.name || '')
   const [isDefault, setIsDefault] = useState(initial?.is_default || false)
   const [config, setConfig]   = useState(initial?.config || emptyThemeConfig())
@@ -424,6 +436,7 @@ function ThemeEditor({ initial, onSave, onCancel, saving }) {
                 config={config.blocks?.[activeRole]}
                 onChange={(val) => setBlock(activeRole, val)}
                 brandAccent={brandAccent}
+                swatches={swatches}
               />
             </div>
           </div>
