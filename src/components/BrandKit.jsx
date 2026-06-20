@@ -619,7 +619,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   const [adjusting, setAdjusting]         = useState(false)  // onboarding "Let me adjust" expanded view
   const [autoAssigning, setAutoAssigning] = useState(false)
   const [customColorDraft, setCustomColorDraft] = useState('')
-  const [addingCustomColor, setAddingCustomColor] = useState(false)
+  const [addingToColorBucket, setAddingToColorBucket] = useState(null) // null | 'primary' | 'secondary'
   const [reclassifying, setReclassifying] = useState(false)
 
   const filtered = useMemo(() => {
@@ -1002,7 +1002,54 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Style</h2>
           <div className="rounded-xl border bg-card p-4 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-4">
+              {/* Primary colors */}
+              {(() => {
+                const allUsed = new Set([
+                  ...(style.primary_colors || []).map((c) => c.toUpperCase()),
+                  ...(style.secondary_colors || []).map((c) => c.toUpperCase()),
+                  (style.accent_color || '').toUpperCase(),
+                ])
+                const suggestions = (style.suggested_palette || []).filter((c) => !allUsed.has(c.toUpperCase()))
+                return (
+                  <ColorBucket
+                    label="Primary colors"
+                    colors={style.primary_colors || []}
+                    suggestions={suggestions}
+                    isAdding={addingToColorBucket === 'primary'}
+                    draft={customColorDraft}
+                    onDraftChange={setCustomColorDraft}
+                    onAdd={(hex) => setStyle((s) => ({ ...s, primary_colors: [...(s.primary_colors || []), hex.toUpperCase()] }))}
+                    onRemove={(i) => setStyle((s) => ({ ...s, primary_colors: (s.primary_colors || []).filter((_, j) => j !== i) }))}
+                    onStartAdding={() => { setCustomColorDraft(''); setAddingToColorBucket('primary') }}
+                    onCancelAdding={() => { setAddingToColorBucket(null); setCustomColorDraft('') }}
+                  />
+                )
+              })()}
+              {/* Secondary colors */}
+              {(() => {
+                const allUsed = new Set([
+                  ...(style.primary_colors || []).map((c) => c.toUpperCase()),
+                  ...(style.secondary_colors || []).map((c) => c.toUpperCase()),
+                  (style.accent_color || '').toUpperCase(),
+                ])
+                const suggestions = (style.suggested_palette || []).filter((c) => !allUsed.has(c.toUpperCase()))
+                return (
+                  <ColorBucket
+                    label="Secondary colors"
+                    colors={style.secondary_colors || []}
+                    suggestions={suggestions}
+                    isAdding={addingToColorBucket === 'secondary'}
+                    draft={customColorDraft}
+                    onDraftChange={setCustomColorDraft}
+                    onAdd={(hex) => setStyle((s) => ({ ...s, secondary_colors: [...(s.secondary_colors || []), hex.toUpperCase()] }))}
+                    onRemove={(i) => setStyle((s) => ({ ...s, secondary_colors: (s.secondary_colors || []).filter((_, j) => j !== i) }))}
+                    onStartAdding={() => { setCustomColorDraft(''); setAddingToColorBucket('secondary') }}
+                    onCancelAdding={() => { setAddingToColorBucket(null); setCustomColorDraft('') }}
+                  />
+                )
+              })()}
+              {/* Accent color — single */}
               <div>
                 <Label className="text-xs">Accent color</Label>
                 <div className="flex items-center gap-2 mt-1">
@@ -1014,87 +1061,8 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
                   <Input value={style.accent_color || ''} onChange={(e) => setStyle((s) => ({ ...s, accent_color: e.target.value }))} className="h-8 text-xs font-mono" placeholder="#0a7f3f" />
                 </div>
               </div>
-              <div className="sm:col-span-2">
-                <Label className="text-xs">Secondary colors</Label>
-                {/* Palette suggested by brand book — swatches not yet added */}
-                {(() => {
-                  const added = new Set((style.secondary_colors || []).map((c) => c.toUpperCase()))
-                  const accent = (style.accent_color || '').toUpperCase()
-                  const suggestions = (style.suggested_palette || [])
-                    .filter((c) => c.toUpperCase() !== accent && !added.has(c.toUpperCase()))
-                  if (!suggestions.length) return null
-                  return (
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className="text-3xs text-muted-foreground shrink-0">From brand book:</span>
-                      {suggestions.map((c) => (
-                        <button
-                          key={c}
-                          title={`Add ${c}`}
-                          onClick={() => setStyle((s) => ({ ...s, secondary_colors: [...(s.secondary_colors || []), c] }))}
-                          className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 hover:border-primary/60 hover:bg-accent/30 transition-colors text-2xs font-mono"
-                        >
-                          <div className="w-3.5 h-3.5 rounded-sm shrink-0" style={{ background: c }} />
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })()}
-                {/* Added colors */}
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  {(style.secondary_colors || []).map((c, i) => (
-                    <div key={i} className="flex items-center gap-1 rounded-md border px-1.5 py-0.5">
-                      <div className="w-4 h-4 rounded" style={{ background: c }} />
-                      <span className="text-2xs font-mono">{c}</span>
-                      <button
-                        onClick={() => setStyle((s) => ({ ...s, secondary_colors: (s.secondary_colors || []).filter((_, j) => j !== i) }))}
-                        className="text-muted-foreground hover:text-destructive"
-                      ><X className="h-3 w-3" /></button>
-                    </div>
-                  ))}
-                  {addingCustomColor ? (() => {
-                    const raw = (customColorDraft || '').trim().replace(/^#?/, '')
-                    const normalized = raw ? `#${raw}` : ''
-                    const isValid = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)
-                    const addColor = (hex) => {
-                      setStyle((s) => ({ ...s, secondary_colors: [...(s.secondary_colors || []), hex.toUpperCase()] }))
-                      setAddingCustomColor(false)
-                      setCustomColorDraft('')
-                    }
-                    return (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <ColorPickerPopover
-                          value={normalized || '#888888'}
-                          onChange={(hex) => addColor(hex)}
-                          swatchClassName="h-7 w-10"
-                          ariaLabel="Pick secondary color"
-                        />
-                        <Input
-                          value={customColorDraft}
-                          onChange={(e) => setCustomColorDraft(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' && isValid) { e.preventDefault(); addColor(normalized) } }}
-                          className="h-7 w-24 text-xs font-mono"
-                          placeholder="#000000"
-                        />
-                        <Button
-                          size="sm"
-                          className="h-7 text-2xs"
-                          disabled={!isValid}
-                          onClick={() => addColor(normalized)}
-                        >Add</Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-2xs" onClick={() => { setAddingCustomColor(false); setCustomColorDraft('') }}>Cancel</Button>
-                        {customColorDraft && !isValid && (
-                          <span className="text-2xs text-destructive">Enter a hex like #1d4e38 or pick from the swatch</span>
-                        )}
-                      </div>
-                    )
-                  })() : (
-                    <Button size="sm" variant="ghost" className="h-6 text-2xs"
-                      onClick={() => { setCustomColorDraft(''); setAddingCustomColor(true) }}
-                    >+ Add custom</Button>
-                  )}
-                </div>
-              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <Label className="text-xs">Heading font</Label>
                 <div className="mt-1">
@@ -1148,6 +1116,67 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         onPick={(assetId) => setRoleAssignments((prev) => ({ ...prev, [pickerRole]: assetId }))}
         onClose={() => setPickerRole(null)}
       />
+    </div>
+  )
+}
+
+function ColorBucket({ label, colors, suggestions, isAdding, draft, onDraftChange, onAdd, onRemove, onStartAdding, onCancelAdding }) {
+  const raw = (draft || '').trim().replace(/^#?/, '')
+  const normalized = raw ? `#${raw}` : ''
+  const isValid = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)
+  const commit = (hex) => { onAdd(hex); onCancelAdding() }
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      {suggestions.length > 0 && (
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          <span className="text-3xs text-muted-foreground shrink-0">From brand book:</span>
+          {suggestions.map((c) => (
+            <button
+              key={c}
+              title={`Add ${c}`}
+              onClick={() => onAdd(c)}
+              className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 hover:border-primary/60 hover:bg-accent/30 transition-colors text-2xs font-mono"
+            >
+              <div className="w-3.5 h-3.5 rounded-sm shrink-0" style={{ background: c }} />
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+        {colors.map((c, i) => (
+          <div key={i} className="flex items-center gap-1 rounded-md border px-1.5 py-0.5">
+            <div className="w-4 h-4 rounded" style={{ background: c }} />
+            <span className="text-2xs font-mono">{c}</span>
+            <button onClick={() => onRemove(i)} className="text-muted-foreground hover:text-destructive">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+        {isAdding ? (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <ColorPickerPopover
+              value={normalized || '#888888'}
+              onChange={(hex) => commit(hex)}
+              swatchClassName="h-7 w-10"
+              ariaLabel={`Pick ${label.toLowerCase()} color`}
+            />
+            <Input
+              value={draft}
+              onChange={(e) => onDraftChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && isValid) { e.preventDefault(); commit(normalized) } }}
+              className="h-7 w-24 text-xs font-mono"
+              placeholder="#000000"
+            />
+            <Button size="sm" className="h-7 text-2xs" disabled={!isValid} onClick={() => commit(normalized)}>Add</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-2xs" onClick={onCancelAdding}>Cancel</Button>
+            {draft && !isValid && <span className="text-2xs text-destructive">Enter a hex like #1d4e38 or pick from the swatch</span>}
+          </div>
+        ) : (
+          <Button size="sm" variant="ghost" className="h-6 text-2xs" onClick={onStartAdding}>+ Add custom</Button>
+        )}
+      </div>
     </div>
   )
 }
