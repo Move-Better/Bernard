@@ -23,17 +23,19 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/
 
 function validate(patch) {
   if (typeof patch !== 'object' || !patch) return { ok: false, error: 'body must be an object' }
-  const allowed = ['accent_color', 'secondary_colors', 'heading_font', 'body_font']
+  const allowed = ['accent_color', 'primary_colors', 'secondary_colors', 'heading_font', 'body_font']
   for (const k of Object.keys(patch)) {
     if (!allowed.includes(k)) return { ok: false, error: `unknown field: ${k}` }
   }
   if (patch.accent_color != null && !HEX_RE.test(patch.accent_color)) {
     return { ok: false, error: 'accent_color must be #RRGGBB' }
   }
-  if (patch.secondary_colors != null) {
-    if (!Array.isArray(patch.secondary_colors)) return { ok: false, error: 'secondary_colors must be an array' }
-    for (const c of patch.secondary_colors) {
-      if (typeof c !== 'string' || !HEX_RE.test(c)) return { ok: false, error: 'secondary_colors entries must be #RRGGBB' }
+  for (const colorArrayKey of ['primary_colors', 'secondary_colors']) {
+    if (patch[colorArrayKey] != null) {
+      if (!Array.isArray(patch[colorArrayKey])) return { ok: false, error: `${colorArrayKey} must be an array` }
+      for (const c of patch[colorArrayKey]) {
+        if (typeof c !== 'string' || !HEX_RE.test(c)) return { ok: false, error: `${colorArrayKey} entries must be #RRGGBB` }
+      }
     }
   }
   for (const fontKey of ['heading_font', 'body_font']) {
