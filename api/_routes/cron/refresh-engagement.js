@@ -24,6 +24,8 @@ import { decryptSecret } from '../../_lib/credentialCrypto.js'
 import { fetchGA4Metrics, urlToPagePath } from '../../_lib/ga4.js'
 import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
+import { refreshGbpToken } from '../../_lib/gbpAuth.js'
+import { listLocalPosts, fetchPostViewInsights } from '../../_lib/gbpClient.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -459,6 +461,152 @@ async function processWorkspaceGA4(ws, summary) {
   })
 }
 
+// GBP walker — matches published GBP content items to Google local posts and
+// fetches view counts from the reportInsights API. Runs daily alongside the
+// Buffer / bundle / GA4 walkers. Skipped silently when no GBP credential exists.
+async function processWorkspaceGBP(ws, summary) {
+  if (!ws.gbp_location_name) {
+    // Not configured — skip silently (not an error; most workspaces won't have this).
+    return
+  }
+
+  // Fetch the GBP analytics credential row (includes config.v4_location_name).
+  const credRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${ws.id}&service=eq.gbp_analytics&status=eq.active&select=secret_ciphertext,config&limit=1`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+  )
+  if (!credRes.ok) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: `cred fetch ${credRes.status}` })
+    return
+  }
+  const creds = await credRes.json().catch(() => [])
+  const cred  = creds?.[0]
+  if (!cred?.secret_ciphertext) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', skipped: 'no-gbp-credential' })
+    return
+  }
+
+  let refreshToken
+  try { refreshToken = decryptSecret(cred.secret_ciphertext) } catch {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', skipped: 'cred-decrypt-failed' })
+    return
+  }
+
+  let accessToken
+  try {
+    accessToken = await refreshGbpToken(refreshToken)
+  } catch (e) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: `token-refresh: ${e?.message}` })
+    return
+  }
+
+  const v4LocationName = cred.config?.v4_location_name
+  if (!v4LocationName) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', skipped: 'no-v4-location-name' })
+    return
+  }
+
+  // Pull recent GBP-platform content items (both matched and unmatched).
+  const sinceIso = new Date(Date.now() - SCAN_WINDOW_D * 24 * 60 * 60 * 1000).toISOString()
+  const itemsRes = await sb(
+    `content_items?workspace_id=eq.${ws.id}` +
+    `&status=eq.published` +
+    `&platform=eq.gbp` +
+    `&published_at=gte.${encodeURIComponent(sinceIso)}` +
+    `&select=id,platform,published_at,gbp_post_name,performed_well`
+  )
+  if (!itemsRes.ok) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: `items fetch ${itemsRes.status}` })
+    return
+  }
+  const items = await itemsRes.json().catch(() => [])
+  if (!Array.isArray(items) || items.length === 0) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', items: 0 })
+    return
+  }
+
+  // Step 1: match unmatched items to Google local posts by published_at proximity.
+  const unmatched = items.filter((i) => !i.gbp_post_name)
+  let matched = 0
+  if (unmatched.length > 0) {
+    let localPosts = []
+    try {
+      localPosts = await listLocalPosts(accessToken, v4LocationName, 50)
+    } catch (e) {
+      console.warn('[refresh-engagement/gbp] listLocalPosts failed:', e?.message)
+    }
+
+    const WINDOW_MS = 30 * 60 * 1000  // ±30 minutes proximity window
+    for (const item of unmatched) {
+      const pubAt = new Date(item.published_at).getTime()
+      const match = localPosts.find((p) => {
+        const created = new Date(p.createTime || p.updateTime || 0).getTime()
+        return Math.abs(created - pubAt) <= WINDOW_MS
+      })
+      if (!match?.name) continue
+      const patch = await sb(`content_items?id=eq.${item.id}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ gbp_post_name: match.name }),
+      })
+      if (patch.ok) {
+        item.gbp_post_name = match.name
+        matched++
+      }
+    }
+  }
+
+  // Step 2: refresh view snapshots for all matched items.
+  const matchedItems = items.filter((i) => i.gbp_post_name)
+  let refreshed = 0
+  if (matchedItems.length > 0) {
+    const freshCutoff = new Date(Date.now() - SNAPSHOT_MAX_AGE_H * 60 * 60 * 1000).toISOString()
+
+    const toRefresh = []
+    for (const item of matchedItems) {
+      const latestRes = await sb(
+        `engagement_snapshots?content_item_id=eq.${item.id}&workspace_id=eq.${ws.id}&source=eq.gbp&order=fetched_at.desc&limit=1&select=fetched_at`
+      )
+      const latest = latestRes.ok ? (await latestRes.json().catch(() => []))?.[0] : null
+      if (latest && latest.fetched_at > freshCutoff) continue
+      toRefresh.push(item)
+    }
+
+    if (toRefresh.length > 0) {
+      let insights = {}
+      try {
+        insights = await fetchPostViewInsights(
+          accessToken, v4LocationName,
+          toRefresh.map((i) => i.gbp_post_name),
+          90
+        )
+      } catch (e) {
+        console.warn('[refresh-engagement/gbp] fetchPostViewInsights failed:', e?.message)
+      }
+
+      for (const item of toRefresh) {
+        const data = insights[item.gbp_post_name]
+        if (!data) continue
+        const stats = { views: data.views || 0, actions: data.actions || 0, service: 'gbp' }
+        const ins = await sb('engagement_snapshots', {
+          method: 'POST',
+          body: JSON.stringify({
+            workspace_id:    ws.id,
+            content_item_id: item.id,
+            source:          'gbp',
+            stats,
+          }),
+        })
+        if (ins.ok) refreshed++
+      }
+    }
+  }
+
+  summary.workspaces.push({
+    id: ws.id, slug: ws.slug, source: 'gbp',
+    items: items.length, matched, refreshed,
+  })
+}
+
 async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
@@ -473,7 +621,7 @@ async function handler(req, res) {
 
   // Enumerate active workspaces.
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,ga4_property_id,publish_provider,bundle_team_id`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,ga4_property_id,publish_provider,bundle_team_id,gbp_location_name`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
@@ -495,6 +643,11 @@ async function handler(req, res) {
       await processWorkspaceGA4(ws, summary)
     } catch (e) {
       summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'ga4', error: e?.message || 'unknown' })
+    }
+    try {
+      await processWorkspaceGBP(ws, summary)
+    } catch (e) {
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: e?.message || 'unknown' })
     }
   }
   summary.finishedAt = new Date().toISOString()

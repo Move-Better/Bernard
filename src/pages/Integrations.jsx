@@ -302,6 +302,13 @@ export default function Integrations() {
           disabled={!isAdmin}
           onChange={reload}
         />
+
+        <GoogleBusinessAnalyticsCard
+          row={services?.find?.((s) => s.service === 'gbp_analytics') || null}
+          loading={services === null && isAdmin}
+          disabled={!isAdmin}
+          onChange={reload}
+        />
       </div>
 
       {showTdc && <TrustDrivenCareCard />}
@@ -1032,6 +1039,138 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
                   <span>{testResult.message}</span>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const GBP_ERROR_COPY = {
+  access_denied:   'You declined the Google permission prompt — no changes saved.',
+  exchange_failed: 'Google rejected the OAuth code. Try connecting again.',
+  persist_failed:  'Connected to Google, but we couldn\'t save the credential. Try again or contact support.',
+}
+
+function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
+  const [open, setOpen] = useState(!row)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const configured     = Boolean(row)
+  const connectedEmail = row?.config?.account_email    || null
+  const locationTitle  = row?.config?.location_title   || null
+
+  useEffect(() => {
+    const status = searchParams.get('gbp')
+    if (!status) return
+    if (status === 'connected') {
+      toast.success('Google Business Profile connected.')
+      onChange?.()
+    } else if (status === 'error') {
+      const reason = searchParams.get('reason') || 'unknown'
+      toast.error(GBP_ERROR_COPY[reason] || `Business Profile connect failed: ${reason}`)
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('gbp')
+    next.delete('reason')
+    setSearchParams(next, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleConnect() {
+    setConnecting(true)
+    try {
+      const data = await apiFetch('/api/integrations/gbp/connect', { method: 'POST' })
+      if (!data?.url) throw new Error('No OAuth URL returned')
+      window.location.assign(data.url)
+    } catch (err) {
+      setConnecting(false)
+      if (err?.status === 503) {
+        toast.error('Google OAuth isn\'t configured on this deployment yet.')
+      } else if (err?.status === 403) {
+        toast.error('Only workspace admins can connect Google Business Profile.')
+      } else {
+        toast.error(err?.message || 'Couldn\'t start the Google connect flow.')
+      }
+    }
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm('Disconnect Google Business Profile analytics for this workspace?')) return
+    setDisconnecting(true)
+    try {
+      await apiFetchResponse('/api/integrations/gbp/disconnect', { method: 'DELETE' })
+      toast.success('Google Business Profile disconnected.')
+      onChange?.()
+    } catch (err) {
+      toast.error(err?.message || 'Couldn\'t disconnect Business Profile.')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-accent/30 transition-colors text-left"
+      >
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium">Google Business Profile</p>
+              {configured ? (
+                <span className="text-3xs uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Connected</span>
+              ) : !loading ? (
+                <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
+              ) : null}
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Read-only. Shows how many people view and click your GBP listing and posts — impressions, direction requests, call clicks.
+            </p>
+            {configured && (connectedEmail || locationTitle) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {connectedEmail && <>Connected as <span className="font-medium">{connectedEmail}</span>{locationTitle ? ' · ' : ''}</>}
+                {locationTitle && <span className="font-medium">{locationTitle}</span>}
+              </p>
+            )}
+            <div className="flex gap-1 mt-1.5 flex-wrap">
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Location analytics</span>
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Post views</span>
+            </div>
+          </div>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-5 border-t pt-4">
+          {!configured ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Click below to sign in with the Google account that owns your Business Profile listing. Bernard gets read-only access to performance data — we never post or modify anything.
+              </p>
+              <Button onClick={handleConnect} disabled={disabled || connecting}>
+                {connecting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Redirecting to Google…</>
+                ) : (
+                  <>Connect with Google</>
+                )}
+              </Button>
+              {disabled && <p className="text-xs text-muted-foreground mt-2">Admins only.</p>}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={handleConnect} disabled={connecting}>
+                  {connecting ? 'Reconnecting…' : 'Reconnect (switch account)'}
+                </Button>
+                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={handleDisconnect} disabled={disconnecting}>
+                  {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                </Button>
+              </div>
             </div>
           )}
         </div>
