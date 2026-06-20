@@ -458,6 +458,7 @@ export const POSITION_PRESETS = [
 export const BLOCK_ROLES = ['hook', 'body', 'caption', 'cta', 'attribution', 'page']
 
 import { FONT_SIZE_PX, FONT_WEIGHT_CSS } from './photoTemplates.js'
+import { gradeToCanvasFilter } from './gradeParams.js'
 
 const SHADOW_LEVELS = {
   soft:   { color: 'rgba(0,0,0,0.40)', blur: 4,  offsetY: 1 },
@@ -740,7 +741,17 @@ const WHOOP_NAVY      = '#0c1a2e'
 const WHOOP_PAPER     = '#f6f4ef'
 const WHOOP_SAGE_FILL = '#eaeeea'
 
-function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null }) {
+// Draw the source photo with the per-slide colorist grade applied (and only the
+// photo — panels/scrims/rules stay ungraded). `photoFilter` is a CSS filter
+// string from gradeToCanvasFilter, 'none' when neutral.
+function drawGradedCover(ctx, img, x, y, w, h, zoom, offset, photoFilter) {
+  const prev = ctx.filter
+  if (photoFilter && photoFilter !== 'none') ctx.filter = photoFilter
+  drawCover(ctx, img, x, y, w, h, zoom, offset)
+  ctx.filter = prev || 'none'
+}
+
+function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null, photoFilter = 'none' }) {
   const accent = brandAccent(brandStyle)
 
   if (layout === 'claim') {
@@ -761,7 +772,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
   } else if (layout === 'split') {
     const splitY = Math.round(SIZE * 0.67)
     if (img) {
-      drawCover(ctx, img, 0, 0, SIZE, splitY, zoom, offset)
+      drawGradedCover(ctx, img, 0, 0, SIZE, splitY, zoom, offset, photoFilter)
     } else {
       const grad = ctx.createLinearGradient(0, 0, 0, splitY)
       grad.addColorStop(0, '#475569')
@@ -779,7 +790,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     // badge
     if (palette === 'dark') {
       if (img) {
-        drawCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset)
+        drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
       } else {
         ctx.fillStyle = WHOOP_NAVY
         ctx.fillRect(0, 0, SIZE, SIZE)
@@ -805,7 +816,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
       // below — mirrors the dark-badge scrim treatment (fade, not a hard seam).
       const panelY = Math.round(SIZE * 0.58)
       if (img) {
-        drawCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset)
+        drawGradedCover(ctx, img, 0, 0, SIZE, SIZE, zoom, offset, photoFilter)
       } else {
         const grad = ctx.createLinearGradient(0, 0, 0, SIZE)
         grad.addColorStop(0, '#e2e8f0')
@@ -896,14 +907,21 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // the single shared renderer so preview, publish bake, and ad export all match.
   const photoZoom = slide?.photo_zoom || 1
   const photoOffset = slide?.photo_offset || null
+  // Per-slide colorist grade — applied ONLY to the photo pixels (not panels/text)
+  // in the single shared renderer, so editor preview, publish bake, and ad export
+  // all carry the same look.
+  const photoFilter = gradeToCanvasFilter(slide?.grade)
 
   if (useWhoop) {
     // WHOOP built-in — paint structural geometry (background, panel, rule)
     const img = sourceUrl ? await loadImage(sourceUrl) : null
-    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset })
+    drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter })
   } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
+    const prevFilter = ctx.filter
+    if (photoFilter !== 'none') ctx.filter = photoFilter
     drawCover(ctx, img, 0, 0, W, H, photoZoom, photoOffset)
+    ctx.filter = prevFilter || 'none'
   } else if (background) {
     // Text-only card (Text Post Studio): paint a brand-aware background.
     paintCardBackground(ctx, background, brandStyle)

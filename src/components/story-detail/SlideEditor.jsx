@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import Moveable from 'moveable'
-import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, X, Plus, Image as ImageIcon, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { apiFetch } from '@/lib/api'
 import {
   BLOCK_ROLES,
   POSITION_PRESETS,
@@ -15,6 +16,7 @@ import {
   renderFreeformSlide,
 } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
+import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 
@@ -63,6 +65,8 @@ function normalizeSlide(s, idx) {
     ...(s?.photo_offset && (Number.isFinite(s.photo_offset.x) || Number.isFinite(s.photo_offset.y))
       ? { photo_offset: { x: Number(s.photo_offset.x) || 0, y: Number(s.photo_offset.y) || 0 } }
       : {}),
+    // Per-slide colorist grade (AI Photo Editor). Optional; absent = ungraded.
+    ...(s?.grade && !isNeutralGrade(s.grade) ? { grade: normalizeGrade(s.grade) } : {}),
     blocks: Array.isArray(s?.blocks)
       ? s.blocks.map((b) => ({
           role:     typeof b?.role === 'string' && ROLE_META[b.role] ? b.role : 'body',
@@ -651,6 +655,43 @@ function SlideInspector({
 
 function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
   const [photoOpen, setPhotoOpen] = useState(false)
+  const [vibePrompt, setVibePrompt] = useState('')
+  const [proposing, setProposing] = useState(false)
+
+  const grade = slide.grade || NEUTRAL_GRADE
+  const graded = !isNeutralGrade(grade)
+  function setGradeParam(key, value) {
+    onChange({ ...slide, grade: normalizeGrade({ ...grade, [key]: Number(value) }) })
+  }
+  function applyVibe(params) {
+    onChange({ ...slide, grade: normalizeGrade(params) })
+  }
+  function resetGrade() {
+    const s = { ...slide }; delete s.grade; onChange(s)
+  }
+  async function proposeFromText() {
+    const prompt = vibePrompt.trim()
+    if (!prompt || proposing) return
+    setProposing(true)
+    try {
+      const res = await apiFetch('/api/editorial/propose-grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      if (res?.params) {
+        onChange({ ...slide, grade: normalizeGrade(res.params) })
+        toast.success('Look applied — fine-tune below')
+      } else {
+        toast.error('Could not read a look from that')
+      }
+    } catch (err) {
+      toast.error('Describe-a-look failed', { description: err?.message })
+    } finally {
+      setProposing(false)
+    }
+  }
+
   return (
     <div className="space-y-3 p-3">
       <div className="flex items-center gap-2 rounded-md bg-primary/8 px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
@@ -740,10 +781,81 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, onChange, onBindPhoto }) {
         </div>
       )}
 
-      {/* Phase 3 teaser — the only intentionally non-functional line. */}
-      <p className="rounded-md border border-dashed border-border px-2 py-1.5 text-3xs text-muted-foreground">
-        AI photo grading (brightness, warmth, vibrance) arrives in the next update.
-      </p>
+      {/* AI Photo Editor — the colorist. Describe a vibe, tap a preset, or fine-
+          tune the five essentials. Same param schema as the server bake. */}
+      {photoUrl && (
+        <div className="space-y-2 border-t border-border/60 pt-3">
+          <div className="flex items-center gap-1.5">
+            <Wand2 className="h-3.5 w-3.5 text-primary" />
+            <span className="text-2xs font-semibold uppercase tracking-wide text-primary">AI Photo Editor</span>
+            {graded && (
+              <button type="button" onClick={resetGrade} className="ml-auto text-3xs text-muted-foreground hover:text-foreground hover:underline">
+                reset
+              </button>
+            )}
+          </div>
+
+          {/* Describe the look */}
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={vibePrompt}
+              onChange={(e) => setVibePrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') proposeFromText() }}
+              placeholder="Describe a look — e.g. bright, warm, clinical"
+              className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-2xs outline-none focus:ring-1 focus:ring-primary/50"
+              disabled={proposing}
+            />
+            <button
+              type="button"
+              onClick={proposeFromText}
+              disabled={proposing || !vibePrompt.trim()}
+              className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-2xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {proposing ? '…' : 'Apply'}
+            </button>
+          </div>
+
+          {/* One-tap vibes */}
+          <div className="flex flex-wrap gap-1.5">
+            {GRADE_VIBES.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => applyVibe(v.params)}
+                className="rounded-full border border-border px-2 py-0.5 text-3xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Fine-tune essentials */}
+          <div className="space-y-1.5 pt-0.5">
+            {GRADE_SLIDERS.map((s) => {
+              const val = Number(grade[s.key]) || 0
+              return (
+                <div key={s.key}>
+                  <div className="flex justify-between text-3xs text-muted-foreground">
+                    <span>{s.label}</span>
+                    <span>{val > 0 ? '+' : ''}{val}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    value={val}
+                    onChange={(e) => setGradeParam(s.key, e.target.value)}
+                    className="w-full accent-primary"
+                    aria-label={s.label}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-3xs text-muted-foreground">Applies to this photo. The same grade ships in the published post.</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -1080,6 +1192,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       ...(s.photo_offset && (s.photo_offset.x || s.photo_offset.y)
         ? { photo_offset: { x: s.photo_offset.x || 0, y: s.photo_offset.y || 0 } }
         : {}),
+      // Persist the colorist grade; omit when neutral so legacy slides stay lean.
+      ...(s.grade && !isNeutralGrade(s.grade) ? { grade: normalizeGrade(s.grade) } : {}),
       blocks:    s.blocks.filter((b) => (b.text || '').trim() !== ''),
     }))
 
