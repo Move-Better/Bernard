@@ -111,6 +111,7 @@ export const queryKeys = {
   websiteHealth:    ['website-health'],
   websiteGA4:       ['website-ga4'],
   searchQueries:    ['search-queries'],
+  gbpPerformance:   ['gbp-performance'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
   locations: {
@@ -769,6 +770,21 @@ export function useSearchQueries() {
     queryKey: queryKeys.searchQueries,
     queryFn: () =>
       apiFetch('/api/insights/search-queries').catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 60, // 1h
+    refetchOnWindowFocus: false,
+  })
+}
+
+// ── GBP Performance (Insights) ────────────────────────────────────────────────
+//
+// Returns { connected, locations, email, totals, dailySeries, days } from
+// /api/insights/gbp-performance. Totals are summed across all locations.
+// Cached 1h — GBP performance data refreshes daily.
+export function useGbpPerformance() {
+  return useQuery({
+    queryKey: queryKeys.gbpPerformance,
+    queryFn: () =>
+      apiFetch('/api/insights/gbp-performance').catch(() => ({ connected: false })),
     staleTime: 1000 * 60 * 60, // 1h
     refetchOnWindowFocus: false,
   })

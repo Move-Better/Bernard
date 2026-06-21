@@ -1,10 +1,11 @@
 // Insights — Google Business Profile Performance.
 //
-// Returns 30-day daily metrics for the workspace's connected GBP location:
+// Returns 30-day daily metrics summed across ALL locations in the workspace's
+// connected GBP account:
 //   totals      — aggregated impressions (map + search), direction requests,
-//                 call clicks, website clicks.
-//   dailySeries — day-by-day breakdown for the sparkline/chart.
-//   location    — title and resource name detected at OAuth connect time.
+//                 call clicks, website clicks across every location.
+//   dailySeries — day-by-day breakdown for the sparkline/chart (summed).
+//   locations[] — [{name, title}] for each location (for display labels).
 //
 // Returns { connected: false } when GBP Analytics isn't configured.
 export const config = { runtime: 'nodejs' }
@@ -67,23 +68,48 @@ export default async function handler(req, res) {
     return res.status(200).json({ connected: true, error: 'token_refresh_failed', detail: e?.message })
   }
 
-  let result
+  // Build the list of locations to fetch — use config.locations[] when present
+  // (multi-location, stored after the gbpAuth update), fall back to the single
+  // location_name on older credentials.
+  const locationList = Array.isArray(row.config?.locations) && row.config.locations.length
+    ? row.config.locations
+    : [{ location_name: ws.gbp_location_name, location_title: row.config?.location_title || null }]
+
+  let results
   try {
-    result = await fetchLocationMetrics(accessToken, ws.gbp_location_name, DAYS)
+    results = await Promise.all(
+      locationList.map((loc) => fetchLocationMetrics(accessToken, loc.location_name, DAYS))
+    )
   } catch (e) {
     console.error('[insights/gbp-performance]', e?.message)
     return res.status(200).json({ connected: true, error: 'gbp_fetch_failed', detail: e?.message?.slice(0, 300) })
   }
 
+  // Merge daily series across locations by summing numeric fields per date
+  const numericFields = ['impressions', 'mapImpressions', 'searchImpressions', 'directionRequests', 'callClicks', 'websiteClicks']
+  const dayMap = {}
+  for (const { dailySeries } of results) {
+    for (const entry of dailySeries) {
+      if (!dayMap[entry.date]) dayMap[entry.date] = { date: entry.date, impressions: 0, mapImpressions: 0, searchImpressions: 0, directionRequests: 0, callClicks: 0, websiteClicks: 0 }
+      for (const f of numericFields) dayMap[entry.date][f] += entry[f] || 0
+    }
+  }
+  const dailySeries = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date))
+
+  const totals = { impressions: 0, mapImpressions: 0, searchImpressions: 0, directionRequests: 0, callClicks: 0, websiteClicks: 0 }
+  for (const entry of dailySeries) {
+    for (const f of numericFields) totals[f] += entry[f]
+  }
+
   return res.status(200).json({
     connected: true,
-    location: {
-      name:  ws.gbp_location_name,
-      title: row.config?.location_title || null,
-      email: row.config?.account_email  || null,
-    },
+    locations: locationList.map((loc) => ({
+      name:  loc.location_name,
+      title: loc.location_title || null,
+    })),
+    email:       row.config?.account_email || null,
     days:        DAYS,
-    totals:      result.totals,
-    dailySeries: result.dailySeries,
+    totals,
+    dailySeries,
   })
 }

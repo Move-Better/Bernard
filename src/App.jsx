@@ -54,7 +54,6 @@ const ReviewInbox = lazy(() => import('@/pages/ReviewInbox'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const Storyboard = lazy(() => import('@/pages/Storyboard'))
-const StoryboardPiece = lazy(() => import('@/pages/StoryboardPiece'))
 const StoryboardPublish = lazy(() => import('@/pages/StoryboardPublish'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
 const PreVisitMessage = lazy(() => import('@/pages/PreVisitMessage'))
@@ -550,7 +549,7 @@ function LegacyStoryboardPieceRedirect() {
 }
 function LegacyStoryboardPublishRedirect() {
   const { pieceId } = useParams()
-  return <Navigate to={`/publish/${pieceId}/schedule`} replace />
+  return <Navigate to={`/publish/${pieceId}`} replace />
 }
 
 
@@ -621,8 +620,8 @@ function AppRoutes() {
             {/* Publish (né Storyboard) — the assembly desk: attach media, set
                 the look, schedule. /storyboard/* and /needs-media redirect. */}
             <Route path="/publish" element={guarded(<Storyboard />)} />
-            <Route path="/publish/:pieceId" element={guarded(<StoryboardPiece />)} />
-            <Route path="/publish/:pieceId/schedule" element={guarded(<StoryboardPublish />)} />
+            <Route path="/publish/:pieceId" element={guarded(<StoryboardPublish />)} />
+            <Route path="/publish/:pieceId/schedule" element={<LegacyStoryboardPublishRedirect />} />
             <Route path="/storyboard" element={<Navigate to="/publish" replace />} />
             <Route path="/storyboard/:pieceId" element={<LegacyStoryboardPieceRedirect />} />
             <Route path="/storyboard/:pieceId/publish" element={<LegacyStoryboardPublishRedirect />} />

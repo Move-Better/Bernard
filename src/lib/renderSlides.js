@@ -48,6 +48,7 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
       text: b.text, role: b.role, position: b.position, width: b.width,
       // per-block style overrides also change the pixels
       fontScale: b.fontScale, color: b.color, fontWeight: b.fontWeight, uppercase: b.uppercase, font: b.font,
+      italic: b.italic, underline: b.underline,
     })),
     template: slide.template || null,
     photoUrl: photoUrl || null,
@@ -62,8 +63,8 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     // changes. v2: fit-relative zoom (whole photo by default) + blurred backdrop
     // when the photo doesn't fill the frame. v3: 4:5 portrait output (1080×1350,
     // aspect-parametric renderer). v4: dragged (custom {x,y}) text is centre-
-    // anchored both axes so it matches the drag handle. (Q 2026-06-20)
-    _renderV: 4,
+    // anchored both axes so it matches the drag handle. v5: italic + underline.
+    _renderV: 5,
   }))
 }
 

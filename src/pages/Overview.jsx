@@ -1,36 +1,21 @@
-import { Link, useSearchParams, Navigate } from 'react-router-dom'
-import { CheckCircle, Inbox, LayoutGrid, Shield } from 'lucide-react'
+import { Link, Navigate } from 'react-router-dom'
+import { CheckCircle, Inbox, LayoutGrid, Shield, CalendarDays, Flag } from 'lucide-react'
 import { useStories } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermissionTier } from '@/lib/usePermissionTier'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import StoriesPipelineView from '@/components/stories/StoriesPipelineView'
-import StoriesCardsView from '@/components/stories/StoriesCardsView'
 import StoriesCalendarView from '@/components/stories/StoriesCalendarView'
 import StoriesCampaignsView from '@/components/stories/StoriesCampaignsView'
 import WeeklyRecapPanel from '@/components/overview/WeeklyRecapPanel'
 import PageHelp from '@/components/PageHelp'
 
 // The clinic-wide, top-down board — separate from Home (which is personal) and
-// from Stories/Storyboard (the producer's own work). Three lenses on the same
-// content: Pipeline (by stage), Calendar (by ship date), Themes (by topic +
-// gaps). These moved OFF the producer's Stories list, where they didn't belong.
-//
-// Role-gated to owner / producer / director (admin or publisher). An individual
-// clinician just uses Home + their work and never sees this surface.
-const LENSES = [
-  ['pipeline', 'Pipeline'],
-  ['cards', 'Cards'],
-  ['calendar', 'Calendar'],
-  ['campaigns', 'Campaigns'],
-]
-
+// from Stories/Storyboard (the producer's own work).
+// Role-gated to owner / producer / director (admin or publisher).
 export default function Overview() {
   useDocumentTitle('Overview')
   const { isEditor, isLoading: roleLoading } = useUserRole()
   const { isProducer, isStaff } = usePermissionTier()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const view = searchParams.get('view') || 'pipeline'
 
   const { data: stories = [], isLoading } = useStories()
 
@@ -48,15 +33,6 @@ export default function Overview() {
   const showPublisherBanner = isProducer || (isEditor && readyToDistribute.length > 0)
   // Clinician approval banner — shown to staff members when blogs need their sign-off.
   const showClinicianBanner = !showPublisherBanner && isStaff && blogsToApprove.length > 0
-
-  const setView = (v) =>
-    setSearchParams(
-      (prev) => {
-        prev.set('view', v)
-        return prev
-      },
-      { replace: true },
-    )
 
   return (
     <div className="space-y-4">
@@ -121,38 +97,26 @@ export default function Overview() {
         </div>
       )}
 
-      {/* Weekly all-staff recap — workspace-wide "this week" snapshot, team
-          cadence, and estimated run-cost. Pinned above the lenses so it's the
-          first thing on screen when the board is shared in the staff meeting. */}
+      {/* Weekly all-staff recap */}
       <WeeklyRecapPanel stories={stories} />
 
-      {/* Lens toggle — Pipeline / Calendar / Themes, persisted in ?view= */}
-      <div className="inline-flex rounded-md border p-0.5 text-xs font-medium">
-        {LENSES.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setView(id)}
-            className={`rounded px-3 py-1 transition-colors ${
-              view === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Calendar — always visible, no tab needed */}
+      <div className="pt-2 border-t">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" />
+          Calendar
+        </h2>
+        <StoriesCalendarView stories={stories} isLoading={isLoading} />
       </div>
 
-      {/* Lens dispatch — same data + the same view components Stories used to
-          host, so the board stays consistent with the producer's surfaces. */}
-      {view === 'cards' ? (
-        <StoriesCardsView stories={stories} isLoading={isLoading} />
-      ) : view === 'calendar' ? (
-        <StoriesCalendarView stories={stories} isLoading={isLoading} />
-      ) : view === 'campaigns' ? (
+      {/* Campaigns — always visible, no tab needed */}
+      <div className="pt-2 border-t">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <Flag className="h-4 w-4 text-primary" aria-hidden="true" />
+          Campaigns
+        </h2>
         <StoriesCampaignsView stories={stories} isLoading={isLoading} />
-      ) : (
-        <StoriesPipelineView stories={stories} isLoading={isLoading} />
-      )}
+      </div>
     </div>
   )
 }

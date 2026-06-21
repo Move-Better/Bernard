@@ -75,9 +75,11 @@ const FORMATS = [
 function normalizeTheme(t) {
   if (!t) return { blocks: {} }
   return {
-    layout:  t.layout,          // from built-in; undefined for custom
-    palette: t.palette,
-    blocks:  t.blocks || t.config?.blocks || {},
+    layout:    t.layout,
+    palette:   t.palette,
+    blocks:    t.blocks || t.config?.blocks || {},
+    structure: t.structure || t.config?.structure || undefined,
+    mode:      t.mode     || t.config?.mode     || undefined,
   }
 }
 
@@ -487,14 +489,15 @@ const CHAT_SUGGESTIONS = [
 // templates carry it (or just blocks) under .config.
 function themeToConfig(theme) {
   if (!theme) return null
-  if (theme.config) {
-    return {
-      layout:  theme.config.layout  || theme.layout  || 'photo',
-      palette: theme.config.palette || theme.palette || 'dark',
-      blocks:  theme.config.blocks  || {},
-    }
-  }
-  return { layout: theme.layout || 'photo', palette: theme.palette || 'dark', blocks: theme.blocks || {} }
+  const layout    = theme.config?.layout    || theme.layout    || 'photo'
+  const palette   = theme.config?.palette   || theme.palette   || 'dark'
+  const blocks    = theme.config?.blocks    || theme.blocks    || {}
+  const structure = theme.config?.structure || theme.structure || undefined
+  const mode      = theme.config?.mode      || theme.mode      || undefined
+  const out = { layout, palette, blocks }
+  if (structure?.length) out.structure = structure
+  if (mode) out.mode = mode
+  return out
 }
 
 function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, saving }) {

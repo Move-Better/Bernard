@@ -441,59 +441,51 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
           <>
             {/* Social accounts — Instagram/Facebook/X/LinkedIn/TikTok/YouTube/Threads/Bluesky/Mastodon on the workspace Team */}
             <div className="px-5 py-3.5 border-t border-border">
-              <h3 className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Social accounts</h3>
-              <div className="rounded-md border border-border">
-                <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex-1 min-w-0">
-                    {status == null ? (
-                      <span className="text-2xs text-muted-foreground">Checking…</span>
-                    ) : (
-                      <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-                        <CheckCircle2 className="h-3.5 w-3.5" />{accounts.filter(a => a.connected).length} connected
-                      </span>
-                    )}
-                    <span className="text-2xs text-muted-foreground ml-2">Instagram, Facebook, X, LinkedIn &amp; more</span>
-                  </div>
-                  <button
-                    type="button" disabled={!isAdmin || busy} onClick={openPortal}
-                    className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
-                  >
-                    {busy ? 'Opening…' : (status?.connected ? 'Manage' : 'Connect')}
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </button>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-sm font-semibold">Social accounts</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Bluesky &amp; Mastodon.</p>
                 </div>
-                {accounts.length > 0 && (
-                  <div className="border-t border-border px-3 py-2 space-y-1.5">
-                    {accounts.map((a, i) => (
-                      <div key={a.type || i} className="flex items-center gap-3">
-                        <span className="text-xs flex-1 truncate capitalize text-foreground/80">
-                          {a.type ? a.type.replace(/_/g, ' ').toLowerCase() : 'account'}
-                          {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
-                        </span>
-                        {a.connected ? (
-                          <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-                            <CheckCircle2 className="h-3.5 w-3.5" />Connected
-                          </span>
-                        ) : (
-                          <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action">
-                            <AlertTriangle className="h-3.5 w-3.5" />Needs attention
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <button
+                  type="button" disabled={!isAdmin || busy} onClick={openPortal}
+                  className="text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90 inline-flex items-center gap-1.5"
+                >
+                  {busy ? 'Opening…' : (status?.connected ? 'Manage accounts' : 'Connect accounts')}
+                  <ExternalLink className="h-4 w-4" />
+                </button>
               </div>
+              {accounts.length > 0 && (
+                <div className="mt-2.5 space-y-1.5 pl-2">
+                  {accounts.map((a, i) => (
+                    <div key={a.type || i} className="flex items-center gap-3">
+                      <span className="text-xs flex-1 truncate capitalize text-foreground/80">
+                        {a.type ? a.type.replace(/_/g, ' ').toLowerCase() : 'account'}
+                        {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
+                      </span>
+                      {a.connected ? (
+                        <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" />Connected
+                        </span>
+                      ) : (
+                        <button type="button" onClick={openPortal} disabled={!isAdmin} className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action disabled:opacity-60">
+                          <AlertTriangle className="h-3.5 w-3.5" />Reconnect
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {status == null && <p className="text-2xs text-muted-foreground mt-2">Checking…</p>}
             </div>
 
             {/* Google Business — one Team per location (bundle allows one active GBP per Team) */}
             {locations.length > 0 && (
               <div className="px-5 py-3.5 border-t border-border">
-                <h3 className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Google Business</h3>
-                <p className="text-2xs text-muted-foreground mb-2">
-                  bundle.social requires a separate connection per location — posts fan out to all connected listings automatically.
+                <h3 className="text-sm font-semibold">Google Business — by location</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Each location connects its own Google Business listing. Posts to Google fan out to every connected location.
                 </p>
-                <div className="space-y-1.5">
+                <div className="mt-2.5 space-y-1.5 pl-2">
                   {locations.map((loc) => (
                     <div key={loc.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
                       <div className="flex-1 min-w-0">
@@ -505,8 +497,8 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                         </div>
                         <span className="block text-2xs text-muted-foreground truncate mt-0.5">
                           {loc.connected
-                            ? loc.displayName || 'Google Business'
-                            : loc.hasTeam ? 'Connection needs attention' : 'Not connected yet'}
+                            ? `Google Business${loc.displayName ? ` · ${loc.displayName}` : ''}`
+                            : loc.hasTeam ? 'Google Business · connection needs attention' : 'Google Business · not connected yet'}
                         </span>
                       </div>
                       {loc.connected ? (
@@ -516,24 +508,24 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                           </span>
                           <button
                             type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
-                            className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
+                            className="text-2xs text-primary inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-muted disabled:opacity-60"
                           >
-                            Manage <ExternalLink className="h-3.5 w-3.5" />
+                            Manage <ExternalLink className="h-3 w-3" />
                           </button>
                         </>
                       ) : loc.hasTeam ? (
                         <button
                           type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
-                          className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-action/40 text-action font-medium disabled:opacity-60 hover:bg-action/5 shrink-0"
+                          className="text-2xs inline-flex items-center gap-1 px-2 py-1 rounded bg-action/10 text-action disabled:opacity-60"
                         >
                           <AlertTriangle className="h-3.5 w-3.5" />Reconnect
                         </button>
                       ) : (
                         <button
                           type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
-                          className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
+                          className="text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90 inline-flex items-center gap-1.5"
                         >
-                          {locBusy ? 'Opening…' : 'Connect'}
+                          {locBusy ? 'Opening…' : 'Connect Google Business'}
                           <ExternalLink className="h-3.5 w-3.5" />
                         </button>
                       )}

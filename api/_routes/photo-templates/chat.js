@@ -44,13 +44,51 @@ const blockSchema = z.object({
   bgColor:    z.string().nullable().describe('Pill/rect fill as #RRGGBB hex, or null to use the brand accent'),
   uppercase:  z.boolean(),
 })
+
+// Color for structure primitives: semantic token or hex.
+const CS = z.string().describe('$ink | $paper | $accent | #RRGGBB hex | rgba(r,g,b,a)')
+
+// Structure primitive schema — simplified model-friendly forms; the renderer
+// also accepts the extended full forms used by built-in themes.
+const primitiveSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('bg-solid'),
+    color: CS }),
+  z.object({ type: z.literal('bg-radial'),
+    colorCenter: CS, colorEdge: CS,
+    yCenterFrac: z.number().min(0).max(1).optional().describe('vertical center 0–1, default 0.45') }),
+  z.object({ type: z.literal('bg-linear'),
+    colorFrom: CS, colorTo: CS }),
+  z.object({ type: z.literal('photo') }),
+  z.object({ type: z.literal('overlay'),
+    color: CS.describe('semi-transparent rgba, e.g. rgba(0,0,0,0.35)') }),
+  z.object({ type: z.literal('scrim'),
+    yFrac: z.number().min(0).max(0.95),
+    yEndFrac: z.number().min(0.05).max(1).optional(),
+    opacity: z.number().min(0).max(1).optional().describe('black veil opacity 0–1, default 0.7') }),
+  z.object({ type: z.literal('panel'),
+    color: CS, yFrac: z.number().min(0.2).max(0.92) }),
+  z.object({ type: z.literal('gradient-panel'),
+    colorFrom: CS, colorTo: CS, yFrac: z.number().min(0.2).max(0.92) }),
+  z.object({ type: z.literal('rule'),
+    color: CS, yFrac: z.number().min(0).max(1),
+    thickness: z.number().int().min(1).max(16).optional(),
+    padded: z.boolean().optional() }),
+  z.object({ type: z.literal('circle'),
+    color: CS, cxFrac: z.number().min(0).max(1), cyFrac: z.number().min(0).max(1),
+    rFrac: z.number().min(0.02).max(0.5) }),
+])
+
 const outSchema = z.object({
-  name:    z.string().describe('2–4 word name describing the look, e.g. "Bold Navy Claim"'),
-  layout:  z.enum(LAYOUTS).describe('photo = text over full photo; claim = full-bleed card; badge = photo + bottom headline; split = photo top, panel below'),
-  palette: z.enum(PALETTES),
-  blocks:  z.object(Object.fromEntries(ROLES.map((r) => [r, blockSchema]))),
-  reply:   z.string().describe('One or two sentences to the user, conversational, describing what you did and inviting the next change.'),
-  summary: z.string().describe('A terse change summary, e.g. "headline → 3xl" or "palette → light · ground brand white". Lowercase, no period.'),
+  name:      z.string().describe('2–4 word name describing the look, e.g. "Bold Navy Claim"'),
+  layout:    z.enum(LAYOUTS).describe('photo = text over full photo; claim = full-bleed card; badge = photo + bottom headline; split = photo top, panel below'),
+  palette:   z.enum(PALETTES),
+  blocks:    z.object(Object.fromEntries(ROLES.map((r) => [r, blockSchema]))),
+  structure: z.array(primitiveSchema).min(1).max(8).nullable().optional()
+    .describe('Ordered structural drawing primitives (back to front). Set when creating a custom look; omit/null to use the built-in geometry for the chosen layout/palette.'),
+  mode:      z.enum(['post', 'ad']).optional()
+    .describe('post = text overlays canvas (default); ad = structural background only, no text rendered'),
+  reply:     z.string().describe('One or two sentences to the user, conversational, describing what you did and inviting the next change.'),
+  summary:   z.string().describe('A terse change summary, e.g. "headline → 3xl" or "palette → light · ground brand white". Lowercase, no period.'),
 })
 
 // Relative luminance of a #rrggbb hex (0 = black … 1 = white), for ink/paper.
@@ -102,7 +140,12 @@ function sanitizeConfig(t) {
   const fbBlocks = BUILTIN_THEMES[fbId].blocks
   const blocks = {}
   for (const role of ROLES) blocks[role] = sanitizeBlock(role, t?.blocks?.[role], fbBlocks[role])
-  return { layout, palette, blocks }
+  const out = { layout, palette, blocks }
+  // Pass structure through — already Zod-validated by outSchema; preserve for custom designs
+  if (Array.isArray(t?.structure) && t.structure.length > 0) out.structure = t.structure
+  // Preserve ad mode
+  if (t?.mode === 'ad') out.mode = 'ad'
+  return out
 }
 
 // Validate + clamp a client config to the schema shape so the model receives a
@@ -145,18 +188,43 @@ export default async function handler(req, res) {
   const system = [
     'You are a friendly AI designer building ONE Instagram/Facebook carousel + photo template for a healthcare/clinic brand, refined through conversation.',
     'Each turn you return the COMPLETE updated template config in our schema (not a diff) — even for a small change, re-emit every field — plus a short conversational `reply` and a terse `summary` of what changed.',
-    'The config our renderer draws onto a 1080×1080 canvas:',
+    '',
+    '── CANVAS BACKGROUND (structure) ──',
+    'You may set a `structure` array of drawing primitives (back to front) to control the canvas background.',
+    'Primitives:',
+    '  bg-solid { color }                        — fills canvas with a solid color',
+    '  bg-radial { colorCenter, colorEdge, yCenterFrac? } — radial gradient; yCenterFrac 0–1 (default 0.45)',
+    '  bg-linear { colorFrom, colorTo }           — top-to-bottom linear gradient',
+    '  photo {}                                   — draws the source photo full-bleed',
+    '  overlay { color: "rgba(r,g,b,a)" }         — semi-transparent full-canvas tint',
+    '  scrim { yFrac, yEndFrac?, opacity? }       — dark veil from yFrac to yEndFrac (opacity 0–1, default 0.7)',
+    '  panel { color, yFrac }                     — solid rectangle from yFrac to bottom',
+    '  gradient-panel { colorFrom, colorTo, yFrac } — gradient rect from yFrac to bottom',
+    '  rule { color, yFrac, thickness?, padded? } — horizontal accent line',
+    '  circle { color, cxFrac, cyFrac, rFrac }    — decorative filled circle',
+    'Color values: $ink (brand darkest), $paper (brand lightest), $accent (brand accent), or #RRGGBB hex.',
+    'Set `structure` when the user asks for a specific look — a gradient panel, circle accent, radial glow, custom scrim.',
+    'Omit / set null to let the renderer use the built-in geometry for the chosen layout/palette.',
+    '',
+    '── MODE ──',
+    'mode: "post" (default) — text blocks overlay the canvas.',
+    'mode: "ad" — structural background only; no text rendered. Use when the user wants a pure background for ad creatives.',
+    '',
+    '── TEXT BLOCKS ──',
     'Block roles: hook = the headline; body = supporting sentence; caption = small note; cta = call-to-action pill; attribution = clinic name; page = page number.',
     'Per block you set fontSize, fontWeight, text color (#RRGGBB), shadow, background (none/pill/rect), bgColor (#RRGGBB or null = use the brand accent), and uppercase.',
-    'Layout families: photo (text over a full-bleed photo — use shadows so text stays legible), claim (full-bleed card, works with or without a photo), badge (photo with a bottom-anchored headline), split (photo on top, a solid color panel below carrying the headline). You MAY change the layout family when the user asks ("make it a card", "split panel", etc.).',
+    '',
+    '── LAYOUTS (when not using custom structure) ──',
+    'photo (text over full-bleed photo — use shadows for legibility), claim (full-bleed card), badge (photo + bottom-anchored headline), split (photo top half, solid panel below).',
+    '',
     'IMPORTANT — the renderer paints the card/panel GROUND from THIS brand only:',
     ink ? `a DARK-palette template renders on the brand dark color ${ink};` : 'a DARK-palette template renders on a dark ground;',
     paper ? `a LIGHT-palette template renders on the brand light color ${paper}.` : 'a LIGHT-palette template renders on a light ground.',
     `Brand accent color: ${accent}.`,
     all.length ? `Brand palette — use ONLY these colors (plus #FFFFFF / #000000 when needed): ${all.join(', ')}.` : 'No extra brand palette; use the accent + clean black/white neutrals.',
     `Clinic name: ${ws.display_name || 'the clinic'}.`,
-    'Rules: every color is #RRGGBB hex from the brand palette above — never invent colors (no navy, no random hues).',
-    'Contrast: on a DARK palette the ground is dark, so hook/body/attribution text must be LIGHT (the brand light color or #FFFFFF). On a LIGHT palette the ground is light, so that text must be DARK (the brand dark color or #000000). Never light text on a light ground.',
+    'Rules: every color is #RRGGBB hex from the brand palette above — never invent colors.',
+    'Contrast: DARK palette → text must be LIGHT (brand light color or #FFFFFF). LIGHT palette → text must be DARK (brand dark or #000000). Never light text on a light ground.',
     'Keep a name that fits the current look (2–4 words). Be concise and warm in `reply`; keep `summary` terse and lowercase.',
     current
       ? `The CURRENT template config is:\n${JSON.stringify(current)}\nApply the user's latest request to it and return the full updated config.`
