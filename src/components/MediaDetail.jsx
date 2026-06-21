@@ -840,11 +840,11 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               <div className="rounded-lg border-2 border-primary/35 bg-primary/5 p-3 space-y-2">
                 <div className="text-3xs uppercase tracking-wide font-bold text-primary">Work with this video</div>
                 {canEdit ? (
-                  <Button size="sm" className="w-full gap-1.5" onClick={() => navigate(`/slate/clip/${asset.id}`)}>
-                    <Scissors className="h-3.5 w-3.5" />Open in Slate
+                  <Button size="sm" className="w-full gap-1.5" onClick={() => navigate(`/moments/clip/${asset.id}`)}>
+                    <Scissors className="h-3.5 w-3.5" />Open in Moment Miner
                   </Button>
                 ) : (
-                  <p className="text-2xs text-muted-foreground">Editors cut this video into clips on Slate.</p>
+                  <p className="text-2xs text-muted-foreground">Editors cut this video into clips in Moment Miner.</p>
                 )}
                 <p className="text-2xs text-muted-foreground leading-snug">
                   Cut clips, review AI-proposed moments, repurpose, or use the whole video — all on the cutting desk now, one door instead of three buttons.

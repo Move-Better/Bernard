@@ -235,8 +235,8 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
   )
 }
 
-export default function Slate() {
-  useDocumentTitle('Slate')
+export default function MomentMiner() {
+  useDocumentTitle('Moment Miner')
   const ws = useWorkspace()
   const navigate = useNavigate()
 
@@ -396,9 +396,9 @@ export default function Slate() {
     <div className="flex flex-col gap-4">
       {/* Page heading */}
       <div className="flex items-end gap-2 mt-1">
-        <h1 className="text-2xl font-bold tracking-tight">Slate</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Moment Miner</h1>
         <span className="text-muted-foreground text-sm mb-0.5">
-          · turn raw video into clips — each becomes a post or reusable b-roll
+          · mine your sessions for the best moments — saved as clips to your Library
         </span>
       </div>
 
@@ -540,7 +540,7 @@ export default function Slate() {
               key={asset.id}
               asset={asset}
               staffName={staffMap[asset.staff_id]}
-              onReview={(id) => navigate(`/slate/clip/${id}`)}
+              onReview={(id) => navigate(`/moments/clip/${id}`)}
               onRepurpose={handleRepurpose}
               repurposing={repurposingId === asset.id}
             />
@@ -553,7 +553,7 @@ export default function Slate() {
               key={asset.id}
               asset={asset}
               staffName={staffMap[asset.staff_id]}
-              onEdit={(id) => navigate(`/slate/clip/${id}`)}
+              onEdit={(id) => navigate(`/moments/clip/${id}`)}
               onFind={view === 'needs_cutting' ? handleFindMoments : undefined}
             />
           ))}

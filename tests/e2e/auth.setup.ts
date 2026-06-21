@@ -95,7 +95,7 @@ setup('authenticate fixture user', async ({ page }) => {
     page.getByRole('heading', { name: /good (morning|afternoon|evening)/i })
       .or(page.getByRole('link', { name: /new interview/i }))
       .or(page.getByRole('button', { name: /new interview/i }))
-      .or(page.getByRole('heading', { name: /^slate$/i }))
+      .or(page.getByRole('heading', { name: /^moment miner$/i }))
       .first(),
   ).toBeVisible({ timeout: 30_000 })
 
@@ -106,7 +106,7 @@ setup('authenticate fixture user', async ({ page }) => {
   // ensures the saved state always carries the suppression into every spec.
   await page.evaluate(() => {
     const ts = new Date().toISOString()
-    ;['home', 'slate', 'stories'].forEach(k => {
+    ;['home', 'slate', 'moments', 'stories'].forEach(k => {
       localStorage.setItem(`pagehelp:${k}:welcomed:v1`, ts)
     })
   })

@@ -6,7 +6,7 @@ import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
-  Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, GalleryHorizontalEnd,
+  Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe, GalleryHorizontalEnd,
   LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, CalendarRange, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -58,7 +58,7 @@ const NAV_SECTIONS = [
       // Slate — the cutting desk (video → clips). Sits between Stories and
       // Publish so the Produce section reads as the pipeline: words → cut →
       // assemble/ship. Still gated on the workspace's video pipeline opt-in.
-      { to: '/slate',      label: 'Slate',      hint: 'Cut video',       match: (p) => p.startsWith('/slate'),    icon: Scissors },
+      { to: '/moments',    label: 'Moment Miner', hint: 'Mine moments',   match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
       // Publish (né Storyboard, renamed 2026-06-09) — the assembly desk:
       // media + schedule. Ungated like Library so producers see it. Old
       // /storyboard and /needs-media routes redirect.

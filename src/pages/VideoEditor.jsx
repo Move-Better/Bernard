@@ -499,7 +499,7 @@ function VerticalTimeline({ ctx }) {
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 export default function VideoEditor() {
-  useDocumentTitle('Reel Editor · Slate')
+  useDocumentTitle('Reel Editor · Moment Miner')
   const { assetId } = useParams()
   const navigate = useNavigate()
   const videoRef = useRef(null)
@@ -755,7 +755,7 @@ export default function VideoEditor() {
   })
   const wholeMutation = useAppMutation({
     mutationFn: () => renderWholeVideo(assetId),
-    onSuccess: () => { toast('Rendering the full-length video — track it on Slate.'); navigate('/slate') },
+    onSuccess: () => { toast('Rendering the full-length video — track it on Moment Miner.'); navigate('/moments') },
   })
   // Karaoke fix for LEGACY clips (detected before words were persisted): re-run
   // detection (which now persists transcript_words), poll the asset until the
@@ -839,7 +839,7 @@ export default function VideoEditor() {
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
         <AlertCircle className="h-8 w-8 text-destructive" />
         <p className="text-sm font-medium text-destructive">Could not load this clip</p>
-        <Button size="sm" variant="outline" onClick={() => navigate('/slate')}>Back to Slate</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/moments')}>Back to Moment Miner</Button>
       </div>
     )
   }
@@ -852,7 +852,7 @@ export default function VideoEditor() {
       <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="border-b p-2.5" style={{ borderColor: 'hsl(var(--border))' }}>
           <div className="mb-2 flex items-center gap-2">
-            <button onClick={() => navigate('/slate')} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back to Slate"><ArrowLeft className="h-4 w-4" /></button>
+            <button onClick={() => navigate('/moments')} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back to Moment Miner"><ArrowLeft className="h-4 w-4" /></button>
             <span className="truncate text-xs font-semibold">{asset.display_title || asset.filename || 'Reel'}</span>
           </div>
           <div className="mb-2 flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>

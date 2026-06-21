@@ -32,7 +32,7 @@ test('interview create flow + integrations page', async ({ page }) => {
   await page.goto('/')
   await expect(
     page.getByRole('heading', { name: /good (morning|afternoon|evening)/i })
-      .or(page.getByRole('heading', { name: /^slate$/i }))
+      .or(page.getByRole('heading', { name: /^moment miner$/i }))
       .first(),
   ).toBeVisible({ timeout: 30_000 })
 
