@@ -344,6 +344,25 @@ function StatPill({ label, value }) {
   )
 }
 
+function LocationStatRow({ loc, fmtN }) {
+  const t = loc.totals || {}
+  return (
+    <div className="pt-3 mt-3 border-t border-border first:border-0 first:pt-0 first:mt-0">
+      {loc.title && (
+        <p className="text-xs font-medium text-foreground mb-2">{loc.title}</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <StatPill label="Impressions"    value={fmtN(t.impressions)} />
+        <StatPill label="Maps views"     value={fmtN(t.mapImpressions)} />
+        <StatPill label="Search views"   value={fmtN(t.searchImpressions)} />
+        <StatPill label="Directions"     value={fmtN(t.directionRequests)} />
+        <StatPill label="Calls"          value={fmtN(t.callClicks)} />
+        <StatPill label="Website clicks" value={fmtN(t.websiteClicks)} />
+      </div>
+    </div>
+  )
+}
+
 function GbpPerformanceRead({ data }) {
   if (!data?.connected) {
     return (
@@ -363,9 +382,7 @@ function GbpPerformanceRead({ data }) {
 
   const { totals = {}, locations = [], days = 30 } = data
   const fmtN = (n) => Number(n || 0).toLocaleString()
-  const locationLabel = locations.length > 1
-    ? `${locations.length} locations combined`
-    : (locations[0]?.title || 'your listing')
+  const multiLoc = locations.length > 1
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
@@ -375,20 +392,37 @@ function GbpPerformanceRead({ data }) {
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
-            Google Business Profile · {days}d · {locationLabel}
+            Google Business Profile · {days}d{multiLoc ? ` · ${locations.length} locations` : ''}
           </span>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <StatPill label="Impressions" value={fmtN(totals.impressions)} />
-            <StatPill label="Maps views" value={fmtN(totals.mapImpressions)} />
-            <StatPill label="Search views" value={fmtN(totals.searchImpressions)} />
-            <StatPill label="Directions" value={fmtN(totals.directionRequests)} />
-            <StatPill label="Calls" value={fmtN(totals.callClicks)} />
-            <StatPill label="Website clicks" value={fmtN(totals.websiteClicks)} />
-          </div>
-          {locations.length > 1 && (
-            <p className="text-2xs text-muted-foreground mt-3">
-              {locations.map((l) => l.title).filter(Boolean).join(' · ')}
-            </p>
+
+          {multiLoc ? (
+            <>
+              {/* Per-location rows */}
+              {locations.map((loc) => (
+                <LocationStatRow key={loc.name} loc={loc} fmtN={fmtN} />
+              ))}
+              {/* Combined total */}
+              <div className="mt-4 pt-3 border-t border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Combined</p>
+                <div className="flex flex-wrap gap-2">
+                  <StatPill label="Impressions"    value={fmtN(totals.impressions)} />
+                  <StatPill label="Maps views"     value={fmtN(totals.mapImpressions)} />
+                  <StatPill label="Search views"   value={fmtN(totals.searchImpressions)} />
+                  <StatPill label="Directions"     value={fmtN(totals.directionRequests)} />
+                  <StatPill label="Calls"          value={fmtN(totals.callClicks)} />
+                  <StatPill label="Website clicks" value={fmtN(totals.websiteClicks)} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-wrap gap-2 mt-4">
+              <StatPill label="Impressions"    value={fmtN(totals.impressions)} />
+              <StatPill label="Maps views"     value={fmtN(totals.mapImpressions)} />
+              <StatPill label="Search views"   value={fmtN(totals.searchImpressions)} />
+              <StatPill label="Directions"     value={fmtN(totals.directionRequests)} />
+              <StatPill label="Calls"          value={fmtN(totals.callClicks)} />
+              <StatPill label="Website clicks" value={fmtN(totals.websiteClicks)} />
+            </div>
           )}
         </div>
       </div>
