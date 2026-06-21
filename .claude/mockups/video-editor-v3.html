@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Reel Editor v3 (sides-only, max vertical)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --border:214 32% 91%; --info:199 95% 40%; --action:38 92% 50%;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .text-3xs{font-size:10px;line-height:13px} .text-2xs{font-size:11px;line-height:15px}
+  .legend{border:1px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.06)}
+  input[type=range]{-webkit-appearance:none;height:4px;border-radius:4px;background:hsl(var(--border))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:hsl(var(--primary));border:2px solid #fff}
+  .railbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;width:100%;cursor:pointer;border-left:2px solid transparent}
+  .railbtn.on{border-left-color:hsl(var(--primary));background:hsl(var(--primary)/.07)}
+  /* vertical timeline */
+  .vcol{position:relative;border-radius:7px;background:hsl(220 14% 93%)}
+  .vbar{position:absolute;left:0;right:0;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+  .vhandle{position:absolute;left:0;right:0;height:11px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;z-index:6}
+  .vhandle::after{content:'';height:3px;width:48%;background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+<div class="flex h-full">
+
+  <!-- THIN ICON RAIL (kept — you liked it) -->
+  <aside class="flex w-[58px] shrink-0 flex-col border-r bg-white py-1" style="border-color:hsl(var(--border))">
+    <div class="railbtn on" onclick="setTool(this,'clip')"><i data-lucide="film" class="h-4 w-4"></i><span class="text-3xs">Clip</span></div>
+    <div class="railbtn" onclick="setTool(this,'grade')"><i data-lucide="sparkles" class="h-4 w-4"></i><span class="text-3xs">Grade</span></div>
+    <div class="railbtn" onclick="setTool(this,'caps')"><i data-lucide="captions" class="h-4 w-4"></i><span class="text-3xs">Caps</span></div>
+    <div class="railbtn" onclick="setTool(this,'text')"><i data-lucide="type" class="h-4 w-4"></i><span class="text-3xs">Text</span></div>
+    <div class="mt-auto px-1 pb-1"><div class="rounded px-1 py-1 text-3xs legend" style="text-align:center">kept the icon rail</div></div>
+  </aside>
+
+  <!-- LEFT CONTROL PANEL: transport + outputs (was the top bar) THEN the inspector -->
+  <aside class="flex w-[268px] shrink-0 flex-col border-r bg-white" style="border-color:hsl(var(--border))">
+    <div class="border-b p-2.5" style="border-color:hsl(var(--border))">
+      <div class="mb-2 flex items-center gap-2">
+        <button class="text-muted-foreground" style="color:hsl(var(--muted-foreground))"><i data-lucide="arrow-left" class="h-4 w-4"></i></button>
+        <span class="truncate text-xs font-semibold">The real fix for a stiff neck</span>
+      </div>
+      <div class="mb-2 flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style="border-color:hsl(var(--border))">
+        <button onclick="togglePlay()" id="playBtn" style="color:hsl(var(--primary))"><i data-lucide="play" class="h-3.5 w-3.5"></i></button>
+        <span id="tcode" class="font-mono tabular-nums" style="color:hsl(var(--muted-foreground))">0:00 / 0:32</span>
+        <span class="ml-auto text-3xs" style="color:hsl(var(--muted-foreground))">Reel · 9:16</span>
+      </div>
+      <div class="relative flex">
+        <button onclick="toast('Render → Publish draft')" class="flex-1 rounded-l-lg px-3 py-1.5 text-xs font-semibold" style="background:hsl(var(--action));color:#3a2a00"><i data-lucide="calendar-clock" class="mr-1 inline h-3.5 w-3.5"></i>Save &amp; publish</button>
+        <button onclick="document.getElementById('outmenu').classList.toggle('hidden')" class="rounded-r-lg border-l px-1.5" style="background:hsl(var(--action));color:#3a2a00;border-color:rgba(0,0,0,.18)"><i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></button>
+        <div id="outmenu" class="hidden absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-lg border bg-white shadow-lg" style="border-color:hsl(var(--border))">
+          <button class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted"><i data-lucide="folder-open" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i>Save as b-roll</button>
+          <button class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted"><i data-lucide="megaphone" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i>Export for ads</button>
+          <button class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted"><i data-lucide="film" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i>Render whole video</button>
+        </div>
+      </div>
+    </div>
+    <div id="insp" class="min-h-0 flex-1 overflow-auto p-3"></div>
+  </aside>
+
+  <!-- CENTER: FULL-HEIGHT VIDEO (no top/bottom bars → max vertical) -->
+  <section class="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-3" style="background:hsl(220 16% 91%)">
+    <div class="absolute left-3 top-2 z-10 max-w-[320px] rounded-md px-2 py-1 text-3xs legend"><b>Max vertical:</b> no top or bottom bar — every control sits on the sides, so the 9:16 video uses the full height to edit on.</div>
+    <div class="relative" style="height:100%;aspect-ratio:9/16">
+      <div class="relative h-full w-full overflow-hidden rounded-2xl bg-black" style="box-shadow:0 18px 60px -12px rgba(12,26,46,.5)">
+        <div class="absolute inset-0" style="background:url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=720&q=70&auto=format&fit=crop') center/cover"></div>
+        <div class="absolute left-1/2 -translate-x-1/2 text-center font-extrabold leading-tight" style="bottom:15%;max-width:86%;font-size:clamp(15px,3.2vh,38px);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6)"><span style="color:#0C7580">most people</span> stretch a stiff neck</div>
+        <div id="ovText" class="absolute cursor-move text-center font-bold" style="left:50%;top:16%;transform:translate(-50%,-50%);font-size:clamp(13px,3.6vh,38px);color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.55)">The real fix</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: VERTICAL TIMELINE — Clip (trim handles top/bottom) + Text overlay bars (drag + resize) -->
+  <aside class="flex w-[118px] shrink-0 flex-col border-l bg-white" style="border-color:hsl(var(--border))">
+    <div class="flex items-center justify-between px-2.5 pt-2 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))"><span>Clip</span><span>Text</span></div>
+    <div class="relative flex flex-1 gap-2 p-2.5">
+      <!-- time ticks -->
+      <div class="pointer-events-none absolute inset-y-2.5 left-0 right-0" id="ticks"></div>
+      <!-- CLIP column (trim) -->
+      <div class="vcol flex-1" id="clipCol">
+        <div class="vbar" id="clipBar" style="background:linear-gradient(180deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))">
+          <i data-lucide="film" class="h-3.5 w-3.5" style="color:#fff"></i>
+        </div>
+        <div class="vhandle" id="hIn" style="background:hsl(var(--primary))" title="Start"></div>
+        <div class="vhandle" id="hOut" style="background:hsl(var(--primary))" title="End"></div>
+      </div>
+      <!-- TEXT column (overlays) -->
+      <div class="vcol flex-1" id="ovCol">
+        <div class="vbar" id="ovBar" style="background:linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7));cursor:grab">
+          <span class="vhandle" data-edge="t" style="top:0"></span>
+          <i data-lucide="type" class="h-3 w-3" style="color:#3a2a00"></i>
+          <span class="vhandle" data-edge="b" style="bottom:0"></span>
+        </div>
+      </div>
+      <!-- playhead (horizontal line) -->
+      <div id="playhead" class="pointer-events-none absolute left-1.5 right-1.5 z-20" style="top:10px;height:2px;background:hsl(0 80% 55%)"></div>
+    </div>
+    <div class="px-2 pb-2 text-3xs legend" style="border-radius:6px;margin:0 6px 6px">Bars run top→bottom with the tall video. Drag clip ends to trim · drag the orange bar anywhere; its ends resize it.</div>
+  </aside>
+</div>
+
+<div id="toast" class="pointer-events-none fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-lg bg-black/85 px-4 py-2 text-sm text-white opacity-0 transition-opacity"></div>
+
+<script>
+const DUR=32, $=id=>document.getElementById(id), fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+let clipIn=0, clipOut=32, ov={in:3,out:11}, playT=0, playing=false, timer=null;
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,1600)}
+
+let tk='';for(let s=0;s<=DUR;s+=8)tk+=`<span style="position:absolute;top:${s/DUR*100}%;left:50%;transform:translate(-50%,-50%);font-size:9px;background:hsl(220 16% 91%);padding:0 2px;color:hsl(var(--muted-foreground))">${fmt(s)}</span>`;$('ticks').innerHTML=tk;
+
+function layoutClip(){const a=clipIn/DUR*100,b=clipOut/DUR*100;
+  $('clipBar').style.top=a+'%';$('clipBar').style.height=(b-a)+'%';
+  $('hIn').style.top=`calc(${a}% - 5px)`;$('hOut').style.top=`calc(${b}% - 6px)`;}
+function layoutOv(){const a=ov.in/DUR*100,b=ov.out/DUR*100;$('ovBar').style.top=a+'%';$('ovBar').style.height=(b-a)+'%';}
+layoutClip();layoutOv();
+
+function dragClip(which){return e=>{e.preventDefault();const r=$('clipCol').getBoundingClientRect();
+  const mv=ev=>{let s=Math.max(0,Math.min(DUR,(ev.clientY-r.top)/r.height*DUR));
+    if(which==='in')clipIn=Math.min(s,clipOut-1);else clipOut=Math.max(s,clipIn+1);layoutClip();};
+  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);};}
+$('hIn').addEventListener('mousedown',dragClip('in'));$('hOut').addEventListener('mousedown',dragClip('out'));
+
+// overlay: ANCHOR to grab point (fixes the snap-to-end bug) — free placement anywhere
+function ovDown(e){
+  if(e.target.dataset.edge)return ovResize(e.target.dataset.edge)(e);
+  e.preventDefault();const r=$('ovCol').getBoundingClientRect();const startY=e.clientY;const inAt=ov.in,len=ov.out-ov.in;
+  $('ovBar').style.cursor='grabbing';
+  const mv=ev=>{let d=(ev.clientY-startY)/r.height*DUR;let ni=Math.max(0,Math.min(DUR-len,inAt+d));ov.in=ni;ov.out=ni+len;layoutOv();syncOv();};
+  const up=()=>{$('ovBar').style.cursor='grab';document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);toast(`Text: ${fmt(ov.in)}–${fmt(ov.out)}`)};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+}
+function ovResize(edge){return e=>{e.preventDefault();e.stopPropagation();const r=$('ovCol').getBoundingClientRect();
+  const mv=ev=>{let s=Math.max(0,Math.min(DUR,(ev.clientY-r.top)/r.height*DUR));
+    if(edge==='t')ov.in=Math.min(s,ov.out-0.5);else ov.out=Math.max(s,ov.in+0.5);layoutOv();syncOv();};
+  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);toast(`Text: ${fmt(ov.in)}–${fmt(ov.out)}`)};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);};}
+$('ovBar').addEventListener('mousedown',ovDown);
+function syncOv(){$('ovText').style.display=(playT>=ov.in&&playT<=ov.out)?'block':'none';}
+
+function setPlayhead(){$('playhead').style.top=`calc(10px + ${playT/DUR*100}% * (100% - 20px) / 100)`;$('tcode').textContent=`${fmt(playT)} / ${fmt(DUR)}`;syncOv();}
+function togglePlay(){playing=!playing;const ic=playing?'pause':'play';$('playBtn').innerHTML=`<i data-lucide="${ic}" class="h-3.5 w-3.5"></i>`;if(window.lucide)lucide.createIcons();
+  if(playing)timer=setInterval(()=>{playT+=0.1;if(playT>DUR)playT=0;setPlayhead();},100);else clearInterval(timer);}
+setPlayhead();
+
+const TOOLS={
+ clip:`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Clip &amp; reframe</p>
+   <div class="mb-2 rounded px-2 py-1 text-3xs legend">Trim is the <b>Clip bar on the right</b>. This panel = reframe + speed.</div>
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Reframe</p>
+   <input type="range" min="100" max="220" value="118" class="mb-2 w-full"><input type="range" min="0" max="100" value="50" class="mb-2 w-full"><input type="range" min="0" max="100" value="42" class="mb-3 w-full">
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Speed</p>
+   <div class="flex gap-1.5">${[0.5,1,1.5,2].map(s=>`<button class="flex-1 rounded-md border py-1.5 text-2xs ${s===1?'font-semibold':''}" style="${s===1?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${s}×</button>`).join('')}</div>`,
+ grade:`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">AI Colorist</p>
+   <div class="mb-2 flex flex-wrap gap-1.5">${['Bright & clean','Warm & filmic','Editorial','Moody'].map(v=>`<button class="rounded-full border px-2.5 py-1 text-2xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">${v}</button>`).join('')}</div>
+   ${['Brightness','Warmth','Contrast','Vibrance','Depth'].map(l=>`<div class="mb-2"><div class="text-2xs" style="color:hsl(var(--muted-foreground))">${l}</div><input type="range" min="-50" max="50" value="0" class="w-full"></div>`).join('')}`,
+ caps:`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Captions</p>
+   <label class="mb-2 flex items-center justify-between rounded-md border px-2 py-1.5 text-2xs" style="border-color:hsl(var(--border))">Karaoke captions <input type="checkbox" checked></label>
+   <div class="mb-3 rounded-md border px-2 py-2 text-3xs" style="border-color:hsl(var(--action));background:hsl(var(--action)/.06)"><b>Legacy clip?</b> If a clip has no words yet → <b>Generate captions</b> transcribes once so preview + publish match.</div>
+   <div class="mb-2 rounded px-2 py-1 text-3xs legend"><b>Edit words inline.</b> You won't click a tab then edit on the other side — fix a word right on the caption (tap it on the video).</div>
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Position</p><div class="flex gap-1.5">${['Top','Center','Bottom'].map((p,i)=>`<button class="flex-1 rounded-md border py-1.5 text-2xs ${i===2?'font-semibold':''}" style="${i===2?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${p}</button>`).join('')}</div>`,
+ text:`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Text overlay</p>
+   <div class="mb-2 rounded px-2 py-1 text-3xs legend"><b>Direct manipulation:</b> drag the text on the video to place it; drag the orange bar (right) to set <i>when</i>; its ends resize how long.</div>
+   <textarea rows="2" class="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm" style="border-color:hsl(var(--border))">The real fix</textarea>
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Style</p><div class="flex gap-1.5">${['Title','Lower-third','Callout'].map((p,i)=>`<button class="flex-1 rounded-md border py-1.5 text-3xs ${i===0?'font-semibold':''}" style="${i===0?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${p}</button>`).join('')}</div>`,
+};
+function setTool(el,k){document.querySelectorAll('.railbtn').forEach(b=>{b.classList.remove('on');b.querySelectorAll('i,span').forEach(x=>x.style.color='')});
+  el.classList.add('on');el.querySelectorAll('i,span').forEach(x=>x.style.color='hsl(var(--primary))');
+  $('insp').innerHTML=TOOLS[k]||'';if(window.lucide)lucide.createIcons();}
+setTool(document.querySelector('.railbtn'),'clip');
+if(window.lucide)lucide.createIcons();
+</script>
+</body>
+</html>

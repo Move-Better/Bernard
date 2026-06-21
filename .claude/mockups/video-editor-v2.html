@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Reel Editor v2 (repackaged)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --border:214 32% 91%; --info:199 95% 40%; --action:38 92% 50%;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .text-3xs{font-size:10px;line-height:13px} .text-2xs{font-size:11px;line-height:15px}
+  .legend{border:1px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.06)}
+  input[type=range]{-webkit-appearance:none;height:4px;border-radius:4px;background:hsl(var(--border))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:hsl(var(--primary));border:2px solid #fff}
+  .tl-track{position:relative;border-radius:6px;background:hsl(220 14% 93%)}
+  .tl-bar{position:absolute;top:0;height:100%;border-radius:6px;display:flex;align-items:center;gap:5px;padding:0 10px;overflow:hidden}
+  .tl-handle{position:absolute;top:0;height:100%;width:11px;cursor:ew-resize;display:flex;align-items:center;justify-content:center;z-index:5}
+  .tl-handle::after{content:'';width:3px;height:48%;background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+  .railbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0;width:100%;cursor:pointer;border-left:2px solid transparent}
+  .railbtn.on{border-left-color:hsl(var(--primary));background:hsl(var(--primary)/.07)}
+</style>
+</head>
+<body>
+<div class="flex h-full flex-col">
+
+  <!-- TOP BAR -->
+  <header class="flex items-center gap-3 border-b bg-white px-4" style="height:50px;border-color:hsl(var(--border))">
+    <button class="text-muted-foreground" style="color:hsl(var(--muted-foreground))"><i data-lucide="arrow-left" class="h-4 w-4"></i></button>
+    <span class="text-sm font-semibold">The real fix for a stiff neck</span>
+    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-3xs font-semibold" style="background:hsl(var(--info)/.12);color:hsl(var(--info))"><i data-lucide="video" class="h-3 w-3"></i>Reel · 9:16 · 0:32</span>
+    <div class="ml-auto flex items-center gap-2">
+      <div class="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style="border-color:hsl(var(--border))">
+        <button onclick="togglePlay()" id="playBtn" style="color:hsl(var(--primary))"><i data-lucide="play" class="h-3.5 w-3.5"></i></button>
+        <span id="tcode" class="font-mono tabular-nums" style="color:hsl(var(--muted-foreground))">0:00 / 0:32</span>
+      </div>
+      <!-- OUTPUTS — split button -->
+      <div class="relative flex items-center">
+        <button onclick="toast('Render → Publish draft')" class="rounded-l-lg px-3 py-1.5 text-xs font-semibold" style="background:hsl(var(--action));color:#3a2a00"><i data-lucide="calendar-clock" class="mr-1 inline h-3.5 w-3.5"></i>Save &amp; publish</button>
+        <button onclick="document.getElementById('outmenu').classList.toggle('hidden')" class="rounded-r-lg border-l px-1.5 py-1.5" style="background:hsl(var(--action));color:#3a2a00;border-color:rgba(0,0,0,.18)"><i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></button>
+        <div id="outmenu" class="hidden absolute right-0 top-full z-40 mt-1 w-52 overflow-hidden rounded-lg border bg-white shadow-lg" style="border-color:hsl(var(--border))">
+          <div class="px-2 py-1 text-3xs legend"><b>Outputs live here</b> — every destination in one menu.</div>
+          <button class="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-muted"><i data-lucide="folder-open" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span><span class="block text-xs font-medium">Save as b-roll</span><span class="block text-3xs" style="color:hsl(var(--muted-foreground))">Reusable clip in Library</span></span></button>
+          <button class="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-muted"><i data-lucide="megaphone" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span><span class="block text-xs font-medium">Export for ads</span><span class="block text-3xs" style="color:hsl(var(--muted-foreground))">Download ad sizes</span></span></button>
+          <button class="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-muted"><i data-lucide="film" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span><span class="block text-xs font-medium">Render whole video</span><span class="block text-3xs" style="color:hsl(var(--muted-foreground))">Full source, no edits</span></span></button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex min-h-0 flex-1">
+    <!-- THIN LEFT RAIL (icons) — saves width vs v1's labelled rail -->
+    <aside class="flex w-[60px] shrink-0 flex-col border-r bg-white py-1" style="border-color:hsl(var(--border))">
+      <div class="railbtn on" onclick="setTool(this,'Clip & reframe')"><i data-lucide="film" class="h-4 w-4" style="color:hsl(var(--primary))"></i><span class="text-3xs" style="color:hsl(var(--primary))">Clip</span></div>
+      <div class="railbtn" onclick="setTool(this,'AI Colorist')"><i data-lucide="sparkles" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span class="text-3xs" style="color:hsl(var(--muted-foreground))">Grade</span></div>
+      <div class="railbtn" onclick="setTool(this,'Captions')"><i data-lucide="captions" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span class="text-3xs" style="color:hsl(var(--muted-foreground))">Caps</span></div>
+      <div class="railbtn" onclick="setTool(this,'Text overlay')"><i data-lucide="type" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span class="text-3xs" style="color:hsl(var(--muted-foreground))">Text</span></div>
+      <div class="railbtn" onclick="setTool(this,'Transcript')"><i data-lucide="text" class="h-4 w-4" style="color:hsl(var(--muted-foreground))"></i><span class="text-3xs" style="color:hsl(var(--muted-foreground))">Words</span></div>
+      <div class="mt-auto px-1 pb-1"><div class="rounded px-1 py-1 text-3xs legend" style="text-align:center">Thin icon rail → wider video</div></div>
+    </aside>
+
+    <!-- BIG CENTER VIDEO -->
+    <section class="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-3" style="background:hsl(220 16% 91%)">
+      <div class="absolute left-3 top-2 z-10 max-w-[300px] rounded-md px-2 py-1 text-3xs legend"><b>Bigger video:</b> thin icon rail + one inspector + a shorter 2-track timeline (no caption bar) give the 9:16 preview more room to edit on.</div>
+      <div class="relative h-full" style="aspect-ratio:9/16">
+        <div class="relative h-full w-full overflow-hidden rounded-2xl bg-black" style="box-shadow:0 18px 60px -12px rgba(12,26,46,.5)">
+          <div class="absolute inset-0" style="background:url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=720&q=70&auto=format&fit=crop') center/cover"></div>
+          <div class="absolute left-1/2 -translate-x-1/2 text-center font-extrabold leading-tight" style="bottom:15%;max-width:86%;font-size:clamp(16px,3.6vh,40px);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6)"><span style="color:#0C7580">most people</span> stretch a stiff neck</div>
+          <div id="ovText" class="absolute cursor-move text-center font-bold" style="left:50%;top:16%;transform:translate(-50%,-50%);font-size:clamp(13px,4vh,40px);color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.55)">The real fix</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTEXTUAL INSPECTOR -->
+    <aside class="flex w-[280px] shrink-0 flex-col border-l bg-white" style="border-color:hsl(var(--border))">
+      <div id="insp" class="min-h-0 flex-1 overflow-auto p-3"></div>
+    </aside>
+  </div>
+
+  <!-- COMPACT BOTTOM TIMELINE: Clip (trim handles) + Text (draggable bars). NO caption track. -->
+  <div class="shrink-0 border-t bg-white px-3 pb-2 pt-1.5" style="border-color:hsl(var(--border));height:128px">
+    <div class="mb-1 flex items-center gap-3">
+      <button onclick="togglePlay()" class="flex h-6 w-6 items-center justify-center rounded-full text-white" style="background:hsl(var(--primary))"><i id="play2" data-lucide="play" class="h-3 w-3"></i></button>
+      <span class="font-mono text-2xs tabular-nums" style="color:hsl(var(--muted-foreground))" id="tcode2">0:00 / 0:32</span>
+      <span class="rounded px-2 py-0.5 text-3xs legend"><b>Trim = the Clip bar itself.</b> Drag either end handle to set start / end. The karaoke caption bar is gone — captions follow the whole clip (toggle in <b>Caps</b>).</span>
+      <button onclick="toast('+ text overlay added')" class="ml-auto flex items-center gap-1 rounded-md border px-2 py-1 text-2xs" style="border-color:hsl(var(--border))"><i data-lucide="type" class="h-3 w-3"></i>Add text</button>
+    </div>
+    <div class="relative ml-[52px] mb-1 h-3 select-none" id="ruler"></div>
+    <div class="relative">
+      <!-- CLIP track = trim -->
+      <div class="mb-1.5 flex items-center gap-2">
+        <span class="w-[44px] shrink-0 text-right text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Clip</span>
+        <div class="tl-track h-9 flex-1" id="clipTrack">
+          <div class="tl-bar" id="clipBar" style="background:linear-gradient(90deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))">
+            <i data-lucide="film" class="h-3.5 w-3.5" style="color:#fff"></i><span class="text-3xs font-semibold" style="color:#fff" id="clipLbl">0:00 – 0:32</span>
+          </div>
+          <div class="tl-handle" id="hIn" style="background:hsl(var(--primary))" title="Start"></div>
+          <div class="tl-handle" id="hOut" style="background:hsl(var(--primary))" title="End"></div>
+        </div>
+      </div>
+      <!-- TEXT overlays track = draggable + resizable bars -->
+      <div class="flex items-center gap-2">
+        <span class="w-[44px] shrink-0 text-right text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Text</span>
+        <div class="tl-track h-7 flex-1" id="ovTrack">
+          <div class="tl-bar" id="ovBar" style="background:linear-gradient(90deg,hsl(var(--action)/.9),hsl(var(--action)/.7));cursor:grab">
+            <span class="tl-handle" data-edge="l" style="left:0"></span>
+            <i data-lucide="type" class="h-3 w-3" style="color:#3a2a00"></i><span class="truncate text-3xs font-semibold" style="color:#3a2a00">The real fix</span>
+            <span class="tl-handle" data-edge="r" style="right:0"></span>
+          </div>
+        </div>
+      </div>
+      <div id="playhead" class="pointer-events-none absolute top-0 z-20" style="left:52px;width:2px;height:100%;background:hsl(0 80% 55%)"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="pointer-events-none fixed left-1/2 top-14 z-50 -translate-x-1/2 rounded-lg bg-black/85 px-4 py-2 text-sm text-white opacity-0 transition-opacity"></div>
+
+<script>
+const DUR=32, $=id=>document.getElementById(id), fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+let clipIn=0, clipOut=32, ov={in:0,out:6}, playT=0, playing=false, timer=null;
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,1700)}
+
+// ruler
+let r='';for(let s=0;s<=DUR;s+=4)r+=`<span style="position:absolute;left:${s/DUR*100}%;transform:translateX(-50%);font-size:9px;color:hsl(var(--muted-foreground))">${fmt(s)}</span>`;$('ruler').innerHTML=r;
+
+function layoutClip(){
+  const a=clipIn/DUR*100, b=clipOut/DUR*100;
+  $('clipBar').style.left=a+'%'; $('clipBar').style.width=(b-a)+'%';
+  $('hIn').style.left=`calc(${a}% - 5px)`; $('hOut').style.left=`calc(${b}% - 6px)`;
+  $('clipLbl').textContent=`${fmt(clipIn)} – ${fmt(clipOut)}`;
+}
+function layoutOv(){ const a=ov.in/DUR*100,b=ov.out/DUR*100; $('ovBar').style.left=a+'%'; $('ovBar').style.width=(b-a)+'%'; }
+layoutClip(); layoutOv();
+
+// clip trim handles
+function dragClip(which){return e=>{e.preventDefault();const tr=$('clipTrack').getBoundingClientRect();
+  const mv=ev=>{let s=Math.max(0,Math.min(DUR,(ev.clientX-tr.left)/tr.width*DUR));
+    if(which==='in')clipIn=Math.min(s,clipOut-1); else clipOut=Math.max(s,clipIn+1); layoutClip();};
+  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);};}
+$('hIn').addEventListener('mousedown',dragClip('in')); $('hOut').addEventListener('mousedown',dragClip('out'));
+
+// overlay bar: drag to move, edges to resize
+function ovDrag(e){
+  if(e.target.dataset.edge){return ovResize(e.target.dataset.edge)(e);}
+  e.preventDefault();const tr=$('ovTrack').getBoundingClientRect();const startX=e.clientX, len=ov.out-ov.in;
+  $('ovBar').style.cursor='grabbing';
+  const mv=ev=>{let d=(ev.clientX-startX)/tr.width*DUR;let ni=Math.max(0,Math.min(DUR-len,ov.in+d));ov.in=ni;ov.out=ni+len;layoutOv();syncOvText();};
+  const up=()=>{$('ovBar').style.cursor='grab';document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);toast(`Overlay: ${fmt(ov.in)}–${fmt(ov.out)}`)};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+}
+function ovResize(edge){return e=>{e.preventDefault();e.stopPropagation();const tr=$('ovTrack').getBoundingClientRect();
+  const mv=ev=>{let s=Math.max(0,Math.min(DUR,(ev.clientX-tr.left)/tr.width*DUR));
+    if(edge==='l')ov.in=Math.min(s,ov.out-0.5); else ov.out=Math.max(s,ov.in+0.5);layoutOv();syncOvText();};
+  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);toast(`Overlay: ${fmt(ov.in)}–${fmt(ov.out)}`)};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);};}
+$('ovBar').addEventListener('mousedown',ovDrag);
+function syncOvText(){ $('ovText').style.display=(playT>=ov.in&&playT<=ov.out)?'block':'none'; }
+
+// playhead + playback
+function setPlayhead(){const p=playT/DUR*100;$('playhead').style.left=`calc(52px + ${p}% * (100% - 52px) / 100)`;
+  $('tcode').textContent=$('tcode2').textContent=`${fmt(playT)} / ${fmt(DUR)}`;syncOvText();}
+function togglePlay(){playing=!playing;const ic=playing?'pause':'play';$('play2').setAttribute('data-lucide',ic);$('playBtn').innerHTML=`<i data-lucide="${ic}" class="h-3.5 w-3.5"></i>`;
+  if(window.lucide)lucide.createIcons();
+  if(playing){timer=setInterval(()=>{playT+=0.1;if(playT>DUR)playT=0;setPlayhead();},100);}else clearInterval(timer);}
+setPlayhead();
+
+// inspector tools
+const TOOLS={
+ 'Clip & reframe':`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Clip &amp; reframe</p>
+   <div class="mb-2 rounded px-2 py-1 text-3xs legend"><b>Trim moved out of here</b> → it's the Clip bar at the bottom now. This panel keeps reframe + speed.</div>
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Reframe</p>
+   <input type="range" min="100" max="220" value="118" class="mb-2 w-full"><input type="range" min="0" max="100" value="50" class="mb-2 w-full"><input type="range" min="0" max="100" value="42" class="mb-3 w-full">
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Speed</p>
+   <div class="flex gap-1.5">${[0.5,1,1.5,2].map(s=>`<button class="flex-1 rounded-md border py-1.5 text-2xs ${s===1?'font-semibold':''}" style="${s===1?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${s}×</button>`).join('')}</div>`,
+ 'AI Colorist':`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">AI Colorist</p>
+   <div class="mb-2 flex flex-wrap gap-1.5">${['Bright & clean','Warm & filmic','Editorial','Moody'].map(v=>`<button class="rounded-full border px-2.5 py-1 text-2xs" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))">${v}</button>`).join('')}</div>
+   ${['Brightness','Warmth','Contrast','Vibrance','Depth'].map(l=>`<div class="mb-2"><div class="text-2xs" style="color:hsl(var(--muted-foreground))">${l}</div><input type="range" min="-50" max="50" value="0" class="w-full"></div>`).join('')}`,
+ 'Captions':`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Captions</p>
+   <div class="mb-2 rounded px-2 py-1 text-3xs legend"><b>No more timeline bar.</b> Captions follow the whole clip — just on/off + style here.</div>
+   <label class="mb-3 flex items-center justify-between rounded-md border px-2 py-1.5 text-2xs" style="border-color:hsl(var(--border))">Karaoke captions <input type="checkbox" checked></label>
+   <div class="mb-3 rounded-md border px-2 py-2 text-3xs" style="border-color:hsl(var(--action));background:hsl(var(--action)/.06)"><b>Legacy clip?</b> If a clip has no words yet, a <b>Generate captions</b> button transcribes them once → preview + publish match.</div>
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Position</p><div class="mb-2 flex gap-1.5">${['Top','Center','Bottom'].map((p,i)=>`<button class="flex-1 rounded-md border py-1.5 text-2xs ${i===2?'font-semibold':''}" style="${i===2?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${p}</button>`).join('')}</div>`,
+ 'Text overlay':`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Text overlay</p>
+   <div class="mb-2 rounded px-2 py-1 text-3xs legend"><b>Timing = the bottom bar.</b> Drag the orange bar to move <i>when</i> it shows; drag its ends to make it longer / shorter. Drag the text on the video to position it.</div>
+   <textarea rows="2" class="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm" style="border-color:hsl(var(--border))">The real fix</textarea>
+   <p class="mb-1 text-3xs font-semibold uppercase" style="color:hsl(var(--muted-foreground))">Style</p><div class="mb-2 flex gap-1.5">${['Title','Lower-third','Callout'].map((p,i)=>`<button class="flex-1 rounded-md border py-1.5 text-3xs ${i===0?'font-semibold':''}" style="${i===0?'border-color:hsl(var(--primary));background:hsl(var(--primary)/.08);color:hsl(var(--primary))':'border-color:hsl(var(--border))'}">${p}</button>`).join('')}</div>`,
+ 'Transcript':`<p class="mb-2 text-xs font-semibold" style="color:hsl(var(--primary))">Words</p><div class="mb-2 rounded px-2 py-1 text-3xs legend">Edit a misheard word → it re-burns on render.</div>
+   ${['most people stretch a stiff neck','but the tension is rarely where it hurts','your upper back that locked up'].map(t=>`<input value="${t}" class="mb-1.5 w-full rounded border px-2 py-1 text-2xs" style="border-color:hsl(var(--border))">`).join('')}`,
+};
+function setTool(el,name){document.querySelectorAll('.railbtn').forEach(b=>{b.classList.remove('on');b.querySelectorAll('i,span').forEach(x=>x.style.color='hsl(var(--muted-foreground))')});
+  el.classList.add('on');el.querySelectorAll('i,span').forEach(x=>x.style.color='hsl(var(--primary))');
+  $('insp').innerHTML=TOOLS[name]||'';if(window.lucide)lucide.createIcons();}
+setTool(document.querySelector('.railbtn'),'Clip & reframe');
+if(window.lucide)lucide.createIcons();
+</script>
+</body>
+</html>
