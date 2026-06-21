@@ -55,6 +55,12 @@ export default async function handler(req, res) {
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
   if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
   if (!renderedBlobUrl) return res.status(400).json({ error: 'renderedBlobUrl_required' })
+  // Only accept URLs from our own Vercel Blob store — prevents arbitrary URL injection
+  // into content_items.media_urls which is later published to social platforms.
+  const BLOB_ORIGIN = 'https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/'
+  if (!String(renderedBlobUrl).startsWith(BLOB_ORIGIN)) {
+    return res.status(400).json({ error: 'invalid_renderedBlobUrl' })
+  }
   if (!platform || !VALID_PLATFORMS.includes(platform)) {
     return res.status(400).json({ error: 'invalid_platform', valid: VALID_PLATFORMS })
   }
