@@ -50,7 +50,7 @@ const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
 const Overview = lazy(() => import('@/pages/Overview'))
-const ReviewInbox = lazy(() => import('@/pages/ReviewInbox'))
+const YourWeek = lazy(() => import('@/pages/YourWeek'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const Storyboard = lazy(() => import('@/pages/Storyboard'))
@@ -604,7 +604,10 @@ function AppRoutes() {
             {/* Review Inbox — the producer's single review→schedule queue (P4).
                 Self-guards to editors (owner/producer/director) and redirects
                 individual clinicians home, same as Overview. */}
-            <Route path="/review-inbox" element={guarded(<ReviewInbox />)} />
+            {/* Your week (F2.3) — the Strategist's plan/review hub. Supersedes
+                the Review Inbox, which now redirects here. */}
+            <Route path="/week" element={guarded(<YourWeek />)} />
+            <Route path="/review-inbox" element={<Navigate to="/week" replace />} />
             {/* Overview — clinic-wide board (Pipeline/Calendar/Themes). The
                 page self-guards to editors (owner/producer/director) and
                 redirects individual clinicians home. */}
