@@ -149,10 +149,12 @@ async function fetchAccountEmail(accessToken) {
   } catch { return null }
 }
 
-// Detect the primary GBP account and first verified location for this Google account.
-// Stores a v1-format location name (locations/{locationId}) for the Performance API,
-// plus the full v4-format account path for the legacy localPosts API.
-async function detectPrimaryLocation(accessToken) {
+// Detect all GBP locations for this Google account.
+// Stores all locations in config.locations[] so the performance handler can
+// fetch and sum metrics across every location.
+// Also keeps top-level location_name/location_id for the legacy localPosts path
+// and for workspaces.gbp_location_name (used as a "is configured?" sentinel).
+async function detectAllLocations(accessToken) {
   try {
     // Step 1: list GBP accounts
     const acctRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
@@ -169,7 +171,7 @@ async function detectPrimaryLocation(accessToken) {
     const account = accounts[0]  // take the first account
     const accountName = account.name  // e.g. "accounts/123456789"
 
-    // Step 2: list locations for the first account
+    // Step 2: list ALL locations for the account
     // v1 readMask is required or the response body is empty
     const locRes = await fetch(
       `https://mybusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title,storefrontAddress,websiteUri,regularHours`,
@@ -181,23 +183,33 @@ async function detectPrimaryLocation(accessToken) {
       return null
     }
     const locData = await locRes.json().catch(() => null)
-    const locations = Array.isArray(locData?.locations) ? locData.locations : []
-    if (!locations.length) return null
-    const loc = locations[0]
-    // loc.name from v1 info API: "locations/{locationId}"
-    const locationName = loc.name  // e.g. "locations/12345678"
-    const locationId = locationName?.replace('locations/', '') || null
+    const rawLocations = Array.isArray(locData?.locations) ? locData.locations : []
+    if (!rawLocations.length) return null
 
+    const locations = rawLocations.map((loc) => {
+      const locationName = loc.name  // "locations/{locationId}"
+      const locationId   = locationName?.replace('locations/', '') || null
+      return {
+        location_name:    locationName,
+        location_id:      locationId,
+        location_title:   loc.title || null,
+        v4_location_name: locationId ? `${accountName}/locations/${locationId}` : null,
+      }
+    })
+
+    const primary = locations[0]
     return {
-      account_name:    accountName,
-      location_name:   locationName,
-      location_id:     locationId,
-      location_title:  loc.title || null,
-      // v4 format needed for legacy localPosts API
-      v4_location_name: locationId ? `${accountName}/locations/${locationId}` : null,
+      account_name:     accountName,
+      // Top-level fields kept for backward compat (localPosts cron, gbp_location_name sentinel)
+      location_name:    primary.location_name,
+      location_id:      primary.location_id,
+      location_title:   primary.location_title,
+      v4_location_name: primary.v4_location_name,
+      // Full list — used by gbp-performance to fetch all locations in parallel
+      locations,
     }
   } catch (e) {
-    console.warn('[gbpAuth] detectPrimaryLocation failed:', e?.message)
+    console.warn('[gbpAuth] detectAllLocations failed:', e?.message)
     return null
   }
 }
@@ -208,17 +220,15 @@ export async function persistGbpCredential({ workspaceId, refreshToken, accessTo
 
   const [accountEmail, locationInfo] = await Promise.all([
     fetchAccountEmail(accessToken),
-    detectPrimaryLocation(accessToken),
+    detectAllLocations(accessToken),
   ])
 
   const config = {
-    token_type:       'oauth',
-    account_email:    accountEmail,
-    connected_at:     new Date().toISOString(),
-    // Primary GBP location for this Google account (auto-detected at connect time).
-    // account_name:    "accounts/{accountId}"    (v1 format)
-    // location_name:   "locations/{locationId}"  (v1 format — for Performance API)
-    // v4_location_name: "accounts/{accountId}/locations/{locationId}" (v4 format — for localPosts)
+    token_type:    'oauth',
+    account_email: accountEmail,
+    connected_at:  new Date().toISOString(),
+    // account_name, location_name, location_id, location_title, v4_location_name — first location (backward compat)
+    // locations[] — all locations for parallel metrics fetch
     ...(locationInfo || {}),
   }
   const secret_ciphertext = encryptSecret(refreshToken)
