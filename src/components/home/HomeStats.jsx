@@ -1,23 +1,9 @@
 import { useMemo } from 'react'
-import { PLATFORM_FAMILY_PILL } from '@/lib/contentMeta'
+import { ArrowRight } from 'lucide-react'
 
-// HomeStats — 4-card metric row that sits between the hero ribbon and the
-// task-bucket list on the Home dashboard. Pulls everything from the same
-// useStories() data the rest of the page already has, so adding this row
-// doesn't introduce a second network round-trip.
-//
-// Card semantics:
-//   This week    — interviews captured (story rows) in the last 7 days
-//   Drafts       — stories awaiting attention (drafting OR review stage),
-//                  plus a pill breakdown of piece-level status counts.
-//                  The "Drafts" card is the only one styled as the warm-tint
-//                  card-hi surface — this is the "do this now" KPI.
-//   Published    — stories whose story_stage === 'published' with last
-//                  activity in the last 30 days. Delta = vs the prior 30d.
-//   Voice match  — mean of (verbatim_pct + paraphrase_pct) across the most
-//                  recent N=20 pieces with provenance summary. Rendered on
-//                  the dark ink card with the signature gradient applied to
-//                  the number itself (matches the mockup's "flex" KPI).
+// HomeStats — 3-tile pipeline story: interviews captured → voice match → published.
+// Tells the "I talked → in my voice → it's out there" narrative at a glance.
+// Pulls from the same useStories() data as the rest of the page — no extra fetch.
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const VOICE_SAMPLE_LIMIT = 20
@@ -59,25 +45,6 @@ export default function HomeStats({ stories = [] }) {
     // This week — stories created or last-activity-updated in the last 7 days
     const thisWeek = stories.filter((s) => withinDays(s.last_activity_at || s.created_at, 7)).length
 
-    // Drafts — story_stage is "drafting" or "review" (review is "ready to review")
-    const draftStories = stories.filter((s) => s.story_stage === 'drafting' || s.story_stage === 'review')
-    const drafts = draftStories.length
-
-    // Breakdown — sum piece-level status across draft-stage stories so the
-    // little pill row under the number ("X blog · X email · X social") feels
-    // grounded rather than decorative.
-    const breakdown = { blog: 0, email: 0, social: 0, other: 0 }
-    for (const s of draftStories) {
-      for (const p of s.pieces || []) {
-        if (p.status === 'published' || p.status === 'scheduled') continue
-        const plat = String(p.platform || '').toLowerCase()
-        if (plat === 'blog' || plat === 'wordpress' || plat === 'landing_page') breakdown.blog += 1
-        else if (plat === 'email') breakdown.email += 1
-        else if (plat === 'instagram' || plat === 'facebook' || plat === 'linkedin' || plat === 'twitter' || plat === 'tiktok' || plat === 'youtube' || plat === 'gbp') breakdown.social += 1
-        else breakdown.other += 1
-      }
-    }
-
     // Published — story_stage === 'published' with last_activity within
     // the relevant window. Delta is published this 30d window vs prior 30d.
     const now = Date.now()
@@ -92,80 +59,52 @@ export default function HomeStats({ stories = [] }) {
     // case the card renders a placeholder.
     const voiceMatch = computeVoiceMatch(stories)
 
-    return { thisWeek, drafts, breakdown, publishedThis, publishedDelta, voiceMatch }
+    return { thisWeek, publishedThis, publishedDelta, voiceMatch }
   }, [stories])
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      {/* Voice match — dark "flex" card. First position: it's the app's
-          core differentiator KPI — how faithfully content sounds like the
-          clinician. Grad-text number on the ink card matches the mockup. */}
+    <div className="flex items-stretch gap-0">
+      {/* This week — input to the pipeline */}
+      <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground mb-2">This week</div>
+        <div className="text-4xl font-extrabold tracking-tight tabular-nums">{metrics.thisWeek}</div>
+        <div className="text-sm text-muted-foreground mt-1">interviews captured</div>
+      </div>
+
+      {/* Arrow connector */}
+      <div className="flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
+        <ArrowRight className="h-4 w-4" />
+      </div>
+
+      {/* Voice match — center hero: the core moat KPI */}
       <div
-        className="rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+        className="flex-1 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
         style={{ background: 'hsl(var(--foreground))', borderColor: 'hsl(var(--foreground))', color: '#fff' }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <div className="text-2xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.65)' }}>Voice match</div>
           {typeof metrics.voiceMatch === 'number' ? (
-            <span
-              className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-agreement-signal/20 text-agreement-signal"
-            >
+            <span className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-agreement-signal/20 text-agreement-signal">
               {metrics.voiceMatch >= 60 ? 'strong' : metrics.voiceMatch >= 35 ? 'fair' : 'low'}
             </span>
           ) : null}
         </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 nx-grad-text tabular-nums">
+        <div className="text-4xl font-extrabold tracking-tight nx-grad-text tabular-nums">
           {typeof metrics.voiceMatch === 'number' ? `${metrics.voiceMatch}%` : '—'}
         </div>
-        <div className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>
-          {typeof metrics.voiceMatch === 'number' ? 'across your last 20 pieces' : 'Run an interview to start tracking'}
+        <div className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
+          {typeof metrics.voiceMatch === 'number' ? 'your words · your voice' : 'Run an interview to start tracking'}
         </div>
       </div>
 
-      {/* Drafts — neutral stat. The warm "do this now" treatment lives on
-          DraftsReadyRow (piece-level cards below), so this card stays a
-          plain stat to avoid two warm-tinted surfaces competing for the
-          same action. The action badge uses amber (--action) to match the
-          act-now signal used everywhere else on this page. */}
-      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between">
-          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Drafts</div>
-          {metrics.drafts > 0 ? (
-            <span className="inline-flex items-center justify-center rounded-full bg-action text-action-foreground text-2xs font-bold px-2 py-0.5">action</span>
-          ) : null}
-        </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 text-primary tabular-nums">{metrics.drafts}</div>
-        <div className="text-sm text-muted-foreground">in your pipeline</div>
-        {metrics.drafts > 0 && (metrics.breakdown.blog + metrics.breakdown.email + metrics.breakdown.social + metrics.breakdown.other > 0) ? (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {metrics.breakdown.blog > 0 && (
-              <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${PLATFORM_FAMILY_PILL.blog}`}>{metrics.breakdown.blog} blog</span>
-            )}
-            {metrics.breakdown.email > 0 && (
-              <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${PLATFORM_FAMILY_PILL.email}`}>{metrics.breakdown.email} email</span>
-            )}
-            {metrics.breakdown.social > 0 && (
-              <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${PLATFORM_FAMILY_PILL.social}`}>{metrics.breakdown.social} social</span>
-            )}
-          </div>
-        ) : null}
+      {/* Arrow connector */}
+      <div className="flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
+        <ArrowRight className="h-4 w-4" />
       </div>
 
-      {/* This week */}
-      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between">
-          <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">This week</div>
-          {metrics.thisWeek > 0 ? (
-            <span className="text-2xs font-bold text-slate-400">↗ {metrics.thisWeek}</span>
-          ) : null}
-        </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 tabular-nums">{metrics.thisWeek}</div>
-        <div className="text-sm text-muted-foreground">interviews captured</div>
-      </div>
-
-      {/* Published */}
-      <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between">
+      {/* Published — output of the pipeline */}
+      <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center justify-between mb-2">
           <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Published</div>
           {metrics.publishedDelta !== 0 ? (
             <span className={`text-2xs font-bold ${metrics.publishedDelta > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -173,8 +112,8 @@ export default function HomeStats({ stories = [] }) {
             </span>
           ) : null}
         </div>
-        <div className="text-4xl font-extrabold tracking-tight mt-2 tabular-nums">{metrics.publishedThis}</div>
-        <div className="text-sm text-muted-foreground">last 30 days</div>
+        <div className="text-4xl font-extrabold tracking-tight tabular-nums">{metrics.publishedThis}</div>
+        <div className="text-sm text-muted-foreground mt-1">last 30 days</div>
       </div>
     </div>
   )
