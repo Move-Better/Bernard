@@ -98,7 +98,20 @@ export function sliceWordsToWindow(words, startSec, durationSec) {
  * @param {string} [p.fontName='Inter']
  * @returns {string|null} ASS text, or null if there are no usable words
  */
-export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter' }) {
+// Per-line entrance override (ASS tag block prepended to each Dialogue line):
+//   'none' — current behaviour, no entrance, per-word \k karaoke highlight.
+//   'pop'  — line scales up from 72% with a soft overshoot + quick fade, \k kept.
+//   'fade' — line cross-fades in/out, NO per-word highlight (forced white).
+// Steady-state (the bulk of each line's on-screen time) is identical to 'none'
+// for pop, so the editor's static karaoke preview still matches the bake outside
+// the ~250ms entrance window.
+function entrancePrefix(anim) {
+  if (anim === 'pop') return '{\\fad(60,60)\\fscx72\\fscy72\\t(0,160,\\fscx106\\fscy106)\\t(160,240,\\fscx100\\fscy100)}'
+  if (anim === 'fade') return '{\\fad(220,200)\\c&HFFFFFF&}'
+  return ''
+}
+
+export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter', anim = 'none' }) {
   if (!Array.isArray(words) || words.length === 0) return null
   const usable = words.filter((w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start)
   if (usable.length === 0) return null
@@ -121,14 +134,19 @@ export function buildKaraokeAss({ words, width, height, captionPos = 'top', acce
     `Style: Cap,${fontName},${fontSize},${primary},${secondary},${outline},${back},-1,0,0,0,100,100,0,0,1,${outlineW},0,${alignment},${marginLR},${marginLR},${marginV},1`,
   ].join('\n')
 
+  const prefix = entrancePrefix(anim)
   const events = ['Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text']
   for (const line of groupWordsIntoLines(usable)) {
     const start = line[0].start
     const end = line[line.length - 1].end + 0.12   // brief tail so the last word lingers
-    const text = line
-      .map((w) => `{\\k${Math.max(1, Math.round((w.end - w.start) * 100))}}${assEscape(w.word)} `)
-      .join('')
-      .trimEnd()
+    // 'fade' has no per-word karaoke (a cross-fading line reads calmer); pop/none
+    // keep the \k fill-to-accent timing.
+    const text = anim === 'fade'
+      ? prefix + line.map((w) => assEscape(w.word)).join(' ')
+      : prefix + line
+        .map((w) => `{\\k${Math.max(1, Math.round((w.end - w.start) * 100))}}${assEscape(w.word)} `)
+        .join('')
+        .trimEnd()
     events.push(`Dialogue: 0,${assTime(start)},${assTime(end)},Cap,,0,0,0,,${text}`)
   }
 
