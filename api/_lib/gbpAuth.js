@@ -162,12 +162,15 @@ async function detectAllLocations(accessToken) {
     })
     if (!acctRes.ok) {
       const text = await acctRes.text().catch(() => '')
-      console.warn('[gbpAuth] accounts list failed:', acctRes.status, text.slice(0, 200))
+      console.error('[gbpAuth] accounts list failed — likely GBP API not enabled in GCP project:', acctRes.status, text.slice(0, 300))
       return null
     }
     const acctData = await acctRes.json().catch(() => null)
     const accounts = Array.isArray(acctData?.accounts) ? acctData.accounts : []
-    if (!accounts.length) return null
+    if (!accounts.length) {
+      console.warn('[gbpAuth] accounts list returned 0 accounts for this Google user')
+      return null
+    }
     const account = accounts[0]  // take the first account
     const accountName = account.name  // e.g. "accounts/123456789"
 
@@ -179,12 +182,15 @@ async function detectAllLocations(accessToken) {
     )
     if (!locRes.ok) {
       const text = await locRes.text().catch(() => '')
-      console.warn('[gbpAuth] locations list failed:', locRes.status, text.slice(0, 200))
+      console.error('[gbpAuth] locations list failed — likely My Business Information API not enabled:', locRes.status, text.slice(0, 300))
       return null
     }
     const locData = await locRes.json().catch(() => null)
     const rawLocations = Array.isArray(locData?.locations) ? locData.locations : []
-    if (!rawLocations.length) return null
+    if (!rawLocations.length) {
+      console.warn('[gbpAuth] locations list returned 0 locations for account', accountName)
+      return null
+    }
 
     const locations = rawLocations.map((loc) => {
       const locationName = loc.name  // "locations/{locationId}"
@@ -229,7 +235,7 @@ export async function persistGbpCredential({ workspaceId, refreshToken, accessTo
     connected_at:  new Date().toISOString(),
     // account_name, location_name, location_id, location_title, v4_location_name — first location (backward compat)
     // locations[] — all locations for parallel metrics fetch
-    ...(locationInfo || {}),
+    ...(locationInfo || { location_detection: 'failed' }),
   }
   const secret_ciphertext = encryptSecret(refreshToken)
 
