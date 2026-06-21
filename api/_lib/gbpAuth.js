@@ -154,12 +154,23 @@ async function fetchAccountEmail(accessToken) {
 // fetch and sum metrics across every location.
 // Also keeps top-level location_name/location_id for the legacy localPosts path
 // and for workspaces.gbp_location_name (used as a "is configured?" sentinel).
+// Retry a fetch up to maxRetries times on 429, waiting retryDelayMs between attempts.
+async function fetchWithRetry(url, init, maxRetries = 3, retryDelayMs = 2000) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, init)
+    if (res.status !== 429 || attempt === maxRetries) return res
+    console.warn(`[gbpAuth] 429 from ${url} — retrying in ${retryDelayMs}ms (attempt ${attempt + 1}/${maxRetries})`)
+    await new Promise((r) => setTimeout(r, retryDelayMs))
+  }
+}
+
 async function detectAllLocations(accessToken) {
   try {
-    // Step 1: list GBP accounts
-    const acctRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
+    // Step 1: list GBP accounts (retry up to 3× on 429 — the Accounts.list quota is low by default)
+    const acctRes = await fetchWithRetry(
+      'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
     if (!acctRes.ok) {
       const text = await acctRes.text().catch(() => '')
       console.error('[gbpAuth] accounts list failed — likely GBP API not enabled in GCP project:', acctRes.status, text.slice(0, 300))
@@ -218,6 +229,53 @@ async function detectAllLocations(accessToken) {
     console.warn('[gbpAuth] detectAllLocations failed:', e?.message)
     return null
   }
+}
+
+// Re-detect all locations and update the stored credential config.
+// Called from /api/integrations/gbp/refresh-locations when the initial
+// detect failed (e.g. 429 during the OAuth callback).
+export async function refreshGbpLocations(workspaceId) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase env not configured')
+  const credRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.gbp_analytics&status=eq.active&select=id,secret_ciphertext,config&limit=1`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+  )
+  if (!credRes.ok) throw new Error(`credential fetch failed: ${credRes.status}`)
+  const row = (await credRes.json().catch(() => []))?.[0]
+  if (!row?.secret_ciphertext) throw new Error('no active GBP credential found')
+
+  const { decryptSecret } = await import('./credentialCrypto.js')
+  const refreshToken = decryptSecret(row.secret_ciphertext)
+  const accessToken = await refreshGbpToken(refreshToken)
+
+  const locationInfo = await detectAllLocations(accessToken)
+  if (!locationInfo) throw new Error('location detection failed — check Vercel logs for details')
+
+  const newConfig = {
+    ...row.config,
+    location_detection: undefined,  // clear the failure marker
+    ...locationInfo,
+  }
+  // Remove the failure marker key entirely
+  delete newConfig.location_detection
+
+  const patchRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${row.id}`,
+    {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config: newConfig }),
+    },
+  )
+  if (!patchRes.ok) throw new Error(`config patch failed: ${patchRes.status}`)
+
+  await fetch(`${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}`, {
+    method: 'PATCH',
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gbp_location_name: locationInfo.location_name }),
+  }).catch(e => console.warn('[gbpAuth] gbp_location_name mirror failed:', e?.message))
+
+  return locationInfo
 }
 
 export async function persistGbpCredential({ workspaceId, refreshToken, accessToken }) {
