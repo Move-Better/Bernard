@@ -27,6 +27,7 @@ import { generateObject } from 'ai'
 import { z } from 'zod'
 import ffmpegPath from 'ffmpeg-static'
 import { transcribeToSegmentsAndWords } from './whisper.js'
+import { scoreSegments } from './scoreMoments.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -278,6 +279,10 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
 
     const segments = normalizeSegments(object.segments || [], maxSegments, durationSec)
 
+    // Score + classify each proposed moment (the gem rating + type the
+    // Moment Miner feed ranks on). Aligned to `segments` order; never throws.
+    const scores = segments.length ? await scoreSegments(segments, ws) : []
+
     // Replace any prior proposals (re-run support); leave human-touched rows
     // (kept/discarded/rendered). Also clear stale 'rendering' rows — a render
     // hard-killed at the 300s wall never leaves 'rendering', so a re-detect is
@@ -299,6 +304,8 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
         order_index: i,
         status: 'proposed',
         detection_model: MODEL,
+        score: scores[i]?.score ?? null,
+        moment_type: scores[i]?.moment_type ?? null,
         ...(campaignId ? { campaign_id: campaignId } : {}),
       }))
       const ins = await sb('video_segments', { method: 'POST', body: JSON.stringify(rows) })
