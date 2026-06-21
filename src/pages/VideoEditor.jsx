@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, Play, Pause, Film, Sparkles, Captions, Type, Layers,
+  ArrowLeft, Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown,
 } from 'lucide-react'
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
-import { getSegments, renderWholeVideo } from '@/lib/clipsLib'
+import { getSegments, renderWholeVideo, findClips } from '@/lib/clipsLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -55,93 +55,11 @@ function groupLines(words) {
   return lines.map((ws) => ({ start: ws[0].start, end: ws[ws.length - 1].end, words: ws, text: ws.map((w) => w.word).join(' ') }))
 }
 
-// ── LEFT RAIL ──────────────────────────────────────────────────────────────
-function LayerRow({ active, icon: Icon, label, sub, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="mb-1 flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors"
-      style={active
-        ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.08)' }
-        : { borderColor: 'transparent' }}
-    >
-      <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: active ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
-      <span className="min-w-0">
-        <span className={`block truncate text-2xs ${active ? 'font-semibold' : ''}`} style={{ color: active ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>{label}</span>
-        {sub ? <span className="block truncate text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{sub}</span> : null}
-      </span>
-    </button>
-  )
-}
-
-function LeftRail({ ctx }) {
-  const { sel, selectKey, railMode, setRailMode, caption, overlays, addOverlay, lines, playClipT, seekClip } = ctx
-  const selKey = typeof sel === 'object' ? `overlay:${sel.id}` : sel
-  const tabStyle = (on) => on
-    ? { color: 'hsl(var(--primary))', borderBottom: '2px solid hsl(var(--primary))', background: 'hsl(var(--primary)/0.06)' }
-    : { color: 'hsl(var(--muted-foreground))', borderBottom: '2px solid transparent' }
-  return (
-    <aside className="flex w-[150px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
-      <div className="flex border-b text-3xs font-semibold" style={{ borderColor: 'hsl(var(--border))' }}>
-        <button onClick={() => setRailMode('layers')} className="flex flex-1 items-center justify-center gap-1 py-2" style={tabStyle(railMode === 'layers')}><Layers className="h-3.5 w-3.5" />Layers</button>
-        <button onClick={() => setRailMode('transcript')} className="flex flex-1 items-center justify-center gap-1 py-2" style={tabStyle(railMode === 'transcript')}><Captions className="h-3.5 w-3.5" />Words</button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {railMode === 'layers' ? (
-          <>
-            <p className="mb-1.5 px-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Layers · this clip</p>
-            <LayerRow active={selKey === 'clip'} icon={Film} label="Video clip" sub="trim · reframe · speed" onClick={() => selectKey('clip')} />
-            <LayerRow active={selKey === 'grade'} icon={Sparkles} label="Frame grade" sub="AI colorist look" onClick={() => selectKey('grade')} />
-            <LayerRow active={selKey === 'caption'} icon={Captions} label="Captions" sub={caption.preset === 'off' ? 'off' : `auto · ${lines.length} lines`} onClick={() => selectKey('caption')} />
-            {overlays.map((o) => (
-              <LayerRow key={o.id} active={selKey === `overlay:${o.id}`} icon={Type}
-                label={o.role === 'lower_third' ? 'Lower-third' : o.role[0].toUpperCase() + o.role.slice(1)}
-                sub={`“${o.text.slice(0, 16)}${o.text.length > 16 ? '…' : ''}”`} onClick={() => selectKey(`overlay:${o.id}`)} />
-            ))}
-            <button onClick={addOverlay} className="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-dashed py-2 text-3xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}><Plus className="h-3.5 w-3.5" />Add overlay</button>
-          </>
-        ) : (
-          <TranscriptRail lines={lines} playClipT={playClipT} seekClip={seekClip} ctx={ctx} />
-        )}
-      </div>
-    </aside>
-  )
-}
-
-function TranscriptRail({ lines, playClipT, seekClip, ctx }) {
-  if (!lines.length) {
-    return <p className="px-1 text-3xs italic" style={{ color: 'hsl(var(--muted-foreground))' }}>No transcript words on this clip yet — they appear here after “Find moments” transcribes the source.</p>
-  }
-  return (
-    <>
-      <p className="mb-1.5 px-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Spoken words · click ▸ to seek</p>
-      {lines.map((l, i) => {
-        const live = playClipT >= l.start && playClipT < l.end
-        return (
-          <div key={i} className="mb-1.5 rounded-md border p-1.5" style={{ borderColor: live ? 'hsl(var(--primary))' : 'hsl(var(--border))', background: live ? 'hsl(var(--primary)/0.05)' : undefined }}>
-            <div className="mb-1 flex items-center gap-1">
-              <button onClick={() => seekClip(l.start)} className="rounded p-0.5" style={{ color: 'hsl(var(--primary))' }} title="Seek here"><Play className="h-3 w-3" /></button>
-              <span className="font-mono text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{l.start.toFixed(1)}–{l.end.toFixed(1)}s</span>
-              <button onClick={() => ctx.trimToLine(l)} className="ml-auto rounded px-1 py-0.5 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }} title="Set clip in/out to this line">⊢ trim</button>
-            </div>
-            <input
-              value={l.text}
-              onChange={(e) => ctx.editLine(i, e.target.value)}
-              className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-2xs outline-none focus:bg-card"
-              style={{ color: 'hsl(var(--foreground))' }}
-              aria-label="Edit caption line"
-            />
-          </div>
-        )
-      })}
-    </>
-  )
-}
-
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, dragOverlay } = ctx
-  const activeLine = lines.find((l) => playClipT >= l.start && playClipT < l.end) || null
+  const { videoRef, asset, grade, reframe, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, dragOverlay, editLine, editingCap, setEditingCap } = ctx
+  const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
+  const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const clipSelRing = sel === 'clip' || sel === 'grade'
   const z = (Number(reframe.zoom) || 100) / 100
   return (
@@ -167,11 +85,11 @@ function Canvas({ ctx }) {
             />
           ) : <div className="flex h-full items-center justify-center text-sm text-white/60">No video</div>}
 
-          {/* caption karaoke */}
+          {/* caption — karaoke; click to edit the active line inline (pauses playback) */}
           {activeLine && caption.preset !== 'off' && (
             <div
-              onClick={(e) => { e.stopPropagation(); selectKey('caption') }}
-              className="pointer-events-auto absolute left-1/2 -translate-x-1/2 cursor-pointer text-center font-extrabold leading-tight"
+              onClick={(e) => { e.stopPropagation(); videoRef.current?.pause(); selectKey('caption'); setEditingCap(true) }}
+              className="pointer-events-auto absolute left-1/2 -translate-x-1/2 cursor-text text-center font-extrabold leading-tight"
               style={{
                 maxWidth: '86%',
                 top: caption.position === 'top' ? '11%' : caption.position === 'center' ? '46%' : 'auto',
@@ -181,10 +99,24 @@ function Canvas({ ctx }) {
                 outline: sel === 'caption' ? '1.5px dashed #fff' : 'none', outlineOffset: '4px',
               }}
             >
-              {activeLine.words.map((w, i) => {
-                const spoken = playClipT >= w.start
-                return <span key={i} style={{ color: spoken ? caption.accent : '#fff' }}>{w.word}{' '}</span>
-              })}
+              {editingCap && sel === 'caption' && activeIdx >= 0 ? (
+                <input
+                  autoFocus
+                  defaultValue={activeLine.words.map((w) => w.word).join(' ')}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => editLine(activeIdx, e.target.value)}
+                  onBlur={() => setEditingCap(false)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setEditingCap(false) } }}
+                  className="w-full bg-transparent text-center outline-none"
+                  style={{ color: '#fff', font: 'inherit', textShadow: 'inherit' }}
+                  aria-label="Edit caption line"
+                />
+              ) : (
+                activeLine.words.map((w, i) => {
+                  const spoken = playClipT >= w.start
+                  return <span key={i} style={{ color: spoken ? caption.accent : '#fff' }}>{w.word}{' '}</span>
+                })
+              )}
             </div>
           )}
 
@@ -257,45 +189,17 @@ const segBtn = (on) => on
 // Source-relative trim: drag the in/out handles across the WHOLE source span to
 // recut the clip window (clamped to a ≤60s window). Distinct from the bottom
 // timeline, which is clip-relative (0..durationSec).
-function TrimBar({ videoDuration, startSec, endSec, setStartSec, setEndSec }) {
-  const trackRef = useRef(null)
-  const dur = videoDuration || 0
-  const frac = (s) => (dur > 0 ? clamp(s / dur, 0, 1) : 0)
-  const onDown = (which) => (e) => {
-    e.preventDefault(); e.stopPropagation()
-    const move = (ev) => {
-      const r = trackRef.current?.getBoundingClientRect()
-      if (!r || dur <= 0) return
-      const sec = clamp((ev.clientX - r.left) / r.width, 0, 1) * dur
-      if (which === 'start') setStartSec(clamp(sec, 0, endSec - 1))
-      else setEndSec(clamp(sec, startSec + 1, Math.min(startSec + 60, dur)))
-    }
-    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
-    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
-  }
-  return (
-    <div ref={trackRef} className="relative my-1.5 h-6 select-none" style={{ touchAction: 'none' }}>
-      <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ background: 'hsl(var(--muted))' }} />
-      <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ left: `${frac(startSec) * 100}%`, width: `${(frac(endSec) - frac(startSec)) * 100}%`, background: 'hsl(var(--primary)/0.5)' }} />
-      {[['start', startSec], ['end', endSec]].map(([w, s]) => (
-        <div key={w} onMouseDown={onDown(w)} title={fmt(s)} className="absolute top-1/2 h-5 w-2.5 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize rounded-sm border shadow" style={{ left: `${frac(s) * 100}%`, background: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary))' }} />
-      ))}
-    </div>
-  )
-}
-
 function ClipInspector({ ctx }) {
-  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, reframe, setReframe, speed, setSpeed, selectKey, caption } = ctx
+  const { startSec, endSec, durationSec, reframe, setReframe, speed, setSpeed, selectKey, caption } = ctx
   return (
     <InspectorShell icon={Film} title="Clip & reframe" right="Reel 9:16">
-      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Trim · drag the handles</p>
-      <TrimBar videoDuration={videoDuration} startSec={startSec} endSec={endSec} setStartSec={setStartSec} setEndSec={setEndSec} />
       <div className="mb-3 flex items-center gap-2 text-2xs">
         <span className="flex-1 rounded-md border px-2 py-1.5 text-center font-mono" style={{ borderColor: 'hsl(var(--border))' }}>{fmt(startSec)}</span>
         <span style={{ color: 'hsl(var(--muted-foreground))' }}>→</span>
         <span className="flex-1 rounded-md border px-2 py-1.5 text-center font-mono" style={{ borderColor: 'hsl(var(--border))' }}>{fmt(endSec)}</span>
         <span className="text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>({fmt(durationSec)})</span>
       </div>
+      <p className="mb-3 rounded-md px-2 py-1 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Trim with the <b>Clip bar</b> on the right timeline.</p>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Reframe · position in 9:16</p>
       {[['zoom', 'Zoom', 100, 220], ['x', 'Horizontal', 0, 100], ['y', 'Vertical', 0, 100]].map(([k, lbl, lo, hi]) => (
         <div key={k} className="mb-2">
@@ -341,7 +245,7 @@ function GradeInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { caption, setCaption, lines, setRailMode } = ctx
+  const { caption, setCaption, lines, genCaptions, genCaptionsPending } = ctx
   const seg = (label, opts, key) => (
     <div className="mb-3">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</p>
@@ -358,7 +262,13 @@ function CaptionInspector({ ctx }) {
       </div>
       {seg('Position', ['top', 'center', 'bottom'], 'position')}
       {seg('Size', ['small', 'medium', 'large'], 'size')}
-      <button onClick={() => setRailMode('transcript')} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>Edit the words ({lines.length})</button>
+      {lines.length === 0 ? (
+        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(38 60% 30%)' }}>
+          {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
+        </button>
+      ) : (
+        <p className="mt-1 rounded-md px-2 py-1.5 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Tap the caption on the video to fix a word.</p>
+      )}
     </InspectorShell>
   )
 }
@@ -391,61 +301,96 @@ function OverlayInspector({ ctx }) {
   )
 }
 
-function Inspector({ ctx }) {
+// ── RAIL + VERTICAL TIMELINE (v3) ────────────────────────────────────────────
+// Thin icon rail (v3) — picks the inspector tool. "Text" selects the latest
+// overlay (or adds one). Replaces the old Layers/Transcript rail.
+function IconRail({ ctx }) {
+  const { sel, selectKey, overlays, addOverlay } = ctx
+  const selKey = typeof sel === 'object' ? 'overlay' : sel
+  const tools = [['clip', Film, 'Clip'], ['grade', Sparkles, 'Grade'], ['caption', Captions, 'Caps'], ['text', Type, 'Text']]
+  const pick = (k) => {
+    if (k === 'text') { if (overlays.length) selectKey(`overlay:${overlays[overlays.length - 1].id}`); else addOverlay() }
+    else selectKey(k)
+  }
   return (
-    <aside className="flex w-[306px] shrink-0 flex-col border-l bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
-      <div className="min-h-0 flex-1 overflow-auto p-3">
-        {ctx.sel === 'clip' && <ClipInspector ctx={ctx} />}
-        {ctx.sel === 'grade' && <GradeInspector ctx={ctx} />}
-        {ctx.sel === 'caption' && <CaptionInspector ctx={ctx} />}
-        {typeof ctx.sel === 'object' && <OverlayInspector ctx={ctx} />}
-      </div>
+    <aside className="flex w-[58px] shrink-0 flex-col border-r bg-card py-1" style={{ borderColor: 'hsl(var(--border))' }}>
+      {tools.map(([k, Icon, label]) => {
+        const on = selKey === k || (k === 'text' && selKey === 'overlay')
+        return (
+          <button key={k} onClick={() => pick(k)} className="flex w-full flex-col items-center gap-1 py-2.5" style={{ borderLeft: `2px solid ${on ? 'hsl(var(--primary))' : 'transparent'}`, background: on ? 'hsl(var(--primary)/0.07)' : undefined }}>
+            <Icon className="h-4 w-4" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
+            <span className="text-3xs" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
+          </button>
+        )
+      })}
     </aside>
   )
 }
 
-// ── TIMELINE ─────────────────────────────────────────────────────────────────
-function Timeline({ ctx }) {
-  const { durationSec, playClipT, seekClip, sel, selectKey, overlays, caption, togglePlay, playing, addOverlay } = ctx
-  const pct = (s) => durationSec > 0 ? (s / durationSec) * 100 : 0
-  const onScrub = (e) => {
-    const r = e.currentTarget.getBoundingClientRect()
-    seekClip(clamp((e.clientX - r.left) / r.width * durationSec, 0, durationSec))
+// Right vertical timeline (v3) — source-relative (0..videoDuration). The Clip
+// column shows the trim window [startSec,endSec] with top/bottom drag handles;
+// the Text column shows overlay bars (clip-relative in/out, drawn at startSec+in)
+// that drag freely (anchored to the grab point) and resize via their ends.
+function VerticalTimeline({ ctx }) {
+  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, playClipT, addOverlay } = ctx
+  const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
+  const clipColRef = useRef(null)
+  const ovColRef = useRef(null)
+  const f = (s) => clamp(s / span, 0, 1) * 100
+  const trim = (which) => (e) => {
+    e.preventDefault(); e.stopPropagation()
+    const move = (ev) => {
+      const r = clipColRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
+      const s = clamp((ev.clientY - r.top) / r.height, 0, 1) * span
+      if (which === 'in') setStartSec(clamp(s, 0, endSec - 1)); else setEndSec(clamp(s, startSec + 1, span))
+    }
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
   }
-  const ticks = []
-  for (let s = 0; s <= durationSec; s += Math.max(2, Math.round(durationSec / 8))) ticks.push(s)
+  const ovDown = (o, edge) => (e) => {
+    e.preventDefault(); e.stopPropagation(); selectKey(`overlay:${o.id}`)
+    const r = ovColRef.current?.getBoundingClientRect(); const startY = e.clientY; const inAt = o.in; const len = o.out - o.in
+    const move = (ev) => {
+      if (!r || span <= 0) return
+      if (edge === 'move') {
+        const d = (ev.clientY - startY) / r.height * span
+        const ni = clamp(inAt + d, 0, Math.max(0, durationSec - len))
+        setOverlayWindow(o.id, ni, ni + len)
+      } else {
+        const clipSec = clamp((ev.clientY - r.top) / r.height * span - startSec, 0, durationSec)
+        if (edge === 't') setOverlayWindow(o.id, Math.min(clipSec, o.out - 0.5), o.out)
+        else setOverlayWindow(o.id, o.in, Math.max(clipSec, o.in + 0.5))
+      }
+    }
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  }
   return (
-    <div className="shrink-0 border-t bg-card px-3 pb-3 pt-2" style={{ borderColor: 'hsl(var(--border))', height: 178 }}>
-      <div className="mb-1.5 flex items-center gap-3">
-        <button onClick={togglePlay} className="flex h-7 w-7 items-center justify-center rounded-full text-white" style={{ background: 'hsl(var(--primary))' }}>{playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}</button>
-        <span className="font-mono text-2xs tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
-        <button onClick={addOverlay} className="ml-auto flex items-center gap-1 rounded-md border px-2 py-1 text-2xs font-medium" style={{ borderColor: 'hsl(var(--border))' }}><Type className="h-3 w-3" />Add text overlay</button>
+    <aside className="flex w-[120px] shrink-0 flex-col border-l bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+      <div className="flex items-center justify-between px-2.5 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
+        <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5" style={{ color: 'hsl(var(--primary))' }}><Plus className="h-3 w-3" />Text</button>
       </div>
-      <div className="relative ml-[78px] mb-1 h-3 select-none">
-        {ticks.map((s) => <span key={s} className="absolute -translate-x-1/2 font-mono text-3xs" style={{ left: `${pct(s)}%`, color: 'hsl(var(--muted-foreground))' }}>{fmt(s)}</span>)}
+      <div className="relative flex flex-1 gap-2 p-2.5">
+        <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(220 14% 93%)' }}>
+          <div onClick={() => selectKey('clip')} className="absolute inset-x-0 cursor-pointer rounded-md" style={{ top: `${f(startSec)}%`, height: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(180deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
+          <div onMouseDown={trim('in')} className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm" style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11, background: 'hsl(var(--primary))' }} title="Start" />
+          <div onMouseDown={trim('out')} className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm" style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11, background: 'hsl(var(--primary))' }} title="End" />
+        </div>
+        <div ref={ovColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(220 14% 93%)' }}>
+          {overlays.length ? overlays.map((o) => {
+            const isSel = typeof sel === 'object' && sel.id === o.id
+            return (
+              <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-x-0 cursor-grab overflow-hidden rounded-md" style={{ top: `${f(startSec + o.in)}%`, height: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
+                <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
+                <div className="flex h-full items-center justify-center"><Type className="h-3 w-3" style={{ color: '#3a2a00' }} /></div>
+                <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
+              </div>
+            )
+          }) : <span className="absolute inset-x-0 top-2 text-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
+        </div>
+        <div className="pointer-events-none absolute inset-x-2.5 z-20" style={{ top: `calc(10px + ${f(startSec + playClipT)}% * (100% - 20px) / 100)`, height: 2, background: 'hsl(0 80% 55%)' }} />
       </div>
-      <div className="relative">
-        {['Clip', 'Captions', 'Overlays'].map((label) => (
-          <div key={label} className="mb-1.5 flex items-center gap-2">
-            <span className="w-[70px] shrink-0 text-right text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</span>
-            <div className="relative h-8 flex-1 rounded-md" style={{ background: 'hsl(220 14% 93%)' }} onMouseDown={(e) => { if (!e.target.closest('[data-bar]')) onScrub(e) }}>
-              {label === 'Clip' && (
-                <div data-bar onClick={() => selectKey('clip')} className="absolute inset-0 flex items-center gap-1.5 rounded-md px-3" style={{ background: 'linear-gradient(90deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }}>
-                  <Film className="h-3.5 w-3.5 text-white" /><span className="text-3xs font-semibold text-white">clip · {fmt(durationSec)}</span>
-                </div>
-              )}
-              {label === 'Captions' && (caption.preset === 'off'
-                ? <span className="flex h-full items-center px-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>captions off</span>
-                : <div data-bar onClick={() => selectKey('caption')} className="absolute inset-y-0 left-px right-px flex items-center gap-1.5 rounded-md px-2" style={{ background: 'hsl(var(--info)/.5)', boxShadow: sel === 'caption' ? '0 0 0 2px hsl(var(--info))' : undefined }}><Captions className="h-3 w-3 text-white" /><span className="text-3xs font-semibold text-white">karaoke captions</span></div>)}
-              {label === 'Overlays' && (overlays.length
-                ? overlays.map((o) => <div key={o.id} data-bar onClick={() => selectKey(`overlay:${o.id}`)} className="absolute inset-y-0 flex items-center gap-1 overflow-hidden rounded-md px-1.5" style={{ left: `${pct(o.in)}%`, width: `${pct(o.out - o.in)}%`, background: 'linear-gradient(90deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: (typeof sel === 'object' && sel.id === o.id) ? '0 0 0 2px hsl(var(--action))' : undefined }}><Type className="h-3 w-3" style={{ color: '#3a2a00' }} /><span className="truncate text-3xs font-semibold" style={{ color: '#3a2a00' }}>{o.text.slice(0, 14)}</span></div>)
-                : <span className="flex h-full items-center px-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>no overlays — “Add text overlay”</span>)}
-            </div>
-          </div>
-        ))}
-        <div className="pointer-events-none absolute top-0 z-20" style={{ left: `calc(78px + ${pct(playClipT)}% * (100% - 78px) / 100)`, width: 2, height: '100%', background: 'hsl(0 80% 55%)' }} />
-      </div>
-    </div>
+    </aside>
   )
 }
 
@@ -589,6 +534,8 @@ export default function VideoEditor() {
   }, [playClipT, durationSec])
   const setOverlay = useCallback((k, v) => setOverlays((prev) => prev.map((o) => (typeof sel === 'object' && o.id === sel.id ? { ...o, [k]: v } : o))), [sel])
   const setOverlayTime = useCallback((k, v) => setOverlays((prev) => prev.map((o) => (typeof sel === 'object' && o.id === sel.id ? { ...o, [k]: clamp(Number(v) || 0, 0, durationSec) } : o))), [sel, durationSec])
+  // Set a specific overlay's in/out by id (used by the vertical timeline bar drag/resize).
+  const setOverlayWindow = useCallback((id, inT, outT) => setOverlays((prev) => prev.map((o) => (o.id === id ? { ...o, in: clamp(inT, 0, durationSec), out: clamp(outT, 0, durationSec) } : o))), [durationSec])
   const delOverlay = useCallback(() => { setOverlays((prev) => prev.filter((o) => !(typeof sel === 'object' && o.id === sel.id))); setSel('clip') }, [sel])
   const dragOverlay = useCallback((e, id) => {
     e.preventDefault(); e.stopPropagation()
@@ -670,14 +617,37 @@ export default function VideoEditor() {
     mutationFn: () => renderWholeVideo(assetId),
     onSuccess: () => { toast('Rendering the full-length video — track it on Slate.'); navigate('/slate') },
   })
+  // Karaoke fix for LEGACY clips (detected before words were persisted): re-run
+  // detection (which now persists transcript_words), poll the asset until the
+  // words land, then update the query cache so the preview + Words populate.
+  const queryClient = useQueryClient()
+  const genCaptionsMutation = useAppMutation({
+    mutationFn: async () => {
+      await findClips(assetId)
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 3000))
+        const a = await getMediaAsset(assetId)
+        if (Array.isArray(a?.transcript_words) && a.transcript_words.length) {
+          queryClient.setQueryData(['media-asset', assetId], a)
+          return
+        }
+      }
+      throw new Error('Transcription timed out — try again.')
+    },
+    onSuccess: () => toast('Captions generated.'),
+  })
+
+  const [editingCap, setEditingCap] = useState(false)
   const busy = asPostMutation.isPending || brollMutation.isPending || wholeMutation.isPending
 
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     reframe, setReframe: setReframeKey, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
+    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
+    genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
+    editingCap, setEditingCap,
   }
 
   if (isLoading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
@@ -692,39 +662,42 @@ export default function VideoEditor() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <header className="flex items-center gap-3 border-b bg-card px-4" style={{ height: 52, borderColor: 'hsl(var(--border))' }}>
-        <button onClick={() => navigate(`/slate/clip/${assetId}`)} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back"><ArrowLeft className="h-4 w-4" /></button>
-        <span className="text-sm font-semibold">{asset.display_title || asset.filename || 'Reel'}</span>
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold" style={{ background: 'hsl(var(--info)/.12)', color: 'hsl(var(--info))' }}><Film className="h-3.5 w-3.5" />Instagram Reel · {fmt(durationSec)} · 9:16</span>
-        <span className="rounded-md px-2 py-0.5 text-3xs font-semibold" style={{ background: 'hsl(var(--action)/.15)', color: 'hsl(38 60% 30%)' }}>Beta editor</span>
-        <div className="ml-auto flex items-center gap-2">
-          {/* Transport — always-visible play/pause + clip time. */}
-          <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
+    <div className="flex h-[calc(100vh-3.5rem)]">
+      <IconRail ctx={ctx} />
+      {/* LEFT CONTROL PANEL — title + transport + Save&publish/outputs (was the top
+          bar), then the contextual inspector. Everything on the sides → max video. */}
+      <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+        <div className="border-b p-2.5" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="mb-2 flex items-center gap-2">
+            <button onClick={() => navigate(`/slate/clip/${assetId}`)} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back"><ArrowLeft className="h-4 w-4" /></button>
+            <span className="truncate text-xs font-semibold">{asset.display_title || asset.filename || 'Reel'}</span>
+            <span className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-3xs font-semibold" style={{ background: 'hsl(var(--action)/.15)', color: 'hsl(38 60% 30%)' }}>Beta</span>
+          </div>
+          <div className="mb-2 flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
             <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
               {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             </button>
             <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
+            <span className="ml-auto text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reel · 9:16</span>
           </div>
-          <div className="relative flex items-center">
-            <Button size="sm" disabled={busy} onClick={() => asPostMutation.mutate()} className="rounded-r-none" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+          <div className="relative flex">
+            <Button size="sm" disabled={busy} onClick={() => asPostMutation.mutate()} className="flex-1 rounded-r-none" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
               {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="mr-1 h-3.5 w-3.5" />}Save &amp; publish
             </Button>
-            <button onClick={() => setOutputsOpen((v) => !v)} disabled={busy} className="flex h-8 items-center rounded-r-md border-l px-1.5 disabled:opacity-50" style={{ background: 'hsl(var(--action))', color: '#3a2a00', borderColor: 'rgba(0,0,0,.18)' }} title="More outputs" aria-label="More outputs">
+            <button onClick={() => setOutputsOpen((v) => !v)} disabled={busy} className="flex items-center rounded-r-md border-l px-1.5 disabled:opacity-50" style={{ background: 'hsl(var(--action))', color: '#3a2a00', borderColor: 'rgba(0,0,0,.18)' }} title="More outputs" aria-label="More outputs">
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
             {outputsOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setOutputsOpen(false)} />
-                <div className="absolute right-0 top-full z-40 mt-1 w-52 overflow-hidden rounded-lg border bg-card shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                <div className="absolute inset-x-0 top-full z-40 mt-1 overflow-hidden rounded-lg border bg-card shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
                   {[
-                    { icon: FolderOpen, label: 'Save as b-roll', sub: 'Reusable clip in Library', on: () => brollMutation.mutate() },
-                    { icon: Megaphone, label: 'Export for ads', sub: 'Download ad sizes', on: () => setAdExportOpen(true) },
-                    { icon: Film, label: 'Render whole video', sub: 'Full source, no edits', on: () => wholeMutation.mutate() },
+                    { icon: FolderOpen, label: 'Save as b-roll', on: () => brollMutation.mutate() },
+                    { icon: Megaphone, label: 'Export for ads', on: () => setAdExportOpen(true) },
+                    { icon: Film, label: 'Render whole video', on: () => wholeMutation.mutate() },
                   ].map((o) => (
-                    <button key={o.label} disabled={busy} onClick={() => { setOutputsOpen(false); o.on() }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-muted disabled:opacity-50">
-                      <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                      <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
+                    <button key={o.label} disabled={busy} onClick={() => { setOutputsOpen(false); o.on() }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted disabled:opacity-50">
+                      <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />{o.label}
                     </button>
                   ))}
                 </div>
@@ -732,13 +705,15 @@ export default function VideoEditor() {
             )}
           </div>
         </div>
-      </header>
-      <div className="flex min-h-0 flex-1">
-        <LeftRail ctx={ctx} />
-        <Canvas ctx={ctx} />
-        <Inspector ctx={ctx} />
-      </div>
-      <Timeline ctx={ctx} />
+        <div className="min-h-0 flex-1 overflow-auto p-3">
+          {sel === 'clip' && <ClipInspector ctx={ctx} />}
+          {sel === 'grade' && <GradeInspector ctx={ctx} />}
+          {sel === 'caption' && <CaptionInspector ctx={ctx} />}
+          {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
+        </div>
+      </aside>
+      <Canvas ctx={ctx} />
+      <VerticalTimeline ctx={ctx} />
       {adExportOpen && (
         <AdVideoExportModal
           clip={{ assetId, startSec, durationSec, captionText: captionSummary(), overlayPosition: caption.position, overlaySize: caption.size, title: asset?.display_title || asset?.filename }}
