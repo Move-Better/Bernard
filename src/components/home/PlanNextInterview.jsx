@@ -1,18 +1,12 @@
 import { Link } from 'react-router-dom'
-import { TrendingUp, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Icon from '@/components/ui/Icon'
+import { Plus } from 'lucide-react'
 
-// Amber callout that shows high-search topic gaps and a "New Interview" CTA.
+// "What to talk about next" — merged surface for patient question gaps.
+// Shows high-search topics with no content yet, filterable by patient archetype.
 // Props:
 //   gaps              — array of { topic, priority } from getSuggestedTopics
-//                       (already filtered by activePrototypeId on the parent)
 //   isEmpty           — true when no interviews exist yet (changes copy)
-//   prototypes        — array of { id, label, emoji, description } from
-//                       getPatientPrototypesUi(workspace). First entry has
-//                       id === null and is the "all patients" affordance.
-//                       Pass [] or a single-entry array to hide the chips
-//                       (workspaces with no archetypes defined).
+//   prototypes        — array of { id, label, emoji, description }
 //   activePrototypeId — currently selected archetype id (or null for all)
 //   onPrototypeChange — setter for activePrototypeId
 export default function PlanNextInterview({
@@ -33,77 +27,70 @@ export default function PlanNextInterview({
   const filteredEmpty = gaps.length === 0
 
   return (
-    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[hsl(var(--primary)/0.05)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(12,117,128,0.22)]">
-      <div className="flex flex-col sm:flex-row items-start gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="inline-block w-1 h-5 rounded-full shrink-0"
-              style={{ background: 'hsl(var(--primary))' }}
-              aria-hidden="true"
-            />
-            <Icon as={TrendingUp} size="md" className="text-primary" />
-            <h2 className="text-xl font-bold tracking-tight text-foreground">
-              {isEmpty ? 'Start with a high-impact topic' : 'Plan your next interview'}
+    <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-0.5 h-5 rounded-none bg-primary shrink-0" aria-hidden="true" />
+            <h2 className="text-base font-bold tracking-tight text-foreground">
+              {isEmpty ? 'Start with a high-impact topic' : 'What to talk about next'}
             </h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="text-xs text-muted-foreground mt-0.5 pl-2.5">
             {isEmpty
-              ? 'These are high-search topics in your area — pick one to kick off your first interview.'
-              : 'High-search topics with no content yet — pick one to start an interview.'}
+              ? 'High-search topics in your area — pick one to kick off your first interview.'
+              : 'Questions patients are searching — no content from you yet'}
           </p>
-
-          {showChips && (
-            <div className="flex flex-wrap gap-1 items-center mb-3">
-              <span className="text-3xs text-muted-foreground mr-1 uppercase tracking-wide">For:</span>
-              {prototypes.map((p) => {
-                const active = activePrototypeId === p.id
-                return (
-                  <button
-                    key={String(p.id)}
-                    type="button"
-                    onClick={() => onPrototypeChange(p.id)}
-                    title={p.description || p.label}
-                    className={`inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full border transition-colors ${
-                      active
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-accent border-primary/30 text-accent-foreground hover:bg-accent/80'
-                    }`}
-                  >
-                    {p.emoji && <span>{p.emoji}</span>}
-                    {p.label}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {filteredEmpty ? (
-            <p className="text-xs text-muted-foreground italic">
-              No high-priority gaps tagged for this archetype. Clear the filter to see all topics,
-              or tag more topics in workspace settings.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {gaps.map((t) => (
-                <Link
-                  key={t.topic}
-                  to={`/new?topic=${encodeURIComponent(t.topic)}`}
-                  className="text-xs px-2.5 py-1 rounded-full bg-accent border border-primary/30 text-accent-foreground hover:bg-primary/10 transition-colors"
-                >
-                  + {t.topic}
-                </Link>
-              ))}
-            </div>
-          )}
         </div>
-        <Button asChild className="shrink-0">
-          <Link to="/new">
-            <Icon as={Plus} size="md" className="mr-1.5" />
-            New Interview
-          </Link>
-        </Button>
+        {showChips && (
+          <div className="flex flex-wrap gap-1 items-center shrink-0">
+            {prototypes.map((p) => {
+              const active = activePrototypeId === p.id
+              return (
+                <button
+                  key={String(p.id)}
+                  type="button"
+                  onClick={() => onPrototypeChange(p.id)}
+                  title={p.description || p.label}
+                  className={`inline-flex items-center gap-1 text-2xs px-2.5 py-1 rounded-full border transition-colors ${
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-accent border-primary/30 text-accent-foreground hover:bg-accent/80'
+                  }`}
+                >
+                  {p.emoji && <span>{p.emoji}</span>}
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
+
+      {/* Topic list */}
+      {filteredEmpty ? (
+        <p className="px-5 py-4 text-xs text-muted-foreground italic">
+          No high-priority gaps for this group. Clear the filter to see all topics.
+        </p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {gaps.map((t) => (
+            <li key={t.topic}>
+              <Link
+                to={`/new?topic=${encodeURIComponent(t.topic)}`}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-accent/30 transition-colors group"
+              >
+                <Plus className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary transition-colors" aria-hidden="true" />
+                <span className="text-sm text-foreground flex-1 min-w-0">{t.topic}</span>
+                <span className="text-2xs text-muted-foreground/60 shrink-0 hidden sm:inline">
+                  {t.priority === 'high' ? 'high demand' : t.priority === 'medium' ? 'medium' : ''}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
