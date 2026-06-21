@@ -475,6 +475,37 @@ export default function VideoEditor() {
   const durationSec = Math.max(1, endSec - startSec)
   const playClipT = clamp(currentTime - startSec, 0, durationSec)
 
+  // Save & resume (local draft). On open, restore this asset's editor doc;
+  // autosave it (debounced) on change. Per-browser (localStorage) — server sync
+  // is a follow-up. Fully defensive: a missing/corrupt draft just opens fresh.
+  const restoredRef = useRef(false)
+  useEffect(() => {
+    if (!assetId || restoredRef.current) return
+    restoredRef.current = true
+    try {
+      const raw = localStorage.getItem(`videoEdit:${assetId}`)
+      if (!raw) return
+      const d = JSON.parse(raw)
+      if (!d || typeof d !== 'object') return
+      if (d.grade) setGrade(d.grade)
+      if (d.reframe) setReframe(d.reframe)
+      if (Array.isArray(d.overlays)) setOverlays(d.overlays)
+      if (d.speed) setSpeedState(d.speed)
+      if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
+      if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
+      if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
+      seededRef.current = true // a restored trim wins over the proposal seed
+    } catch { /* corrupt draft — open fresh */ }
+  }, [assetId])
+  useEffect(() => {
+    if (!assetId) return
+    const doc = { grade, reframe, overlays, speed, caption, startSec, endSec }
+    const t = setTimeout(() => {
+      try { localStorage.setItem(`videoEdit:${assetId}`, JSON.stringify(doc)) } catch { /* quota — ignore */ }
+    }, 600)
+    return () => clearTimeout(t)
+  }, [assetId, grade, reframe, overlays, speed, caption, startSec, endSec])
+
   // Seed trim + caption from the first proposed segment, once.
   const proposals = useMemo(() => (segData?.segments || []).filter((s) => s.status === 'proposed' || s.status === 'kept'), [segData])
   useEffect(() => {
