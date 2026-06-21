@@ -200,7 +200,7 @@ export default function Home() {
           <PageHelp pageKey="home" variant="onGradient" />
           <Link
             to="/new"
-            className="inline-flex items-center gap-2 bg-white text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-slate-100 text-sm"
+            className="inline-flex items-center gap-2 bg-background text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-muted text-sm"
           >
             <Mic2 className="h-4 w-4" aria-hidden="true" />
             Start an interview

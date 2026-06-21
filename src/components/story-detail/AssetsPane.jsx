@@ -1663,8 +1663,8 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           time (or unapprove). Only valid for Buffer-dispatched platforms; blog
           publishes don't go through this state. */}
       {isPublish && piece.status === 'scheduled' && canReview && piece.platform !== 'blog' && (
-        <div className="rounded-lg border bg-purple-50/40 p-3 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700">
+        <div className="rounded-lg border bg-primary/5 border-primary/20 p-3 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
             <Calendar className="h-3.5 w-3.5" />
             Scheduled on Buffer
           </div>
@@ -1722,7 +1722,6 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             onClick={handleApprove}
             disabled={isBusy}
             loading={isBusy && updateStatus.isPending}
-            className="bg-green-600 hover:bg-green-700 text-white"
           >
             {!(isBusy && updateStatus.isPending) && <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
             Approve
@@ -1769,7 +1768,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               size="sm"
               variant="outline"
               disabled
-              className="border-green-300 bg-green-50 text-green-700 cursor-default opacity-100"
+              className="border-success/30 bg-success/10 text-success cursor-default opacity-100"
             >
               <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
               {piece.platform === 'blog' ? 'Published to Website' : 'Published to Buffer'}

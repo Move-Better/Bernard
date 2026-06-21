@@ -91,7 +91,7 @@ function ReviewRow({ asset, staffName, onReview, onRepurpose, repurposing }) {
           {ok ? (
             <span className="flex items-center gap-1 text-success"><ShieldCheck className="h-3 w-3" />consent ok</span>
           ) : (
-            <span className="flex items-center gap-1 text-destructive"><ShieldAlert className="h-3 w-3" />consent pending</span>
+            <span className="flex items-center gap-1 text-action"><ShieldAlert className="h-3 w-3" />consent pending</span>
           )}
         </div>
         <div className="mt-1.5 rounded-lg bg-muted/60 border border-border px-2.5 py-1.5 text-xs leading-snug">
