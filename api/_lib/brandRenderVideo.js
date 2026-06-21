@@ -301,7 +301,7 @@ function runFfmpeg(args) {
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionWords, grade, reframe, overlays }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, grade, reframe, overlays }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -421,7 +421,8 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
 
     // ── 3. Build brand overlay PNG via Sharp + SVG ───────────────────────────
     // Resolve brand colors + opacity from the priority chain (see brandRender.js header)
-    const { primaryColor, accentColor, captionOpacity } = resolveBrandColors(workspace)
+    const { primaryColor, accentColor: brandAccentColor, captionOpacity } = resolveBrandColors(workspace)
+    const accentColor = captionAccent ?? brandAccentColor
 
     // Resolve brand font (workspace.brand_style.heading_font → Google Fonts → bundled Inter).
     // Embedding the font via @font-face data-URI is what fixes the garbled-text bug —
