@@ -18,7 +18,14 @@ import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const DEFAULT_CHANNEL = 'instagram_reel'
+// Output format → render channel (the renderer's VIDEO_CHANNEL_SPECS already
+// defines each aspect) + the canvas aspect-ratio. One clip, any shape.
+const FORMATS = {
+  reel:     { channel: 'instagram_reel', css: '9 / 16', label: 'Reel', dim: '9:16' },
+  square:   { channel: 'linkedin_video', css: '1 / 1',  label: 'Square', dim: '1:1' },
+  portrait: { channel: 'facebook_video', css: '4 / 5',  label: 'Portrait', dim: '4:5' },
+}
+const FORMAT_KEYS = ['reel', 'square', 'portrait']
 const fmt = (s) => {
   if (!isFinite(s)) return '0:00'
   const m = Math.floor(s / 60); const ss = Math.floor(s % 60)
@@ -89,7 +96,7 @@ function Canvas({ ctx }) {
       <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-card/80 px-2 py-1 text-3xs backdrop-blur" style={{ color: 'hsl(var(--muted-foreground))' }}>
         <label className="flex cursor-pointer items-center gap-1"><input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} /> safe zones</label>
       </div>
-      <div className="relative h-full max-h-full" style={{ aspectRatio: '9 / 16' }}>
+      <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>
         <div
           className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
           style={clipSelRing ? { boxShadow: '0 0 0 2px hsl(var(--primary))' } : undefined}
@@ -190,7 +197,7 @@ function Canvas({ ctx }) {
           >
             {playing ? <Pause className="h-7 w-7 text-white" fill="#fff" /> : <Play className="h-7 w-7 text-white" fill="#fff" />}
           </div>
-          <span className="absolute left-3 top-3 rounded bg-black/30 px-1.5 py-0.5 text-3xs text-white/70">9:16 · {fmt(ctx.durationSec)}{startSec > 0 ? ` · from ${fmt(startSec)}` : ''}</span>
+          <span className="absolute left-3 top-3 rounded bg-black/30 px-1.5 py-0.5 text-3xs text-white/70">{ctx.formatDim} · {fmt(ctx.durationSec)}{startSec > 0 ? ` · from ${fmt(startSec)}` : ''}</span>
         </div>
       </div>
     </section>
@@ -219,10 +226,10 @@ const segBtn = (on) => on
 // recut the clip window (clamped to a ≤60s window). Distinct from the bottom
 // timeline, which is clip-relative (0..durationSec).
 function ClipInspector({ ctx }) {
-  const { startSec, endSec, durationSec, reframe, setReframe, kenBurns, setKenBurns, speed, setSpeed, selectKey, caption } = ctx
+  const { startSec, endSec, durationSec, reframe, setReframe, kenBurns, setKenBurns, speed, setSpeed, selectKey, caption, formatDim } = ctx
   const kbMotion = kenBurns?.motion || 'none'
   return (
-    <InspectorShell icon={Film} title="Clip & reframe" right="Reel 9:16">
+    <InspectorShell icon={Film} title="Clip & reframe" right={formatDim}>
       <div className="mb-3 flex items-center gap-2 text-2xs">
         <span className="flex-1 rounded-md border px-2 py-1.5 text-center font-mono" style={{ borderColor: 'hsl(var(--border))' }}>{fmt(startSec)}</span>
         <span style={{ color: 'hsl(var(--muted-foreground))' }}>→</span>
@@ -230,7 +237,7 @@ function ClipInspector({ ctx }) {
         <span className="text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>({fmt(durationSec)})</span>
       </div>
       <p className="mb-3 rounded-md px-2 py-1 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Trim with the <b>Clip bar</b> on the right timeline.</p>
-      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Reframe · position in 9:16</p>
+      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Reframe · position in {formatDim}</p>
       {[['zoom', 'Zoom', 100, 220], ['x', 'Horizontal', 0, 100], ['y', 'Vertical', 0, 100]].map(([k, lbl, lo, hi]) => (
         <div key={k} className="mb-2">
           <div className="mb-1 flex justify-between text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><span>{lbl}</span><span>{reframe[k]}{k === 'zoom' ? '%' : ''}</span></div>
@@ -508,6 +515,7 @@ export default function VideoEditor() {
   const [startSec, setStartSec] = useState(0)
   const [endSec, setEndSec] = useState(30)
   const [grade, setGrade] = useState({ ...NEUTRAL_GRADE })
+  const [format, setFormat] = useState('reel')
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
   const [kenBurns, setKenBurnsState] = useState({ motion: 'none', intensity: 50 })
   const [speed, setSpeedState] = useState(1)
@@ -541,6 +549,7 @@ export default function VideoEditor() {
       const d = (server && typeof server === 'object') ? server : local
       if (d && typeof d === 'object') {
         if (d.grade) setGrade(d.grade)
+        if (FORMAT_KEYS.includes(d.format)) setFormat(d.format)
         if (d.reframe) setReframe(d.reframe)
         if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
         if (Array.isArray(d.overlays)) setOverlays(d.overlays)
@@ -555,7 +564,7 @@ export default function VideoEditor() {
   }, [asset, assetId])
   useEffect(() => {
     if (!assetId || !hydratedRef.current) return
-    const doc = { grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }
+    const doc = { format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }
     const json = JSON.stringify(doc)
     try { localStorage.setItem(`videoEdit:${assetId}`, json) } catch { /* quota — ignore */ }
     if (json === lastSavedRef.current) return
@@ -565,7 +574,7 @@ export default function VideoEditor() {
       updateMediaAsset(assetId, { videoEditDraft: doc }).catch(() => {})
     }, 1500)
     return () => clearTimeout(t)
-  }, [assetId, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec])
+  }, [assetId, format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec])
 
   // Seed trim + caption from the first proposed segment, once.
   const proposals = useMemo(() => (segData?.segments || []).filter((s) => s.status === 'proposed' || s.status === 'kept'), [segData])
@@ -691,7 +700,7 @@ export default function VideoEditor() {
   const toggleDest = (k) => setDest((d) => ({ ...d, [k]: !d[k] }))
   const captionSummary = () => lines.map((l) => l.text).join(' ').slice(0, 500)
   const renderBody = () => ({
-    assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
+    assetId, channels: [(FORMATS[format] || FORMATS.reel).channel], startSec, durationSec, subtitles: caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
     captionAnim: caption.anim,
     grade, reframe, speed,
@@ -812,6 +821,7 @@ export default function VideoEditor() {
 
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
+    format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
@@ -850,7 +860,20 @@ export default function VideoEditor() {
               {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             </button>
             <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
-            <span className="ml-auto text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reel · 9:16</span>
+          </div>
+          {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
+          <div className="mb-2 flex gap-1" role="group" aria-label="Output format">
+            {FORMAT_KEYS.map((k) => (
+              <button
+                key={k} onClick={() => setFormat(k)}
+                className="flex flex-1 flex-col items-center gap-0.5 rounded-md border py-1 text-3xs leading-tight"
+                style={segBtn(format === k)}
+                title={`${FORMATS[k].label} · ${FORMATS[k].dim}`}
+              >
+                <span className="font-medium">{FORMATS[k].label}</span>
+                <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
+              </button>
+            ))}
           </div>
           {/* Export — one render, multiple destinations (pick any). */}
           <div className="relative">
