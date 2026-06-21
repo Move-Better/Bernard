@@ -66,6 +66,46 @@ export function reframeFilter(reframe, W, H) {
     `crop=${W}:${H}:(in_w-${W})*${x.toFixed(4)}:(in_h-${H})*${y.toFixed(4)}[scaled]`
 }
 
+// ── Ken Burns (animated crop) ────────────────────────────────────────────────
+// Simple preset motion: a slow push-in / pull-out / pan over the clip. Replaces
+// the static cover when active (clips only; long-form 'contain' letterboxes and
+// never moves). intensity 0..100 scales the zoom/pan amount.
+const KB_MOTIONS = ['push_in', 'pull_out', 'pan_left', 'pan_right']
+
+export function isKenBurnsActive(kb) {
+  return !!kb && typeof kb === 'object' && KB_MOTIONS.includes(kb.motion)
+}
+
+// The CLIENT canvas preview mirrors these via a transform driven by playClipT —
+// keep the math (zMax / zPan curves) in lockstep with VideoEditor.jsx kenBurns().
+export function kenBurnsZoomMax(intensity) { return 1.05 + 0.15 * clamp01((Number(intensity) || 50) / 100) }
+export function kenBurnsPanZoom(intensity) { return 1.08 + 0.12 * clamp01((Number(intensity) || 50) / 100) }
+
+/**
+ * Animated cover producing [scaled]. Uses zoompan (crop can't animate its w/h,
+ * only x/y) for both zoom and pan. The source is first covered to W×H then
+ * forced to 30fps so the motion's progress (output-frame based) is independent
+ * of the source framerate; zoompan then zooms/pans into that.
+ */
+export function kenBurnsFilter(kb, W, H, durationSec) {
+  const intensity = Number(kb?.intensity) || 50
+  const FPS = 30
+  const N = Math.max(2, Math.round(Math.max(0.1, Number(durationSec) || 5) * FPS))
+  // progress 0→1 across the clip, clamped so a frame-count mismatch can't overshoot
+  const p = `min(1,on/${N - 1})`
+  const cover = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},fps=${FPS}`
+  const base = `d=1:s=${W}x${H}:fps=${FPS}`
+  if (kb.motion === 'pan_left' || kb.motion === 'pan_right') {
+    const z = kenBurnsPanZoom(intensity).toFixed(4)
+    // viewport width = iw/zoom; pan its left edge across 0..(iw-iw/zoom)
+    const x = kb.motion === 'pan_right' ? `(iw-iw/zoom)*${p}` : `(iw-iw/zoom)*(1-${p})`
+    return `${cover},zoompan=z='${z}':x='${x}':y='ih/2-(ih/zoom/2)':${base}[scaled]`
+  }
+  const zMax = kenBurnsZoomMax(intensity).toFixed(4)
+  const z = kb.motion === 'push_in' ? `1+(${zMax}-1)*${p}` : `${zMax}-(${zMax}-1)*${p}`
+  return `${cover},zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':${base}[scaled]`
+}
+
 const OVERLAY_ROLE_FS = { title: 0.055, lower_third: 0.034, callout: 0.042 }
 
 /**

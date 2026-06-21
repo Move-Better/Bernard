@@ -58,11 +58,32 @@ function groupLines(words) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, dragOverlay, editLine, editingCap, setEditingCap } = ctx
+  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap } = ctx
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const clipSelRing = sel === 'clip' || sel === 'grade'
   const z = (Number(reframe.zoom) || 100) / 100
+  // Ken Burns takes over the transform when active (matches the bake's precedence
+  // over static reframe), animated by playback progress. Best-effort visual match
+  // to the server zoompan; the baked MP4 is the source of truth.
+  const kbMotion = kenBurns?.motion || 'none'
+  let kbTransform = null
+  if (kbMotion !== 'none') {
+    const p = durationSec > 0 ? clamp(playClipT / durationSec, 0, 1) : 0
+    const f = (Number(kenBurns?.intensity) || 50) / 100
+    if (kbMotion === 'push_in' || kbMotion === 'pull_out') {
+      const zMax = 1.05 + 0.15 * f
+      const zz = kbMotion === 'push_in' ? 1 + (zMax - 1) * p : zMax - (zMax - 1) * p
+      kbTransform = `scale(${zz.toFixed(4)})`
+    } else {
+      const zPan = 1.08 + 0.12 * f
+      const A = (zPan - 1) * 50 // % element travel each side of centre
+      // pan_right reveals the right side → image slides left: from +A to −A.
+      const from = kbMotion === 'pan_right' ? A : -A
+      const tx = (from * (1 - 2 * p)).toFixed(2)
+      kbTransform = `scale(${zPan.toFixed(4)}) translateX(${tx}%)`
+    }
+  }
   return (
     <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-4" style={{ background: 'hsl(220 16% 91%)' }}>
       <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-card/80 px-2 py-1 text-3xs backdrop-blur" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -78,7 +99,7 @@ function Canvas({ ctx }) {
             <video
               ref={videoRef} src={asset.blob_url} poster={asset.thumbnail_url || undefined} preload="metadata" playsInline
               className="absolute inset-0 h-full w-full object-cover"
-              style={{ filter: gradeToCanvasFilter(grade), transform: `scale(${z})`, transformOrigin: `${reframe.x}% ${reframe.y}%` }}
+              style={{ filter: gradeToCanvasFilter(grade), transform: kbTransform || `scale(${z})`, transformOrigin: kbTransform ? 'center' : `${reframe.x}% ${reframe.y}%` }}
               onLoadedMetadata={(e) => ctx.setVideoDuration(e.target.duration)}
               onPlay={() => ctx.setPlaying(true)}
               onPause={() => ctx.setPlaying(false)}
@@ -198,7 +219,8 @@ const segBtn = (on) => on
 // recut the clip window (clamped to a ≤60s window). Distinct from the bottom
 // timeline, which is clip-relative (0..durationSec).
 function ClipInspector({ ctx }) {
-  const { startSec, endSec, durationSec, reframe, setReframe, speed, setSpeed, selectKey, caption } = ctx
+  const { startSec, endSec, durationSec, reframe, setReframe, kenBurns, setKenBurns, speed, setSpeed, selectKey, caption } = ctx
+  const kbMotion = kenBurns?.motion || 'none'
   return (
     <InspectorShell icon={Film} title="Clip & reframe" right="Reel 9:16">
       <div className="mb-3 flex items-center gap-2 text-2xs">
@@ -215,6 +237,18 @@ function ClipInspector({ ctx }) {
           <input type="range" min={lo} max={hi} value={reframe[k]} onChange={(e) => setReframe(k, +e.target.value)} className="w-full" />
         </div>
       ))}
+      <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Motion</p>
+      <div className="mb-2 grid grid-cols-3 gap-1.5">
+        {[['none', 'None'], ['push_in', 'Push in'], ['pull_out', 'Pull out'], ['pan_left', 'Pan ←'], ['pan_right', 'Pan →']].map(([m, l]) => (
+          <button key={m} onClick={() => setKenBurns('motion', m)} className="rounded-md border py-1.5 text-3xs" style={segBtn(kbMotion === m)}>{l}</button>
+        ))}
+      </div>
+      {kbMotion !== 'none' && (
+        <div className="mb-1">
+          <div className="mb-1 flex justify-between text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><span>Intensity</span><span>{kenBurns.intensity}</span></div>
+          <input type="range" min={0} max={100} value={kenBurns.intensity} onChange={(e) => setKenBurns('intensity', +e.target.value)} className="w-full" />
+        </div>
+      )}
       <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Speed</p>
       <div className="mb-3 flex gap-1.5">
         {[0.5, 1, 1.5, 2].map((s) => (
@@ -475,6 +509,7 @@ export default function VideoEditor() {
   const [endSec, setEndSec] = useState(30)
   const [grade, setGrade] = useState({ ...NEUTRAL_GRADE })
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
+  const [kenBurns, setKenBurnsState] = useState({ motion: 'none', intensity: 50 })
   const [speed, setSpeedState] = useState(1)
   const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: '#0C7580', anim: 'none' })
   const [overlays, setOverlays] = useState([])
@@ -507,6 +542,7 @@ export default function VideoEditor() {
       if (d && typeof d === 'object') {
         if (d.grade) setGrade(d.grade)
         if (d.reframe) setReframe(d.reframe)
+        if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
         if (Array.isArray(d.overlays)) setOverlays(d.overlays)
         if (d.speed) setSpeedState(d.speed)
         if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
@@ -519,7 +555,7 @@ export default function VideoEditor() {
   }, [asset, assetId])
   useEffect(() => {
     if (!assetId || !hydratedRef.current) return
-    const doc = { grade, reframe, overlays, speed, caption, startSec, endSec }
+    const doc = { grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }
     const json = JSON.stringify(doc)
     try { localStorage.setItem(`videoEdit:${assetId}`, json) } catch { /* quota — ignore */ }
     if (json === lastSavedRef.current) return
@@ -529,7 +565,7 @@ export default function VideoEditor() {
       updateMediaAsset(assetId, { videoEditDraft: doc }).catch(() => {})
     }, 1500)
     return () => clearTimeout(t)
-  }, [assetId, grade, reframe, overlays, speed, caption, startSec, endSec])
+  }, [assetId, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec])
 
   // Seed trim + caption from the first proposed segment, once.
   const proposals = useMemo(() => (segData?.segments || []).filter((s) => s.status === 'proposed' || s.status === 'kept'), [segData])
@@ -637,6 +673,7 @@ export default function VideoEditor() {
   const applyVibe = useCallback((p) => setGrade({ ...NEUTRAL_GRADE, ...p }), [])
   const resetGrade = useCallback(() => setGrade({ ...NEUTRAL_GRADE }), [])
   const setReframeKey = useCallback((k, v) => setReframe((r) => ({ ...r, [k]: v })), [])
+  const setKenBurns = useCallback((k, v) => setKenBurnsState((s) => ({ ...s, [k]: v })), [])
   const setCaption = useCallback((k, v) => setCaptionState((c) => ({ ...c, [k]: v })), [])
   const setSpeed = useCallback((s) => setSpeedState(s), [])
   const trimToLine = useCallback((l) => {
@@ -658,6 +695,7 @@ export default function VideoEditor() {
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
     captionAnim: caption.anim,
     grade, reframe, speed,
+    ...(kenBurns.motion && kenBurns.motion !== 'none' ? { kenBurns } : {}),
     // EXACT (possibly edited) caption words so the bake matches the preview.
     captionWords: lines.flatMap((l) => l.words),
     overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
@@ -774,7 +812,7 @@ export default function VideoEditor() {
 
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
-    reframe, setReframe: setReframeKey, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
+    reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
