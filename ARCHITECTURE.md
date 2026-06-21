@@ -338,3 +338,21 @@ surface: `src/lib/brandSwatches.js` exports `brandSwatches()` (picker chips), `b
 "dark" template renders on `brandInk` (the workspace's darkest brand color), "light" on
 `brandPaper`, with the old WHOOP navy/paper/sage only as fallback when a workspace has no palette.
 Don't reintroduce a hardcoded ground color; route it through `brandInk`/`brandPaper`.
+
+## LLM-generated structured data — never trust echoed ids/values
+
+When an LLM call returns structured output (`generateText`/`generateObject`) whose fields you
+then use in a DB write or a PostgREST filter — especially an **identifier you asked the model to
+echo back** — do NOT trust it verbatim. The model can silently corrupt it: the F2 Strategist asks
+the LLM to return `interview_id` per candidate, and a run injected a space mid-uuid
+(`…2af b1de5aa4b`), which 400'd the `content_plan_atoms` insert. Worse, the writer didn't check
+the POST result, so the whole workspace's plan **silently failed to persist** (the first cron run
+got lucky and masked it).
+
+Rule (see `api/_lib/strategist.js` `composeWeeklyPlan`): **normalize then validate against
+known-good inputs** — strip whitespace from the echoed id and require an **exact match to a real
+input** (`new Set(interviews.map(i => i.id))`), dropping anything that doesn't match. This repairs
+corruption AND blocks invented/hallucinated ids. And **check `res.ok` on the write** (`persistPlan`
+throws on a failed insert) so the caller's fallback/logging fires instead of swallowing it. This
+extends the existing "validate every query param with `UUID_RE` before interpolating" rule to
+LLM-echoed values, not just request params.
