@@ -61,7 +61,6 @@ const AuthorMode = lazy(() => import('@/pages/AuthorMode'))
 const Book = lazy(() => import('@/pages/Book'))
 const EditorialTest = lazy(() => import('@/pages/EditorialTest'))
 const Slate = lazy(() => import('@/pages/Slate'))
-const SlateClipEditor = lazy(() => import('@/pages/SlateClipEditor'))
 const VideoEditor = lazy(() => import('@/pages/VideoEditor'))
 const Ads = lazy(() => import('@/pages/Ads'))
 const Capture = lazy(() => import('@/pages/Capture'))
@@ -632,8 +631,8 @@ function AppRoutes() {
             {/* Slate. Uses the * catch-all pattern so descendant
                 routes resolve correctly (see CLAUDE.md Router conventions). */}
             <Route path="/slate" element={guarded(<Slate />)} />
-            <Route path="/slate/clip/:assetId" element={guarded(<SlateClipEditor />)} />
-            {/* Beta Reel editor (V4) — opt-in route; the live /slate/clip editor is untouched. */}
+            {/* The Reel editor is now the default for a clip; /edit kept as an alias. */}
+            <Route path="/slate/clip/:assetId" element={guarded(<VideoEditor />)} />
             <Route path="/slate/clip/:assetId/edit" element={guarded(<VideoEditor />)} />
             <Route path="/ads" element={guarded(<Ads />)} />
             {/* Internal dev surface — Phase 2 editorial pipeline test (search clips + render). */}
