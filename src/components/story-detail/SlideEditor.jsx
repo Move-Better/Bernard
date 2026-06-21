@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
+import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { brandSwatches, NEUTRAL_SWATCHES } from '@/lib/brandSwatches'
@@ -457,34 +457,16 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
   )
 }
 
-// ── Words section — caption + phrase bank from interview content ───────────────
-// Two collapsible panels in the right inspector:
-//   1. Caption — editable textarea for piece.content (Instagram caption).
-//   2. From interview — sentence-level chips tapped to insert as slide blocks.
-// Caption auto-saves on blur; slide Save is independent.
-
-function sentencesFrom(content) {
-  if (!content) return []
-  return content
-    .replace(/([.!?])\s+/g, '$1\n')
-    .split('\n')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 15 && s.length < 200)
-    .slice(0, 18)
-}
-
-function WordsSection({ piece, onUseAsHook, updateItem, onInsertPhrase }) {
+// ── Caption section — post caption, collapsed by default (written last, like IG)
+function CaptionSection({ piece, onUseAsHook, updateItem }) {
   const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
-  const [captionOpen, setCaptionOpen] = useState(true)
-  const [phrasesOpen, setPhrasesOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const savedRef = useRef(draft)
 
   useEffect(() => {
     const next = typeof piece?.content === 'string' ? piece.content : ''
     setDraft(next)
     savedRef.current = next
-    // Intentional: re-seed only on piece identity change, not on every save
-    // response — including piece.content would overwrite in-flight user edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piece?.id])
 
@@ -498,28 +480,25 @@ function WordsSection({ piece, onUseAsHook, updateItem, onInsertPhrase }) {
     }
   }
 
-  const sentences = sentencesFrom(draft)
-
   return (
-    <div className="border-b">
-      {/* ── Caption ── */}
+    <div className="border-t">
       <button
         type="button"
-        onClick={() => setCaptionOpen((o) => !o)}
+        onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
       >
         <span className="flex items-center gap-1.5">
-          <Type className="h-3 w-3" /> Words · caption
+          <Type className="h-3 w-3" /> Caption
         </span>
-        <span>{captionOpen ? '▾' : '▸'}</span>
+        <span>{open ? '▾' : '▸'}</span>
       </button>
-      {captionOpen && (
+      {open && (
         <div className="px-3 pb-3 space-y-2">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={handleBlur}
-            rows={4}
+            rows={5}
             placeholder="Caption visible to followers…"
             className="w-full resize-y rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
           />
@@ -539,33 +518,44 @@ function WordsSection({ piece, onUseAsHook, updateItem, onInsertPhrase }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* ── Tap-to-insert phrase bank ── */}
-      {sentences.length > 0 && (
-        <>
-          <button
-            type="button"
-            onClick={() => setPhrasesOpen((o) => !o)}
-            className="flex w-full items-center justify-between px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/50 border-t"
-          >
-            <span>Tap to add to slide</span>
-            <span>{phrasesOpen ? '▾' : '▸'}</span>
-          </button>
-          {phrasesOpen && (
-            <div className="px-2 pb-3 space-y-0.5">
-              {sentences.map((s, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => onInsertPhrase?.(s)}
-                  className="w-full text-left rounded px-2 py-1.5 text-2xs leading-snug text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+// ── Real Quotes — verbatim lines from the source interview ────────────────────
+// Shows the actual words the clinician said that grounded this post.
+// Tapping a quote inserts it as a body text block on the active slide.
+function RealQuotesSection({ pieceId, onInsertQuote }) {
+  const { data: quotes = [], isLoading } = useVerbatimQuotes(pieceId)
+
+  if (!isLoading && quotes.length === 0) return null
+
+  return (
+    <div className="border-t">
+      <div className="px-3 py-2 flex items-center justify-between">
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <Type className="h-3 w-3" /> Real quotes
+        </span>
+        <span className="text-3xs text-muted-foreground">from your interview · tap to add</span>
+      </div>
+      {isLoading ? (
+        <div className="px-3 pb-3 flex items-center gap-2 text-2xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+        </div>
+      ) : (
+        <div className="px-3 pb-3 space-y-1.5">
+          {quotes.map((q) => (
+            <button
+              key={q.id}
+              type="button"
+              onClick={() => onInsertQuote?.(q.quote)}
+              className="w-full text-left rounded-md border border-l-[3px] border-l-amber-400 bg-card px-2.5 py-2 text-2xs leading-snug text-foreground hover:bg-amber-50/60 transition-colors"
+            >
+              <span className="text-3xs font-bold uppercase tracking-wide text-amber-500 block mb-0.5">● verbatim</span>
+              &ldquo;{q.quote}&rdquo;
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -700,23 +690,6 @@ function SlideInspector({
   const [addOpen, setAddOpen] = useState(false)
   // Signature of everything (besides the theme) that changes a thumbnail's pixels.
   const thumbSig = `${photoUrl || ''}|${slide.photo_zoom || 1}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}`
-  function changeTemplate(template) {
-    // Switching templates updates default positions for blocks whose current
-    // position is a preset that matches the old template default; user-customized
-    // positions stay. Also gives a sensible default block set if the slide was empty.
-    const defaults = TEMPLATE_DEFAULT_POSITIONS[template] || {}
-    const blocks = slide.blocks.length === 0
-      ? (SLIDE_TEMPLATES[template]?.default_blocks || []).map((role) => emptyBlockFor(template, role))
-      : slide.blocks.map((b) => {
-          if (b.position && typeof b.position === 'object') return b
-          const oldDefault = (TEMPLATE_DEFAULT_POSITIONS[slide.template] || {})[b.role]
-          const newDefault = defaults[b.role] || 'center'
-          if (b.position === oldDefault) return { ...b, position: newDefault }
-          return b
-        })
-    onChange({ ...slide, template, blocks })
-  }
-
   return (
     <div className="space-y-4 p-3">
       {/* Slide management — reorder + delete this slide */}
@@ -750,32 +723,6 @@ function SlideInspector({
         >
           <X className="h-3.5 w-3.5" />
         </button>
-      </div>
-
-      {/* Layout — segmented control */}
-      <div className="space-y-1.5">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Layout <span className="font-normal normal-case text-muted-foreground/70">· structure</span>
-        </p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {Object.entries(SLIDE_TEMPLATES).map(([k, t]) => {
-            const active = slide.template === k
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => changeTemplate(k)}
-                className={`rounded-md border px-2 py-1.5 text-2xs font-semibold transition-colors ${
-                  active
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                }`}
-              >
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* Theme — visual swatch grid with deck inheritance */}
@@ -1661,6 +1608,41 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     || themeId !== (piece?.photo_template_id || DEFAULT_DECK_THEME)
     || aspect !== (piece?.aspect_ratio || '4:5')
   const updateItem = useUpdateContentItem()
+
+  // Auto-attach top AI pick per slide on first open when slides have no photos.
+  // A ref guards against re-firing; only fires when ALL slides are photo-less (fresh carousel).
+  const autoAttachDoneRef = useRef(false)
+  const { data: photoSuggestions } = useMediaSuggestions(piece?.id, { enabled: !!piece?.id, kind: 'photo', k: 6 })
+  useEffect(() => {
+    if (autoAttachDoneRef.current) return
+    if (!photoSuggestions?.length) return
+    const allEmpty = slides.every((s) => s.photo_idx === null)
+    if (!allEmpty) { autoAttachDoneRef.current = true; return }
+    autoAttachDoneRef.current = true
+    const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+    const seen = new Set(raw.map(mediaEntryKey))
+    const toAdd = []
+    for (let i = 0; i < slides.length; i++) {
+      const pick = photoSuggestions[i % photoSuggestions.length]
+      if (!pick) break
+      const key = mediaEntryKey(pick)
+      if (!seen.has(key)) { toAdd.push(pick); seen.add(key) }
+    }
+    const nextRaw = [...raw, ...toAdd]
+    const photoOnly = nextRaw.filter((m) => m && m.type !== 'video' && m.url)
+    const newSlides = slides.map((s, i) => {
+      const pick = photoSuggestions[i % photoSuggestions.length]
+      if (!pick) return s
+      const idx = photoOnly.findIndex((m) => mediaEntryKey(m) === mediaEntryKey(pick))
+      return idx >= 0 ? { ...s, photo_idx: idx } : s
+    })
+    if (toAdd.length > 0) {
+      updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw } }).catch(() => {})
+    }
+    setSlides(newSlides)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoSuggestions])
+
   const [rendering, setRendering] = useState(false)
   const busy = updateItem.isPending || rendering
 
@@ -2018,28 +2000,17 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           )}
         </section>
 
-        {/* Right contextual inspector: Layers list (always) + selection body */}
+        {/* Right contextual inspector: Layers (top) → editing body → Real Quotes → Caption */}
         <aside className="flex w-[300px] shrink-0 flex-col border-l bg-white overflow-hidden">
           {activeSlide ? (
             <>
-              <WordsSection
-                piece={piece}
-                onUseAsHook={handleUseAsHook}
-                updateItem={updateItem}
-                onInsertPhrase={(text) => {
-                  if (!activeSlide) return
-                  const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
-                  updateSlide(activeSlideIdx, { ...activeSlide, blocks })
-                  setSelection({ type: 'text', idx: blocks.length - 1 })
-                }}
-              />
               <LayersList
                 slide={activeSlide}
                 mediaUrls={mediaUrls}
                 selection={selection}
                 onSelect={setSelection}
               />
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto flex flex-col">
                 {selection.type === 'photo' ? (
                   <PhotoInspector
                     slide={activeSlide}
@@ -2086,6 +2057,20 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     onRemove={() => removeSlide(activeSlideIdx)}
                   />
                 )}
+                <RealQuotesSection
+                  pieceId={piece?.id}
+                  onInsertQuote={(text) => {
+                    if (!activeSlide) return
+                    const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
+                    updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                    setSelection({ type: 'text', idx: blocks.length - 1 })
+                  }}
+                />
+                <CaptionSection
+                  piece={piece}
+                  onUseAsHook={handleUseAsHook}
+                  updateItem={updateItem}
+                />
               </div>
             </>
           ) : (
