@@ -1552,6 +1552,14 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   )
 }
 
+// Canvas stage dimensions for each output aspect ratio. Tailwind's scanner
+// needs the full class strings present in source to include them in the bundle.
+const ASPECT_STAGE = {
+  '1:1':  { twAspect: 'aspect-[1/1]',  hFactor: 1.0 },
+  '4:5':  { twAspect: 'aspect-[4/5]',  hFactor: 1.25 },
+  '9:16': { twAspect: 'aspect-[9/16]', hFactor: 1.778 },
+}
+
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
 
 export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode }) {
@@ -1579,6 +1587,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const [slides, setSlides] = useState(seedSlides)
   const [savedSlidesJson, setSavedSlidesJson] = useState(() => JSON.stringify(seedSlides()))
   const [themeId, setThemeId] = useState(() => piece?.photo_template_id || DEFAULT_DECK_THEME)
+  const [aspect, setAspect] = useState(() => piece?.aspect_ratio || '4:5')
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
@@ -1592,6 +1601,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setSlides(next)
     setSavedSlidesJson(JSON.stringify(next))
     setThemeId(piece?.photo_template_id || DEFAULT_DECK_THEME)
+    setAspect(piece?.aspect_ratio || '4:5')
     setActiveSlideIdx(0)
     setSelection({ type: 'slide' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1602,7 +1612,9 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const customThemes = allThemes.filter((t) => t.custom)
   const theme = resolveTheme(themeId, customThemes)
 
-  const dirty = JSON.stringify(slides) !== savedSlidesJson || themeId !== (piece?.photo_template_id || DEFAULT_DECK_THEME)
+  const dirty = JSON.stringify(slides) !== savedSlidesJson
+    || themeId !== (piece?.photo_template_id || DEFAULT_DECK_THEME)
+    || aspect !== (piece?.aspect_ratio || '4:5')
   const updateItem = useUpdateContentItem()
   const [rendering, setRendering] = useState(false)
   const busy = updateItem.isPending || rendering
@@ -1744,6 +1756,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         themeId,
         customThemes,
         pieceId:   piece.id,
+        aspect,
       })
       toPersist = rendered
     } catch (e) {
@@ -1758,7 +1771,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     try {
       await updateItem.mutateAsync({
         id: piece.id,
-        patch: { slides: toPersist, photo_template_id: themeId || null },
+        patch: { slides: toPersist, photo_template_id: themeId || null, aspectRatio: aspect },
       })
       setSavedSlidesJson(JSON.stringify(cleaned))
       if (renderFailed) {
@@ -1850,6 +1863,20 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           </span>
         )}
 
+        {/* Aspect selector */}
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {['1:1', '4:5', '9:16'].map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => setAspect(a)}
+              className={`px-2 py-0.5 text-2xs font-medium transition-colors ${aspect === a ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
@@ -1910,8 +1937,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
           {activeSlide ? (
             <div
-              className={`relative aspect-[4/5] rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
-              style={{ height: 'min(calc(100vh - 140px), calc((100vw - 480px) * 1.25))' }}
+              className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
+              style={{ height: `min(calc(100vh - 140px), calc((100vw - 480px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
             >
               <SlidePreview
                 slide={activeSlide}

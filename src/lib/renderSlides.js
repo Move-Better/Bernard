@@ -15,7 +15,7 @@
 // so repeated saves/publishes don't re-upload unchanged slides.
 
 import { apiFetch } from '@/lib/api'
-import { renderFreeformSlide, SLIDE_W, SLIDE_H } from '@/lib/overlayTemplates'
+import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { photoSourceUrl } from '@/lib/mediaEntry'
 
@@ -42,7 +42,7 @@ function hashString(str) {
 
 // Signature of everything that affects the rendered pixels. If any of these
 // change, the cached rendered_url is stale and the slide is re-rendered.
-function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
+function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
   return hashString(JSON.stringify({
     blocks: (slide.blocks || []).map((b) => ({
       text: b.text, role: b.role, position: b.position, width: b.width,
@@ -64,7 +64,9 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
     // when the photo doesn't fill the frame. v3: 4:5 portrait output (1080×1350,
     // aspect-parametric renderer). v4: dragged (custom {x,y}) text is centre-
     // anchored both axes so it matches the drag handle. v5: italic + underline.
-    _renderV: 5,
+    // v6: aspect selector — output dimensions are now user-controlled.
+    _renderV: 6,
+    aspect: aspect || '4:5',
   }))
 }
 
@@ -73,11 +75,11 @@ function canvasToJpegDataUrl(canvas) {
   return canvas.toDataURL('image/jpeg', 0.92)
 }
 
-async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, pieceId, idx }) {
+async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, pieceId, idx, width, height }) {
   const canvas = document.createElement('canvas')
-  canvas.width = SLIDE_W
-  canvas.height = SLIDE_H
-  await renderFreeformSlide({ sourceUrl: photoUrl || null, slide, brandStyle: brandStyle || {}, canvas, theme, width: SLIDE_W, height: SLIDE_H })
+  canvas.width = width
+  canvas.height = height
+  await renderFreeformSlide({ sourceUrl: photoUrl || null, slide, brandStyle: brandStyle || {}, canvas, theme, width, height })
   const dataUrl = canvasToJpegDataUrl(canvas)
   const { url } = await apiFetch('/api/editorial/upload-slide', {
     method: 'POST',
@@ -93,7 +95,8 @@ async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, p
 //   { slides }            — slides with rendered_url + rendered_sig populated
 //   { publishMediaUrls }  — [{ url, type:'photo' }] in slide order, ready for Buffer
 //   { changed }           — true if any slide was (re)rendered (caller persists)
-export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, theme, themeId, customThemes = [], pieceId }) {
+export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, theme, themeId, customThemes = [], pieceId, aspect }) {
+  const [width, height] = AD_CAROUSEL_DIMS[aspect] || AD_CAROUSEL_DIMS['4:5']
   const photos = slidePhotos(mediaUrls)
   const out = []
   let changed = false
@@ -103,7 +106,7 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
     const photoUrl = typeof slide.photo_idx === 'number' && photos[slide.photo_idx]
       ? photoSourceUrl(photos[slide.photo_idx])
       : null
-    const sig = slideSignature({ slide, photoUrl, themeId, brandStyle })
+    const sig = slideSignature({ slide, photoUrl, themeId, brandStyle, aspect })
 
     if (slide.rendered_url && slide.rendered_sig === sig) {
       out.push(slide)
@@ -113,7 +116,7 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
     const slideTheme = slide.template_id
       ? resolveTheme(slide.template_id, customThemes)
       : theme
-    const url = await renderAndUploadSlide({ slide, photoUrl, brandStyle, theme: slideTheme, sig, pieceId, idx })
+    const url = await renderAndUploadSlide({ slide, photoUrl, brandStyle, theme: slideTheme, sig, pieceId, idx, width, height })
     out.push({ ...slide, rendered_url: url, rendered_sig: sig })
     changed = true
   }
