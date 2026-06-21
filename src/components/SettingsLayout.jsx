@@ -193,7 +193,7 @@ export default function SettingsLayout() {
   return (
     <div className="flex flex-col md:flex-row md:gap-8 min-h-[calc(100dvh-3.5rem)] md:min-h-screen -mt-8">
       {/* Desktop sidebar */}
-      <aside className="hidden md:block w-fit shrink-0 pt-6 pr-2 border-r border-border md:-ml-6 lg:-ml-8">
+      <aside className="hidden md:block w-fit shrink-0 pb-6 pr-2 border-r border-border md:-ml-6 lg:-ml-8">
         <div className="sticky top-8 space-y-6">
           <div className="flex items-center gap-2 px-2.5 mb-1">
             <span
@@ -247,7 +247,7 @@ export default function SettingsLayout() {
       {/* Main content. The mobile nav rail sits at the top inside the
           content column so the parent main's container padding lines up
           with where settings content actually starts. */}
-      <main className="flex-1 min-w-0 py-6">
+      <main className="flex-1 min-w-0 pb-6">
         <MobileNavRail visibleItems={mobileVisible} />
         <Outlet />
       </main>
