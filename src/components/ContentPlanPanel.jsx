@@ -141,10 +141,10 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
             </p>
           </div>
           <div className="flex gap-2 text-xs text-muted-foreground shrink-0">
-            {publishedCount > 0 && <span className="text-blue-700 font-medium">{publishedCount} published</span>}
-            {scheduledCount > 0 && <span className="text-orange-600 font-medium">{scheduledCount} scheduled</span>}
+            {publishedCount > 0 && <span className="text-success font-medium">{publishedCount} published</span>}
+            {scheduledCount > 0 && <span className="text-action font-medium">{scheduledCount} scheduled</span>}
             {approvedCount > 0 && <span className="text-primary font-medium">{approvedCount} approved</span>}
-            {draftedCount > 0 && <span className="text-green-700 font-medium">{draftedCount} drafted</span>}
+            {draftedCount > 0 && <span className="text-muted-foreground font-medium">{draftedCount} drafted</span>}
             {pendingCount > 0 && <span>{pendingCount} pending</span>}
             {skippedCount > 0 && <span className="text-muted-foreground">{skippedCount} skipped</span>}
           </div>
@@ -323,7 +323,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece,
             Approved
           </Badge>
         ) : (
-          <Badge className="text-xs bg-green-100 text-green-700 border-0 px-1.5 py-0">
+          <Badge className="text-xs bg-muted text-muted-foreground border-0 px-1.5 py-0">
             Drafted
           </Badge>
         )}
@@ -493,7 +493,7 @@ function AtomRow({ atom, interviewId, slotLabel, dateHint, isDrafting, error, on
               Published{publishedDateLabel ? ` · ${publishedDateLabel}` : ''}
             </Badge>
           ) : isScheduled ? (
-            <Badge className="text-xs bg-orange-100 text-orange-700 border-0 px-1.5 py-0">
+            <Badge className="text-xs bg-action/10 text-action border-0 px-1.5 py-0">
               Scheduled{scheduledDateLabel ? ` · ${scheduledDateLabel}` : ''}
             </Badge>
           ) : isApproved ? (
@@ -501,7 +501,7 @@ function AtomRow({ atom, interviewId, slotLabel, dateHint, isDrafting, error, on
               Approved · add media
             </Badge>
           ) : isDrafted && (
-            <Badge className="text-xs bg-green-100 text-green-700 border-0 px-1.5 py-0">
+            <Badge className="text-xs bg-muted text-muted-foreground border-0 px-1.5 py-0">
               Drafted · {scheduledAt ? `scheduled ${new Date(scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : `scheduled ${dateHint || `Week ${atom.slot}`}`}
             </Badge>
           )}

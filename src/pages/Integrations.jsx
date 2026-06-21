@@ -616,12 +616,12 @@ function IntegrationCard({ integration, row, loading, disabled, getToken, onChan
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">{integration.label}</p>
               {integration.recommended && (
-                <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                   <Sparkles className="h-3 w-3" /> Recommended
                 </span>
               )}
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">
                   Connected
                 </span>
               ) : !loading ? (
@@ -858,7 +858,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
               {testResult && (
                 <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
                   testResult.ok
-                    ? 'border-green-200 bg-green-50 text-green-800'
+                    ? 'border-success/30 bg-success/10 text-success'
                     : 'border-destructive/30 bg-destructive/5 text-destructive'
                 }`}>
                   {testResult.ok ? (
@@ -981,7 +981,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Search Console</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Connected</span>
+                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">Connected</span>
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
               ) : null}
@@ -1036,7 +1036,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
               {testResult && (
                 <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
                   testResult.ok
-                    ? 'border-green-200 bg-green-50 text-green-800'
+                    ? 'border-success/30 bg-success/10 text-success'
                     : 'border-destructive/30 bg-destructive/5 text-destructive'
                 }`}>
                   {testResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
@@ -1145,7 +1145,7 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Business Profile</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Connected</span>
+                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">Connected</span>
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
               ) : null}

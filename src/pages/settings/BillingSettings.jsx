@@ -73,7 +73,7 @@ export default function BillingSettings() {
       {isOnboarding ? (
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-5 w-5 text-orange-500" />
+            <Sparkles className="h-5 w-5 text-action" />
             <h1 className="text-2xl font-bold tracking-tight">One last step</h1>
           </div>
           <p className="text-muted-foreground text-sm">
@@ -97,8 +97,8 @@ export default function BillingSettings() {
       )}
 
       {billingToast === 'success' && (
-        <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+        <div className="flex items-center gap-2 rounded-md bg-success/10 border border-success/30 px-4 py-3 text-sm text-success">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
           <span><strong>Subscription activated!</strong> Your plan has been updated.</span>
         </div>
       )}

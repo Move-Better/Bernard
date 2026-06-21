@@ -208,7 +208,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
           clean. Both are clickable and navigate to the first linked story. */}
       <div className="absolute top-1.5 right-1.5 z-10">
         {asset._lifecycle === 'new' && (
-          <span className="text-3xs bg-blue-600 text-white px-1.5 py-0.5 rounded-full leading-none">
+          <span className="text-3xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">
             NEW
           </span>
         )}

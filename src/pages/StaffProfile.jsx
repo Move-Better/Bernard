@@ -399,7 +399,7 @@ export default function StaffProfile() {
 
                   <div className="text-center">
                     {strength ? (
-                      <div className="text-base font-semibold text-orange-400">{strength}</div>
+                      <div className="text-base font-semibold text-foreground">{strength}</div>
                     ) : (
                       <div className="text-sm text-white/30">No phrases yet</div>
                     )}
