@@ -267,10 +267,19 @@ function CaptionInspector({ ctx }) {
   )
   return (
     <InspectorShell icon={Captions} title="Captions" right="auto · from transcript">
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Animation</p>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Captions</p>
       <div className="mb-3 flex gap-1.5">
-        {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(caption.preset === p)}>{p[0].toUpperCase() + p.slice(1)}</button>)}
+        {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(caption.preset === p)}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}
       </div>
+      {caption.preset !== 'off' && (
+        <div className="mb-3">
+          <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Animation</p>
+          <div className="flex gap-1.5">
+            {[['none', 'None'], ['pop', 'Pop'], ['fade', 'Fade']].map(([v, l]) => <button key={v} onClick={() => setCaption('anim', v)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn((caption.anim || 'none') === v)}>{l}</button>)}
+          </div>
+          <p className="mt-1 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Entrance effect — shown in the exported video.</p>
+        </div>
+      )}
       {seg('Position', ['top', 'center', 'bottom'], 'position')}
       {seg('Size', ['small', 'medium', 'large'], 'size')}
       {lines.length === 0 ? (
@@ -460,7 +469,7 @@ export default function VideoEditor() {
   const [grade, setGrade] = useState({ ...NEUTRAL_GRADE })
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
   const [speed, setSpeedState] = useState(1)
-  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: '#0C7580' })
+  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: '#0C7580', anim: 'none' })
   const [overlays, setOverlays] = useState([])
   const [safeZones, setSafeZones] = useState(true)
   const [selectedSegmentId, setSelectedSegmentId] = useState(null)
@@ -640,6 +649,7 @@ export default function VideoEditor() {
   const renderBody = () => ({
     assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
+    captionAnim: caption.anim,
     grade, reframe, speed,
     // EXACT (possibly edited) caption words so the bake matches the preview.
     captionWords: lines.flatMap((l) => l.words),

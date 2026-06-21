@@ -304,7 +304,7 @@ function runFfmpeg(args) {
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, grade, reframe, overlays, speed }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, grade, reframe, overlays, speed }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -448,6 +448,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         accentColor,
         fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
         fontName: workspace?.brand_style?.heading_font || 'Inter',
+        anim: ['pop', 'fade'].includes(captionAnim) ? captionAnim : 'none',
       })
       if (ass) {
         await writeFileP(tmpAss, ass, 'utf8')
