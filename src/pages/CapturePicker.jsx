@@ -26,6 +26,7 @@ export default function CapturePicker() {
   // patient_handouts_enabled flag. Default false; on for workspaces
   // actively dogfooding the in-clinic handout workflow.
   const handoutsEnabled = workspace?.patient_handouts_enabled === true
+  const realtimeEnabled = workspace?.realtime_voice_enabled === true
 
   // Preserve any incoming query params (?topic=…, ?topicBacklogId=…) when
   // routing into the chosen mode — these come from suggestion links and
@@ -173,6 +174,7 @@ export default function CapturePicker() {
             as "Phone Call" — renamed 2026-05-24 because "live interview"
             better matches what users called it and avoids confusion with
             actual telephony. */}
+        {realtimeEnabled && (
         <button
           type="button"
           onClick={() => go('/new/live-interview')}
@@ -198,6 +200,7 @@ export default function CapturePicker() {
             </CardContent>
           </Card>
         </button>
+        )}
 
         {/* Patient handout — Phase 5 Feature 4. Gated on
             workspace.patient_handouts_enabled. Hidden entirely for
