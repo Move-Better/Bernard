@@ -1,0 +1,319 @@
+<!--
+  F2 governance mockup — "Bernard's recommended week" (propose/dispose cadence)
+  + corrected Phase A post-call reveal (paced output + backlog + digest contribution).
+  Bernard real index.css tokens. Illustrative, not production code.
+  Tabs: (1) Recommended week   (2) Revised reveal
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Cadence plan</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    background:'hsl(var(--background)/<alpha-value>)', foreground:'hsl(var(--foreground)/<alpha-value>)',
+    card:'hsl(var(--card)/<alpha-value>)', primary:'hsl(var(--primary)/<alpha-value>)',
+    'primary-foreground':'hsl(var(--primary-foreground)/<alpha-value>)', action:'hsl(var(--action)/<alpha-value>)',
+    success:'hsl(var(--success)/<alpha-value>)', info:'hsl(var(--info)/<alpha-value>)', warning:'hsl(var(--warning)/<alpha-value>)',
+    muted:'hsl(var(--muted)/<alpha-value>)', 'muted-foreground':'hsl(var(--muted-foreground)/<alpha-value>)',
+    accent:'hsl(var(--accent)/<alpha-value>)', border:'hsl(var(--border)/<alpha-value>)' },
+    fontFamily:{ sans:['Geist','Inter','system-ui','sans-serif'] } } } };
+</script>
+<style>
+  :root{ --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%; --primary:186 83% 27%;
+    --primary-foreground:0 0% 100%; --muted:220 14% 96%; --muted-foreground:215 16% 47%; --accent:160 60% 95%;
+    --border:214 32% 91%; --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%; --action:32 95% 44%; }
+  body{ background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:'Geist','Inter',system-ui,sans-serif; }
+  h1,h2,h3,h4{ font-weight:700; letter-spacing:-0.025em; }
+  .nx-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:9999px; padding:3px 9px; font-size:11px; font-weight:600; line-height:1.4; white-space:nowrap; }
+  .nx-pill-emerald{ background:#ecfdf5; color:#059669; } .nx-pill-amber{ background:#fff7ed; color:#d97706; }
+  .nx-pill-sky{ background:#e0f2fe; color:#0284c7; } .nx-pill-violet{ background:#f5f3ff; color:#7c3aed; }
+  .nx-pill-ink{ background:#f1f5f9; color:#475569; } .nx-pill-primary{ background:hsl(var(--primary)); color:#fff; }
+  .nx-rail{ display:inline-block; width:4px; height:22px; border-radius:9999px; margin-right:10px; vertical-align:middle; background:hsl(var(--primary)); }
+  .nx-grad{ background:linear-gradient(90deg,hsl(var(--primary)),hsl(var(--action))); color:#fff; }
+  .nx-grad-text{ background:linear-gradient(90deg,hsl(var(--primary)),hsl(var(--action))); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .nx-card{ background:#fff; border:1px solid hsl(var(--border)); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10); }
+  .nx-card-hi{ background:linear-gradient(180deg,#fff,hsl(var(--primary)/0.05)); border:1px solid hsl(var(--primary)/0.3); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(12,117,128,0.22); }
+  .nx-card-action{ background:linear-gradient(180deg,#fff,hsl(var(--action)/0.06)); border:1px solid hsl(var(--action)/0.3); border-radius:14px; }
+  .nx-btn-primary{ background:hsl(var(--primary)); color:#fff; font-weight:600; border-radius:10px; box-shadow:0 1px 0 rgba(0,0,0,0.05), 0 6px 16px -10px rgba(12,117,128,0.55); }
+  .nx-btn-primary:hover{ background:hsl(186 83% 21%); }
+  .nx-btn-secondary{ background:#fff; color:hsl(var(--foreground)); border:1px solid hsl(var(--border)); font-weight:600; border-radius:10px; }
+  .nx-btn-secondary:hover{ background:#f8fafc; }
+  .nx-eyebrow{ font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:hsl(var(--muted-foreground)); }
+  .legend{ border:1px dashed hsl(var(--primary)/0.45); background:hsl(var(--primary)/0.04); border-radius:12px; }
+  .seg{ transition:all .15s ease; } .seg.active{ background:hsl(var(--foreground)); color:#fff; }
+  .chip{ border:1px solid hsl(var(--border)); background:#fff; border-radius:9999px; padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .12s; }
+  .chip:hover{ border-color:hsl(var(--primary)/0.5); background:hsl(var(--primary)/0.05); color:hsl(var(--primary)); }
+  .step{ height:26px; width:26px; border-radius:8px; border:1px solid hsl(var(--border)); background:#fff; font-weight:700; color:hsl(var(--foreground)); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .step:hover{ background:hsl(var(--muted)); }
+  @keyframes flash{ 0%{ background:hsl(var(--primary)/0.12);} 100%{ background:transparent;} }
+  .flash{ animation:flash 1s ease; }
+  .nav-item{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:9px; font-size:13.5px; font-weight:500; color:hsl(var(--muted-foreground)); }
+  .nav-item.active{ background:hsl(var(--primary)/0.10); color:hsl(var(--primary)); font-weight:600; }
+  .ladder-dot{ height:9px; width:9px; border-radius:9999px; background:hsl(var(--border)); }
+  .ladder-dot.on{ background:hsl(var(--primary)); }
+</style>
+
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-[232px] shrink-0 border-r border-border bg-white/70 backdrop-blur px-3 py-4 hidden md:flex md:flex-col gap-1">
+    <div class="flex items-center gap-2 px-2 pb-3">
+      <div class="h-8 w-8 rounded-lg nx-grad flex items-center justify-center font-bold text-sm">B</div>
+      <div class="font-bold text-[15px] tracking-tight">Bernard</div>
+    </div>
+    <button class="flex items-center justify-between gap-2 mx-1 mb-3 rounded-lg border border-border px-2.5 py-1.5 text-left hover:bg-muted">
+      <div class="flex items-center gap-2"><div class="h-5 w-5 rounded bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">MB</div><span class="text-[13px] font-medium">Move Better People</span></div>
+      <i data-lucide="chevrons-up-down" class="h-3.5 w-3.5 text-muted-foreground"></i>
+    </button>
+    <nav class="space-y-0.5">
+      <div class="nav-item"><i data-lucide="home" class="h-4 w-4"></i> Home</div>
+      <div class="nav-item"><i data-lucide="plus-circle" class="h-4 w-4"></i> New</div>
+      <div class="nav-item"><i data-lucide="layers" class="h-4 w-4"></i> Stories</div>
+      <div class="nav-item active"><i data-lucide="calendar-range" class="h-4 w-4"></i> Your week</div>
+      <div class="nav-item"><i data-lucide="bar-chart-3" class="h-4 w-4"></i> Analytics</div>
+      <div class="nav-item"><i data-lucide="settings" class="h-4 w-4"></i> Settings</div>
+    </nav>
+    <div class="mt-auto mx-1 rounded-xl legend p-3">
+      <div class="text-[10.5px] font-bold uppercase tracking-wide text-primary mb-1">F2 · Cadence</div>
+      <p class="text-[11.5px] leading-snug text-muted-foreground">"Bernard proposes, you dispose." Mockup for sign-off.</p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 min-w-0">
+    <div class="sticky top-0 z-20 bg-background/85 backdrop-blur border-b border-border px-5 py-3 flex items-center gap-4 flex-wrap">
+      <div class="inline-flex rounded-xl border border-border bg-white p-1 text-[13px] font-semibold">
+        <button id="seg-1" onclick="show(1)" class="seg active rounded-lg px-3 py-1.5">① Recommended week</button>
+        <button id="seg-2" onclick="show(2)" class="seg rounded-lg px-3 py-1.5">② Revised reveal</button>
+      </div>
+      <span id="toast" class="ml-auto nx-pill nx-pill-primary opacity-0 transition-opacity"><i data-lucide="check" class="h-3 w-3"></i> <span id="toastText">adjusted</span></span>
+    </div>
+
+    <!-- ════ SCREEN 1 — RECOMMENDED WEEK ════ -->
+    <section id="screen-1" class="p-5 md:p-8">
+      <div class="max-w-3xl mx-auto">
+        <!-- Bernard's framing -->
+        <div class="flex items-start gap-3 mb-5">
+          <div class="h-10 w-10 rounded-full nx-grad text-white font-bold flex items-center justify-center shrink-0">B</div>
+          <div>
+            <h1 class="text-2xl md:text-[26px] leading-tight">Here's the week I'd run for you.</h1>
+            <p class="text-muted-foreground text-[14px] mt-1">Based on physical-therapy practices like yours and what's landed so far. You don't need to know social media — just tell me if anything's off. <b>Nothing publishes without your yes.</b></p>
+          </div>
+        </div>
+
+        <!-- Trust ladder -->
+        <div class="nx-card p-3.5 mb-5 flex items-center gap-3 flex-wrap">
+          <span class="nx-eyebrow shrink-0">You're here</span>
+          <div class="flex items-center gap-2 text-[12.5px]">
+            <span class="ladder-dot on"></span><b>Approve everything</b>
+            <i data-lucide="chevron-right" class="h-3.5 w-3.5 text-muted-foreground"></i>
+            <span class="ladder-dot"></span><span class="text-muted-foreground">Approve by exception</span>
+            <i data-lucide="chevron-right" class="h-3.5 w-3.5 text-muted-foreground"></i>
+            <span class="ladder-dot"></span><span class="text-muted-foreground">Manage by goals</span>
+          </div>
+          <span class="nx-pill nx-pill-ink ml-auto">I take more off your plate as I learn what you greenlight</span>
+        </div>
+
+        <!-- Plain-language steer -->
+        <div class="mb-5">
+          <div class="nx-eyebrow mb-2">Tell me in your words</div>
+          <div class="flex flex-wrap gap-2">
+            <button class="chip" onclick="steer('fewer-emails', this)">Fewer emails</button>
+            <button class="chip" onclick="steer('more-video', this)">More video</button>
+            <button class="chip" onclick="steer('busy', this)">Post less — I'm busy</button>
+            <button class="chip" onclick="steer('weekends', this)">Not weekends</button>
+            <button class="chip" onclick="steer('ramp', this)">Ramp me up</button>
+            <span class="chip text-muted-foreground"><i data-lucide="message-square" class="h-3.5 w-3.5 inline -mt-0.5"></i> or type…</span>
+          </div>
+        </div>
+
+        <!-- Channel cadence rows -->
+        <div class="flex items-center gap-2 mb-3"><span class="nx-rail"></span><h2 class="text-[15px] font-bold">Your weekly cadence</h2><span class="nx-pill nx-pill-emerald ml-auto"><i data-lucide="sparkles" class="h-3 w-3"></i> recommended</span></div>
+        <div class="nx-card divide-y divide-border">
+
+          <!-- Newsletter (digest, multi-feed, conservative) -->
+          <div class="p-4" id="row-news">
+            <div class="flex items-center gap-3">
+              <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="mail" class="h-4.5 w-4.5"></i></div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2"><div class="font-semibold text-[14px]">Newsletter</div><span class="nx-pill nx-pill-violet">digest · assembled</span></div>
+                <div class="text-[12px] text-muted-foreground">Email fatigue is real — I keep this <b>rare and high-value</b>, built from the month's best material.</div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <select id="newsFreq" onchange="flashRow('row-news')" class="rounded-lg border border-border bg-white px-2.5 py-1.5 text-[13px] font-semibold">
+                  <option>Monthly</option><option>Every 2 weeks</option><option>Weekly</option><option selected>Monthly</option><option>Quarterly</option>
+                </select>
+              </div>
+            </div>
+            <!-- feeds -->
+            <div class="mt-3 ml-12 flex items-center gap-2 flex-wrap">
+              <span class="nx-pill nx-pill-ink"><i data-lucide="users" class="h-3 w-3"></i> Patients · monthly</span>
+              <button class="chip text-[11.5px] py-1" onclick="addFeed(this)"><i data-lucide="plus" class="h-3 w-3 inline -mt-0.5"></i> Add a feed (e.g. Referrers)</button>
+              <span class="text-[11.5px] text-muted-foreground">different markets → different feeds</span>
+            </div>
+          </div>
+
+          <!-- Blog -->
+          <div class="p-4 flex items-center gap-3" id="row-blog">
+            <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="file-text" class="h-4.5 w-4.5"></i></div>
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold text-[14px]">Blog</div>
+              <div class="text-[12px] text-muted-foreground">Anchors your SEO — each becomes a keystone the social posts hang off.</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="step" onclick="bump('blog',-1)">−</button>
+              <div class="w-20 text-center"><span id="n-blog" class="text-lg font-bold">2</span><span class="text-[11px] text-muted-foreground">/week</span></div>
+              <button class="step" onclick="bump('blog',1)">+</button>
+            </div>
+          </div>
+
+          <!-- Instagram -->
+          <div class="p-4 flex items-center gap-3" id="row-ig">
+            <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="camera" class="h-4.5 w-4.5"></i></div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><div class="font-semibold text-[14px]">Instagram</div><span class="nx-pill nx-pill-emerald">your strongest channel</span></div>
+              <div class="text-[12px] text-muted-foreground" id="ig-why">Mix of posts, carousels & Reels.</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="step" onclick="bump('ig',-1)">−</button>
+              <div class="w-20 text-center"><span id="n-ig" class="text-lg font-bold">4</span><span class="text-[11px] text-muted-foreground">/week</span></div>
+              <button class="step" onclick="bump('ig',1)">+</button>
+            </div>
+          </div>
+
+          <!-- LinkedIn -->
+          <div class="p-4 flex items-center gap-3" id="row-li">
+            <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="briefcase" class="h-4.5 w-4.5"></i></div>
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold text-[14px]">LinkedIn</div>
+              <div class="text-[12px] text-muted-foreground">Reaches referrers and other clinicians.</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="step" onclick="bump('li',-1)">−</button>
+              <div class="w-20 text-center"><span id="n-li" class="text-lg font-bold">3</span><span class="text-[11px] text-muted-foreground">/week</span></div>
+              <button class="step" onclick="bump('li',1)">+</button>
+            </div>
+          </div>
+
+          <!-- Google Business -->
+          <div class="p-4 flex items-center gap-3" id="row-gbp">
+            <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="map-pin" class="h-4.5 w-4.5"></i></div>
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold text-[14px]">Google Business</div>
+              <div class="text-[12px] text-muted-foreground">Local "near me" visibility — quick wins for both clinics.</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="step" onclick="bump('gbp',-1)">−</button>
+              <div class="w-20 text-center"><span id="n-gbp" class="text-lg font-bold">3</span><span class="text-[11px] text-muted-foreground">/week</span></div>
+              <button class="step" onclick="bump('gbp',1)">+</button>
+            </div>
+          </div>
+
+          <!-- More channels collapsed -->
+          <div class="p-3.5 flex items-center gap-2 text-[12.5px] text-muted-foreground">
+            <i data-lucide="plus-circle" class="h-4 w-4"></i> Facebook, TikTok, X, Threads available — <span class="text-primary font-semibold cursor-pointer">add a channel</span>
+            <span class="ml-auto nx-pill nx-pill-ink"><i data-lucide="moon" class="h-3 w-3"></i> Quiet: weekends off</span>
+          </div>
+        </div>
+
+        <!-- Accept -->
+        <div class="flex items-center gap-3 mt-5 flex-wrap">
+          <button onclick="accept()" id="acceptBtn" class="nx-btn-primary px-6 py-3 text-[15px] flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i> Accept this plan</button>
+          <span class="text-[12.5px] text-muted-foreground">You can change any of this any time — or just let it run.</span>
+        </div>
+
+        <div class="legend p-3.5 mt-6">
+          <div class="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> What this is</div>
+          <p class="text-[12.5px] text-foreground/90 leading-relaxed">The cadence is a per-workspace <b>policy object</b> (targets, digest frequency, feeds, quiet days) Bernard <b>recommends &amp; self-tunes</b>, you override in plain language, and every producer/scheduler reads. Default is smart so a non-expert is served by reacting; knobs are always there but never required. <b>Bernard produces to fill these targets and holds surplus as backlog</b> — never floods.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ SCREEN 2 — REVISED POST-CALL REVEAL ════ -->
+    <section id="screen-2" class="p-5 md:p-8 hidden">
+      <div class="max-w-2xl mx-auto">
+        <div class="legend p-3 mb-4 flex items-start gap-2">
+          <i data-lucide="info" class="h-4 w-4 text-primary shrink-0 mt-0.5"></i>
+          <p class="text-[12.5px] text-foreground/90"><b>Corrected from the first Phase-A mock</b>, which wrongly showed "1 newsletter + 20 pieces" spilling out of one call. The call now feeds the <b>plan</b>; the plan <b>paces</b> output to your cadence and assembles the digest.</p>
+        </div>
+
+        <div class="nx-card-hi p-7">
+          <div class="text-center mb-5">
+            <div class="inline-flex items-center justify-center h-12 w-12 rounded-full nx-grad mb-2"><i data-lucide="sparkles" class="h-6 w-6 text-white"></i></div>
+            <div class="nx-eyebrow mb-1">Tuesday's call · 6:12</div>
+            <h2 class="text-2xl md:text-[26px]">Your call became <span class="nx-grad-text">a month of material</span>.</h2>
+            <p class="text-muted-foreground text-[14px] mt-1">Paced to your cadence so you never flood your audience.</p>
+          </div>
+
+          <!-- Going out this week -->
+          <div class="rounded-xl border border-border bg-white p-4 mb-3">
+            <div class="flex items-center gap-2 mb-2"><i data-lucide="send" class="h-4 w-4 text-primary"></i><div class="font-semibold text-[13.5px]">Scheduled this week</div><span class="nx-pill nx-pill-emerald ml-auto">to your cadence</span></div>
+            <div class="grid grid-cols-2 gap-2 text-[12.5px]">
+              <div class="flex items-center gap-1.5"><i data-lucide="camera" class="h-3.5 w-3.5 text-muted-foreground"></i> 2 Instagram <span class="text-muted-foreground">· Tue, Fri</span></div>
+              <div class="flex items-center gap-1.5"><i data-lucide="file-text" class="h-3.5 w-3.5 text-muted-foreground"></i> 1 blog <span class="text-muted-foreground">· Wed</span></div>
+              <div class="flex items-center gap-1.5"><i data-lucide="map-pin" class="h-3.5 w-3.5 text-muted-foreground"></i> 2 Google Biz <span class="text-muted-foreground">· Mon, Thu</span></div>
+              <div class="flex items-center gap-1.5"><i data-lucide="briefcase" class="h-3.5 w-3.5 text-muted-foreground"></i> 1 LinkedIn <span class="text-muted-foreground">· Thu</span></div>
+            </div>
+          </div>
+
+          <!-- Held as backlog -->
+          <div class="rounded-xl border border-border bg-white p-4 mb-3 flex items-center gap-3">
+            <div class="h-9 w-9 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0"><i data-lucide="archive" class="h-4.5 w-4.5"></i></div>
+            <div class="flex-1">
+              <div class="font-semibold text-[13.5px]">+11 more drafted, held for upcoming weeks</div>
+              <div class="text-[12px] text-muted-foreground">Saved to your backlog so this one call carries you ~3 weeks — not dumped all at once.</div>
+            </div>
+            <button class="nx-btn-secondary px-3 py-1.5 text-[12.5px]">See backlog</button>
+          </div>
+
+          <!-- Newsletter contribution (NOT emitted) -->
+          <div class="nx-card-action p-4 mb-5 flex items-center gap-3">
+            <div class="h-9 w-9 rounded-lg bg-action/15 text-action flex items-center justify-center shrink-0"><i data-lucide="mail" class="h-4.5 w-4.5"></i></div>
+            <div class="flex-1">
+              <div class="font-semibold text-[13.5px]">3 highlights added to your monthly <span class="text-action">Patients</span> newsletter</div>
+              <div class="text-[12px] text-muted-foreground">Assembled with the rest of the month — <b>sends Jul 1</b>, not now. One call ≠ one email.</div>
+            </div>
+          </div>
+
+          <div class="text-center">
+            <button class="nx-btn-primary px-6 py-3 text-[15px] inline-flex items-center gap-2"><i data-lucide="arrow-right" class="h-4 w-4"></i> Review this week's 5</button>
+            <p class="text-[12px] text-muted-foreground mt-2">Nothing publishes without your yes.</p>
+          </div>
+        </div>
+
+        <div class="legend p-3.5 mt-5">
+          <div class="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> What changed vs the first mock</div>
+          <ul class="text-[12.5px] text-foreground/90 space-y-1">
+            <li>• Output is <b>paced to the cadence</b> (5 this week) — surplus goes to a <b>backlog</b>, not all published.</li>
+            <li>• The newsletter is <b>contributed to</b>, not emitted — one call never sends an email; the monthly digest assembles.</li>
+            <li>• Same surface works when 5 clinicians call in a week: their material merges into <b>one</b> paced plan + <b>one</b> monthly newsletter.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const N = { blog:2, ig:4, li:3, gbp:3 };
+  function show(n){
+    [1,2].forEach(i=>{ document.getElementById('screen-'+i).classList.toggle('hidden', i!==n); document.getElementById('seg-'+i).classList.toggle('active', i===n); });
+    window.scrollTo({top:0}); if(window.lucide) lucide.createIcons();
+  }
+  function bump(k,d){ N[k]=Math.max(0,N[k]+d); document.getElementById('n-'+k).textContent=N[k]; flashRow('row-'+k); }
+  function flashRow(id){ const el=document.getElementById(id); if(!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastText').textContent=msg; t.style.opacity='1'; clearTimeout(window._tt); window._tt=setTimeout(()=>t.style.opacity='0',1800); }
+  function steer(kind,btn){
+    if(kind==='fewer-emails'){ document.getElementById('newsFreq').value='Quarterly'; flashRow('row-news'); toast('Newsletter → quarterly'); }
+    if(kind==='more-video'){ N.ig+=2; document.getElementById('n-ig').textContent=N.ig; document.getElementById('ig-why').textContent='More Reels — I’ll lean video-heavy.'; flashRow('row-ig'); toast('More Instagram video'); }
+    if(kind==='busy'){ N.blog=Math.max(1,N.blog-1); N.ig=Math.max(2,N.ig-2); N.li=Math.max(1,N.li-1); ['blog','ig','li'].forEach(k=>document.getElementById('n-'+k).textContent=N[k]); flashRow('row-ig'); toast('Dialed everything back'); }
+    if(kind==='weekends'){ toast('Weekends kept quiet'); }
+    if(kind==='ramp'){ N.ig+=1; N.li+=1; N.gbp+=1; ['ig','li','gbp'].forEach(k=>document.getElementById('n-'+k).textContent=N[k]); flashRow('row-gbp'); toast('Ramped up'); }
+    if(window.lucide) lucide.createIcons();
+  }
+  function addFeed(btn){ btn.outerHTML='<span class="nx-pill nx-pill-ink"><i data-lucide="users" class="h-3 w-3"></i> Referrers · monthly</span>'; toast('Added Referrers feed'); if(window.lucide) lucide.createIcons(); }
+  function accept(){ const b=document.getElementById('acceptBtn'); b.outerHTML='<div class="px-6 py-3 text-[15px] font-semibold rounded-lg inline-flex items-center gap-2" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))"><svg width="16" height="16"></svg>✓ Plan accepted — I’ll run this and tune it as results come in</div>'; toast('Plan accepted'); }
+  window.addEventListener('load', ()=>{ if(window.lucide) lucide.createIcons(); });
+</script>
+</body>
