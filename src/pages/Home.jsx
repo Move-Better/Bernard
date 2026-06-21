@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { FileText, Clock, Loader2, RefreshCw, ChevronRight, Send, Mic2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { FileText, Clock, Loader2, RefreshCw, ChevronRight, Send, Mic2, BookOpen } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
 import LoadingState from '@/components/LoadingState'
 import { Button } from '@/components/ui/button'
 import { useStories, useStaffSummaries } from '@/lib/queries'
@@ -164,6 +166,16 @@ export default function Home() {
     })
   }, [staff])
 
+  // Blog review nudge — clinicians who opted in and have posts awaiting their read
+  const { data: weekData } = useQuery({
+    queryKey: ['week-summary'],
+    queryFn: () => apiFetch('/api/content-plan/week-summary'),
+    enabled: !isEditor,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const yourReview = weekData?.yourReview || []
+
   const isLoading = storiesLoading || staffLoading
 
   if (isLoading) return <LoadingState />
@@ -271,6 +283,29 @@ export default function Home() {
               "My recent stories" list so a busy clinician sees status, not
               just topics. Self-hides for accounts with no owned stories. */}
           <MyWorkCard stories={stories} userId={user?.id} />
+
+          {/* Blog review nudge — for clinicians with blog_review_enabled who
+              have posts waiting for their read/approval on /week. */}
+          {!isEditor && yourReview.length > 0 && (
+            <Link
+              to="/week"
+              className="flex items-center gap-3 rounded-xl border border-action/30 bg-action/5 px-4 py-3 hover:bg-action/10 transition-colors"
+            >
+              <BookOpen className="h-4 w-4 text-action shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  {yourReview.length === 1
+                    ? 'Your blog post is ready to review'
+                    : `${yourReview.length} blog posts ready for your review`}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {yourReview[0]?.topic}
+                  {yourReview.length > 1 ? ` +${yourReview.length - 1} more` : ''}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </Link>
+          )}
 
           {/* Drafts ready for review — others' work needing your action.
               Sits above "Ready for content" so the most-urgent action
