@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
-import { CheckCircle, Inbox, LayoutGrid, Shield, CalendarDays, Flag } from 'lucide-react'
+import { CheckCircle, Inbox, Building2, Shield, CalendarDays, Flag } from 'lucide-react'
 import { useStories } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermissionTier } from '@/lib/usePermissionTier'
@@ -39,7 +39,7 @@ export default function Overview() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <LayoutGrid className="h-5 w-5 text-primary" aria-hidden="true" />
+            <Building2 className="h-5 w-5 text-primary" aria-hidden="true" />
             Overview
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
