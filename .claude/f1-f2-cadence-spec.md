@@ -136,3 +136,35 @@ The keystone. A **practice-level weekly planner** — a different altitude from 
 3. **Voice-judge gate** — promote `captionFidelityRubric.js` to gate drafts.
 4. **F2.3 surface** — the signed-off proposed-week calendar (`proposed-week-v2.html`).
 5. **Producer + scheduler** — best-time placement, quiet-days, digest assembly, backlog pull.
+
+---
+
+## Phase 2 — `/week` actionable + IA consolidation (decided 2026-06-21; targeting Monday)
+
+**SHIPPED + LIVE (prod) as of 2026-06-21:** Strategist (compose→plan→atoms, completion-trigger `db/interviews.js` + weekly cron `cron/weekly-plan.js`) · A.3 reveal (`PostCallReveal.jsx`) · `/week` surface (`src/pages/YourWeek.jsx`, reads `content-plan/week-summary.js`) — navigable, Review Inbox redirects to it · backfill (`scripts/backfill-strategist.mjs`) populated the backlog (movebetter, studio) · interview_id-validation prod fix (`strategist.js` — never trust the LLM-echoed id).
+
+### The gate model (corrected — this is the spec)
+Per-piece clinician approval was REJECTED (time-costing). The model:
+- **One light clinician approval at CAPTURE** ("this is what I said — accurate?", one tap, depth = their choice), reusing the post-interview recap. This is the keystone, generalized from "approve the blog" → "approve the source." Licenses generation.
+- **Source of truth = the interview** (+ the blog only if that channel is enabled — blog is an optional enrichment, NOT a required keystone). This generalizes beyond Move Better's blog-first workflow.
+- **Producer manages `/week` with BATCH/week-level approve+schedule** (not per-piece). Trends to automatic as trust grows.
+- **Blog author-review is OPT-IN per clinician** (default: blog flows through the producer gate like social; a clinician can toggle "always let me review my blogs" → those route to the author). Social NEVER waits on the blog (fixes the old keystone bottleneck).
+
+### IA (decided)
+- Review Inbox **superseded** by `/week` (✅ redirect shipped).
+- Calendar **folds into `/week`** (don't keep a separate Overview calendar).
+- `/publish` (Storyboard) **folds into `/week`** (approve+schedule+publish on `/week`; retire the `/publish` nav entry, keep `/publish/:pieceId` drill-in routes).
+- Stories + editors = the per-piece drill-in (layer 2) `/week` links into. The story screen's **per-story "generate content" / Plan tab must be REMOVED** (superseded by central planning) — but only AFTER `/week` has a draft path (sequencing).
+
+### Remaining items (2b–2f)
+- **2c (do first — meatiest):** producer **approve + schedule on `/week`** + the **capture gate**. Entangled with **draft-on-demand**: `/week` cards are *atoms* (pending, undrafted); approving means draft (via `content-plan/draft.js` — atom→`content_items`) → review → approve → schedule. Reuse `publishPieceToBuffer` (`src/lib/publishPiece.js`, the path `ReviewInbox` used) for scheduling, and `useUpdateContentItemStatus` for approve. The draft source must be the interview (+blog if present), NOT a required blog.
+- **2b:** timezone-correct slots. **No workspace tz is stored anywhere** — add `cadence_policy.timezone` (default `America/Los_Angeles`); convert the local best-hour → UTC in `assignSlots` (`strategist.js`); `/week` renders `scheduled_at` in the workspace tz (week-summary already returns the policy). Re-plan to re-slot the existing movebetter atoms (their times are currently wrong UTC).
+- **2d:** blog author-review opt-in — per-clinician toggle (a `staff`/clinic setting), blog routes to author when on, `/week` **role-aware** "yours to review" slice + a Home nudge.
+- **2e:** strip "generate content"/Plan tab from the story screen (`src/components/ContentPlanPanel.jsx` + `story-detail/AssetsPane.jsx`) — AFTER 2c's draft path exists.
+- **2f:** fold `/publish` + Overview calendar into `/week`; retire those nav entries (keep drill-in routes).
+
+### Cautions for the build
+- **Never trust LLM-echoed ids/values** (see the `strategist.js` interview_id fix) — validate against real inputs.
+- `cadence_policy.channels` keys are **atom-platform ids** (`instagram`, not `instagram_post`).
+- `buildPlanRows` is **demoted to a grid fallback**, not removed — full retirement is a fast-follow once the Strategist is proven; legacy `plan_week=NULL` grid atoms coexist (A.3 + `/week` filter by `plan_week`, so unaffected).
+- Start in a fresh worktree off `origin/main`. Migrations 138/139 (F2) + 140 (F1 cadence_policy) are live; next = 141+.
