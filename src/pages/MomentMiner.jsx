@@ -523,14 +523,14 @@ export default function MomentMiner() {
             className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
               view === 'clips_to_review'
                 ? 'bg-action text-white border-action'
-                : clipsToReviewVideos.length > 0
+                : allMoments.length > 0
                   ? 'bg-card border-action/40 text-foreground hover:border-action'
                   : 'bg-card border-border text-muted-foreground hover:text-foreground'
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
             Ready to review{' '}
-            {!isLoading && clipsToReviewVideos.length > 0 && (
+            {!momentsLoading && allMoments.length > 0 && (
               <span
                 className={
                   view === 'clips_to_review'
@@ -538,7 +538,7 @@ export default function MomentMiner() {
                     : 'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-action text-action-foreground text-3xs font-bold'
                 }
               >
-                {clipsToReviewVideos.length}
+                {allMoments.length}
               </span>
             )}
           </button>
