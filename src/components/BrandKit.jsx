@@ -22,6 +22,7 @@ import {
 } from '@/lib/queries'
 import { toast } from '@/lib/toast'
 import { GoogleFontPicker } from '@/components/GoogleFontPicker'
+import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade, gradeToCanvasFilter } from '@/lib/gradeParams'
 
 // Brand Kit — three panels (Library, Roles, Style) plus an onboarding variant.
 // Renders identically against the real backend (default) or fixture data
@@ -1088,6 +1089,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
               <TagIcon className="h-3 w-3 mt-0.5 shrink-0" />
               Pick from Google Fonts — the family name is stored on the workspace and the rendering layer (email, site, social) honors it where the channel supports custom fonts, falling back to system defaults otherwise.
             </p>
+            <BrandVibe grade={style.grade} onPersist={(g) => setStyle({ grade: g })} />
           </div>
         </section>
       )}
@@ -1116,6 +1118,84 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         onPick={(assetId) => setRoleAssignments((prev) => ({ ...prev, [pickerRole]: assetId }))}
         onClose={() => setPickerRole(null)}
       />
+    </div>
+  )
+}
+
+// Brand vibe — the workspace-default colour grade applied to videos and photos.
+// Same canonical params + sliders as the video editor's Colorist (kept in lockstep
+// via src/lib/gradeParams.js). Saved into brand_style.grade so the editor's
+// "Brand" vibe chip reads it. Local state keeps slider drags snappy; the persist
+// (one PATCH through setStyle → brand-kit/style) is debounced 500ms.
+function BrandVibe({ grade, onPersist }) {
+  const [local, setLocal] = useState(() => normalizeGrade(grade))
+  const seededRef = useRef(false)
+  const tRef = useRef(null)
+  useEffect(() => {
+    if (seededRef.current || grade == null) return
+    seededRef.current = true
+    setLocal(normalizeGrade(grade))
+  }, [grade])
+  useEffect(() => () => { if (tRef.current) clearTimeout(tRef.current) }, [])
+  const change = (next) => {
+    const n = normalizeGrade(next)
+    setLocal(n)
+    if (tRef.current) clearTimeout(tRef.current)
+    tRef.current = setTimeout(() => onPersist(n), 500)
+  }
+  const activeVibe = GRADE_VIBES.find((v) => JSON.stringify(normalizeGrade(v.params)) === JSON.stringify(local))
+  return (
+    <div className="border-t pt-3">
+      <Label className="text-xs">Brand vibe</Label>
+      <p className="text-2xs text-muted-foreground mt-0.5 mb-2">
+        The default colour grade applied to your videos and photos. Pick a starting vibe or fine-tune below — you can still adjust it per-clip in the editor.
+      </p>
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {GRADE_VIBES.map((v) => {
+          const on = activeVibe?.id === v.id
+          return (
+            <button
+              key={v.id} type="button" onClick={() => change(v.params)}
+              className={`rounded-full border px-2.5 py-1 text-2xs transition ${on ? 'border-primary bg-primary/10 font-medium text-primary' : 'hover:bg-accent/40'}`}
+            >
+              {v.label}
+            </button>
+          )
+        })}
+        <button
+          type="button" onClick={() => change(NEUTRAL_GRADE)}
+          className={`rounded-full border px-2.5 py-1 text-2xs transition ${isNeutralGrade(local) ? 'border-primary bg-primary/10 font-medium text-primary' : 'hover:bg-accent/40'}`}
+        >
+          None
+        </button>
+      </div>
+      <div className="flex gap-3">
+        {/* preview swatch — a hue gradient under the live grade filter */}
+        <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md border" aria-hidden>
+          <div
+            className="h-full w-full"
+            style={{
+              filter: gradeToCanvasFilter(local),
+              background: 'linear-gradient(160deg,#f4d35e 0%,#ee964b 30%,#c1666b 55%,#4d6a6d 78%,#2b3a55 100%)',
+            }}
+          />
+        </div>
+        <div className="flex-1 space-y-2">
+          {GRADE_SLIDERS.map((s) => (
+            <div key={s.key}>
+              <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                <span>{s.label}</span>
+                <span className="tabular-nums">{local[s.key] > 0 ? `+${local[s.key]}` : local[s.key]}</span>
+              </div>
+              <input
+                type="range" min={-100} max={100} value={local[s.key]}
+                onChange={(e) => change({ ...local, [s.key]: Number(e.target.value) })}
+                className="w-full accent-[hsl(var(--primary))]" aria-label={s.label}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
