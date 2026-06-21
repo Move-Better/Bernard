@@ -278,6 +278,75 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
   )
 }
 
+// ── Words section — caption + "use as hook" shortcut ─────────────────────────
+// Collapsible panel at the top of the right inspector. Caption auto-saves on
+// blur; the slide Save button is independent (different patch fields).
+function WordsSection({ piece, onUseAsHook, updateItem }) {
+  const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
+  const [open, setOpen] = useState(true)
+  const savedRef = useRef(draft)
+
+  useEffect(() => {
+    const next = typeof piece?.content === 'string' ? piece.content : ''
+    setDraft(next)
+    savedRef.current = next
+    // Intentional: re-seed only on piece identity change, not on every save
+    // response — including piece.content would overwrite in-flight user edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [piece?.id])
+
+  async function handleBlur() {
+    if (draft === savedRef.current) return
+    try {
+      await updateItem.mutateAsync({ id: piece.id, patch: { content: draft } })
+      savedRef.current = draft
+    } catch (e) {
+      toast.error('Caption save failed', { description: e.message })
+    }
+  }
+
+  return (
+    <div className="border-b">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
+      >
+        <span className="flex items-center gap-1.5">
+          <Type className="h-3 w-3" /> Words · caption
+        </span>
+        <span>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={handleBlur}
+            rows={4}
+            placeholder="Caption visible to followers…"
+            className="w-full resize-y rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
+          />
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                const firstLine = (draft || '').split('\n')[0].trim()
+                if (firstLine) onUseAsHook(firstLine)
+              }}
+              title="Copy the first line of the caption into slide 1's hook text block"
+              className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+            >
+              ↑ Use 1st line as slide hook
+            </button>
+            <span className="text-3xs text-muted-foreground">{draft.length} chars</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Layers list (top of the right inspector) ─────────────────────────────────
 // Always-visible list of the active slide's layers: Slide settings, Photo, and
 // one row per text block. Clicking a row drives the contextual `selection`.
@@ -1432,6 +1501,24 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     toast.success('Theme applied to all slides')
   }
 
+  function handleUseAsHook(text) {
+    const slide0 = slides[0]
+    if (!slide0) return
+    const hookIdx = slide0.blocks.findIndex((b) => b.role === 'hook')
+    let newBlocks
+    if (hookIdx >= 0) {
+      newBlocks = slide0.blocks.map((b, i) => (i === hookIdx ? { ...b, text } : b))
+    } else {
+      newBlocks = [{ role: 'hook', text, position: defaultPositionFor(slide0.template, 'hook') }, ...slide0.blocks]
+    }
+    const out = slides.slice()
+    out[0] = { ...slide0, blocks: newBlocks }
+    setSlides(out)
+    setActiveSlideIdx(0)
+    setSelection({ type: 'text', idx: hookIdx >= 0 ? hookIdx : 0 })
+    toast.success('Hook updated — Save to bake')
+  }
+
   async function handleSave() {
     const cleaned = slides.map((s) => ({
       photo_idx: typeof s.photo_idx === 'number' ? s.photo_idx : null,
@@ -1673,6 +1760,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         <aside className="flex w-[300px] shrink-0 flex-col border-l bg-white overflow-hidden">
           {activeSlide ? (
             <>
+              <WordsSection
+                piece={piece}
+                onUseAsHook={handleUseAsHook}
+                updateItem={updateItem}
+              />
               <LayersList
                 slide={activeSlide}
                 mediaUrls={mediaUrls}
