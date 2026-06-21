@@ -139,6 +139,38 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
   return lines.slice(0, maxLines)
 }
 
+// Like wrapLines but wraps a [{text,color?}] runs array, preserving per-word
+// colour assignment. Returns [{word,color}[]] — one sub-array per output line.
+// Spaces between words on the same line are drawn by the caller with the
+// following word's colour (invisible either way, but keeps the loop simple).
+function wrapRuns(ctx, runs, maxWidth, maxLines, uppercase) {
+  const words = [] // [{word, color}]
+  for (const r of runs) {
+    const color = r.color || null
+    const src = uppercase ? (r.text || '').toUpperCase() : (r.text || '')
+    for (const w of src.split(' ')) {
+      if (w) words.push({ word: w, color })
+    }
+  }
+  const lines = []
+  let curLine = []
+  let curW = 0
+  const spW = ctx.measureText(' ').width
+  for (const { word, color } of words) {
+    const ww = ctx.measureText(word).width
+    const gap = curLine.length ? spW : 0
+    if (curW > 0 && curW + gap + ww > maxWidth) {
+      lines.push(curLine)
+      if (lines.length >= maxLines) { curLine = []; break }
+      curLine = [{ word, color }]; curW = ww
+    } else {
+      curLine.push({ word, color }); curW += gap + ww
+    }
+  }
+  if (curLine.length && lines.length < maxLines) lines.push(curLine)
+  return lines.slice(0, maxLines)
+}
+
 function drawRoundedRect(ctx, x, y, w, h, r) {
   ctx.beginPath()
   ctx.moveTo(x + r, y)
@@ -767,6 +799,37 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     ? Math.max(0.15, Math.min(1, block.width))
     : typo.maxWidthFrac
   const maxW = Math.round(W * widthFrac)
+
+  // ── Multi-colour runs path ──────────────────────────────────────────────────
+  // When the block carries per-word colour data (from the inline colour picker),
+  // render each word in its own colour; fall back to the single-colour path when
+  // no run carries a colour override (runs with no colour = standard white text).
+  if (block.runs && block.runs.some((r) => r.color)) {
+    const runLines = wrapRuns(ctx, block.runs, maxW, typo.maxLines, typo.uppercase)
+    const lastLineOffset = (runLines.length - 1) * typo.lineH
+    let y = vAnchor === 'top'    ? anchorY
+          : vAnchor === 'center' ? anchorY - lastLineOffset / 2
+          :                        anchorY - lastLineOffset
+    const defaultColor = typo.color
+    const spW = ctx.measureText(' ').width
+    for (const rl of runLines) {
+      const lineW = rl.reduce((s, { word }, i) => s + ctx.measureText(word).width + (i ? spW : 0), 0)
+      let x = align === 'left' ? anchorX : align === 'right' ? anchorX - lineW : anchorX - lineW / 2
+      for (let i = 0; i < rl.length; i++) {
+        const { word, color } = rl[i]
+        if (i > 0) { ctx.fillStyle = color || defaultColor; ctx.fillText(' ', x, y); x += spW }
+        ctx.fillStyle = color || defaultColor
+        if (typo.shadow) drawTextWithShadow(ctx, word, x, y, typo.shadowLevel)
+        else             ctx.fillText(word, x, y)
+        x += ctx.measureText(word).width
+      }
+      y += typo.lineH
+    }
+    ctx.textAlign = 'start'
+    return
+  }
+  // ── end runs path ───────────────────────────────────────────────────────────
+
   const lines = wrapLines(ctx, display, maxW, typo.maxLines)
   // Vertical anchoring is zone-aware (see resolvePosition's vAnchor):
   //   top    → first baseline at anchorY, block grows DOWN (never clips the top)

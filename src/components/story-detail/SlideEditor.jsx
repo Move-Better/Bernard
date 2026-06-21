@@ -69,9 +69,69 @@ function normalizeSlide(s, idx) {
           ...(b?.font === 'heading' || b?.font === 'body' ? { font: b.font } : {}),
           ...(b?.italic === true ? { italic: true } : {}),
           ...(b?.underline === true ? { underline: true } : {}),
+          ...(Array.isArray(b?.runs) && b.runs.some((r) => r.color) ? { runs: b.runs } : {}),
         }))
       : [],
   }
+}
+
+// ── Inline colour-run helpers ────────────────────────────────────────────────
+
+function cssColorToHex(color) {
+  if (!color) return null
+  const v = color.trim()
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase()
+  if (/^#[0-9a-f]{3}$/i.test(v)) {
+    const [, r, g, b] = v.split('')
+    return ('#' + r + r + g + g + b + b).toUpperCase()
+  }
+  const m = v.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/)
+  if (!m) return null
+  return '#' + [m[1], m[2], m[3]].map((n) => parseInt(n, 10).toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Convert block.runs → innerHTML for the contenteditable field.
+function runsToHTML(runs, text) {
+  if (!Array.isArray(runs) || !runs.some((r) => r.color)) return escapeHtml(text || '')
+  return runs.map((r) => {
+    const t = escapeHtml(r.text)
+    return r.color ? `<span style="color:${r.color}">${t}</span>` : t
+  }).join('')
+}
+
+// Walk a contenteditable element's DOM → [{text, color?}] runs.
+// Handles <font color="…"> (execCommand in most browsers) and <span style="color:…">.
+function serializeCE(el) {
+  const runs = []
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent) runs.push({ text: node.textContent })
+      return
+    }
+    if (node.nodeName === 'BR') { runs.push({ text: '\n' }); return }
+    const color = node.nodeName === 'FONT' && node.getAttribute('color')
+      ? cssColorToHex(node.getAttribute('color'))
+      : node.style?.color ? cssColorToHex(node.style.color) : null
+    if (color) {
+      const text = node.textContent
+      if (text) runs.push({ text, color })
+    } else {
+      node.childNodes.forEach(walk)
+    }
+  }
+  el.childNodes.forEach(walk)
+  // Merge adjacent runs with identical colour
+  const merged = []
+  for (const r of runs) {
+    const last = merged[merged.length - 1]
+    if (last && last.color === (r.color || undefined)) { last.text += r.text }
+    else merged.push(r.color ? { text: r.text, color: r.color } : { text: r.text })
+  }
+  return merged
 }
 
 function defaultPositionFor(template, role) {
@@ -87,6 +147,65 @@ function emptyBlockFor(template, role) {
 
 function BlockRow({ block, onChange, onRemove }) {
   const meta = ROLE_META[block.role] || ROLE_META.body
+  const workspace = useWorkspace()
+  const ceRef = useRef(null)
+  const [toolbarPos, setToolbarPos] = useState(null)
+  const savedRangeRef = useRef(null)
+  const initRef = useRef(false)
+  const suppressRef = useRef(false)
+
+  // Initialise contenteditable once on mount from block data
+  useEffect(() => {
+    if (initRef.current || !ceRef.current) return
+    initRef.current = true
+    ceRef.current.innerHTML = runsToHTML(block.runs, block.text)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function serializeAndSync() {
+    if (suppressRef.current) return
+    const el = ceRef.current
+    if (!el) return
+    const runs = serializeCE(el)
+    const text = runs.map((r) => r.text).join('')
+    const hasColor = runs.some((r) => r.color)
+    const result = { ...block, text }
+    if (hasColor) result.runs = runs
+    else delete result.runs
+    onChange(result)
+  }
+
+  function checkSelection() {
+    const sel = window.getSelection()
+    const el = ceRef.current
+    if (!sel || sel.isCollapsed || !sel.toString().trim() || !el?.contains(sel.anchorNode)) {
+      setToolbarPos(null); return
+    }
+    const rect = sel.getRangeAt(0).getBoundingClientRect()
+    const mid = rect.left + rect.width / 2
+    setToolbarPos({ top: rect.top - 52, left: Math.max(8, Math.min(mid - 130, window.innerWidth - 268)) })
+  }
+
+  function applyColor(color) {
+    const sel = window.getSelection()
+    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
+    ceRef.current?.focus()
+    document.execCommand('foreColor', false, color)
+    savedRangeRef.current = null
+    serializeAndSync()
+    setToolbarPos(null)
+  }
+
+  function clearColor() {
+    const sel = window.getSelection()
+    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
+    ceRef.current?.focus()
+    document.execCommand('removeFormat', false, null)
+    savedRangeRef.current = null
+    serializeAndSync()
+    setToolbarPos(null)
+  }
+
+  const bSwatches = useMemo(() => brandSwatches(workspace), [workspace])
 
   return (
     <div className="flex items-start gap-2 rounded-md border bg-background/50 p-2">
@@ -101,24 +220,78 @@ function BlockRow({ block, onChange, onRemove }) {
               <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-muted-foreground hover:text-rose-600"
-            title="Delete block"
-          >
+          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-rose-600" title="Delete block">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        <textarea
-          value={block.text}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
-          rows={Math.min(4, Math.max(1, (block.text || '').split('\n').length))}
-          className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50"
-          placeholder={`${meta.label} text…`}
+
+        {/* Floating colour toolbar — fixed above the text selection */}
+        {toolbarPos && (
+          <div
+            className="fixed z-50 flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1.5 shadow-xl"
+            style={{ top: toolbarPos.top, left: toolbarPos.left }}
+            onMouseDown={(e) => {
+              const sel = window.getSelection()
+              if (sel && sel.rangeCount > 0 && sel.toString().trim()) {
+                savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+              }
+              // Prevent focus steal for all children except the ColorPickerPopover trigger
+              if (!e.target.closest('[data-picker-trigger]')) e.preventDefault()
+            }}
+          >
+            {bSwatches.length > 0 && (
+              <span className="pr-0.5 text-3xs font-semibold uppercase tracking-wider text-zinc-500">Brand</span>
+            )}
+            {bSwatches.slice(0, 5).map((color) => (
+              <button
+                key={color} type="button" title={color} onClick={() => applyColor(color)}
+                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
+                style={{ background: color }}
+              />
+            ))}
+            {bSwatches.length > 0 && <span className="mx-0.5 h-4 w-px bg-zinc-700" />}
+            {['#FFFFFF', '#000000'].map((c) => (
+              <button
+                key={c} type="button" title={c === '#FFFFFF' ? 'White' : 'Black'} onClick={() => applyColor(c)}
+                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
+                style={{ background: c }}
+              />
+            ))}
+            <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+            <button
+              type="button" onClick={clearColor}
+              className="px-1 text-3xs font-medium text-zinc-400 transition-colors hover:text-white"
+            >Clear</button>
+            <span data-picker-trigger>
+              <ColorPickerPopover
+                value="#888888"
+                onChange={applyColor}
+                swatches={bSwatches}
+                swatchClassName="h-5 w-5 rounded-full"
+                ariaLabel="Custom colour"
+              />
+            </span>
+          </div>
+        )}
+
+        <div
+          ref={ceRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={serializeAndSync}
+          onMouseUp={checkSelection}
+          onKeyUp={checkSelection}
+          onBlur={() => { setTimeout(() => setToolbarPos(null), 150) }}
+          onPaste={(e) => {
+            e.preventDefault()
+            document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
+          }}
+          className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
+          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2rem' }}
+          data-placeholder={`${meta.label} text…`}
         />
         <p className="mt-1 flex items-center gap-1 text-3xs text-muted-foreground">
-          <Move className="h-3 w-3" /> Drag the text on the canvas to place it.
+          <Move className="h-3 w-3" /> Drag the text on the canvas to place it. Highlight text to pick a colour.
         </p>
       </div>
     </div>
@@ -1284,7 +1457,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   // Re-render the canvas when anything that affects the pixels changes.
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
-    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}`).join('~'),
+    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.runs ? b.runs.map((r) => r.color || '').join(',') : ''}`).join('~'),
     slide.photo_zoom || 1,
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',

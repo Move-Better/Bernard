@@ -48,7 +48,7 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle }) {
       text: b.text, role: b.role, position: b.position, width: b.width,
       // per-block style overrides also change the pixels
       fontScale: b.fontScale, color: b.color, fontWeight: b.fontWeight, uppercase: b.uppercase, font: b.font,
-      italic: b.italic, underline: b.underline,
+      italic: b.italic, underline: b.underline, runs: b.runs,
     })),
     template: slide.template || null,
     photoUrl: photoUrl || null,
