@@ -1096,7 +1096,7 @@ export function useCreatePhotoTemplate() {
   const qc = useQueryClient()
   return useAppMutation({
     errorMessage: "Couldn't create template",
-    mutationFn: (body) => apiFetch('/api/photo-templates', { method: 'POST', body: JSON.stringify(body) }),
+    mutationFn: (body) => apiFetch('/api/photo-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
   })
 }
@@ -1105,7 +1105,7 @@ export function useUpdatePhotoTemplate() {
   const qc = useQueryClient()
   return useAppMutation({
     errorMessage: "Couldn't update template",
-    mutationFn: ({ id, patch }) => apiFetch(`/api/photo-templates/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    mutationFn: ({ id, patch }) => apiFetch(`/api/photo-templates/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
   })
 }
@@ -1125,7 +1125,7 @@ export function useGenerateBrandTemplates() {
   const qc = useQueryClient()
   return useAppMutation({
     errorMessage: "Couldn't generate templates",
-    mutationFn: (body = {}) => apiFetch('/api/photo-templates/generate', { method: 'POST', body: JSON.stringify(body) }),
+    mutationFn: (body = {}) => apiFetch('/api/photo-templates/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
   })
 }
