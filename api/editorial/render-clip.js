@@ -89,6 +89,10 @@ export default async function handler(req, res) {
   // AI-colorist grade (canonical params). Clamped/normalized inside the renderer
   // (gradeToFfmpeg → normalizeGrade); a neutral or absent grade is a no-op.
   const grade = body.grade && typeof body.grade === 'object' && !Array.isArray(body.grade) ? body.grade : undefined
+  // Static reframe (zoom/pan) + manual timed text overlays. Validated/clamped
+  // inside the renderer (isNeutralReframe / normalizeOverlays); absent = no-op.
+  const reframe = body.reframe && typeof body.reframe === 'object' && !Array.isArray(body.reframe) ? body.reframe : undefined
+  const overlays = Array.isArray(body.overlays) && body.overlays.length ? body.overlays : undefined
   const requestedChannels = Array.isArray(body.channels) && body.channels.length
     ? body.channels.map((c) => String(c))
     : null  // resolved after we know asset kind
@@ -194,6 +198,8 @@ export default async function handler(req, res) {
           ...(overlaySize !== undefined ? { overlaySize } : {}),
           ...(captionWords && captionWords.length ? { captionWords } : {}),
           ...(grade ? { grade } : {}),
+          ...(reframe ? { reframe } : {}),
+          ...(overlays ? { overlays } : {}),
         })
         // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
         const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.mp4`

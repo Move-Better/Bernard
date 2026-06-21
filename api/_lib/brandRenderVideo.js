@@ -30,6 +30,7 @@ import { getBrandFont, ensureFontconfig } from './brandFonts.js'
 import { transcribeToSrt, transcribeToWords } from './whisper.js'
 import { buildKaraokeAss } from './karaokeCaptions.js'
 import { gradeToFfmpeg } from './gradeParams.js'
+import { reframeFilter, isNeutralReframe, buildOverlaySvg, normalizeOverlays } from './videoOverlays.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
 // original is preserved for the render). ZV-1F 4K clips can be large.
@@ -290,11 +291,17 @@ function runFfmpeg(args) {
  *                                         Rendered to the source frame via the ffmpeg emitter
  *                                         (gradeToFfmpeg) — the SAME schema as the photo Sharp
  *                                         grade. Neutral/absent → no filter, byte-identical output.
+ * @param {Object} [params.reframe]      — static crop {zoom (%, ≥100), x, y (0..100)}. Neutral
+ *                                         {100,50,50} = centered cover (legacy). Cover lanes only.
+ * @param {Array}  [params.overlays]     — manual timed text overlays
+ *                                         [{role,text,x,y,size,color,in,out}]. Each is a positioned
+ *                                         text card shown for its [in,out] window (carousel text
+ *                                         block + time). Cover + long-form lanes both supported.
  * @returns {Promise<{buffer: Buffer, width: number, height: number, channel: string, hadSubtitles: boolean, words: Array|null}>}
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionWords, grade }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionWords, grade, reframe, overlays }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -320,6 +327,9 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   const tmpOverlay = `/tmp/vid-ov-${id}.png`
   const tmpSrt     = `/tmp/vid-sub-${id}.srt`
   const tmpAss     = `/tmp/vid-sub-${id}.ass`
+  // Manual-overlay PNGs (one per timed overlay) — paths tracked out here so the
+  // finally block can unlink them even though they're created inside the try.
+  const overlayTmpPaths = []
   const tmpOutput  = `/tmp/vid-out-${id}.mp4`
 
   // HEAD the source once to get declared size (used for cache-key logic).
@@ -458,6 +468,22 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     const overlayPng = await sharp(overlaySvg).png().toBuffer()
     await writeFileP(tmpOverlay, overlayPng)
 
+    // Manual timed overlays → one transparent full-frame PNG each. Composited
+    // below the brand overlay with an enable='between(t,in,out)' time window, so
+    // each card shows only during its window. Reuses the resolved brand font +
+    // accent so they match the editor canvas (preview==publish).
+    const normedOverlays = normalizeOverlays(overlays, clipDur)
+    const overlayItems = []
+    for (let i = 0; i < normedOverlays.length; i++) {
+      const ov = normedOverlays[i]
+      const ovSvg = buildOverlaySvg({ width: spec.width, height: spec.height, overlay: ov, accentColor, fontBuffer })
+      const ovPng = await sharp(ovSvg).png().toBuffer()
+      const ovPath = `/tmp/vid-ovl-${id}-${i}.png`
+      await writeFileP(ovPath, ovPng)
+      overlayTmpPaths.push(ovPath)
+      overlayItems.push({ path: ovPath, in: ov.in, out: ov.out })
+    }
+
     // ── 4. Build ffmpeg filter_complex ───────────────────────────────────────
     // [0:v] = source video, [1:v] = brand overlay PNG
     //
@@ -469,9 +495,15 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // preserving the WHOLE frame so a teaching video never crops the speaker
     // out. Default (clips) uses cover — scale-to-fill + crop — to fill the
     // vertical/square format edge-to-edge.
+    // Cover lanes (clips) support static reframe (zoom + pan). Neutral reframe →
+    // legacy centered cover, byte-identical. contain lanes (long-form) letterbox
+    // the whole frame and never reframe.
+    const coverFilter = (reframe && !isNeutralReframe(reframe))
+      ? reframeFilter(reframe, W, H)
+      : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}[scaled]`
     const scaleFilter = spec.fit === 'contain'
       ? `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[scaled]`
-      : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}[scaled]`
+      : coverFilter
 
     // AI Colorist grade — applied to the SOURCE FRAME before the brand overlay
     // (mirrors the photo path: grade the photo, then composite brand text). Same
@@ -489,12 +521,23 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
           `[scaled][1:v]overlay=0:0[branded]`,
         ]
 
-    let finalOutput = '[branded]'
+    // Composite manual overlays on top of the branded frame; each shows only in
+    // its [in,out] window. Overlay PNGs are inputs 2..(1+N) (0=video, 1=brand
+    // overlay). The enable expr's commas are inside single quotes, so the
+    // filtergraph parser keeps them as part of the value (same as force_style').
+    let stage = '[branded]'
+    overlayItems.forEach((ov, i) => {
+      const next = `[ovl${i}]`
+      filterComplex.push(`${stage}[${2 + i}:v]overlay=0:0:enable='between(t,${ov.in.toFixed(2)},${ov.out.toFixed(2)})'${next}`)
+      stage = next
+    })
+
+    let finalOutput = stage
     if (hadSubtitles) {
       if (useAss) {
         // Karaoke ASS carries its own styling (PlayRes, font, colours, margins,
         // per-word \k timing) — no force_style needed; the .ass defines it all.
-        filterComplex.push(`[branded]ass=${tmpAss}[vout]`)
+        filterComplex.push(`${stage}ass=${tmpAss}[vout]`)
       } else {
         // SRT fallback. The subtitles filter path must not contain colons (fine —
         // /tmp/vid-sub-uuid.srt has none). force_style overrides: white text, black
@@ -511,7 +554,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         )
         const marginV = effectiveCaptionPos === 'bottom' ? 220 : effectiveCaptionPos === 'center' ? 160 : 120
         filterComplex.push(
-          `[branded]subtitles=${tmpSrt}:force_style='PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H80000000,Bold=1,FontSize=${subtitleFontSize},Outline=1,Shadow=0,MarginV=${marginV}'[vout]`,
+          `${stage}subtitles=${tmpSrt}:force_style='PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H80000000,Bold=1,FontSize=${subtitleFontSize},Outline=1,Shadow=0,MarginV=${marginV}'[vout]`,
         )
       }
       finalOutput = '[vout]'
@@ -527,6 +570,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     ffmpegArgs.push(
       '-i', tmpInput,
       '-i', tmpOverlay,
+      ...overlayItems.flatMap((ov) => ['-i', ov.path]),  // inputs 2..(1+N): timed overlays
       '-filter_complex', filterComplex.join(';'),
       '-map', finalOutput,
     )
@@ -565,7 +609,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // tmpInput is ref-counted — release (and unlink when last render is done).
     releaseSourceFile({ videoUrl, declaredLen, clipStart, clipDur })
     // Per-render scratch files are always unique — unlink immediately.
-    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput]) {
+    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, ...overlayTmpPaths]) {
       await unlinkP(f).catch(() => {})
     }
   }
