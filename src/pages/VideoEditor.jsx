@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
-import { getSegments, renderWholeVideo } from '@/lib/clipsLib'
+import { getSegments, renderWholeVideo, findClips } from '@/lib/clipsLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -57,8 +57,9 @@ function groupLines(words) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, dragOverlay } = ctx
-  const activeLine = lines.find((l) => playClipT >= l.start && playClipT < l.end) || null
+  const { videoRef, asset, grade, reframe, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, dragOverlay, editLine, editingCap, setEditingCap } = ctx
+  const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
+  const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const clipSelRing = sel === 'clip' || sel === 'grade'
   const z = (Number(reframe.zoom) || 100) / 100
   return (
@@ -84,11 +85,11 @@ function Canvas({ ctx }) {
             />
           ) : <div className="flex h-full items-center justify-center text-sm text-white/60">No video</div>}
 
-          {/* caption karaoke */}
+          {/* caption — karaoke; click to edit the active line inline (pauses playback) */}
           {activeLine && caption.preset !== 'off' && (
             <div
-              onClick={(e) => { e.stopPropagation(); selectKey('caption') }}
-              className="pointer-events-auto absolute left-1/2 -translate-x-1/2 cursor-pointer text-center font-extrabold leading-tight"
+              onClick={(e) => { e.stopPropagation(); videoRef.current?.pause(); selectKey('caption'); setEditingCap(true) }}
+              className="pointer-events-auto absolute left-1/2 -translate-x-1/2 cursor-text text-center font-extrabold leading-tight"
               style={{
                 maxWidth: '86%',
                 top: caption.position === 'top' ? '11%' : caption.position === 'center' ? '46%' : 'auto',
@@ -98,10 +99,24 @@ function Canvas({ ctx }) {
                 outline: sel === 'caption' ? '1.5px dashed #fff' : 'none', outlineOffset: '4px',
               }}
             >
-              {activeLine.words.map((w, i) => {
-                const spoken = playClipT >= w.start
-                return <span key={i} style={{ color: spoken ? caption.accent : '#fff' }}>{w.word}{' '}</span>
-              })}
+              {editingCap && sel === 'caption' && activeIdx >= 0 ? (
+                <input
+                  autoFocus
+                  defaultValue={activeLine.words.map((w) => w.word).join(' ')}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => editLine(activeIdx, e.target.value)}
+                  onBlur={() => setEditingCap(false)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setEditingCap(false) } }}
+                  className="w-full bg-transparent text-center outline-none"
+                  style={{ color: '#fff', font: 'inherit', textShadow: 'inherit' }}
+                  aria-label="Edit caption line"
+                />
+              ) : (
+                activeLine.words.map((w, i) => {
+                  const spoken = playClipT >= w.start
+                  return <span key={i} style={{ color: spoken ? caption.accent : '#fff' }}>{w.word}{' '}</span>
+                })
+              )}
             </div>
           )}
 
@@ -230,7 +245,7 @@ function GradeInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { caption, setCaption, lines, setRailMode } = ctx
+  const { caption, setCaption, lines, genCaptions, genCaptionsPending } = ctx
   const seg = (label, opts, key) => (
     <div className="mb-3">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</p>
@@ -247,7 +262,13 @@ function CaptionInspector({ ctx }) {
       </div>
       {seg('Position', ['top', 'center', 'bottom'], 'position')}
       {seg('Size', ['small', 'medium', 'large'], 'size')}
-      <button onClick={() => setRailMode('transcript')} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>Edit the words ({lines.length})</button>
+      {lines.length === 0 ? (
+        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(38 60% 30%)' }}>
+          {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
+        </button>
+      ) : (
+        <p className="mt-1 rounded-md px-2 py-1.5 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Tap the caption on the video to fix a word.</p>
+      )}
     </InspectorShell>
   )
 }
@@ -596,6 +617,27 @@ export default function VideoEditor() {
     mutationFn: () => renderWholeVideo(assetId),
     onSuccess: () => { toast('Rendering the full-length video — track it on Slate.'); navigate('/slate') },
   })
+  // Karaoke fix for LEGACY clips (detected before words were persisted): re-run
+  // detection (which now persists transcript_words), poll the asset until the
+  // words land, then update the query cache so the preview + Words populate.
+  const queryClient = useQueryClient()
+  const genCaptionsMutation = useAppMutation({
+    mutationFn: async () => {
+      await findClips(assetId)
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 3000))
+        const a = await getMediaAsset(assetId)
+        if (Array.isArray(a?.transcript_words) && a.transcript_words.length) {
+          queryClient.setQueryData(['media-asset', assetId], a)
+          return
+        }
+      }
+      throw new Error('Transcription timed out — try again.')
+    },
+    onSuccess: () => toast('Captions generated.'),
+  })
+
+  const [editingCap, setEditingCap] = useState(false)
   const busy = asPostMutation.isPending || brollMutation.isPending || wholeMutation.isPending
 
   const ctx = {
@@ -604,6 +646,8 @@ export default function VideoEditor() {
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
+    genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
+    editingCap, setEditingCap,
   }
 
   if (isLoading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
