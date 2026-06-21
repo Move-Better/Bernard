@@ -100,11 +100,14 @@ async function persistPlan({ ops, sb = defaultSb }) {
     await sb(`content_plan_atoms?id=in.(${ids})`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
   }
   if (ops.toInsert.length) {
-    await sb('content_plan_atoms', {
+    const r = await sb('content_plan_atoms', {
       method: 'POST',
       body: JSON.stringify(ops.toInsert),
       headers: { Prefer: 'return=minimal' },
     })
+    // Surface failures (e.g. a bad uuid) so the caller's fallback/logging fires
+    // instead of silently writing nothing.
+    if (!r.ok) throw new Error(`atom insert ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
   }
   for (const u of ops.toUpdate) {
     await sb(`content_plan_atoms?id=eq.${u.id}`, {
