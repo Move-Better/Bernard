@@ -43,12 +43,15 @@ export const GRADE_SLIDERS = [
   { key: 'depth',      label: 'Depth' },
 ]
 
-// One-tap "vibes" — start points the user then fine-tunes. Subject-safe.
+// One-tap "vibes" — start points the user then fine-tunes. Subject-safe, but
+// pulled further apart so each reads distinctly: bright = airy + cool + punchy
+// (flat); warm = heavy amber + lifted + soft; editorial = crushed contrast +
+// desaturated + cool + deep; moody = dark + very deep + muted + slightly warm.
 export const GRADE_VIBES = [
-  { id: 'bright',   label: 'Bright & clean', params: { exposure: 14, contrast: 8,  saturation: 12, warmth: -4, depth: 4 } },
-  { id: 'warm',     label: 'Warm & filmic',  params: { warmth: 30, contrast: 12, saturation: 8,  exposure: -2, depth: 10 } },
-  { id: 'editorial',label: 'Editorial',      params: { contrast: 24, saturation: -8, depth: 18, warmth: 6, exposure: -4 } },
-  { id: 'moody',    label: 'Moody',          params: { exposure: -16, contrast: 20, saturation: -6, depth: 24, warmth: 8 } },
+  { id: 'bright',   label: 'Bright & clean', params: { exposure: 32, contrast: 6,  saturation: 26, warmth: -16, depth: 0 } },
+  { id: 'warm',     label: 'Warm & filmic',  params: { exposure: 10, contrast: 4,  saturation: 14, warmth: 55,  depth: 14 } },
+  { id: 'editorial',label: 'Editorial',      params: { exposure: -6, contrast: 45, saturation: -30, warmth: -6, depth: 32 } },
+  { id: 'moody',    label: 'Moody',          params: { exposure: -34, contrast: 34, saturation: -20, warmth: 14, depth: 48 } },
 ]
 
 export function essentialsToParams(e = {}) {
