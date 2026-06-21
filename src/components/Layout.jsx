@@ -7,7 +7,7 @@ import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe,
-  LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
+  LayoutDashboard, LayoutGrid, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +37,9 @@ const NAV_SECTIONS = [
     items: [
       { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard,
         requiresCapability: CAP_INTERVIEW_START },
+      // Overview — clinic-wide board (recap + calendar + campaigns). Editor-gated.
+      { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: LayoutGrid,
+        requiresEditor: true },
       // Analytics — per-asset performance dashboard. Editor-gated like Overview.
       { to: '/analytics', label: 'Analytics', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
         requiresEditor: true },
