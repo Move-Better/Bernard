@@ -36,7 +36,7 @@ const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
  * month / week grid. Read-only — reschedule lives on the full ContentCalendar
  * page (accessible via the legacy /calendar redirect).
  */
-export default function StoriesCalendarView({ stories, isLoading }) {
+export default function StoriesCalendarView({ stories, isLoading, hideRail = false }) {
   const [today]       = useState(new Date())
   const [view, setView]          = useState('plan')
   const [current, setCurrent]    = useState(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -97,7 +97,7 @@ export default function StoriesCalendarView({ stories, isLoading }) {
   // the left, the "needs a slot" rail on the right. Falls back to full width
   // (the original layout) when the backlog is empty so nothing shifts for the
   // common case.
-  const hasRail = unscheduledApproved.length > 0
+  const hasRail = !hideRail && unscheduledApproved.length > 0
 
   return (
     <div className={hasRail ? 'grid gap-5 lg:grid-cols-[1fr_280px]' : ''}>
