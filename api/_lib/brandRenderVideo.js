@@ -530,10 +530,22 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // its [in,out] window. Overlay PNGs are inputs 2..(1+N) (0=video, 1=brand
     // overlay). The enable expr's commas are inside single quotes, so the
     // filtergraph parser keeps them as part of the value (same as force_style').
+    // Each timed overlay gentle-fades in and out (alpha) over its window edges
+    // rather than hard-cutting, so text cards don't pop on/off. The PNG inputs are
+    // looped (-loop 1, added below) into continuous streams so the fade filter has
+    // frames to ramp; the output -t bounds the otherwise-infinite stream. d is the
+    // fade length, capped so very short overlays still fully fade. With fade-in at
+    // `in` and fade-out ending at `out`, the alpha envelope IS the visibility
+    // window — no enable= needed.
+    const OVL_FADE = 0.25
     let stage = '[branded]'
     overlayItems.forEach((ov, i) => {
       const next = `[ovl${i}]`
-      filterComplex.push(`${stage}[${2 + i}:v]overlay=0:0:enable='between(t,${ov.in.toFixed(2)},${ov.out.toFixed(2)})'${next}`)
+      const faded = `[ovf${i}]`
+      const win = Math.max(0.01, ov.out - ov.in)
+      const d = Math.min(OVL_FADE, win / 3)
+      filterComplex.push(`[${2 + i}:v]format=yuva420p,fade=t=in:st=${ov.in.toFixed(2)}:d=${d.toFixed(2)}:alpha=1,fade=t=out:st=${(ov.out - d).toFixed(2)}:d=${d.toFixed(2)}:alpha=1${faded}`)
+      filterComplex.push(`${stage}${faded}overlay=0:0${next}`)
       stage = next
     })
 
@@ -592,7 +604,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     ffmpegArgs.push(
       '-i', tmpInput,
       '-i', tmpOverlay,
-      ...overlayItems.flatMap((ov) => ['-i', ov.path]),  // inputs 2..(1+N): timed overlays
+      ...overlayItems.flatMap((ov) => ['-loop', '1', '-i', ov.path]),  // inputs 2..(1+N): timed overlays (looped so the alpha fade has frames to ramp; output -t bounds them)
       '-filter_complex', filterComplex.join(';'),
       '-map', finalOutput,
     )

@@ -129,6 +129,13 @@ function Canvas({ ctx }) {
               ? { background: 'rgba(12,26,46,.62)', backdropFilter: 'blur(2px)', borderRadius: 8, padding: '6px 12px' }
               : o.role === 'callout'
                 ? { background: caption.accent, color: '#fff', borderRadius: 8, padding: '5px 11px' } : {}
+            // Mirror the bake's alpha fade (OVL_FADE=0.25s in/out) so preview≈publish.
+            // Selected overlays stay fully opaque so dragging near an edge isn't fighting a fade.
+            const fd = Math.min(0.25, Math.max(0.01, o.out - o.in) / 3)
+            let op = 1
+            if (playClipT < o.in + fd) op = (playClipT - o.in) / fd
+            else if (playClipT > o.out - fd) op = (o.out - playClipT) / fd
+            op = isSel ? 1 : Math.max(0, Math.min(1, op))
             return (
               <div
                 key={o.id}
@@ -139,7 +146,7 @@ function Canvas({ ctx }) {
                   left: `${o.x * 100}%`, top: `${o.y * 100}%`, transform: 'translate(-50%,-50%)', maxWidth: '84%',
                   fontSize: `clamp(13px, ${(ROLE_FS[o.role] || 0.034) * (o.size || 1) * 100}vh, 44px)`,
                   color: o.color || '#fff', textShadow: o.role === 'title' ? '0 2px 12px rgba(0,0,0,.55)' : 'none',
-                  outline: isSel ? '1.5px solid hsl(var(--primary))' : 'none', outlineOffset: 3, ...box,
+                  outline: isSel ? '1.5px solid hsl(var(--primary))' : 'none', outlineOffset: 3, opacity: op, ...box,
                 }}
               >{o.text}</div>
             )
