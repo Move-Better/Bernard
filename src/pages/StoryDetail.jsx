@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { AlertCircle, ArrowLeft, ChevronDown, Link as LinkIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +12,6 @@ import { useStory, useUpdateInterview, useDeleteInterview, useCampaigns } from '
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { getStageToken } from '@/lib/stageTokens'
-import TranscriptPane from '@/components/story-detail/TranscriptPane'
 import TranscriptRail from '@/components/story-detail/TranscriptRail'
 import TranscriptDrawer from '@/components/story-detail/TranscriptDrawer'
 import AssetsPane from '@/components/story-detail/AssetsPane'
@@ -197,28 +196,11 @@ function friendlyDeleteError(err) {
 export default function StoryDetail() {
   const { storyId } = useParams()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const { data: story, isLoading, isError, isPlaceholderData } = useStory(storyId)
-
-  // Provenance highlight — lifted here so TranscriptPane and AssetsPane can
-  // share it. AssetsPane fires setProvenanceHighlight when the user clicks a
-  // paragraph attribution row; TranscriptPane reacts by scrolling + highlighting
-  // the corresponding user message.
-  const [provenanceHighlight, setProvenanceHighlight] = useState(null)
+  const { data: story, isLoading, isError } = useStory(storyId)
   const [refsOpen, setRefsOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
-  // Lifted from AssetsPane. Initial value mirrors AssetsPane's previous logic
-  // — if the URL deep-links into a specific piece (?piece=<id>) we land in
-  // Edit mode so the user doesn't see a planning surface they have to click
-  // past to reach the piece they were sent to.
-  const [view, setView] = useState(searchParams.get('piece') ? 'edit' : 'plan')
-  // Edit-mode slide-over for the transcript. Closes automatically when we
-  // flip back to Plan mode (the expanded pane takes over).
   const [transcriptDrawerOpen, setTranscriptDrawerOpen] = useState(false)
-  useEffect(() => {
-    if (view !== 'edit') setTranscriptDrawerOpen(false)
-  }, [view])
   const { workspace } = useWorkspace()
   const { user } = useUser()
   const { canPurge: isWorkspaceAdmin } = useUserRole()
@@ -450,32 +432,13 @@ export default function StoryDetail() {
           clinician on a phone doesn't have to scroll past the transcript to
           reach the action surface. The rail collapse only happens on md+
           where there's a meaningful horizontal split to be had. */}
-      <div
-        className={`grid gap-5 items-start grid-cols-1 ${
-          view === 'edit'
-            ? 'md:[grid-template-columns:44px_minmax(0,1fr)]'
-            : 'md:grid-cols-2'
-        }`}
-      >
-        {view === 'edit' ? (
-          // Hidden on mobile — the rail only earns its keep on md+; on
-          // phones the user already scrolls past the transcript and the
-          // drawer would just duplicate the expanded pane below.
-          <div className="hidden md:block">
-            <TranscriptRail onClick={() => setTranscriptDrawerOpen(true)} />
-          </div>
-        ) : (
-          <TranscriptPane
-            story={story}
-            isLoadingTranscript={isPlaceholderData}
-            provenanceHighlight={provenanceHighlight}
-          />
-        )}
+      <div className="grid gap-5 items-start grid-cols-1 md:[grid-template-columns:44px_minmax(0,1fr)]">
+        {/* Hidden on mobile — the rail only earns its keep on md+ */}
+        <div className="hidden md:block">
+          <TranscriptRail onClick={() => setTranscriptDrawerOpen(true)} />
+        </div>
         <AssetsPane
           story={story}
-          onProvenanceHighlight={setProvenanceHighlight}
-          view={view}
-          onViewChange={setView}
           className="order-first md:order-none"
         />
       </div>

@@ -138,6 +138,7 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     interviews,
     cadence,
     quietDays,
+    timezone: workspace.cadence_policy?.timezone || 'America/Los_Angeles',
     recentTopics,
     backlog,
     weekMonday: planWeek,
