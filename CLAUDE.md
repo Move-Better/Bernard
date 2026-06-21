@@ -436,6 +436,12 @@ These are untracked, so `rm` is unrecoverable (see ~/.claude/CLAUDE.md "Deleting
 
 **Mockup-tracking convention (Q, 2026-06-20 — "Option A"):** `.claude/mockups/` is gitignored (`.gitignore:28`) and STAYS that way for iteration scratch — but **`git add -f` a mockup the moment Q signs off on it.** An approved mockup is the build spec (mockup-first rule), so it must be versioned next to the code it specs and reachable from any worktree. Tracked so far: `unified-editor.html`, `carousel-editor-v2.html`, `colorist-brand-look.html` (approved) + `video-editor-v1.html` (pending sign-off). Don't bulk-commit the ~50 exploration mockups — only the sign-off'd ones.
 
+**Resolving a rebase conflict with the Edit tool can leave orphan conflict markers that `git rebase --continue` does NOT catch.** When you resolve a two-block conflict (`<<<`/`===`/`>>>`) with an Edit that only matches one block (e.g. you match the `<<<HEAD`…`>>>` half but the `<<<HEAD` marker lands outside the old_string), git stages the partially-resolved file and `--continue` proceeds — but the stale `<<<<<<< HEAD` line remains in the committed file. Lint is the first thing that catches it ("Parsing error: Unexpected token <<"). **Rule: after resolving any rebase conflict with the Edit tool, grep for stale markers before staging:**
+```bash
+grep -rn "<<<<<<\|>>>>>>>\|=======" <conflicted-file>
+```
+If any remain, fix them with a targeted Edit, then re-run lint before `git add`. (Hit 2026-06-21 in the F2 phase-2 rebase: the Layout.jsx `<<<<<<< HEAD` orphan marker slipped through `git rebase --continue`, compiled as a parse error, and required an amend + force-push.)
+
 **A `git add -A` during a cherry-pick/merge conflict resolution silently sweeps untracked `.claude` scratch INTO the commit — and a follow-up `git rm --cached .claude/*.md` then stages deletion of the ~40 *tracked* docs the glob also matched.** Hit both during the 2026-06-20 colorist rebase. Clean recovery: `git reset --soft origin/main && git restore --staged .claude/ && git add src api` (stage only the real source paths), then commit. Rule: during conflict resolution, stage specific source paths, never `git add -A`, when untracked scratch is present. (Related: `git checkout <branch> -- CLAUDE.md` to "move" an edit between branches CLOBBERS an uncommitted working-tree edit to that same file — carry the edit by switching branches with it uncommitted, don't `checkout -- <file>` over it.)
 
 ## Auto-memory index hygiene (MEMORY.md)
