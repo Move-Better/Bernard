@@ -457,12 +457,26 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
   )
 }
 
-// ── Words section — caption + "use as hook" shortcut ─────────────────────────
-// Collapsible panel at the top of the right inspector. Caption auto-saves on
-// blur; the slide Save button is independent (different patch fields).
-function WordsSection({ piece, onUseAsHook, updateItem }) {
+// ── Words section — caption + phrase bank from interview content ───────────────
+// Two collapsible panels in the right inspector:
+//   1. Caption — editable textarea for piece.content (Instagram caption).
+//   2. From interview — sentence-level chips tapped to insert as slide blocks.
+// Caption auto-saves on blur; slide Save is independent.
+
+function sentencesFrom(content) {
+  if (!content) return []
+  return content
+    .replace(/([.!?])\s+/g, '$1\n')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 15 && s.length < 200)
+    .slice(0, 18)
+}
+
+function WordsSection({ piece, onUseAsHook, updateItem, onInsertPhrase }) {
   const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
-  const [open, setOpen] = useState(true)
+  const [captionOpen, setCaptionOpen] = useState(true)
+  const [phrasesOpen, setPhrasesOpen] = useState(true)
   const savedRef = useRef(draft)
 
   useEffect(() => {
@@ -484,19 +498,22 @@ function WordsSection({ piece, onUseAsHook, updateItem }) {
     }
   }
 
+  const sentences = sentencesFrom(draft)
+
   return (
     <div className="border-b">
+      {/* ── Caption ── */}
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setCaptionOpen((o) => !o)}
         className="flex w-full items-center justify-between px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
       >
         <span className="flex items-center gap-1.5">
           <Type className="h-3 w-3" /> Words · caption
         </span>
-        <span>{open ? '▾' : '▸'}</span>
+        <span>{captionOpen ? '▾' : '▸'}</span>
       </button>
-      {open && (
+      {captionOpen && (
         <div className="px-3 pb-3 space-y-2">
           <textarea
             value={draft}
@@ -521,6 +538,34 @@ function WordsSection({ piece, onUseAsHook, updateItem }) {
             <span className="text-3xs text-muted-foreground">{draft.length} chars</span>
           </div>
         </div>
+      )}
+
+      {/* ── Tap-to-insert phrase bank ── */}
+      {sentences.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPhrasesOpen((o) => !o)}
+            className="flex w-full items-center justify-between px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/50 border-t"
+          >
+            <span>Tap to add to slide</span>
+            <span>{phrasesOpen ? '▾' : '▸'}</span>
+          </button>
+          {phrasesOpen && (
+            <div className="px-2 pb-3 space-y-0.5">
+              {sentences.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onInsertPhrase?.(s)}
+                  className="w-full text-left rounded px-2 py-1.5 text-2xs leading-snug text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -1981,6 +2026,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                 piece={piece}
                 onUseAsHook={handleUseAsHook}
                 updateItem={updateItem}
+                onInsertPhrase={(text) => {
+                  if (!activeSlide) return
+                  const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
+                  updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                  setSelection({ type: 'text', idx: blocks.length - 1 })
+                }}
               />
               <LayersList
                 slide={activeSlide}
