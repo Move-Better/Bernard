@@ -7,7 +7,7 @@ import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Scissors, GalleryHorizontalEnd,
-  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, Inbox, Megaphone,
+  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, CalendarRange, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,6 +49,10 @@ const NAV_SECTIONS = [
   {
     label: 'Produce',
     items: [
+      // Your week (F2.3) — the Strategist's plan/review hub: review + approve the
+      // composed week. Supersedes the Review Inbox (which redirects to /week).
+      { to: '/week',       label: 'Your week',  hint: 'Plan · approve',  match: (p) => p.startsWith('/week'),     icon: CalendarRange,
+        requiresEditor: true },
       { to: '/stories',    label: 'Stories',    hint: 'Words',           match: (p) => p.startsWith('/stories'),  icon: Newspaper,
         requiresCapability: CAP_INTERVIEW_START },
       // Slate — the cutting desk (video → clips). Sits between Stories and
@@ -62,10 +66,6 @@ const NAV_SECTIONS = [
       // Ads — ad-creative export hub (Library/Slate exports collect here,
       // grouped by campaign). Editor-gated like the other producer surfaces.
       { to: '/ads',        label: 'Ads',        hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone,
-        requiresEditor: true },
-      // Review Inbox — the producer's single review→schedule queue (P4).
-      // Editor-gated like Overview; individual clinicians never see it.
-      { to: '/review-inbox', label: 'Review Inbox', hint: 'Approve & schedule', match: (p) => p.startsWith('/review-inbox'), icon: Inbox,
         requiresEditor: true },
     ],
   },

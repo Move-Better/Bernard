@@ -32,10 +32,11 @@ export default async function handler(req, res) {
 
   const weekMonday = mondayOf(new Date().toISOString())
 
-  // This week's planned atoms (Strategist output for plan_week).
+  // This week's planned atoms (Strategist output for plan_week). Full detail so
+  // the /week calendar can render cards + drill in to the per-piece review.
+  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,status,content_piece_id,interview_id'
   const atomsRes = await sb(
-    `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}` +
-      `&select=platform,scheduled_at,held_at,angle_label,brief`,
+    `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
   )
   const atoms = atomsRes.ok ? await atomsRes.json() : []
   const scheduled = atoms.filter((a) => a.scheduled_at)
@@ -45,11 +46,22 @@ export default async function handler(req, res) {
     byPlatform[a.platform] = (byPlatform[a.platform] || 0) + 1
   }
 
-  // Total banked backlog (held across all weeks) — the "+N more held" line.
+  const shape = (a) => ({
+    id: a.id,
+    platform: a.platform,
+    scheduled_at: a.scheduled_at,
+    label: a.angle_label,
+    brief: a.brief,
+    status: a.status,
+    contentPieceId: a.content_piece_id,
+    interviewId: a.interview_id,
+  })
+
+  // Banked backlog (held across all weeks) — full list for the backlog rail.
   const heldRes = await sb(
-    `content_plan_atoms?workspace_id=eq.${ws.id}&held_at=not.is.null&select=id`,
+    `content_plan_atoms?workspace_id=eq.${ws.id}&held_at=not.is.null&select=${ATOM_SELECT}&order=held_at.asc`,
   )
-  const heldCount = heldRes.ok ? (await heldRes.json()).length : 0
+  const heldAtoms = heldRes.ok ? await heldRes.json() : []
 
   // Active digest (the newsletter contribution line) from the cadence policy.
   const digests = Array.isArray(ws.cadence_policy?.digests) ? ws.cadence_policy.digests : []
@@ -58,12 +70,16 @@ export default async function handler(req, res) {
   return res.status(200).json({
     weekMonday,
     hasPlan: scheduled.length > 0,
+    trustStage: ws.cadence_policy?.trust_stage || 'approve_all',
+    cadence: ws.cadence_policy?.channels || null,
+    quietDays: ws.cadence_policy?.quiet_days || ['sat', 'sun'],
     scheduledTotal: scheduled.length,
     byPlatform,
     scheduled: scheduled
-      .map((a) => ({ platform: a.platform, scheduled_at: a.scheduled_at, label: a.angle_label, brief: a.brief }))
+      .map(shape)
       .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at)),
-    heldCount,
+    heldCount: heldAtoms.length,
+    held: heldAtoms.map(shape),
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
   })
 }
