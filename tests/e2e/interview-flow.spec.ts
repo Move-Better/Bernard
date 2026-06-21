@@ -100,7 +100,7 @@ test('interview create flow + integrations page', async ({ page }) => {
   // the call returns 403 and the UI shows "Admins only." or a network-error
   // toast — anything other than the credentials list.
   await page.goto('/settings/integrations')
-  await expect(page.getByRole('heading', { name: /integrations/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Integrations', exact: true })).toBeVisible()
 
   // Negative assertion: the credentials fetch must not have failed with a
   // 403/network error. Either we see the integrations grid (admin user) or
