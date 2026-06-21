@@ -143,9 +143,9 @@ function Canvas({ ctx }) {
       </div>
       <div className="relative h-full max-h-full" style={{ aspectRatio: '9 / 16' }}>
         <div
-          className={`relative h-full w-full overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
+          className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
           style={clipSelRing ? { boxShadow: '0 0 0 2px hsl(var(--primary))' } : undefined}
-          onClick={() => selectKey('grade')}
+          onClick={togglePlay}
         >
           {asset?.blob_url ? (
             <video
@@ -213,12 +213,14 @@ function Canvas({ ctx }) {
             </div>
           )}
 
-          {/* center play */}
-          {!playing && (
-            <button onClick={(e) => { e.stopPropagation(); togglePlay() }} className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-0" style={{ background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(2px)' }}>
-              <Play className="h-7 w-7 text-white" fill="#fff" />
-            </button>
-          )}
+          {/* center play/pause indicator — click anywhere on the video to toggle.
+              Visible when paused; fades out while playing unless you hover. */}
+          <div
+            className={`pointer-events-none absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
+            style={{ background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(2px)' }}
+          >
+            {playing ? <Pause className="h-7 w-7 text-white" fill="#fff" /> : <Play className="h-7 w-7 text-white" fill="#fff" />}
+          </div>
           <span className="absolute left-3 top-3 rounded bg-black/30 px-1.5 py-0.5 text-3xs text-white/70">9:16 · {fmt(ctx.durationSec)}{startSec > 0 ? ` · from ${fmt(startSec)}` : ''}</span>
         </div>
       </div>
@@ -572,6 +574,13 @@ export default function VideoEditor() {
         <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold" style={{ background: 'hsl(var(--info)/.12)', color: 'hsl(var(--info))' }}><Film className="h-3.5 w-3.5" />Instagram Reel · {fmt(durationSec)} · 9:16</span>
         <span className="rounded-md px-2 py-0.5 text-3xs font-semibold" style={{ background: 'hsl(var(--action)/.15)', color: 'hsl(38 60% 30%)' }}>Beta editor</span>
         <div className="ml-auto flex items-center gap-2">
+          {/* Transport — always-visible play/pause + clip time. */}
+          <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
+            <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
+              {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            </button>
+            <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
+          </div>
           <Button size="sm" disabled={renderMutation.isPending} onClick={() => renderMutation.mutate()} style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
             {renderMutation.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="mr-1 h-3.5 w-3.5" />}Render &amp; save
           </Button>
