@@ -511,6 +511,7 @@ export default function StaffProfile() {
           {(isMyStaffProfile || role === 'admin') && (
             <CaptureCompanionCard staffMember={staffMember} />
           )}
+          {role === 'admin' && <BlogReviewCard staffMember={staffMember} />}
           {role === 'admin' && <StaffRecipeCard staffMember={staffMember} />}
         </div>
       )}
@@ -1036,6 +1037,80 @@ function CaptureCompanionCard({ staffMember }) {
                   : 'Revoke'}
               </Button>
             </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Blog review card (admin-only) ─────────────────────────────────────────────
+
+function BlogReviewCard({ staffMember }) {
+  const { user } = useUser()
+  const patchStaff = usePatchStaff()
+  const [enabled, setEnabled] = useState(staffMember.blog_review_enabled ?? false)
+  const [saved, setSaved] = useState(false)
+
+  const isDirty = enabled !== (staffMember.blog_review_enabled ?? false)
+
+  async function handleSave() {
+    await patchStaff.mutateAsync({ id: staffMember.id, patch: { blog_review_enabled: enabled }, userId: user?.id })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <Card>
+      <CardContent className="py-5 space-y-3">
+        <div>
+          <p className="text-sm font-semibold">Blog draft review</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            When enabled, blog drafts for this clinician start in <span className="font-medium">In review</span> status so they can personally sign off before publishing.
+          </p>
+        </div>
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={() => setEnabled((v) => !v)}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              enabled ? 'bg-primary' : 'bg-input'
+            }`}
+          >
+            <span
+              className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform ${
+                enabled ? 'translate-x-4' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+          <span className="text-sm text-foreground">
+            {enabled ? 'Receives blog drafts for review' : 'Blog drafts go straight to ready'}
+          </span>
+        </label>
+        <div className="flex items-center gap-3 pt-1">
+          <Button
+            size="sm"
+            disabled={!isDirty || patchStaff.isPending}
+            onClick={handleSave}
+          >
+            {patchStaff.isPending ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Saving…</>
+            ) : saved ? (
+              'Saved ✓'
+            ) : (
+              'Save'
+            )}
+          </Button>
+          {isDirty && !patchStaff.isPending && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setEnabled(staffMember.blog_review_enabled ?? false)}
+            >
+              Reset
+            </button>
           )}
         </div>
       </CardContent>

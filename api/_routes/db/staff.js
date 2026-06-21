@@ -54,7 +54,7 @@ async function countRefs(table, query) {
 }
 
 const CLINICIAN_RECIPE_FIELDS = 'default_audience,default_story_type,default_tone,default_voice_mode'
-const CLINICIAN_BASE_FIELDS = `id,name,user_id,created_by_id,created_by_email,created_at,voice_notes,voice_notes_refreshed_at,voice_notes_edits_analyzed,preferred_length,tts_settings,eleven_voice_id,voice_clone_consent_at,voice_clone_revoked_at,${CLINICIAN_RECIPE_FIELDS}`
+const CLINICIAN_BASE_FIELDS = `id,name,user_id,created_by_id,created_by_email,created_at,voice_notes,voice_notes_refreshed_at,voice_notes_edits_analyzed,preferred_length,tts_settings,eleven_voice_id,voice_clone_consent_at,voice_clone_revoked_at,blog_review_enabled,${CLINICIAN_RECIPE_FIELDS}`
 const INTERVIEW_FIELDS = 'id,topic,status,capture_mode,created_at,updated_at,owner_id,owner_email,verbatim_flags,messages,session_state,location_id,prototype_id,campaign_id,campaign:campaigns(id,name),summary_text,summary_generated_at'
 
 // Slim shape for the Stories list. Drops the heavy `messages` and `session_state`
@@ -197,7 +197,7 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
 
-    const PATCHABLE = new Set(['default_audience', 'default_story_type', 'default_tone', 'default_voice_mode', 'voice_notes', 'preferred_length', 'tts_settings'])
+    const PATCHABLE = new Set(['default_audience', 'default_story_type', 'default_tone', 'default_voice_mode', 'voice_notes', 'preferred_length', 'tts_settings', 'blog_review_enabled'])
     const body = req.body || {}
     const patch = { updated_at: new Date().toISOString() }
     for (const [k, v] of Object.entries(body)) {
