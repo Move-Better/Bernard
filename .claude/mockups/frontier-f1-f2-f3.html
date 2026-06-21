@@ -1,0 +1,506 @@
+<!--
+  Frontier Panel — F1 / F2 / F3 execution mockup
+  "The Weekly Call -> a published quarter"
+  Built on Bernard's real index.css tokens (Blue Spruce #0C7580 primary, amber action).
+  Tabs: (1) The Weekly Call [F1 on-ramp]  (2) Your Teammate [F2]  (3) Video Studio [F3]
+  This is a thought-mockup, not production code. Copy is illustrative.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Frontier F1/F2/F3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          background: 'hsl(var(--background) / <alpha-value>)',
+          foreground: 'hsl(var(--foreground) / <alpha-value>)',
+          card: 'hsl(var(--card) / <alpha-value>)',
+          primary: 'hsl(var(--primary) / <alpha-value>)',
+          'primary-foreground': 'hsl(var(--primary-foreground) / <alpha-value>)',
+          action: 'hsl(var(--action) / <alpha-value>)',
+          success: 'hsl(var(--success) / <alpha-value>)',
+          info: 'hsl(var(--info) / <alpha-value>)',
+          warning: 'hsl(var(--warning) / <alpha-value>)',
+          muted: 'hsl(var(--muted) / <alpha-value>)',
+          'muted-foreground': 'hsl(var(--muted-foreground) / <alpha-value>)',
+          accent: 'hsl(var(--accent) / <alpha-value>)',
+          'accent-foreground': 'hsl(var(--accent-foreground) / <alpha-value>)',
+          border: 'hsl(var(--border) / <alpha-value>)',
+        },
+        fontFamily: { sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'] },
+        borderRadius: { xl: '14px' },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --accent-foreground: 160 84% 30%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --info: 199 95% 40%;
+    --action: 32 95% 44%;
+    --action-foreground: 0 0% 100%;
+  }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'Geist','Inter',system-ui,sans-serif; }
+  h1,h2,h3,h4 { font-weight: 700; letter-spacing: -0.025em; }
+
+  .nx-pill { display:inline-flex; align-items:center; gap:6px; border-radius:9999px; padding:3px 9px; font-size:11px; font-weight:600; line-height:1.4; white-space:nowrap; }
+  .nx-pill-emerald { background:#ecfdf5; color:#059669; }
+  .nx-pill-amber   { background:#fff7ed; color:#d97706; }
+  .nx-pill-sky     { background:#e0f2fe; color:#0284c7; }
+  .nx-pill-violet  { background:#f5f3ff; color:#7c3aed; }
+  .nx-pill-ink     { background:#f1f5f9; color:#475569; }
+  .nx-pill-primary { background:hsl(var(--primary)); color:#fff; }
+
+  .nx-rail { display:inline-block; width:4px; height:22px; border-radius:9999px; margin-right:10px; vertical-align:middle; background:hsl(var(--primary)); }
+  .nx-grad { background:linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action))); color:#fff; }
+  .nx-grad-text { background:linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action))); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .nx-grad-ribbon { background:linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action))); color:#fff; border-radius:14px; }
+
+  .nx-card { background:#fff; border:1px solid hsl(var(--border)); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10); }
+  .nx-card-hi { background:linear-gradient(180deg,#fff,hsl(var(--primary)/0.05)); border:1px solid hsl(var(--primary)/0.3); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(12,117,128,0.22); }
+  .nx-card-action { background:linear-gradient(180deg,#fff,hsl(var(--action)/0.06)); border:1px solid hsl(var(--action)/0.3); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px hsl(var(--action)/0.22); }
+
+  .nx-btn-primary { background:hsl(var(--primary)); color:#fff; font-weight:600; border-radius:10px; box-shadow:0 1px 0 rgba(0,0,0,0.05), 0 6px 16px -10px rgba(12,117,128,0.55); transition:background .15s ease; }
+  .nx-btn-primary:hover { background:hsl(186 83% 21%); }
+  .nx-btn-secondary { background:#fff; color:hsl(var(--foreground)); border:1px solid hsl(var(--border)); font-weight:600; border-radius:10px; }
+  .nx-btn-secondary:hover { background:#f8fafc; }
+  .nx-btn-action { background:hsl(var(--action)); color:#fff; font-weight:600; border-radius:10px; }
+  .nx-btn-action:hover { filter:brightness(0.95); }
+
+  .nx-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:hsl(var(--muted-foreground)); }
+  .legend { border:1px dashed hsl(var(--primary)/0.45); background:hsl(var(--primary)/0.04); border-radius:12px; }
+
+  .seg { transition: all .15s ease; }
+  .seg.active { background:hsl(var(--foreground)); color:#fff; }
+
+  @keyframes pulsering { 0%{ box-shadow:0 0 0 0 hsl(var(--primary)/0.35);} 70%{ box-shadow:0 0 0 22px hsl(var(--primary)/0);} 100%{ box-shadow:0 0 0 0 hsl(var(--primary)/0);} }
+  .pulse { animation: pulsering 2s infinite; }
+  @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+  .shimmer { background:linear-gradient(90deg,#eef2f7 25%,#e2e8f0 37%,#eef2f7 63%); background-size:800px 100%; animation:shimmer 1.4s infinite linear; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:9px; font-size:13.5px; font-weight:500; color:hsl(var(--muted-foreground)); }
+  .nav-item.active { background:hsl(var(--primary)/0.10); color:hsl(var(--primary)); font-weight:600; }
+  .nav-item:hover:not(.active){ background:hsl(var(--muted)); color:hsl(var(--foreground)); }
+  .tl-line { position:absolute; left:19px; top:38px; bottom:-6px; width:2px; background:hsl(var(--border)); }
+</style>
+
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+
+  <!-- ───────── Sidebar ───────── -->
+  <aside class="w-[232px] shrink-0 border-r border-border bg-white/70 backdrop-blur px-3 py-4 hidden md:flex md:flex-col gap-1">
+    <div class="flex items-center gap-2 px-2 pb-3">
+      <div class="h-8 w-8 rounded-lg nx-grad flex items-center justify-center font-bold text-sm">B</div>
+      <div class="font-bold text-[15px] tracking-tight">Bernard</div>
+    </div>
+    <button class="flex items-center justify-between gap-2 mx-1 mb-3 rounded-lg border border-border px-2.5 py-1.5 text-left hover:bg-muted">
+      <div class="flex items-center gap-2">
+        <div class="h-5 w-5 rounded bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">MB</div>
+        <span class="text-[13px] font-medium">Move Better People</span>
+      </div>
+      <i data-lucide="chevrons-up-down" class="h-3.5 w-3.5 text-muted-foreground"></i>
+    </button>
+    <nav class="space-y-0.5">
+      <div class="nav-item"><i data-lucide="home" class="h-4 w-4"></i> Home</div>
+      <div class="nav-item active"><i data-lucide="sparkles" class="h-4 w-4"></i> Your Teammate</div>
+      <div class="nav-item"><i data-lucide="layers" class="h-4 w-4"></i> Stories</div>
+      <div class="nav-item"><i data-lucide="image" class="h-4 w-4"></i> Library</div>
+      <div class="nav-item"><i data-lucide="clapperboard" class="h-4 w-4"></i> Slate</div>
+      <div class="nav-item"><i data-lucide="calendar-range" class="h-4 w-4"></i> Overview</div>
+      <div class="nav-item"><i data-lucide="bar-chart-3" class="h-4 w-4"></i> Analytics</div>
+      <div class="nav-item"><i data-lucide="settings" class="h-4 w-4"></i> Settings</div>
+    </nav>
+    <div class="mt-auto mx-1 rounded-xl legend p-3">
+      <div class="text-[10.5px] font-bold uppercase tracking-wide text-primary mb-1">Frontier mockup</div>
+      <p class="text-[11.5px] leading-snug text-muted-foreground">Illustrative execution of F1→F2→F3 from the 2026-06-20 panel. Not shipped UI.</p>
+    </div>
+  </aside>
+
+  <!-- ───────── Main ───────── -->
+  <main class="flex-1 min-w-0">
+    <!-- Topbar / screen switcher -->
+    <div class="sticky top-0 z-20 bg-background/85 backdrop-blur border-b border-border px-5 py-3 flex items-center gap-4 flex-wrap">
+      <div class="inline-flex rounded-xl border border-border bg-white p-1 text-[13px] font-semibold">
+        <button id="seg-1" onclick="showScreen(1)" class="seg active rounded-lg px-3 py-1.5">① The Weekly Call</button>
+        <button id="seg-2" onclick="showScreen(2)" class="seg rounded-lg px-3 py-1.5">② Your Teammate</button>
+        <button id="seg-3" onclick="showScreen(3)" class="seg rounded-lg px-3 py-1.5">③ Video Studio</button>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="nx-pill nx-pill-ink"><i data-lucide="git-branch" class="h-3 w-3"></i> Frontier bet · "The Weekly Call → a published quarter"</span>
+      </div>
+    </div>
+
+    <!-- ════════ SCREEN 1 — THE WEEKLY CALL (F1) ════════ -->
+    <section id="screen-1" class="p-5 md:p-8">
+      <div class="max-w-5xl mx-auto">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="nx-pill nx-pill-primary">F1</span>
+          <span class="nx-eyebrow">The front door</span>
+        </div>
+        <h1 class="text-2xl md:text-[28px] mb-1">Tap once. Talk for six minutes. That's the whole week.</h1>
+        <p class="text-muted-foreground mb-6 max-w-2xl">The realtime voice call (already built — <code class="text-[12px] bg-muted px-1 rounded">PhoneCall.jsx</code> + <code class="text-[12px] bg-muted px-1 rounded">/api/realtime-session</code>) becomes the default capture path. No form, no typing. When the call ends it already auto-generates your content.</p>
+
+        <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-5">
+          <!-- Call surface -->
+          <div class="nx-card-hi p-7 flex flex-col items-center text-center">
+            <div class="h-28 w-28 rounded-full nx-grad flex items-center justify-center pulse mb-4">
+              <i data-lucide="mic" class="h-11 w-11 text-white"></i>
+            </div>
+            <div class="text-lg font-semibold">Bernard is listening…</div>
+            <div class="text-muted-foreground text-sm mb-5">06:12 · British, soft-spoken · your cloned voice <span class="nx-pill nx-pill-violet ml-1">F3 upgrade</span></div>
+
+            <div class="w-full text-left space-y-3 mb-6">
+              <div class="flex gap-2.5">
+                <div class="h-7 w-7 shrink-0 rounded-full nx-grad text-white text-[11px] font-bold flex items-center justify-center">B</div>
+                <div class="rounded-2xl bg-muted px-3.5 py-2 text-sm">So when that runner came in with "sciatica" — what did you actually find?</div>
+              </div>
+              <div class="flex gap-2.5 flex-row-reverse">
+                <div class="h-7 w-7 shrink-0 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center">AJ</div>
+                <div class="rounded-2xl bg-primary/10 text-foreground px-3.5 py-2 text-sm">Honestly it wasn't the disc at all — it was the glute med not firing. We loaded it and her pain dropped in two sessions…</div>
+              </div>
+              <div class="flex gap-2.5">
+                <div class="h-7 w-7 shrink-0 rounded-full nx-grad text-white text-[11px] font-bold flex items-center justify-center">B</div>
+                <div class="rounded-2xl bg-muted px-3.5 py-2 text-sm shimmer text-transparent select-none">typing indicator placeholder line</div>
+              </div>
+            </div>
+
+            <button onclick="showScreen(2)" class="nx-btn-primary w-full py-3 text-[15px] flex items-center justify-center gap-2">
+              <i data-lucide="square" class="h-4 w-4"></i> End &amp; build my week
+            </button>
+            <p class="text-[12px] text-muted-foreground mt-2">This call is your only required input this week.</p>
+          </div>
+
+          <!-- What changes + how it gets here -->
+          <div class="space-y-4">
+            <div class="legend p-4">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> What changed here</div>
+              <ul class="text-[13px] space-y-2 text-foreground/90">
+                <li class="flex gap-2"><i data-lucide="arrow-right" class="h-4 w-4 text-primary shrink-0 mt-0.5"></i> The Beta "Live Interview" tile becomes the <b>default</b> — Home's primary CTA is "Start your weekly call," not a 9-tile grid.</li>
+                <li class="flex gap-2"><i data-lucide="arrow-right" class="h-4 w-4 text-primary shrink-0 mt-0.5"></i> <code class="text-[12px] bg-white px-1 rounded">realtime_voice_enabled</code> flips on by default + enabled in onboarding.</li>
+                <li class="flex gap-2"><i data-lucide="arrow-right" class="h-4 w-4 text-primary shrink-0 mt-0.5"></i> <b>Bernard can call you</b> — a scheduled outbound call (Twilio ↔ Realtime) on your drive home. Inbound tap still works.</li>
+                <li class="flex gap-2"><i data-lucide="arrow-right" class="h-4 w-4 text-primary shrink-0 mt-0.5"></i> The call → keystone blog → full atom plan is <b>already wired</b> (<code class="text-[12px] bg-white px-1 rounded">?wrap=1</code> auto-gen). F1 = promotion + polish, not a rebuild.</li>
+              </ul>
+            </div>
+            <div class="nx-card p-4">
+              <div class="nx-eyebrow mb-2">Outside reference</div>
+              <p class="text-[13px] text-muted-foreground">Gemini Live (native audio + free transcripts) · OpenAI Realtime (already in use, <code class="text-[12px] bg-muted px-1 rounded">gpt-realtime</code>) · ElevenLabs Conversational AI for voice quality.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ SCREEN 2 — YOUR TEAMMATE (F2) ════════ -->
+    <section id="screen-2" class="p-5 md:p-7 hidden">
+      <!-- Teammate ribbon -->
+      <div class="nx-grad-ribbon px-5 py-4 mb-5 flex items-start gap-4 flex-wrap">
+        <div class="h-11 w-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="h-6 w-6 text-white"></i></div>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-[15px]">Bernard built your week from Tuesday's 6-minute call.</div>
+          <p class="text-white/90 text-[13px] mt-0.5">1 call in → <b>23 pieces</b> drafted across 5 channels → scored against how you actually talk → waiting on you. <span class="underline cursor-pointer" onclick="showScreen(1)">see the call ›</span></p>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-2xl font-bold" id="approvedCount">0<span class="text-white/70 text-base font-medium">/23</span></div>
+          <div class="text-[11px] text-white/80 uppercase tracking-wide">approved</div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[340px_1fr] gap-5">
+        <!-- Mission control: the agent run -->
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="nx-rail"></span><h2 class="text-[15px] font-bold">Mission control</h2>
+            <span class="nx-pill nx-pill-emerald ml-auto"><i data-lucide="check" class="h-3 w-3"></i> run complete</span>
+          </div>
+          <div class="nx-card p-4 space-y-1 relative">
+            <!-- stage -->
+            <div class="relative pl-12 pb-4">
+              <div class="tl-line"></div>
+              <div class="absolute left-2 top-0 h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"><i data-lucide="compass" class="h-4 w-4"></i></div>
+              <div class="flex items-center gap-2"><div class="font-semibold text-[13.5px]">Strategist</div><span class="nx-pill nx-pill-emerald">done</span></div>
+              <p class="text-[12.5px] text-muted-foreground mt-0.5">Mapped the call to a <b>12-week plan</b> · 4 themes. Led the week with the glute-med/sciatica insight — it's your strongest teaching beat.</p>
+            </div>
+            <div class="relative pl-12 pb-4">
+              <div class="tl-line"></div>
+              <div class="absolute left-2 top-0 h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"><i data-lucide="pen-line" class="h-4 w-4"></i></div>
+              <div class="flex items-center gap-2"><div class="font-semibold text-[13.5px]">Drafters ×6</div><span class="nx-pill nx-pill-emerald">done</span></div>
+              <p class="text-[12.5px] text-muted-foreground mt-0.5">Blog · Instagram ×8 · LinkedIn ×4 · GBP ×3 · Email · 3 Reels — each in your voice, per-channel.</p>
+            </div>
+            <div class="relative pl-12 pb-4">
+              <div class="tl-line"></div>
+              <div class="absolute left-2 top-0 h-8 w-8 rounded-full bg-success/15 text-success flex items-center justify-center"><i data-lucide="shield-check" class="h-4 w-4"></i></div>
+              <div class="flex items-center gap-2"><div class="font-semibold text-[13.5px]">Brand-voice judge</div><span class="nx-pill nx-pill-emerald">done</span></div>
+              <p class="text-[12.5px] text-muted-foreground mt-0.5">Scored 23 pieces against your real transcripts. 21 cleared. <b class="text-action">2 flagged</b> — they didn't quite sound like you. Surfaced for your read.</p>
+            </div>
+            <div class="relative pl-12 pb-4">
+              <div class="tl-line"></div>
+              <div class="absolute left-2 top-0 h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"><i data-lucide="clapperboard" class="h-4 w-4"></i></div>
+              <div class="flex items-center gap-2"><div class="font-semibold text-[13.5px]">Producer</div><span class="nx-pill nx-pill-emerald">done</span></div>
+              <p class="text-[12.5px] text-muted-foreground mt-0.5">Composed 3 carousels + generated 3 Reels (b-roll + your avatar + cloned voice). <span class="text-primary cursor-pointer underline" onclick="showScreen(3)">open Video Studio ›</span></p>
+            </div>
+            <div class="relative pl-12">
+              <div class="absolute left-2 top-0 h-8 w-8 rounded-full bg-action/15 text-action flex items-center justify-center"><i data-lucide="calendar-clock" class="h-4 w-4"></i></div>
+              <div class="flex items-center gap-2"><div class="font-semibold text-[13.5px]">Scheduler</div><span class="nx-pill nx-pill-amber">waiting on you</span></div>
+              <p class="text-[12.5px] text-muted-foreground mt-0.5">Queued at best-times across 5 channels — holds until you approve.</p>
+            </div>
+          </div>
+
+          <!-- Bernard's note -->
+          <div class="nx-card p-4 mt-4">
+            <div class="flex items-center gap-2 mb-1.5">
+              <div class="h-6 w-6 rounded-full nx-grad text-white text-[10px] font-bold flex items-center justify-center">B</div>
+              <div class="text-[13px] font-semibold">Bernard's note</div>
+            </div>
+            <p class="text-[12.5px] text-muted-foreground leading-relaxed">"Your glute-med explanation landed differently than usual — I led the week with it and built a Reel around it. Two posts I wasn't sure matched your voice; I flagged them rather than guess. Everything else is ready when you are."</p>
+          </div>
+
+          <div class="legend p-3.5 mt-4">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> What changed here</div>
+            <p class="text-[12px] text-foreground/90 leading-relaxed"><b>F2:</b> the hardcoded 4-week × 8-platform grid (<code class="bg-white px-1 rounded">atomPlan.js</code>) becomes an <b>agent-planned quarter</b>. The dormant <code class="bg-white px-1 rounded">captionFidelityRubric.js</code> is promoted to the <b>gate</b>. <b>F6:</b> a real retrieval brain feeds the strategist. The human does judgment, not assembly.</p>
+          </div>
+        </div>
+
+        <!-- Review feed -->
+        <div>
+          <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <span class="nx-rail" style="background:hsl(var(--action))"></span>
+            <h2 class="text-[15px] font-bold">Your turn — review strongest-first</h2>
+            <span class="nx-pill nx-pill-ink"><i data-lucide="trending-up" class="h-3 w-3"></i> ranked by your own engagement history <span class="opacity-60">(F9)</span></span>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+
+            <!-- Flagged card (amber) -->
+            <div class="nx-card-action p-4" data-card>
+              <div class="flex items-center justify-between mb-2">
+                <span class="nx-pill nx-pill-amber"><i data-lucide="camera" class="h-3 w-3"></i> Instagram</span>
+                <span class="nx-pill nx-pill-amber"><i data-lucide="flag" class="h-3 w-3"></i> Bernard wants your read</span>
+              </div>
+              <div class="font-semibold text-[14px] mb-1">"Your sciatica might not be sciatica"</div>
+              <p class="text-[12.5px] text-muted-foreground mb-3 line-clamp-3">Most low-back pain we see isn't a disc — it's a glute that stopped showing up to work. Here's the 30-second test we run…</p>
+              <div class="flex items-center gap-2 mb-3">
+                <div class="flex-1">
+                  <div class="flex items-center justify-between text-[11px] mb-1"><span class="text-muted-foreground">Voice match</span><span class="font-semibold text-action">72% · a bit clinical</span></div>
+                  <div class="h-1.5 rounded-full bg-muted overflow-hidden"><div class="h-full rounded-full bg-action" style="width:72%"></div></div>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="approveCard(this)" class="nx-btn-primary flex-1 py-2 text-[13px]">Approve</button>
+                <button class="nx-btn-secondary px-3 py-2 text-[13px] flex items-center gap-1"><i data-lucide="wand-2" class="h-3.5 w-3.5"></i> Steer</button>
+              </div>
+            </div>
+
+            <!-- Reel card (links to F3) -->
+            <div class="nx-card p-4" data-card>
+              <div class="flex items-center justify-between mb-2">
+                <span class="nx-pill nx-pill-violet"><i data-lucide="clapperboard" class="h-3 w-3"></i> Reel · 0:22</span>
+                <span class="nx-pill nx-pill-emerald">94%</span>
+              </div>
+              <div class="rounded-lg overflow-hidden mb-2 relative" style="aspect-ratio:16/10;background:linear-gradient(135deg,#0C7580,#0a5a63)">
+                <div class="absolute inset-0 flex items-center justify-center"><div class="h-10 w-10 rounded-full bg-white/90 flex items-center justify-center"><i data-lucide="play" class="h-5 w-5 text-primary ml-0.5"></i></div></div>
+                <div class="absolute bottom-1.5 left-2 right-2 text-white text-[12px] font-bold drop-shadow">"it's the nerve, not the muscle"</div>
+                <span class="absolute top-1.5 right-1.5 nx-pill nx-pill-violet">avatar + your voice</span>
+              </div>
+              <div class="font-semibold text-[13.5px] mb-2">Glute-med Reel · auto b-roll</div>
+              <div class="flex gap-2">
+                <button onclick="showScreen(3)" class="nx-btn-secondary flex-1 py-2 text-[13px] flex items-center justify-center gap-1"><i data-lucide="pencil" class="h-3.5 w-3.5"></i> Open in Studio</button>
+                <button onclick="approveCard(this)" class="nx-btn-primary px-4 py-2 text-[13px]">Approve</button>
+              </div>
+            </div>
+
+            <!-- Standard cards -->
+            <div class="nx-card p-4" data-card>
+              <div class="flex items-center justify-between mb-2">
+                <span class="nx-pill nx-pill-sky"><i data-lucide="briefcase" class="h-3 w-3"></i> LinkedIn</span>
+                <span class="nx-pill nx-pill-emerald">96%</span>
+              </div>
+              <div class="font-semibold text-[14px] mb-1">The runner who "had a disc problem"</div>
+              <p class="text-[12.5px] text-muted-foreground mb-3 line-clamp-3">She came in sure she needed an MRI. Two sessions later she was back running — because we treated the thing that was actually failing…</p>
+              <div class="flex items-center justify-between text-[11px] mb-3"><span class="text-muted-foreground">Voice match</span><span class="font-semibold text-success">Sounds like you · 96%</span></div>
+              <div class="flex gap-2">
+                <button onclick="approveCard(this)" class="nx-btn-primary flex-1 py-2 text-[13px]">Approve</button>
+                <button class="nx-btn-secondary px-3 py-2 text-[13px] flex items-center gap-1"><i data-lucide="wand-2" class="h-3.5 w-3.5"></i></button>
+              </div>
+            </div>
+
+            <div class="nx-card p-4" data-card>
+              <div class="flex items-center justify-between mb-2">
+                <span class="nx-pill nx-pill-ink"><i data-lucide="map-pin" class="h-3 w-3"></i> Google Business</span>
+                <span class="nx-pill nx-pill-emerald">91%</span>
+              </div>
+              <div class="font-semibold text-[14px] mb-1">Back pain in Portland? Read this first</div>
+              <p class="text-[12.5px] text-muted-foreground mb-3 line-clamp-3">A quick post for anyone Googling "sciatica near me" — what we check before we ever talk about scans…</p>
+              <div class="flex items-center justify-between text-[11px] mb-3"><span class="text-muted-foreground">Voice match</span><span class="font-semibold text-success">Sounds like you · 91%</span></div>
+              <div class="flex gap-2">
+                <button onclick="approveCard(this)" class="nx-btn-primary flex-1 py-2 text-[13px]">Approve</button>
+                <button class="nx-btn-secondary px-3 py-2 text-[13px] flex items-center gap-1"><i data-lucide="wand-2" class="h-3.5 w-3.5"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="approveAll()" class="nx-btn-action w-full mt-4 py-3 text-[14px] flex items-center justify-center gap-2"><i data-lucide="check-check" class="h-4 w-4"></i> Approve all 21 cleared · schedule the week</button>
+          <p class="text-center text-[12px] text-muted-foreground mt-2">The 2 flagged stay back for your read. Nothing publishes without your yes.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ SCREEN 3 — VIDEO STUDIO (F3) ════════ -->
+    <section id="screen-3" class="p-5 md:p-7 hidden">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="nx-pill nx-pill-violet">F3</span><span class="nx-eyebrow">Generative video studio</span>
+      </div>
+      <h1 class="text-2xl md:text-[26px] mb-1">A blog line became a Reel — no camera, no editing.</h1>
+      <p class="text-muted-foreground mb-5 max-w-3xl">Bernard generated the b-roll, put your avatar on camera, narrated it in your cloned voice, and baked on-brand captions. You edit it by editing the words.</p>
+
+      <div class="grid lg:grid-cols-[300px_1fr_300px] gap-5">
+
+        <!-- Phone preview -->
+        <div class="nx-card p-4 flex flex-col items-center">
+          <div class="nx-eyebrow self-start mb-2">Preview · 9:16</div>
+          <div class="rounded-2xl overflow-hidden relative w-[210px]" style="aspect-ratio:9/16;background:linear-gradient(160deg,#0C7580 0%,#0a5a63 55%,#083f45 100%)">
+            <div class="absolute top-3 left-0 right-0 flex justify-center"><span class="nx-pill nx-pill-violet">your avatar</span></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="h-20 w-20 rounded-full bg-white/15 border-2 border-white/40 flex items-center justify-center"><i data-lucide="user-round" class="h-10 w-10 text-white/90"></i></div>
+            </div>
+            <div class="absolute bottom-14 left-3 right-3 text-center">
+              <div class="inline-block bg-black/35 backdrop-blur px-2 py-1 rounded text-white text-[15px] font-extrabold leading-tight">it's the <span style="color:#fde68a">nerve</span>,<br>not the muscle</div>
+            </div>
+            <div class="absolute bottom-4 left-0 right-0 flex justify-center"><div class="h-9 w-9 rounded-full bg-white/90 flex items-center justify-center"><i data-lucide="play" class="h-4 w-4 text-primary ml-0.5"></i></div></div>
+          </div>
+          <div class="w-full mt-3 space-y-1.5 text-[12px]">
+            <div class="flex items-center justify-between"><span class="text-muted-foreground">Voice</span><span class="font-semibold flex items-center gap-1"><i data-lucide="audio-lines" class="h-3.5 w-3.5 text-primary"></i> Your cloned voice</span></div>
+            <div class="flex items-center justify-between"><span class="text-muted-foreground">Captions</span><span class="font-semibold">On-brand · Blue Spruce</span></div>
+            <div class="flex items-center justify-between"><span class="text-muted-foreground">Music</span><span class="font-semibold">Beat-synced</span></div>
+          </div>
+        </div>
+
+        <!-- Timeline: edit-by-text + b-roll track -->
+        <div class="space-y-4">
+          <div class="nx-card p-4">
+            <div class="flex items-center gap-2 mb-2.5">
+              <i data-lucide="type" class="h-4 w-4 text-primary"></i><div class="font-semibold text-[13.5px]">Edit by text</div>
+              <span class="nx-pill nx-pill-ink ml-auto">delete a word → it's cut from the video</span>
+            </div>
+            <p class="text-[14px] leading-7">
+              <span class="bg-primary/5 rounded px-0.5">Most "sciatica" we see</span> <span class="bg-primary/5 rounded px-0.5">isn't a disc problem at all.</span> <span class="bg-action/15 rounded px-0.5 line-through decoration-action/70 text-muted-foreground">Um, basically,</span> <span class="bg-primary/5 rounded px-0.5">it's the nerve getting irritated by a glute that stopped firing.</span> <span class="bg-primary/5 rounded px-0.5">Here's the test we run.</span>
+            </p>
+          </div>
+
+          <div class="nx-card p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <i data-lucide="film" class="h-4 w-4 text-primary"></i><div class="font-semibold text-[13.5px]">B-roll track</div>
+              <span class="nx-pill nx-pill-violet ml-auto"><i data-lucide="sparkles" class="h-3 w-3"></i> auto-filled by Veo 3.1</span>
+            </div>
+            <div class="flex gap-2 items-stretch" id="brollTrack">
+              <div class="flex-1 rounded-lg p-2 text-white text-[10.5px] font-semibold flex flex-col justify-end" style="aspect-ratio:9/11;background:linear-gradient(160deg,#1e293b,#334155)"><span class="nx-pill nx-pill-violet mb-1 self-start">generated</span>runner on trail</div>
+              <div class="flex-1 rounded-lg p-2 text-white text-[10.5px] font-semibold flex flex-col justify-end" style="aspect-ratio:9/11;background:linear-gradient(160deg,#0C7580,#0a5a63)"><span class="nx-pill nx-pill-emerald mb-1 self-start">your footage</span>clinic session</div>
+              <div id="genClip" class="flex-1 rounded-lg p-2 text-[10.5px] font-semibold flex flex-col justify-end shimmer" style="aspect-ratio:9/11"><span class="nx-pill nx-pill-violet mb-1 self-start">generating…</span><span class="text-muted-foreground">"glute med firing"</span></div>
+              <div class="flex-1 rounded-lg p-2 text-white text-[10.5px] font-semibold flex flex-col justify-end" style="aspect-ratio:9/11;background:linear-gradient(160deg,#334155,#1e293b)"><span class="nx-pill nx-pill-ink mb-1 self-start">stock</span>anatomy overlay</div>
+            </div>
+            <button onclick="regenBroll()" class="nx-btn-secondary w-full mt-3 py-2 text-[12.5px] flex items-center justify-center gap-1.5"><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Regenerate b-roll</button>
+          </div>
+        </div>
+
+        <!-- Production panel -->
+        <div class="space-y-4">
+          <div class="nx-card p-4">
+            <div class="nx-eyebrow mb-3">Presenter</div>
+            <div class="grid grid-cols-2 gap-2" id="presenterToggle">
+              <button data-mode="film" onclick="setPresenter('film')" class="rounded-lg border border-border p-3 text-center text-[12.5px] font-semibold flex flex-col items-center gap-1.5"><i data-lucide="video" class="h-5 w-5 text-muted-foreground"></i>Film yourself</button>
+              <button data-mode="avatar" onclick="setPresenter('avatar')" class="rounded-lg border-2 border-primary bg-primary/5 p-3 text-center text-[12.5px] font-semibold flex flex-col items-center gap-1.5 text-primary"><i data-lucide="user-round" class="h-5 w-5"></i>Use your avatar</button>
+            </div>
+            <p class="text-[11.5px] text-muted-foreground mt-2" id="presenterNote">Your HeyGen twin from a 15-sec selfie. Camera-shy? Bernard presents as you.</p>
+          </div>
+
+          <div class="nx-card p-4">
+            <div class="nx-eyebrow mb-3">Voice</div>
+            <div class="flex items-center gap-2 mb-2">
+              <div class="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"><i data-lucide="audio-lines" class="h-4 w-4"></i></div>
+              <div><div class="text-[13px] font-semibold">AJ's cloned voice</div><div class="text-[11px] text-muted-foreground">ElevenLabs v3 · natural</div></div>
+              <span class="nx-pill nx-pill-emerald ml-auto"><i data-lucide="check" class="h-3 w-3"></i> ready</span>
+            </div>
+            <div class="flex gap-0.5 items-end h-7">
+              <!-- fake waveform -->
+              <div class="flex-1 bg-primary/30 rounded-sm" style="height:40%"></div><div class="flex-1 bg-primary/50 rounded-sm" style="height:70%"></div><div class="flex-1 bg-primary/40 rounded-sm" style="height:55%"></div><div class="flex-1 bg-primary/70 rounded-sm" style="height:95%"></div><div class="flex-1 bg-primary/50 rounded-sm" style="height:60%"></div><div class="flex-1 bg-primary/30 rounded-sm" style="height:35%"></div><div class="flex-1 bg-primary/60 rounded-sm" style="height:80%"></div><div class="flex-1 bg-primary/40 rounded-sm" style="height:50%"></div><div class="flex-1 bg-primary/70 rounded-sm" style="height:90%"></div><div class="flex-1 bg-primary/30 rounded-sm" style="height:30%"></div>
+            </div>
+          </div>
+
+          <button class="nx-btn-primary w-full py-3 text-[14px] flex items-center justify-center gap-2"><i data-lucide="check" class="h-4 w-4"></i> Looks like me — approve</button>
+          <button onclick="showScreen(2)" class="nx-btn-secondary w-full py-2.5 text-[13px] flex items-center justify-center gap-2"><i data-lucide="corner-up-left" class="h-3.5 w-3.5"></i> Send back to teammate</button>
+
+          <div class="legend p-3.5">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> What changed here</div>
+            <p class="text-[12px] text-foreground/90 leading-relaxed"><b>F3:</b> auto-b-roll (Submagic + <b>Veo 3.1</b>), avatar (<b>HeyGen Avatar 5</b>), cloned voice (<b>ElevenLabs v3</b>), edit-by-text (<b>Descript Underlord</b>, already on Claude). <b>F4:</b> this one editor replaces today's three (<code class="bg-white px-1 rounded">SlideEditor</code> + <code class="bg-white px-1 rounded">SlateClipEditor</code> + <code class="bg-white px-1 rounded">VideoEditor</code>).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  function showScreen(n){
+    [1,2,3].forEach(function(i){
+      document.getElementById('screen-'+i).classList.toggle('hidden', i!==n);
+      document.getElementById('seg-'+i).classList.toggle('active', i===n);
+    });
+    window.scrollTo({top:0, behavior:'instant'});
+    if (window.lucide) lucide.createIcons();
+  }
+  var approved = 0;
+  function approveCard(btn){
+    var card = btn.closest('[data-card]');
+    if (card.dataset.done) return;
+    card.dataset.done = '1';
+    card.style.outline = '2px solid hsl(var(--success))';
+    card.style.outlineOffset = '1px';
+    btn.outerHTML = '<div class="flex-1 py-2 text-[13px] text-center font-semibold rounded-lg" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">✓ Approved</div>';
+    approved = Math.min(23, approved+1);
+    document.getElementById('approvedCount').innerHTML = approved + '<span class="text-white/70 text-base font-medium">/23</span>';
+  }
+  function approveAll(){
+    approved = 21;
+    document.getElementById('approvedCount').innerHTML = approved + '<span class="text-white/70 text-base font-medium">/23</span>';
+    document.querySelectorAll('#screen-2 [data-card]').forEach(function(c){
+      if(!c.dataset.done){ var b=c.querySelector('.nx-btn-primary'); if(b) approveCard(b); }
+    });
+  }
+  function setPresenter(mode){
+    document.querySelectorAll('#presenterToggle button').forEach(function(b){
+      var on = b.dataset.mode===mode;
+      b.className = on
+        ? 'rounded-lg border-2 border-primary bg-primary/5 p-3 text-center text-[12.5px] font-semibold flex flex-col items-center gap-1.5 text-primary'
+        : 'rounded-lg border border-border p-3 text-center text-[12.5px] font-semibold flex flex-col items-center gap-1.5';
+    });
+    document.getElementById('presenterNote').textContent = mode==='avatar'
+      ? 'Your HeyGen twin from a 15-sec selfie. Camera-shy? Bernard presents as you.'
+      : 'Record once on your phone; Bernard cuts, captions, and colorist-grades it.';
+    if (window.lucide) lucide.createIcons();
+  }
+  function regenBroll(){
+    var c = document.getElementById('genClip');
+    c.classList.add('shimmer');
+    setTimeout(function(){
+      c.classList.remove('shimmer');
+      c.style.background = 'linear-gradient(160deg,#7c3aed,#5b21b6)';
+      c.style.color = '#fff';
+      c.innerHTML = '<span class="nx-pill nx-pill-violet mb-1 self-start">generated</span>glute med firing';
+    }, 1400);
+  }
+  window.addEventListener('load', function(){ if (window.lucide) lucide.createIcons(); });
+</script>
+</body>
