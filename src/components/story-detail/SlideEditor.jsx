@@ -67,6 +67,8 @@ function normalizeSlide(s, idx) {
           ...(b?.fontWeight ? { fontWeight: b.fontWeight } : {}),
           ...(typeof b?.uppercase === 'boolean' ? { uppercase: b.uppercase } : {}),
           ...(b?.font === 'heading' || b?.font === 'body' ? { font: b.font } : {}),
+          ...(b?.italic === true ? { italic: true } : {}),
+          ...(b?.underline === true ? { underline: true } : {}),
         }))
       : [],
   }
@@ -231,10 +233,14 @@ function blockFraction(block, theme) {
 // like any other, no position presets. The canvas underneath is the true render.
 function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) {
   const rootRef = useRef(null)
-  function startDrag(e, idx) {
+  function startDrag(e, idx, f) {
     e.stopPropagation()
     e.preventDefault()
     onSelectBlock(idx)
+    // Convert preset position to custom {x,y} immediately so there's no jump
+    // when the first pointermove fires. blockFraction already accounts for WHOOP
+    // zone offsets, so this custom position renders at the same visual spot.
+    if (f) onMoveBlock(idx, { x: f.x, y: f.y })
     const rect = rootRef.current?.getBoundingClientRect()
     if (!rect) return
     function move(ev) {
@@ -259,7 +265,7 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
         return (
           <div
             key={idx}
-            onPointerDown={(e) => startDrag(e, idx)}
+            onPointerDown={(e) => startDrag(e, idx, f)}
             title="Drag to place"
             className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move items-center justify-center rounded ${
               sel ? 'border-2 border-dashed border-primary bg-primary/5' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
@@ -1133,19 +1139,30 @@ function TextStyleControls({ block, onSet }) {
         value={block.fontWeight ?? null}
         onPick={(v) => onSet('fontWeight', v)}
       />
-      <SegRow
-        label="Case"
-        options={[{ label: 'Auto', value: null }, { label: 'ab', value: false }, { label: 'AB', value: true }]}
-        value={typeof block.uppercase === 'boolean' ? block.uppercase : null}
-        onPick={(v) => onSet('uppercase', v)}
-      />
-      <SegRow
-        label="Font"
-        options={[{ label: 'Auto', value: null }, { label: 'Heading', value: 'heading' }, { label: 'Body', value: 'body' }]}
-        value={block.font ?? null}
-        onPick={(v) => onSet('font', v)}
-      />
-      <p className="text-3xs text-muted-foreground">Auto = inherit the theme. Full font picker coming later.</p>
+      {/* Italic / Underline toggles */}
+      <div>
+        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Format</p>
+        <div className="flex gap-1">
+          {[
+            { key: 'italic',    label: 'I', className: 'italic'    },
+            { key: 'underline', label: 'U', className: 'underline' },
+          ].map(({ key, label, className: cls }) => {
+            const active = block[key] === true
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSet(key, active ? null : true)}
+                className={`flex-1 rounded-md border px-1.5 py-1 text-2xs font-medium transition-colors ${cls} ${
+                  active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1267,7 +1284,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   // Re-render the canvas when anything that affects the pixels changes.
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
-    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}`).join('~'),
+    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}`).join('~'),
     slide.photo_zoom || 1,
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',
