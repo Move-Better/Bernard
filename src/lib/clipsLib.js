@@ -24,6 +24,15 @@ export function findClips(assetId, maxSegments) {
 }
 
 /**
+ * Moment Miner feed — every PROPOSED segment across all source videos, flattened
+ * and ranked strongest-first (by quotability score). See /api/editorial/moments.
+ * @returns {Promise<{moments: object[]}>}
+ */
+export function listMoments() {
+  return apiFetch('/api/editorial/moments')
+}
+
+/**
  * Fetch detection status + proposed/kept/rendered segments for a source asset.
  * @param {string} assetId
  * @returns {Promise<{assetId: string, status: string|null, error: string|null, detectedAt: string|null, segments: object[]}>}

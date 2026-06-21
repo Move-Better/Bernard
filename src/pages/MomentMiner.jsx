@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Scissors, Loader2, AlertCircle, BarChart3, Film, ShieldAlert,
-  ShieldCheck, PlayCircle, Search, Sparkles, Clapperboard, Zap,
+  ShieldCheck, PlayCircle, Search, Sparkles, Gem, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useStaffSummaries } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 import { listMedia } from '@/lib/mediaLib'
-import { findClips, repurposeVideo } from '@/lib/clipsLib'
+import { findClips, listMoments, updateSegment, renderSegments } from '@/lib/clipsLib'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import CoveragePanel from '@/components/slate/CoveragePanel'
@@ -62,69 +62,143 @@ function fmtClock(s) {
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
 }
 
-// One source on the "Ready to review" tab — a decision row, not a chore card:
-// the AI's first proposed moment sits right on the row (the "N clips proposed"
-// badge promise pays off before the click), with review + repurpose as the
-// only actions. Compact by design — mockup screen 1.
-function ReviewRow({ asset, staffName, onReview, onRepurpose, repurposing }) {
-  const ok = consentOk(asset)
-  const n = asset.proposal_count || 0
-  const sample = asset.proposal_sample || null
-  const len = sample && sample.end_sec != null && sample.start_sec != null
-    ? Math.max(0, sample.end_sec - sample.start_sec)
-    : null
+// The type chips shown above the feed (the broad, common kinds). The display
+// label for each moment comes from the API (m.momentTypeLabel).
+const MOMENT_FILTERS = [
+  { key: 'all', label: 'All types' },
+  { key: 'coaching_cue', label: 'Coaching cue' },
+  { key: 'patient_breakthrough', label: 'Patient breakthrough' },
+  { key: 'hook', label: 'Hook' },
+  { key: 'credibility', label: 'Credibility' },
+]
+
+// One mined moment — the moment-first card the Ready-to-review feed ranks
+// strongest-first by quotability score. Real footage + real audio; "Looks good"
+// saves it as an approved clip into the Library (Storyboard & Ads pull from there).
+function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
+  const m = moment
+  const dur = m.durationSec ? `${Math.round(m.durationSec)}s` : null
   return (
-    <div className="bg-card border border-border rounded-xl p-3 flex gap-3.5 items-center flex-wrap md:flex-nowrap hover:border-primary/40 transition-colors">
+    <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
       <div
-        className="w-[72px] shrink-0 rounded-lg overflow-hidden bg-muted relative"
-        style={{ aspectRatio: asset.width && asset.height ? `${asset.width} / ${asset.height}` : '9 / 16' }}
+        className="w-[78px] shrink-0 rounded-lg overflow-hidden bg-gradient-to-b from-slate-600 to-slate-800 relative grid place-items-center"
+        style={{ aspectRatio: m.width && m.height ? `${m.width} / ${m.height}` : '9 / 16' }}
       >
-        {asset.thumbnail_url
-          ? <img src={asset.thumbnail_url} alt="" className="w-full h-full object-cover" />
-          : <PlayCircle className="h-6 w-6 text-muted-foreground/40 absolute inset-0 m-auto" />}
+        {m.thumbnailUrl
+          ? <img src={m.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+          : <PlayCircle className="h-6 w-6 text-white/60" />}
+        {dur && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-3xs px-1 rounded">{dur}</span>}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold leading-snug line-clamp-1">{videoLabel(asset)}</p>
-        <div className="flex items-center gap-2 text-3xs text-muted-foreground mt-0.5">
-          <span className="truncate">{asset.filename}</span>
-          {staffName && <span>· {staffName}</span>}
-          {ok ? (
-            <span className="flex items-center gap-1 text-success"><ShieldCheck className="h-3 w-3" />consent ok</span>
-          ) : (
-            <span className="flex items-center gap-1 text-action"><ShieldAlert className="h-3 w-3" />consent pending</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-accent text-accent-foreground">{m.momentTypeLabel || 'Moment'}</span>
+          {m.score != null && (
+            <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-primary/10 text-primary inline-flex items-center gap-1">
+              <Gem className="h-3 w-3" />{m.score}
+            </span>
           )}
+          <span className="text-3xs text-muted-foreground truncate">
+            {m.filename}{m.staffName ? ` · ${m.staffName}` : ''} · @ {fmtClock(m.startSec)}–{fmtClock(m.endSec)}
+          </span>
         </div>
-        <div className="mt-1.5 rounded-lg bg-muted/60 border border-border px-2.5 py-1.5 text-xs leading-snug">
-          <span className="font-semibold">{n} moment{n !== 1 ? 's' : ''} proposed{sample?.hook ? ':' : ''}</span>
-          {sample?.hook && <span className="italic"> &ldquo;{sample.hook}&rdquo;</span>}
-          {len != null && (
-            <span className="text-muted-foreground"> · {fmtClock(len)}{sample?.start_sec != null ? ` · starts at ${fmtClock(sample.start_sec)}` : ''}</span>
-          )}
-          {n > 1 && <span className="text-muted-foreground"> · +{n - 1} more</span>}
+        <p className="text-sm font-semibold leading-snug mt-1.5">&ldquo;{m.quote}&rdquo;</p>
+        {m.why && (
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />{m.why}
+          </p>
+        )}
+        <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onReview(m)}
+            className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90"
+          >
+            <Scissors className="h-4 w-4" />Review &amp; trim
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => onSave(m)}
+            className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/5 disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Looks good — save
+          </button>
+          <button
+            type="button"
+            onClick={() => onDismiss(m)}
+            className="px-2.5 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted ml-auto"
+          >
+            Not this one
+          </button>
         </div>
       </div>
-      <div className="flex md:flex-col gap-2 shrink-0">
-        <button
-          type="button"
-          disabled={!ok}
-          onClick={() => ok && onReview(asset.id)}
-          className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-            ok ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'
-          }`}
-          title={!ok ? 'Resolve consent before cutting clips' : undefined}
-        >
-          <Clapperboard className="h-3.5 w-3.5" />Review {n > 1 ? `${n} moments` : 'moment'}
-        </button>
-        <button
-          type="button"
-          disabled={!ok || repurposing}
-          onClick={() => ok && onRepurpose(asset.id)}
-          className="px-3.5 py-2 rounded-lg border border-border bg-card text-2xs font-medium hover:bg-muted flex items-center justify-center gap-1.5 disabled:opacity-50"
-          title="One click: render the full-length video AND keep finding clips — grouped as one campaign"
-        >
-          {repurposing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-action" />}Repurpose all
-        </button>
+    </div>
+  )
+}
+
+// The moment-first feed: clinician filter + type chips + ranked MomentCards.
+// Replaces the per-source-video review rows.
+function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, clinicianFilter, setClinicianFilter, clinicianOptions, savingId, onReview, onSave, onDismiss, onSeeUncut }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {clinicianOptions.length > 0 && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Clinician</span>
+          <select
+            value={clinicianFilter}
+            onChange={(e) => setClinicianFilter(e.target.value)}
+            className="border border-border rounded-lg px-2.5 py-1.5 bg-card outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="all">All clinicians</option>
+            {clinicianOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        {MOMENT_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setMomentType(f.key)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              momentType === f.key ? 'border-primary bg-primary text-white' : 'border-border bg-card hover:bg-muted'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>
+      ) : moments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center rounded-xl border-2 border-dashed border-border">
+          <Sparkles className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-semibold">{totalCount === 0 ? 'No moments yet' : 'No moments match this filter'}</p>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            {totalCount === 0
+              ? 'Run "Find moments" on uncut footage and the strongest moments land here, ranked.'
+              : 'Try a different type or clinician.'}
+          </p>
+          {totalCount === 0 && <Button size="sm" variant="outline" onClick={onSeeUncut}>See uncut footage</Button>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <p className="text-2xs text-muted-foreground -mb-0.5">
+            The best moments from your sessions — ranked strongest-first. Save the keepers to your Library.
+          </p>
+          {moments.map((m) => (
+            <MomentCard
+              key={m.id}
+              moment={m}
+              saving={savingId === m.id}
+              onReview={onReview}
+              onSave={onSave}
+              onDismiss={onDismiss}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -366,7 +440,27 @@ export default function MomentMiner() {
   }, [proposalCounts, isLoading, clipsToReviewVideos.length])
 
   const queryClient = useQueryClient()
-  const [repurposingId, setRepurposingId] = useState(null)
+  const [momentType, setMomentType] = useState('all')
+  const [clinicianFilter, setClinicianFilter] = useState('all')
+  const [savingId, setSavingId] = useState(null)
+
+  // Moment Miner feed — flattened, ranked proposed moments across all sources.
+  const { data: momentsData, isLoading: momentsLoading } = useQuery({
+    queryKey: ['moments'],
+    queryFn: listMoments,
+    enabled: !!ws,
+  })
+  const allMoments = useMemo(() => momentsData?.moments || [], [momentsData])
+  const clinicianOptions = useMemo(
+    () => [...new Set(allMoments.map((m) => m.staffName).filter(Boolean))],
+    [allMoments],
+  )
+  const moments = useMemo(() => {
+    let list = allMoments
+    if (momentType !== 'all') list = list.filter((m) => m.momentType === momentType)
+    if (clinicianFilter !== 'all') list = list.filter((m) => m.staffName === clinicianFilter)
+    return list
+  }, [allMoments, momentType, clinicianFilter])
 
   async function handleFindMoments(id) {
     try {
@@ -378,17 +472,33 @@ export default function MomentMiner() {
     }
   }
 
-  async function handleRepurpose(id) {
-    setRepurposingId(id)
+  function refreshMoments() {
+    queryClient.invalidateQueries({ queryKey: ['moments'] })
+    queryClient.invalidateQueries({ queryKey: ['slate-proposal-counts'] })
+  }
+
+  // "Looks good — save": keep the segment + render it into a Library clip.
+  async function handleSaveMoment(m) {
+    setSavingId(m.id)
     try {
-      await repurposeVideo(id)
-      toast('Repurposing — full-length render + clip detection kicked off, grouped as one campaign.')
-      refetch()
-      queryClient.invalidateQueries({ queryKey: ['slate-proposal-counts'] })
+      await updateSegment(m.id, 'kept')
+      await renderSegments([m.id])
+      toast('Saved to your Library — Storyboard & Ads can pull it.')
+      refreshMoments()
     } catch (e) {
-      toast.error(e?.message || 'Could not start repurpose.')
+      toast.error(e?.message || 'Could not save this clip.')
     } finally {
-      setRepurposingId(null)
+      setSavingId(null)
+    }
+  }
+
+  async function handleDismissMoment(m) {
+    try {
+      await updateSegment(m.id, 'discarded')
+      toast('Dismissed.')
+      refreshMoments()
+    } catch (e) {
+      toast.error(e?.message || 'Could not dismiss.')
     }
   }
 
@@ -531,21 +641,21 @@ export default function MomentMiner() {
           )}
         </div>
       ) : view === 'clips_to_review' ? (
-        <div className="flex flex-col gap-2.5">
-          <p className="text-2xs text-muted-foreground -mb-0.5">
-            The AI already did the watching — each row is a decision, not a chore. The proposal is right here, not behind the click.
-          </p>
-          {visibleVideos.map((asset) => (
-            <ReviewRow
-              key={asset.id}
-              asset={asset}
-              staffName={staffMap[asset.staff_id]}
-              onReview={(id) => navigate(`/moments/clip/${id}`)}
-              onRepurpose={handleRepurpose}
-              repurposing={repurposingId === asset.id}
-            />
-          ))}
-        </div>
+        <MomentFeed
+          loading={momentsLoading}
+          moments={moments}
+          totalCount={allMoments.length}
+          momentType={momentType}
+          setMomentType={setMomentType}
+          clinicianFilter={clinicianFilter}
+          setClinicianFilter={setClinicianFilter}
+          clinicianOptions={clinicianOptions}
+          savingId={savingId}
+          onReview={(m) => navigate(`/moments/clip/${m.sourceAssetId}`)}
+          onSave={handleSaveMoment}
+          onDismiss={handleDismissMoment}
+          onSeeUncut={() => setView('needs_cutting')}
+        />
       ) : (
         <div className={`grid sm:grid-cols-2 lg:grid-cols-3 ${view === 'needs_cutting' ? 'xl:grid-cols-4' : ''} gap-3`}>
           {visibleVideos.map((asset) => (
