@@ -106,7 +106,7 @@ export default function Overview() {
           <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" />
           Calendar
         </h2>
-        <StoriesCalendarView stories={stories} isLoading={isLoading} />
+        <StoriesCalendarView stories={stories} isLoading={isLoading} hideRail />
       </div>
 
       {/* Campaigns — always visible, no tab needed */}
