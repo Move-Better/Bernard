@@ -34,6 +34,7 @@ import { requireRole } from '../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
+import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
 import { generateCaption } from '../_lib/captionGen.js'
 import { saveSlateBroll } from '../_lib/saveSlateBroll.js'
 
@@ -89,6 +90,12 @@ async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
       console.error('[render-segments] caption gen failed, using hook:', e?.stack || e?.message)
     }
 
+    // Persisted captions (migration 137): slice the source's stored words to this
+    // segment's window so the render reuses them instead of re-transcribing.
+    const captionWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length
+      ? sliceWordsToWindow(asset.transcript_words, startSec, durationSec)
+      : null
+
     // Render the ≤60s window as a reel-format clip with the caption burned in.
     const { buffer, width, height } = await renderVideoChannel({
       videoUrl: asset.blob_url,
@@ -99,6 +106,7 @@ async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
       startSec,
       durationSec,
       subtitles: true,
+      ...(captionWords && captionWords.length ? { captionWords } : {}),
     })
 
     const safeFilename = (asset.filename || 'clip')
@@ -169,7 +177,7 @@ export default async function handler(req, res) {
       // Disambiguate the embed: video_segments has TWO FKs to media_assets
       // (source_asset_id + rendered_asset_id from migration 113), so PostgREST
       // needs the explicit FK constraint or it 500s with PGRST201 (ambiguous).
-      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status)`,
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words)`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()

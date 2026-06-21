@@ -108,6 +108,35 @@ export async function transcribeToWords(filePath) {
 }
 
 /**
+ * Transcribe a local file to BOTH segment cues and word-level timestamps in a
+ * SINGLE Whisper call (verbose_json with both granularities). Used by segment
+ * detection: the LLM gets the segment cues, and the word timestamps are persisted
+ * once onto the source asset so clip renders never have to re-transcribe (the
+ * "stop discarding the words" change — migration 137 `media_assets.transcript_words`).
+ *
+ * @param {string} filePath — absolute path in /tmp (mp3 strongly preferred)
+ * @returns {Promise<{segments: Array<{start:number,end:number,text:string}>, words: Array<{word:string,start:number,end:number}>}>}
+ */
+export async function transcribeToSegmentsAndWords(filePath) {
+  const { buffer, fileName, mimeType } = await readLocalFile(filePath)
+  const form = new FormData()
+  form.append('file',                      new Blob([buffer], { type: mimeType }), fileName)
+  form.append('model',                     'whisper-1')
+  form.append('response_format',           'verbose_json')
+  form.append('timestamp_granularities[]', 'segment')
+  form.append('timestamp_granularities[]', 'word')
+  const res  = await whisper(form)
+  const json = await res.json().catch(() => null)
+  const segments = (json?.segments ?? [])
+    .map((s) => ({ start: Number(s.start) || 0, end: Number(s.end) || 0, text: String(s.text || '').trim() }))
+    .filter((s) => s.text && s.end > s.start)
+  const words = (json?.words ?? [])
+    .map((w) => ({ word: String(w.word || '').trim(), start: Number(w.start) || 0, end: Number(w.end) || 0 }))
+    .filter((w) => w.word && w.end > w.start)
+  return { segments, words }
+}
+
+/**
  * FUTURE — speaker-diarized transcription.
  * Stub until AssemblyAI / Deepgram provider is wired in.
  *
