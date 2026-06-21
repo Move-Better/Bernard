@@ -458,70 +458,6 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
 }
 
 // ── Caption section — post caption, collapsed by default (written last, like IG)
-function CaptionSection({ piece, onUseAsHook, updateItem }) {
-  const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
-  const [open, setOpen] = useState(false)
-  const savedRef = useRef(draft)
-
-  useEffect(() => {
-    const next = typeof piece?.content === 'string' ? piece.content : ''
-    setDraft(next)
-    savedRef.current = next
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piece?.id])
-
-  async function handleBlur() {
-    if (draft === savedRef.current) return
-    try {
-      await updateItem.mutateAsync({ id: piece.id, patch: { content: draft } })
-      savedRef.current = draft
-    } catch (e) {
-      toast.error('Caption save failed', { description: e.message })
-    }
-  }
-
-  return (
-    <div className="border-t">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-3 py-2 text-3xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
-      >
-        <span className="flex items-center gap-1.5">
-          <Type className="h-3 w-3" /> Caption
-        </span>
-        <span>{open ? '▾' : '▸'}</span>
-      </button>
-      {open && (
-        <div className="px-3 pb-3 space-y-2">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={handleBlur}
-            rows={5}
-            placeholder="Caption visible to followers…"
-            className="w-full resize-y rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
-          />
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                const firstLine = (draft || '').split('\n')[0].trim()
-                if (firstLine) onUseAsHook(firstLine)
-              }}
-              title="Copy the first line of the caption into slide 1's hook text block"
-              className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-            >
-              ↑ Use 1st line as slide hook
-            </button>
-            <span className="text-3xs text-muted-foreground">{draft.length} chars</span>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Real Quotes — verbatim lines from the source interview ────────────────────
 // Shows the actual words the clinician said that grounded this post.
 // Tapping a quote inserts it as a body text block on the active slide.
@@ -561,66 +497,84 @@ function RealQuotesSection({ pieceId, onInsertQuote }) {
   )
 }
 
-// ── Layers list (top of the right inspector) ─────────────────────────────────
-// Always-visible list of the active slide's layers: Slide settings, Photo, and
-// one row per text block. Clicking a row drives the contextual `selection`.
+// ── Accordion layer row ────────────────────────────────────────────────────────
+// Each layer in the inspector is a collapsible row. Clicking toggles the row
+// open/closed; the contextual inspector panel renders inline when open.
 
-function LayerRow({ icon: Icon, label, active, onSelect }) {
+function AccordionLayerRow({ icon: Icon, label, open, onToggle, children }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-2xs transition-colors ${
-        active
-          ? 'border-primary bg-primary/10 text-primary font-semibold'
-          : 'border-transparent text-foreground hover:bg-muted'
-      }`}
-    >
-      <Icon className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-      <span className="truncate">{label}</span>
-    </button>
+    <div className="border-b">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-2xs transition-colors ${
+          open ? 'bg-primary/5 text-primary font-semibold' : 'text-foreground hover:bg-muted'
+        }`}
+      >
+        <Icon className={`h-3.5 w-3.5 shrink-0 ${open ? 'text-primary' : 'text-muted-foreground'}`} />
+        <span className="flex-1 truncate">{label}</span>
+        <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && <div className="border-t bg-muted/10">{children}</div>}
+    </div>
   )
 }
 
-function LayersList({ slide, mediaUrls, selection, onSelect }) {
-  const photoLabel = typeof slide.photo_idx === 'number'
-    ? `Photo ${slide.photo_idx + 1}${mediaUrls.length ? ` of ${mediaUrls.length}` : ''}`
-    : 'No photo'
+// ── Caption panel (permanent right column) ────────────────────────────────────
+// Always visible to the right of the canvas; caption doesn't move with slides.
+
+function CaptionPanel({ piece, onUseAsHook, updateItem }) {
+  const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
+  const savedRef = useRef(draft)
+
+  useEffect(() => {
+    const next = typeof piece?.content === 'string' ? piece.content : ''
+    setDraft(next)
+    savedRef.current = next
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [piece?.id])
+
+  async function handleBlur() {
+    if (draft === savedRef.current) return
+    try {
+      await updateItem.mutateAsync({ id: piece.id, patch: { content: draft } })
+      savedRef.current = draft
+    } catch (e) {
+      toast.error('Caption save failed', { description: e.message })
+    }
+  }
+
   return (
-    <div className="border-b px-3 py-2.5">
-      <div className="mb-1.5 flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Layers className="h-3.5 w-3.5" /> Layers
-        <span className="ml-auto font-normal normal-case text-muted-foreground/70">click to select</span>
+    <aside className="flex w-[220px] shrink-0 flex-col border-l bg-white overflow-hidden">
+      <div className="shrink-0 border-b px-3 py-2">
+        <span className="flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Type className="h-3 w-3" /> Caption
+        </span>
       </div>
-      <div className="space-y-1">
-        <LayerRow
-          icon={Layers}
-          label="Slide — layout & theme"
-          active={selection.type === 'slide'}
-          onSelect={() => onSelect({ type: 'slide' })}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="Caption visible to followers…"
+          className="min-h-[120px] flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
         />
-        <LayerRow
-          icon={ImageIcon}
-          label={photoLabel}
-          active={selection.type === 'photo'}
-          onSelect={() => onSelect({ type: 'photo' })}
-        />
-        {slide.blocks.map((b, i) => {
-          const meta = ROLE_META[b.role] || ROLE_META.body
-          const snippet = (b.text || '').trim().slice(0, 22)
-          const label = `${meta.label}${snippet ? ` — ${snippet}${b.text.trim().length > 22 ? '…' : ''}` : ''}`
-          return (
-            <LayerRow
-              key={i}
-              icon={Type}
-              label={label}
-              active={selection.type === 'text' && selection.idx === i}
-              onSelect={() => onSelect({ type: 'text', idx: i })}
-            />
-          )
-        })}
+        <div className="flex shrink-0 items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              const firstLine = (draft || '').split('\n')[0].trim()
+              if (firstLine) onUseAsHook(firstLine)
+            }}
+            title="Copy the first line of the caption into slide 1&apos;s hook text block"
+            className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+          >
+            ↑ Use as slide hook
+          </button>
+          <span className="text-3xs text-muted-foreground">{draft.length} chars</span>
+        </div>
       </div>
-    </div>
+    </aside>
   )
 }
 
@@ -1583,10 +1537,10 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
-  // Contextual selection driving the right inspector. One of:
-  //   { type: 'slide' } | { type: 'photo' } | { type: 'text', idx }
-  // Reset to slide whenever the active slide changes (see goToSlide).
-  const [selection, setSelection] = useState({ type: 'slide' })
+  // Contextual selection driving the inspector accordion. One of:
+  //   { type: null } | { type: 'slide' } | { type: 'photo' } | { type: 'text', idx }
+  // null = all accordion rows collapsed. Resets to null on slide change.
+  const [selection, setSelection] = useState({ type: null })
 
   useEffect(() => {
     const next = seedSlides()
@@ -1595,7 +1549,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setThemeId(piece?.photo_template_id || DEFAULT_DECK_THEME)
     setAspect(piece?.aspect_ratio || '4:5')
     setActiveSlideIdx(0)
-    setSelection({ type: 'slide' })
+    setSelection({ type: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piece?.id, JSON.stringify(piece?.slides)])
 
@@ -1616,7 +1570,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   useEffect(() => {
     if (autoAttachDoneRef.current) return
     if (!photoSuggestions?.length) return
-    const allEmpty = slides.every((s) => s.photo_idx === null)
+    const allEmpty = mediaUrls.length === 0
     if (!allEmpty) { autoAttachDoneRef.current = true; return }
     autoAttachDoneRef.current = true
     const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
@@ -1663,7 +1617,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const next = slides.filter((_, i) => i !== idx)
     setSlides(next)
     setActiveSlideIdx((prev) => Math.min(prev, Math.max(0, next.length - 1)))
-    setSelection({ type: 'slide' })
+    setSelection({ type: null })
     // Delete is recoverable until the next action — an undo toast instead of a
     // silent, instant, soon-permanent removal of the slide's block text.
     toast('Slide deleted', {
@@ -1715,10 +1669,10 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     }
   }
 
-  // Switch the active slide and reset the contextual selection to the slide.
+  // Switch the active slide and close all accordion rows.
   function goToSlide(idx) {
     setActiveSlideIdx(idx)
-    setSelection({ type: 'slide' })
+    setSelection({ type: null })
   }
 
   // "Apply this theme to all slides" — set the deck theme to the chosen one and
@@ -1940,9 +1894,9 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         </div>
       </header>
 
-      {/* ── WORK AREA — left rail + scaling canvas + contextual inspector ── */}
+      {/* ── WORK AREA: rail | inspector | canvas | caption ─────────────── */}
       <div className="flex min-h-0 flex-1">
-        {/* Left vertical slide rail (replaces the old bottom filmstrip) */}
+        {/* 1. Slide rail */}
         <SlideRail
           slides={slides}
           activeIdx={activeSlideIdx}
@@ -1951,11 +1905,137 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           onAdd={addSlide}
         />
 
-        {/* Canvas stage — fills the available height, scales to fit */}
+        {/* 2. Inspector — LEFT of canvas with accordion layers */}
+        <aside className="flex w-[280px] shrink-0 flex-col border-r bg-white overflow-hidden">
+          {activeSlide ? (
+            <>
+              {/* Slide N of M + prev/next nav */}
+              <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
+                <span className="text-xs font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSlideIdx((i) => Math.max(0, i - 1))}
+                    disabled={activeSlideIdx === 0}
+                    className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))}
+                    disabled={activeSlideIdx === slides.length - 1}
+                    className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Accordion layers + Real Quotes */}
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Layers className="h-3 w-3" /> Layers
+                </div>
+
+                <AccordionLayerRow
+                  icon={Layers}
+                  label="Slide — layout & theme"
+                  open={selection.type === 'slide'}
+                  onToggle={() => setSelection((s) => s.type === 'slide' ? { type: null } : { type: 'slide' })}
+                >
+                  <SlideInspector
+                    slide={activeSlide}
+                    slideIdx={activeSlideIdx}
+                    totalSlides={slides.length}
+                    photoUrl={activePhotoUrl}
+                    brandStyle={brandStyle}
+                    allThemes={allThemes}
+                    customThemes={customThemes}
+                    globalThemeId={themeId}
+                    onChange={(next) => updateSlide(activeSlideIdx, next)}
+                    onApplyThemeToAll={handleApplyThemeToAll}
+                    onAddBlock={(role) => {
+                      const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, role))
+                      updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                      setSelection({ type: 'text', idx: blocks.length - 1 })
+                    }}
+                    onMoveLeft={() => {
+                      moveSlide(activeSlideIdx, -1)
+                      setActiveSlideIdx((i) => Math.max(0, i - 1))
+                    }}
+                    onMoveRight={() => {
+                      moveSlide(activeSlideIdx, 1)
+                      setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))
+                    }}
+                    onRemove={() => removeSlide(activeSlideIdx)}
+                  />
+                </AccordionLayerRow>
+
+                <AccordionLayerRow
+                  icon={ImageIcon}
+                  label={typeof activeSlide.photo_idx === 'number'
+                    ? `Photo ${activeSlide.photo_idx + 1}${mediaUrls.length ? ` of ${mediaUrls.length}` : ''}`
+                    : 'No photo'}
+                  open={selection.type === 'photo'}
+                  onToggle={() => setSelection((s) => s.type === 'photo' ? { type: null } : { type: 'photo' })}
+                >
+                  <PhotoInspector
+                    slide={activeSlide}
+                    photoUrl={activePhotoUrl}
+                    mediaUrls={mediaUrls}
+                    pieceId={piece?.id}
+                    attachedKeys={attachedKeys}
+                    onAttachPhoto={attachPhoto}
+                    onChange={(next) => updateSlide(activeSlideIdx, next)}
+                  />
+                </AccordionLayerRow>
+
+                {activeSlide.blocks.map((b, i) => {
+                  const meta = ROLE_META[b.role] || ROLE_META.body
+                  const snippet = (b.text || '').trim().slice(0, 22)
+                  const label = `${meta.label}${snippet ? ` — ${snippet}${b.text.trim().length > 22 ? '…' : ''}` : ''}`
+                  return (
+                    <AccordionLayerRow
+                      key={i}
+                      icon={Type}
+                      label={label}
+                      open={selection.type === 'text' && selection.idx === i}
+                      onToggle={() => setSelection((s) => (s.type === 'text' && s.idx === i) ? { type: null } : { type: 'text', idx: i })}
+                    >
+                      <TextInspector
+                        slide={activeSlide}
+                        blockIdx={i}
+                        photoUrl={activePhotoUrl}
+                        onChange={(next) => updateSlide(activeSlideIdx, next)}
+                        onRemoved={() => setSelection({ type: null })}
+                      />
+                    </AccordionLayerRow>
+                  )
+                })}
+
+                <RealQuotesSection
+                  pieceId={piece?.id}
+                  onInsertQuote={(text) => {
+                    if (!activeSlide) return
+                    const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
+                    updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                    setSelection({ type: 'text', idx: blocks.length - 1 })
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
+              Add a slide to start editing
+            </div>
+          )}
+        </aside>
+
+        {/* 3. Canvas — centre, takes remaining space */}
         <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(220 16% 91%)' }}>
-          {/* Slide counter + safe-zone toggle, floating over the stage */}
-          <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
-            <span className="font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
+          {/* Safe-zone toggle — slide counter moved to inspector header */}
+          <div className="absolute left-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
             <label className="flex cursor-pointer items-center gap-1">
               <input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} className="accent-primary" />
               safe zones
@@ -1965,7 +2045,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           {activeSlide ? (
             <div
               className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
-              style={{ height: `min(calc(100vh - 140px), calc((100vw - 480px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
+              style={{ height: `min(calc(100vh - 140px), calc((100vw - 640px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
             >
               <SlidePreview
                 slide={activeSlide}
@@ -2000,85 +2080,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           )}
         </section>
 
-        {/* Right contextual inspector: Layers (top) → editing body → Real Quotes → Caption */}
-        <aside className="flex w-[300px] shrink-0 flex-col border-l bg-white overflow-hidden">
-          {activeSlide ? (
-            <>
-              <LayersList
-                slide={activeSlide}
-                mediaUrls={mediaUrls}
-                selection={selection}
-                onSelect={setSelection}
-              />
-              <div className="min-h-0 flex-1 overflow-y-auto flex flex-col">
-                {selection.type === 'photo' ? (
-                  <PhotoInspector
-                    slide={activeSlide}
-                    photoUrl={activePhotoUrl}
-                    mediaUrls={mediaUrls}
-                    pieceId={piece?.id}
-                    attachedKeys={attachedKeys}
-                    onAttachPhoto={attachPhoto}
-                    onChange={(next) => updateSlide(activeSlideIdx, next)}
-                  />
-                ) : selection.type === 'text' ? (
-                  <TextInspector
-                    slide={activeSlide}
-                    blockIdx={selection.idx}
-                    photoUrl={activePhotoUrl}
-                    onChange={(next) => updateSlide(activeSlideIdx, next)}
-                    onRemoved={() => setSelection({ type: 'slide' })}
-                  />
-                ) : (
-                  <SlideInspector
-                    slide={activeSlide}
-                    slideIdx={activeSlideIdx}
-                    totalSlides={slides.length}
-                    photoUrl={activePhotoUrl}
-                    brandStyle={brandStyle}
-                    allThemes={allThemes}
-                    customThemes={customThemes}
-                    globalThemeId={themeId}
-                    onChange={(next) => updateSlide(activeSlideIdx, next)}
-                    onApplyThemeToAll={handleApplyThemeToAll}
-                    onAddBlock={(role) => {
-                      const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, role))
-                      updateSlide(activeSlideIdx, { ...activeSlide, blocks })
-                      setSelection({ type: 'text', idx: blocks.length - 1 })
-                    }}
-                    onMoveLeft={() => {
-                      moveSlide(activeSlideIdx, -1)
-                      setActiveSlideIdx((i) => Math.max(0, i - 1))
-                    }}
-                    onMoveRight={() => {
-                      moveSlide(activeSlideIdx, 1)
-                      setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))
-                    }}
-                    onRemove={() => removeSlide(activeSlideIdx)}
-                  />
-                )}
-                <RealQuotesSection
-                  pieceId={piece?.id}
-                  onInsertQuote={(text) => {
-                    if (!activeSlide) return
-                    const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
-                    updateSlide(activeSlideIdx, { ...activeSlide, blocks })
-                    setSelection({ type: 'text', idx: blocks.length - 1 })
-                  }}
-                />
-                <CaptionSection
-                  piece={piece}
-                  onUseAsHook={handleUseAsHook}
-                  updateItem={updateItem}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground p-4">
-              Add a slide to start editing
-            </div>
-          )}
-        </aside>
+        {/* 4. Caption — permanent right column, never moves with slides */}
+        <CaptionPanel
+          piece={piece}
+          onUseAsHook={handleUseAsHook}
+          updateItem={updateItem}
+        />
       </div>
     </div>
   )

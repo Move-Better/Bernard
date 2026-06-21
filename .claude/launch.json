@@ -14,6 +14,12 @@
       "port": 8088
     },
     {
+      "name": "worktree-mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8742", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/epic-lichterman-978bda/.claude/mockups"],
+      "port": 8742
+    },
+    {
       "name": "bernard-public",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8090", "--directory", "/Users/qbook/Claude Projects/Bernard/public"],
