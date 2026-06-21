@@ -1152,18 +1152,30 @@ function BrandVibe({ grade, onPersist, mockup = false }) {
     tRef.current = setTimeout(() => onPersist(n), 500)
   }
   const activeVibe = GRADE_VIBES.find((v) => JSON.stringify(normalizeGrade(v.params)) === JSON.stringify(local))
-  // Up to 3 recent library shots (photos → web/blob url, videos → thumbnail), then
-  // pad with bundled defaults so the preview always shows 3. Skipped in mockup mode.
+  // Pull a WIDE pool (recent shots cluster — often the same session/moment, so 3
+  // recents look identical) and pick 3 at random for a varied preview. Photos →
+  // web/blob url, videos → thumbnail. Skipped in mockup mode.
   const { data: media } = useQuery({
     queryKey: ['brand-vibe-samples'],
-    queryFn: () => listMedia({ limit: 12 }),
+    queryFn: () => listMedia({ limit: 60 }),
     enabled: !mockup,
     staleTime: 5 * 60_000,
   })
-  const libraryShots = (Array.isArray(media) ? media : [])
-    .map((a) => (a.kind === 'video' ? a.thumbnail_url : (a.web_blob_url || a.blob_url)))
-    .filter(Boolean)
-    .slice(0, 3)
+  // Shuffle once per fetched list (NOT per render) so slider drags don't reshuffle,
+  // but each page load gets a fresh mix. De-dup identical URLs first.
+  const libraryShots = useMemo(() => {
+    const seen = new Set()
+    const pool = []
+    for (const a of (Array.isArray(media) ? media : [])) {
+      const url = a.kind === 'video' ? a.thumbnail_url : (a.web_blob_url || a.blob_url)
+      if (url && !seen.has(url)) { seen.add(url); pool.push(url) }
+    }
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[pool[i], pool[j]] = [pool[j], pool[i]]
+    }
+    return pool.slice(0, 3)
+  }, [media])
   const photos = [...libraryShots, ...DEFAULT_VIBE_PHOTOS].slice(0, 3)
   const usingDefaults = libraryShots.length === 0
   return (
