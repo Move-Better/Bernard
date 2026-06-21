@@ -113,3 +113,49 @@ export function gradeToCanvasFilter(params) {
   const sepia = Math.max(0, p.warmth * 0.003).toFixed(3)
   return `brightness(${brightness}) contrast(${contrast}) saturate(${saturate}) sepia(${sepia})`
 }
+
+/**
+ * ffmpeg filtergraph string emitting the SAME grade as applyGradeParamsSharp, for
+ * the VIDEO bake — one param schema, two emitters (photo: Sharp, video: ffmpeg).
+ * Returns null for a neutral grade so the caller skips the filter entirely.
+ *
+ *   modulate(saturation) → eq=saturation
+ *   linear(gain, bias)   → lutrgb per-channel affine  gR/gG/gB * val + bias
+ *                          (gain folds in the brightness multiply; bias = the
+ *                          contrast pivot −(a−1)·128, identical to the Sharp linear pass)
+ *   gamma(depth)         → eq=gamma. Sharp .gamma(g>1) DEEPENS midtones; ffmpeg
+ *                          eq gamma<1 darkens, so we invert (1/g). Positive depth
+ *                          only, matching the Sharp emitter.
+ *
+ * Applied to the source video frame BEFORE the brand overlay (mirrors the photo
+ * path: grade the photo, then composite brand text). Verified frame-for-frame
+ * against applyGradeParamsSharp across all vibe presets + extremes
+ * (.claude/video-harness/v2-grade-tune.mjs — Sharp/ffmpeg indistinguishable).
+ *
+ * @param {Object} params — canonical grade params (signed −100..100)
+ * @returns {string|null} an ffmpeg -vf chain, or null when neutral
+ */
+export function gradeToFfmpeg(params) {
+  const p = normalizeGrade(params)
+  if (isNeutralGrade(p)) return null
+
+  const brightness = 1 + p.exposure * K.exposure
+  const sat = Math.max(0, 1 + p.saturation * K.satMul)
+  const a = 1 + p.contrast * K.contrast
+  const gR = a * brightness * (1 + p.warmth * K.warmth)
+  const gG = a * brightness * (1 + p.tint * K.tint)
+  const gB = a * brightness * (1 - p.warmth * K.warmth)
+  const bias = -(a - 1) * 128
+
+  const filters = []
+  if (Math.abs(sat - 1) > 1e-4) filters.push(`eq=saturation=${sat.toFixed(4)}`)
+  // lutrgb per-channel affine. Commas inside clip() are escaped (\,) so the
+  // filtergraph parser doesn't read them as filter-chain separators.
+  const aff = (g) => `clip(${g.toFixed(5)}*val+${bias.toFixed(3)}\\,0\\,255)`
+  filters.push(`lutrgb=r=${aff(gR)}:g=${aff(gG)}:b=${aff(gB)}`)
+  if (p.depth > 0) {
+    const g = 1 / clamp(1 + p.depth * K.depthGamma, 1, 3)
+    filters.push(`eq=gamma=${g.toFixed(4)}`)
+  }
+  return filters.join(',')
+}

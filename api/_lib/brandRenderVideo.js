@@ -29,6 +29,7 @@ import { buildBrandOverlaySvg, resolveBrandColors } from './brandRender.js'
 import { getBrandFont, ensureFontconfig } from './brandFonts.js'
 import { transcribeToSrt, transcribeToWords } from './whisper.js'
 import { buildKaraokeAss } from './karaokeCaptions.js'
+import { gradeToFfmpeg } from './gradeParams.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
 // original is preserved for the render). ZV-1F 4K clips can be large.
@@ -284,11 +285,16 @@ function runFfmpeg(args) {
  *                                         the karaoke captions are built from these and the per-render
  *                                         Whisper pass is skipped entirely (migration 137 — "persist the
  *                                         words once at detection, never re-transcribe on render").
+ * @param {Object} [params.grade]        — canonical AI-colorist grade params
+ *                                         {exposure,contrast,saturation,warmth,tint,depth}.
+ *                                         Rendered to the source frame via the ffmpeg emitter
+ *                                         (gradeToFfmpeg) — the SAME schema as the photo Sharp
+ *                                         grade. Neutral/absent → no filter, byte-identical output.
  * @returns {Promise<{buffer: Buffer, width: number, height: number, channel: string, hadSubtitles: boolean, words: Array|null}>}
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionWords }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionWords, grade }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -466,10 +472,22 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     const scaleFilter = spec.fit === 'contain'
       ? `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[scaled]`
       : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}[scaled]`
-    let filterComplex = [
-      scaleFilter,
-      `[scaled][1:v]overlay=0:0[branded]`,
-    ]
+
+    // AI Colorist grade — applied to the SOURCE FRAME before the brand overlay
+    // (mirrors the photo path: grade the photo, then composite brand text). Same
+    // canonical param schema as the Sharp photo grade; gradeToFfmpeg returns null
+    // for a neutral grade so the chain is byte-identical to before when unset.
+    const gradeFilter = gradeToFfmpeg(grade)
+    let filterComplex = gradeFilter
+      ? [
+          scaleFilter,
+          `[scaled]${gradeFilter}[graded]`,
+          `[graded][1:v]overlay=0:0[branded]`,
+        ]
+      : [
+          scaleFilter,
+          `[scaled][1:v]overlay=0:0[branded]`,
+        ]
 
     let finalOutput = '[branded]'
     if (hadSubtitles) {

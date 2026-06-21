@@ -86,6 +86,9 @@ export default async function handler(req, res) {
   const VALID_OVERLAY_SIZES = ['small', 'medium', 'large']
   const overlayPosition = VALID_OVERLAY_POSITIONS.includes(body.overlayPosition) ? body.overlayPosition : undefined
   const overlaySize = VALID_OVERLAY_SIZES.includes(body.overlaySize) ? body.overlaySize : undefined
+  // AI-colorist grade (canonical params). Clamped/normalized inside the renderer
+  // (gradeToFfmpeg → normalizeGrade); a neutral or absent grade is a no-op.
+  const grade = body.grade && typeof body.grade === 'object' && !Array.isArray(body.grade) ? body.grade : undefined
   const requestedChannels = Array.isArray(body.channels) && body.channels.length
     ? body.channels.map((c) => String(c))
     : null  // resolved after we know asset kind
@@ -190,6 +193,7 @@ export default async function handler(req, res) {
           ...(overlayPosition !== undefined ? { overlayPosition } : {}),
           ...(overlaySize !== undefined ? { overlaySize } : {}),
           ...(captionWords && captionWords.length ? { captionWords } : {}),
+          ...(grade ? { grade } : {}),
         })
         // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
         const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.mp4`
