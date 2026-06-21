@@ -573,6 +573,8 @@ function blockStyleOf(block) {
   if (block.fontWeight) s.fontWeight = block.fontWeight
   if (typeof block.uppercase === 'boolean') s.uppercase = block.uppercase
   if (block.font === 'heading' || block.font === 'body') s.font = block.font
+  if (block.italic === true) s.italic = true
+  if (block.underline === true) s.underline = true
   return Object.keys(s).length ? s : null
 }
 
@@ -602,6 +604,7 @@ function roleTypography(role, brandStyle, themeBlock, blockStyle = null) {
   }
 
   // 3) Per-block overrides win (the editor's Text-layer styling)
+  let underline = false
   if (blockStyle) {
     if (blockStyle.font === 'heading') family = heading
     else if (blockStyle.font === 'body') family = body
@@ -612,11 +615,14 @@ function roleTypography(role, brandStyle, themeBlock, blockStyle = null) {
     if (blockStyle.fontWeight) weight = blockStyle.fontWeight
     if (blockStyle.color) color = blockStyle.color
     if (typeof blockStyle.uppercase === 'boolean') uppercase = blockStyle.uppercase
+    if (blockStyle.italic === true) italic = true
+    if (blockStyle.underline === true) underline = true
   }
 
   return {
     font: `${italic ? 'italic ' : ''}${weight} ${size}px ${family}`,
     lineH,
+    size,
     color,
     uppercase,
     maxLines: d.maxLines,
@@ -626,6 +632,7 @@ function roleTypography(role, brandStyle, themeBlock, blockStyle = null) {
     pill: bg === 'pill',
     background: bg,
     bgColor,
+    underline,
   }
 }
 
@@ -806,10 +813,27 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   }
 
   ctx.fillStyle = typo.color
+  const firstLineY = y
   for (const l of lines) {
     if (typo.shadow) drawTextWithShadow(ctx, l, anchorX, y, typo.shadowLevel)
     else             ctx.fillText(l, anchorX, y)
     y += typo.lineH
+  }
+  if (typo.underline) {
+    ctx.save()
+    ctx.strokeStyle = typo.color
+    ctx.lineWidth = Math.max(2, Math.round(typo.size * 0.05))
+    ctx.lineCap = 'round'
+    for (let li = 0; li < lines.length; li++) {
+      const ly = firstLineY + li * typo.lineH + Math.round(typo.size * 0.12)
+      const lw = ctx.measureText(lines[li]).width
+      const lx = align === 'left' ? anchorX : align === 'right' ? anchorX - lw : anchorX - lw / 2
+      ctx.beginPath()
+      ctx.moveTo(lx, ly)
+      ctx.lineTo(lx + lw, ly)
+      ctx.stroke()
+    }
+    ctx.restore()
   }
   ctx.textAlign = 'start'
 }
