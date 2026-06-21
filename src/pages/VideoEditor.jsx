@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
-import { getMediaAsset } from '@/lib/mediaLib'
+import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
@@ -469,34 +469,49 @@ export default function VideoEditor() {
   const durationSec = Math.max(1, endSec - startSec)
   const playClipT = clamp(currentTime - startSec, 0, durationSec)
 
-  // Save & resume (local draft). On open, restore this asset's editor doc;
-  // autosave it (debounced) on change. Per-browser (localStorage) — server sync
-  // is a follow-up. Fully defensive: a missing/corrupt draft just opens fresh.
+  // Save & resume. On open, restore this asset's editor doc — preferring the
+  // SERVER draft (media_assets.video_edit_draft, cross-device) and falling back
+  // to localStorage if the asset hasn't loaded a server draft yet. Autosave
+  // (debounced) writes BOTH: localStorage immediately (offline mirror) + a
+  // server PATCH. Fully defensive: a missing/corrupt draft just opens fresh.
   const restoredRef = useRef(false)
+  const hydratedRef = useRef(false)
+  const lastSavedRef = useRef(null)
   useEffect(() => {
-    if (!assetId || restoredRef.current) return
+    if (!asset || restoredRef.current) return
     restoredRef.current = true
     try {
-      const raw = localStorage.getItem(`videoEdit:${assetId}`)
-      if (!raw) return
-      const d = JSON.parse(raw)
-      if (!d || typeof d !== 'object') return
-      if (d.grade) setGrade(d.grade)
-      if (d.reframe) setReframe(d.reframe)
-      if (Array.isArray(d.overlays)) setOverlays(d.overlays)
-      if (d.speed) setSpeedState(d.speed)
-      if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
-      if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
-      if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
-      seededRef.current = true // a restored trim wins over the proposal seed
+      const server = asset.video_edit_draft
+      let local = null
+      try {
+        const raw = localStorage.getItem(`videoEdit:${assetId}`)
+        if (raw) local = JSON.parse(raw)
+      } catch { /* corrupt local — ignore */ }
+      const d = (server && typeof server === 'object') ? server : local
+      if (d && typeof d === 'object') {
+        if (d.grade) setGrade(d.grade)
+        if (d.reframe) setReframe(d.reframe)
+        if (Array.isArray(d.overlays)) setOverlays(d.overlays)
+        if (d.speed) setSpeedState(d.speed)
+        if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
+        if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
+        if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
+        seededRef.current = true // a restored trim wins over the proposal seed
+      }
     } catch { /* corrupt draft — open fresh */ }
-  }, [assetId])
+    hydratedRef.current = true
+  }, [asset, assetId])
   useEffect(() => {
-    if (!assetId) return
+    if (!assetId || !hydratedRef.current) return
     const doc = { grade, reframe, overlays, speed, caption, startSec, endSec }
+    const json = JSON.stringify(doc)
+    try { localStorage.setItem(`videoEdit:${assetId}`, json) } catch { /* quota — ignore */ }
+    if (json === lastSavedRef.current) return
     const t = setTimeout(() => {
-      try { localStorage.setItem(`videoEdit:${assetId}`, JSON.stringify(doc)) } catch { /* quota — ignore */ }
-    }, 600)
+      lastSavedRef.current = json
+      // Offline / failure is non-fatal — localStorage above still holds the draft.
+      updateMediaAsset(assetId, { videoEditDraft: doc }).catch(() => {})
+    }, 1500)
     return () => clearTimeout(t)
   }, [assetId, grade, reframe, overlays, speed, caption, startSec, endSec])
 
