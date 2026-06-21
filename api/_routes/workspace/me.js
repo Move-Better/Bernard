@@ -45,6 +45,10 @@ const PATCHABLE_FIELDS = new Set([
   'schedule_prefs',
   'realtime_voice_daily_cap_min',
   'auto_publish_settings',
+  'cadence_policy',
+  'engagement_digest_enabled',
+  'engagement_digest_recipients',
+  'publish_intent',
 ])
 
 // Platforms recognized in schedule_prefs. Mirrors PLATFORM_SCHEDULE_PREFS in
@@ -226,6 +230,75 @@ function sanitizeToneModifiers(value) {
     if (v === null || v === undefined || v === '') continue
     if (typeof v !== 'string') return null
     out[k] = v
+  }
+  return out
+}
+
+// Valid atom-platform IDs for cadence_policy.channels
+const CADENCE_PLATFORMS = new Set([
+  'instagram', 'linkedin', 'gbp', 'facebook', 'tiktok',
+  'twitter', 'threads', 'bluesky', 'instagram_story',
+])
+const CADENCE_QUIET_DAYS = new Set(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
+
+// Shape: { channels: { [platform]: { target_per_week, enabled } }, quiet_days, timezone, ...rest }
+// Merges over the existing row — unknown top-level keys are preserved (version, provenance, etc.)
+// so a partial PATCH from the UI doesn't clobber strategist-managed fields.
+function sanitizeCadencePolicy(value) {
+  if (!isPlainObject(value)) return null
+  const out = { ...value }
+
+  if ('channels' in value) {
+    if (!isPlainObject(value.channels)) return null
+    const cleanChannels = {}
+    for (const [platform, entry] of Object.entries(value.channels)) {
+      if (!CADENCE_PLATFORMS.has(platform)) continue
+      if (!isPlainObject(entry)) return null
+      const enabled = Boolean(entry.enabled)
+      const tpw = entry.target_per_week != null ? parseInt(entry.target_per_week, 10) : 0
+      if (!Number.isInteger(tpw) || tpw < 0 || tpw > 28) return null
+      cleanChannels[platform] = { target_per_week: tpw, enabled }
+    }
+    out.channels = cleanChannels
+  }
+
+  if ('quiet_days' in value) {
+    if (!Array.isArray(value.quiet_days)) return null
+    for (const d of value.quiet_days) {
+      if (!CADENCE_QUIET_DAYS.has(d)) return null
+    }
+    out.quiet_days = [...new Set(value.quiet_days)]
+  }
+
+  if ('timezone' in value) {
+    if (typeof value.timezone !== 'string' || value.timezone.length > 60) return null
+    out.timezone = value.timezone
+  }
+
+  return out
+}
+
+const PUBLISH_INTENT_WEBSITE  = new Set(['wordpress', 'astro', 'none'])
+const PUBLISH_INTENT_SOCIAL   = new Set(['buffer', 'bundle', 'manual'])
+const PUBLISH_INTENT_NEWSLETTER = new Set(['beehiiv', 'other', 'skip'])
+
+function sanitizePublishIntent(value) {
+  if (!isPlainObject(value)) return null
+  const out = {}
+  if ('website' in value) {
+    if (!PUBLISH_INTENT_WEBSITE.has(value.website)) return null
+    out.website = value.website
+  }
+  if ('social' in value) {
+    if (!PUBLISH_INTENT_SOCIAL.has(value.social)) return null
+    out.social = value.social
+  }
+  if ('newsletter' in value) {
+    if (!PUBLISH_INTENT_NEWSLETTER.has(value.newsletter)) return null
+    out.newsletter = value.newsletter
+  }
+  if ('analytics' in value) {
+    out.analytics = Boolean(value.analytics)
   }
   return out
 }
@@ -501,6 +574,28 @@ async function handler(req, res) {
           return res.status(400).json({ error: 'invalid-publish-provider' })
         }
         patch.publish_provider = value
+        continue
+      }
+      if (key === 'cadence_policy') {
+        const cleaned = sanitizeCadencePolicy(value)
+        if (cleaned === null) return res.status(400).json({ error: 'invalid-cadence-policy' })
+        patch.cadence_policy = cleaned
+        continue
+      }
+      if (key === 'engagement_digest_enabled') {
+        patch.engagement_digest_enabled = Boolean(value)
+        continue
+      }
+      if (key === 'engagement_digest_recipients') {
+        if (!Array.isArray(value)) return res.status(400).json({ error: 'invalid-engagement-digest-recipients' })
+        const clean = value.filter((v) => typeof v === 'string' && v.trim())
+        patch.engagement_digest_recipients = clean
+        continue
+      }
+      if (key === 'publish_intent') {
+        const cleaned = sanitizePublishIntent(value)
+        if (cleaned === null) return res.status(400).json({ error: 'invalid-publish-intent' })
+        patch.publish_intent = cleaned
         continue
       }
       patch[key] = value

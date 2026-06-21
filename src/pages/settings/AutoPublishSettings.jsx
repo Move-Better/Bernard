@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MapPin, Instagram, Facebook, Linkedin, Music2, Youtube, FileText, Info, Zap } from 'lucide-react'
+import { MapPin, Instagram, Facebook, Linkedin, Music2, Youtube, FileText, Info, Zap, Mail } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { SaveBar } from '@/components/settings/helpers'
@@ -33,6 +33,38 @@ function channelDefaults(existing = {}) {
   }
 }
 
+function DigestCard({ enabled, onToggle }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+            <CardTitle className="text-sm font-medium">Weekly digest email</CardTitle>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            aria-label="Enable weekly digest email"
+            onClick={() => onToggle(!enabled)}
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              enabled ? 'border-primary bg-primary' : 'border-input bg-input'
+            }`}
+          >
+            <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
+              enabled ? 'translate-x-5' : 'translate-x-0'
+            }`} />
+          </button>
+        </div>
+        <CardDescription className="text-xs mt-1">
+          A Monday-morning summary of published content, queue depth, and engagement. Sent via Bernard to all producer-role users in this workspace. Off by default.
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  )
+}
+
 function buildInitialState(autoPublishSettings) {
   const settings = autoPublishSettings || {}
   const out = {}
@@ -50,12 +82,16 @@ export default function AutoPublishSettings() {
   const [error, setError] = useState(null)
   const [initialSnapshot, setInitialSnapshot] = useState(null)
   const [history, setHistory] = useState(null)
+  const [digestEnabled, setDigestEnabled] = useState(false)
+  const [digestSnapshot, setDigestSnapshot] = useState(false)
 
   useEffect(() => {
     if (!ws) return
     const init = buildInitialState(ws.auto_publish_settings)
     setState(init)
     setInitialSnapshot(JSON.stringify(init))
+    setDigestEnabled(Boolean(ws.engagement_digest_enabled))
+    setDigestSnapshot(Boolean(ws.engagement_digest_enabled))
     // Load audit history: packages auto_published in the last 30 days.
     apiFetch('/api/editorial/packages?status=approved&limit=50')
       .then((rows) => {
@@ -69,7 +105,8 @@ export default function AutoPublishSettings() {
       .catch(() => setHistory([]))
   }, [ws?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isDirty = state !== null && initialSnapshot !== null && JSON.stringify(state) !== initialSnapshot
+  const isDirty = (state !== null && initialSnapshot !== null && JSON.stringify(state) !== initialSnapshot)
+    || digestEnabled !== digestSnapshot
   useUnsavedChanges(isDirty)
   useSaveShortcut(isDirty ? handleSave : null)
 
@@ -81,9 +118,10 @@ export default function AutoPublishSettings() {
       await apiFetch('/api/workspace/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ auto_publish_settings: state }),
+        body: JSON.stringify({ auto_publish_settings: state, engagement_digest_enabled: digestEnabled }),
       })
       setInitialSnapshot(JSON.stringify(state))
+      setDigestSnapshot(digestEnabled)
     } catch (e) {
       setError(e?.message || 'Save failed')
     } finally {
@@ -110,6 +148,8 @@ export default function AutoPublishSettings() {
           QC flags. Start with GBP — it has the lowest blast radius.
         </p>
       </div>
+
+      <DigestCard enabled={digestEnabled} onToggle={setDigestEnabled} />
 
       <Card className="bg-amber-50 border-amber-200">
         <CardContent className="pt-4 pb-3">

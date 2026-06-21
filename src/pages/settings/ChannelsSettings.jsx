@@ -62,6 +62,290 @@ const GROUPS = [
   { id: 'web',    label: 'Web',      members: ['landing_page'] },
 ]
 
+// --- Posting cadence + publish intent ---
+
+const CADENCE_PLATFORM_META = [
+  { id: 'instagram',       label: 'Instagram',       Icon: Instagram },
+  { id: 'linkedin',        label: 'LinkedIn',        Icon: Linkedin },
+  { id: 'gbp',             label: 'Google Business', Icon: MapPin },
+  { id: 'facebook',        label: 'Facebook',        Icon: Facebook },
+  { id: 'tiktok',          label: 'TikTok',          Icon: Music2 },
+  { id: 'twitter',         label: 'Twitter / X',     Icon: Twitter },
+  { id: 'threads',         label: 'Threads',         Icon: MessageCircle },
+  { id: 'bluesky',         label: 'Bluesky',         Icon: Cloud },
+  { id: 'instagram_story', label: 'Instagram Story', Icon: Instagram },
+]
+
+const WEEK_DAYS = [
+  { id: 'sun', label: 'Su' }, { id: 'mon', label: 'Mo' },
+  { id: 'tue', label: 'Tu' }, { id: 'wed', label: 'We' },
+  { id: 'thu', label: 'Th' }, { id: 'fri', label: 'Fr' },
+  { id: 'sat', label: 'Sa' },
+]
+
+const TIMEZONE_OPTIONS = [
+  { value: 'America/Los_Angeles', label: 'Pacific (LA / Vancouver)' },
+  { value: 'America/Denver',      label: 'Mountain (Denver / Calgary)' },
+  { value: 'America/Chicago',     label: 'Central (Chicago / Winnipeg)' },
+  { value: 'America/New_York',    label: 'Eastern (New York / Toronto)' },
+  { value: 'America/Phoenix',     label: 'Mountain no-DST (Phoenix)' },
+  { value: 'America/Anchorage',   label: 'Alaska' },
+  { value: 'Pacific/Honolulu',    label: 'Hawaii' },
+]
+
+const DEFAULT_CADENCE_POLICY = {
+  version: 1, provenance: 'bernard', trust_stage: 'approve_all',
+  quiet_days: ['sat', 'sun'],
+  channels: {
+    instagram: { target_per_week: 4, enabled: true },
+    linkedin:  { target_per_week: 3, enabled: true },
+    gbp:       { target_per_week: 3, enabled: true },
+  },
+  digests: [], goals: [],
+}
+
+const DEFAULT_PUBLISH_INTENT = { website: 'none', social: 'bundle', newsletter: 'other' }
+
+const BLOG_OPTIONS = [
+  { value: 'wordpress', label: 'WordPress',      desc: 'Direct publish via WP REST API' },
+  { value: 'astro',     label: 'Astro / static', desc: 'Markdown export to your repo' },
+  { value: 'none',      label: 'No blog',        desc: 'Skip blog output entirely' },
+]
+const SOCIAL_OPTIONS = [
+  { value: 'bundle', label: 'bundle.social',  desc: 'Bernard connects — no extra tool' },
+  { value: 'buffer', label: 'Buffer',          desc: 'Bring your existing Buffer account' },
+  { value: 'manual', label: 'Copy & paste',   desc: 'Export captions, post manually' },
+]
+const NEWSLETTER_OPTIONS = [
+  { value: 'beehiiv', label: 'beehiiv',           desc: 'Direct publish to beehiiv' },
+  { value: 'other',   label: 'Other',             desc: 'Mailchimp, ConvertKit, HTML export' },
+  { value: 'skip',    label: 'No newsletter',     desc: 'Hides the email channel' },
+]
+
+function CadenceCard({ cadence, onChange }) {
+  const isAuto = (cadence?.provenance ?? 'bernard') !== 'user'
+  const channels = cadence?.channels || {}
+  const quietDays = Array.isArray(cadence?.quiet_days) ? cadence.quiet_days : ['sat', 'sun']
+  const timezone = cadence?.timezone || 'America/Los_Angeles'
+
+  function setChannel(platform, patch) {
+    onChange({
+      ...(cadence || DEFAULT_CADENCE_POLICY),
+      provenance: 'user',
+      channels: {
+        ...channels,
+        [platform]: { ...(channels[platform] || { target_per_week: 0, enabled: false }), ...patch },
+      },
+    })
+  }
+
+  function toggleQuietDay(day) {
+    const next = quietDays.includes(day)
+      ? quietDays.filter(d => d !== day)
+      : [...quietDays, day]
+    onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), quiet_days: next, provenance: 'user' })
+  }
+
+  return (
+    <Card className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base font-semibold">Posting cadence</CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Target posts per week per channel. The weekly plan uses these as capacity ceilings.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground">{isAuto ? 'Auto' : 'Manual'}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isAuto}
+              aria-label="Let Bernard manage cadence automatically"
+              onClick={() => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), provenance: isAuto ? 'user' : 'bernard' })}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isAuto ? 'border-primary bg-primary' : 'border-input bg-input'
+              }`}
+            >
+              <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
+                isAuto ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+        {isAuto && (
+          <p className="text-xs text-muted-foreground pt-1">
+            Bernard schedules posts automatically based on available content and built-in defaults. Turn off to set per-channel targets and quiet days.
+          </p>
+        )}
+      </CardHeader>
+
+      {!isAuto && (
+        <CardContent className="space-y-5 pt-0">
+          <div className="rounded-lg border border-border divide-y divide-border">
+            {CADENCE_PLATFORM_META.map(({ id, label: platformLabel, Icon }) => {
+              const ch = channels[id] || { target_per_week: 0, enabled: false }
+              return (
+                <div key={id} className="flex items-center gap-3 px-3 py-2.5">
+                  <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm flex-1 truncate">{platformLabel}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-2xs text-muted-foreground hidden sm:block">posts/wk</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={14}
+                      value={ch.target_per_week}
+                      disabled={!ch.enabled}
+                      onChange={e => setChannel(id, { target_per_week: Math.max(0, Math.min(14, parseInt(e.target.value, 10) || 0)) })}
+                      className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={ch.enabled}
+                      aria-label={`Enable ${platformLabel}`}
+                      onClick={() => setChannel(id, { enabled: !ch.enabled })}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        ch.enabled ? 'border-primary bg-primary' : 'border-input bg-input'
+                      }`}
+                    >
+                      <span className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform ${
+                        ch.enabled ? 'translate-x-4' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Quiet days — no posts scheduled</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {WEEK_DAYS.map(({ id: dayId, label: dayLabel }) => {
+                const isPosting = !quietDays.includes(dayId)
+                return (
+                  <button
+                    key={dayId}
+                    type="button"
+                    onClick={() => toggleQuietDay(dayId)}
+                    className={`w-9 h-9 rounded-full text-2xs font-semibold border transition-colors ${
+                      isPosting
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted text-muted-foreground border-border'
+                    }`}
+                  >
+                    {dayLabel}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-2xs text-muted-foreground">Filled = posting day · Grey = quiet</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Timezone for scheduling</p>
+            <select
+              value={timezone}
+              onChange={e => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), timezone: e.target.value, provenance: 'user' })}
+              className="w-full max-w-xs text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {TIMEZONE_OPTIONS.map(tz => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function PublishIntentCard({ intent, onChange }) {
+  const blog       = intent?.website    || 'none'
+  const social     = intent?.social     || 'bundle'
+  const newsletter = intent?.newsletter || 'other'
+
+  function setField(key, value) {
+    onChange({ ...intent, [key]: value })
+  }
+
+  return (
+    <Card className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">How you publish</CardTitle>
+        <CardDescription className="text-xs">
+          Set at onboarding — update here if your setup changes. Affects which integrations are highlighted.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5 pt-0">
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Blog</p>
+          <div className="space-y-1.5">
+            {BLOG_OPTIONS.map(opt => (
+              <button key={opt.value} type="button" onClick={() => setField('website', opt.value)}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
+                  blog === opt.value ? 'border-primary/40 bg-primary/10' : 'border-border hover:bg-accent/30'
+                }`}
+              >
+                <div className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 transition-colors ${
+                  blog === opt.value ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                }`} />
+                <div>
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  <div className="text-2xs text-muted-foreground mt-0.5">{opt.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Social</p>
+          <div className="space-y-1.5">
+            {SOCIAL_OPTIONS.map(opt => (
+              <button key={opt.value} type="button" onClick={() => setField('social', opt.value)}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
+                  social === opt.value ? 'border-primary/40 bg-primary/10' : 'border-border hover:bg-accent/30'
+                }`}
+              >
+                <div className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 transition-colors ${
+                  social === opt.value ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                }`} />
+                <div>
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  <div className="text-2xs text-muted-foreground mt-0.5">{opt.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Newsletter</p>
+          <div className="space-y-1.5">
+            {NEWSLETTER_OPTIONS.map(opt => (
+              <button key={opt.value} type="button" onClick={() => setField('newsletter', opt.value)}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
+                  newsletter === opt.value ? 'border-primary/40 bg-primary/10' : 'border-border hover:bg-accent/30'
+                }`}
+              >
+                <div className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 transition-colors ${
+                  newsletter === opt.value ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                }`} />
+                <div>
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  <div className="text-2xs text-muted-foreground mt-0.5">{opt.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function groupedChannels() {
   const all = Object.values(OUTPUT_CHANNELS)
   const assigned = new Set(GROUPS.flatMap((g) => g.members))
@@ -95,7 +379,11 @@ export default function ChannelsSettings() {
       .then(data => {
         setWs(data)
         if (data) {
-          const initial = { enabled_outputs: Array.isArray(data.enabled_outputs) ? data.enabled_outputs : [] }
+          const initial = {
+            enabled_outputs: Array.isArray(data.enabled_outputs) ? data.enabled_outputs : [],
+            cadence_policy:  data.cadence_policy  || DEFAULT_CADENCE_POLICY,
+            publish_intent:  data.publish_intent  || DEFAULT_PUBLISH_INTENT,
+          }
           setForm(initial)
           setPristine(initial)
         }
@@ -114,14 +402,22 @@ export default function ChannelsSettings() {
       const r = await fetch('/api/workspace/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ enabled_outputs: form.enabled_outputs }),
+        body: JSON.stringify({
+          enabled_outputs: form.enabled_outputs,
+          cadence_policy:  form.cadence_policy,
+          publish_intent:  form.publish_intent,
+        }),
       })
       if (!r.ok) {
         const err = await r.json().catch(() => ({}))
         setError(err.error || 'save-failed')
       } else {
         const updated = await r.json()
-        const refreshed = { enabled_outputs: Array.isArray(updated.enabled_outputs) ? updated.enabled_outputs : [] }
+        const refreshed = {
+          enabled_outputs: Array.isArray(updated.enabled_outputs) ? updated.enabled_outputs : [],
+          cadence_policy:  updated.cadence_policy  || DEFAULT_CADENCE_POLICY,
+          publish_intent:  updated.publish_intent  || DEFAULT_PUBLISH_INTENT,
+        }
         setForm(refreshed); setPristine(refreshed)
         setSaved(true); setTimeout(() => setSaved(false), 3000)
       }
@@ -130,6 +426,13 @@ export default function ChannelsSettings() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function setCadence(cadence) {
+    setForm(f => ({ ...f, cadence_policy: cadence }))
+  }
+  function setPublishIntent(intent) {
+    setForm(f => ({ ...f, publish_intent: intent }))
   }
 
   function toggle(channelId, on) {
@@ -216,6 +519,9 @@ export default function ChannelsSettings() {
           </CardContent>
         </Card>
       ))}
+
+      <CadenceCard cadence={form.cadence_policy} onChange={setCadence} />
+      <PublishIntentCard intent={form.publish_intent} onChange={setPublishIntent} />
 
       <Card className="shadow-none bg-muted/40">
         <CardContent className="flex items-start gap-3 py-4">
