@@ -2,12 +2,12 @@ import { Link, Navigate } from 'react-router-dom'
 import {
   Sparkles, MessageSquareText, TrendingUp, CalendarClock, Activity,
   BarChart3, Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
-  Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink,
+  Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink, MapPin,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
-  useWebsiteHealth, useWebsiteGA4, useSearchQueries,
+  useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
 } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -335,6 +335,67 @@ function SearchQueriesRead({ data }) {
   )
 }
 
+function StatPill({ label, value }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl bg-muted/50 min-w-[80px]">
+      <span className="text-base font-semibold tabular-nums">{value}</span>
+      <span className="text-2xs text-muted-foreground text-center leading-tight">{label}</span>
+    </div>
+  )
+}
+
+function GbpPerformanceRead({ data }) {
+  if (!data?.connected) {
+    return (
+      <PendingRead icon={MapPin} badge="Unlocks when Google Business Profile connects">
+        <span className="font-semibold text-foreground">Coming:</span>{' '}
+        how many people find your listing on Maps and Search, request directions, or call — across all your locations.
+      </PendingRead>
+    )
+  }
+  if (data.error) {
+    return (
+      <PendingRead icon={MapPin} badge="Google Business Profile · temporarily unavailable">
+        Data temporarily unavailable — check back shortly.
+      </PendingRead>
+    )
+  }
+
+  const { totals = {}, locations = [], days = 30 } = data
+  const fmtN = (n) => Number(n || 0).toLocaleString()
+  const locationLabel = locations.length > 1
+    ? `${locations.length} locations combined`
+    : (locations[0]?.title || 'your listing')
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+          <MapPin className="h-4 w-4 text-info" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+            Google Business Profile · {days}d · {locationLabel}
+          </span>
+          <div className="flex flex-wrap gap-2 mt-4">
+            <StatPill label="Impressions" value={fmtN(totals.impressions)} />
+            <StatPill label="Maps views" value={fmtN(totals.mapImpressions)} />
+            <StatPill label="Search views" value={fmtN(totals.searchImpressions)} />
+            <StatPill label="Directions" value={fmtN(totals.directionRequests)} />
+            <StatPill label="Calls" value={fmtN(totals.callClicks)} />
+            <StatPill label="Website clicks" value={fmtN(totals.websiteClicks)} />
+          </div>
+          {locations.length > 1 && (
+            <p className="text-2xs text-muted-foreground mt-3">
+              {locations.map((l) => l.title).filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Analytics() {
   useDocumentTitle('Insights')
   const ws = useWorkspace()
@@ -346,6 +407,7 @@ export default function Analytics() {
   const { data: health }        = useWebsiteHealth()
   const { data: websiteGA4 }    = useWebsiteGA4()
   const { data: searchData }    = useSearchQueries()
+  const { data: gbpData }       = useGbpPerformance()
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
@@ -487,7 +549,14 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* SECTION 3 — tune up the website */}
+      {/* SECTION 3 — Google Business Profile */}
+      <div className="flex items-center gap-2 mt-8 mb-3">
+        <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h2 className="font-semibold">Google Business Profile</h2>
+      </div>
+      <GbpPerformanceRead data={gbpData} />
+
+      {/* SECTION 5 — tune up the website */}
       <div className="flex items-center gap-2 mt-8 mb-1">
         <Globe className="h-4 w-4 text-primary" aria-hidden="true" />
         <h2 className="font-semibold">Tune up the website</h2>
@@ -551,7 +620,7 @@ export default function Analytics() {
         <SearchQueriesRead data={searchData} />
       </div>
 
-      {/* SECTION 4 — what Bernard already did */}
+      {/* SECTION 6 — what Bernard already did */}
       {suggestions.length > 0 && (
         <>
           <div className="flex items-center gap-2 mt-8 mb-3">
