@@ -13,6 +13,7 @@ import { buildOwnHistoryBlock, pickPriorInterviews } from '@/lib/practiceMemory'
 import { extractProvenanceBlock } from '@/lib/provenance'
 import { useStaffMember, useInterview, useCampaigns, queryKeys } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
+import PostCallReveal from '@/components/PostCallReveal'
 import { streamMessage } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getNewsletterSystemPrompt, buildCampaignGoalBlock, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
 import { resolveAudienceSlot, resolveStoryTypeSlot } from '@/lib/interviewOptionsCatalog'
@@ -187,6 +188,10 @@ export default function InterviewSession() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [interviewComplete, setInterviewComplete] = useState(false)
+  // F2 A.3: true when this load is the post-realtime-call wrap handoff
+  // (?from=realtime&wrap=1) — drives the PostCallReveal in place of the normal
+  // generating/completion cards.
+  const [fromRealtimeWrap, setFromRealtimeWrap] = useState(false)
   // Keep the screen awake while the interview is live so a laptop/phone
   // doesn't dim or sleep mid-conversation.
   useWakeLock(!!interview && !interviewComplete)
@@ -515,6 +520,7 @@ export default function InterviewSession() {
     if (hasCompleteToken || wrapFromRealtime) {
       setInterviewComplete(true)
     }
+    if (wrapFromRealtime) setFromRealtimeWrap(true)
     if (restoredMessages.length > 0) {
       // Resuming an existing interview — skip instructions and mic check
       setShowInstructions(false)
@@ -1757,7 +1763,7 @@ export default function InterviewSession() {
         ref={conversationRef}
         onMouseUp={handleSelectionUp}
         onTouchEnd={handleSelectionUp}
-        className={`flex-1 relative pr-4 -mr-4 overflow-hidden ${isGenerating || completionData || generationError ? 'hidden' : ''}`}
+        className={`flex-1 relative pr-4 -mr-4 overflow-hidden ${isGenerating || completionData || generationError || fromRealtimeWrap ? 'hidden' : ''}`}
       >
         {selectionTip && (
           <button
@@ -1854,7 +1860,13 @@ export default function InterviewSession() {
         </div>
       )}
 
-      {isGenerating && (
+      {fromRealtimeWrap && (
+        <div className="flex-1 flex items-center justify-center py-6">
+          <PostCallReveal />
+        </div>
+      )}
+
+      {isGenerating && !fromRealtimeWrap && (
         <div className="flex-1 flex items-center justify-center py-6">
           <div
             className="rounded-xl border bg-muted p-6 max-w-md w-full flex items-start gap-4"
@@ -1894,7 +1906,7 @@ export default function InterviewSession() {
         </div>
       )}
 
-      {completionData && !isGenerating && !showVideoPrompt && (
+      {completionData && !isGenerating && !showVideoPrompt && !fromRealtimeWrap && (
         <div className="flex-1 flex items-center justify-center py-6">
           <div className="rounded-xl border bg-card p-6 max-w-md w-full text-center space-y-4">
             <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1972,7 +1984,7 @@ export default function InterviewSession() {
         </div>
       )}
 
-      {interviewComplete && !isGenerating && !completionData && generationError && (
+      {interviewComplete && !isGenerating && !completionData && generationError && !fromRealtimeWrap && (
         <div className="flex-1 flex items-center justify-center py-6">
           <div className="rounded-xl border bg-card p-6 max-w-md w-full text-center space-y-4">
             <div className="mx-auto h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center">

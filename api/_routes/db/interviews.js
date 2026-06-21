@@ -9,6 +9,8 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { buildPlanRows } from '../../_lib/atomPlan.js'
+import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
+import { mondayOf } from '../../_lib/strategist.js'
 import { extractConcepts, buildInterviewText } from '../../_lib/conceptExtractor.js'
 import { summarizeInterview } from '../../_lib/interviewSummarizer.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
@@ -408,35 +410,47 @@ export default async function handler(req, res) {
         console.error(`[db/interviews] concept extraction block threw for interview=${id} ws=${ws.slug}: ${e?.message}`)
       }
 
-      // Auto-create content_plan_atoms once per interview (idempotent).
-      // Dispatched via waitUntil so it never blocks the response AND is not
-      // dropped when the Node instance freezes on response send — a bare
-      // inline await here can be cut short under load (see CLAUDE.md
+      // F2.1 Strategist (completion-trigger). Re-plan the whole current WEEK
+      // (practice-level), replacing the per-interview grid. replanWorkspaceWeek
+      // is idempotent (replace-untouched), so firing on every completion is safe
+      // and the just-finished interview is included in the week's plan.
+      // Dispatched via waitUntil so it never blocks the response AND isn't dropped
+      // when the Node instance freezes on response send (see CLAUDE.md
       // "fire-and-forget enrichment off a handler must use waitUntil()").
+      // GRID FALLBACK: if the Strategist (LLM) errors, seed the legacy grid for
+      // THIS interview so a capture is never left planless. (Full buildPlanRows
+      // retirement + legacy-atom cleanup is a fast-follow once the Strategist is
+      // proven stable in prod.)
       waitUntil((async () => {
         try {
-          const planExistsRes = await sb(
-            `content_plan_atoms?interview_id=eq.${id}&${wsFilter}&select=id&limit=1`
-          )
-          const planExists = planExistsRes.ok && (await planExistsRes.json()).length > 0
-          if (!planExists) {
-            // Per-story selection (interviews.selected_outputs) overrides the
-            // workspace default when set; null inherits ws.enabled_outputs.
-            const planRows = buildPlanRows(id, ws.id, rows[0].selected_outputs ?? ws.enabled_outputs ?? [])
-            if (planRows.length > 0) {
-              const atomRes = await sb('content_plan_atoms', {
-                method: 'POST',
-                body: JSON.stringify(planRows),
-                headers: { Prefer: 'return=minimal' },
-              })
-              if (!atomRes.ok) {
-                const errBody = await atomRes.text().catch(() => '')
-                console.error(`[db/interviews] content_plan_atoms insert ${atomRes.status} for interview=${id} ws=${ws.slug}: ${errBody.slice(0, 500)}`)
+          // Read the workspace's cadence policy so the trigger honors the same
+          // cadence the weekly cron uses (workspaceContext may not select it).
+          const polRes = await sb(`workspaces?id=eq.${ws.id}&select=cadence_policy`)
+          const cadence_policy = polRes.ok ? (await polRes.json())[0]?.cadence_policy : null
+          await replanWorkspaceWeek({
+            workspace: { id: ws.id, cadence_policy },
+            weekMonday: mondayOf(new Date().toISOString()),
+          })
+        } catch (e) {
+          console.error(`[db/interviews] Strategist re-plan failed for interview=${id} ws=${ws.slug}: ${e?.message}; falling back to grid`)
+          try {
+            const planExistsRes = await sb(
+              `content_plan_atoms?interview_id=eq.${id}&${wsFilter}&select=id&limit=1`
+            )
+            const planExists = planExistsRes.ok && (await planExistsRes.json()).length > 0
+            if (!planExists) {
+              const planRows = buildPlanRows(id, ws.id, rows[0].selected_outputs ?? ws.enabled_outputs ?? [])
+              if (planRows.length > 0) {
+                await sb('content_plan_atoms', {
+                  method: 'POST',
+                  body: JSON.stringify(planRows),
+                  headers: { Prefer: 'return=minimal' },
+                })
               }
             }
+          } catch (e2) {
+            console.error(`[db/interviews] grid fallback also failed for interview=${id}: ${e2?.message}`)
           }
-        } catch (e) {
-          console.error(`[db/interviews] content_plan_atoms block threw for interview=${id} ws=${ws.slug}: ${e?.message}`)
         }
       })())
 
