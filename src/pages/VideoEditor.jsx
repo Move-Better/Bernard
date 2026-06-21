@@ -617,8 +617,10 @@ export default function VideoEditor() {
 
   // Outputs — render ONCE with the full editor doc, then route to the chosen
   // destination (post / b-roll / ad sizes), or render the whole untouched source.
-  const [outputsOpen, setOutputsOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
+  const [dest, setDest] = useState({ post: true, broll: false, ad: false })
+  const toggleDest = (k) => setDest((d) => ({ ...d, [k]: !d[k] }))
   const captionSummary = () => lines.map((l) => l.text).join(' ').slice(0, 500)
   const renderBody = () => ({
     assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
@@ -637,28 +639,40 @@ export default function VideoEditor() {
     return render
   }
 
-  const asPostMutation = useAppMutation({
+  // ONE render → every selected destination. Post + b-roll share the single reel
+  // render; ad export is its own (interactive) modal flow opened afterward.
+  const exportMutation = useAppMutation({
     mutationFn: async () => {
-      const render = await doRenderClip()
-      return apiFetch('/api/editorial/clip-to-post', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, captionText: captionSummary(), platform: 'instagram' }),
-      })
+      let contentItemId = null
+      if (dest.post || dest.broll) {
+        const render = await doRenderClip()
+        if (dest.broll) {
+          await apiFetch('/api/editorial/clip-to-broll', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary() }),
+          })
+        }
+        if (dest.post) {
+          const d = await apiFetch('/api/editorial/clip-to-post', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, captionText: captionSummary(), platform: 'instagram' }),
+          })
+          contentItemId = d?.contentItemId || null
+        }
+      }
+      return { contentItemId }
     },
-    onSuccess: (data) => {
-      const id = data?.contentItemId
-      if (id) { toast('Reel rendered — opening in Publish.'); navigate(`/publish/${id}`) } else toast.error('Created but no ID returned.')
+    onSuccess: ({ contentItemId }) => {
+      const done = []
+      if (dest.broll) done.push('saved to Library')
+      if (dest.post) done.push('post draft created')
+      if (done.length) toast(done.join(' · '))
+      setExportOpen(false)
+      // Ad export is an interactive download modal — open it and STAY here.
+      if (dest.ad) { setAdExportOpen(true); return }
+      // Otherwise, if a post was created, go schedule it.
+      if (dest.post && contentItemId) navigate(`/publish/${contentItemId}`)
     },
-  })
-  const brollMutation = useAppMutation({
-    mutationFn: async () => {
-      const render = await doRenderClip()
-      return apiFetch('/api/editorial/clip-to-broll', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary() }),
-      })
-    },
-    onSuccess: () => { toast('Saved to Library — appears in Suggested media shortly.'); navigate('/slate') },
   })
   const wholeMutation = useAppMutation({
     mutationFn: () => renderWholeVideo(assetId),
@@ -723,7 +737,8 @@ export default function VideoEditor() {
   })
 
   const [editingCap, setEditingCap] = useState(false)
-  const busy = asPostMutation.isPending || brollMutation.isPending || wholeMutation.isPending
+  const busy = exportMutation.isPending || wholeMutation.isPending
+  const anyDest = dest.post || dest.broll || dest.ad
 
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
@@ -767,26 +782,34 @@ export default function VideoEditor() {
             <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
             <span className="ml-auto text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reel · 9:16</span>
           </div>
-          <div className="relative flex">
-            <Button size="sm" disabled={busy} onClick={() => asPostMutation.mutate()} className="flex-1 rounded-r-none" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
-              {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="mr-1 h-3.5 w-3.5" />}Save &amp; publish
+          {/* Export — one render, multiple destinations (pick any). */}
+          <div className="relative">
+            <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="w-full justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+              {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
             </Button>
-            <button onClick={() => setOutputsOpen((v) => !v)} disabled={busy} className="flex items-center rounded-r-md border-l px-1.5 disabled:opacity-50" style={{ background: 'hsl(var(--action))', color: '#3a2a00', borderColor: 'rgba(0,0,0,.18)' }} title="More outputs" aria-label="More outputs">
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-            {outputsOpen && (
+            {exportOpen && (
               <>
-                <div className="fixed inset-0 z-30" onClick={() => setOutputsOpen(false)} />
-                <div className="absolute inset-x-0 top-full z-40 mt-1 overflow-hidden rounded-lg border bg-card shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                <div className="fixed inset-0 z-30" onClick={() => setExportOpen(false)} />
+                <div className="absolute inset-x-0 top-full z-40 mt-1 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                  <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Send this clip to — pick any</p>
                   {[
-                    { icon: FolderOpen, label: 'Save as b-roll', on: () => brollMutation.mutate() },
-                    { icon: Megaphone, label: 'Export for ads', on: () => setAdExportOpen(true) },
-                    { icon: Film, label: 'Render whole video', on: () => wholeMutation.mutate() },
+                    { k: 'post', icon: CalendarClock, label: 'Schedule a post', sub: 'Pick channels & schedule on Publish' },
+                    { k: 'broll', icon: FolderOpen, label: 'Save to Library', sub: 'Reusable b-roll clip' },
+                    { k: 'ad', icon: Megaphone, label: 'Export for ads', sub: 'Download ad-sized versions' },
                   ].map((o) => (
-                    <button key={o.label} disabled={busy} onClick={() => { setOutputsOpen(false); o.on() }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted disabled:opacity-50">
-                      <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />{o.label}
-                    </button>
+                    <label key={o.k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
+                      <input type="checkbox" checked={dest[o.k]} onChange={() => toggleDest(o.k)} />
+                      <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                      <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
+                    </label>
                   ))}
+                  <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+                    {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Render &amp; send →
+                  </Button>
+                  <div className="my-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }} />
+                  <button disabled={busy} onClick={() => { setExportOpen(false); wholeMutation.mutate() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-3xs hover:bg-muted disabled:opacity-50" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    <Film className="h-3.5 w-3.5 shrink-0" />Render the whole untrimmed video instead
+                  </button>
                 </div>
               </>
             )}
