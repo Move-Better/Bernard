@@ -94,6 +94,10 @@ export default async function handler(req, res) {
   // Static reframe (zoom/pan) + manual timed text overlays. Validated/clamped
   // inside the renderer (isNeutralReframe / normalizeOverlays); absent = no-op.
   const reframe = body.reframe && typeof body.reframe === 'object' && !Array.isArray(body.reframe) ? body.reframe : undefined
+  const kenBurns = body.kenBurns && typeof body.kenBurns === 'object' && !Array.isArray(body.kenBurns)
+    && ['push_in', 'pull_out', 'pan_left', 'pan_right'].includes(body.kenBurns.motion)
+    ? { motion: body.kenBurns.motion, intensity: Math.max(0, Math.min(100, Number(body.kenBurns.intensity) || 50)) }
+    : undefined
   const overlays = Array.isArray(body.overlays) && body.overlays.length ? body.overlays : undefined
   // Playback speed 0.5..2 (default 1 = no-op); clamped again in the renderer.
   const sp = Number(body.speed)
@@ -211,6 +215,7 @@ export default async function handler(req, res) {
           ...(captionWords && captionWords.length ? { captionWords } : {}),
           ...(grade ? { grade } : {}),
           ...(reframe ? { reframe } : {}),
+          ...(kenBurns ? { kenBurns } : {}),
           ...(overlays ? { overlays } : {}),
           ...(speed ? { speed } : {}),
         })

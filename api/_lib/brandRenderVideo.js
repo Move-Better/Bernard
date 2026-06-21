@@ -30,7 +30,7 @@ import { getBrandFont, ensureFontconfig } from './brandFonts.js'
 import { transcribeToSrt, transcribeToWords } from './whisper.js'
 import { buildKaraokeAss } from './karaokeCaptions.js'
 import { gradeToFfmpeg } from './gradeParams.js'
-import { reframeFilter, isNeutralReframe, buildOverlaySvg, normalizeOverlays } from './videoOverlays.js'
+import { reframeFilter, isNeutralReframe, buildOverlaySvg, normalizeOverlays, kenBurnsFilter, isKenBurnsActive } from './videoOverlays.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
 // original is preserved for the render). ZV-1F 4K clips can be large.
@@ -304,7 +304,7 @@ function runFfmpeg(args) {
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, grade, reframe, overlays, speed }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, grade, reframe, kenBurns, overlays, speed }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -503,9 +503,14 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // Cover lanes (clips) support static reframe (zoom + pan). Neutral reframe →
     // legacy centered cover, byte-identical. contain lanes (long-form) letterbox
     // the whole frame and never reframe.
-    const coverFilter = (reframe && !isNeutralReframe(reframe))
-      ? reframeFilter(reframe, W, H)
-      : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}[scaled]`
+    // Ken Burns (animated push-in / pull-out / pan) takes precedence over the
+    // static reframe when set — it IS the cover. Clips only; the 'contain' lane
+    // below letterboxes and never moves.
+    const coverFilter = isKenBurnsActive(kenBurns)
+      ? kenBurnsFilter(kenBurns, W, H, clipDur)
+      : (reframe && !isNeutralReframe(reframe))
+        ? reframeFilter(reframe, W, H)
+        : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}[scaled]`
     const scaleFilter = spec.fit === 'contain'
       ? `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[scaled]`
       : coverFilter
