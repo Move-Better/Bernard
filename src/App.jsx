@@ -60,7 +60,7 @@ const PreVisitMessage = lazy(() => import('@/pages/PreVisitMessage'))
 const AuthorMode = lazy(() => import('@/pages/AuthorMode'))
 const Book = lazy(() => import('@/pages/Book'))
 const EditorialTest = lazy(() => import('@/pages/EditorialTest'))
-const Slate = lazy(() => import('@/pages/Slate'))
+const MomentMiner = lazy(() => import('@/pages/MomentMiner'))
 const VideoEditor = lazy(() => import('@/pages/VideoEditor'))
 const Ads = lazy(() => import('@/pages/Ads'))
 const Capture = lazy(() => import('@/pages/Capture'))
@@ -631,10 +631,13 @@ function AppRoutes() {
             <Route path="/needs-media" element={<Navigate to="/publish" replace />} />
             {/* Universal PWA capture surface — works on any device with a browser + camera. */}
             <Route path="/capture" element={guarded(<Capture />)} />
-            {/* Slate. Uses the * catch-all pattern so descendant
-                routes resolve correctly (see CLAUDE.md Router conventions). */}
-            <Route path="/slate" element={guarded(<Slate />)} />
-            {/* The Reel editor is now the default for a clip; /edit kept as an alias. */}
+            {/* Moment Miner (né Slate, renamed 2026-06-21). /slate kept as a
+                back-compat alias for old deep links (matches the Publish pattern). */}
+            <Route path="/moments" element={guarded(<MomentMiner />)} />
+            <Route path="/slate" element={guarded(<MomentMiner />)} />
+            {/* The Reel editor is the default for a clip; /edit kept as an alias. */}
+            <Route path="/moments/clip/:assetId" element={guarded(<VideoEditor />)} />
+            <Route path="/moments/clip/:assetId/edit" element={guarded(<VideoEditor />)} />
             <Route path="/slate/clip/:assetId" element={guarded(<VideoEditor />)} />
             <Route path="/slate/clip/:assetId/edit" element={guarded(<VideoEditor />)} />
             <Route path="/ads" element={guarded(<Ads />)} />

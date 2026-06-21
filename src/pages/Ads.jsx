@@ -144,7 +144,7 @@ export default function Ads() {
       </div>
 
       <p className="-mt-2 text-xs text-muted-foreground">
-        Export ad sizes from any photo in the <Link to="/library" className="text-primary">Library</Link> or any clip in <Link to="/slate" className="text-primary">Slate</Link> — they collect here, ready to download for Meta, Google, and paid social.
+        Export ad sizes from any photo in the <Link to="/library" className="text-primary">Library</Link> or any clip in <Link to="/moments" className="text-primary">Moment Miner</Link> — they collect here, ready to download for Meta, Google, and paid social.
       </p>
 
       {isLoading ? (
@@ -156,7 +156,7 @@ export default function Ads() {
           <Megaphone className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-2 text-sm font-medium">No ad creative yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Hit <span className="font-semibold text-action">New ad creative</span> to pick a photo or clip, or export from any photo in the Library or clip in Slate.
+            Hit <span className="font-semibold text-action">New ad creative</span> to pick a photo or clip, or export from any photo in the Library or clip in Moment Miner.
           </p>
           <Button size="sm" className="mt-3 gap-1.5" onClick={() => setCreating(true)}>
             <Plus className="h-3.5 w-3.5" /> New ad creative

@@ -112,7 +112,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
               <span>
                 Couldn&rsquo;t read this clip&rsquo;s length in the browser — it may still be processing.
-                Try another clip, or trim it in <span className="font-semibold">Slate</span> once it&rsquo;s ready.
+                Try another clip, or trim it in <span className="font-semibold">Moment Miner</span> once it&rsquo;s ready.
               </span>
             </div>
           )}

@@ -24,15 +24,15 @@ export default function RepurposeAction({ asset, canEdit }) {
 
       if (clipsAlreadyDetecting) {
         toast('Repurposing — rendering the full video. Clip detection is already running; review clips below when it finishes.', {
-          action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
+          action: { label: 'Open Moment Miner', onClick: () => { window.location.href = '/moments' } },
         })
       } else if (clipsSkipped) {
-        toast('Full video is rendering (track it in Slate). Clip detection could not start this time — try "Find clips" below.', {
-          action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
+        toast('Full video is rendering (track it in Moment Miner). Clip detection could not start this time — try "Find clips" below.', {
+          action: { label: 'Open Moment Miner', onClick: () => { window.location.href = '/moments' } },
         })
       } else {
-        toast('Repurposing — rendering the full video and finding social clips, all grouped under one campaign. Track the full video in Slate; review clips below.', {
-          action: { label: 'Open Slate', onClick: () => { window.location.href = '/slate' } },
+        toast('Repurposing — rendering the full video and finding social clips, all grouped under one campaign. Track the full video in Moment Miner; review clips below.', {
+          action: { label: 'Open Moment Miner', onClick: () => { window.location.href = '/moments' } },
         })
       }
     } catch (err) {

@@ -46,15 +46,15 @@ export const HELP_CONTENT = {
     notes: [
       {
         title: 'Where the work actually lives',
-        body: 'Home links out; it does not store. Drafts and finished posts live on Stories, raw video clips are cut on the Slate, and the clinic-wide board lives on Overview. Home is just the shortest path to each.',
+        body: 'Home links out; it does not store. Drafts and finished posts live on Stories, raw video clips are cut in Moment Miner, and the clinic-wide board lives on Overview. Home is just the shortest path to each.',
       },
     ],
   },
 
   slate: {
-    title: 'Slate — how it works',
+    title: 'Moment Miner — how it works',
     intro:
-      'Slate is where you turn raw source videos into short, polished clips. Pick a video from your library, trim the best moment, add a caption, and send it forward — either as a post draft ready for Words, or as b-roll saved back to the Library.',
+      'Moment Miner is where you turn raw source videos into short, polished clips. Pick a video from your library, trim the best moment, add a caption, and send it forward — either as a post draft ready for Words, or as b-roll saved back to the Library.',
     steps: [
       {
         icon: Film,
