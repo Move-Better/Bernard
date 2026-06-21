@@ -1053,10 +1053,12 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
   const [open, setOpen] = useState(!row)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
-  const configured     = Boolean(row)
-  const connectedEmail = row?.config?.account_email    || null
-  const locationTitle  = row?.config?.location_title   || null
+  const configured            = Boolean(row)
+  const connectedEmail        = row?.config?.account_email    || null
+  const locationTitle         = row?.config?.location_title   || null
+  const locationDetectFailed  = row?.config?.location_detection === 'failed'
 
   useEffect(() => {
     const status = searchParams.get('gbp')
@@ -1104,6 +1106,23 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
       toast.error(err?.message || 'Couldn\'t disconnect Business Profile.')
     } finally {
       setDisconnecting(false)
+    }
+  }
+
+  async function handleRetryLocations() {
+    setRetrying(true)
+    try {
+      const data = await apiFetch('/api/integrations/gbp/refresh-locations', { method: 'POST' })
+      if (data?.ok) {
+        toast.success(`Found ${data.locations?.length ?? 1} location(s).`)
+        onChange?.()
+      } else {
+        toast.error(data?.error || 'Location detection failed — try reconnecting.')
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Location detection failed.')
+    } finally {
+      setRetrying(false)
     }
   }
 
@@ -1159,6 +1178,15 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
             </div>
           ) : (
             <div className="space-y-3">
+              {locationDetectFailed && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                  <p className="font-medium mb-1">Location data not loaded yet</p>
+                  <p className="text-xs text-amber-700">The Google API rate-limited the location lookup during connect. Click below to retry — it only takes a second.</p>
+                  <Button size="sm" className="mt-2" onClick={handleRetryLocations} disabled={retrying || disabled}>
+                    {retrying ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Detecting locations…</> : 'Retry location detection'}
+                  </Button>
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" onClick={handleConnect} disabled={connecting}>
                   {connecting ? 'Reconnecting…' : 'Reconnect (switch account)'}
