@@ -1,0 +1,242 @@
+// F2.1 — the Strategist: composes a practice-WEEK content plan from the week's
+// interviews, replacing the per-interview hardcoded grid (atomPlan.js
+// buildPlanRows). See .claude/f1-f2-cadence-spec.md (F2.1).
+//
+// Division of labour (deliberate — keeps the LLM job narrow + the rest testable):
+//   • LLM  → judgment only: from the week's interviews, pick the strongest
+//            pieces per channel, choose an angle FROM THE PALETTE, write a
+//            concrete brief, and dedupe semantically against recent topics.
+//   • Code → everything deterministic: enforce per-channel cadence (cap →
+//            surplus held), top up under-filled channels from the backlog,
+//            assign best-time slots around quiet days, stamp plan_week /
+//            planned_by. Cheap, predictable, and unit-testable without a model.
+//
+// The model call is dependency-injected (`generate`) so a harness can run the
+// whole pipeline against real interview data with no gateway key.
+
+import { ATOM_DEFINITIONS } from './atomPlan.js'
+
+// Atom-level (social) channels the Strategist fills to cadence. blog / email /
+// landing_page / youtube / ads are single-output or digest-assembled and are
+// governed by the cadence digest layer, NOT the per-piece atom plan.
+export const RECOMMENDED_CADENCE = {
+  instagram: { target_per_week: 4, enabled: true },
+  linkedin:  { target_per_week: 3, enabled: true },
+  gbp:       { target_per_week: 3, enabled: true },
+  // facebook / tiktok / twitter / threads / bluesky default off until enabled.
+}
+
+// Best-time defaults per channel (local hour, 24h) — a placeholder schedule the
+// producer/scheduler slice (build step 5) will replace with engagement-derived
+// peaks. Used only to stamp scheduled_at so the week renders on the calendar.
+const BEST_HOUR = { instagram: 12, linkedin: 7, gbp: 8, facebook: 12, tiktok: 18, twitter: 9, threads: 12, bluesky: 10 }
+const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+
+// The angle palette the Strategist chooses from (the curated-palette decision).
+// Derived from ATOM_DEFINITIONS so it stays in lockstep with the existing
+// per-platform angle library.
+export function anglePalette() {
+  const out = {}
+  for (const [platform, atoms] of Object.entries(ATOM_DEFINITIONS)) {
+    out[platform] = atoms.map((a) => ({ angle: a.angle, label: a.label, description: a.description }))
+  }
+  return out
+}
+
+// ── deterministic helpers (pure) ────────────────────────────────────────────
+
+// Monday (ISO) of the week containing `date`, as 'YYYY-MM-DD'.
+export function mondayOf(date) {
+  const d = new Date(date)
+  const dow = (d.getUTCDay() + 6) % 7 // 0 = Monday
+  d.setUTCDate(d.getUTCDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+
+// Spread N this-week pieces of a channel across the non-quiet weekdays, stamping
+// scheduled_at at the channel's best hour. Pure.
+function assignSlots(atoms, weekMonday, quietDays) {
+  const quiet = new Set((quietDays || []).map((q) => q.toLowerCase()))
+  // Candidate weekday offsets (Mon..Sun = 0..6) that aren't quiet.
+  const openOffsets = [0, 1, 2, 3, 4, 5, 6].filter((off) => !quiet.has(WEEKDAY[(off + 1) % 7]))
+  const byChannel = {}
+  for (const a of atoms) (byChannel[a.platform] ||= []).push(a)
+  for (const [platform, list] of Object.entries(byChannel)) {
+    const hour = BEST_HOUR[platform] ?? 11
+    list.forEach((a, i) => {
+      // Even spread: pick offsets stepped across the open days so 2 pieces land
+      // e.g. Tue & Fri rather than Mon & Tue.
+      const off = openOffsets.length
+        ? openOffsets[Math.round((i * (openOffsets.length - 1)) / Math.max(1, list.length - 1)) % openOffsets.length]
+        : 0
+      const d = new Date(`${weekMonday}T00:00:00.000Z`)
+      d.setUTCDate(d.getUTCDate() + off)
+      d.setUTCHours(hour, 0, 0, 0)
+      a.scheduled_at = d.toISOString()
+    })
+  }
+  return atoms
+}
+
+/**
+ * Allocate candidates + backlog to the week's cadence. Pure (no LLM, no DB).
+ *
+ * For each enabled channel:
+ *   • take fresh candidates up to target_per_week  → THIS WEEK
+ *   • fresh candidates beyond target               → HELD (banked surplus)
+ *   • if fresh candidates < target, top up the gap from the backlog
+ *     (FIFO by held_at)                            → PROMOTED (held→this week)
+ *
+ * @returns {{ thisWeek: object[], held: object[], promoted: object[] }}
+ */
+export function allocateToCadence(candidates, cadence, backlog = []) {
+  const thisWeek = []
+  const held = []
+  const promoted = []
+  const backlogByCh = {}
+  for (const b of backlog) (backlogByCh[b.platform] ||= []).push(b)
+  for (const list of Object.values(backlogByCh)) {
+    list.sort((a, b) => new Date(a.held_at || 0) - new Date(b.held_at || 0)) // FIFO
+  }
+  const freshByCh = {}
+  for (const c of candidates) (freshByCh[c.platform] ||= []).push(c)
+
+  for (const [platform, cfg] of Object.entries(cadence)) {
+    if (!cfg?.enabled) continue
+    const target = cfg.target_per_week || 0
+    const fresh = freshByCh[platform] || []
+    const take = fresh.slice(0, target)
+    const surplus = fresh.slice(target)
+    thisWeek.push(...take)
+    held.push(...surplus)
+    let gap = target - take.length
+    while (gap > 0 && (backlogByCh[platform] || []).length) {
+      promoted.push(backlogByCh[platform].shift())
+      gap--
+    }
+  }
+  // Candidates for channels not in the cadence (or disabled) are banked, never dropped.
+  for (const [platform, list] of Object.entries(freshByCh)) {
+    if (!cadence[platform]?.enabled) held.push(...list)
+  }
+  return { thisWeek, held, promoted }
+}
+
+// Shape a raw candidate ({interview_id, platform, angle, brief}) into a full
+// content_plan_atoms row, looking the angle label/description up in the palette.
+function toAtomRow(c, { workspaceId, planWeek, palette }) {
+  const pal = (palette[c.platform] || []).find((p) => p.angle === c.angle) || {}
+  return {
+    interview_id: c.interview_id,
+    workspace_id: workspaceId,
+    platform: c.platform,
+    slot: c.slot || 1,
+    angle: c.angle,
+    angle_label: pal.label || c.angle,
+    angle_description: pal.description || null,
+    brief: c.brief || null,
+    status: 'pending',
+    planned_by: 'strategist',
+    plan_week: planWeek,
+    scheduled_at: null,
+    held_at: null,
+  }
+}
+
+// ── the LLM compose step (dependency-injected) ──────────────────────────────
+
+export function buildStrategistPrompt({ interviews, channels, recentTopics, palette }) {
+  const paletteText = channels
+    .map((ch) => `${ch}: ${(palette[ch] || []).map((p) => `${p.angle} (${p.label})`).join(', ')}`)
+    .join('\n')
+  const interviewText = interviews
+    .map((i) => `- [${i.id}] ${i.staff_name || 'A clinician'} on "${i.topic}": ${(i.summary_text || '').slice(0, 600)}`)
+    .join('\n')
+  const system =
+    `You are the content strategist for a clinical practice. From this week's clinician ` +
+    `interviews, compose the strongest set of social pieces to publish. For each piece choose ` +
+    `the channel, an angle FROM THE PROVIDED PALETTE for that channel, and write a concrete ` +
+    `one-line brief (the specific subject + the clinician's own framing — not a generic angle). ` +
+    `Prefer variety across clinicians and topics. Do NOT repeat any subject in RECENT TOPICS. ` +
+    `Aim for roughly the per-channel weekly targets, but quality over quantity. ` +
+    `Return ONLY a JSON array of {interview_id, platform, angle, brief}.`
+  const user =
+    `THIS WEEK'S INTERVIEWS:\n${interviewText}\n\n` +
+    `CHANNELS + ANGLE PALETTE:\n${paletteText}\n\n` +
+    `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}\n\n` +
+    `Return the JSON array.`
+  return { system, user }
+}
+
+// Real model call (lazy-imports the AI SDK so a harness importing this module
+// doesn't need a gateway key). Returns parsed candidate objects.
+async function defaultGenerate({ system, user }) {
+  const { generateText } = await import('ai')
+  const { text } = await generateText({
+    model: 'anthropic/claude-sonnet-4-6',
+    system,
+    messages: [{ role: 'user', content: user }],
+    maxTokens: 1500,
+  })
+  const jsonStr = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  const parsed = JSON.parse(jsonStr)
+  return Array.isArray(parsed) ? parsed : []
+}
+
+/**
+ * Compose a workspace's weekly plan. Returns the atom rows to write (this-week
+ * + held) and the backlog atoms to promote — but writes NOTHING itself; the
+ * caller (cron) persists. `generate` is injectable for testing.
+ *
+ * @returns {Promise<{ weekMonday, thisWeek, held, promoted, stats }>}
+ */
+export async function composeWeeklyPlan({
+  workspaceId,
+  interviews,
+  cadence = RECOMMENDED_CADENCE,
+  recentTopics = [],
+  backlog = [],
+  quietDays = ['sat', 'sun'],
+  weekMonday,
+  generate = defaultGenerate,
+}) {
+  const palette = anglePalette()
+  const channels = Object.entries(cadence).filter(([, c]) => c?.enabled).map(([ch]) => ch)
+  const planWeek = weekMonday || mondayOf(new Date().toISOString())
+
+  let candidates = []
+  if (interviews.length && channels.length) {
+    const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, palette })
+    candidates = (await generate(prompt))
+      // Keep only well-formed candidates on enabled channels with a palette angle.
+      .filter((c) => c && channels.includes(c.platform) && (palette[c.platform] || []).some((p) => p.angle === c.angle))
+  }
+
+  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlog)
+
+  // Materialize this-week + held candidates into atom rows; assign slots to the
+  // this-week set; mark held with held_at=now.
+  const now = new Date().toISOString()
+  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays)
+  const heldRows = held.map((c) => ({ ...toAtomRow(c, { workspaceId, planWeek, palette }), held_at: now }))
+  // Promoted backlog atoms already exist — they just flip held→this-week.
+  const promotedUpdates = assignSlots(
+    promoted.map((b) => ({ ...b, held_at: null, plan_week: planWeek })),
+    planWeek,
+    quietDays,
+  )
+
+  return {
+    weekMonday: planWeek,
+    thisWeek: thisWeekRows,
+    held: heldRows,
+    promoted: promotedUpdates,
+    stats: {
+      interviews: interviews.length,
+      candidates: candidates.length,
+      scheduled: thisWeekRows.length,
+      held: heldRows.length,
+      promotedFromBacklog: promotedUpdates.length,
+    },
+  }
+}
