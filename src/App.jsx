@@ -62,6 +62,7 @@ const Book = lazy(() => import('@/pages/Book'))
 const EditorialTest = lazy(() => import('@/pages/EditorialTest'))
 const Slate = lazy(() => import('@/pages/Slate'))
 const SlateClipEditor = lazy(() => import('@/pages/SlateClipEditor'))
+const VideoEditor = lazy(() => import('@/pages/VideoEditor'))
 const Ads = lazy(() => import('@/pages/Ads'))
 const Capture = lazy(() => import('@/pages/Capture'))
 import { workspace } from '@/lib/workspace'
@@ -632,6 +633,8 @@ function AppRoutes() {
                 routes resolve correctly (see CLAUDE.md Router conventions). */}
             <Route path="/slate" element={guarded(<Slate />)} />
             <Route path="/slate/clip/:assetId" element={guarded(<SlateClipEditor />)} />
+            {/* Beta Reel editor (V4) — opt-in route; the live /slate/clip editor is untouched. */}
+            <Route path="/slate/clip/:assetId/edit" element={guarded(<VideoEditor />)} />
             <Route path="/ads" element={guarded(<Ads />)} />
             {/* Internal dev surface — Phase 2 editorial pipeline test (search clips + render). */}
             <Route path="/internal/editorial-test" element={guarded(<EditorialTest />)} />

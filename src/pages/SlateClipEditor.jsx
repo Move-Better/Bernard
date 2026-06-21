@@ -587,6 +587,16 @@ export default function SlateClipEditor() {
         >
           <Maximize className="h-3.5 w-3.5" />Full preview
         </button>
+        {/* Opt-in entry to the new full Reel editor (V4 beta) — colorist, reframe,
+            timed overlays, karaoke captions on one screen. Live editor unchanged. */}
+        <button
+          type="button"
+          onClick={() => navigate(`/slate/clip/${assetId}/edit`)}
+          className="flex items-center gap-1.5 text-2xs px-2.5 py-1 rounded-lg border border-action/40 bg-action/5 hover:bg-action/10 transition-colors"
+          title="Open this clip in the new full Reel editor (beta)"
+        >
+          <Wand2 className="h-3.5 w-3.5" />Beta editor
+        </button>
       </div>
 
       {/* Two-column main layout — clip is the hero on the left in a fixed-width
