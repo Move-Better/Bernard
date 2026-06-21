@@ -207,9 +207,18 @@ export async function composeWeeklyPlan({
   let candidates = []
   if (interviews.length && channels.length) {
     const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, palette })
+    // The LLM echoes interview_id back and can corrupt it (e.g. inject a space),
+    // which 400s the uuid insert. Normalize whitespace, then require an EXACT
+    // match to a real input interview — this both repairs that corruption and
+    // prevents the model from inventing or hallucinating an id.
+    const interviewIds = new Set(interviews.map((i) => i.id))
     candidates = (await generate(prompt))
-      // Keep only well-formed candidates on enabled channels with a palette angle.
-      .filter((c) => c && channels.includes(c.platform) && (palette[c.platform] || []).some((p) => p.angle === c.angle))
+      .map((c) => (c && typeof c.interview_id === 'string'
+        ? { ...c, interview_id: c.interview_id.replace(/\s+/g, '') }
+        : c))
+      // Keep only well-formed candidates: enabled channel, palette angle, real id.
+      .filter((c) => c && channels.includes(c.platform) && interviewIds.has(c.interview_id)
+        && (palette[c.platform] || []).some((p) => p.angle === c.angle))
   }
 
   const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlog)
