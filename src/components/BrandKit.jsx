@@ -11,8 +11,9 @@ import { Label } from '@/components/ui/label'
 import { FIXTURE_ASSETS, ROLE_DEFS, FIXTURE_STYLE } from '@/components/brandKitFixtures'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { uploadBrandAsset } from '@/lib/brandKitLib'
+import { listMedia } from '@/lib/mediaLib'
 import { apiFetch } from '@/lib/api'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   useBrandKit,
   useAssignBrandRole,
@@ -1089,7 +1090,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
               <TagIcon className="h-3 w-3 mt-0.5 shrink-0" />
               Pick from Google Fonts — the family name is stored on the workspace and the rendering layer (email, site, social) honors it where the channel supports custom fonts, falling back to system defaults otherwise.
             </p>
-            <BrandVibe grade={style.grade} onPersist={(g) => setStyle({ grade: g })} />
+            <BrandVibe grade={style.grade} onPersist={(g) => setStyle({ grade: g })} mockup={mockup} />
           </div>
         </section>
       )}
@@ -1122,12 +1123,19 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   )
 }
 
+// Generic stock shots shown when the workspace Library has no media yet — a grade
+// reads on skin tones / real scenes, never on a gradient. Replaced by the
+// workspace's own photos the moment any exist. (Free-license, bundled in /public.)
+const DEFAULT_VIBE_PHOTOS = ['/brand-vibe/default-1.jpg', '/brand-vibe/default-2.jpg', '/brand-vibe/default-3.jpg']
+
 // Brand vibe — the workspace-default colour grade applied to videos and photos.
 // Same canonical params + sliders as the video editor's Colorist (kept in lockstep
 // via src/lib/gradeParams.js). Saved into brand_style.grade so the editor's
 // "Brand" vibe chip reads it. Local state keeps slider drags snappy; the persist
-// (one PATCH through setStyle → brand-kit/style) is debounced 500ms.
-function BrandVibe({ grade, onPersist }) {
+// (one PATCH through setStyle → brand-kit/style) is debounced 500ms. The preview
+// applies the live grade to 3 real shots — the workspace's own photos/video stills
+// when present, else bundled defaults — so you judge the look on actual media.
+function BrandVibe({ grade, onPersist, mockup = false }) {
   const [local, setLocal] = useState(() => normalizeGrade(grade))
   const seededRef = useRef(false)
   const tRef = useRef(null)
@@ -1144,6 +1152,20 @@ function BrandVibe({ grade, onPersist }) {
     tRef.current = setTimeout(() => onPersist(n), 500)
   }
   const activeVibe = GRADE_VIBES.find((v) => JSON.stringify(normalizeGrade(v.params)) === JSON.stringify(local))
+  // Up to 3 recent library shots (photos → web/blob url, videos → thumbnail), then
+  // pad with bundled defaults so the preview always shows 3. Skipped in mockup mode.
+  const { data: media } = useQuery({
+    queryKey: ['brand-vibe-samples'],
+    queryFn: () => listMedia({ limit: 12 }),
+    enabled: !mockup,
+    staleTime: 5 * 60_000,
+  })
+  const libraryShots = (Array.isArray(media) ? media : [])
+    .map((a) => (a.kind === 'video' ? a.thumbnail_url : (a.web_blob_url || a.blob_url)))
+    .filter(Boolean)
+    .slice(0, 3)
+  const photos = [...libraryShots, ...DEFAULT_VIBE_PHOTOS].slice(0, 3)
+  const usingDefaults = libraryShots.length === 0
   return (
     <div className="border-t pt-3">
       <Label className="text-xs">Brand vibe</Label>
@@ -1169,32 +1191,37 @@ function BrandVibe({ grade, onPersist }) {
           None
         </button>
       </div>
-      <div className="flex gap-3">
-        {/* preview swatch — a hue gradient under the live grade filter */}
-        <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md border" aria-hidden>
-          <div
-            className="h-full w-full"
-            style={{
-              filter: gradeToCanvasFilter(local),
-              background: 'linear-gradient(160deg,#f4d35e 0%,#ee964b 30%,#c1666b 55%,#4d6a6d 78%,#2b3a55 100%)',
-            }}
-          />
-        </div>
-        <div className="flex-1 space-y-2">
-          {GRADE_SLIDERS.map((s) => (
-            <div key={s.key}>
-              <div className="flex items-center justify-between text-2xs text-muted-foreground">
-                <span>{s.label}</span>
-                <span className="tabular-nums">{local[s.key] > 0 ? `+${local[s.key]}` : local[s.key]}</span>
-              </div>
-              <input
-                type="range" min={-100} max={100} value={local[s.key]}
-                onChange={(e) => change({ ...local, [s.key]: Number(e.target.value) })}
-                className="w-full accent-[hsl(var(--primary))]" aria-label={s.label}
-              />
+      {/* preview — the live grade applied to 3 real shots (own media or defaults) */}
+      <div className="mb-1 grid grid-cols-3 gap-2">
+        {photos.map((src, i) => (
+          <div key={i} className="aspect-[4/5] overflow-hidden rounded-md border bg-muted">
+            <img
+              src={src} alt="" loading="lazy"
+              className="h-full w-full object-cover"
+              style={{ filter: gradeToCanvasFilter(local) }}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="mb-3 text-3xs text-muted-foreground">
+        {usingDefaults
+          ? 'Sample shots — add photos or videos to your Library to preview the grade on your own media.'
+          : 'Previewed on your own Library media.'}
+      </p>
+      <div className="space-y-2">
+        {GRADE_SLIDERS.map((s) => (
+          <div key={s.key}>
+            <div className="flex items-center justify-between text-2xs text-muted-foreground">
+              <span>{s.label}</span>
+              <span className="tabular-nums">{local[s.key] > 0 ? `+${local[s.key]}` : local[s.key]}</span>
             </div>
-          ))}
-        </div>
+            <input
+              type="range" min={-100} max={100} value={local[s.key]}
+              onChange={(e) => change({ ...local, [s.key]: Number(e.target.value) })}
+              className="w-full accent-[hsl(var(--primary))]" aria-label={s.label}
+            />
+          </div>
+        ))}
       </div>
     </div>
   )
