@@ -3,10 +3,11 @@ import { Link, Navigate } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import {
   Inbox, Eye, Send, Check, CheckCheck, ChevronRight, Loader2, Image as ImageIcon, Shield,
-  CalendarClock,
+  CalendarClock, LayoutGrid,
 } from 'lucide-react'
 import {
   useContentItems, useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes,
+  useStories,
 } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -18,6 +19,7 @@ import { toast } from '@/lib/toast'
 import LoadingState from '@/components/LoadingState'
 import PageHelp from '@/components/PageHelp'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import StoriesPipelineView from '@/components/stories/StoriesPipelineView'
 
 // A piece "has media" when at least one entry is attached. Mirrors the
 // Storyboard NEEDS_MEDIA predicate so the "Open" target stays honest: a piece
@@ -77,6 +79,7 @@ export default function ReviewInbox() {
     { status: 'in_review,approved' },
     { enabled: !roleLoading && isEditor },
   )
+  const { data: stories = [], isLoading: storiesLoading } = useStories({}, { enabled: !roleLoading && isEditor })
 
   const needsReview = useMemo(
     () =>
@@ -379,6 +382,16 @@ export default function ReviewInbox() {
         loading={scheduling}
         onConfirm={bulkSchedule}
       />
+
+      {/* Pipeline — full kanban below the action queue so producers see
+          where every piece stands without leaving the inbox. */}
+      <div className="pt-4 border-t">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <LayoutGrid className="h-4 w-4 text-primary" aria-hidden="true" />
+          Pipeline
+        </h2>
+        <StoriesPipelineView stories={stories} isLoading={storiesLoading} />
+      </div>
     </div>
   )
 }
