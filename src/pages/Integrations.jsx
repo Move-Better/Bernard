@@ -413,7 +413,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm">bundle.social</span>
+              <span className="font-bold text-base">bundle.social</span>
               {bundleActive && (
                 <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
               )}
