@@ -106,7 +106,7 @@ export default function TranscriptDrawer({ story, open, onOpenChange }) {
                     filtered.map((m, i) => (
                       <div key={i} className="text-xs leading-relaxed">
                         <span className={`font-medium ${m.role === 'user' ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {m.role === 'user' ? 'Clinician: ' : 'Interviewer: '}
+                          {m.role === 'user' ? 'Staff: ' : 'Interviewer: '}
                         </span>
                         <span className="text-foreground/90">{m.content}</span>
                       </div>

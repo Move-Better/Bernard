@@ -99,7 +99,7 @@ export default function TranscriptPane({ story, isLoadingTranscript = false, pro
                   }`}
                 >
                   <span className={`font-medium ${m.role === 'user' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {m.role === 'user' ? 'Clinician: ' : 'Interviewer: '}
+                    {m.role === 'user' ? 'Staff: ' : 'Interviewer: '}
                   </span>
                   <span className="text-foreground/90">{m.content}</span>
                 </div>

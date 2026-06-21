@@ -136,21 +136,21 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
   )
 }
 
-// The moment-first feed: clinician filter + type chips + ranked MomentCards.
+// The moment-first feed: staff filter + type chips + ranked MomentCards.
 // Replaces the per-source-video review rows.
-function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, clinicianFilter, setClinicianFilter, clinicianOptions, savingId, onReview, onSave, onDismiss, onSeeUncut }) {
+function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, staffFilter, setStaffFilter, staffOptions, savingId, onReview, onSave, onDismiss, onSeeUncut }) {
   return (
     <div className="flex flex-col gap-3">
-      {clinicianOptions.length > 0 && (
+      {staffOptions.length > 0 && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Clinician</span>
+          <span className="text-muted-foreground">Staff</span>
           <select
-            value={clinicianFilter}
-            onChange={(e) => setClinicianFilter(e.target.value)}
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
             className="border border-border rounded-lg px-2.5 py-1.5 bg-card outline-none focus:ring-2 focus:ring-primary/30"
           >
-            <option value="all">All clinicians</option>
-            {clinicianOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            <option value="all">All staff</option>
+            {staffOptions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       )}
@@ -178,7 +178,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, c
           <p className="text-xs text-muted-foreground max-w-sm">
             {totalCount === 0
               ? 'Run "Find moments" on uncut footage and the strongest moments land here, ranked.'
-              : 'Try a different type or clinician.'}
+              : 'Try a different type or staff member.'}
           </p>
           {totalCount === 0 && <Button size="sm" variant="outline" onClick={onSeeUncut}>See uncut footage</Button>}
         </div>
@@ -441,7 +441,7 @@ export default function MomentMiner() {
 
   const queryClient = useQueryClient()
   const [momentType, setMomentType] = useState('all')
-  const [clinicianFilter, setClinicianFilter] = useState('all')
+  const [staffFilter, setStaffFilter] = useState('all')
   const [savingId, setSavingId] = useState(null)
 
   // Moment Miner feed — flattened, ranked proposed moments across all sources.
@@ -451,16 +451,16 @@ export default function MomentMiner() {
     enabled: !!ws,
   })
   const allMoments = useMemo(() => momentsData?.moments || [], [momentsData])
-  const clinicianOptions = useMemo(
+  const staffOptions = useMemo(
     () => [...new Set(allMoments.map((m) => m.staffName).filter(Boolean))],
     [allMoments],
   )
   const moments = useMemo(() => {
     let list = allMoments
     if (momentType !== 'all') list = list.filter((m) => m.momentType === momentType)
-    if (clinicianFilter !== 'all') list = list.filter((m) => m.staffName === clinicianFilter)
+    if (staffFilter !== 'all') list = list.filter((m) => m.staffName === staffFilter)
     return list
-  }, [allMoments, momentType, clinicianFilter])
+  }, [allMoments, momentType, staffFilter])
 
   async function handleFindMoments(id) {
     try {
@@ -647,9 +647,9 @@ export default function MomentMiner() {
           totalCount={allMoments.length}
           momentType={momentType}
           setMomentType={setMomentType}
-          clinicianFilter={clinicianFilter}
-          setClinicianFilter={setClinicianFilter}
-          clinicianOptions={clinicianOptions}
+          staffFilter={staffFilter}
+          setStaffFilter={setStaffFilter}
+          staffOptions={staffOptions}
           savingId={savingId}
           onReview={(m) => navigate(`/moments/clip/${m.sourceAssetId}`)}
           onSave={handleSaveMoment}

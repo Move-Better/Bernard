@@ -23,13 +23,13 @@ function fmtDate(raw) {
 
 /**
  * Render plain-text transcript content.
- * Speaker label: clinician name (or "Clinician") for role===user, "Interviewer" otherwise.
+ * Speaker label: staff name (or "Staff") for role===user, "Interviewer" otherwise.
  */
 function buildPlainText(story, messages) {
-  const staffLabel = story.staff_name || 'Clinician'
+  const staffLabel = story.staff_name || 'Staff'
   const header = [
     'Bernard — Interview Transcript',
-    `Clinician: ${story.staff_name || 'Unknown'}`,
+    `Staff: ${story.staff_name || 'Unknown'}`,
     `Topic:     ${story.topic || 'Untitled'}`,
     `Date:      ${fmtDate(story.created_at)}`,
     '',
@@ -52,7 +52,7 @@ function buildPlainText(story, messages) {
  * Opens in a new window and auto-triggers window.print() on load.
  */
 function buildPrintHtml(story, messages) {
-  const staffLabel = story.staff_name || 'Clinician'
+  const staffLabel = story.staff_name || 'Staff'
 
   const escape = (s) =>
     String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -89,7 +89,7 @@ function buildPrintHtml(story, messages) {
 <body>
   <h1>Bernard — Interview Transcript</h1>
   <div class="meta">
-    <div>Clinician: ${escape(story.staff_name || 'Unknown')}</div>
+    <div>Staff: ${escape(story.staff_name || 'Unknown')}</div>
     <div>Topic: ${escape(story.topic || 'Untitled')}</div>
     <div>Date: ${fmtDate(story.created_at)}</div>
   </div>
