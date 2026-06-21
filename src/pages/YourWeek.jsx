@@ -1,24 +1,33 @@
-import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useUser } from '@clerk/react'
 import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, Shield, Plus,
+  Check, Loader2, Clock, Eye, Send, BookOpen,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { useUserRole } from '@/lib/useUserRole'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes } from '@/lib/queries'
+import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
+import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { toast } from '@/lib/toast'
 import LoadingState from '@/components/LoadingState'
 import PageHelp from '@/components/PageHelp'
+import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
-// F2.3 — "Your week": the producer's plan/review hub. The Strategist composes
-// the week into content_plan_atoms (plan_week); this surface shows it as a
-// calendar, with the backlog and the trust ladder. Supersedes the Review Inbox.
-// Phase 1 = view + drill-in; approve/schedule + the Stage 2 auto-clear land next.
+// F2.3 — "Your week": the producer's plan/review hub (Phase 2).
+// 2b: workspace-tz time display.
+// 2c: draft on demand, per-card approve+schedule, batch schedule.
+// 2d: clinician "yours to review" slice.
 
 const DAYS = [
   ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
 ]
-const DOW_TO_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] // getUTCDay index → key
+const DOW_TO_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 const LADDER = [
   ['approve_all', 'Approve everything'],
@@ -26,64 +35,138 @@ const LADDER = [
   ['manage_by_goals', 'Manage by goals'],
 ]
 
-function timeLabel(iso) {
+function timeLabel(iso, tz) {
+  if (!iso) return ''
   try {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    return new Date(iso).toLocaleTimeString('en-US', {
+      timeZone: tz || undefined,
+      hour: 'numeric',
+      minute: '2-digit',
+    })
   } catch {
     return ''
   }
 }
 
-// Where a card drills in: a drafted piece → its publish/review detail; an
-// undrafted slot → the source story where it gets drafted on demand.
 function drillTo(item) {
   if (item.contentPieceId) return `/publish/${item.contentPieceId}`
   if (item.interviewId) return `/stories/${item.interviewId}`
   return '/stories'
 }
 
-function PlanCard({ item }) {
+// Resolve the pill appearance for a card based on atom + content_item state.
+function cardState(item) {
+  const cis = item.contentItemStatus
+  if (!item.contentPieceId || item.status === 'pending') {
+    return { label: 'needs draft', cls: 'bg-warning/10 text-warning', action: 'draft' }
+  }
+  if (item.status === 'drafting') {
+    return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }
+  }
+  if (cis === 'scheduled' || cis === 'published') {
+    return { label: cis, cls: 'bg-success/10 text-success', action: 'open' }
+  }
+  if (cis === 'approved') {
+    return { label: 'approved', cls: 'bg-info/10 text-info', action: 'schedule' }
+  }
+  // drafted / in_review / draft
+  return { label: 'open to review', cls: 'bg-warning/10 text-warning', action: 'open' }
+}
+
+function PlanCard({ item, tz, onDraft, drafting }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
-  const drafted = !!item.contentPieceId
+  const state = cardState(item)
+  const time = item.scheduled_at ? timeLabel(item.scheduled_at, tz) : null
+
   return (
-    <Link
-      to={drillTo(item)}
-      className="block rounded-lg border border-l-[3px] border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm"
-    >
+    <div className="rounded-lg border border-l-[3px] border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm">
       <div className="mb-1 flex items-center gap-1.5">
         {Icon && <Icon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
         <span className="text-3xs font-bold uppercase tracking-wide text-muted-foreground">
-          {meta.label}{item.scheduled_at ? ` · ${timeLabel(item.scheduled_at)}` : ''}
+          {meta.label}{time ? ` · ${time}` : ''}
         </span>
       </div>
-      <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3">{item.brief || item.label}</div>
-      <div className="mt-1.5 flex items-center justify-between">
-        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-semibold ${drafted ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-          {drafted ? 'drafted' : 'review'}
-        </span>
-        <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+      <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
+        {item.brief || item.label}
       </div>
-    </Link>
+      <div className="flex items-center justify-between gap-1">
+        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-semibold ${state.cls}`}>
+          {state.label}
+        </span>
+        {state.action === 'draft' && (
+          <button
+            type="button"
+            disabled={drafting}
+            onClick={() => onDraft(item)}
+            className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
+          >
+            {drafting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            Draft
+          </button>
+        )}
+        {(state.action === 'open' || state.action === 'schedule') && (
+          <Link
+            to={drillTo(item)}
+            className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"
+          >
+            <Eye className="h-3 w-3" /> Open
+          </Link>
+        )}
+      </div>
+    </div>
   )
 }
 
 export default function YourWeek() {
   useDocumentTitle('Your week')
+  const { user } = useUser()
   const { isEditor, isLoading: roleLoading } = useUserRole()
+  const workspace = useWorkspace()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  const updateStatus = useUpdateContentItemStatus()
+  const updateItem = useUpdateContentItem()
+  const { data: allThemes = [] } = useCarouselThemes()
 
+  const [draftingAtom, setDraftingAtom] = useState(null) // atom id being drafted
+  const [scheduleConfirmOpen, setScheduleConfirmOpen] = useState(false)
+  const [scheduling, setScheduling] = useState(false)
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary'],
     queryFn: () => apiFetch('/api/content-plan/week-summary'),
-    enabled: !roleLoading && isEditor,
+    enabled: !roleLoading,
     refetchOnWindowFocus: false,
   })
+
+  const userEmail = user?.primaryEmailAddress?.emailAddress || user?.id || ''
+
+  // Draft an undrafted atom on demand (2c).
+  async function handleDraft(item) {
+    if (draftingAtom) return
+    setDraftingAtom(item.id)
+    try {
+      const result = await apiFetch('/api/content-plan/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ atom_id: item.id }),
+      })
+      toast.success('Draft ready — open to review')
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+      if (result?.content_piece?.id) navigate(`/publish/${result.content_piece.id}`)
+    } catch (e) {
+      toast.error('Draft failed', { description: e?.message })
+    } finally {
+      setDraftingAtom(null)
+    }
+  }
 
   if (roleLoading || isLoading) return <LoadingState />
 
   const quiet = new Set((data?.quietDays || ['sat', 'sun']).map((q) => q.toLowerCase()))
   const cadence = data?.cadence || {}
   const scheduled = data?.scheduled || []
+  const tz = data?.timezone || workspace?.cadence_policy?.timezone || 'America/Los_Angeles'
 
   // Group scheduled atoms into day columns.
   const byDay = {}
@@ -93,7 +176,81 @@ export default function YourWeek() {
     if (byDay[k]) byDay[k].push(item)
   }
 
+  // Approved pieces ready to batch-schedule (social platforms with a piece).
+  const approvedSchedulable = scheduled.filter(
+    (item) =>
+      item.contentPieceId &&
+      item.contentItemStatus === 'approved' &&
+      BUFFER_DISPATCH_PLATFORMS.includes(item.platform),
+  )
+
   const stageIdx = Math.max(0, LADDER.findIndex(([s]) => s === (data?.trustStage || 'approve_all')))
+
+  // Batch schedule: fetch piece details then publishPieceToBuffer for each approved piece.
+  async function batchSchedule() {
+    if (!approvedSchedulable.length || scheduling) return
+    setScheduling(true)
+    let okCount = 0
+    let failCount = 0
+    for (const item of approvedSchedulable) {
+      try {
+        // Fetch full piece data (needed for slide-baking, media_urls, etc.)
+        const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
+        const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
+          scheduledAt: item.scheduled_at || null,
+          useQueue: !item.scheduled_at,
+          userEmail,
+          workspace,
+          themes: allThemes,
+        })
+        if (renderedSlides) {
+          try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
+        }
+        await updateStatus.mutateAsync({
+          id: piece.id,
+          status: 'scheduled',
+          approvedBy: userEmail,
+          approvedAt: new Date().toISOString(),
+          scheduledAt,
+        })
+        okCount++
+      } catch {
+        failCount++
+      }
+    }
+    setScheduling(false)
+    setScheduleConfirmOpen(false)
+    qc.invalidateQueries({ queryKey: ['week-summary'] })
+    if (okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
+    if (failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
+  }
+
+  // Clinician "yours to review" — blog content_items in in_review (2d).
+  // Only rendered for non-editors (clinicians). Editors see the full calendar.
+  const YourReviewSlice = !isEditor && data?.yourReview?.length ? (
+    <div className="rounded-xl border border-info/30 bg-info/5 p-3.5">
+      <div className="mb-2 flex items-center gap-2">
+        <BookOpen className="h-4 w-4 text-info" aria-hidden="true" />
+        <span className="text-sm font-bold">Your blog drafts to review</span>
+        <span className="ml-auto inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-2xs font-semibold text-info">
+          {data.yourReview.length}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {data.yourReview.map((item) => (
+          <Link
+            key={item.id}
+            to={`/publish/${item.id}`}
+            className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 hover:border-primary/50"
+          >
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="flex-1 truncate text-2xs font-medium">{item.topic || 'Blog draft'}</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        ))}
+      </div>
+    </div>
+  ) : null
 
   return (
     <div className="space-y-5 py-6">
@@ -104,38 +261,53 @@ export default function YourWeek() {
             Your week
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            The week I’d run for you, built from your captures. Open anything to review it. <b>Nothing publishes without your yes.</b>
+            The week I&apos;d run for you, built from your captures. Open anything to review it. <b>Nothing publishes without your yes.</b>
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {approvedSchedulable.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setScheduleConfirmOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+            >
+              <Send className="h-4 w-4" aria-hidden="true" />
+              Schedule {approvedSchedulable.length} approved
+            </button>
+          )}
           <PageHelp pageKey="your-week" variant="default" />
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
-            <Shield className="h-3 w-3" aria-hidden="true" /> Producer view
+            <Shield className="h-3 w-3" aria-hidden="true" /> {isEditor ? 'Producer' : 'Clinician'} view
           </span>
         </div>
       </div>
 
+      {/* Clinician review slice (2d) */}
+      {YourReviewSlice}
+
       {/* Trust ladder */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3">
-        <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">You’re here</span>
-        <div className="flex items-center gap-2 text-xs">
-          {LADDER.map(([s, lbl], i) => (
-            <span key={s} className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${i <= stageIdx ? 'bg-primary' : 'bg-border'}`} />
-              <span className={i === stageIdx ? 'font-bold' : 'text-muted-foreground'}>{lbl}</span>
-              {i < LADDER.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
-            </span>
-          ))}
+      {isEditor && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3">
+          <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">You&apos;re here</span>
+          <div className="flex items-center gap-2 text-xs">
+            {LADDER.map(([s, lbl], i) => (
+              <span key={s} className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${i <= stageIdx ? 'bg-primary' : 'bg-border'}`} />
+                <span className={i === stageIdx ? 'font-bold' : 'text-muted-foreground'}>{lbl}</span>
+                {i < LADDER.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
+              </span>
+            ))}
+          </div>
+          <span className="ml-auto text-2xs text-muted-foreground">I take more off your plate as I learn what you greenlight</span>
         </div>
-        <span className="ml-auto text-2xs text-muted-foreground">I take more off your plate as I learn what you greenlight</span>
-      </div>
+      )}
 
       {!data?.hasPlan ? (
         <div className="rounded-lg border bg-muted/20 py-12 text-center">
           <Sparkles className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
           <p className="mt-2 text-sm font-medium text-foreground">No plan for this week yet</p>
           <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-            Complete an interview and I’ll compose your week — paced across your channels, with the rest banked as backlog.
+            Complete an interview and I&apos;ll compose your week — paced across your channels, with the rest banked as backlog.
           </p>
           <Link to="/new" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
             <Plus className="h-4 w-4" aria-hidden="true" /> Start a capture
@@ -150,6 +322,10 @@ export default function YourWeek() {
                 <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Filled to your cadence</span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-3xs font-semibold text-success">
                   <Sparkles className="h-3 w-3" aria-hidden="true" /> {data.scheduledTotal} scheduled
+                </span>
+                <span className="ml-auto inline-flex items-center gap-1 text-2xs text-muted-foreground">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  {tz.replace('America/', '').replace('_', ' ')} times
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -193,7 +369,15 @@ export default function YourWeek() {
                             <span className="text-3xs font-semibold">Quiet</span>
                           </div>
                         ) : (
-                          items.map((item) => <PlanCard key={item.id} item={item} />)
+                          items.map((item) => (
+                            <PlanCard
+                              key={item.id}
+                              item={item}
+                              tz={tz}
+                              onDraft={handleDraft}
+                              drafting={draftingAtom === item.id}
+                            />
+                          ))
                         )}
                       </div>
                     </div>
@@ -242,10 +426,41 @@ export default function YourWeek() {
                   </p>
                 </div>
               )}
+
+              {/* Batch schedule status summary */}
+              {approvedSchedulable.length > 0 && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" aria-hidden="true" />
+                    <span className="text-sm font-bold">{approvedSchedulable.length} ready to schedule</span>
+                  </div>
+                  <p className="text-2xs text-muted-foreground mb-2">
+                    These pieces have been approved and are waiting for their slots.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleConfirmOpen(true)}
+                    className="w-full rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+                  >
+                    <Send className="inline h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    Schedule all
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={scheduleConfirmOpen}
+        onOpenChange={setScheduleConfirmOpen}
+        title={`Schedule ${approvedSchedulable.length} approved post${approvedSchedulable.length === 1 ? '' : 's'}?`}
+        description="Bernard will add these to your Buffer queue at their planned times. You can still hold or delete them from Buffer before they publish."
+        confirmLabel={scheduling ? 'Scheduling…' : 'Schedule all'}
+        confirmDisabled={scheduling}
+        onConfirm={batchSchedule}
+      />
     </div>
   )
 }

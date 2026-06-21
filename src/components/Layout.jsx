@@ -6,8 +6,8 @@ import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
-  Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe, GalleryHorizontalEnd,
-  LayoutDashboard, Newspaper, FolderOpen, LayoutGrid, BarChart3, CalendarRange, Megaphone,
+  Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe,
+  LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,10 +37,6 @@ const NAV_SECTIONS = [
     items: [
       { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard,
         requiresCapability: CAP_INTERVIEW_START },
-      // Overview — the clinic-wide board. Role-gated to editors (owner /
-      // producer / director); individual clinicians never see it.
-      { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: LayoutGrid,
-        requiresEditor: true },
       // Analytics — per-asset performance dashboard. Editor-gated like Overview.
       { to: '/analytics', label: 'Analytics', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
         requiresEditor: true },
@@ -59,10 +55,6 @@ const NAV_SECTIONS = [
       // Publish so the Produce section reads as the pipeline: words → cut →
       // assemble/ship. Still gated on the workspace's video pipeline opt-in.
       { to: '/moments',    label: 'Moment Miner', hint: 'Mine moments',   match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
-      // Publish (né Storyboard, renamed 2026-06-09) — the assembly desk:
-      // media + schedule. Ungated like Library so producers see it. Old
-      // /storyboard and /needs-media routes redirect.
-      { to: '/publish',    label: 'Publish',    hint: 'Media · schedule', match: (p) => p.startsWith('/publish') || p.startsWith('/storyboard') || p.startsWith('/needs-media'), icon: GalleryHorizontalEnd },
       // Ads — ad-creative export hub (Library/Slate exports collect here,
       // grouped by campaign). Editor-gated like the other producer surfaces.
       { to: '/ads',        label: 'Ads',        hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone,

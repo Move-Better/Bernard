@@ -49,11 +49,9 @@ const AccessMatrix = lazy(() => import('@/pages/AccessMatrix'))
 const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
-const Overview = lazy(() => import('@/pages/Overview'))
 const YourWeek = lazy(() => import('@/pages/YourWeek'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
-const Storyboard = lazy(() => import('@/pages/Storyboard'))
 const StoryboardPublish = lazy(() => import('@/pages/StoryboardPublish'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
 const PreVisitMessage = lazy(() => import('@/pages/PreVisitMessage'))
@@ -608,10 +606,8 @@ function AppRoutes() {
                 the Review Inbox, which now redirects here. */}
             <Route path="/week" element={guarded(<YourWeek />)} />
             <Route path="/review-inbox" element={<Navigate to="/week" replace />} />
-            {/* Overview — clinic-wide board (Pipeline/Calendar/Themes). The
-                page self-guards to editors (owner/producer/director) and
-                redirects individual clinicians home. */}
-            <Route path="/overview" element={guarded(<Overview />)} />
+            {/* /overview folded into /week (2f). Keep route so old bookmarks redirect. */}
+            <Route path="/overview" element={<Navigate to="/week" replace />} />
             {/* Analytics — per-asset performance dashboard (website / bookings /
                 social / content). Self-guards to editors; clinicians redirect home. */}
             <Route path="/analytics" element={guarded(<AnalyticsPage />)} />
@@ -620,15 +616,14 @@ function AppRoutes() {
             <Route path="/write" element={guarded(<AuthorMode />)} />
             <Route path="/book"  element={guarded(<Book />)} />
             <Route path="/library" element={guarded(<MediaHub />)} />
-            {/* Publish (né Storyboard) — the assembly desk: attach media, set
-                the look, schedule. /storyboard/* and /needs-media redirect. */}
-            <Route path="/publish" element={guarded(<Storyboard />)} />
+            {/* /publish (bare) → /week; /publish/:pieceId drill-in stays. */}
+            <Route path="/publish" element={<Navigate to="/week" replace />} />
             <Route path="/publish/:pieceId" element={guarded(<StoryboardPublish />)} />
             <Route path="/publish/:pieceId/schedule" element={<LegacyStoryboardPublishRedirect />} />
-            <Route path="/storyboard" element={<Navigate to="/publish" replace />} />
+            <Route path="/storyboard" element={<Navigate to="/week" replace />} />
             <Route path="/storyboard/:pieceId" element={<LegacyStoryboardPieceRedirect />} />
             <Route path="/storyboard/:pieceId/publish" element={<LegacyStoryboardPublishRedirect />} />
-            <Route path="/needs-media" element={<Navigate to="/publish" replace />} />
+            <Route path="/needs-media" element={<Navigate to="/week" replace />} />
             {/* Universal PWA capture surface — works on any device with a browser + camera. */}
             <Route path="/capture" element={guarded(<Capture />)} />
             {/* Moment Miner (né Slate, renamed 2026-06-21). /slate kept as a

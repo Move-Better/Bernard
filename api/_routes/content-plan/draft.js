@@ -83,8 +83,7 @@ export default async function handler(req, res) {
     if (!ivRows.length) throw new Error('Interview not found')
     const interview = ivRows[0]
 
-    const blogPost = interview.outputs?.blogPost
-    if (!blogPost) throw new Error('Blog post not generated yet — generate the blog post first')
+    const blogPost = interview.outputs?.blogPost || null
 
     const turns = Array.isArray(interview.messages) ? interview.messages : []
     if (!turns.length) throw new Error('Interview transcript missing — cannot generate atom')
@@ -173,21 +172,21 @@ export default async function handler(req, res) {
     )
     if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 
-    // Replay the interview as the original conversation, then hand the model
-    // the approved blog as <editorial-summary> and ask for the atom.
-    // Voice and specifics come from the conversation; the summary is only
-    // there to keep the channel piece thematically aligned with what's been
-    // approved long-form.
+    // Replay the interview as the original conversation, then ask for the atom.
+    // The transcript is the primary source of truth; if a blog post exists it is
+    // included as editorial context only (thematic alignment, not wording source).
+    const editorialBlock = blogPost
+      ? `\n\nHere is the editorial summary that has already been written on this topic:\n\n` +
+        `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\nUse it only for thematic alignment — pull voice, examples, and specifics from our conversation above.`
+      : ''
     const aiMessages = [
       ...turns.map((m) => ({ role: m.role, content: m.content })),
       {
         role: 'user',
         content:
-          `Here is the editorial summary that has already been written and approved on this topic:\n\n` +
-          `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\n` +
           `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-          `Pull voice, examples, and specifics from our conversation above — that is the source of truth. ` +
-          `Use the editorial summary only for thematic alignment, not as the source of wording.`,
+          `Pull voice, examples, and specifics from our conversation above — that is the source of truth.` +
+          editorialBlock,
       },
     ]
 

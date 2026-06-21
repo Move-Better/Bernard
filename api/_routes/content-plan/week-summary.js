@@ -46,16 +46,35 @@ export default async function handler(req, res) {
     byPlatform[a.platform] = (byPlatform[a.platform] || 0) + 1
   }
 
-  const shape = (a) => ({
-    id: a.id,
-    platform: a.platform,
-    scheduled_at: a.scheduled_at,
-    label: a.angle_label,
-    brief: a.brief,
-    status: a.status,
-    contentPieceId: a.content_piece_id,
-    interviewId: a.interview_id,
-  })
+  // For drafted atoms, batch-fetch the content_item status so /week can
+  // show approve/schedule actions without a per-card round-trip.
+  const draftedIds = atoms.filter((a) => a.content_piece_id).map((a) => a.content_piece_id)
+  let itemStatusMap = {}
+  if (draftedIds.length) {
+    const quoted = draftedIds.map((id) => `"${id}"`).join(',')
+    const ciRes = await sb(
+      `content_items?id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id`,
+    )
+    if (ciRes.ok) {
+      const ciRows = await ciRes.json()
+      for (const ci of ciRows) itemStatusMap[ci.id] = ci
+    }
+  }
+
+  const shape = (a) => {
+    const ci = a.content_piece_id ? itemStatusMap[a.content_piece_id] : null
+    return {
+      id: a.id,
+      platform: a.platform,
+      scheduled_at: a.scheduled_at,
+      label: a.angle_label,
+      brief: a.brief,
+      status: a.status,
+      contentPieceId: a.content_piece_id,
+      contentItemStatus: ci?.status || null,
+      interviewId: a.interview_id,
+    }
+  }
 
   // Banked backlog (held across all weeks) — full list for the backlog rail.
   const heldRes = await sb(
@@ -67,12 +86,33 @@ export default async function handler(req, res) {
   const digests = Array.isArray(ws.cadence_policy?.digests) ? ws.cadence_policy.digests : []
   const digest = digests.find((d) => d.enabled) || digests[0] || null
 
+  // Clinician "yours to review" (2d): blog content_items in in_review for this user's
+  // staff row, only when blog_review_enabled is true on that row.
+  let yourReview = []
+  const clerkUserId = auth.userId || auth.user?.id || null
+  if (clerkUserId) {
+    const staffRes = await sb(
+      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
+    )
+    if (staffRes.ok) {
+      const staffRows = await staffRes.json()
+      const sf = staffRows[0]
+      if (sf?.blog_review_enabled) {
+        const reviewRes = await sb(
+          `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at&order=created_at.desc&limit=10`,
+        )
+        if (reviewRes.ok) yourReview = await reviewRes.json()
+      }
+    }
+  }
+
   return res.status(200).json({
     weekMonday,
     hasPlan: scheduled.length > 0,
     trustStage: ws.cadence_policy?.trust_stage || 'approve_all',
     cadence: ws.cadence_policy?.channels || null,
     quietDays: ws.cadence_policy?.quiet_days || ['sat', 'sun'],
+    timezone: ws.cadence_policy?.timezone || 'America/Los_Angeles',
     scheduledTotal: scheduled.length,
     byPlatform,
     scheduled: scheduled
@@ -81,5 +121,6 @@ export default async function handler(req, res) {
     heldCount: heldAtoms.length,
     held: heldAtoms.map(shape),
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
+    yourReview,
   })
 }

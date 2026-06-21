@@ -44,7 +44,6 @@ import { apiFetch } from '@/lib/api'
 import BufferMetricsRow from './BufferMetricsRow'
 import GbpInsightsRow from './GbpInsightsRow'
 import WinnerToggle from './WinnerToggle'
-import ContentPlanPanel from '@/components/ContentPlanPanel'
 import VoiceFidelityBadge from './VoiceFidelityBadge'
 import SplitSuggestionBanner from './SplitSuggestionBanner'
 import { extractMarkerSuggestions, markersToOverlay } from './OverlayTextEditor'
@@ -1862,8 +1861,6 @@ export default function AssetsPane({
   story,
   onProvenanceHighlight,
   className = '',
-  view: viewProp,
-  onViewChange,
 }) {
   const workspace = useWorkspace()
   // pieceParam must be declared before pieces so the useMemo can include a
@@ -1908,16 +1905,6 @@ export default function AssetsPane({
     ? Math.max(0, pieces.findIndex((p) => p.id === pieceParam))
     : 0
   const [activeIdx, setActiveIdx] = useState(initialIdx)
-  // Controlled-or-uncontrolled `view` — StoryDetail passes it in so its
-  // outer layout (transcript pane vs. transcript rail) can react to mode
-  // changes. Falls back to internal state if a parent doesn't control it.
-  const [viewInternal, setViewInternal] = useState(pieceParam ? 'edit' : 'plan')
-  const view = viewProp ?? viewInternal
-  const setView = (next) => {
-    if (onViewChange) onViewChange(next)
-    if (viewProp === undefined) setViewInternal(next)
-  }
-
   // If the ?piece=<id> param resolves after pieces load (async story fetch),
   // sync the active tab once the matching piece appears.
   useEffect(() => {
@@ -1925,18 +1912,13 @@ export default function AssetsPane({
     const idx = pieces.findIndex((p) => p.id === pieceParam)
     if (idx >= 0 && idx !== activeIdx) {
       setActiveIdx(idx)
-      setView('edit')
     }
-    // setView is stable enough for our needs; including it would require
-    // useCallback and adds noise without changing behavior.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pieceParam, pieces, activeIdx])
 
   const handleSelectPiece = (pieceId) => {
     const idx = pieces.findIndex((p) => p.id === pieceId)
     if (idx >= 0) {
       setActiveIdx(idx)
-      setView('edit')
     }
     // Always update the URL param. If the piece was filtered out (e.g. a
     // social atom draft not in selected_outputs), the pieces useMemo will
@@ -1949,48 +1931,9 @@ export default function AssetsPane({
     }
   }
 
-  const ViewToggle = (
-    <div className="inline-flex rounded-md border bg-muted/30 p-0.5 text-xs">
-      <button
-        type="button"
-        onClick={() => setView('plan')}
-        className={`px-2.5 py-1 rounded ${view === 'plan' ? 'bg-card shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
-      >
-        Plan
-      </button>
-      <button
-        type="button"
-        onClick={() => setView('edit')}
-        className={`px-2.5 py-1 rounded ${view === 'edit' ? 'bg-card shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
-        disabled={pieces.length === 0}
-      >
-        Edit
-      </button>
-    </div>
-  )
-
-  if (view === 'plan') {
-    return (
-      <div className={`rounded-xl border bg-card p-4 space-y-4 ${className}`}>
-        <div className="flex items-center justify-end">{ViewToggle}</div>
-        <ContentPlanPanel
-          interviewId={story?.id}
-          interviewCreatedAt={story?.created_at}
-          onSelectPiece={handleSelectPiece}
-        />
-        {pieces.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No content pieces yet. Generate content from the interview to populate the plan.
-          </p>
-        )}
-      </div>
-    )
-  }
-
   if (pieces.length === 0) {
     return (
       <div className={`rounded-xl border bg-card p-4 space-y-3 ${className}`}>
-        <div className="flex items-center justify-end">{ViewToggle}</div>
         <p className="text-sm text-muted-foreground">
           No content pieces yet. Generate content from the interview to see it here.
         </p>
@@ -2004,7 +1947,6 @@ export default function AssetsPane({
 
   return (
     <div className={`rounded-xl border bg-card overflow-hidden ${className}`}>
-      <div className="flex items-center justify-end px-3 pt-3">{ViewToggle}</div>
       {/* Tab row — numbers same-platform pieces (e.g. "Facebook 2 of 5") and
           shows a status dot so multiple drafts on the same channel are
           distinguishable without clicking through each tab. */}

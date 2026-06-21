@@ -253,11 +253,13 @@ export default async function handler(req, res) {
       // clinician is reachable, but an explicit filter prevents a stale FK
       // from another workspace leaking a name into a content_item insert.
       let staffName = ''
+      let blogReviewEnabled = false
       try {
-        const clinRes = await sb(`staff?id=eq.${staff_id}&${wsFilter}&select=name`)
+        const clinRes = await sb(`staff?id=eq.${staff_id}&${wsFilter}&select=name,blog_review_enabled`)
         if (clinRes.ok) {
           const clinRows = await clinRes.json()
           staffName = clinRows[0]?.name ?? ''
+          blogReviewEnabled = clinRows[0]?.blog_review_enabled ?? false
         } else {
           console.error(`[db/interviews] post-complete clinician name fetch ${clinRes.status} for interview=${id} ws=${ws.slug}`)
         }
@@ -289,7 +291,13 @@ export default async function handler(req, res) {
             .map(({ key, platform }) => {
               // Imported blog = already-published source. Other platforms
               // (atoms generated from it) are still drafts pending review.
+              // Blog author-review opt-in (2d): if the clinician has
+              // blog_review_enabled, the blog draft starts in_review so it
+              // routes to them before reaching the producer.
               const isImportedBlog = isImportedKeystone && platform === 'blog'
+              const initialStatus = isImportedBlog
+                ? 'published'
+                : (platform === 'blog' && blogReviewEnabled ? 'in_review' : 'draft')
               return {
                 workspace_id:   ws.id,
                 interview_id:   id,
@@ -300,7 +308,7 @@ export default async function handler(req, res) {
                 content:        o[key],
                 // Voice-memory snapshot — never overwritten on edit
                 ai_original_content: o[key],
-                status:         isImportedBlog ? 'published' : 'draft',
+                status:         initialStatus,
                 // Use original publish date from source if Jina surfaced it;
                 // fall back to import time so the field is always set.
                 published_at:   isImportedBlog ? (source_published_at ?? nowIso) : null,

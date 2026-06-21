@@ -26,11 +26,37 @@ export const RECOMMENDED_CADENCE = {
   // facebook / tiktok / twitter / threads / bluesky default off until enabled.
 }
 
-// Best-time defaults per channel (local hour, 24h) — a placeholder schedule the
+// Best-time defaults per channel (LOCAL hour, 24h) — a placeholder schedule the
 // producer/scheduler slice (build step 5) will replace with engagement-derived
 // peaks. Used only to stamp scheduled_at so the week renders on the calendar.
+// These are LOCAL hours in the workspace timezone, converted to UTC by assignSlots.
 const BEST_HOUR = { instagram: 12, linkedin: 7, gbp: 8, facebook: 12, tiktok: 18, twitter: 9, threads: 12, bluesky: 10 }
 const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+
+// Convert a local hour (in tzName) to a UTC Date on weekMonday.
+// Uses a single-pass Intl probe: start with the naive UTC candidate, check
+// what local hour that produces, then nudge by the delta. ±1h DST boundary
+// error is acceptable for scheduling purposes.
+function dateAtLocalHour(weekMonday, localHour, tzName) {
+  try {
+    // Candidate: treat localHour as UTC (off by the tz offset)
+    const [yr, mo, dy] = weekMonday.split('-').map(Number)
+    const candidate = new Date(Date.UTC(yr, mo - 1, dy, localHour, 0, 0, 0))
+    const gotLocalHour = parseInt(
+      new Intl.DateTimeFormat('en-US', { timeZone: tzName, hour: 'numeric', hour12: false }).format(candidate),
+      10,
+    )
+    // Nudge: gotLocalHour should equal localHour. Difference = tz offset error.
+    const delta = localHour - gotLocalHour
+    const result = new Date(candidate)
+    result.setUTCHours(result.getUTCHours() + delta)
+    return result
+  } catch {
+    // Fallback: treat localHour as UTC
+    const [yr, mo, dy] = weekMonday.split('-').map(Number)
+    return new Date(Date.UTC(yr, mo - 1, dy, localHour, 0, 0, 0))
+  }
+}
 
 // The angle palette the Strategist chooses from (the curated-palette decision).
 // Derived from ATOM_DEFINITIONS so it stays in lockstep with the existing
@@ -54,24 +80,26 @@ export function mondayOf(date) {
 }
 
 // Spread N this-week pieces of a channel across the non-quiet weekdays, stamping
-// scheduled_at at the channel's best hour. Pure.
-function assignSlots(atoms, weekMonday, quietDays) {
+// scheduled_at at the channel's best LOCAL hour converted to UTC. Pure.
+function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC') {
   const quiet = new Set((quietDays || []).map((q) => q.toLowerCase()))
   // Candidate weekday offsets (Mon..Sun = 0..6) that aren't quiet.
   const openOffsets = [0, 1, 2, 3, 4, 5, 6].filter((off) => !quiet.has(WEEKDAY[(off + 1) % 7]))
   const byChannel = {}
   for (const a of atoms) (byChannel[a.platform] ||= []).push(a)
   for (const [platform, list] of Object.entries(byChannel)) {
-    const hour = BEST_HOUR[platform] ?? 11
+    const localHour = BEST_HOUR[platform] ?? 11
     list.forEach((a, i) => {
       // Even spread: pick offsets stepped across the open days so 2 pieces land
       // e.g. Tue & Fri rather than Mon & Tue.
       const off = openOffsets.length
         ? openOffsets[Math.round((i * (openOffsets.length - 1)) / Math.max(1, list.length - 1)) % openOffsets.length]
         : 0
-      const d = new Date(`${weekMonday}T00:00:00.000Z`)
-      d.setUTCDate(d.getUTCDate() + off)
-      d.setUTCHours(hour, 0, 0, 0)
+      // Compute the calendar date for this offset from weekMonday.
+      const [yr, mo, dy] = weekMonday.split('-').map(Number)
+      const dayDate = new Date(Date.UTC(yr, mo - 1, dy + off))
+      const dayStr = dayDate.toISOString().slice(0, 10)
+      const d = dateAtLocalHour(dayStr, localHour, timezone)
       a.scheduled_at = d.toISOString()
     })
   }
@@ -197,6 +225,7 @@ export async function composeWeeklyPlan({
   recentTopics = [],
   backlog = [],
   quietDays = ['sat', 'sun'],
+  timezone = 'America/Los_Angeles',
   weekMonday,
   generate = defaultGenerate,
 }) {
@@ -226,13 +255,14 @@ export async function composeWeeklyPlan({
   // Materialize this-week + held candidates into atom rows; assign slots to the
   // this-week set; mark held with held_at=now.
   const now = new Date().toISOString()
-  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays)
+  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays, timezone)
   const heldRows = held.map((c) => ({ ...toAtomRow(c, { workspaceId, planWeek, palette }), held_at: now }))
   // Promoted backlog atoms already exist — they just flip held→this-week.
   const promotedUpdates = assignSlots(
     promoted.map((b) => ({ ...b, held_at: null, plan_week: planWeek })),
     planWeek,
     quietDays,
+    timezone,
   )
 
   return {
