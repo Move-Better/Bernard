@@ -4,13 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
-  FolderOpen, Megaphone, ChevronDown,
+  FolderOpen, Megaphone, ChevronDown, Scissors,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
-import { getSegments, renderWholeVideo, findClips } from '@/lib/clipsLib'
+import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -301,13 +301,48 @@ function OverlayInspector({ ctx }) {
   )
 }
 
+// Moments — the AI proposals picker (replaces SlateClipEditor's review lane).
+function MomentsInspector({ ctx }) {
+  const { proposals, selectedSegmentId, applySegment, discardSegment, findMoments, findingMoments, segDetecting } = ctx
+  const loading = findingMoments || segDetecting
+  return (
+    <InspectorShell icon={Scissors} title="Moments" right={proposals.length ? `${proposals.length}` : ''}>
+      {loading ? (
+        <div className="flex items-center gap-2 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><Loader2 className="h-3.5 w-3.5 animate-spin" />Finding moments…</div>
+      ) : proposals.length === 0 ? (
+        <>
+          <p className="mb-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No AI moments yet — find the standalone clips in this source.</p>
+          <button onClick={findMoments} className="flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs" style={{ borderColor: 'hsl(var(--primary))', color: 'hsl(var(--primary))' }}><Scissors className="h-3.5 w-3.5" />Find clips</button>
+        </>
+      ) : (
+        <>
+          {proposals.map((s) => {
+            const on = s.id === selectedSegmentId
+            const dur = Math.max(0, (Number(s.end_sec) || 0) - (Number(s.start_sec) || 0))
+            return (
+              <div key={s.id} className="mb-1.5 rounded-md border p-2" style={{ borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', background: on ? 'hsl(var(--primary)/0.06)' : undefined }}>
+                <button onClick={() => applySegment(s)} className="block w-full text-left">
+                  <span className="block text-2xs font-medium" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>{s.hook || 'Moment'}</span>
+                  <span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(Number(s.start_sec) || 0)} · {Math.round(dur)}s</span>
+                </button>
+                <button onClick={() => discardSegment(s.id)} className="mt-1 text-3xs" style={{ color: 'hsl(0 60% 50%)' }}>Discard</button>
+              </div>
+            )
+          })}
+          <button onClick={findMoments} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-3xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}><Scissors className="h-3 w-3" />Re-find</button>
+        </>
+      )}
+    </InspectorShell>
+  )
+}
+
 // ── RAIL + VERTICAL TIMELINE (v3) ────────────────────────────────────────────
 // Thin icon rail (v3) — picks the inspector tool. "Text" selects the latest
 // overlay (or adds one). Replaces the old Layers/Transcript rail.
 function IconRail({ ctx }) {
   const { sel, selectKey, overlays, addOverlay } = ctx
   const selKey = typeof sel === 'object' ? 'overlay' : sel
-  const tools = [['clip', Film, 'Clip'], ['grade', Sparkles, 'Grade'], ['caption', Captions, 'Caps'], ['text', Type, 'Text']]
+  const tools = [['moments', Scissors, 'Clips'], ['clip', Film, 'Clip'], ['grade', Sparkles, 'Grade'], ['caption', Captions, 'Caps'], ['text', Type, 'Text']]
   const pick = (k) => {
     if (k === 'text') { if (overlays.length) selectKey(`overlay:${overlays[overlays.length - 1].id}`); else addOverlay() }
     else selectKey(k)
@@ -417,6 +452,7 @@ export default function VideoEditor() {
   const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: '#0C7580' })
   const [overlays, setOverlays] = useState([])
   const [safeZones, setSafeZones] = useState(true)
+  const [selectedSegmentId, setSelectedSegmentId] = useState(null)
   const seededRef = useRef(false)
 
   const durationSec = Math.max(1, endSec - startSec)
@@ -462,7 +498,7 @@ export default function VideoEditor() {
       const st = Math.max(0, Number(s.start_sec) || 0)
       let en = Math.min(Number(s.end_sec) || st + 30, st + 60)
       if (videoDuration > 0) en = Math.min(en, videoDuration)
-      setStartSec(st); setEndSec(en > st ? en : st + 1); seededRef.current = true
+      setStartSec(st); setEndSec(en > st ? en : st + 1); setSelectedSegmentId(s.id); seededRef.current = true
     } else if (videoDuration > 0 && !seededRef.current) {
       setEndSec(Math.min(videoDuration, 60)); seededRef.current = true
     }
@@ -637,6 +673,33 @@ export default function VideoEditor() {
     onSuccess: () => toast('Captions generated.'),
   })
 
+  // Proposals (AI moments) — pick which moment to edit, discard, or find more.
+  const applySegment = useCallback((seg) => {
+    if (!seg) return
+    const st = Math.max(0, Number(seg.start_sec) || 0)
+    let en = Math.min(Number(seg.end_sec) || st + 30, st + 60)
+    if (videoDuration > 0) en = Math.min(en, videoDuration)
+    setStartSec(st); setEndSec(en > st ? en : st + 1); setSelectedSegmentId(seg.id)
+    seededRef.current = true; toast('Switched to that moment')
+  }, [videoDuration])
+  const discardSegment = useCallback((id) => {
+    updateSegment(id, 'discarded').then(() => queryClient.invalidateQueries({ queryKey: ['video-segments', assetId] })).catch(() => {})
+    if (selectedSegmentId === id) setSelectedSegmentId(null)
+  }, [assetId, selectedSegmentId, queryClient])
+  const findMomentsMutation = useAppMutation({
+    mutationFn: async () => {
+      await findClips(assetId)
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 3000))
+        const d = await getSegments(assetId)
+        if (d?.status === 'ready') { queryClient.setQueryData(['video-segments', assetId], d); return }
+        if (d?.status === 'failed') throw new Error('Find clips failed')
+      }
+      throw new Error('Find clips timed out')
+    },
+    onSuccess: () => toast('Found moments.'),
+  })
+
   const [editingCap, setEditingCap] = useState(false)
   const busy = asPostMutation.isPending || brollMutation.isPending || wholeMutation.isPending
 
@@ -648,6 +711,8 @@ export default function VideoEditor() {
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     editingCap, setEditingCap,
+    proposals, selectedSegmentId, applySegment, discardSegment,
+    findMoments: () => findMomentsMutation.mutate(), findingMoments: findMomentsMutation.isPending, segDetecting: segData?.status === 'detecting',
   }
 
   if (isLoading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
@@ -669,9 +734,8 @@ export default function VideoEditor() {
       <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="border-b p-2.5" style={{ borderColor: 'hsl(var(--border))' }}>
           <div className="mb-2 flex items-center gap-2">
-            <button onClick={() => navigate(`/slate/clip/${assetId}`)} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back"><ArrowLeft className="h-4 w-4" /></button>
+            <button onClick={() => navigate('/slate')} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back to Slate"><ArrowLeft className="h-4 w-4" /></button>
             <span className="truncate text-xs font-semibold">{asset.display_title || asset.filename || 'Reel'}</span>
-            <span className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-3xs font-semibold" style={{ background: 'hsl(var(--action)/.15)', color: 'hsl(38 60% 30%)' }}>Beta</span>
           </div>
           <div className="mb-2 flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
             <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
@@ -706,6 +770,7 @@ export default function VideoEditor() {
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-3">
+          {sel === 'moments' && <MomentsInspector ctx={ctx} />}
           {sel === 'clip' && <ClipInspector ctx={ctx} />}
           {sel === 'grade' && <GradeInspector ctx={ctx} />}
           {sel === 'caption' && <CaptionInspector ctx={ctx} />}
