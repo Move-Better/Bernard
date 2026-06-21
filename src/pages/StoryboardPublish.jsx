@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Eye, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import PipelineStepper from '@/components/PipelineStepper'
 import BackLink from '@/components/ui/BackLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pieceLabel } from '@/lib/pieceLabel'
@@ -116,7 +115,7 @@ export default function StoryboardPublish() {
       <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
         <SlideEditor
           piece={piece}
-          onBack={() => navigate(`/publish/${piece.id}`)}
+          onBack={() => navigate('/publish')}
           formatLabel={fmt.label}
           formatSub={`${fmt.count} ${fmt.unit}`}
           photoCount={photoCount}
@@ -128,25 +127,17 @@ export default function StoryboardPublish() {
 
   return (
     <div className="space-y-5 py-6">
-      <PipelineStepper current="publish" />
-      {/* Page name — stage + piece. The piece crumb links back to Choose media,
-          which is also the fix for "back should return to media choices": from
-          Publish you can step back to the media picker, not just the queue. */}
       <Breadcrumb
         items={[
           { label: 'Publish queue', to: '/publish' },
-          { label: pieceLabel(piece), to: `/publish/${piece.id}` },
-          { label: 'Schedule & publish' },
+          { label: pieceLabel(piece) },
         ]}
       />
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          {/* Back goes to the media picker for THIS piece (Choose media), not
-              the queue — so you can change the attached media without losing
-              the draft. "Back to Publish" (the queue) is still one crumb up. */}
-          <BackLink to={`/publish/${piece.id}`}>Back to media</BackLink>
+          <BackLink to="/publish">Back to Publish</BackLink>
           <h1 className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
             {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
             <span className="truncate">{title}</span>
