@@ -11,6 +11,7 @@ import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
+import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -223,11 +224,18 @@ function ClipInspector({ ctx }) {
 }
 
 function GradeInspector({ ctx }) {
-  const { grade, setGradeKey, applyVibe, resetGrade } = ctx
+  const { grade, setGradeKey, applyVibe, resetGrade, brandGrade, saveBrandGrade, savingBrand } = ctx
   return (
     <InspectorShell icon={Sparkles} title="AI Colorist — Frame grade" right="whole clip">
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Vibe presets</p>
       <div className="mb-3 flex flex-wrap gap-1.5">
+        <button
+          onClick={() => brandGrade && applyVibe(brandGrade)}
+          disabled={!brandGrade}
+          title={brandGrade ? 'Your saved brand look' : 'Dial in a grade, then “Save as Brand look” below'}
+          className="rounded-full border px-2.5 py-1 text-2xs font-medium disabled:opacity-50"
+          style={{ borderColor: 'hsl(var(--action))', color: 'hsl(38 60% 30%)', background: 'hsl(var(--action)/0.08)' }}
+        >★ Brand</button>
         {GRADE_VIBES.map((v) => (
           <button key={v.id} onClick={() => applyVibe(v.params)} className="rounded-full border px-2.5 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>{v.label}</button>
         ))}
@@ -239,7 +247,10 @@ function GradeInspector({ ctx }) {
           <input type="range" min={-50} max={50} value={grade[s.key] || 0} onChange={(e) => setGradeKey(s.key, +e.target.value)} className="w-full" />
         </div>
       ))}
-      <button onClick={resetGrade} className="mt-2 w-full rounded-md py-1.5 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reset adjustments</button>
+      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(38 60% 30%)' }}>
+        {savingBrand ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>★</span>}Save as Brand look
+      </button>
+      <button onClick={resetGrade} className="mt-1 w-full rounded-md py-1.5 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reset adjustments</button>
     </InspectorShell>
   )
 }
@@ -700,6 +711,17 @@ export default function VideoEditor() {
     onSuccess: () => toast('Found moments.'),
   })
 
+  // Brand look — save the current grade as the workspace's brand vibe; the Brand
+  // chip applies it. Merged into brand_style so colours/fonts are preserved.
+  const brandGrade = asset?.workspace?.brand_style?.grade
+  const saveBrandMutation = useAppMutation({
+    mutationFn: async () => {
+      await updateBrandStyle({ grade })  // merges grade into brand_style (brand kit)
+      queryClient.invalidateQueries({ queryKey: ['media-asset', assetId] })
+    },
+    onSuccess: () => toast('Saved as your Brand look — it’s now a vibe preset.'),
+  })
+
   const [editingCap, setEditingCap] = useState(false)
   const busy = asPostMutation.isPending || brollMutation.isPending || wholeMutation.isPending
 
@@ -710,6 +732,7 @@ export default function VideoEditor() {
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
+    brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
     editingCap, setEditingCap,
     proposals, selectedSegmentId, applySegment, discardSegment,
     findMoments: () => findMomentsMutation.mutate(), findingMoments: findMomentsMutation.isPending, segDetecting: segData?.status === 'detecting',

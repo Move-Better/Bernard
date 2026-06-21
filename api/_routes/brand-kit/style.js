@@ -23,9 +23,23 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/
 
 function validate(patch) {
   if (typeof patch !== 'object' || !patch) return { ok: false, error: 'body must be an object' }
-  const allowed = ['accent_color', 'secondary_colors', 'heading_font', 'body_font']
+  const allowed = ['accent_color', 'secondary_colors', 'heading_font', 'body_font', 'grade']
   for (const k of Object.keys(patch)) {
     if (!allowed.includes(k)) return { ok: false, error: `unknown field: ${k}` }
+  }
+  // grade — the workspace "Brand look" colorist preset (canonical params). Read by
+  // the video/photo editors as the Brand vibe. Validate the shape so a malformed
+  // value can't reach the render path.
+  if (patch.grade != null) {
+    const g = patch.grade
+    if (typeof g !== 'object' || Array.isArray(g)) return { ok: false, error: 'grade must be an object' }
+    const gradeKeys = ['exposure', 'contrast', 'saturation', 'warmth', 'tint', 'depth']
+    for (const k of Object.keys(g)) {
+      if (!gradeKeys.includes(k)) return { ok: false, error: `grade.${k} not allowed` }
+      if (typeof g[k] !== 'number' || !Number.isFinite(g[k]) || g[k] < -100 || g[k] > 100) {
+        return { ok: false, error: `grade.${k} must be a number between -100 and 100` }
+      }
+    }
   }
   if (patch.accent_color != null && !HEX_RE.test(patch.accent_color)) {
     return { ok: false, error: 'accent_color must be #RRGGBB' }
