@@ -108,3 +108,25 @@ The same screen gets **quieter** as trust grows — the user never relearns a UI
 - Per-piece, per-dimension scores already have a home: promote `captionFidelityRubric.js` (voice) and add visual/accuracy/timing checks the producer agent emits.
 - Trust state needs a per-(dimension, channel) agreement tally + the current `trust_stage` (already on `cadence_policy`). An "approved unchanged vs edited" signal must be captured at approve time (diff the served draft vs the shipped piece).
 - Approval routing stays two-tier (clinician voice / producer calendar+digest) per the decisions above; the drill-in is where the clinician voice-gate lives.
+
+## F2.1 — the Strategist (architecture decided 2026-06-21)
+
+The keystone. A **practice-level weekly planner** — a different altitude from today's per-interview grid.
+
+**Decisions (Q, 2026-06-21):**
+- **Replace the grid, don't layer.** The Strategist composes the week from scratch; atoms become its *output*, not its input. `api/_lib/atomPlan.js` (`buildPlanRows`, the per-interview hardcoded angle grid fired on blog-save) is **retired** once the Strategist is live. (Today it seeds a fixed hook→story→insight→CTA set per interview regardless of what was said — the opposite of practice-level planning.)
+- **Weekly cron trigger.** One planning pass per week batches all the week's captures into ONE plan. (Not per-capture re-planning — that re-shuffles a plan the producer may already be reviewing. Possible light re-plan on new captures is a later refinement, not v1.)
+- **Curated angle palette.** Keep `atomPlan.js`'s angle library as a *menu* the Strategist selects from + can override — preserves the proven scaffolding and keeps output QA-able. Not free-form angle invention.
+
+**What it reads:** `cadence_policy` (targets, quiet days, digests, trust_stage) + the practice brain (`practiceMemory.js` already does vector search — `searchPracticeMemory` / `buildTopicScopedHistoryBlock`; usable day one, no F6 dependency) + engagement history (`engagement/top-performers.js`).
+
+**What it does:** batch week's `interviews` → dedupe overlapping topics → pick angles from the palette → fill each channel to `target_per_week` → surplus gets `held_at = now()` (migration 138, the backlog) → route capture highlights into active digests. **Drafters are unchanged** — the existing generation path still writes the text; the Strategist decides *what / how-many / which-angle / now-vs-banked*.
+
+**Open for the build pass:** the plan-object shape (does the Strategist emit `content_items` rows directly, or a plan record that fans out to drafters?); cron isolation + idempotency (re-running the weekly pass mustn't double-plan); how `held_at` items get *promoted* into a thin future week.
+
+### Build order (each ships independently)
+1. ✅ **Backlog foundation** — `held_at` + index (migration 138, applied to prod 2026-06-21, PR #1535).
+2. **Strategist (headless)** — the weekly planning pass; retires `atomPlan.js`.
+3. **Voice-judge gate** — promote `captionFidelityRubric.js` to gate drafts.
+4. **F2.3 surface** — the signed-off proposed-week calendar (`proposed-week-v2.html`).
+5. **Producer + scheduler** — best-time placement, quiet-days, digest assembly, backlog pull.
