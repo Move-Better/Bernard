@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Moment Feed (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%; --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%; --border:214 32% 91%; --radius:0.625rem;
+    --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%; --action:32 95% 44%;
+  }
+  body{font-family:'Geist','Inter',system-ui,sans-serif;background:hsl(var(--background));color:hsl(var(--foreground));-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4{font-weight:700;letter-spacing:-0.025em;}
+  .legend{border:1px dashed hsl(var(--info));background:hsl(var(--info)/0.06);}
+  .track-handle{cursor:ew-resize;}
+  [x-cloak]{display:none;}
+</style>
+<script>
+  tailwind.config={theme:{extend:{colors:{
+    background:'hsl(var(--background))',foreground:'hsl(var(--foreground))',
+    card:'hsl(var(--card))',primary:'hsl(var(--primary))','primary-foreground':'hsl(var(--primary-foreground))',
+    muted:'hsl(var(--muted))','muted-foreground':'hsl(var(--muted-foreground))',
+    accent:'hsl(var(--accent))','accent-foreground':'hsl(var(--accent-foreground))',
+    border:'hsl(var(--border))',success:'hsl(var(--success))',warning:'hsl(var(--warning))',
+    info:'hsl(var(--info))',action:'hsl(var(--action))',destructive:'hsl(var(--destructive))',
+  },borderRadius:{xl:'0.75rem',lg:'var(--radius)'}}}}
+</script>
+</head>
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+
+  <!-- left icon rail (Bernard chrome) -->
+  <aside class="w-14 shrink-0 border-r border-border bg-card flex flex-col items-center py-4 gap-1">
+    <div class="w-9 h-9 rounded-lg bg-primary text-white grid place-items-center font-bold mb-3">B</div>
+    <nav class="flex flex-col gap-1 text-muted-foreground">
+      <a class="w-10 h-10 grid place-items-center rounded-lg hover:bg-muted" title="Home"><i data-lucide="home" class="w-5 h-5"></i></a>
+      <a class="w-10 h-10 grid place-items-center rounded-lg hover:bg-muted" title="Stories"><i data-lucide="layout-grid" class="w-5 h-5"></i></a>
+      <a class="w-10 h-10 grid place-items-center rounded-lg hover:bg-muted" title="Library"><i data-lucide="folder" class="w-5 h-5"></i></a>
+      <a class="w-10 h-10 grid place-items-center rounded-lg bg-accent text-accent-foreground" title="Slate"><i data-lucide="scissors" class="w-5 h-5"></i></a>
+      <a class="w-10 h-10 grid place-items-center rounded-lg hover:bg-muted" title="Settings"><i data-lucide="settings" class="w-5 h-5"></i></a>
+    </nav>
+  </aside>
+
+  <!-- main -->
+  <main class="flex-1 min-w-0">
+
+  <!-- ════════════ SCREEN 1 — THE MOMENT FEED ════════════ -->
+  <section id="feed" class="max-w-5xl mx-auto px-6 py-6">
+    <header class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <div class="flex items-center gap-2">
+          <i data-lucide="scissors" class="w-6 h-6 text-primary"></i>
+          <h1 class="text-2xl">Slate</h1>
+          <span class="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-xs font-semibold">7 moments</span>
+        </div>
+        <p class="text-sm text-muted-foreground mt-1">The best moments from your sessions — ranked. Review, trim, and <span class="text-foreground font-medium">save approved clips to your Library</span>. Every clip is your real footage and voice.</p>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-muted-foreground">Clinician</span>
+        <select class="border border-border rounded-lg px-2.5 py-1.5 bg-card"><option>All clinicians</option><option>Dr. Q</option><option>Whitney</option><option>AJ</option></select>
+        <span class="text-muted-foreground ml-2">Sort</span>
+        <select class="border border-border rounded-lg px-2.5 py-1.5 bg-card"><option>Strongest first</option><option>Newest capture</option></select>
+      </div>
+    </header>
+
+    <!-- type filter chips -->
+    <div class="flex items-center gap-2 mt-4 flex-wrap">
+      <button onclick="filterType('all',this)" data-chip class="chip-on px-3 py-1.5 rounded-full text-sm font-medium border border-primary bg-primary text-white">All types</button>
+      <button onclick="filterType('cue',this)" data-chip class="px-3 py-1.5 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted">Coaching cue</button>
+      <button onclick="filterType('breakthrough',this)" data-chip class="px-3 py-1.5 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted">Patient breakthrough</button>
+      <button onclick="filterType('hook',this)" data-chip class="px-3 py-1.5 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted">Hook</button>
+      <button onclick="filterType('credibility',this)" data-chip class="px-3 py-1.5 rounded-full text-sm font-medium border border-border bg-card hover:bg-muted">Credibility</button>
+    </div>
+
+    <!-- legend -->
+    <div class="legend rounded-lg px-3 py-2 mt-4 text-xs text-foreground/80 flex items-start gap-2">
+      <i data-lucide="info" class="w-4 h-4 text-info shrink-0 mt-0.5"></i>
+      <span><b>Slate, redesigned moment-first.</b> Slate already proposes moments per source video (transcribe + scan → hook + start/end). This flattens every proposed moment across your whole library into one <i>ranked</i> feed — full quote + why, not per-video rows. Slate's only job: produce approved clips <b>into your Library</b>. Storyboard &amp; Ads pull from there. Every quote below is real, from your June 11 sessions.</span>
+    </div>
+
+    <!-- moment cards -->
+    <div id="cards" class="mt-4 space-y-3"></div>
+  </section>
+
+  <!-- ════════════ SCREEN 2 — REVIEW & TRIM (the backdoor) ════════════ -->
+  <section id="editor" x-cloak class="hidden max-w-5xl mx-auto px-6 py-6">
+    <button onclick="showFeed()" class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to moments</button>
+
+    <div class="legend rounded-lg px-3 py-2 mt-3 text-xs text-foreground/80 flex items-start gap-2">
+      <i data-lucide="info" class="w-4 h-4 text-info shrink-0 mt-0.5"></i>
+      <span><b>The human backdoor — already built.</b> A moment opens in your <i>existing</i> video editor, pre-trimmed to the AI's boundaries. Nudge the in/out a second or two, then save the approved clip to your Library. Bernard logs the delta and tightens its next proposals (the learning loop).</span>
+    </div>
+
+    <div class="grid md:grid-cols-[300px_1fr] gap-6 mt-5">
+      <!-- 9:16 preview -->
+      <div>
+        <div class="relative rounded-xl overflow-hidden bg-gradient-to-b from-slate-700 to-slate-900 aspect-[9/16] grid place-items-center">
+          <i data-lucide="play" class="w-12 h-12 text-white/80"></i>
+          <div class="absolute bottom-16 inset-x-0 text-center px-4">
+            <span class="inline bg-black/30 px-1 rounded text-white font-bold text-lg leading-tight" id="prevCaption">find <span style="color:hsl(var(--primary));filter:brightness(1.6)">the armpit</span> first</span>
+          </div>
+          <span class="absolute top-2 right-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded" id="prevDur">0:26</span>
+          <span class="absolute top-2 left-2 bg-success/90 text-white text-xs px-1.5 py-0.5 rounded font-medium">real audio</span>
+        </div>
+      </div>
+
+      <!-- controls -->
+      <div>
+        <div class="flex items-center gap-2">
+          <span id="edType" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground">Patient breakthrough</span>
+          <span id="edScore" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">score 88</span>
+        </div>
+        <p id="edQuote" class="text-lg font-semibold mt-2 leading-snug">"Find the armpit first. Relax the neck… what in the world? 'Cause my neck — it's hurting."</p>
+        <p id="edMeta" class="text-xs text-muted-foreground mt-1">From <b>img_4615.mov</b> · Dr. Q · source @ 2.6s–28.5s</p>
+
+        <!-- trim bar -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Trim — drag the handles</span><span id="trimReadout">0.0s – 25.9s · 25.9s</span>
+          </div>
+          <div id="track" class="relative h-12 rounded-lg bg-muted border border-border select-none">
+            <!-- AI proposed span (dashed reference) -->
+            <div id="aiSpan" class="absolute top-0 bottom-0 border-2 border-dashed border-info/50 rounded-md pointer-events-none" style="left:8%;right:6%"></div>
+            <!-- current selection -->
+            <div id="sel" class="absolute top-0 bottom-0 bg-primary/15 border-2 border-primary rounded-md" style="left:8%;right:6%">
+              <div id="hL" class="track-handle absolute -left-1.5 top-0 bottom-0 w-3 bg-primary rounded"></div>
+              <div id="hR" class="track-handle absolute -right-1.5 top-0 bottom-0 w-3 bg-primary rounded"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-1 text-3xs text-muted-foreground"><span>0:00</span><span class="text-info">dashed = AI proposed</span><span>0:31</span></div>
+        </div>
+
+        <!-- learning note -->
+        <div id="learnNote" class="mt-4 rounded-lg px-3 py-2 text-xs flex items-start gap-2 bg-muted text-muted-foreground">
+          <i data-lucide="sparkles" class="w-4 h-4 shrink-0 mt-0.5"></i>
+          <span>Match the AI's cut, or nudge it — Bernard learns either way.</span>
+        </div>
+
+        <div class="flex items-center gap-2 mt-5">
+          <button onclick="saveMoment()" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold text-sm flex items-center gap-1.5"><i data-lucide="save" class="w-4 h-4"></i> Save to Library</button>
+          <button class="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium">Open full editor</button>
+          <button onclick="showFeed()" class="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted">Dismiss</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<!-- toast -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg flex items-center gap-2"></div>
+
+<script>
+  // Real mined moments from today's engine spike (verbatim quotes + scores).
+  const MOMENTS=[
+    {id:'449637f4',score:91,type:'cue',typeLabel:'Coaching cue',clip:'img_4647.mov',who:'Dr. Q',span:'0.9s–29.1s',len:'28.2s',
+      quote:`There's like no template, right? The brain's like — what do you mean use that muscle? What is the muscle? How do I squeeze it?`,
+      why:'Relatable reframe of why relearning movement feels hard'},
+    {id:'0d312c6f',score:88,type:'breakthrough',typeLabel:'Patient breakthrough',clip:'img_4615.mov',who:'Dr. Q',span:'2.6s–28.5s',len:'25.9s',
+      quote:`Find the armpit first. Relax the neck… what in the world? 'Cause my neck — it's hurting.`,
+      why:'Real patient breakthrough + honest pain reaction'},
+    {id:'17ae66af',score:83,type:'cue',typeLabel:'Coaching cue',clip:'img_4670.mov',who:'Dr. Q',span:'39.4s–55.5s',len:'16.1s',
+      quote:`You're secretly gonna drift back every time. Get the top of your head as far forward as you can as you bow — that makes the back of your legs do way more work.`,
+      why:'Punchy cue that teaches the why behind the correction'},
+    {id:'996cb7e4',score:80,type:'credibility',typeLabel:'Credibility',clip:'img_4646.mov',who:'Dr. Q',span:'13.6s–28.0s',len:'14.4s',
+      quote:`Manual resistance during exercise is crazy fatiguing — it's always perfect pressure, just the right amount of tension at just the right spot.`,
+      why:'Explains a clinical technique in plain, credible language'},
+    {id:'3fb2ea46',score:78,type:'hook',typeLabel:'Hook',clip:'img_4680.mov',who:'Dr. Q',span:'0.3s–8.2s',len:'7.9s',
+      quote:`Try to make the brain do the not-neck version.`,
+      why:'3-second standalone Reel hook'},
+    {id:'449637f4b',score:75,type:'cue',typeLabel:'Coaching cue',clip:'img_4647.mov',who:'Dr. Q',span:'21.2s–35.4s',len:'14.2s',
+      quote:`I can literally feel it squeeze just like you felt your bicep — I can squeeze it right now, feel it turn on.`,
+      why:'Analogy bridges muscle awareness to something everyone knows'},
+    {id:'8cf72d0f',score:72,type:'breakthrough',typeLabel:'Patient breakthrough',clip:'img_4520.mov',who:'Dr. Q',span:'8.0s–13.6s',len:'5.6s',
+      quote:`If I can get through that motion… that's how I know there's nothing wrong with it. It just tightened up.`,
+      why:'Patient self-discovering reassurance for anxious movers'},
+  ];
+  const typeColor={cue:'primary',breakthrough:'accent-foreground',hook:'action',credibility:'info'};
+
+  function cardHTML(m){
+    return `<div data-type="${m.type}" class="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
+      <div class="w-[78px] shrink-0 rounded-lg overflow-hidden bg-gradient-to-b from-slate-600 to-slate-800 aspect-[9/16] relative grid place-items-center">
+        <i data-lucide="play" class="w-6 h-6 text-white/70"></i>
+        <span class="absolute bottom-1 right-1 bg-black/60 text-white text-3xs px-1 rounded">${m.len}</span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="px-2 py-0.5 rounded-full text-3xs font-semibold bg-accent text-accent-foreground">${m.typeLabel}</span>
+          <span class="px-2 py-0.5 rounded-full text-3xs font-semibold bg-primary/10 text-primary inline-flex items-center gap-1"><i data-lucide="gem" class="w-3 h-3"></i> ${m.score}</span>
+          <span class="text-3xs text-muted-foreground">${m.clip} · ${m.who} · @ ${m.span}</span>
+        </div>
+        <p class="text-[15px] font-semibold leading-snug mt-1.5">"${m.quote}"</p>
+        <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i> ${m.why}</p>
+        <div class="flex items-center gap-2 mt-2.5">
+          <button onclick="openEditor('${m.id}')" class="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium flex items-center gap-1.5"><i data-lucide="scissors" class="w-4 h-4"></i> Review &amp; trim</button>
+          <button onclick="quickSave(this)" class="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium">Looks good — save</button>
+          <button onclick="dismissCard(this)" class="px-2.5 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted ml-auto">Not this one</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  function render(list){document.getElementById('cards').innerHTML=list.map(cardHTML).join('');lucide.createIcons();}
+  function filterType(t,btn){
+    document.querySelectorAll('[data-chip]').forEach(c=>{c.className=c.className.replace('border-primary bg-primary text-white','border-border bg-card hover:bg-muted');});
+    btn.className=btn.className.replace('border-border bg-card hover:bg-muted','border-primary bg-primary text-white');
+    render(t==='all'?MOMENTS:MOMENTS.filter(m=>m.type===t));
+  }
+  function toast(msg){const t=document.getElementById('toast');t.innerHTML=`<i data-lucide="check-circle" class="w-4 h-4 text-success"></i> ${msg}`;t.classList.remove('hidden');lucide.createIcons();setTimeout(()=>t.classList.add('hidden'),2600);}
+  function dismissCard(b){b.closest('[data-type]').style.opacity=0.35;toast("Dismissed — Bernard learns this isn't your kind");}
+  function quickSave(b){b.closest('[data-type]').style.opacity=0.5;toast('Saved to your Library — real audio + captions');}
+
+  function showFeed(){document.getElementById('editor').classList.add('hidden');document.getElementById('feed').classList.remove('hidden');}
+  function openEditor(id){
+    const m=MOMENTS.find(x=>x.id===id);
+    document.getElementById('feed').classList.add('hidden');
+    const e=document.getElementById('editor');e.classList.remove('hidden');e.removeAttribute('x-cloak');
+    document.getElementById('edType').textContent=m.typeLabel;
+    document.getElementById('edScore').textContent='score '+m.score;
+    document.getElementById('edQuote').textContent='"'+m.quote+'"';
+    document.getElementById('edMeta').innerHTML=`From <b>${m.clip}</b> · ${m.who} · source @ ${m.span}`;
+    document.getElementById('prevDur').textContent='0:'+String(Math.round(parseFloat(m.len))).padStart(2,'0');
+    resetTrim();lucide.createIcons();window.scrollTo(0,0);
+  }
+  function saveMoment(){toast('Saved to Library — ready for Storyboard or Ads to pull');setTimeout(showFeed,900);}
+
+  // trim drag with learning-delta readout
+  let drag=null;
+  const track=()=>document.getElementById('track');
+  function pct(x){const r=track().getBoundingClientRect();return Math.max(0,Math.min(100,((x-r.left)/r.width)*100));}
+  function resetTrim(){const s=document.getElementById('sel');s.style.left='8%';s.style.right='6%';updateReadout(8,94);}
+  function updateReadout(lp,rp){
+    const TOTAL=31; // seconds across the track
+    const a=(lp/100*TOTAL), b=(rp/100*TOTAL);
+    document.getElementById('trimReadout').textContent=`${a.toFixed(1)}s – ${b.toFixed(1)}s · ${(b-a).toFixed(1)}s`;
+    // AI proposed = 8%..94%
+    const dFront=(lp-8)/100*TOTAL, dEnd=(94-rp)/100*TOTAL;
+    const n=document.getElementById('learnNote');
+    if(Math.abs(dFront)<0.2&&Math.abs(dEnd)<0.2){n.className='mt-4 rounded-lg px-3 py-2 text-xs flex items-start gap-2 bg-muted text-muted-foreground';n.querySelector('span').textContent="Matches the AI cut — Bernard's confidence on this clinician goes up.";}
+    else{n.className='mt-4 rounded-lg px-3 py-2 text-xs flex items-start gap-2 bg-accent text-accent-foreground';
+      const parts=[];if(dFront>0.2)parts.push(`${dFront.toFixed(1)}s off the front`);if(dFront<-0.2)parts.push(`${(-dFront).toFixed(1)}s added to front`);if(dEnd>0.2)parts.push(`${dEnd.toFixed(1)}s off the end`);if(dEnd<-0.2)parts.push(`${(-dEnd).toFixed(1)}s added to end`);
+      n.querySelector('span').textContent=`You trimmed ${parts.join(' + ')}. Bernard will tighten its next cuts for ${document.getElementById('edMeta').querySelector('b')?.textContent||'this clinician'}.`;}
+  }
+  document.addEventListener('mousedown',e=>{if(e.target.id==='hL')drag='L';if(e.target.id==='hR')drag='R';});
+  document.addEventListener('mousemove',e=>{if(!drag)return;const s=document.getElementById('sel');const p=pct(e.clientX);
+    if(drag==='L'){const rp=100-parseFloat(s.style.right);if(p<rp-4){s.style.left=p+'%';updateReadout(p,rp);}}
+    else{const lp=parseFloat(s.style.left);if(p>lp+4){s.style.right=(100-p)+'%';updateReadout(lp,p);}}});
+  document.addEventListener('mouseup',()=>drag=null);
+
+  render(MOMENTS);lucide.createIcons();
+</script>
+</body>
+</html>
