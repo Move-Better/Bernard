@@ -101,12 +101,18 @@ export default async function handler(req, res) {
     for (const f of numericFields) totals[f] += entry[f]
   }
 
+  // Per-location totals for the breakdown view
+  const locations = locationList.map((loc, i) => {
+    const locTotals = { impressions: 0, mapImpressions: 0, searchImpressions: 0, directionRequests: 0, callClicks: 0, websiteClicks: 0 }
+    for (const entry of (results[i]?.dailySeries || [])) {
+      for (const f of numericFields) locTotals[f] += entry[f] || 0
+    }
+    return { name: loc.location_name, title: loc.location_title || null, totals: locTotals }
+  })
+
   return res.status(200).json({
     connected: true,
-    locations: locationList.map((loc) => ({
-      name:  loc.location_name,
-      title: loc.location_title || null,
-    })),
+    locations,
     email:       row.config?.account_email || null,
     days:        DAYS,
     totals,
