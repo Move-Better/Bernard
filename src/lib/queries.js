@@ -73,6 +73,7 @@ export const queryKeys = {
     keystone: (ivId) => ['contentItems', 'keystone', ivId],
     splitSuggestion: (id) => ['contentItems', 'splitSuggestion', id],
     mediaSuggestions: (id) => ['contentItems', 'mediaSuggestions', id],
+    verbatimQuotes:   (id) => ['contentItems', 'verbatimQuotes', id],
   },
   contentPlan: {
     all:              ['contentPlan'],
@@ -355,6 +356,17 @@ export function useMediaSuggestions(pieceId, { enabled = true, kind, k, ...optio
     queryFn: () => suggestMediaForDraft(pieceId, { kind, k }),
     enabled: !!pieceId && enabled,
     staleTime: 5 * 60_000,        // suggestions are stable within a session
+    refetchOnWindowFocus: false,
+    ...options,
+  })
+}
+
+export function useVerbatimQuotes(pieceId, { enabled = true, ...options } = {}) {
+  return useQuery({
+    queryKey: queryKeys.contentItems.verbatimQuotes(pieceId),
+    queryFn: () => apiFetch(`/api/content-items/verbatim-quotes?id=${pieceId}`).then((r) => r.quotes ?? []),
+    enabled: !!pieceId && enabled,
+    staleTime: 10 * 60_000,
     refetchOnWindowFocus: false,
     ...options,
   })
