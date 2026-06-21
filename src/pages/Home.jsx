@@ -13,6 +13,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
 import DraftsReadyRow from '@/components/home/DraftsReadyRow'
 import GettingStarted from '@/components/home/GettingStarted'
+import WeeklyCallHero from '@/components/home/WeeklyCallHero'
 import OnboardingCard from '@/components/home/OnboardingCard'
 import HomeStats from '@/components/home/HomeStats'
 import ResumeStrip from '@/components/home/ResumeStrip'
@@ -60,6 +61,18 @@ export default function Home() {
       ),
     [staff]
   )
+
+  // F1 Phase A — the current user's most recent completed interview, for the
+  // "N days since your last call" nudge in the call-first hero. Practice-wide
+  // interviews are owner-tagged; filter to this user's own so the nudge is
+  // personal, not the whole team's last call.
+  const lastOwnCallAt = useMemo(() => {
+    const mine = allInterviews.filter(
+      (i) => i.status === 'completed' && i.owner_id === user?.id && i.updated_at
+    )
+    if (mine.length === 0) return null
+    return mine.reduce((max, i) => Math.max(max, new Date(i.updated_at).getTime()), 0)
+  }, [allInterviews, user])
 
   const resumeInterviews = useMemo(() => {
     const now = Date.now()
@@ -174,6 +187,12 @@ export default function Home() {
 
   const greeting = greetingFor(user, runtimeWorkspace)
 
+  // F1 Phase A — when the workspace has realtime voice enabled, the call is the
+  // default front door: render the WeeklyCallHero and drop the ribbon's
+  // "Start an interview" CTA (the hero owns the primary action). Non-enabled
+  // workspaces keep today's ribbon CTA exactly, so there's no broken link.
+  const callFirst = runtimeWorkspace?.realtime_voice_enabled === true
+
   // Lane accent colors for the bucket rails. The "your turn / do this now"
   // surfaces all share the amber --action token (NOT emerald — emerald reads
   // as "done"); overdue is neutral slate, informational rather than urgent.
@@ -198,15 +217,21 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <PageHelp pageKey="home" variant="onGradient" />
-          <Link
-            to="/new"
-            className="inline-flex items-center gap-2 bg-background text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-muted text-sm"
-          >
-            <Mic2 className="h-4 w-4" aria-hidden="true" />
-            Start an interview
-          </Link>
+          {!callFirst && (
+            <Link
+              to="/new"
+              className="inline-flex items-center gap-2 bg-background text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-muted text-sm"
+            >
+              <Mic2 className="h-4 w-4" aria-hidden="true" />
+              Start an interview
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* F1 Phase A — call-first hero. Only for realtime-enabled workspaces;
+          others fall through to the ribbon CTA above. */}
+      {callFirst && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
 
       <InstallBanner />
 
