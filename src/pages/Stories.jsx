@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { Mic, Target, User, X } from 'lucide-react'
-import { useStories, useCampaigns, useStaff, useLocations } from '@/lib/queries'
+import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { getPatientPrototypesUi } from '@/lib/prompts'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -51,6 +51,7 @@ export default function Stories() {
   const stageFilter    = searchParams.get('stage')    || ''
   const locationFilter = searchParams.get('location') || ''
   const campaignFilter = searchParams.get('campaign') || ''
+  const staffFilter    = searchParams.get('staff')    || ''
   // owner=me restricts the list to the logged-in user's own interviews.
   // The Home page links here via "See all my stories" so clinicians have a
   // dedicated browseable view of their own work as the catalog grows.
@@ -64,10 +65,14 @@ export default function Stories() {
   const stories = useMemo(() => {
     let list = mineOnly && user?.id ? storiesAll.filter((s) => s.owner_id === user.id) : storiesAll
     if (realOnly) list = list.filter((s) => s.capture_mode === 'voice_memo' || s.capture_mode === 'seminar')
+    if (staffFilter) list = list.filter((s) => s.staff_id === staffFilter)
     return list
-  }, [storiesAll, mineOnly, realOnly, user])
+  }, [storiesAll, mineOnly, realOnly, staffFilter, user])
   const { data: campaigns = [] } = useCampaigns()
   const { data: staff = [] } = useStaff({ enabled: !!campaignFilter })
+  // useStories already populates the staff.card() cache as a side-effect, so
+  // this is a zero-network hit used only for the staff filter dropdown.
+  const { data: staffAll = [] } = useStaffSummaries()
   const { data: locations = [] } = useLocations()
   const workspace = useWorkspace()
   const awaitingReviewCount = stories.filter((s) => s.story_stage === 'review').length
@@ -75,6 +80,10 @@ export default function Stories() {
   const prototypes = getPatientPrototypesUi(workspace).filter((p) => p.id != null)
   const showLocations  = locations.length > 1
   const showArchetypes = prototypes.length > 0
+
+  const activeStaffObj = staffFilter
+    ? staffAll.find((s) => s.id === staffFilter) || null
+    : null
 
   const selectableCampaigns = campaigns.filter(
     (c) => c.status === 'active' || c.id === campaignFilter,
@@ -96,6 +105,14 @@ export default function Stories() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       next.delete('campaign')
+      return next
+    }, { replace: true })
+  }
+
+  function clearStaff() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('staff')
       return next
     }, { replace: true })
   }
@@ -268,6 +285,30 @@ export default function Stories() {
             <option value="">Campaign: All</option>
             {selectableCampaigns.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        ) : null}
+
+        {/* Staff / author — active chip or selector */}
+        {activeStaffObj ? (
+          <button
+            type="button"
+            onClick={clearStaff}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
+          >
+            <User className="h-3 w-3" aria-hidden="true" />
+            {activeStaffObj.name}
+            <X className="h-3 w-3" aria-hidden="true" />
+          </button>
+        ) : staffAll.length > 1 ? (
+          <select
+            value=""
+            onChange={(e) => setParam('staff', e.target.value)}
+            className={SELECT_CLS}
+          >
+            <option value="">Author: All</option>
+            {staffAll.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         ) : null}
