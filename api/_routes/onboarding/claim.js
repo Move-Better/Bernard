@@ -402,6 +402,22 @@ async function handler(req, res) {
     // defaults to 'buffer', so this is a no-op until the UI offers bundle).
     publish_provider: publish_intent.social === 'bundle' ? 'bundle' : 'buffer',
     video_pipeline_enabled: true,
+    cadence_policy: {
+      version: 1,
+      provenance: 'bernard',
+      trust_stage: 'approve_all',
+      quiet_days: ['sat', 'sun'],
+      channels: {
+        instagram: { target_per_week: 4, enabled: true },
+        linkedin:  { target_per_week: 3, enabled: true },
+        gbp:       { target_per_week: 3, enabled: true },
+      },
+      digests: [
+        { id: 'patients', label: 'Patients', channel: 'email',
+          frequency: 'monthly', enabled: true, audience: 'patients' },
+      ],
+      goals: [],
+    },
     clerk_org_id: org.id,
     is_founding: true,
     created_by_clerk_user_id: userId,
