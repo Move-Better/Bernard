@@ -122,7 +122,13 @@ function TranscriptRail({ lines, playClipT, seekClip, ctx }) {
               <span className="font-mono text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{l.start.toFixed(1)}–{l.end.toFixed(1)}s</span>
               <button onClick={() => ctx.trimToLine(l)} className="ml-auto rounded px-1 py-0.5 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }} title="Set clip in/out to this line">⊢ trim</button>
             </div>
-            <p className="px-1 text-2xs" style={{ color: 'hsl(var(--foreground))' }}>{l.text}</p>
+            <input
+              value={l.text}
+              onChange={(e) => ctx.editLine(i, e.target.value)}
+              className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-2xs outline-none focus:bg-card"
+              style={{ color: 'hsl(var(--foreground))' }}
+              aria-label="Edit caption line"
+            />
           </div>
         )
       })}
@@ -246,11 +252,42 @@ const segBtn = (on) => on
   ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.08)', color: 'hsl(var(--primary))' }
   : { borderColor: 'hsl(var(--border))' }
 
+// Source-relative trim: drag the in/out handles across the WHOLE source span to
+// recut the clip window (clamped to a ≤60s window). Distinct from the bottom
+// timeline, which is clip-relative (0..durationSec).
+function TrimBar({ videoDuration, startSec, endSec, setStartSec, setEndSec }) {
+  const trackRef = useRef(null)
+  const dur = videoDuration || 0
+  const frac = (s) => (dur > 0 ? clamp(s / dur, 0, 1) : 0)
+  const onDown = (which) => (e) => {
+    e.preventDefault(); e.stopPropagation()
+    const move = (ev) => {
+      const r = trackRef.current?.getBoundingClientRect()
+      if (!r || dur <= 0) return
+      const sec = clamp((ev.clientX - r.left) / r.width, 0, 1) * dur
+      if (which === 'start') setStartSec(clamp(sec, 0, endSec - 1))
+      else setEndSec(clamp(sec, startSec + 1, Math.min(startSec + 60, dur)))
+    }
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  }
+  return (
+    <div ref={trackRef} className="relative my-1.5 h-6 select-none" style={{ touchAction: 'none' }}>
+      <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ background: 'hsl(var(--muted))' }} />
+      <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ left: `${frac(startSec) * 100}%`, width: `${(frac(endSec) - frac(startSec)) * 100}%`, background: 'hsl(var(--primary)/0.5)' }} />
+      {[['start', startSec], ['end', endSec]].map(([w, s]) => (
+        <div key={w} onMouseDown={onDown(w)} title={fmt(s)} className="absolute top-1/2 h-5 w-2.5 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize rounded-sm border shadow" style={{ left: `${frac(s) * 100}%`, background: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary))' }} />
+      ))}
+    </div>
+  )
+}
+
 function ClipInspector({ ctx }) {
-  const { startSec, endSec, durationSec, reframe, setReframe, speed, setSpeed, selectKey, caption } = ctx
+  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, reframe, setReframe, speed, setSpeed, selectKey, caption } = ctx
   return (
     <InspectorShell icon={Film} title="Clip & reframe" right="Reel 9:16">
-      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Trim · in / out</p>
+      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Trim · drag the handles</p>
+      <TrimBar videoDuration={videoDuration} startSec={startSec} endSec={endSec} setStartSec={setStartSec} setEndSec={setEndSec} />
       <div className="mb-3 flex items-center gap-2 text-2xs">
         <span className="flex-1 rounded-md border px-2 py-1.5 text-center font-mono" style={{ borderColor: 'hsl(var(--border))' }}>{fmt(startSec)}</span>
         <span style={{ color: 'hsl(var(--muted-foreground))' }}>→</span>
@@ -466,7 +503,35 @@ export default function VideoEditor() {
   }, [asset])
 
   const words = useMemo(() => sliceWords(asset?.transcript_words, startSec, durationSec), [asset, startSec, durationSec])
-  const lines = useMemo(() => groupLines(words), [words])
+  const derivedLines = useMemo(() => groupLines(words), [words])
+  // Editable caption lines — seeded from the derived transcript lines; re-seeds on
+  // load or when the trim window changes. Editing a line re-splits its words across
+  // the line's time so karaoke still animates, and the bake receives these EXACT
+  // words (captionWords override → preview==publish for edited captions).
+  const [captionLines, setCaptionLines] = useState([])
+  // Re-seed only when the trim window or line count actually changes — NOT on a
+  // bare asset-object refetch (which would wipe the user's caption edits).
+  const seedSigRef = useRef('')
+  useEffect(() => {
+    const sig = `${startSec}|${durationSec}|${derivedLines.length}`
+    if (sig === seedSigRef.current) return
+    seedSigRef.current = sig
+    setCaptionLines(derivedLines)
+  }, [derivedLines, startSec, durationSec])
+  const editLine = useCallback((i, text) => {
+    setCaptionLines((prev) => prev.map((l, idx) => {
+      if (idx !== i) return l
+      const parts = text.trim().split(/\s+/).filter(Boolean)
+      const span = Math.max(0.01, l.end - l.start)
+      const w = parts.map((word, k) => ({
+        word,
+        start: +(l.start + span * k / parts.length).toFixed(2),
+        end: +(l.start + span * (k + 1) / parts.length).toFixed(2),
+      }))
+      return { ...l, text, words: w }
+    }))
+  }, [])
+  const lines = captionLines
 
   // playback: keep <video> within the trim window
   const togglePlay = useCallback(() => {
@@ -531,7 +596,11 @@ export default function VideoEditor() {
         body: JSON.stringify({
           assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
           overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
-          grade, reframe, overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
+          grade, reframe, speed,
+          // Send the EXACT (possibly edited) caption words so the bake matches the
+          // preview. Empty/off → render-clip falls back to slicing transcript_words.
+          captionWords: lines.flatMap((l) => l.words),
+          overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
         }),
       })
       const render = result?.renders?.[0]
@@ -550,8 +619,8 @@ export default function VideoEditor() {
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     reframe, setReframe: setReframeKey, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, delOverlay, curOverlay, dragOverlay, lines, words, playClipT, playing, togglePlay, seekClip,
-    startSec, endSec, durationSec, safeZones, setSafeZones, trimToLine,
+    setOverlayTime, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
+    startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
   }
 
