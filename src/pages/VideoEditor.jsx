@@ -451,6 +451,12 @@ export default function VideoEditor() {
     }
   }, [proposals, videoDuration])
 
+  // When videoDuration first becomes known (loadedmetadata fires after proposals load
+  // from cache), clamp endSec to the real video length regardless of seededRef state.
+  useEffect(() => {
+    if (videoDuration > 0) setEndSec((e) => Math.min(e, videoDuration))
+  }, [videoDuration])
+
   // brand accent for captions/callouts
   useEffect(() => {
     const a = asset?.workspace?.brand_style?.accent_color || asset?.brand_style?.accent_color

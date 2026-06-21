@@ -143,7 +143,7 @@ export default function Storyboard() {
       ) : nothingToShow ? (
         <div className="rounded-lg border bg-muted/20 py-12 text-center">
           <Check className="mx-auto h-8 w-8 text-success" />
-          <p className="mt-2 text-sm font-medium text-foreground">Nothing to publish right now 🎉</p>
+          <p className="mt-2 text-sm font-medium text-foreground">Nothing to publish right now</p>
           <p className="text-xs text-muted-foreground">New drafts show up here when they need media.</p>
         </div>
       ) : (

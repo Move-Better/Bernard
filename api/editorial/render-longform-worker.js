@@ -35,6 +35,8 @@ export default async function handler(req, res) {
   const body = req.body || {}
   const packageId = body.packageId ? String(body.packageId) : ''
   if (!packageId) return res.status(400).json({ error: 'packageId_required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(packageId)) return res.status(400).json({ error: 'invalid_packageId' })
 
   // Origin for the engine's own continuation POST. Node runtime: req.headers is
   // a plain lowercased object.

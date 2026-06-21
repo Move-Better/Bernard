@@ -137,7 +137,9 @@ async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
     }).catch(() => {})
   } catch (e) {
     console.error('[render-segments] render failed for segment', seg.id, e?.stack || e?.message)
-    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
+    // Only reset to 'proposed' if still in 'rendering' state — don't clobber a
+    // user edit (discarded/kept) that arrived during the render window.
+    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}&status=eq.rendering`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'proposed' }),
     }).catch(() => {})
