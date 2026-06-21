@@ -86,6 +86,7 @@ export default async function handler(req, res) {
   const VALID_OVERLAY_SIZES = ['small', 'medium', 'large']
   const overlayPosition = VALID_OVERLAY_POSITIONS.includes(body.overlayPosition) ? body.overlayPosition : undefined
   const overlaySize = VALID_OVERLAY_SIZES.includes(body.overlaySize) ? body.overlaySize : undefined
+  const captionAccent = typeof body.captionAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.captionAccent) ? body.captionAccent : undefined
   // AI-colorist grade (canonical params). Clamped/normalized inside the renderer
   // (gradeToFfmpeg → normalizeGrade); a neutral or absent grade is a no-op.
   const grade = body.grade && typeof body.grade === 'object' && !Array.isArray(body.grade) ? body.grade : undefined
@@ -196,6 +197,7 @@ export default async function handler(req, res) {
           ...(subtitles !== undefined ? { subtitles } : {}),
           ...(overlayPosition !== undefined ? { overlayPosition } : {}),
           ...(overlaySize !== undefined ? { overlaySize } : {}),
+          ...(captionAccent !== undefined ? { captionAccent } : {}),
           ...(captionWords && captionWords.length ? { captionWords } : {}),
           ...(grade ? { grade } : {}),
           ...(reframe ? { reframe } : {}),

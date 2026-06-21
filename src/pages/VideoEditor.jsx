@@ -522,7 +522,7 @@ export default function VideoEditor() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
-          overlayPosition: caption.position, overlaySize: caption.size,
+          overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
           grade, reframe, overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
         }),
       })
