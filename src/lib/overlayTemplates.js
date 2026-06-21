@@ -610,7 +610,7 @@ function blockStyleOf(block) {
   return Object.keys(s).length ? s : null
 }
 
-function roleTypography(role, brandStyle, themeBlock, blockStyle = null) {
+function roleTypography(role, brandStyle, themeBlock, blockStyle = null, H = SIZE) {
   const { heading, body } = brandFonts(brandStyle)
   const d = ROLE_TYPO[role] || ROLE_TYPO_DEFAULT
   const famOf = (f) => (f === 'heading' ? heading : body)
@@ -657,7 +657,7 @@ function roleTypography(role, brandStyle, themeBlock, blockStyle = null) {
     size,
     color,
     uppercase,
-    maxLines: d.maxLines,
+    maxLines: Math.max(1, Math.round(d.maxLines * H / SIZE)),
     shadow: shadowLevel !== 'none',
     shadowLevel,
     maxWidthFrac: d.maxWidthFrac,
@@ -737,7 +737,7 @@ function whoopTextZone(layout, palette) {
 
 function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null, W = SIZE, H = SIZE) {
   const role = BLOCK_ROLES.includes(block.role) ? block.role : 'body'
-  const typo = roleTypography(role, brandStyle, themeBlock, blockStyleOf(block))
+  const typo = roleTypography(role, brandStyle, themeBlock, blockStyleOf(block), H)
   const raw = (block.text || '').trim()
   if (!raw) return
   const display = typo.uppercase ? raw.toUpperCase() : raw
