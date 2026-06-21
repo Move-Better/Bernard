@@ -51,6 +51,42 @@ export function groupWordsIntoLines(words, maxWords = 5, maxChars = 26) {
 }
 
 /**
+ * Slice whole-source word timestamps to a clip window and REBASE them to a
+ * 0-based clip timeline (so the karaoke ASS — whose timeline starts at 0 because
+ * ffmpeg input-seeks the clip window — lines up with the spoken audio).
+ *
+ * Keeps any word that OVERLAPS [startSec, startSec+durationSec); each surviving
+ * word's start/end are shifted by -startSec and clamped to [0, durationSec].
+ * Pure + deterministic — this is the function the V1 caption harness asserts.
+ *
+ * @param {Array<{word:string,start:number,end:number}>} words — whole-source words
+ * @param {number} startSec   — clip start in the source
+ * @param {number} durationSec — clip length
+ * @returns {Array<{word:string,start:number,end:number}>} window-relative words
+ */
+export function sliceWordsToWindow(words, startSec, durationSec) {
+  if (!Array.isArray(words)) return []
+  const s = Math.max(0, Number(startSec) || 0)
+  const dur = Math.max(0, Number(durationSec) || 0)
+  if (dur <= 0) return []
+  const end = s + dur
+  const out = []
+  for (const w of words) {
+    if (!w) continue
+    const ws = Number(w.start)
+    const we = Number(w.end)
+    if (!Number.isFinite(ws) || !Number.isFinite(we)) continue
+    if (we <= s || ws >= end) continue            // fully outside the window
+    const word = String(w.word || '').trim()
+    if (!word) continue
+    const start = Math.max(0, ws - s)
+    const wEnd = Math.min(dur, we - s)
+    if (wEnd > start) out.push({ word, start, end: wEnd })
+  }
+  return out
+}
+
+/**
  * Build an ASS subtitle document from Whisper word-timestamps.
  *
  * @param {Object} p

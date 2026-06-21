@@ -278,11 +278,17 @@ function runFfmpeg(args) {
  *                                         The keep-whole long-form lane passes false: a 30–60 min talk
  *                                         would add a Whisper pass per ~2 min piece, and captions are
  *                                         opt-in there (PR4 toggle). Brand overlay still burns regardless.
- * @returns {Promise<{buffer: Buffer, width: number, height: number, channel: string, hadSubtitles: boolean}>}
+ * @param {Array<{word:string,start:number,end:number}>} [params.captionWords]
+ *                                         — pre-transcribed, clip-window-relative word timestamps
+ *                                         (sliced from media_assets.transcript_words). When supplied,
+ *                                         the karaoke captions are built from these and the per-render
+ *                                         Whisper pass is skipped entirely (migration 137 — "persist the
+ *                                         words once at detection, never re-transcribe on render").
+ * @returns {Promise<{buffer: Buffer, width: number, height: number, channel: string, hadSubtitles: boolean, words: Array|null}>}
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionWords }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -347,7 +353,18 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     let hadSubtitles = false
     let useAss = false
     let karaokeWords = null
-    if (subtitles && audioMap) {
+    if (Array.isArray(captionWords) && captionWords.length && subtitles) {
+      // PERSISTED PATH (migration 137): the source was transcribed ONCE at
+      // detection (media_assets.transcript_words); the caller sliced + rebased
+      // those words to this clip window (sliceWordsToWindow) and passed them in.
+      // No audio extract, no Whisper — the karaoke ASS is built from these below,
+      // byte-identical to the live pass for the same words, at zero re-transcribe
+      // cost. (Output audio is still mapped from the source in the final ffmpeg.)
+      karaokeWords = captionWords.filter(
+        (w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start,
+      )
+      if (!karaokeWords.length) karaokeWords = null
+    } else if (subtitles && audioMap) {
       try {
         const audioArgs = []
         if (downstreamStart > 0) audioArgs.push('-ss', String(downstreamStart))
@@ -524,7 +541,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // ── 6. Read output buffer ────────────────────────────────────────────────
     // Rendered MP4 at CRF 23 is compact: ~0.5–2MB/minute at 1080p fast preset.
     const outBuffer = await readFileP(tmpOutput)
-    return { buffer: outBuffer, width: W, height: H, channel, hadSubtitles }
+    return { buffer: outBuffer, width: W, height: H, channel, hadSubtitles, words: karaokeWords }
 
   } finally {
     // tmpInput is ref-counted — release (and unlink when last render is done).

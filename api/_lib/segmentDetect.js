@@ -26,7 +26,7 @@ import { randomUUID } from 'node:crypto'
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import ffmpegPath from 'ffmpeg-static'
-import { transcribeToSegments } from './whisper.js'
+import { transcribeToSegmentsAndWords } from './whisper.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -171,12 +171,18 @@ async function transcribeSource(videoUrl) {
 
     const { size } = await statP(audioPath)
     let cues = []
+    // Whole-source word timestamps, persisted to media_assets.transcript_words so
+    // clip renders slice them instead of re-running Whisper (migration 137).
+    let words = []
 
     if (size <= CHUNK_BYTES) {
-      cues = await transcribeToSegments(audioPath)
+      const out = await transcribeToSegmentsAndWords(audioPath)
+      cues = out.segments
+      words = out.words
     } else {
       // Split into time-based chunks (stream copy — no re-encode) and transcribe
-      // each, offsetting timestamps by the chunk's position in the source.
+      // each, offsetting BOTH segment cues and word timestamps by the chunk's
+      // position in the source.
       await runFfmpeg([
         '-i', audioPath,
         '-f', 'segment',
@@ -192,15 +198,18 @@ async function transcribeSource(videoUrl) {
 
       for (let i = 0; i < chunkFiles.length; i++) {
         const offset = i * CHUNK_SECONDS
-        const part = await transcribeToSegments(`/tmp/${chunkFiles[i]}`)
-        for (const c of part) {
+        const part = await transcribeToSegmentsAndWords(`/tmp/${chunkFiles[i]}`)
+        for (const c of part.segments) {
           cues.push({ start: c.start + offset, end: c.end + offset, text: c.text })
+        }
+        for (const w of part.words) {
+          words.push({ word: w.word, start: w.start + offset, end: w.end + offset })
         }
       }
     }
 
     const durationSec = cues.length ? cues[cues.length - 1].end : 0
-    return { cues, durationSec }
+    return { cues, words, durationSec }
   } finally {
     for (const f of cleanup) await unlinkP(f).catch(() => {})
   }
@@ -254,7 +263,7 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
       throw new Error('AI_GATEWAY_API_KEY is not set on this deployment')
     }
 
-    const { cues, durationSec } = await transcribeSource(asset.blob_url)
+    const { cues, words, durationSec } = await transcribeSource(asset.blob_url)
     if (!cues.length) {
       throw new Error('No speech detected in the source (transcription was empty)')
     }
@@ -310,6 +319,11 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
         segment_status: 'ready',
         segment_error: note,
         segments_detected_at: new Date().toISOString(),
+        // Persist the whole-source word timestamps once (migration 137). Clip
+        // renders slice these (sliceWordsToWindow) instead of re-running Whisper,
+        // and the editor's transcript panel reads them. Best-effort: a failure to
+        // write words must not fail detection, so it rides the same PATCH.
+        transcript_words: words.length ? words : null,
       }),
     })
 

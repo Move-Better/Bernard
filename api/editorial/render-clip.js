@@ -33,6 +33,7 @@ import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { renderPhotoChannel, CHANNEL_SPECS } from '../_lib/brandRender.js'
 import { renderVideoChannel, VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
+import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -92,7 +93,7 @@ export default async function handler(req, res) {
   // --- Fetch asset + clinician ---
   const assetRes = await sb(
     `media_assets?id=eq.${assetId}&workspace_id=eq.${ws.id}` +
-      `&select=id,kind,blob_url,filename,staff_id,archived_at,consent_status`,
+      `&select=id,kind,blob_url,filename,staff_id,archived_at,consent_status,transcript_words`,
   )
   if (!assetRes.ok) return res.status(500).json({ error: 'db_error' })
   const assets = await assetRes.json()
@@ -168,7 +169,15 @@ export default async function handler(req, res) {
         renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length })
 
       } else {
-        // Video — ffmpeg pipeline with Whisper subtitles + brand overlay
+        // Persisted captions (migration 137): if the source was transcribed at
+        // detection (media_assets.transcript_words), slice those words to THIS
+        // clip window and hand them to the renderer — it then skips the per-render
+        // Whisper pass entirely. Legacy assets (no transcript_words) fall back to
+        // the live transcription inside renderVideoChannel, unchanged.
+        const captionWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length
+          ? sliceWordsToWindow(asset.transcript_words, startSec ?? 0, durationSec ?? 60)
+          : null
+        // Video — ffmpeg pipeline with karaoke captions + brand overlay
         const { buffer, width, height, hadSubtitles } = await renderVideoChannel({
           videoUrl: asset.blob_url,
           channel,
@@ -180,6 +189,7 @@ export default async function handler(req, res) {
           ...(subtitles !== undefined ? { subtitles } : {}),
           ...(overlayPosition !== undefined ? { overlayPosition } : {}),
           ...(overlaySize !== undefined ? { overlaySize } : {}),
+          ...(captionWords && captionWords.length ? { captionWords } : {}),
         })
         // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
         const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.mp4`
