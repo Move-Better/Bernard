@@ -1,0 +1,418 @@
+<!--
+  F2.3 v2 — the proposed-week surface as ONE screen that gets QUIETER as trust is earned.
+  Bernard real index.css tokens. Illustrative, not production code.
+  Answers Q's questions (2026-06-21):
+    • This screen = the PLAN/status layer. Accuracy/visual/caption review = the DRILL-IN (per piece).
+    • Approving ≠ publishing. Publish fires at the scheduled slot, only for individually-approved pieces.
+    • Graduation = AGREEMENT rate (did you ship it unchanged?), per-dimension + per-channel, above a sample floor.
+      Bernard ASKS for each promotion; reversible thermostat; NOT time-based.
+    • Same surface, progressive disclosure — it doesn't become a different UI per stage, it gets lighter.
+  Controls: the Stage 0→3 selector at top MORPHS the same week. Click any card → the per-piece review.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Your week (F2.3 v2)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    background:'hsl(var(--background)/<alpha-value>)', foreground:'hsl(var(--foreground)/<alpha-value>)',
+    card:'hsl(var(--card)/<alpha-value>)', primary:'hsl(var(--primary)/<alpha-value>)',
+    'primary-foreground':'hsl(var(--primary-foreground)/<alpha-value>)', action:'hsl(var(--action)/<alpha-value>)',
+    success:'hsl(var(--success)/<alpha-value>)', info:'hsl(var(--info)/<alpha-value>)', warning:'hsl(var(--warning)/<alpha-value>)',
+    muted:'hsl(var(--muted)/<alpha-value>)', 'muted-foreground':'hsl(var(--muted-foreground)/<alpha-value>)',
+    accent:'hsl(var(--accent)/<alpha-value>)', border:'hsl(var(--border)/<alpha-value>)' },
+    fontFamily:{ sans:['Geist','Inter','system-ui','sans-serif'] } } } };
+</script>
+<style>
+  :root{ --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%; --primary:186 83% 27%;
+    --primary-foreground:0 0% 100%; --muted:220 14% 96%; --muted-foreground:215 16% 47%; --accent:160 60% 95%;
+    --border:214 32% 91%; --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%; --action:32 95% 44%; }
+  body{ background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:'Geist','Inter',system-ui,sans-serif; }
+  h1,h2,h3,h4{ font-weight:700; letter-spacing:-0.025em; }
+  .nx-pill{ display:inline-flex; align-items:center; gap:4px; border-radius:9999px; padding:2px 7px; font-size:10px; font-weight:600; line-height:1.4; white-space:nowrap; }
+  .nx-pill-emerald{ background:#ecfdf5; color:#059669; } .nx-pill-amber{ background:#fff7ed; color:#d97706; }
+  .nx-pill-sky{ background:#e0f2fe; color:#0284c7; } .nx-pill-violet{ background:#f5f3ff; color:#7c3aed; }
+  .nx-pill-ink{ background:#f1f5f9; color:#475569; } .nx-pill-primary{ background:hsl(var(--primary)); color:#fff; }
+  .nx-pill-grey{ background:#f1f5f9; color:#64748b; }
+  .nx-rail{ display:inline-block; width:4px; height:20px; border-radius:9999px; margin-right:9px; vertical-align:middle; background:hsl(var(--primary)); }
+  .nx-grad{ background:linear-gradient(90deg,hsl(var(--primary)),hsl(var(--action))); color:#fff; }
+  .nx-grad-text{ background:linear-gradient(90deg,hsl(var(--primary)),hsl(var(--action))); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .nx-card{ background:#fff; border:1px solid hsl(var(--border)); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10); }
+  .nx-card-hi{ background:linear-gradient(180deg,#fff,hsl(var(--primary)/0.05)); border:1px solid hsl(var(--primary)/0.3); border-radius:14px; }
+  .nx-card-action{ background:linear-gradient(180deg,#fff,hsl(var(--action)/0.06)); border:1px solid hsl(var(--action)/0.35); border-radius:14px; }
+  .nx-btn-primary{ background:hsl(var(--primary)); color:#fff; font-weight:600; border-radius:10px; box-shadow:0 6px 16px -10px rgba(12,117,128,0.55); }
+  .nx-btn-primary:hover{ background:hsl(186 83% 21%); }
+  .nx-btn-secondary{ background:#fff; color:hsl(var(--foreground)); border:1px solid hsl(var(--border)); font-weight:600; border-radius:10px; }
+  .nx-btn-secondary:hover{ background:#f8fafc; }
+  .nx-eyebrow{ font-size:10.5px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:hsl(var(--muted-foreground)); }
+  .legend{ border:1px dashed hsl(var(--primary)/0.45); background:hsl(var(--primary)/0.04); border-radius:12px; }
+  .nav-item{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:9px; font-size:13.5px; font-weight:500; color:hsl(var(--muted-foreground)); }
+  .nav-item.active{ background:hsl(var(--primary)/0.10); color:hsl(var(--primary)); font-weight:600; }
+  .ladder-dot{ height:9px; width:9px; border-radius:9999px; background:hsl(var(--border)); }
+  .ladder-dot.on{ background:hsl(var(--primary)); }
+  .stagebtn{ border:1px solid hsl(var(--border)); background:#fff; border-radius:10px; padding:7px 12px; cursor:pointer; transition:all .14s; text-align:left; }
+  .stagebtn:hover{ border-color:hsl(var(--primary)/0.5); }
+  .stagebtn.active{ background:hsl(var(--foreground)); color:#fff; border-color:hsl(var(--foreground)); }
+  .stagebtn.active .sb-sub{ color:#cbd5e1; }
+  .sb-sub{ font-size:10px; color:hsl(var(--muted-foreground)); }
+  .daycol{ background:#fff; border:1px solid hsl(var(--border)); border-radius:12px; min-height:300px; display:flex; flex-direction:column; }
+  .daycol.quiet{ background:repeating-linear-gradient(135deg,#fafbfc,#fafbfc 8px,#f4f6f8 8px,#f4f6f8 16px); }
+  .pcard{ border:1px solid hsl(var(--border)); border-left-width:3px; background:#fff; border-radius:9px; padding:7px 8px; transition:all .12s; cursor:pointer; }
+  .pcard:hover{ border-color:hsl(var(--primary)/0.6); box-shadow:0 6px 16px -12px rgba(15,23,42,0.4); transform:translateY(-1px); }
+  .pcard.needs{ border-left-color:hsl(var(--warning)); }
+  .pcard.flag{ border-left-color:hsl(var(--action)); background:linear-gradient(180deg,#fff,hsl(var(--action)/0.05)); }
+  .pcard.auto{ opacity:.62; border-style:dashed; }
+  .ch-ig{ border-left-color:#d946a8; } .ch-li{ border-left-color:#0a66c2; } .ch-gbp{ border-left-color:#1a8e5f; } .ch-blog{ border-left-color:#7c3aed; }
+  .targetbar{ height:6px; border-radius:9999px; background:hsl(var(--muted)); overflow:hidden; }
+  .targetbar > span{ display:block; height:100%; background:hsl(var(--primary)); border-radius:9999px; }
+  .modal-bg{ position:fixed; inset:0; background:rgba(15,23,42,.45); backdrop-filter:blur(2px); z-index:50; display:none; align-items:center; justify-content:center; padding:24px; }
+  .modal-bg.open{ display:flex; }
+  .gaterow{ display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid hsl(var(--border)); border-radius:10px; }
+</style>
+
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-[232px] shrink-0 border-r border-border bg-white/70 backdrop-blur px-3 py-4 hidden md:flex md:flex-col gap-1">
+    <div class="flex items-center gap-2 px-2 pb-3">
+      <div class="h-8 w-8 rounded-lg nx-grad flex items-center justify-center font-bold text-sm">B</div>
+      <div class="font-bold text-[15px] tracking-tight">Bernard</div>
+    </div>
+    <button class="flex items-center justify-between gap-2 mx-1 mb-3 rounded-lg border border-border px-2.5 py-1.5 text-left hover:bg-muted">
+      <div class="flex items-center gap-2"><div class="h-5 w-5 rounded bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">MB</div><span class="text-[13px] font-medium">Move Better People</span></div>
+      <i data-lucide="chevrons-up-down" class="h-3.5 w-3.5 text-muted-foreground"></i>
+    </button>
+    <nav class="space-y-0.5">
+      <div class="nav-item"><i data-lucide="home" class="h-4 w-4"></i> Home</div>
+      <div class="nav-item"><i data-lucide="plus-circle" class="h-4 w-4"></i> New</div>
+      <div class="nav-item"><i data-lucide="layers" class="h-4 w-4"></i> Stories</div>
+      <div class="nav-item active"><i data-lucide="calendar-range" class="h-4 w-4"></i> Your week</div>
+      <div class="nav-item"><i data-lucide="bar-chart-3" class="h-4 w-4"></i> Analytics</div>
+      <div class="nav-item"><i data-lucide="settings" class="h-4 w-4"></i> Settings</div>
+    </nav>
+    <div class="mt-auto mx-1 rounded-xl legend p-3">
+      <div class="text-[10.5px] font-bold uppercase tracking-wide text-primary mb-1">F2.3 v2 · one surface</div>
+      <p class="text-[11px] leading-snug text-muted-foreground">Same screen, gets quieter as trust is earned. Drag the stage selector to feel it.</p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 min-w-0">
+    <!-- Stage selector (the morph control) -->
+    <div class="sticky top-0 z-20 bg-background/90 backdrop-blur border-b border-border px-5 py-3">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="nx-eyebrow shrink-0">Trust stage <span class="normal-case font-normal tracking-normal text-[10px]">(demo: click to morph)</span></span>
+        <div class="flex gap-2 flex-wrap">
+          <button class="stagebtn active" id="sb-0" onclick="setStage(0)"><div class="text-[12px] font-bold">0 · Day one</div><div class="sb-sub">Review everything</div></button>
+          <button class="stagebtn" id="sb-1" onclick="setStage(1)"><div class="text-[12px] font-bold">1 · Assisted</div><div class="sb-sub">Skim + flag</div></button>
+          <button class="stagebtn" id="sb-2" onclick="setStage(2)"><div class="text-[12px] font-bold">2 · By exception</div><div class="sb-sub">Only judgment calls</div></button>
+          <button class="stagebtn" id="sb-3" onclick="setStage(3)"><div class="text-[12px] font-bold">3 · By goals</div><div class="sb-sub">Set & prove</div></button>
+        </div>
+        <span class="nx-pill nx-pill-ink ml-auto"><i data-lucide="shield" class="h-3 w-3"></i> Producer view</span>
+        <span id="toast" class="nx-pill nx-pill-primary opacity-0 transition-opacity"><i data-lucide="check" class="h-3 w-3"></i> <span id="toastText">done</span></span>
+      </div>
+    </div>
+
+    <section class="p-5 md:p-7">
+      <!-- Bernard framing (changes per stage) -->
+      <div class="flex items-start gap-3 mb-4">
+        <div class="h-10 w-10 rounded-full nx-grad text-white font-bold flex items-center justify-center shrink-0">B</div>
+        <div class="min-w-0 flex-1">
+          <h1 id="hdr" class="text-2xl leading-tight">Here's next week — let's review it together.</h1>
+          <p id="sub" class="text-muted-foreground text-[13.5px] mt-1"></p>
+        </div>
+      </div>
+
+      <!-- "Why you're at this stage" panel -->
+      <div id="whyPanel" class="nx-card p-3.5 mb-4">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="nx-eyebrow shrink-0">Your trust ladder</span>
+          <div class="flex items-center gap-2 text-[12px]" id="ladder"></div>
+          <span id="whyStat" class="nx-pill nx-pill-ink ml-auto"></span>
+        </div>
+        <div id="whyBody" class="mt-2.5 text-[12.5px] text-foreground/85 leading-snug"></div>
+        <div id="promoAsk" class="mt-2.5 hidden"></div>
+      </div>
+
+      <!-- Cadence target strip -->
+      <div class="nx-card p-3 mb-4">
+        <div class="flex items-center gap-2 mb-2.5"><span class="nx-eyebrow">Filled to your cadence</span><span class="nx-pill nx-pill-emerald"><i data-lucide="sparkles" class="h-3 w-3"></i> on target</span><a class="ml-auto text-[12px] font-semibold text-primary flex items-center gap-1 cursor-pointer">Edit cadence <i data-lucide="sliders-horizontal" class="h-3 w-3"></i></a></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div><div class="flex items-center justify-between text-[12px] mb-1"><span class="font-semibold flex items-center gap-1.5"><i data-lucide="camera" class="h-3.5 w-3.5 text-[#d946a8]"></i> Instagram</span><span class="text-muted-foreground"><b class="text-foreground">4</b>/4</span></div><div class="targetbar"><span style="width:100%"></span></div></div>
+          <div><div class="flex items-center justify-between text-[12px] mb-1"><span class="font-semibold flex items-center gap-1.5"><i data-lucide="briefcase" class="h-3.5 w-3.5 text-[#0a66c2]"></i> LinkedIn</span><span class="text-muted-foreground"><b class="text-foreground">2</b>/3</span></div><div class="targetbar"><span style="width:66%"></span></div></div>
+          <div><div class="flex items-center justify-between text-[12px] mb-1"><span class="font-semibold flex items-center gap-1.5"><i data-lucide="map-pin" class="h-3.5 w-3.5 text-[#1a8e5f]"></i> Google Biz</span><span class="text-muted-foreground"><b class="text-foreground">3</b>/3</span></div><div class="targetbar"><span style="width:100%"></span></div></div>
+          <div><div class="flex items-center justify-between text-[12px] mb-1"><span class="font-semibold flex items-center gap-1.5"><i data-lucide="file-text" class="h-3.5 w-3.5 text-[#7c3aed]"></i> Blog</span><span class="text-muted-foreground"><b class="text-foreground">1</b>/2</span></div><div class="targetbar"><span style="width:50%"></span></div></div>
+        </div>
+      </div>
+
+      <!-- Calendar + rail -->
+      <div class="flex gap-4 items-start">
+        <div class="flex-1 min-w-0">
+          <div id="autoSummary" class="hidden nx-card p-3 mb-3"></div>
+          <div id="calendar" class="grid grid-cols-7 gap-2"></div>
+        </div>
+        <div class="w-80 shrink-0 space-y-3" id="rail"></div>
+      </div>
+
+      <!-- Three-layer legend -->
+      <div class="legend p-4 mt-5">
+        <div class="text-[11px] font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> The three layers (this screen is layer 1)</div>
+        <div class="grid md:grid-cols-3 gap-3 text-[12px] text-foreground/90">
+          <div class="rounded-lg bg-white border border-border p-2.5"><b>1 · The plan (this screen)</b><div class="text-muted-foreground mt-0.5">What / when / which channel + each piece's status. A map, not the proof.</div></div>
+          <div class="rounded-lg bg-white border border-border p-2.5"><b>2 · The piece (click a card)</b><div class="text-muted-foreground mt-0.5">The real caption, the actual visual, the accuracy check. Where you verify + edit + approve <i>this one</i>.</div></div>
+          <div class="rounded-lg bg-white border border-border p-2.5"><b>3 · Publishing (the scheduler)</b><div class="text-muted-foreground mt-0.5">Fires at the slot — <b>only</b> for individually-approved pieces. Approve ≠ publish.</div></div>
+        </div>
+        <p class="text-[12px] text-foreground/80 mt-2.5 leading-relaxed"><b>What graduates the stage:</b> your <b>agreement</b> — did you ship Bernard's piece unchanged? Measured <b>per dimension</b> (voice / visual / accuracy / timing) and <b>per channel</b>, above a sample floor. Bernard <b>asks</b> for each promotion; it's a <b>thermostat</b> (drops back if you start editing again), <b>not</b> a timer.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ════ PER-PIECE DRILL-IN (layer 2 — the review) ════ -->
+<div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="nx-card w-full max-w-3xl max-h-[88vh] overflow-auto">
+    <div class="flex items-center gap-2 border-b border-border px-5 py-3 sticky top-0 bg-white z-10">
+      <span id="m-chan" class="nx-pill nx-pill-ink"></span>
+      <div class="font-bold text-[15px]" id="m-title">—</div>
+      <button onclick="closeModal()" class="ml-auto act h-8 w-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted"><i data-lucide="x" class="h-4 w-4"></i></button>
+    </div>
+    <div class="grid md:grid-cols-2 gap-0">
+      <!-- Visual -->
+      <div class="p-5 border-r border-border">
+        <div class="nx-eyebrow mb-2">Visual — as it will publish</div>
+        <div id="m-visual" class="rounded-xl border border-border bg-muted/40 aspect-square flex flex-col items-center justify-center text-center p-6 relative overflow-hidden"></div>
+        <div class="flex gap-2 mt-3">
+          <button class="nx-btn-secondary px-3 py-1.5 text-[12px] flex items-center gap-1.5"><i data-lucide="repeat" class="h-3.5 w-3.5"></i> Swap image</button>
+          <button class="nx-btn-secondary px-3 py-1.5 text-[12px] flex items-center gap-1.5"><i data-lucide="pencil" class="h-3.5 w-3.5"></i> Open editor</button>
+        </div>
+      </div>
+      <!-- Caption + checks -->
+      <div class="p-5">
+        <div class="nx-eyebrow mb-2">Caption</div>
+        <div id="m-caption" class="rounded-xl border border-border p-3 text-[13px] leading-relaxed text-foreground/90 min-h-[120px] whitespace-pre-line"></div>
+        <div class="nx-eyebrow mt-4 mb-2">Bernard's self-check</div>
+        <div class="space-y-2" id="m-checks"></div>
+        <div class="flex items-center gap-2 mt-4">
+          <button onclick="approvePiece()" class="nx-btn-primary px-4 py-2 text-[13px] flex items-center gap-1.5"><i data-lucide="check" class="h-4 w-4"></i> Approve this piece</button>
+          <button onclick="closeModal()" class="nx-btn-secondary px-4 py-2 text-[13px]">Request changes</button>
+        </div>
+        <p class="text-[11px] text-muted-foreground mt-2">Approving clears it for its slot (<span id="m-time">—</span>). It still won't publish until then — you can hold or pull it anytime before.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- piece data: scores per dimension (0-1). >=0.75 = Bernard confident. ----
+  const CH = {
+    ig:{label:'Instagram', icon:'camera', col:'#d946a8'}, li:{label:'LinkedIn', icon:'briefcase', col:'#0a66c2'},
+    gbp:{label:'Google Biz', icon:'map-pin', col:'#1a8e5f'}, blog:{label:'Blog', icon:'file-text', col:'#7c3aed'},
+  };
+  const PIECES = [
+    {id:1, day:0, ch:'gbp', kind:'GBP', time:'Mon 8:00a', who:'AJ', title:'Why your knee clicks (and when it matters)',
+      cap:'That click in your knee? Usually harmless — it\'s often just gas bubbles or a tendon gliding over bone.\n\nWhen it matters: if it comes with pain, swelling, or giving-way. That\'s worth a look. Book a screen and we\'ll tell you which kind you\'ve got.',
+      s:{voice:.92, visual:.88, accuracy:.95, timing:.90}},
+    {id:2, day:0, ch:'ig', kind:'IG Reel', time:'Mon 12:30p', who:'Whitney', title:'3 moves before a long run',
+      cap:'Don\'t just lace up and go. These 3 take 90 seconds and save your knees:\n1. Leg swings\n2. World\'s greatest stretch\n3. A few pogos to wake up the calves',
+      s:{voice:.78, visual:.60, accuracy:.90, timing:.85}},
+    {id:3, day:1, ch:'blog', kind:'Blog', time:'Tue 9:00a', who:'Whitney', title:'The runner\'s guide to ITB pain',
+      cap:'IT band pain is the runner\'s rite of passage — and one of the most misunderstood. It\'s rarely the band itself...',
+      s:{voice:.90, visual:.85, accuracy:.82, timing:.90}},
+    {id:4, day:1, ch:'li', kind:'LinkedIn', time:'Tue 7:30a', who:'Alli', title:'What we look for in a gait assessment',
+      cap:'A good gait assessment isn\'t about finding what\'s "wrong." It\'s about understanding how YOU move, so we coach the right thing...',
+      s:{voice:.88, visual:.86, accuracy:.90, timing:.88}},
+    {id:5, day:2, ch:'ig', kind:'IG Carousel', time:'Wed 11:00a', who:'AJ', title:'5 desk-posture resets',
+      cap:'Sitting all day? Your hips will thank you. 5 resets you can do without leaving your chair — including the "lumbar reset" most people get wrong.',
+      s:{voice:.61, visual:.80, accuracy:.90, timing:.85}},
+    {id:6, day:2, ch:'gbp', kind:'GBP', time:'Wed 8:00a', who:'Alli', title:'Now booking new-patient visits',
+      cap:'Now booking new-patient visits this week — same-week availability at both clinics. Call or book online.',
+      s:{voice:.85, visual:.84, accuracy:.45, timing:.88}},
+    {id:7, day:3, ch:'li', kind:'LinkedIn', time:'Thu 7:30a', who:'AJ', title:'Referral spotlight: post-op ACL',
+      cap:'To our referring surgeons: here\'s how we stage post-op ACL rehab so your patients come back stronger...',
+      s:{voice:.87, visual:.88, accuracy:.92, timing:.90}},
+    {id:8, day:3, ch:'ig', kind:'IG Post', time:'Thu 12:30p', who:'Whitney', title:'Patient win: back to trail running',
+      cap:'6 months ago she couldn\'t walk downstairs without pain. Last weekend: 8 miles on the trail. This is why we do this. 💪',
+      s:{voice:.90, visual:.91, accuracy:.86, timing:.88}},
+    {id:9, day:4, ch:'ig', kind:'IG Reel', time:'Fri 11:00a', who:'Alli', title:'Foam-rolling: what actually helps',
+      cap:'Foam rolling won\'t "break up" anything — but it DOES help. Here\'s what it actually does, and the 2 spots worth your time.',
+      s:{voice:.86, visual:.83, accuracy:.88, timing:.85}},
+    {id:10, day:4, ch:'gbp', kind:'GBP', time:'Fri 8:00a', who:'Alli', title:'Meet the team: Alli, DPT',
+      cap:'Meet Alli — DPT, trail runner, and the reason our gait lab exists. Book with her this month.',
+      s:{voice:.89, visual:.87, accuracy:.90, timing:.90}},
+  ];
+  const DAYS = [['Mon',23],['Tue',24],['Wed',25],['Thu',26],['Fri',27],['Sat',28],['Sun',29]];
+  const DIMS = [['voice','Sounds like them','mic'],['visual','Visual','image'],['accuracy','Accuracy','shield-check'],['timing','Timing','clock']];
+  const BAR = 0.75;
+  let STAGE = 0;
+  let approved = new Set();
+  let current = null;
+
+  const FRAMES = {
+    0:{ h:"Here's next week — let's review it together.",
+        sub:"You're brand new, so I haven't earned any shortcuts yet. <b>Open each piece</b>, check the words and the visual, and approve it. I learn your voice from every approval.",
+        stat:"Week 1 · 0 approvals yet", body:"Nothing is pre-cleared and there's no batch button — that's on purpose. Every piece goes through your eyes. As you approve, I start to learn what “right” looks like for each of you." },
+    1:{ h:"Here's next week — I've done a first pass.",
+        sub:"A few weeks in. I score each piece against your voice and flag anything shaky. <b>Skim the confident ones, scrutinize the flagged ones</b> — you still decide each.",
+        stat:"Wk 4 · 24 shipped, 6 edited", body:"I'm matching your <b>voice</b> well (91%) but still learning your <b>visual</b> taste, so I leave images for your eye. Approve the ones you've opened; I never auto-send at this stage." },
+    2:{ h:"Next week's running — 3 things need you.",
+        sub:"You've shipped my recent GBP &amp; LinkedIn posts unchanged, so I now <b>auto-clear those</b> and surface <b>only judgment calls</b>. Everything else is scheduled.",
+        stat:"8 of 10 auto-cleared", body:"Auto-clearing is <b>per dimension &amp; per channel</b> — I earned your trust on GBP/LinkedIn voice, not yet on Instagram visuals. If you start editing my work again, I drop back and ask more." },
+    3:{ h:"Your week is running. You're steering by goals.",
+        sub:"You set the outcome; I run the cadence and prove it. I only interrupt for a real fork or a claim I can't verify.",
+        stat:"Goal: +new-patient leads", body:"This is full set-and-go — but reversible. The week is a digest of what's live and what it's doing. Drop a rung anytime to take the wheel back." },
+  };
+
+  function toast(m){ const t=document.getElementById('toast'); document.getElementById('toastText').textContent=m; t.style.opacity='1'; clearTimeout(window._tt); window._tt=setTimeout(()=>t.style.opacity='0',1600); }
+
+  function pieceState(p){
+    // returns {mode:'needs'|'review'|'flag'|'auto', failing:[dims]}
+    const failing = DIMS.map(d=>d[0]).filter(k=> p.s[k] < BAR);
+    if(approved.has(p.id)) return {mode:'auto', failing, done:true};
+    if(STAGE===0) return {mode:'needs', failing};
+    if(STAGE===1) return {mode:'review', failing};
+    // stage 2/3: auto unless something fails
+    if(failing.length) return {mode:'flag', failing};
+    return {mode:'auto', failing};
+  }
+
+  function gatePills(p){
+    // show voice + visual gate state compactly; accuracy flag if low
+    const out=[];
+    const mk=(k,label)=>{ const ok=p.s[k]>=BAR;
+      if(STAGE===0) return `<span class="nx-pill nx-pill-grey">${label} · review</span>`;
+      if(ok && STAGE>=2) return `<span class="nx-pill nx-pill-emerald">${label} ✓ auto</span>`;
+      if(ok) return `<span class="nx-pill nx-pill-emerald">${label} ✓</span>`;
+      return `<span class="nx-pill nx-pill-amber">${label} · your eye</span>`;
+    };
+    out.push(mk('voice','voice'));
+    if(p.s.accuracy<BAR) out.push(`<span class="nx-pill nx-pill-amber">claim ?</span>`);
+    else out.push(mk('visual','visual'));
+    return out.join(' ');
+  }
+
+  function render(){
+    const f=FRAMES[STAGE];
+    document.getElementById('hdr').innerHTML=f.h;
+    document.getElementById('sub').innerHTML=f.sub;
+    document.getElementById('whyStat').textContent=f.stat;
+    document.getElementById('whyBody').innerHTML=f.body;
+    // ladder
+    document.getElementById('ladder').innerHTML=[0,1,2,3].map(i=>{
+      const lbl=['Day one','Assisted','By exception','By goals'][i];
+      const on=i===STAGE; const past=i<STAGE;
+      return `<span class="ladder-dot ${on||past?'on':''}"></span><span class="${on?'font-bold':'text-muted-foreground'}">${lbl}</span>${i<3?"<i data-lucide='chevron-right' class='h-3 w-3 text-muted-foreground'></i>":""}`;
+    }).join('');
+    // promotion ask (stage 1 -> offer to go to 2)
+    const pa=document.getElementById('promoAsk');
+    if(STAGE===1){ pa.classList.remove('hidden');
+      pa.innerHTML=`<div class="nx-card-action p-2.5 flex items-center gap-2"><i data-lucide="trending-up" class="h-4 w-4 text-action shrink-0"></i><div class="text-[12px] flex-1"><b>I think I've earned a promotion:</b> your last 12 GBP captions shipped with no edits. Want me to stop asking on GBP voice?</div><button onclick="setStage(2)" class="nx-btn-primary px-3 py-1.5 text-[12px]">Promote</button><button class="nx-btn-secondary px-3 py-1.5 text-[12px]">Not yet</button></div>`;
+    } else pa.classList.add('hidden');
+
+    const cal=document.getElementById('calendar');
+    const summary=document.getElementById('autoSummary');
+
+    if(STAGE===3){
+      cal.classList.add('hidden'); summary.classList.add('hidden');
+      renderGoals(); renderRail(); if(window.lucide) lucide.createIcons(); return;
+    }
+    cal.classList.remove('hidden');
+
+    // auto-cleared summary (stage 2)
+    const autoPieces = STAGE>=2 ? PIECES.filter(p=>pieceState(p).mode==='auto') : [];
+    if(autoPieces.length){
+      summary.classList.remove('hidden');
+      summary.innerHTML=`<div class="flex items-center gap-2 mb-2"><i data-lucide="check-check" class="h-4 w-4 text-success"></i><div class="font-bold text-[13px]">Auto-cleared &amp; scheduled</div><span class="nx-pill nx-pill-emerald ml-auto">${autoPieces.length} pieces</span><span class="text-[11px] text-muted-foreground">you can still open any to override</span></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">${autoPieces.map(p=>`<button onclick="openModal(${p.id})" class="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2 py-1.5 text-[11.5px] hover:bg-muted text-left"><i data-lucide="${CH[p.ch].icon}" class="h-3 w-3" style="color:${CH[p.ch].col}"></i><span class="truncate flex-1">${p.title}</span><span class="text-muted-foreground">${p.time.split(' ')[0]}</span></button>`).join('')}</div>`;
+    } else summary.classList.add('hidden');
+
+    // day columns
+    cal.innerHTML = DAYS.map((d,di)=>{
+      const quiet = di>=5;
+      const dayPieces = PIECES.filter(p=>p.day===di);
+      const visible = dayPieces.filter(p=>{ const st=pieceState(p).mode; return !(STAGE>=2 && st==='auto'); });
+      if(quiet) return `<div class="daycol quiet"><div class="px-2.5 pt-2.5 pb-1.5 text-[12px] font-bold text-muted-foreground">${d[0]} <span class="font-medium">${d[1]}</span></div><div class="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-1"><i data-lucide="moon" class="h-4 w-4"></i><span class="text-[10px] font-semibold">Quiet</span></div></div>`;
+      return `<div class="daycol"><div class="px-2.5 pt-2.5 pb-1.5 text-[12px] font-bold">${d[0]} <span class="text-muted-foreground font-medium">${d[1]}</span></div>
+        <div class="px-2 pb-2 space-y-2 flex-1">${visible.map(p=>cardHTML(p)).join('') || (STAGE>=2?'<div class="text-[10.5px] text-muted-foreground text-center pt-6"><i data-lucide="check" class="h-3.5 w-3.5 inline text-success"></i> all set</div>':'')}</div></div>`;
+    }).join('');
+
+    renderRail();
+    if(window.lucide) lucide.createIcons();
+  }
+
+  function cardHTML(p){
+    const st=pieceState(p);
+    const cls = st.mode==='needs'?'needs':st.mode==='flag'?'flag':st.mode==='auto'?'auto':'';
+    const cta = STAGE===0 ? '<span class="text-[10px] font-bold text-warning flex items-center gap-1"><i data-lucide="eye" class="h-3 w-3"></i> Open to review</span>'
+      : st.mode==='flag' ? '<span class="text-[10px] font-bold text-action flex items-center gap-1"><i data-lucide="alert-circle" class="h-3 w-3"></i> Needs you</span>'
+      : st.done ? '<span class="nx-pill nx-pill-emerald">approved ✓</span>'
+      : '';
+    return `<div class="pcard ch-${p.ch} ${cls}" onclick="openModal(${p.id})">
+      <div class="flex items-center gap-1.5 mb-1"><i data-lucide="${CH[p.ch].icon}" class="h-3 w-3" style="color:${CH[p.ch].col}"></i><span class="text-[9.5px] font-bold text-muted-foreground uppercase tracking-wide">${p.kind} · ${p.time.split(' ')[1]}</span></div>
+      <div class="text-[11.5px] font-semibold leading-snug mb-1.5">${p.title}</div>
+      <div class="flex items-center justify-between gap-1"><div class="flex flex-wrap gap-1">${gatePills(p)}</div></div>
+      <div class="mt-1.5 flex items-center justify-between"><span class="text-[10px] text-muted-foreground">${p.who}</span>${cta}</div>
+    </div>`;
+  }
+
+  function renderRail(){
+    const rail=document.getElementById('rail');
+    const reviewed = approved.size;
+    let approveBlock='';
+    if(STAGE===0){
+      approveBlock=`<div class="nx-card-hi p-3.5"><div class="text-[12px] text-muted-foreground mb-2"><b>${reviewed}/10 reviewed.</b> No batch approve yet — open each piece, check it, approve it. The week locks in once all 10 are cleared.</div><div class="targetbar mb-2"><span style="width:${reviewed*10}%"></span></div><button class="w-full nx-btn-secondary py-2 text-[13px] opacity-60 cursor-not-allowed" disabled>Approve the week (earns at Stage 1)</button></div>`;
+    } else if(STAGE===1){
+      approveBlock=`<div class="nx-card-hi p-3.5"><div class="text-[12px] text-muted-foreground mb-2">Open the ones you want eyes on, then batch-approve what you've reviewed.</div><button class="w-full nx-btn-primary py-2.5 text-[13px] flex items-center justify-center gap-2"><i data-lucide="check-check" class="h-4 w-4"></i> Approve reviewed (${reviewed})</button></div>`;
+    } else if(STAGE===2){
+      const flagged = PIECES.filter(p=>pieceState(p).mode==='flag').length;
+      approveBlock=`<div class="nx-card-hi p-3.5"><div class="text-[12px] text-muted-foreground mb-2">${flagged} judgment call${flagged===1?'':'s'} left. Everything else auto-cleared to its slot.</div><button class="w-full nx-btn-primary py-2.5 text-[13px] flex items-center justify-center gap-2"><i data-lucide="calendar-check" class="h-4 w-4"></i> Resolve the ${flagged} &amp; lock week</button></div>`;
+    }
+    const backlog=`<div class="nx-card p-3.5"><div class="flex items-center gap-2 mb-2"><i data-lucide="archive" class="h-4 w-4 text-muted-foreground"></i><div class="font-bold text-[13px]">Backlog</div><span class="nx-pill nx-pill-ink ml-auto">11 banked</span></div><p class="text-[11px] text-muted-foreground leading-snug">Drafted &amp; <b>held</b>. I pull from here to fill thin weeks — this call carries you ~3 weeks.</p></div>`;
+    const digest=`<div class="nx-card-action p-3.5"><div class="flex items-center gap-2 mb-1.5"><i data-lucide="mail" class="h-4 w-4 text-action"></i><div class="font-bold text-[13px]">Newsletter — assembling</div></div><p class="text-[11px] text-foreground/80 leading-snug">3 highlights → monthly <span class="text-action font-semibold">Patients</span> digest. <b>Sends Jul 1</b>, assembled — never per-call.</p></div>`;
+    rail.innerHTML = approveBlock + backlog + digest;
+  }
+
+  function renderGoals(){
+    document.getElementById('rail').innerHTML=`<div class="nx-card p-3.5"><div class="font-bold text-[13px] mb-2 flex items-center gap-2"><i data-lucide="target" class="h-4 w-4 text-primary"></i> Your goals</div><div class="space-y-2 text-[12px]"><div class="gaterow"><i data-lucide="trending-up" class="h-4 w-4 text-success"></i><span class="flex-1">More new-patient leads</span><span class="nx-pill nx-pill-emerald">on track</span></div><div class="gaterow"><i data-lucide="minus" class="h-4 w-4 text-muted-foreground"></i><span class="flex-1">Fewer emails</span><span class="nx-pill nx-pill-ink">holding</span></div></div></div>
+      <div class="nx-card-action p-3.5"><div class="text-[12px]"><b>I'd like to try:</b> 2 Reels/wk instead of 1 — Reels are driving most of your profile taps. OK to test for 2 weeks?</div><div class="flex gap-2 mt-2"><button class="nx-btn-primary px-3 py-1.5 text-[12px]">Try it</button><button class="nx-btn-secondary px-3 py-1.5 text-[12px]">No</button></div></div>`;
+    const cal=document.getElementById('calendar');
+    cal.classList.remove('hidden');
+    cal.className='nx-card p-4';
+    cal.innerHTML=`<div class="flex items-center gap-2 mb-3"><i data-lucide="activity" class="h-4 w-4 text-primary"></i><div class="font-bold text-[14px]">This week, running on its own</div><span class="nx-pill nx-pill-emerald ml-auto">10 live · 0 need you</span></div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">${PIECES.map(p=>`<button onclick="openModal(${p.id})" class="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-2 text-[11.5px] hover:bg-muted text-left"><i data-lucide="${CH[p.ch].icon}" class="h-3.5 w-3.5" style="color:${CH[p.ch].col}"></i><span class="truncate flex-1">${p.title}</span><span class="text-muted-foreground">${p.time.split(' ')[0]}</span></button>`).join('')}</div>
+      <p class="text-[11.5px] text-muted-foreground mt-3">You're not reviewing pieces anymore — you're watching outcomes. Tap any to peek; drop a rung to take the wheel.</p>`;
+  }
+
+  function openModal(id){
+    const p=PIECES.find(x=>x.id===id); current=p;
+    document.getElementById('m-chan').innerHTML=`<i data-lucide="${CH[p.ch].icon}" class="h-3 w-3"></i> ${p.kind} · ${p.who}`;
+    document.getElementById('m-title').textContent=p.title;
+    document.getElementById('m-time').textContent=p.time;
+    document.getElementById('m-caption').textContent=p.cap;
+    // visual placeholder tinted by channel
+    document.getElementById('m-visual').innerHTML=`<div class="absolute inset-0" style="background:linear-gradient(160deg, ${CH[p.ch].col}22, ${CH[p.ch].col}05)"></div><i data-lucide="${CH[p.ch].icon}" class="h-10 w-10 mb-2 relative" style="color:${CH[p.ch].col}"></i><div class="text-[12px] font-semibold relative px-4">${p.title}</div><div class="text-[10.5px] text-muted-foreground relative mt-1">${p.kind} · baked visual preview</div>`;
+    document.getElementById('m-checks').innerHTML=DIMS.map(d=>{
+      const v=p.s[d[0]]; const ok=v>=BAR;
+      const note = d[0]==='accuracy' && !ok ? 'Implies same-week availability — I can\'t verify that. Confirm or I\'ll soften it.'
+        : d[0]==='voice' && !ok ? 'Reads more clinical than '+p.who+' usually talks. Worth a look.'
+        : d[0]==='visual' && !ok ? 'Auto-picked stock — you may want a real clinic photo.'
+        : 'Looks good.';
+      return `<div class="gaterow"><i data-lucide="${ok?'check-circle-2':'alert-circle'}" class="h-4 w-4 ${ok?'text-success':'text-action'} shrink-0"></i><div class="flex-1 min-w-0"><div class="text-[12px] font-semibold">${d[1]}</div><div class="text-[11px] text-muted-foreground">${note}</div></div><span class="nx-pill ${ok?'nx-pill-emerald':'nx-pill-amber'}">${(v*100|0)}%</span></div>`;
+    }).join('');
+    document.getElementById('modal').classList.add('open');
+    if(window.lucide) lucide.createIcons();
+  }
+  function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+  function approvePiece(){ if(current){ approved.add(current.id); toast('Approved · '+current.title.slice(0,22)+'…'); } closeModal(); render(); }
+
+  function setStage(n){
+    STAGE=n; approved=new Set();
+    [0,1,2,3].forEach(i=>document.getElementById('sb-'+i).classList.toggle('active', i===n));
+    // reset calendar class (goals view mutates it)
+    const cal=document.getElementById('calendar'); cal.className='grid grid-cols-7 gap-2';
+    render(); window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  window.addEventListener('load', ()=>{ render(); if(window.lucide) lucide.createIcons(); });
+</script>
+</body>

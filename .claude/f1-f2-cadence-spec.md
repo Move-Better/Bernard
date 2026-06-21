@@ -67,8 +67,44 @@ Sensitivity: not secret. Lives on the `workspaces` row (tenant-scoped — read v
 
 Runtime cost (Phase A): no new paid services — reuses OpenAI `gpt-realtime` (~$1–3 per 6-min call uncached, ~$0.30–0.60 cached; 60-min/day cap already shipped). New services (Twilio/Vapi telephony, ElevenLabs clone) are Phases C/D only.
 
-## Open items (decide before/while building F2)
-- Approval routing by altitude (who signs off the digest vs per-capture content) — roles exist, UX undefined.
-- Weekly-plan review surface (how the producer sees + adjusts the composed week).
-- Backlog model (a `held`/`scheduled_for` concept vs just "unscheduled approved").
-- Multi-feed UI beyond one feed.
+## F2 decisions (resolved 2026-06-21 by Q)
+- **Approval routing = two-tier by altitude.** Clinician approves *their own content's voice* (light, per-capture: "does this sound like me?"); producer/owner approves the *practice calendar + digests*. At `approve_all` both gates active; as `trust_stage` → `approve_exception`, the clinician voice-gate auto-clears for reliably-greenlit content and only judgment calls surface. Maps onto the existing `permission_tier` (owner/producer/clinician).
+- **Weekly-plan review surface = calendar/kanban "proposed week."** Per-channel lanes + backlog drawer + digest-contribution view, with inline approve/swap/hold/reschedule. The `cadence-plan.html` propose/dispose model. This is THE F2 control surface (replaces operating the nine pages).
+- **Backlog model = explicit `held` state + nullable `scheduled_for`** (not just "unscheduled approved"). A queryable banked queue the scheduler pulls from when a slot opens or a week's captures are thin; powers a "you have N banked" count that feeds the F7 compounding-payoff reveal. Needs a migration + status CHECK constraint (per the schema rules).
+
+## Still open (decide while building F2)
+- Multi-feed digest UI beyond one feed.
+- Strategist trigger: pure weekly cron vs. triggered off the weekly call's `?wrap=1` handoff vs. both.
+- Voice-judge gate threshold + escalation UX (how a persistent below-threshold draft reaches a human).
+
+## F2.3 — the proposed-week surface (signed off 2026-06-21)
+
+**Visual spec:** `.claude/mockups/proposed-week-v2.html` (signed off). The earlier `proposed-week.html` is the superseded first cut.
+
+### Three layers (this is the mental model — do NOT collapse them)
+The proposed-week screen is **layer 1 only**. Approving from it never publishes, and it is *not* where caption/visual/accuracy get checked.
+
+1. **The plan (the week screen).** What / when / which channel + each piece's status. A map, not the proof. This is the new surface; it upgrades the flat `ReviewInbox.jsx` list.
+2. **The piece (the drill-in).** Click any card → the full per-piece review: the real caption, the actual baked visual, and Bernard's per-dimension self-check (voice / visual / accuracy / timing). This is where you verify, edit, and approve *this one piece*. Reuses the existing per-piece editors/preview — it is the review surface; the calendar just links into it.
+3. **Publishing (the scheduler).** Fires at the scheduled slot, **only** for individually-approved pieces. **Approve ≠ publish** — approving clears a piece for its slot; it can still be held or pulled before then.
+
+### The graduation model (what advances `cadence_policy.trust_stage`)
+The trust ladder is **graduated exposure to confidence** — never set-and-go from day 1.
+
+- **Signal = agreement, not time.** A piece shipped *unchanged* is a vote of confidence; an edit/reject/reschedule is a correction. Time is incidental (it's just how long evidence takes to accumulate), never the trigger.
+- **Granular: per dimension × per channel.** Bernard can earn "voice is reliably in-voice" long before "trust my visual picks," and earn GBP/LinkedIn (low-stakes) before Instagram Reels (high-stakes). A single card can be half-trusted: `voice ✓ auto` / `visual · your eye`. Above a minimum sample floor per (dimension, channel) before a promotion is even possible.
+- **Bernard asks; the user grants.** Never silent auto-promotion. ("Your last 12 GBP captions shipped with no edits — stop asking on GBP voice?")
+- **Thermostat, not ratchet.** If the user starts editing/rejecting again (Bernard drifts, or the practice changes), it drops back a rung and asks more. Trust can go *down*.
+- **Engagement is a different signal.** How posts *perform* tunes *what Bernard makes more of* (topics/formats) — it does NOT gate trust. Mixing them would let "this went viral" override "you didn't like it."
+
+### One surface, progressive disclosure (NOT a UI per stage)
+The same screen gets **quieter** as trust grows — the user never relearns a UI, the lightening *is* the felt reward, and regression is smooth:
+- **Stage 0 — Day one:** every card "Open to review," grey gate pills, **no batch button**; week locks only when all pieces are individually cleared.
+- **Stage 1 — Assisted:** per-card confidence scores; strong ones recede, flagged ones stand out; "approve the ones I've opened" appears; Bernard surfaces promotion asks.
+- **Stage 2 — By exception:** all-confident pieces collapse into an "auto-cleared & scheduled" summary (still openable to override); only judgment calls remain as cards.
+- **Stage 3 — By goals:** the week becomes a running digest of outcomes; the user nudges goals, not pieces.
+
+### Data implications (for F2.1 build)
+- Per-piece, per-dimension scores already have a home: promote `captionFidelityRubric.js` (voice) and add visual/accuracy/timing checks the producer agent emits.
+- Trust state needs a per-(dimension, channel) agreement tally + the current `trust_stage` (already on `cadence_policy`). An "approved unchanged vs edited" signal must be captured at approve time (diff the served draft vs the shipped piece).
+- Approval routing stays two-tier (clinician voice / producer calendar+digest) per the decisions above; the drill-in is where the clinician voice-gate lives.
