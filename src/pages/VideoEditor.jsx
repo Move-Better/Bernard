@@ -4,12 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft, Play, Pause, Film, Sparkles, Captions, Type, Layers,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
+  FolderOpen, Megaphone, ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset } from '@/lib/mediaLib'
-import { getSegments } from '@/lib/clipsLib'
+import { getSegments, renderWholeVideo } from '@/lib/clipsLib'
+import AdVideoExportModal from '@/components/AdVideoExportModal'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -619,26 +621,34 @@ export default function VideoEditor() {
     seededRef.current = true; toast('Trimmed to that line')
   }, [startSec])
 
-  // render + create draft
-  const renderMutation = useAppMutation({
+  // Outputs — render ONCE with the full editor doc, then route to the chosen
+  // destination (post / b-roll / ad sizes), or render the whole untouched source.
+  const [outputsOpen, setOutputsOpen] = useState(false)
+  const [adExportOpen, setAdExportOpen] = useState(false)
+  const captionSummary = () => lines.map((l) => l.text).join(' ').slice(0, 500)
+  const renderBody = () => ({
+    assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
+    overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
+    grade, reframe, speed,
+    // EXACT (possibly edited) caption words so the bake matches the preview.
+    captionWords: lines.flatMap((l) => l.words),
+    overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
+  })
+  async function doRenderClip() {
+    const result = await apiFetch('/api/editorial/render-clip', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(renderBody()),
+    })
+    const render = result?.renders?.[0]
+    if (!render?.blobUrl) throw new Error('Render returned no output.')
+    return render
+  }
+
+  const asPostMutation = useAppMutation({
     mutationFn: async () => {
-      const result = await apiFetch('/api/editorial/render-clip', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assetId, channels: [DEFAULT_CHANNEL], startSec, durationSec, subtitles: caption.preset !== 'off',
-          overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
-          grade, reframe, speed,
-          // Send the EXACT (possibly edited) caption words so the bake matches the
-          // preview. Empty/off → render-clip falls back to slicing transcript_words.
-          captionWords: lines.flatMap((l) => l.words),
-          overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
-        }),
-      })
-      const render = result?.renders?.[0]
-      if (!render?.blobUrl) throw new Error('Render returned no output.')
+      const render = await doRenderClip()
       return apiFetch('/api/editorial/clip-to-post', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, captionText: lines.map((l) => l.text).join(' ').slice(0, 500), platform: 'instagram' }),
+        body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, captionText: captionSummary(), platform: 'instagram' }),
       })
     },
     onSuccess: (data) => {
@@ -646,6 +656,21 @@ export default function VideoEditor() {
       if (id) { toast('Reel rendered — opening in Publish.'); navigate(`/publish/${id}`) } else toast.error('Created but no ID returned.')
     },
   })
+  const brollMutation = useAppMutation({
+    mutationFn: async () => {
+      const render = await doRenderClip()
+      return apiFetch('/api/editorial/clip-to-broll', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary() }),
+      })
+    },
+    onSuccess: () => { toast('Saved to Library — appears in Suggested media shortly.'); navigate('/slate') },
+  })
+  const wholeMutation = useAppMutation({
+    mutationFn: () => renderWholeVideo(assetId),
+    onSuccess: () => { toast('Rendering the full-length video — track it on Slate.'); navigate('/slate') },
+  })
+  const busy = asPostMutation.isPending || brollMutation.isPending || wholeMutation.isPending
 
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
@@ -681,9 +706,31 @@ export default function VideoEditor() {
             </button>
             <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
           </div>
-          <Button size="sm" disabled={renderMutation.isPending} onClick={() => renderMutation.mutate()} style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
-            {renderMutation.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="mr-1 h-3.5 w-3.5" />}Render &amp; save
-          </Button>
+          <div className="relative flex items-center">
+            <Button size="sm" disabled={busy} onClick={() => asPostMutation.mutate()} className="rounded-r-none" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+              {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="mr-1 h-3.5 w-3.5" />}Save &amp; publish
+            </Button>
+            <button onClick={() => setOutputsOpen((v) => !v)} disabled={busy} className="flex h-8 items-center rounded-r-md border-l px-1.5 disabled:opacity-50" style={{ background: 'hsl(var(--action))', color: '#3a2a00', borderColor: 'rgba(0,0,0,.18)' }} title="More outputs" aria-label="More outputs">
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {outputsOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setOutputsOpen(false)} />
+                <div className="absolute right-0 top-full z-40 mt-1 w-52 overflow-hidden rounded-lg border bg-card shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                  {[
+                    { icon: FolderOpen, label: 'Save as b-roll', sub: 'Reusable clip in Library', on: () => brollMutation.mutate() },
+                    { icon: Megaphone, label: 'Export for ads', sub: 'Download ad sizes', on: () => setAdExportOpen(true) },
+                    { icon: Film, label: 'Render whole video', sub: 'Full source, no edits', on: () => wholeMutation.mutate() },
+                  ].map((o) => (
+                    <button key={o.label} disabled={busy} onClick={() => { setOutputsOpen(false); o.on() }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-muted disabled:opacity-50">
+                      <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                      <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
@@ -692,6 +739,12 @@ export default function VideoEditor() {
         <Inspector ctx={ctx} />
       </div>
       <Timeline ctx={ctx} />
+      {adExportOpen && (
+        <AdVideoExportModal
+          clip={{ assetId, startSec, durationSec, captionText: captionSummary(), overlayPosition: caption.position, overlaySize: caption.size, title: asset?.display_title || asset?.filename }}
+          onClose={() => setAdExportOpen(false)}
+        />
+      )}
     </div>
   )
 }
