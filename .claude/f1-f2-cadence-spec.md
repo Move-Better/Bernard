@@ -122,7 +122,13 @@ The keystone. A **practice-level weekly planner** — a different altitude from 
 
 **What it does:** batch week's `interviews` → dedupe overlapping topics → pick angles from the palette → fill each channel to `target_per_week` → surplus gets `held_at = now()` (migration 138, the backlog) → route capture highlights into active digests. **Drafters are unchanged** — the existing generation path still writes the text; the Strategist decides *what / how-many / which-angle / now-vs-banked*.
 
-**Open for the build pass:** the plan-object shape (does the Strategist emit `content_items` rows directly, or a plan record that fans out to drafters?); cron isolation + idempotency (re-running the weekly pass mustn't double-plan); how `held_at` items get *promoted* into a thin future week.
+**Resolved in the build pass (2026-06-21):**
+- **Substrate = `content_plan_atoms`** (the existing slot table), composed by the Strategist instead of `buildPlanRows`. Reuses the whole downstream draft→review→publish pipeline. Atoms keep `interview_id` (trace to source); the week is a query over `plan_week`.
+- **Draft on demand** — atoms stay `status='pending'`; the caption/body generates when a piece is opened/approved (no spend on backlogged surplus). So the plan AND its banked surplus are undrafted *atoms* → planning/backlog state lives on `content_plan_atoms`, added by **migration 139** (applied to prod 2026-06-21): `plan_week`, `scheduled_at`, `held_at`, `brief`, `planned_by`. (`content_items.held_at` from 138 stays as the twin for a *drafted* piece a human banks; the F2.3 "N banked" count reads primarily atom-level `held_at`.)
+- **Idempotency = replace-untouched.** The weekly cron recomposes only its own still-`pending`, undrafted, `planned_by='strategist'` atoms for the `plan_week`; never touches drafted/approved/human-held atoms or legacy `grid` atoms.
+- **Backlog top-up.** When fresh captures underfill a channel's `target_per_week`, the Strategist promotes banked (`held_at`) atoms FIFO to fill the gap (the "one call carries ~3 weeks" promise).
+
+**Still open for the cron-wiring step:** the LLM compose prompt + eval; cron isolation across workspaces; the exact best-time slot assignment (`scheduled_at`) within `quiet_days`.
 
 ### Build order (each ships independently)
 1. ✅ **Backlog foundation** — `held_at` + index (migration 138, applied to prod 2026-06-21, PR #1535).
