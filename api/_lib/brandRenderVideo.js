@@ -297,11 +297,14 @@ function runFfmpeg(args) {
  *                                         [{role,text,x,y,size,color,in,out}]. Each is a positioned
  *                                         text card shown for its [in,out] window (carousel text
  *                                         block + time). Cover + long-form lanes both supported.
+ * @param {number} [params.speed]        — playback speed 0.5..2 (default 1). Applied to the FULLY
+ *                                         composited frame (setpts) + audio (atempo) so captions/
+ *                                         overlays speed in sync; output duration scales by 1/speed.
  * @returns {Promise<{buffer: Buffer, width: number, height: number, channel: string, hadSubtitles: boolean, words: Array|null}>}
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, grade, reframe, overlays }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, grade, reframe, overlays, speed }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -561,6 +564,23 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       finalOutput = '[vout]'
     }
 
+    // SPEED — applied LAST, to the fully-composited frame, so captions + overlays
+    // (now baked pixels) speed up in sync with the video. Audio gets atempo
+    // (valid 0.5..2x). setpts=PTS/spd: 2x → half length, 0.5x → double. The output
+    // -t scales by 1/spd so slow-mo isn't truncated.
+    const spd = Math.min(2, Math.max(0.5, Number(speed) || 1))
+    const speedActive = Math.abs(spd - 1) > 0.01
+    let audioOut = audioMap
+    if (speedActive) {
+      filterComplex.push(`${finalOutput}setpts=${(1 / spd).toFixed(5)}*PTS[sped]`)
+      finalOutput = '[sped]'
+      if (audioMap) {
+        filterComplex.push(`[${audioMap}]atempo=${spd.toFixed(4)}[aout]`)
+        audioOut = '[aout]'
+      }
+    }
+    const outDur = speedActive ? clipDur / spd : clipDur
+
     // ── 5. Run ffmpeg ────────────────────────────────────────────────────────
     // Input-seek to the clip window on input 0 (the video). The overlay PNG
     // (input 1) is a static image, unaffected by the seek. The subtitle SRT was
@@ -581,7 +601,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // decodable, render the clip silently instead of failing the whole hand-off.
     if (audioMap) {
       ffmpegArgs.push(
-        '-map', audioMap,                // the one decodable audio stream
+        '-map', audioOut,                // decodable audio stream (atempo'd [aout] when sped)
         '-c:a', 'aac',
         '-b:a', '128k',
       )
@@ -594,7 +614,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       '-crf', '23',                      // perceptually lossless quality for clinic content
       '-pix_fmt', 'yuv420p',             // required for broad compatibility (LinkedIn, etc.)
       '-movflags', '+faststart',         // moov atom at start for streaming
-      '-t', String(clipDur),             // cap clip length; bounds render time vs the 300s budget
+      '-t', String(outDur),              // output length (clipDur/speed); bounds render vs 300s budget
       '-y',                              // overwrite if exists
       tmpOutput,
     )

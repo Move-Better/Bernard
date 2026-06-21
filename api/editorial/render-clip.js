@@ -94,6 +94,13 @@ export default async function handler(req, res) {
   // inside the renderer (isNeutralReframe / normalizeOverlays); absent = no-op.
   const reframe = body.reframe && typeof body.reframe === 'object' && !Array.isArray(body.reframe) ? body.reframe : undefined
   const overlays = Array.isArray(body.overlays) && body.overlays.length ? body.overlays : undefined
+  // Playback speed 0.5..2 (default 1 = no-op); clamped again in the renderer.
+  const sp = Number(body.speed)
+  const speed = Number.isFinite(sp) && sp >= 0.5 && sp <= 2 ? sp : undefined
+  // Edited-captions override: when the editor sends caption words explicitly (the
+  // user fixed a word), use them verbatim (already window-relative, 0-based)
+  // instead of slicing the source's transcript_words.
+  const captionWordsOverride = Array.isArray(body.captionWords) && body.captionWords.length ? body.captionWords : undefined
   const requestedChannels = Array.isArray(body.channels) && body.channels.length
     ? body.channels.map((c) => String(c))
     : null  // resolved after we know asset kind
@@ -182,9 +189,10 @@ export default async function handler(req, res) {
         // clip window and hand them to the renderer — it then skips the per-render
         // Whisper pass entirely. Legacy assets (no transcript_words) fall back to
         // the live transcription inside renderVideoChannel, unchanged.
-        const captionWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length
-          ? sliceWordsToWindow(asset.transcript_words, startSec ?? 0, durationSec ?? 60)
-          : null
+        const captionWords = captionWordsOverride
+          || (Array.isArray(asset.transcript_words) && asset.transcript_words.length
+            ? sliceWordsToWindow(asset.transcript_words, startSec ?? 0, durationSec ?? 60)
+            : null)
         // Video — ffmpeg pipeline with karaoke captions + brand overlay
         const { buffer, width, height, hadSubtitles } = await renderVideoChannel({
           videoUrl: asset.blob_url,
@@ -202,6 +210,7 @@ export default async function handler(req, res) {
           ...(grade ? { grade } : {}),
           ...(reframe ? { reframe } : {}),
           ...(overlays ? { overlays } : {}),
+          ...(speed ? { speed } : {}),
         })
         // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
         const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.mp4`
