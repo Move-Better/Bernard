@@ -26,6 +26,33 @@ export default function PlanNextInterview({
   // that case keep the card up so the user can clear the filter.
   const filteredEmpty = gaps.length === 0
 
+  // Archetype grouping (D3): when no chip filter is active and the workspace
+  // has real archetypes that actually tag some gaps, organize topics UNDER the
+  // patient prototype that generates them ("For your XC-ski patients → …")
+  // rather than a flat list. The patient population becomes the organizing
+  // logic — "filling gaps for the people I see" — not an abstract calendar.
+  // The sentinel "all patients" prototype has id === null, so real archetypes
+  // are those with a non-null id. Falls back to the flat list + chips whenever
+  // gaps carry no archetype tags (e.g. fresh tenants, custom topics).
+  const realPrototypes = prototypes.filter((p) => p.id != null)
+  const someTagged = gaps.some((g) => Array.isArray(g.prototypes) && g.prototypes.length > 0)
+  const grouped = showChips && activePrototypeId == null && realPrototypes.length > 0 && someTagged
+
+  const groups = grouped
+    ? (() => {
+        const buckets = realPrototypes.map((p) => ({ proto: p, items: [] }))
+        const universal = { proto: null, items: [] }
+        for (const g of gaps) {
+          const tags = Array.isArray(g.prototypes) ? g.prototypes : []
+          const b = buckets.find((x) => tags.includes(x.proto.id))
+          ;(b || universal).items.push(g)
+        }
+        const out = buckets.filter((x) => x.items.length)
+        if (universal.items.length) out.push(universal)
+        return out
+      })()
+    : null
+
   return (
     <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
       {/* Header row */}
@@ -43,7 +70,7 @@ export default function PlanNextInterview({
               : 'Questions patients are searching — no content from you yet'}
           </p>
         </div>
-        {showChips && (
+        {showChips && !grouped && (
           <div className="flex flex-wrap gap-1 items-center shrink-0">
             {prototypes.map((p) => {
               const active = activePrototypeId === p.id
@@ -73,6 +100,36 @@ export default function PlanNextInterview({
         <p className="px-5 py-4 text-xs text-muted-foreground italic">
           No high-priority gaps for this group. Clear the filter to see all topics.
         </p>
+      ) : grouped ? (
+        // Grouped by patient archetype — the population is the organizing logic.
+        <div className="divide-y divide-border">
+          {groups.map((grp) => (
+            <div key={grp.proto ? String(grp.proto.id) : 'all'} className="py-1.5">
+              <div className="flex items-center gap-1.5 px-5 pt-2 pb-1">
+                {grp.proto?.emoji && <span aria-hidden="true">{grp.proto.emoji}</span>}
+                <span className="text-2xs font-bold uppercase tracking-wide text-primary">
+                  {grp.proto ? `For your ${grp.proto.label}` : 'For all patients'}
+                </span>
+              </div>
+              <ul>
+                {grp.items.map((t) => (
+                  <li key={t.topic}>
+                    <Link
+                      to={`/new?topic=${encodeURIComponent(t.topic)}`}
+                      className="flex items-center gap-3 px-5 py-2.5 hover:bg-accent/30 transition-colors group"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary transition-colors" aria-hidden="true" />
+                      <span className="text-sm text-foreground flex-1 min-w-0">{t.topic}</span>
+                      <span className="text-2xs text-muted-foreground/60 shrink-0 hidden sm:inline">
+                        {t.priority === 'high' ? 'high demand' : t.priority === 'medium' ? 'medium' : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       ) : (
         <ul className="divide-y divide-border">
           {gaps.map((t) => (

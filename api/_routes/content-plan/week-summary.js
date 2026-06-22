@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
   // Any authenticated workspace member can see their own post-call reveal.
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
-  if (!auth.ok) return err(res, auth.error || 'Unauthorized', auth.status || 401)
+  if (!auth.ok) return err(res, auth.reason || 'Unauthorized', auth.reason === 'forbidden' ? 403 : 401)
   if (!(await enforceLimit(req, res, 'content-plan-week-summary'))) return
 
   const weekMonday = mondayOf(new Date().toISOString())
@@ -61,6 +61,14 @@ export default async function handler(req, res) {
     }
   }
 
+  // First ~180 chars of the drafted copy, stripped of light markdown, so /week
+  // can show a review excerpt inline (D4) without a per-card content fetch.
+  const excerptOf = (ci) => {
+    if (!ci?.content) return null
+    const text = String(ci.content).replace(/[#*_>`]/g, '').replace(/\s+/g, ' ').trim()
+    return text ? (text.length > 180 ? `${text.slice(0, 180)}…` : text) : null
+  }
+
   const shape = (a) => {
     const ci = a.content_piece_id ? itemStatusMap[a.content_piece_id] : null
     return {
@@ -72,6 +80,7 @@ export default async function handler(req, res) {
       status: a.status,
       contentPieceId: a.content_piece_id,
       contentItemStatus: ci?.status || null,
+      excerpt: excerptOf(ci),
       interviewId: a.interview_id,
     }
   }

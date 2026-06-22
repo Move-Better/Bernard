@@ -90,20 +90,32 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
         {dur && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-3xs px-1 rounded">{dur}</span>}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-accent text-accent-foreground">{m.momentTypeLabel || 'Moment'}</span>
+        {/* Score leads as the visual hierarchy — editorial judgment is the
+            product's moat, so the quotability rating is the largest element,
+            not a small badge. Quote reads next; provenance (staff + source)
+            gets its own non-truncating lines so it never collapses to nothing. */}
+        <div className="flex items-start gap-3">
           {m.score != null && (
-            <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-primary/10 text-primary inline-flex items-center gap-1">
-              <Gem className="h-3 w-3" />{m.score}
-            </span>
+            <div className="shrink-0 text-center leading-none pt-0.5" title="Quotability score">
+              <div className="text-2xl font-bold text-primary tabular-nums">{m.score}</div>
+              <div className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-0.5">
+                <Gem className="h-2.5 w-2.5" />quote
+              </div>
+            </div>
           )}
-          <span className="text-3xs text-muted-foreground truncate">
-            {m.filename}{m.staffName ? ` · ${m.staffName}` : ''} · @ {fmtClock(m.startSec)}–{fmtClock(m.endSec)}
-          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug">&ldquo;{m.quote}&rdquo;</p>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-accent text-accent-foreground">{m.momentTypeLabel || 'Moment'}</span>
+              {m.staffName && <span className="text-2xs font-medium text-foreground">{m.staffName}</span>}
+            </div>
+            <p className="text-3xs text-muted-foreground mt-0.5 truncate">
+              {m.filename} · @ {fmtClock(m.startSec)}–{fmtClock(m.endSec)}
+            </p>
+          </div>
         </div>
-        <p className="text-sm font-semibold leading-snug mt-1.5">&ldquo;{m.quote}&rdquo;</p>
         {m.why && (
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />{m.why}
           </p>
         )}
