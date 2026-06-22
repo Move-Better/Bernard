@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — What it is & how it works</title>
+<style>
+  :root{
+    /* Bernard design tokens (mirrors src/index.css) */
+    --primary: 186 83% 27%;        /* Blue Spruce #0C7580 */
+    --action:  32 95% 44%;         /* amber #d97706 — "act now" */
+    --success: 152 76% 40%;        /* emerald — "done / live" */
+    --warning:  38 92% 50%;        /* amber-bright */
+    --ink:     222 47% 8%;
+    --muted:   215 16% 47%;
+    --paper:   220 22% 97%;
+    --border:  214 32% 91%;
+    --card: 0 0% 100%;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:hsl(var(--ink));
+    background:hsl(var(--paper));
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:hsl(var(--primary));text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px}
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  header.top{
+    background:hsl(var(--card));
+    border-bottom:1px solid hsl(var(--border));
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:saturate(180%) blur(6px);
+  }
+  .top .wrap{display:flex;align-items:center;gap:14px;height:60px}
+  .mark{
+    width:30px;height:30px;border-radius:8px;flex:none;
+    background:linear-gradient(135deg,hsl(var(--primary)),hsl(186 83% 20%));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;
+    box-shadow:0 2px 8px -2px hsl(var(--primary)/.5);
+  }
+  .brand b{font-size:16px;letter-spacing:-.01em}
+  .brand small{display:block;color:hsl(var(--muted));font-size:11px;margin-top:-2px}
+  .top .spacer{flex:1}
+  .stamp{font-size:12px;color:hsl(var(--muted));text-align:right;line-height:1.3}
+  .stamp b{color:hsl(var(--ink))}
+
+  /* ── Hero ────────────────────────────────────────────────── */
+  .hero{padding:48px 0 8px}
+  .hero h1{font-size:34px;line-height:1.15;margin:0 0 12px;letter-spacing:-.02em}
+  .hero .tag{
+    display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:hsl(var(--primary));background:hsl(var(--primary)/.08);
+    border:1px solid hsl(var(--primary)/.2);border-radius:999px;padding:4px 12px;margin-bottom:18px;
+  }
+  .hero p.lede{font-size:18px;color:hsl(215 25% 27%);max-width:760px;margin:0}
+
+  /* ── Section nav ─────────────────────────────────────────── */
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:28px 0 8px}
+  nav.toc a{
+    font-size:13px;font-weight:500;color:hsl(var(--ink));
+    background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:999px;padding:6px 13px;
+  }
+  nav.toc a:hover{border-color:hsl(var(--primary)/.5);text-decoration:none;background:hsl(var(--primary)/.05)}
+
+  /* ── Generic blocks ──────────────────────────────────────── */
+  section{padding:34px 0;border-top:1px solid hsl(var(--border))}
+  section:first-of-type{border-top:none}
+  h2{font-size:24px;letter-spacing:-.01em;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  h2 .n{font-size:13px;font-weight:700;color:hsl(var(--primary));background:hsl(var(--primary)/.1);
+        width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+  h3{font-size:16px;margin:24px 0 6px}
+  .sub{color:hsl(var(--muted));margin:0 0 18px;font-size:15px}
+  p{margin:10px 0}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;padding:20px 22px;margin:14px 0;
+        box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .grid{display:grid;gap:14px}
+  @media(min-width:680px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:1fr 1fr 1fr}}
+
+  /* ── Status badges ───────────────────────────────────────── */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:999px;
+         padding:2px 9px;white-space:nowrap;line-height:1.5}
+  .badge::before{content:"";width:7px;height:7px;border-radius:50%}
+  .b-live{color:hsl(152 76% 26%);background:hsl(152 76% 40%/.12)}
+  .b-live::before{background:hsl(var(--success))}
+  .b-prog{color:hsl(32 95% 32%);background:hsl(var(--action)/.12)}
+  .b-prog::before{background:hsl(var(--action))}
+  .b-plan{color:hsl(215 16% 40%);background:hsl(215 16% 47%/.12)}
+  .b-plan::before{background:hsl(var(--muted))}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;align-items:center;font-size:13px;color:hsl(var(--muted));
+          background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:12px 18px}
+
+  /* ── Stepper ─────────────────────────────────────────────── */
+  .steps{display:grid;gap:12px;counter-reset:s}
+  @media(min-width:680px){.steps{grid-template-columns:repeat(5,1fr);gap:10px}}
+  .step{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:16px;position:relative}
+  .step .k{font-size:11px;font-weight:700;color:hsl(var(--primary));letter-spacing:.05em;text-transform:uppercase}
+  .step h4{margin:6px 0 4px;font-size:15px}
+  .step p{margin:0;font-size:13px;color:hsl(var(--muted));line-height:1.5}
+
+  /* ── Capability list ─────────────────────────────────────── */
+  .cap{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid hsl(var(--border))}
+  .cap:last-child{border-bottom:none}
+  .cap .ico{width:34px;height:34px;border-radius:9px;flex:none;background:hsl(var(--primary)/.08);
+            display:flex;align-items:center;justify-content:center;font-size:17px}
+  .cap .body{flex:1;min-width:0}
+  .cap .body b{font-size:14.5px}
+  .cap .body p{margin:2px 0 0;font-size:13.5px;color:hsl(var(--muted))}
+  .cap .body .meta{margin-top:6px}
+
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:5px 0}
+  .muted{color:hsl(var(--muted))}
+  .pill{display:inline-block;font-size:12px;font-weight:500;background:hsl(220 14% 94%);border-radius:6px;padding:2px 8px;margin:2px 3px 2px 0;color:hsl(215 22% 30%)}
+
+  /* ── Channel table ───────────────────────────────────────── */
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid hsl(var(--border));vertical-align:top}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:hsl(var(--muted));font-weight:600}
+  tr:hover td{background:hsl(var(--primary)/.025)}
+
+  /* ── Changelog ───────────────────────────────────────────── */
+  .log{position:relative;margin-top:8px}
+  .log .row{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid hsl(var(--border))}
+  .log .row:last-child{border-bottom:none}
+  .log .date{flex:none;width:96px;font-size:12.5px;color:hsl(var(--muted));font-weight:600;padding-top:1px}
+  .log .what{flex:1}
+  .log .what b{font-size:14.5px}
+  .log .what p{margin:2px 0 0;font-size:13px;color:hsl(var(--muted))}
+
+  .callout{border-left:3px solid hsl(var(--action));background:hsl(var(--action)/.05);
+           border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0}
+  .callout b{color:hsl(32 95% 30%)}
+
+  footer{border-top:1px solid hsl(var(--border));padding:28px 0 60px;color:hsl(var(--muted));font-size:13px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:center}
+
+  @media print{
+    header.top{position:static}
+    nav.toc{display:none}
+    section{break-inside:avoid}
+    body{background:#fff}
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ TOP BAR ════════════════ -->
+<header class="top">
+  <div class="wrap">
+    <div class="mark">B</div>
+    <div class="brand">
+      <b>Bernard</b>
+      <small>Voice-faithful clinical content</small>
+    </div>
+    <div class="spacer"></div>
+    <div class="stamp">
+      <b>Living document</b><br>Last updated 21 Jun 2026
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ════════════════ HERO ════════════════ -->
+  <div class="hero">
+    <span class="tag">Product overview &amp; roadmap</span>
+    <h1>What Bernard is, and how it works</h1>
+    <p class="lede">Bernard turns a short conversation with a clinician into a week of on-brand,
+    on-voice content — and helps schedule and publish it everywhere your clinic shows up online.
+    This page explains what it can do today, how the pieces fit together, what just shipped, and what's next.</p>
+  </div>
+
+  <!-- ════════════════ SECTION NAV ════════════════ -->
+  <nav class="toc">
+    <a href="#summary">The short version</a>
+    <a href="#how">How it works</a>
+    <a href="#capture">Capturing</a>
+    <a href="#moments">Moment Miner</a>
+    <a href="#words">Words &amp; photos</a>
+    <a href="#week">Your Week</a>
+    <a href="#channels">Where it publishes</a>
+    <a href="#analytics">Analytics</a>
+    <a href="#voice">Voice &amp; brand</a>
+    <a href="#tenants">For tenants</a>
+    <a href="#shipped">Recently shipped</a>
+    <a href="#roadmap">Roadmap</a>
+  </nav>
+
+  <div style="height:8px"></div>
+  <div class="legend">
+    <span><strong style="color:hsl(var(--ink))">Status key:</strong></span>
+    <span class="badge b-live">Live</span> in everyday use
+    <span class="badge b-prog">In progress</span> shipping / partial
+    <span class="badge b-plan">Planned</span> on the roadmap
+  </div>
+
+  <!-- ════════════════ 1. THE SHORT VERSION ════════════════ -->
+  <section id="summary">
+    <h2><span class="n">1</span> The short version</h2>
+    <p class="sub">If you read nothing else, read this.</p>
+
+    <div class="card">
+      <h3 style="margin-top:0">The big idea</h3>
+      <p>Clinics are full of expertise but short on time. The hard part of marketing isn't posting —
+      it's producing something true and in your own voice, consistently. Bernard fixes the
+      <em>producing</em>: a clinician talks for a few minutes, and Bernard does the writing, the
+      design, the scheduling, and the publishing — sounding like the clinic, not like a robot.</p>
+      <div class="grid three" style="margin-top:14px">
+        <div>
+          <b style="color:hsl(var(--primary))">Capture once</b>
+          <p class="muted" style="font-size:13.5px;margin:4px 0 0">One conversation or video becomes many pieces across many channels.</p>
+        </div>
+        <div>
+          <b style="color:hsl(var(--primary))">Sounds like you</b>
+          <p class="muted" style="font-size:13.5px;margin:4px 0 0">Bernard learns each clinician's real voice and writes in it — no generic AI filler.</p>
+        </div>
+        <div>
+          <b style="color:hsl(var(--primary))">Stays on a rhythm</b>
+          <p class="muted" style="font-size:13.5px;margin:4px 0 0">Content is metered out week by week and published on a sensible schedule automatically.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>How it works, in five steps</h3>
+    <div class="steps">
+      <div class="step"><div class="k">1 · Capture</div><h4>Talk or upload</h4><p>A short interview, voice memo, video, document, or web link.</p></div>
+      <div class="step"><div class="k">2 · Mine</div><h4>Find the gold</h4><p>Bernard pulls the best moments, quotes and clips out of what you gave it.</p></div>
+      <div class="step"><div class="k">3 · Draft</div><h4>Write &amp; design</h4><p>It writes captions, posts and articles, and bakes branded photos &amp; clips.</p></div>
+      <div class="step"><div class="k">4 · Plan</div><h4>Review the week</h4><p>You approve a tidy weekly plan; Bernard schedules it across channels.</p></div>
+      <div class="step"><div class="k">5 · Publish</div><h4>Ship everywhere</h4><p>It posts to social, your blog, Google, and email — on time, automatically.</p></div>
+    </div>
+
+    <h3>What it can do, at a glance</h3>
+    <div class="card" style="padding:8px 22px">
+      <div class="cap">
+        <div class="ico">🎙️</div>
+        <div class="body"><b>Capture material lots of ways</b>
+          <p>Guided interviews, live/phone interviews, voice memos, handouts, web-article imports, and a phone-friendly camera capture.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">⛏️</div>
+        <div class="body"><b>Moment Miner — turn video into clips</b>
+          <p>Watches an interview video, surfaces the most quotable moments ranked by strength, and turns approved ones into reels.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">✍️</div>
+        <div class="body"><b>Write captions, posts &amp; articles in your voice</b>
+          <p>Social captions, blog posts, newsletters and pre-visit messages — grounded in what the clinician actually said.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">🎨</div>
+        <div class="body"><b>Branded photos, carousels &amp; reels</b>
+          <p>A built-in editor bakes headlines, your colours and fonts onto photos and video, sized for every platform.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">🗓️</div>
+        <div class="body"><b>Plan &amp; auto-schedule the week</b>
+          <p>"Your Week" composes a balanced plan from your enabled channels; you approve, it schedules at good times.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">📣</div>
+        <div class="body"><b>Publish to ~12 channels + your website</b>
+          <p>Instagram, Facebook, LinkedIn, TikTok, YouTube, Google Business Profile, your blog and email — from one place.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">📈</div>
+        <div class="body"><b>See what's working</b>
+          <p>Website search, Google Analytics and Google Business data flow back in to guide topics and aim.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+      <div class="cap">
+        <div class="ico">📐</div>
+        <div class="body"><b>Export paid-ad creative</b>
+          <p>One-click ad packs (photo, video, carousel) in every aspect ratio, grouped by campaign.</p>
+          <div class="meta"><span class="badge b-live">Live</span></div></div>
+      </div>
+    </div>
+
+    <h3>Who's in the app</h3>
+    <div class="grid three">
+      <div class="card"><b>Clinicians</b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Do interviews, record voice training, see their own profile. The source of the voice.</p></div>
+      <div class="card"><b>Producers / editors</b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Review the week, edit words &amp; media, approve and schedule, run campaigns.</p></div>
+      <div class="card"><b>Admins</b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Manage the workspace, team, brand, integrations and access.</p></div>
+    </div>
+  </section>
+
+  <!-- ════════════════ 2. HOW IT WORKS ════════════════ -->
+  <section id="how">
+    <h2><span class="n">2</span> How it works — the pipeline in detail</h2>
+    <p class="sub">From a clinician's words to a published post, here's the whole path.</p>
+
+    <p>Everything in Bernard rides on one idea: <strong>capture the clinician's real expertise once,
+    then let the software do the production work many times over.</strong> Nothing is invented out of
+    thin air — every post traces back to something a clinician actually said or showed.</p>
+
+    <h3>1 · Capture</h3>
+    <p>Content starts as raw material: a guided on-camera interview, a live or phone interview, a quick
+    voice memo, an uploaded handout, or even a web article you want to riff on. There's also a
+    phone-friendly capture page so a clinician can record from any device. All of it is stored safely
+    and transcribed.</p>
+
+    <h3>2 · Understanding &amp; memory</h3>
+    <p>When an interview finishes, Bernard summarises it, learns from it, and adds it to the clinic's
+    growing "memory" — the accumulated knowledge and phrasing of your team. This memory is what lets
+    later drafts sound consistent and informed rather than starting from zero each time.</p>
+
+    <h3>3 · Mining &amp; drafting</h3>
+    <p>From that raw material Bernard produces the building blocks of a content plan — a caption here,
+    a blog idea there, a reel clip from the video. For video specifically, <strong>Moment Miner</strong>
+    scans the footage and ranks the most quotable moments so you're not scrubbing through an hour of
+    tape. Writing happens in the clinician's voice, grounded in the transcript and the clinic's memory.</p>
+
+    <div class="callout">
+      <b>A deliberate drip, not a dump.</b> A single interview can seed a whole backlog of ideas, but
+      Bernard doesn't fire them all out at once. It meters them into each week up to a sensible per-channel
+      pace, so your feeds stay steady instead of flooding and going quiet.
+    </div>
+
+    <h3>4 · Plan &amp; approve — "Your Week"</h3>
+    <p>The composed plan lands on the <strong>Your Week</strong> screen: a clean list of what's slated
+    for the coming week, by channel and day. A producer reviews each piece, edits if needed, and
+    approves &amp; schedules it. Drafts are generated on demand when you open them, so the system isn't
+    burning effort on things you'll never use.</p>
+
+    <h3>5 · Publish</h3>
+    <p>Approved, scheduled content publishes itself at the right time — to social platforms, Google
+    Business Profile, your blog, and email. Where Bernard can't post directly, it hands you a clean,
+    ready-to-paste export. Once posts are live, their performance flows back into analytics.</p>
+  </section>
+
+  <!-- ════════════════ 3. CAPTURE ════════════════ -->
+  <section id="capture">
+    <h2><span class="n">3</span> Capturing material</h2>
+    <p class="sub">Many front doors, one pipeline.</p>
+    <div class="card" style="padding:8px 22px">
+      <div class="cap"><div class="ico">🎤</div><div class="body"><b>Guided interview</b><p>An on-screen guide asks smart questions and captures the clinician's answers (and video). The richest source.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+      <div class="cap"><div class="ico">📞</div><div class="body"><b>Live / phone interview</b><p>Capture a conversation that's happening live or over the phone.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+      <div class="cap"><div class="ico">🗣️</div><div class="body"><b>Voice memo</b><p>An unguided quick note — talk for a minute about anything worth sharing.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+      <div class="cap"><div class="ico">📄</div><div class="body"><b>Handout / document</b><p>Upload an existing patient handout or doc as source material.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+      <div class="cap"><div class="ico">🔗</div><div class="body"><b>Web-article import</b><p>Point Bernard at an article or page and have it work from that.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+      <div class="cap"><div class="ico">📱</div><div class="body"><b>Phone-friendly capture</b><p>A mobile-first page so any clinician can record from their own phone, no setup.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+      <div class="cap"><div class="ico">📁</div><div class="body"><b>Google Drive import</b><p>Pull documents straight from Drive as source material.</p><div class="meta"><span class="badge b-live">Live</span></div></div></div>
+    </div>
+  </section>
+
+  <!-- ════════════════ 4. MOMENT MINER ════════════════ -->
+  <section id="moments">
+    <h2><span class="n">4</span> Moment Miner — video into reels</h2>
+    <p class="sub">The standout feature for clinics sitting on video they never use.</p>
+    <p>Point Bernard at an interview video and it <strong>watches the whole thing for you</strong>,
+    surfacing the strongest moments — a sharp coaching cue, a breakthrough, a great hook — and rates
+    each on how quotable it is. You skim a ranked feed instead of scrubbing footage, approve the ones
+    you like, and they become polished, captioned reels.</p>
+    <div class="grid two">
+      <div class="card"><b>Ranked "moment" feed <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Best moments first, with a quotability rating, so the good stuff finds you.</p></div>
+      <div class="card"><b>Built-in reel editor <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Reframe, colour-grade to your brand, add captions (pop/fade), titles &amp; lower-thirds, subtle motion, and switch between Reel / Square / Portrait formats.</p></div>
+    </div>
+    <div class="callout">
+      <b>On purpose: no AI-generated video.</b> Bernard never fabricates footage or synthetic talking
+      heads. Every clip is your real clinician saying real things. This is a deliberate quality and
+      trust choice — it's what keeps the content credible rather than "AI slop."
+    </div>
+  </section>
+
+  <!-- ════════════════ 5. WORDS & PHOTOS ════════════════ -->
+  <section id="words">
+    <h2><span class="n">5</span> Words, photos &amp; carousels</h2>
+    <p class="sub">The writing and the design, both in your brand.</p>
+
+    <h3>Writing</h3>
+    <ul class="tight">
+      <li><strong>Social captions</strong> in the clinician's voice, grounded in the transcript. <span class="badge b-live">Live</span></li>
+      <li><strong>Blog posts &amp; long-form</strong> — including a "Book" builder that can shape a corpus of interviews into a longer guide. <span class="badge b-live">Live</span></li>
+      <li><strong>Newsletters / email</strong> drafted into a branded email template. <span class="badge b-live">Live</span></li>
+      <li><strong>Pre-visit messages</strong> generated from interview context. <span class="badge b-live">Live</span></li>
+      <li><strong>Write-once, broadcast</strong> — write a single idea and fan it out, tailored, across channels. <span class="badge b-live">Live</span></li>
+    </ul>
+
+    <h3>Photos, carousels &amp; templates</h3>
+    <p>A unified editor lets you add or swap photos, place and style headline text, apply a "colourist"
+    brand look, control crop/fit, and build multi-slide carousels. Behind it, a server-side compositor
+    bakes your brand colours and fonts onto images so the published artifact matches the preview exactly.</p>
+    <ul class="tight">
+      <li><strong>Brand-derived templates</strong> — designs pull your real palette and fonts automatically (no hand-picking hex codes). <span class="badge b-live">Live</span></li>
+      <li><strong>Unified content editor</strong> — one screen for text styling, photos and carousels. <span class="badge b-live">Live</span></li>
+      <li><strong>AI template creator</strong> — generate new on-brand template looks; a native, data-driven template editor is in build. <span class="badge b-prog">In progress</span></li>
+    </ul>
+  </section>
+
+  <!-- ════════════════ 6. YOUR WEEK ════════════════ -->
+  <section id="week">
+    <h2><span class="n">6</span> Your Week &amp; the schedule</h2>
+    <p class="sub">The control room for what goes out, and when.</p>
+    <p><strong>Your Week</strong> is the heart of the producer's day: the composed plan for the coming
+    week, ready to review, edit, approve and schedule. Bernard figures out a sensible cadence and good
+    posting times for you; you stay in control of every piece.</p>
+    <div class="grid two">
+      <div class="card"><b>Automatic cadence <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Bernard works out how many posts per week each channel should get, based on the channels you've turned on — and you can override it manually.</p></div>
+      <div class="card"><b>Smart scheduling <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Spreads posts across weekdays at good hours, respects quiet days, and works in your timezone.</p></div>
+      <div class="card"><b>Approve &amp; schedule in one place <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Review the week, opt blog posts into review, approve, and slot — no jumping between tools.</p></div>
+      <div class="card"><b>Engagement-tuned cadence <span class="badge b-plan">Planned</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Future: tune each clinic's pace automatically based on what actually performs.</p></div>
+    </div>
+  </section>
+
+  <!-- ════════════════ 7. CHANNELS ════════════════ -->
+  <section id="channels">
+    <h2><span class="n">7</span> Where Bernard publishes</h2>
+    <p class="sub">One write-up, many destinations.</p>
+    <table>
+      <thead><tr><th>Channel</th><th>What goes there</th><th>How</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><b>Instagram</b> (post, reel, story)</td><td>Captions, reels, branded photos</td><td>Via connected social publisher</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>Facebook</b></td><td>Posts &amp; media</td><td>Via connected social publisher</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>LinkedIn</b></td><td>Posts &amp; media</td><td>Via connected social publisher</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>TikTok / YouTube</b></td><td>Reels &amp; shorts</td><td>Via connected social publisher</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>X, Threads, Bluesky, Mastodon</b></td><td>Short posts</td><td>Via connected social publisher</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>Google Business Profile</b></td><td>Local posts — per clinic location</td><td>Multi-location aware</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>Your website / blog</b></td><td>Articles &amp; long-form</td><td>WordPress, or Astro site via GitHub</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>Email / newsletter</b></td><td>Branded newsletter drafts</td><td>Beehiiv draft, or branded HTML template</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>Paid ads</b> (Google, Meta)</td><td>Ad-creative packs</td><td>Export &amp; upload (clean, ready-to-paste)</td><td><span class="badge b-live">Live</span></td></tr>
+        <tr><td><b>Pinterest, Reddit, Discord, Slack</b></td><td>Posts</td><td>Direct posting</td><td><span class="badge b-plan">Planned</span></td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:13.5px">Social posting runs through a connected publishing service (the
+    current default plus a newer provider, <span class="pill">bundle.social</span>, being rolled out). Each
+    workspace connects its own accounts; nothing is shared between clinics. Where a direct connection isn't
+    available yet, Bernard produces a clean export so you're never blocked.</p>
+  </section>
+
+  <!-- ════════════════ 8. ADS ════════════════ -->
+  <section id="ads">
+    <h2><span class="n">8</span> Ads &amp; paid creative</h2>
+    <p class="sub">Turn organic content into ad-ready assets.</p>
+    <p>The <strong>Ads</strong> hub collects exports from your Library and Moment Miner, grouped by
+    campaign. From a single photo, video clip or carousel, Bernard renders the full set of ad aspect
+    ratios — square, portrait, vertical/story and landscape — with your branding baked in, ready to
+    upload to Meta or Google Ads. A guardrail checks against common platform requirements before export.</p>
+    <p class="muted" style="font-size:13.5px"><span class="badge b-live">Live</span> &nbsp; Photo, video and carousel ad export with campaign grouping.</p>
+  </section>
+
+  <!-- ════════════════ 9. ANALYTICS ════════════════ -->
+  <section id="analytics">
+    <h2><span class="n">9</span> Analytics &amp; insights</h2>
+    <p class="sub">Closing the loop between what you publish and what works.</p>
+    <div class="grid two">
+      <div class="card"><b>Google Search Console <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Real search-query performance for your site, connected per workspace.</p></div>
+      <div class="card"><b>Google Analytics (GA4) <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Website traffic and behaviour feeding topic suggestions.</p></div>
+      <div class="card"><b>Google Business Profile insights <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Local-listing performance, now multi-location aware.</p></div>
+      <div class="card"><b>Per-asset performance dashboard <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">An Analytics screen that ties content back to results.</p></div>
+    </div>
+  </section>
+
+  <!-- ════════════════ 10. VOICE & BRAND ════════════════ -->
+  <section id="voice">
+    <h2><span class="n">10</span> Voice &amp; brand identity</h2>
+    <p class="sub">The thing that makes Bernard's output yours, not generic.</p>
+    <p>Bernard's whole premise is "voice-faithful." It learns the way each clinician actually talks —
+    their characteristic phrases and tone — and writes in it. A behind-the-scenes scorer checks drafts
+    for voice fidelity so output doesn't drift into bland, clinical, or off-brand territory.</p>
+    <ul class="tight">
+      <li><strong>Per-clinician voice profiles</strong> — phrases and tone learned from real interviews. <span class="badge b-live">Live</span></li>
+      <li><strong>Voice-fidelity scoring</strong> — an automatic check that drafts still sound like the person. <span class="badge b-live">Live</span></li>
+      <li><strong>Brand Kit</strong> — logo, colours, fonts and tone in one place, applied everywhere. <span class="badge b-live">Live</span></li>
+      <li><strong>Spoken voice clone</strong> — a clinician's voice for filling gaps in audio; an on-brand, opt-in capability. <span class="badge b-prog">In progress</span></li>
+    </ul>
+    <div class="callout">
+      <b>A privacy line Bernard won't cross.</b> No patient stories or identifiable case details are
+      used. Content stays at the level of education and "quick wins," never individual outcomes — by design.
+    </div>
+  </section>
+
+  <!-- ════════════════ 11. FOR TENANTS ════════════════ -->
+  <section id="tenants">
+    <h2><span class="n">11</span> For tenants — getting set up</h2>
+    <p class="sub">How a new clinic joins, and how each workspace stays separate.</p>
+    <p>Bernard is multi-tenant: one platform serves many clinics, each at its own web address
+    (<span class="pill">yourclinic.withbernard.ai</span>). A new clinic self-onboards through a short
+    wizard — business basics (with an optional website scan to pre-fill your voice and brand), pick a
+    web address, choose which channels you want, set up capture, and you're in. Your subdomain works
+    immediately.</p>
+    <div class="grid two">
+      <div class="card"><b>Self-serve onboarding <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">A guided wizard creates your workspace, brand kit and first clinician in minutes.</p></div>
+      <div class="card"><b>Your own settings <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Display name, voice, interview style, channels, locations, publish accounts, brand, campaigns and team — all editable.</p></div>
+      <div class="card"><b>Strict data separation <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Each clinic's content, media and connected accounts are walled off from every other clinic.</p></div>
+      <div class="card"><b>Roles &amp; access <span class="badge b-live">Live</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Clinician / producer / admin roles control who can capture, edit, approve, publish and configure.</p></div>
+    </div>
+    <p class="muted" style="font-size:13px;margin-top:16px"><strong>Under the hood</strong> (for the curious): Bernard runs as a single secure deployment.
+    Sign-in and teams are managed through Clerk; media lives in dedicated cloud storage; the app is monitored
+    with error tracking, uptime heartbeats and automatic backups. Every request is scoped to its own clinic
+    so data can't leak across tenants.</p>
+  </section>
+
+  <!-- ════════════════ RECENTLY SHIPPED ════════════════ -->
+  <section id="shipped">
+    <h2><span class="n">12</span> Recently shipped</h2>
+    <p class="sub">The last few weeks of progress — newest first.</p>
+    <div class="log">
+      <div class="row"><div class="date">21 Jun 2026</div><div class="what"><b>Moment Miner</b><p>Slate became a moment-first, ranked feed with quotability ratings — find the best clips without scrubbing footage.</p></div></div>
+      <div class="row"><div class="date">21 Jun 2026</div><div class="what"><b>Video / Reel editor as the default</b><p>Draft-sync, brand "vibe" looks with real-photo preview, pop/fade captions, subtle motion, and a Reel / Square / Portrait format switcher.</p></div></div>
+      <div class="row"><div class="date">21 Jun 2026</div><div class="what"><b>Your Week — approve &amp; schedule</b><p>Approve and schedule on one screen, timezone-aware slots, blog-review opt-in, cleaner navigation.</p></div></div>
+      <div class="row"><div class="date">21 Jun 2026</div><div class="what"><b>Automatic cadence</b><p>Posting pace is now computed from the channels you've enabled, fixing channels that previously got zero cadence.</p></div></div>
+      <div class="row"><div class="date">21 Jun 2026</div><div class="what"><b>Multi-location Google Business + new publisher</b><p>Google Business analytics across locations, surfaced on Insights; rollout of the bundle.social publishing provider.</p></div></div>
+      <div class="row"><div class="date">20 Jun 2026</div><div class="what"><b>Unified content editor</b><p>One screen for text styling, adding/swapping photos, the "colourist" brand look, crop/fit, and carousels.</p></div></div>
+      <div class="row"><div class="date">19 Jun 2026</div><div class="what"><b>Ad-creative export</b><p>Photo, video and carousel exports to every ad size, grouped by campaign, with a platform guardrail.</p></div></div>
+      <div class="row"><div class="date">15 Jun 2026</div><div class="what"><b>Search Console analytics</b><p>Per-workspace Google Search Console connection for real search performance.</p></div></div>
+      <div class="row"><div class="date">12 Jun 2026</div><div class="what"><b>Write-once broadcast + observability</b><p>Write one idea and fan it across channels; plus error tracking, uptime heartbeats and backups behind the scenes.</p></div></div>
+      <div class="row"><div class="date">10 Jun 2026</div><div class="what"><b>Media-flow redesign + brand refresh</b><p>Streamlined Capture → Storyboard → Publish flow, review-first Moment Miner, and the Blue Spruce brand look.</p></div></div>
+    </div>
+  </section>
+
+  <!-- ════════════════ ROADMAP ════════════════ -->
+  <section id="roadmap">
+    <h2><span class="n">13</span> On the roadmap</h2>
+    <p class="sub">Where Bernard is heading. Directional, not committed dates.</p>
+    <div class="grid two">
+      <div class="card"><b>More direct-publish channels <span class="badge b-plan">Planned</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Pinterest, Reddit, Discord and Slack posting, plus automatic routing of scheduled posts.</p></div>
+      <div class="card"><b>Engagement-tuned cadence <span class="badge b-plan">Planned</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Per-clinic posting pace that adapts to what actually performs.</p></div>
+      <div class="card"><b>Native template editor <span class="badge b-prog">In progress</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">A richer, data-driven design editor — "a Claude Design experience on Bernard's renderer."</p></div>
+      <div class="card"><b>Voice-clone polish <span class="badge b-prog">In progress</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">Better spoken-voice gap-filling, and a polish-chat assistant inside the video editor.</p></div>
+      <div class="card"><b>Continuous UX improvements <span class="badge b-prog">In progress</span></b><p class="muted" style="font-size:13.5px;margin:6px 0 0">A weekly product-analytics routine turns real usage friction into a fix list.</p></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ════════════════ FOOTER ════════════════ -->
+<footer>
+  <div class="wrap">
+    <div>
+      <strong style="color:hsl(var(--ink))">Bernard — internal &amp; tenant overview.</strong><br>
+      This is a living document. Update the "Recently shipped", "Roadmap" and status badges as the product moves.
+    </div>
+    <div style="text-align:right">
+      Source: <span class="pill">docs/bernard-overview.html</span><br>
+      Last updated 21 Jun 2026
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
