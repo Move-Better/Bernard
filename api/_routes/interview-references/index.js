@@ -32,6 +32,11 @@ function sb(path, init = {}) {
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
 
+// Validate any id before interpolating into a PostgREST filter — a crafted value
+// can inject extra filter params that alter which rows match within the caller's
+// own workspace. (See api/_routes/db/content.js for the canonical pattern.)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SELECT = 'id,workspace_id,topic_id,interview_id,url,title,notes,use_as_source,added_by,created_at,updated_at'
 
 function normalizeUrl(raw) {
@@ -61,6 +66,8 @@ export default async function handler(req, res) {
     const topicId = searchParams.get('topicId')
     const interviewId = searchParams.get('interviewId')
     if (!topicId && !interviewId) return err(res, 'Missing topicId or interviewId')
+    if (topicId && !UUID_RE.test(topicId)) return err(res, 'Invalid topicId', 400)
+    if (interviewId && !UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
 
     let qs = `interview_references?${wsFilter}&select=${SELECT}&order=created_at.asc`
     if (topicId) qs += `&topic_id=eq.${topicId}`
@@ -79,6 +86,8 @@ export default async function handler(req, res) {
     const topicId = body.topicId || null
     const interviewId = body.interviewId || null
     if (!topicId === !interviewId) return err(res, 'Exactly one of topicId or interviewId is required')
+    if (topicId && !UUID_RE.test(topicId)) return err(res, 'Invalid topicId', 400)
+    if (interviewId && !UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
 
     const url = normalizeUrl(body.url)
     if (!url) return err(res, 'Valid URL required')
@@ -117,6 +126,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'write'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
     const patch = req.body || {}
     const allowed = {}
@@ -147,6 +157,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'write'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
     const r = await sb(`interview_references?id=eq.${id}&${wsFilter}`, {
       method: 'DELETE',
       headers: { Prefer: 'return=minimal' },

@@ -26,6 +26,11 @@ function sb(path, init = {}) {
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
 
+// Validate any id before interpolating into a PostgREST filter — a crafted
+// value can inject extra filter params that alter which rows match within the
+// caller's own workspace. (See api/_routes/db/content.js for the canonical pattern.)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SELECT = 'id,interview_id,platform,slot,angle,angle_label,angle_description,status,content_piece_id,created_at,updated_at,content_piece:content_items!content_piece_id(status,published_at,scheduled_at)'
 
 export default async function handler(req, res) {
@@ -45,6 +50,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'read'))) return
     const interviewId = searchParams.get('interview_id')
     if (!interviewId) return err(res, 'Missing interview_id')
+    if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interview_id', 400)
 
     const r = await sb(
       `content_plan_atoms?interview_id=eq.${interviewId}&${wsFilter}&select=${SELECT}&order=platform.asc,slot.asc`
@@ -57,6 +63,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'write'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
     const { status } = req.body || {}
     if (!status) return err(res, 'Missing status')
