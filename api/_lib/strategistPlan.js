@@ -131,7 +131,11 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     weekMonday: planWeek,
     sb,
   })
-  if (!interviews.length) return { weekMonday: planWeek, skipped: 'no-interviews' }
+  // Compose when there are fresh captures this week OR banked backlog to drip
+  // out. A week with no new interviews but a non-empty backlog still produces a
+  // plan: allocateToCadence promotes backlog atoms up to each channel's
+  // target_per_week, so /week stays populated between capture weeks.
+  if (!interviews.length && !backlog.length) return { weekMonday: planWeek, skipped: 'no-inputs' }
 
   const plan = await composeWeeklyPlan({
     workspaceId: workspace.id,
