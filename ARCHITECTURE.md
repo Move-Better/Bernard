@@ -387,8 +387,21 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
   (1) are there atoms with `held_at` set (backlog exists)? (2) does `mondayOf(now)` match what you
   expect — the server may already be in *next* week (Sun PT → Mon UTC flips `plan_week`)? (3) did a
   replan run for that week?
-- **`enabled_outputs` ≠ `cadence_policy.channels`.** `enabled_outputs` (workspaces row) says which
-  channels the workspace produces atoms for at all; `cadence_policy.channels` says which get a weekly
-  publishing target. A channel can have a pile of banked atoms but never drip because it isn't in the
-  cadence (Facebook + Instagram Story were enabled-as-output but absent from the cadence until added
-  with `target_per_week`). To surface a channel weekly, it must be in BOTH.
+- **Cadence is COMPUTED from `enabled_outputs`, not a hand-maintained list (Auto mode, the default).**
+  `cadence_policy.provenance` selects the source. In **Auto** (`provenance !== 'user'`, the default),
+  `getWeekInputs` (`strategistPlan.js`) computes the per-channel cadence at plan time as
+  `computeAutoCadenceChannels(enabled_outputs, prior)` (`api/_lib/cadenceDefaults.js`) — so every
+  enabled output that maps to a cadence-bearing atom platform automatically gets a `target_per_week`.
+  The **prior** is `app_config.cadence_defaults` (migration 142) — a DB row (posts/wk per atom
+  platform), editable without a redeploy, NOT a code constant. In **Manual** (`provenance === 'user'`)
+  the stored `cadence_policy.channels` is authoritative and a channel must be explicitly present to drip.
+  - **Cadence keys are ATOM PLATFORMS, not `enabled_outputs` ids.** `enabled_outputs` splits Instagram
+    into `instagram_post`/`instagram_reel`/`instagram_story`; the atom plan (and thus cadence) collapses
+    post+reel into one `instagram` bucket (`instagram_story` stays separate) via
+    `atomPlatformsFromEnabledOutputs` (`api/_lib/atomPlan.js`). The settings UI mirrors this mapping;
+    keep `CADENCE_PLATFORMS` (me.js) ⊇ the prior's keys or a computed channel is dropped on save.
+  - Non-atom channels (blog/email/youtube/ads/landing_page) have no prior entry and are never given a
+    weekly atom cadence — they're digest/single-output governed.
+  - This fixed the long-standing bug where Facebook + Instagram Story were enabled-as-output but got
+    `0`/disabled cadence (the old hardcoded instagram/linkedin/gbp trio). Phase 2 (engagement-tuned,
+    per-tenant cadence) is spec'd in `.claude/adaptive-cadence-spec.md`.
