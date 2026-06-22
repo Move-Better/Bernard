@@ -356,3 +356,39 @@ corruption AND blocks invented/hallucinated ids. And **check `res.ok` on the wri
 throws on a failed insert) so the caller's fallback/logging fires instead of swallowing it. This
 extends the existing "validate every query param with `UUID_RE` before interpolating" rule to
 LLM-echoed values, not just request params.
+
+## How `/week` gets populated — the Strategist drip model
+
+`/week` (YourWeek.jsx → `GET /api/content-plan/week-summary`) renders ONLY `content_plan_atoms`
+where `plan_week = mondayOf(now)` AND `scheduled_at IS NOT NULL`. Atoms become visible there
+through the **Strategist**, never directly. The lifecycle is deliberately metered, and the
+gotchas below cost a full session (2026-06-21) when `/week` read empty despite 160 planned atoms:
+
+- **An interview generates a full plan of atoms (`buildPlanRows`), all at `status='pending'`.**
+  Pending ≠ generated and ≠ visible. The caption is only generated (LLM) on demand when you open
+  the atom in `/week` and hit Draft (`/api/content-plan/draft`), which creates the `content_item`
+  and flips the atom to `drafted`. There is no batch "generate everything" — by design.
+- **`plan_week`/`scheduled_at` are stamped by the Strategist, not by `buildPlanRows`.** A freshly
+  planned atom has `plan_week=NULL, held_at=NULL, scheduled_at=NULL` → invisible to `/week` AND to
+  the backlog. To enter the drip it must be **banked as backlog**: `held_at=now`,
+  `planned_by='strategist'`. (Legacy per-interview "grid" atoms have `planned_by=NULL` and were
+  never banked — they surface nowhere now that `/storyboard`/`/publish`/`/needs-media` all redirect
+  to `/week`.)
+- **`replanWorkspaceWeek` (`api/_lib/strategistPlan.js`) is the only thing that promotes backlog
+  into a week.** It runs on every interview completion (`db/interviews.js`) and via the weekly cron
+  backstop (`/api/cron/weekly-plan`). `allocateToCadence` promotes backlog FIFO up to each channel's
+  `cadence_policy.channels[ch].target_per_week`, and `assignSlots` stamps `scheduled_at` (spread
+  across non-quiet weekdays at per-channel best hours; `BEST_HOUR[platform] ?? 11`). So the backlog
+  drains ~`sum(target_per_week)` atoms/week — a deliberate drip, not a dump.
+- **The cron silently no-ops for a workspace with no fresh interviews that week UNLESS it composes
+  from backlog.** The original `replanWorkspaceWeek` bailed `skipped:'no-interviews'`, so a workspace
+  whose captures predate this week never got a plan even with a full backlog. Fixed: it now proceeds
+  when interviews OR backlog is non-empty (#1567). When debugging an empty `/week`, check in order:
+  (1) are there atoms with `held_at` set (backlog exists)? (2) does `mondayOf(now)` match what you
+  expect — the server may already be in *next* week (Sun PT → Mon UTC flips `plan_week`)? (3) did a
+  replan run for that week?
+- **`enabled_outputs` ≠ `cadence_policy.channels`.** `enabled_outputs` (workspaces row) says which
+  channels the workspace produces atoms for at all; `cadence_policy.channels` says which get a weekly
+  publishing target. A channel can have a pile of banked atoms but never drip because it isn't in the
+  cadence (Facebook + Instagram Story were enabled-as-output but absent from the cadence until added
+  with `target_per_week`). To surface a channel weekly, it must be in BOTH.
