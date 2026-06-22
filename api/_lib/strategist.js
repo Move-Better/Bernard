@@ -30,7 +30,7 @@ export const RECOMMENDED_CADENCE = {
 // producer/scheduler slice (build step 5) will replace with engagement-derived
 // peaks. Used only to stamp scheduled_at so the week renders on the calendar.
 // These are LOCAL hours in the workspace timezone, converted to UTC by assignSlots.
-const BEST_HOUR = { instagram: 12, linkedin: 7, gbp: 8, facebook: 12, tiktok: 18, twitter: 9, threads: 12, bluesky: 10 }
+const BEST_HOUR = { instagram: 12, instagram_story: 8, linkedin: 7, gbp: 8, facebook: 12, tiktok: 18, twitter: 9, threads: 12, bluesky: 10, mastodon: 9 }
 const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 // Convert a local hour (in tzName) to a UTC Date on weekMonday.
@@ -81,20 +81,44 @@ export function mondayOf(date) {
 
 // Spread N this-week pieces of a channel across the non-quiet weekdays, stamping
 // scheduled_at at the channel's best LOCAL hour converted to UTC. Pure.
-function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC') {
+//
+// Each platform has a single fixed best-hour, so two pieces landing on the same
+// weekday must get DIFFERENT hours or they collapse to an identical scheduled_at
+// (same platform + same UTC instant) — which the auto-publisher then either
+// double-schedules or silently drops. So:
+//   • target ≤ open days → spread evenly across the open weekdays (e.g. Tue & Fri,
+//     not Mon & Tue), all at the base hour. Distinct days ⇒ distinct timestamps.
+//   • target > open days → wrap across the open days with `i % openOffsets.length`
+//     (multiple-per-day is intentional), and bump the hour by the wrap count so
+//     same-day pieces get distinct hours and never share a (day, hour) slot.
+export function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC') {
   const quiet = new Set((quietDays || []).map((q) => q.toLowerCase()))
   // Candidate weekday offsets (Mon..Sun = 0..6) that aren't quiet.
   const openOffsets = [0, 1, 2, 3, 4, 5, 6].filter((off) => !quiet.has(WEEKDAY[(off + 1) % 7]))
   const byChannel = {}
   for (const a of atoms) (byChannel[a.platform] ||= []).push(a)
   for (const [platform, list] of Object.entries(byChannel)) {
-    const localHour = BEST_HOUR[platform] ?? 11
+    const baseHour = BEST_HOUR[platform] ?? 11
     list.forEach((a, i) => {
-      // Even spread: pick offsets stepped across the open days so 2 pieces land
-      // e.g. Tue & Fri rather than Mon & Tue.
-      const off = openOffsets.length
-        ? openOffsets[Math.round((i * (openOffsets.length - 1)) / Math.max(1, list.length - 1)) % openOffsets.length]
-        : 0
+      let off, hourBump
+      if (!openOffsets.length) {
+        off = 0
+        hourBump = 0
+      } else if (list.length <= openOffsets.length) {
+        // Fewer pieces than open days: step evenly across them. Indices are
+        // distinct for i in [0, list.length), so no two share a day.
+        off = openOffsets[Math.round((i * (openOffsets.length - 1)) / Math.max(1, list.length - 1))]
+        hourBump = 0
+      } else {
+        // More pieces than open days: wrap, and bump the hour on each full wrap so
+        // two pieces on the same weekday land at different hours.
+        off = openOffsets[i % openOffsets.length]
+        hourBump = Math.floor(i / openOffsets.length) * 2
+      }
+      // Clamp into a sane posting window. ponytail: re-collision is only possible
+      // at unrealistic per-platform volumes (>~7 pieces/day past the clamp); the
+      // weekly cadence target keeps `hourBump` ≤ ~4 in practice.
+      const localHour = Math.min(baseHour + hourBump, 22)
       // Compute the calendar date for this offset from weekMonday.
       const [yr, mo, dy] = weekMonday.split('-').map(Number)
       const dayDate = new Date(Date.UTC(yr, mo - 1, dy + off))
