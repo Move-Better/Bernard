@@ -8,6 +8,7 @@
 // replace-untouched rules are unit-testable without a database.
 
 import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.js'
+import { getCadencePrior, computeAutoCadenceChannels } from './cadenceDefaults.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -61,8 +62,22 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   )
   const backlog = bkRes.ok ? await bkRes.json() : []
 
+  // Cadence resolution. Auto (provenance !== 'user', the default) COMPUTES the
+  // per-channel cadence from the workspace's enabled_outputs × the cold-start
+  // prior — so every enabled channel is planned, not just the old hardcoded
+  // instagram/linkedin/gbp trio. Manual (provenance === 'user') uses the
+  // operator's stored channel targets verbatim. The RECOMMENDED_CADENCE
+  // fallback only fires when a workspace has no enabled_outputs at all.
   const policy = workspace.cadence_policy || null
-  const cadence = policy?.channels || RECOMMENDED_CADENCE
+  const isAuto = (policy?.provenance ?? 'bernard') !== 'user'
+  let cadence
+  if (isAuto) {
+    const prior = await getCadencePrior(sb)
+    cadence = computeAutoCadenceChannels(workspace.enabled_outputs, prior)
+  } else {
+    cadence = policy?.channels || {}
+  }
+  if (!cadence || Object.keys(cadence).length === 0) cadence = RECOMMENDED_CADENCE
   const quietDays = policy?.quiet_days || ['sat', 'sun']
 
   return { interviews, cadence, quietDays, recentTopics, backlog }

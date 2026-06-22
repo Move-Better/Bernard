@@ -431,12 +431,13 @@ export default async function handler(req, res) {
       // proven stable in prod.)
       waitUntil((async () => {
         try {
-          // Read the workspace's cadence policy so the trigger honors the same
-          // cadence the weekly cron uses (workspaceContext may not select it).
-          const polRes = await sb(`workspaces?id=eq.${ws.id}&select=cadence_policy`)
-          const cadence_policy = polRes.ok ? (await polRes.json())[0]?.cadence_policy : null
+          // Read the workspace's cadence policy + enabled_outputs so the trigger
+          // honors the same cadence the weekly cron uses (workspaceContext may
+          // not select them). enabled_outputs drives the Auto cadence compute.
+          const polRes = await sb(`workspaces?id=eq.${ws.id}&select=cadence_policy,enabled_outputs`)
+          const polRow = polRes.ok ? (await polRes.json())[0] : null
           await replanWorkspaceWeek({
-            workspace: { id: ws.id, cadence_policy },
+            workspace: { id: ws.id, cadence_policy: polRow?.cadence_policy ?? null, enabled_outputs: polRow?.enabled_outputs ?? null },
             weekMonday: mondayOf(new Date().toISOString()),
           })
         } catch (e) {

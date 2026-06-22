@@ -58,17 +58,55 @@ const GROUPS = [
 
 // --- Posting cadence + publish intent ---
 
+// Label/icon registry keyed by ATOM PLATFORM (the real capacity buckets the
+// Strategist allocates against), in display order. Instagram feed + reels share
+// the single `instagram` bucket; Story is its own. The rows actually shown are
+// derived from the workspace's enabled_outputs (see deriveCadenceRows) so the
+// list always matches what the tenant enabled.
 const CADENCE_PLATFORM_META = [
-  { id: 'instagram',       label: 'Instagram',       Icon: Instagram },
-  { id: 'linkedin',        label: 'LinkedIn',        Icon: Linkedin },
-  { id: 'gbp',             label: 'Google Business', Icon: MapPin },
-  { id: 'facebook',        label: 'Facebook',        Icon: Facebook },
-  { id: 'tiktok',          label: 'TikTok',          Icon: Music2 },
-  { id: 'twitter',         label: 'Twitter / X',     Icon: Twitter },
-  { id: 'threads',         label: 'Threads',         Icon: MessageCircle },
-  { id: 'bluesky',         label: 'Bluesky',         Icon: Cloud },
-  { id: 'instagram_story', label: 'Instagram Story', Icon: Instagram },
+  { id: 'instagram',       label: 'Instagram (feed + reels)', Icon: Instagram },
+  { id: 'instagram_story', label: 'Instagram Story',          Icon: Instagram },
+  { id: 'linkedin',        label: 'LinkedIn',                 Icon: Linkedin },
+  { id: 'gbp',             label: 'Google Business',          Icon: MapPin },
+  { id: 'facebook',        label: 'Facebook',                 Icon: Facebook },
+  { id: 'tiktok',          label: 'TikTok',                   Icon: Music2 },
+  { id: 'twitter',         label: 'Twitter / X',              Icon: Twitter },
+  { id: 'threads',         label: 'Threads',                  Icon: MessageCircle },
+  { id: 'bluesky',         label: 'Bluesky',                  Icon: Cloud },
+  { id: 'mastodon',        label: 'Mastodon',                 Icon: MessageCircle },
 ]
+
+// enabled_outputs (registry ids) → atom-platform set. MUST stay in sync with
+// atomPlatformsFromEnabledOutputs in api/_lib/atomPlan.js: instagram_post and
+// instagram_reel share the `instagram` bucket; instagram_story is standalone.
+function atomPlatformsOf(enabledOutputs) {
+  const set = new Set()
+  for (const id of enabledOutputs || []) {
+    if (id === 'instagram_post' || id === 'instagram_reel') set.add('instagram')
+    else if (id === 'instagram_story') set.add('instagram_story')
+    else set.add(id)
+  }
+  return set
+}
+
+// Client-side safety net for the cold-start prior — only used if the server
+// didn't send cadence_defaults (app_config.cadence_defaults, migration 142).
+// The server value is the source of truth; this mirrors the migration seed.
+const FALLBACK_CADENCE_PRIOR = {
+  instagram: 4, instagram_story: 5, linkedin: 3, facebook: 3,
+  gbp: 2, tiktok: 3, twitter: 4, threads: 4, bluesky: 3, mastodon: 3,
+}
+
+// PURE: compute Auto cadence channels from enabled_outputs × prior. Mirrors
+// computeAutoCadenceChannels in api/_lib/cadenceDefaults.js.
+function computeAutoChannels(enabledOutputs, prior) {
+  const out = {}
+  for (const p of atomPlatformsOf(enabledOutputs)) {
+    if (prior?.[p] == null) continue
+    out[p] = { target_per_week: prior[p], enabled: true }
+  }
+  return out
+}
 
 const WEEK_DAYS = [
   { id: 'sun', label: 'Su' }, { id: 'mon', label: 'Mo' },
@@ -87,14 +125,12 @@ const TIMEZONE_OPTIONS = [
   { value: 'Pacific/Honolulu',    label: 'Hawaii' },
 ]
 
+// Auto by default; channels are COMPUTED from enabled_outputs × the prior, so
+// the static map is empty here (no hardcoded trio).
 const DEFAULT_CADENCE_POLICY = {
   version: 1, provenance: 'bernard', trust_stage: 'approve_all',
   quiet_days: ['sat', 'sun'],
-  channels: {
-    instagram: { target_per_week: 4, enabled: true },
-    linkedin:  { target_per_week: 3, enabled: true },
-    gbp:       { target_per_week: 3, enabled: true },
-  },
+  channels: {},
   digests: [], goals: [],
 }
 
@@ -116,11 +152,17 @@ const NEWSLETTER_OPTIONS = [
   { value: 'skip',    label: 'No newsletter',     desc: 'Hides the email channel' },
 ]
 
-function CadenceCard({ cadence, onChange }) {
+function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
   const isAuto = (cadence?.provenance ?? 'bernard') !== 'user'
   const channels = cadence?.channels || {}
   const quietDays = Array.isArray(cadence?.quiet_days) ? cadence.quiet_days : ['sat', 'sun']
   const timezone = cadence?.timezone || 'America/Los_Angeles'
+
+  // Rows = the cadence-bearing atom platforms the workspace has enabled, in
+  // registry order. In Auto, values are COMPUTED from the prior (read-only). In
+  // Manual, values come from the stored policy (seeded from the prior).
+  const enabledPlatforms = atomPlatformsOf(enabledOutputs)
+  const rows = CADENCE_PLATFORM_META.filter(m => enabledPlatforms.has(m.id))
 
   function setChannel(platform, patch) {
     onChange({
@@ -128,9 +170,20 @@ function CadenceCard({ cadence, onChange }) {
       provenance: 'user',
       channels: {
         ...channels,
-        [platform]: { ...(channels[platform] || { target_per_week: 0, enabled: false }), ...patch },
+        [platform]: { ...(channels[platform] || { target_per_week: prior?.[platform] ?? 0, enabled: true }), ...patch },
       },
     })
+  }
+
+  function toggleAuto() {
+    if (isAuto) {
+      // → Manual: seed editable targets from the current computed Auto values so
+      // the operator starts from the recommendation, not zeros.
+      const seeded = Object.keys(channels).length ? channels : computeAutoChannels(enabledOutputs, prior)
+      onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), provenance: 'user', channels: seeded })
+    } else {
+      onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), provenance: 'bernard' })
+    }
   }
 
   function toggleQuietDay(day) {
@@ -157,7 +210,7 @@ function CadenceCard({ cadence, onChange }) {
               role="switch"
               aria-checked={isAuto}
               aria-label="Let Bernard manage cadence automatically"
-              onClick={() => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), provenance: isAuto ? 'user' : 'bernard' })}
+              onClick={toggleAuto}
               className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isAuto ? 'border-primary bg-primary' : 'border-input bg-input'
               }`}
@@ -177,11 +230,20 @@ function CadenceCard({ cadence, onChange }) {
 
       <CardContent className={`space-y-5 pt-0 ${isAuto ? 'pointer-events-none opacity-60' : ''}`}>
         {isAuto && (
-          <p className="text-2xs text-muted-foreground px-1">Current defaults — turn off Auto to edit</p>
+          <p className="text-2xs text-muted-foreground px-1">Computed from your enabled channels — turn off Auto to edit</p>
         )}
+        {rows.length === 0 ? (
+          <p className="text-xs text-muted-foreground px-1 py-2">
+            No social channels enabled yet. Turn on channels above and Bernard will set a cadence for each.
+          </p>
+        ) : (
         <div className="rounded-lg border border-border divide-y divide-border">
-          {CADENCE_PLATFORM_META.map(({ id, label: platformLabel, Icon }) => {
-            const ch = channels[id] || { target_per_week: 0, enabled: false }
+          {rows.map(({ id, label: platformLabel, Icon }) => {
+            // Auto: computed from the prior, always enabled. Manual: stored value
+            // (seeded from the prior when the operator first switches to Manual).
+            const ch = isAuto
+              ? { target_per_week: prior?.[id] ?? 0, enabled: true }
+              : (channels[id] || { target_per_week: prior?.[id] ?? 0, enabled: true })
             return (
               <div key={id} className="flex items-center gap-3 px-3 py-2.5">
                 <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -217,6 +279,7 @@ function CadenceCard({ cadence, onChange }) {
             )
           })}
         </div>
+        )}
 
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Quiet days — no posts scheduled</p>
@@ -396,12 +459,22 @@ export default function ChannelsSettings() {
     setSaving(true); setError(null); setSaved(false)
     try {
       const token = await getToken()
+      // When Auto, materialize the computed channels into the stored policy so
+      // every consumer that reads cadence_policy.channels (week summary, Your
+      // Week) sees the same values the Strategist computes live. Manual keeps
+      // the operator's edits verbatim.
+      const prior = ws?.cadence_defaults || FALLBACK_CADENCE_PRIOR
+      const policy = form.cadence_policy || DEFAULT_CADENCE_POLICY
+      const isAutoPolicy = (policy.provenance ?? 'bernard') !== 'user'
+      const cadenceToSave = isAutoPolicy
+        ? { ...policy, channels: computeAutoChannels(form.enabled_outputs, prior) }
+        : policy
       const r = await fetch('/api/workspace/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           enabled_outputs: form.enabled_outputs,
-          cadence_policy:  form.cadence_policy,
+          cadence_policy:  cadenceToSave,
           publish_intent:  form.publish_intent,
         }),
       })
@@ -517,7 +590,12 @@ export default function ChannelsSettings() {
         </Card>
       ))}
 
-      <CadenceCard cadence={form.cadence_policy} onChange={setCadence} />
+      <CadenceCard
+        cadence={form.cadence_policy}
+        onChange={setCadence}
+        enabledOutputs={form.enabled_outputs}
+        prior={ws?.cadence_defaults || FALLBACK_CADENCE_PRIOR}
+      />
       <PublishIntentCard intent={form.publish_intent} onChange={setPublishIntent} />
 
       <Card className="shadow-none bg-muted/40">
