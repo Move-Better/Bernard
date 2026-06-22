@@ -35,7 +35,7 @@ export default function MediaHubHelp() {
         aria-label="Help"
       >
         <Icon as={HelpCircle} size="sm" />
-        <span>Help / How this works</span>
+        <span>How it works</span>
       </button>
 
       {open && (
@@ -53,7 +53,7 @@ export default function MediaHubHelp() {
                 <div className="text-xs">
                   <p className="font-semibold text-foreground">You can come back to this guide anytime.</p>
                   <p className="text-muted-foreground mt-0.5">
-                    Look for the <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary font-medium"><Icon as={HelpCircle} size="xs" />Help / How this works</span> button at the top of the Media Hub page, just below the title. Click it any time you need a refresher.
+                    Look for the <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary font-medium"><Icon as={HelpCircle} size="xs" />How it works</span> button at the top of the Media Hub page, just below the title. Click it any time you need a refresher.
                   </p>
                 </div>
               </div>

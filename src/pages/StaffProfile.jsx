@@ -50,13 +50,16 @@ function phraseStrength(total) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function StaffProfile() {
-  useDocumentTitle('Staff profile')
   const { staffId } = useParams()
   const navigate = useNavigate()
   const { user } = useUser()
   const { role, canPurge } = useUserRole()
   const { data: staffMember, isLoading: loading, error: loadError } = useStaffMember(staffId)
   const { data: staffList = [] } = useStaffSummaries()
+  // Self-view (reached via the "My profile" nav) titles the tab to match;
+  // viewing another teammate's profile keeps the generic "Staff profile".
+  const isSelfProfile = staffMember?.created_by_id === user?.id
+  useDocumentTitle(isSelfProfile ? 'My profile' : 'Staff profile')
 
   // Initial tab can be deep-linked via ?tab=voice|settings|activity. Used by
   // /settings/voice-training success path so users land directly on the

@@ -62,7 +62,7 @@ export default function Overview() {
           <Inbox className="h-4 w-4 text-action shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground">
-              Your queue: {readyToDistribute.length} post{readyToDistribute.length === 1 ? '' : 's'} ready to go out the door.
+              Your queue: {readyToDistribute.length} post{readyToDistribute.length === 1 ? '' : 's'} ready to publish.
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Drafted by AI, media attached — review &amp; schedule each.
