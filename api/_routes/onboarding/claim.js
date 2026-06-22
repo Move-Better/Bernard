@@ -18,6 +18,7 @@ export const config = { runtime: 'nodejs' }
 
 import { createClerkClient, verifyToken } from '@clerk/backend'
 import { validateSlug, FOUNDING_CAP, SEED_SLUGS } from '../../_lib/onboardingValidation.js'
+import { getCadencePrior, computeAutoCadenceChannels } from '../../_lib/cadenceDefaults.js'
 import { addProjectDomain, vercelDomainConfigured, VercelDomainError } from '../../_lib/vercelDomains.js'
 import { sendAdminNotification } from '../../_lib/notifyAdmin.js'
 import { OUTPUT_CHANNELS, sanitizePublishIntent } from '../../../src/lib/outputChannels.js'
@@ -381,6 +382,12 @@ async function handler(req, res) {
   // replace this; until then the Bernard mark is a much better default.
   uploadDefaultOrgLogo(org.id, userId)
 
+  // Seed the cadence channels from the chosen outputs × the cold-start prior
+  // (not a hardcoded trio) so a new tenant's Auto cadence covers exactly what
+  // they enabled. provenance stays 'bernard' (Auto), so the Strategist keeps
+  // recomputing this live as enabled_outputs change.
+  const cadenceChannels = computeAutoCadenceChannels(enabled_outputs, await getCadencePrior(sb))
+
   // 3. Insert workspace row.
   const insertBody = [{
     slug,
@@ -407,11 +414,7 @@ async function handler(req, res) {
       provenance: 'bernard',
       trust_stage: 'approve_all',
       quiet_days: ['sat', 'sun'],
-      channels: {
-        instagram: { target_per_week: 4, enabled: true },
-        linkedin:  { target_per_week: 3, enabled: true },
-        gbp:       { target_per_week: 3, enabled: true },
-      },
+      channels: cadenceChannels,
       digests: [
         { id: 'patients', label: 'Patients', channel: 'email',
           frequency: 'monthly', enabled: true, audience: 'patients' },

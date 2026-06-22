@@ -1,0 +1,71 @@
+// Adaptive posting-cadence — Phase 1 (cold-start prior, computed from outputs).
+//
+// The cadence numbers are NOT hardcoded in app logic: the live prior lives in
+// app_config.cadence_defaults (migration 142) and is editable without a deploy.
+// In Auto mode the effective per-channel cadence is COMPUTED from a workspace's
+// enabled_outputs × this prior — so enabling a channel gives it a sensible
+// cadence with no code change, and every enabled channel is covered (not the
+// old hardcoded instagram/linkedin/gbp trio).
+//
+// Phase 2 (see .claude/adaptive-cadence-spec.md) makes this self-tuning per
+// tenant from engagement_snapshots; this prior remains the zero-history
+// fallback. The FALLBACK_* constant below is only a safety net for a missing
+// app_config row (fresh DB / unit tests) — the DB row is the source of truth.
+
+import { atomPlatformsFromEnabledOutputs } from './atomPlan.js'
+
+// Safety net only — used iff app_config.cadence_defaults is absent. Mirrors the
+// migration-142 seed so behavior is identical before the row is first read.
+export const FALLBACK_CADENCE_PRIOR = Object.freeze({
+  instagram: 4, instagram_story: 5, linkedin: 3, facebook: 3,
+  gbp: 2, tiktok: 3, twitter: 4, threads: 4, bluesky: 3, mastodon: 3,
+})
+
+let _cache = null
+let _cachedAt = 0
+const TTL_MS = 60_000 // matches the workspace-context cache TTL
+
+// Read the cold-start prior from app_config (60s in-process cache). Merges over
+// FALLBACK so a partial row can't drop a platform. `sb` is the same REST helper
+// the callers already use: (path, init) => fetch(...).
+export async function getCadencePrior(sb) {
+  if (_cache && Date.now() - _cachedAt < TTL_MS) return _cache
+  let prior = FALLBACK_CADENCE_PRIOR
+  try {
+    const r = await sb('app_config?key=eq.cadence_defaults&select=value&limit=1')
+    if (r.ok) {
+      const rows = await r.json()
+      const v = rows?.[0]?.value
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        prior = { ...FALLBACK_CADENCE_PRIOR, ...v }
+      }
+    }
+  } catch {
+    // network/DB hiccup — fall back to the safety-net prior, never throw.
+  }
+  _cache = prior
+  _cachedAt = Date.now()
+  return prior
+}
+
+// Test seam: drop the cache so a test can re-read after mutating app_config.
+export function _resetCadencePriorCache() { _cache = null; _cachedAt = 0 }
+
+// PURE: compute the Auto cadence policy `channels` map from a workspace's
+// enabled_outputs and a prior. Returns
+//   { [atomPlatform]: { target_per_week, enabled: true } }
+// for every enabled output that maps to a cadence-bearing atom platform.
+// Channels with no prior entry (blog / email / youtube / ads / landing_page —
+// not per-piece atom-cadence channels) are skipped. Returns {} when there are
+// no enabled outputs (caller decides the fallback).
+export function computeAutoCadenceChannels(enabledOutputs, prior = FALLBACK_CADENCE_PRIOR) {
+  const platforms = atomPlatformsFromEnabledOutputs(enabledOutputs)
+  const out = {}
+  if (!platforms) return out
+  for (const p of platforms) {
+    const tpw = prior[p]
+    if (tpw == null) continue // not an atom-cadence channel — skip
+    out[p] = { target_per_week: tpw, enabled: true }
+  }
+  return out
+}

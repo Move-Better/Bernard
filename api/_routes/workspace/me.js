@@ -16,6 +16,7 @@ import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCach
 import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { resolveCapabilities, CAP_SETTINGS_EDIT } from '../../_lib/capabilities.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
+import { getCadencePrior } from '../../_lib/cadenceDefaults.js'
 import { listConfiguredServices } from '../../_lib/getCredential.js'
 
 // Hard allowlist — only these columns may be patched via this endpoint.
@@ -234,10 +235,12 @@ function sanitizeToneModifiers(value) {
   return out
 }
 
-// Valid atom-platform IDs for cadence_policy.channels
+// Valid atom-platform IDs for cadence_policy.channels. Must cover every
+// cadence-bearing atom platform in api/_lib/cadenceDefaults.js (the prior), or
+// a computed Auto channel gets silently dropped on save.
 const CADENCE_PLATFORMS = new Set([
   'instagram', 'linkedin', 'gbp', 'facebook', 'tiktok',
-  'twitter', 'threads', 'bluesky', 'instagram_story',
+  'twitter', 'threads', 'bluesky', 'instagram_story', 'mastodon',
 ])
 const CADENCE_QUIET_DAYS = new Set(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
 
@@ -462,6 +465,17 @@ async function handler(req, res) {
       console.error('[workspace/me] connected services fetch failed:', e?.message)
     }
 
+    // Cold-start cadence prior (app_config.cadence_defaults) so the Presence
+    // settings UI can compute the Auto per-channel cadence from server data
+    // instead of a client-side hardcode. Non-fatal: the client falls back to
+    // its own constant if absent.
+    let cadence_defaults = null
+    try {
+      cadence_defaults = await getCadencePrior(sb)
+    } catch (e) {
+      console.error('[workspace/me] cadence prior fetch failed:', e?.message)
+    }
+
     return res.status(200).json({
       ...workspace,
       locations,
@@ -471,6 +485,7 @@ async function handler(req, res) {
       current_user_capabilities,
       current_user_producer_onboarded_at,
       active_campaigns,
+      cadence_defaults,
     })
   }
 

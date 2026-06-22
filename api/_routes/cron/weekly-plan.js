@@ -22,10 +22,11 @@ async function handler(req, res) {
   if (auth !== `Bearer ${cronSecret}`) return res.status(401).json({ error: 'Unauthorized' })
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Supabase env not configured' })
 
-  // Active workspaces + cadence_policy (the Strategist reads channels/quiet_days;
-  // falls back to RECOMMENDED_CADENCE when the policy is absent).
+  // Active workspaces + cadence_policy + enabled_outputs (in Auto, the Strategist
+  // computes per-channel cadence from enabled_outputs × the cold-start prior;
+  // falls back to RECOMMENDED_CADENCE only when there are no enabled outputs).
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,cadence_policy`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,cadence_policy,enabled_outputs`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })

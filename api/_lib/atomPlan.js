@@ -144,7 +144,7 @@ export const ATOM_DEFINITIONS = {
 // registry splits it into instagram_post and instagram_reel for the settings
 // UI, but the atom plan keys both under `instagram` (they share the same
 // 4-atom angle set today). Either id enables Instagram atoms.
-function atomPlatformsFromEnabledOutputs(enabledOutputs) {
+export function atomPlatformsFromEnabledOutputs(enabledOutputs) {
   if (!enabledOutputs) return null
   const set = new Set()
   for (const id of enabledOutputs) {
