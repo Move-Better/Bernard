@@ -41,7 +41,7 @@ const NAV_SECTIONS = [
       { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: Building2,
         requiresEditor: true },
       // Analytics — per-asset performance dashboard. Editor-gated like Overview.
-      { to: '/analytics', label: 'Analytics', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
+      { to: '/analytics', label: 'Insights', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
         requiresEditor: true },
     ],
   },

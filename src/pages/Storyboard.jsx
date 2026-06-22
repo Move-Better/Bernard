@@ -59,7 +59,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
         <p className="text-xs text-muted-foreground mt-0.5">
           {needsMediaCount > 0
             ? 'Start with the oldest draft — attach media, then compose and schedule.'
-            : "Media's attached — open each and compose & schedule to get it out the door."}
+            : "Media's attached — open each and compose & schedule to get it published."}
         </p>
       </div>
       {readyCount > 0 && (

@@ -419,7 +419,7 @@ function groupedChannels() {
 }
 
 export default function ChannelsSettings() {
-  useDocumentTitle('Settings — Presence')
+  useDocumentTitle('Settings — Channels')
   const { getToken } = useAuth()
   const { role, isLoading: roleLoading } = useUserRole()
   const { has } = usePermission()
@@ -544,7 +544,7 @@ export default function ChannelsSettings() {
               style={{ background: 'hsl(var(--primary))' }}
               aria-hidden="true"
             />
-            Presence
+            Channels
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Toggle the channels this workspace generates content for. Each interview lets the author pick a subset.

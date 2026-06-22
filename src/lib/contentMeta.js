@@ -30,11 +30,11 @@ export const PLATFORM_META = {
   email:        { label: 'Email',           icon: Mail,       color: 'text-teal-600',   bg: 'bg-teal-50' },
 }
 
-// See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders and different labels — "Ready to Distribute" vs "Approved").
+// See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders; same "Ready to publish" label for the approved status).
 export const STATUS_META = {
   draft:      { label: 'Draft',      color: 'bg-slate-100 text-slate-700',   icon: FileText },
   in_review:  { label: 'In Review',  color: 'bg-amber-100 text-amber-700',   icon: Clock },
-  approved:   { label: 'Approved',   color: 'bg-amber-50 text-amber-700',    icon: CheckCircle2 },
+  approved:   { label: 'Ready to publish', color: 'bg-amber-50 text-amber-700', icon: CheckCircle2 },
   scheduled:  { label: 'Scheduled',  color: 'bg-purple-100 text-purple-700', icon: CalendarDays },
   published:  { label: 'Published',  color: 'bg-green-100 text-green-700',   icon: Send },
   archived:   { label: 'Archived',   color: 'bg-zinc-100 text-zinc-600',     icon: Archive },
