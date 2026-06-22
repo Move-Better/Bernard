@@ -38,7 +38,7 @@ import { getCleanupLevel } from '@/lib/cleanupLevels'
  * audience / story_type on interviews that pre-date these fields, which
  * directly improves voice-attribution scores on regeneration.
  */
-function EditablePill({ value, options, placeholder, onChange, disabled }) {
+function EditablePill({ value, options, placeholder, label, onChange, disabled }) {
   const selected = options.find((o) => o.key === value) || null
   return (
     <label
@@ -53,7 +53,8 @@ function EditablePill({ value, options, placeholder, onChange, disabled }) {
     >
       {selected ? (
         <>
-          <span className="text-2xs">{selected.emoji}</span>
+          {label && <span className="text-muted-foreground/60">{label} ·</span>}
+          {selected.emoji && <span className="text-2xs">{selected.emoji}</span>}
           <span>{selected.label}</span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </>
@@ -328,6 +329,7 @@ export default function StoryDetail() {
                     value={story.audience || null}
                     options={audienceOptions}
                     placeholder="Add audience"
+                    label="Audience"
                     disabled={updateInterview.isPending || !user?.id}
                     onChange={(next) =>
                       updateInterview.mutate({
@@ -340,6 +342,7 @@ export default function StoryDetail() {
                     value={story.story_type || null}
                     options={storyTypeOptions}
                     placeholder="Add story type"
+                    label="Story type"
                     disabled={updateInterview.isPending || !user?.id}
                     onChange={(next) =>
                       updateInterview.mutate({
@@ -353,6 +356,7 @@ export default function StoryDetail() {
                       value={story.campaign_id || null}
                       options={activeCampaignOptions}
                       placeholder="Add campaign"
+                      label="Campaign"
                       disabled={updateInterview.isPending || !user?.id}
                       onChange={(next) =>
                         updateInterview.mutate({
