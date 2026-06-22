@@ -14,7 +14,7 @@ import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { OUTPUT_CHANNELS, EXPORT_SHAPES, PUBLISH_MODES } from '@/lib/outputChannels'
+import { OUTPUT_CHANNELS, EXPORT_SHAPES } from '@/lib/outputChannels'
 import { SaveBar } from '@/components/settings/helpers'
 import { apiFetch } from '@/lib/api'
 
@@ -45,21 +45,15 @@ const SHAPE_LABEL = {
   [EXPORT_SHAPES.SOCIAL_COMPOSE]:  'Caption + image',
   [EXPORT_SHAPES.HTML_EMAIL]:      'HTML email',
 }
-const MODE_LABEL = {
-  [PUBLISH_MODES.BUFFER]:  'via Buffer',
-  [PUBLISH_MODES.WEBSITE]: 'Direct publish',
-  [PUBLISH_MODES.TDC]:     'TrustDrivenCare',
-}
-
 // Channels are grouped for visual scanning; order within each group is
 // preserved from OUTPUT_CHANNELS.
 const GROUPS = [
-  { id: 'long', label: 'Long-form',  members: ['blog', 'email'] },
-  { id: 'local', label: 'Local',      members: ['gbp'] },
-  { id: 'social', label: 'Social',    members: ['instagram_post', 'facebook', 'linkedin', 'twitter', 'threads', 'bluesky', 'mastodon'] },
-  { id: 'video',  label: 'Video',       members: ['instagram_reel', 'tiktok', 'youtube_short', 'youtube'] },
-  { id: 'paid',   label: 'Paid',     members: ['google_ads', 'ig_ads'] },
-  { id: 'web',    label: 'Web',      members: ['landing_page'] },
+  { id: 'long',   label: 'Long-form', members: ['blog', 'email'] },
+  { id: 'local',  label: 'Local',     members: ['gbp'] },
+  { id: 'social', label: 'Social',    members: ['instagram_post', 'instagram_story', 'facebook', 'linkedin', 'twitter', 'threads', 'bluesky', 'mastodon'] },
+  { id: 'video',  label: 'Video',     members: ['instagram_reel', 'tiktok', 'youtube_short', 'youtube'] },
+  { id: 'paid',   label: 'Paid',      members: ['google_ads', 'ig_ads'] },
+  { id: 'web',    label: 'Web',       members: ['landing_page'] },
 ]
 
 // --- Posting cadence + publish intent ---
@@ -176,89 +170,92 @@ function CadenceCard({ cadence, onChange }) {
         </div>
         {isAuto && (
           <p className="text-xs text-muted-foreground pt-1">
-            Bernard schedules posts automatically based on available content and built-in defaults. Turn off to set per-channel targets and quiet days.
+            Bernard manages cadence automatically. Turn off to edit targets.
           </p>
         )}
       </CardHeader>
 
-      {!isAuto && (
-        <CardContent className="space-y-5 pt-0">
-          <div className="rounded-lg border border-border divide-y divide-border">
-            {CADENCE_PLATFORM_META.map(({ id, label: platformLabel, Icon }) => {
-              const ch = channels[id] || { target_per_week: 0, enabled: false }
-              return (
-                <div key={id} className="flex items-center gap-3 px-3 py-2.5">
-                  <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm flex-1 truncate">{platformLabel}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-2xs text-muted-foreground hidden sm:block">posts/wk</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={14}
-                      value={ch.target_per_week}
-                      disabled={!ch.enabled}
-                      onChange={e => setChannel(id, { target_per_week: Math.max(0, Math.min(14, parseInt(e.target.value, 10) || 0)) })}
-                      className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={ch.enabled}
-                      aria-label={`Enable ${platformLabel}`}
-                      onClick={() => setChannel(id, { enabled: !ch.enabled })}
-                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        ch.enabled ? 'border-primary bg-primary' : 'border-input bg-input'
-                      }`}
-                    >
-                      <span className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform ${
-                        ch.enabled ? 'translate-x-4' : 'translate-x-0'
-                      }`} />
-                    </button>
-                  </div>
+      <CardContent className={`space-y-5 pt-0 ${isAuto ? 'pointer-events-none opacity-60' : ''}`}>
+        {isAuto && (
+          <p className="text-2xs text-muted-foreground px-1">Current defaults — turn off Auto to edit</p>
+        )}
+        <div className="rounded-lg border border-border divide-y divide-border">
+          {CADENCE_PLATFORM_META.map(({ id, label: platformLabel, Icon }) => {
+            const ch = channels[id] || { target_per_week: 0, enabled: false }
+            return (
+              <div key={id} className="flex items-center gap-3 px-3 py-2.5">
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm flex-1 truncate">{platformLabel}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-2xs text-muted-foreground hidden sm:block">posts/wk</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={14}
+                    value={ch.target_per_week}
+                    disabled={!ch.enabled || isAuto}
+                    readOnly={isAuto}
+                    onChange={e => !isAuto && setChannel(id, { target_per_week: Math.max(0, Math.min(14, parseInt(e.target.value, 10) || 0)) })}
+                    className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={ch.enabled}
+                    aria-label={`Enable ${platformLabel}`}
+                    onClick={() => !isAuto && setChannel(id, { enabled: !ch.enabled })}
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      ch.enabled ? 'border-primary bg-primary' : 'border-input bg-input'
+                    } ${isAuto ? 'cursor-default' : 'cursor-pointer'}`}
+                  >
+                    <span className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform ${
+                      ch.enabled ? 'translate-x-4' : 'translate-x-0'
+                    }`} />
+                  </button>
                 </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Quiet days — no posts scheduled</p>
+          <div className="flex gap-1.5 flex-wrap">
+            {WEEK_DAYS.map(({ id: dayId, label: dayLabel }) => {
+              const isPosting = !quietDays.includes(dayId)
+              return (
+                <button
+                  key={dayId}
+                  type="button"
+                  onClick={() => !isAuto && toggleQuietDay(dayId)}
+                  className={`w-9 h-9 rounded-full text-2xs font-semibold border transition-colors ${
+                    isPosting
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted text-muted-foreground border-border'
+                  } ${isAuto ? 'cursor-default' : ''}`}
+                >
+                  {dayLabel}
+                </button>
               )
             })}
           </div>
+          <p className="text-2xs text-muted-foreground">Filled = posting day · Grey = quiet</p>
+        </div>
 
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Quiet days — no posts scheduled</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {WEEK_DAYS.map(({ id: dayId, label: dayLabel }) => {
-                const isPosting = !quietDays.includes(dayId)
-                return (
-                  <button
-                    key={dayId}
-                    type="button"
-                    onClick={() => toggleQuietDay(dayId)}
-                    className={`w-9 h-9 rounded-full text-2xs font-semibold border transition-colors ${
-                      isPosting
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted text-muted-foreground border-border'
-                    }`}
-                  >
-                    {dayLabel}
-                  </button>
-                )
-              })}
-            </div>
-            <p className="text-2xs text-muted-foreground">Filled = posting day · Grey = quiet</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Timezone for scheduling</p>
-            <select
-              value={timezone}
-              onChange={e => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), timezone: e.target.value, provenance: 'user' })}
-              className="w-full max-w-xs text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {TIMEZONE_OPTIONS.map(tz => (
-                <option key={tz.value} value={tz.value}>{tz.label}</option>
-              ))}
-            </select>
-          </div>
-        </CardContent>
-      )}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Timezone for scheduling</p>
+          <select
+            value={timezone}
+            disabled={isAuto}
+            onChange={e => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), timezone: e.target.value, provenance: 'user' })}
+            className="w-full max-w-xs text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
+          >
+            {TIMEZONE_OPTIONS.map(tz => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </select>
+        </div>
+      </CardContent>
     </Card>
   )
 }
@@ -359,7 +356,7 @@ function groupedChannels() {
 }
 
 export default function ChannelsSettings() {
-  useDocumentTitle('Settings — Output channels')
+  useDocumentTitle('Settings — Presence')
   const { getToken } = useAuth()
   const { role, isLoading: roleLoading } = useUserRole()
   const { has } = usePermission()
@@ -474,7 +471,7 @@ export default function ChannelsSettings() {
               style={{ background: 'hsl(var(--primary))' }}
               aria-hidden="true"
             />
-            Output channels
+            Presence
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Toggle the channels this workspace generates content for. Each interview lets the author pick a subset.
@@ -554,9 +551,7 @@ export default function ChannelsSettings() {
 
 function ChannelTile({ channel, checked, onToggle }) {
   const Icon = CHANNEL_ICONS[channel.id] || Radio
-  const badge = channel.publishMode
-    ? MODE_LABEL[channel.publishMode]
-    : SHAPE_LABEL[channel.exportShape] || 'Export'
+  const badge = SHAPE_LABEL[channel.exportShape] || 'Export'
   return (
     <label
       className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
