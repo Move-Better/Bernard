@@ -72,10 +72,10 @@ Close with: "Full article at the link in bio 👆"
 Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
-      patient_scenario: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
-ANGLE: Lead with an anonymized patient scenario that shows the before/after transformation. Make it feel real and specific — describe symptoms, daily limitations, and the outcome.
-${isPersonal ? `Write in ${firstName}'s first-person voice — I treated this patient.` : `Frame as a patient the team worked with.`}
-Close with: "Read the full story — link in bio"
+      quick_win: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
+ANGLE: Lead with one actionable tip or self-test the viewer can try right now at home — something concrete that ${firstName ? `${firstName} mentioned` : 'the clinician mentioned'} in the conversation. Make it genuinely useful on its own. Do NOT reference any specific patient, case, or individual's story — keep it general and educational (no PHI).
+${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
+Close with: "More in the full article — link in bio 👆"
 Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 

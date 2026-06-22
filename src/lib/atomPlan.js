@@ -7,7 +7,7 @@ import { Instagram, Linkedin, Facebook, MapPin, Music2, Twitter, AtSign, Cloud, 
 export const ATOM_DEFINITIONS = {
   instagram: [
     { slot: 1, angle: 'hook',             label: 'The Hook',             description: 'Scroll-stopping myth-buster or bold claim — impossible to scroll past' },
-    { slot: 2, angle: 'patient_scenario', label: 'Patient Story',        description: 'Anonymized scenario showing the before/after transformation' },
+    { slot: 2, angle: 'quick_win',        label: 'Quick Win',            description: 'One actionable tip or self-test viewers can try right now — no patient specifics' },
     { slot: 3, angle: 'clinical_insight', label: 'Clinical Insight',     description: 'The one thing most people get wrong about this condition' },
     { slot: 4, angle: 'cta',              label: 'Call to Action',       description: 'Book-now post with a condition-specific hook' },
   ],
