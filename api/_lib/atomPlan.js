@@ -13,9 +13,9 @@ export const ATOM_DEFINITIONS = {
     },
     {
       slot: 2,
-      angle: 'patient_scenario',
-      label: 'Patient Story',
-      description: 'Anonymized scenario showing the before/after transformation',
+      angle: 'quick_win',
+      label: 'Quick Win',
+      description: 'One actionable tip or self-test viewers can try right now — no patient specifics',
     },
     {
       slot: 3,
