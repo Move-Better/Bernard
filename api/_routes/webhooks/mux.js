@@ -263,7 +263,14 @@ export default async function handler(req, res) {
       }
     }
 
-    await patchByAssetOrPassthrough(patch)
+    const readyResult = await patchByAssetOrPassthrough(patch)
+    // null = the media_assets row wasn't found yet (create-race): the upload's
+    // own PATCH hasn't landed. Return 503 so Mux re-delivers (it retries non-2xx
+    // with backoff); by the next delivery the row exists and the asset gets its
+    // ready status instead of stranding at 'transcoding' forever.
+    if (readyResult === null) {
+      return res.status(503).json({ error: 'row_not_found_yet', message: 'media_assets row not resolved; retry later' })
+    }
     return res.status(200).json({ received: true })
   }
 
@@ -272,7 +279,10 @@ export default async function handler(req, res) {
       ? (errors[0].messages?.join('; ') || errors[0].type || 'unknown')
       : 'unknown'
     console.error(`[mux/webhook] transcode errored for asset ${assetId}: ${reason}`)
-    await patchByAssetOrPassthrough({ transcode_status: 'errored' })
+    const erroredResult = await patchByAssetOrPassthrough({ transcode_status: 'errored' })
+    if (erroredResult === null) {
+      return res.status(503).json({ error: 'row_not_found_yet', message: 'media_assets row not resolved; retry later' })
+    }
     return res.status(200).json({ received: true })
   }
 

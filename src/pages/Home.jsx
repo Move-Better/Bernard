@@ -199,6 +199,36 @@ export default function Home() {
       {/* Call-first hero — only for realtime-voice workspaces. */}
       {callFirst && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
 
+      {/* Compact attention strip — work before reward: the queue sits directly
+          under the greeting so pending items are seen before the celebratory
+          cards below. Detail lives in Overview; this is just the count + a link. */}
+      {attentionTotal > 0 && (
+        <div
+          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3 flex-wrap"
+          style={{ background: 'hsl(var(--action) / 0.08)', border: '1px solid hsl(var(--action) / 0.25)' }}
+        >
+          <span className="h-2 w-2 rounded-full bg-action shrink-0" />
+          <span className="text-sm font-medium text-foreground">
+            {attentionTotal} {attentionTotal === 1 ? 'item needs' : 'items need'} your attention
+          </span>
+          {attentionParts.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+              {attentionParts.map((part) => (
+                <span key={part.to} className="flex items-center gap-1.5">
+                  <span aria-hidden="true">·</span>
+                  <Link
+                    to={part.to}
+                    className="font-medium text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-0.5"
+                  >
+                    {part.label} <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+
       <InstallBanner />
 
       {/* Reward — pieces that went live this week. Reinforces "you talked → published." */}
@@ -236,35 +266,6 @@ export default function Home() {
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </Link>
-      )}
-
-      {/* Compact attention strip — replaces expanded task-bucket sections.
-          Detail lives in Overview; this is just the count + a link. */}
-      {attentionTotal > 0 && (
-        <div
-          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3 flex-wrap"
-          style={{ background: 'hsl(var(--action) / 0.08)', border: '1px solid hsl(var(--action) / 0.25)' }}
-        >
-          <span className="h-2 w-2 rounded-full bg-action shrink-0" />
-          <span className="text-sm font-medium text-foreground">
-            {attentionTotal} {attentionTotal === 1 ? 'item needs' : 'items need'} your attention
-          </span>
-          {attentionParts.length > 0 && (
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
-              {attentionParts.map((part) => (
-                <span key={part.to} className="flex items-center gap-1.5">
-                  <span aria-hidden="true">·</span>
-                  <Link
-                    to={part.to}
-                    className="font-medium text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-0.5"
-                  >
-                    {part.label} <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </span>
-              ))}
-            </span>
-          )}
-        </div>
       )}
 
       {/* What to talk about next (merged: patient question gaps + topic planner)

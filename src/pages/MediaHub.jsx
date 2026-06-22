@@ -420,8 +420,9 @@ export default function MediaHub() {
 
       {/* Filters — search + actions on top; one chip strip below */}
       <div className="space-y-3">
-        {/* Search + primary actions — one row at all widths. */}
-        <div className="flex items-center gap-2">
+        {/* Search + primary actions — wraps so the action buttons drop below the
+            search instead of overflowing at ~390px when all are present. */}
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
