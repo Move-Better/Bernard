@@ -92,8 +92,8 @@ function Canvas({ ctx }) {
     }
   }
   return (
-    <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-4" style={{ background: 'hsl(220 16% 91%)' }}>
-      <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-card/80 px-2 py-1 text-3xs backdrop-blur" style={{ color: 'hsl(var(--muted-foreground))' }}>
+    <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-muted p-4">
+      <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-card/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
         <label className="flex cursor-pointer items-center gap-1"><input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} /> safe zones</label>
       </div>
       <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>

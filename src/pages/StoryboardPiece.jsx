@@ -388,19 +388,24 @@ export default function StoryboardPiece() {
         ]}
       />
 
-      {/* Header nav */}
+      {/* Header nav — "Edit words" demoted to a left-aligned text link so the
+          right cluster carries only one primary CTA ("Continue to publish")
+          plus the secondary "Next draft" advance, instead of three competing
+          buttons. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <BackLink to="/publish">Back to Publish</BackLink>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <BackLink to="/publish">Back to Publish</BackLink>
           {piece.interview_id && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              type="button"
               onClick={() => navigate(`/stories/${piece.interview_id}?piece=${piece.id}`)}
+              className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               Edit words
-            </Button>
+            </button>
           )}
+        </div>
+        <div className="flex items-center gap-2">
           {nextPieceId && (
             <Button variant="ghost" size="sm" onClick={() => navigate(`/publish/${nextPieceId}`)}>
               Next draft ({remainingNeedsMedia.length} left) <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -875,8 +880,15 @@ export default function StoryboardPiece() {
               <Sliders className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Adjust by hand</span>
               <span className="text-2xs text-muted-foreground">· same knobs the AI turns</span>
+              {/* When collapsed, surface the active treatment so the live preview
+                  is never explained only by hidden state (the ghost-effect fix). */}
+              {!manualOpen && (
+                <span className="ml-auto truncate text-2xs text-muted-foreground max-w-[55%]">
+                  {(treatment.templateId || 'editorial').replace('-', ' ')} · {treatment.aspect} · grade {treatment.grade}
+                </span>
+              )}
               <ChevronDown
-                className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`}
+                className={`${manualOpen ? 'ml-auto' : 'ml-1.5'} h-4 w-4 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`}
               />
             </button>
             {manualOpen && (

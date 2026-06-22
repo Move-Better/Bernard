@@ -172,7 +172,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
             key={f.key}
             type="button"
             onClick={() => setMomentType(f.key)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               momentType === f.key ? 'border-primary bg-primary text-white' : 'border-border bg-card hover:bg-muted'
             }`}
           >
@@ -343,6 +343,11 @@ export default function MomentMiner() {
   // exceeded and never poll. Reset to 0 when detection ends (effect below) so a
   // future detection restarts the window. Matches the Book/ClipFinder pattern.
   const pollStartRef = useRef({ at: 0 })
+  // Mirror of "is any source video detecting", kept current by the effect below.
+  // The secondary count queries read this ref (not the mediaData state) inside
+  // their refetchInterval so they never poll on a stale closure after detection
+  // finishes.
+  const detectingRef = useRef(false)
 
   // Source videos (kind=video, not archived)
   const {
@@ -373,8 +378,9 @@ export default function MomentMiner() {
     refetchInterval: () => {
       // The count map has no job-state of its own; gate on the source videos'
       // detection state (counts only change while detection or its follow-on
-      // render is in flight) and hard-cap at 5 min.
-      if (!anyDetecting(mediaData)) return false
+      // render is in flight) and hard-cap at 5 min. Read the ref, not mediaData,
+      // to avoid a stale closure firing one extra poll after detection ends.
+      if (!detectingRef.current) return false
       if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
       if (Date.now() - pollStartRef.current.at > POLL_CEILING_MS) return false
       return 60_000
@@ -389,8 +395,9 @@ export default function MomentMiner() {
     enabled: !!ws,
     refetchInterval: () => {
       // Same gating as clip counts: proposals appear when detection lands, so
-      // poll only while a source video is detecting, capped at 5 min.
-      if (!anyDetecting(mediaData)) return false
+      // poll only while a source video is detecting, capped at 5 min. Ref-read
+      // avoids the stale-closure extra poll after detection ends.
+      if (!detectingRef.current) return false
       if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
       if (Date.now() - pollStartRef.current.at > POLL_CEILING_MS) return false
       return 60_000
@@ -402,6 +409,7 @@ export default function MomentMiner() {
   // restarts a fresh window (set inside refetchInterval the moment it's seen).
   const isDetecting = anyDetecting(mediaData)
   useEffect(() => {
+    detectingRef.current = isDetecting
     if (!isDetecting) pollStartRef.current = { at: 0 }
   }, [isDetecting])
 

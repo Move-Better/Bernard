@@ -108,11 +108,19 @@ export function planToDbOps(plan, existingAtoms = []) {
   return { toDelete, toInsert, toUpdate }
 }
 
-/** Execute the DB ops from planToDbOps. */
-async function persistPlan({ ops, sb = defaultSb }) {
+/**
+ * Execute the DB ops from planToDbOps. `workspaceId`, when provided, is added as
+ * a secondary `&workspace_id=eq.` guard on every DELETE/PATCH so a stale or
+ * corrupt id can never reach a row outside the plan's workspace — matching the
+ * defense-in-depth used by every other mutation in the codebase. The ids come
+ * from a workspace-scoped SELECT, so this is belt-and-suspenders, not a live
+ * leak fix.
+ */
+async function persistPlan({ ops, sb = defaultSb, workspaceId = null }) {
+  const wsFilter = workspaceId ? `&workspace_id=eq.${workspaceId}` : ''
   if (ops.toDelete.length) {
     const ids = ops.toDelete.map((id) => `"${id}"`).join(',')
-    await sb(`content_plan_atoms?id=in.(${ids})`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+    await sb(`content_plan_atoms?id=in.(${ids})${wsFilter}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
   }
   if (ops.toInsert.length) {
     const r = await sb('content_plan_atoms', {
@@ -125,7 +133,7 @@ async function persistPlan({ ops, sb = defaultSb }) {
     if (!r.ok) throw new Error(`atom insert ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
   }
   for (const u of ops.toUpdate) {
-    await sb(`content_plan_atoms?id=eq.${u.id}`, {
+    await sb(`content_plan_atoms?id=eq.${u.id}${wsFilter}`, {
       method: 'PATCH',
       body: JSON.stringify(u.patch),
       headers: { Prefer: 'return=minimal' },
@@ -172,7 +180,7 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
   const existing = exRes.ok ? await exRes.json() : []
 
   const ops = planToDbOps(plan, existing)
-  await persistPlan({ ops, sb })
+  await persistPlan({ ops, sb, workspaceId: workspace.id })
 
   return {
     weekMonday: planWeek,
