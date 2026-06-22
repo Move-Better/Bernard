@@ -68,7 +68,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
           className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
         >
           <Send className="h-3.5 w-3.5" />
-          Work the inbox
+          Review &amp; publish
         </Link>
       )}
     </div>
