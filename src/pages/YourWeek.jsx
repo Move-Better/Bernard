@@ -75,7 +75,7 @@ function drillTo(item) {
 function cardState(item) {
   const cis = item.contentItemStatus
   if (!item.contentPieceId || item.status === 'pending') {
-    return { label: 'needs draft', cls: 'bg-warning/10 text-warning', action: 'draft' }
+    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft' }
   }
   if (item.status === 'drafting') {
     return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }
@@ -88,7 +88,7 @@ function cardState(item) {
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
-  return { label: 'open to review', cls: 'bg-warning/10 text-warning', action: 'open', reviewable: true }
+  return { label: 'open to review', cls: 'bg-action/10 text-action', action: 'open', reviewable: true }
 }
 
 function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
