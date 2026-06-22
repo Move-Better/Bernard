@@ -60,6 +60,45 @@ computed values, so the week-view is immediately consistent instead of healing o
 settings save. Guarded to `provenance != 'user'`. Preview confirmed correct for all 7
 active workspaces. Not required for correctness (Strategist + settings compute live).
 
+## Degradation: new, no-analytics, and manual-publish tenants (Q, 2026-06-21)
+
+**Phase 1 is analytics-independent.** `computeAutoCadenceChannels` reads only
+`enabled_outputs × prior` — no engagement data. So a brand-new tenant, or one that never
+connects Buffer / bundle.social / GA4 / GBP, gets the best-practice prior for every
+channel it enabled and stays there. The prior *is* a sensible cadence, not a placeholder.
+
+**Phase 2 degrades to exactly that.** The min-sample guardrail keeps a channel on the
+prior until it has N posts with real stats. No data → prior; sparse → prior with cautious
+nudges; rich → tuned. No-analytics tenants never get worse than Phase 1.
+
+**Hard boundary — manual-publish tenants can never be tuned.** A tenant on
+`publish_intent.social = 'manual'` (copy-paste) produces **zero** `engagement_snapshots`:
+Bernard never publishes for them and can't read stats back. The adaptive loop therefore
+*cannot* apply to them — they are permanently prior-driven. Adaptive tuning is a benefit
+only for tenants who publish through Bernard (bundle/Buffer) or connect GA4/GBP. This is
+inherent, not a bug; the prior is the ceiling of what we can do for manual tenants.
+
+## Scheduling interactions: past-due slots (Q, 2026-06-21)
+
+Cadence sets *how many* slots per channel/week; `assignSlots` (strategist.js) *places*
+them. What happens when a planned date passes without the draft being finished:
+
+- **Planned but never drafted → auto-rolls forward.** The Strategist re-plans on every
+  interview completion + the weekly cron. `planToDbOps` replace-untouched recomputes only
+  undrafted strategist slots (`planned_by=strategist, status=pending, no content_piece`)
+  into the *current* week; surplus banks (`held_at`) and is promoted FIFO later. Undrafted
+  content is never stranded in the past.
+- **Drafted + approved + scheduled → owned by the external queue.** Approve pushes to the
+  Buffer/bundle queue (`use_queue=true`); the external scheduler picks the next slot, so a
+  past Bernard date just sends at the next queue opening. `sync-buffer-published`
+  reconciles status. There is **no** Bernard cron that fires a Bernard-held `scheduled`
+  item by date (only the opt-in GBP `auto-publish` cron + the Buffer reconciler).
+- **Known gap:** `assignSlots` can stamp a slot *earlier in the current week than now*
+  (cron runs Thu, assigns a Tue slot) — past the moment it's created, not re-dated until
+  the next replan, and **not surfaced** anywhere (the only "overdue" in the UI is stale
+  *interviews*, not posts). Candidate Phase 2 work: an explicit "overdue draft" nudge on
+  `/week`, or skip past-this-week offsets in `assignSlots`.
+
 ## Phase 2 — the self-tuning loop (proposed)
 
 **Signal (already collected):** `engagement_snapshots` (per `content_item` + platform,
@@ -104,3 +143,5 @@ across the fleet — the prior stops being a human guess too.
    `content_plan_atoms.platform`, caption prompts, + a migration), or is the combined
    feed+reels bucket fine?
 4. How visible should the tuning be — a settings readout, a weekly digest line, both?
+5. Past-due slots — surface undrafted/overdue slots on `/week` as a nudge, auto-roll them
+   within the week, and/or have `assignSlots` skip past-this-week offsets?
