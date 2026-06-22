@@ -201,7 +201,7 @@ export default function StoryDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [transcriptDrawerOpen, setTranscriptDrawerOpen] = useState(false)
-  const { workspace } = useWorkspace()
+  const workspace = useWorkspace()
   const { user } = useUser()
   const { canPurge: isWorkspaceAdmin } = useUserRole()
   const updateInterview = useUpdateInterview()

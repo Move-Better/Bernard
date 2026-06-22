@@ -93,7 +93,7 @@ function CreativeCard({ creative, onDelete, deleting }) {
 }
 
 export default function Ads() {
-  useDocumentTitle('Ads · Bernard')
+  useDocumentTitle('Ads')
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
 

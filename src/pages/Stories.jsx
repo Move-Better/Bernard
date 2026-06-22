@@ -4,6 +4,7 @@ import { useUser } from '@clerk/react'
 import { Mic, Target, User, X } from 'lucide-react'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { getPatientPrototypesUi } from '@/lib/prompts'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import StoriesCardsView from '@/components/stories/StoriesCardsView'
@@ -44,6 +45,7 @@ const SELECT_CLS =
  * The campaign progress strip renders at page level so it's visible in all views.
  */
 export default function Stories() {
+  useDocumentTitle('Stories')
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useUser()
 

@@ -153,7 +153,7 @@ function KindSection({ kind, concepts, totalStaff, onDraft }) {
 export default function Synthesis() {
   useDocumentTitle('Knowledge Synthesis')
   const navigate = useNavigate()
-  const { workspace } = useWorkspace()
+  const workspace = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
 
   const [data, setData]       = useState(null)

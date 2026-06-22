@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { useUserRole } from '@/lib/useUserRole'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
 
 // ── API helpers ──────────────────────────────────────────────────────────
@@ -141,6 +142,7 @@ const POLL_INTERVAL_MS = 4000
 const POLL_CAP_MS      = 5 * 60 * 1000
 
 export default function Book() {
+  useDocumentTitle('Book')
   const { role } = useUserRole()
   const isAdmin = role === 'admin'
 
@@ -239,7 +241,7 @@ export default function Book() {
           <div className="flex items-center gap-2 shrink-0">
             {staleBadge && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                New material since last regen
+                New material since the last rebuild
               </span>
             )}
             <Button
