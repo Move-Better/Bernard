@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — content that sounds like your clinic</title>
+<meta name="description" content="Bernard turns a short conversation with a clinician into a week of on-brand, on-voice content — written, designed, scheduled and published for you." />
+<style>
+  :root{
+    --primary: 186 83% 27%;        /* Blue Spruce #0C7580 */
+    --action:  32 95% 44%;         /* amber */
+    --ink:     222 47% 8%;
+    --muted:   215 16% 47%;
+    --paper:   220 22% 97%;
+    --border:  214 32% 91%;
+    --card: 0 0% 100%;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:hsl(var(--ink));background:hsl(var(--paper));line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  a{color:hsl(var(--primary));text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+
+  header.top{background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));position:sticky;top:0;z-index:50;
+    backdrop-filter:saturate(180%) blur(6px)}
+  .top .wrap{display:flex;align-items:center;gap:14px;height:60px}
+  .mark{width:30px;height:30px;border-radius:8px;flex:none;
+    background:linear-gradient(135deg,hsl(var(--primary)),hsl(186 83% 20%));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;
+    box-shadow:0 2px 8px -2px hsl(var(--primary)/.5)}
+  .brand b{font-size:16px;letter-spacing:-.01em}
+  .brand small{display:block;color:hsl(var(--muted));font-size:11px;margin-top:-2px}
+  .top .spacer{flex:1}
+  .top a.cta{font-size:13px;font-weight:600;color:#fff;background:hsl(var(--primary));border-radius:8px;padding:8px 16px}
+  .top a.cta:hover{text-decoration:none;background:hsl(186 83% 22%)}
+
+  .hero{padding:56px 0 10px;text-align:center}
+  .hero .tag{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:hsl(var(--primary));background:hsl(var(--primary)/.08);border:1px solid hsl(var(--primary)/.2);
+    border-radius:999px;padding:4px 12px;margin-bottom:20px}
+  .hero h1{font-size:38px;line-height:1.12;margin:0 0 16px;letter-spacing:-.02em;max-width:780px;margin-inline:auto}
+  .hero p.lede{font-size:19px;color:hsl(215 25% 27%);max-width:680px;margin:0 auto}
+  .hero .actions{margin-top:26px}
+  .hero .actions a{display:inline-block;font-size:15px;font-weight:600;color:#fff;background:hsl(var(--primary));
+    border-radius:10px;padding:12px 26px;box-shadow:0 8px 24px -12px hsl(var(--primary)/.6)}
+  .hero .actions a:hover{text-decoration:none;background:hsl(186 83% 22%)}
+
+  section{padding:40px 0;border-top:1px solid hsl(var(--border))}
+  section:first-of-type{border-top:none}
+  h2{font-size:26px;letter-spacing:-.01em;margin:0 0 8px;text-align:center}
+  .sub{color:hsl(var(--muted));margin:0 auto 26px;font-size:16px;text-align:center;max-width:640px}
+  h3{font-size:16px;margin:22px 0 6px}
+  p{margin:10px 0}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;padding:22px;margin:14px 0;
+    box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .grid{display:grid;gap:14px}
+  @media(min-width:680px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:1fr 1fr 1fr}}
+
+  /* Stepper */
+  .steps{display:grid;gap:12px;counter-reset:s}
+  @media(min-width:680px){.steps{grid-template-columns:repeat(5,1fr);gap:10px}}
+  .step{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:16px;text-align:center}
+  .step .k{font-size:11px;font-weight:700;color:hsl(var(--primary));letter-spacing:.05em;text-transform:uppercase}
+  .step h4{margin:8px 0 4px;font-size:15px}
+  .step p{margin:0;font-size:13px;color:hsl(var(--muted));line-height:1.5}
+
+  /* Capability cards */
+  .feat{display:grid;gap:14px}
+  @media(min-width:680px){.feat{grid-template-columns:1fr 1fr}}
+  .feat .item{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;padding:18px 20px;
+    display:flex;gap:14px;align-items:flex-start;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .feat .ico{width:40px;height:40px;border-radius:10px;flex:none;background:hsl(var(--primary)/.08);
+    display:flex;align-items:center;justify-content:center;font-size:20px}
+  .feat .item b{font-size:15px}
+  .feat .item p{margin:4px 0 0;font-size:13.5px;color:hsl(var(--muted));line-height:1.5}
+
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:6px 0}
+  .muted{color:hsl(var(--muted))}
+
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid hsl(var(--border));vertical-align:top}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:hsl(var(--muted));font-weight:600}
+
+  .callout{border-left:3px solid hsl(var(--action));background:hsl(var(--action)/.05);border-radius:0 10px 10px 0;
+    padding:16px 20px;margin:18px 0;max-width:720px;margin-inline:auto}
+  .callout b{color:hsl(32 95% 30%)}
+
+  .closing{text-align:center;padding:52px 0}
+  .closing h2{margin-bottom:10px}
+  .closing a{display:inline-block;font-size:15px;font-weight:600;color:#fff;background:hsl(var(--primary));
+    border-radius:10px;padding:12px 28px;margin-top:8px;box-shadow:0 8px 24px -12px hsl(var(--primary)/.6)}
+  .closing a:hover{text-decoration:none;background:hsl(186 83% 22%)}
+
+  footer{border-top:1px solid hsl(var(--border));padding:26px 0 56px;color:hsl(var(--muted));font-size:13px;text-align:center}
+
+  @media print{header.top{position:static}.top a.cta,.hero .actions{display:none}section{break-inside:avoid}body{background:#fff}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="mark">B</div>
+    <div class="brand"><b>Bernard</b><small>Voice-faithful clinical content</small></div>
+    <div class="spacer"></div>
+    <a class="cta" href="https://withbernard.ai">Get started</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="tag">For clinics</span>
+    <h1>Content that actually sounds like your clinic — without the work</h1>
+    <p class="lede">A clinician talks for a few minutes. Bernard does the writing, the design, the
+    scheduling and the publishing — on brand, on voice, and on a steady rhythm across everywhere
+    your clinic shows up online.</p>
+    <div class="actions"><a href="https://withbernard.ai">See it for your clinic →</a></div>
+  </div>
+
+  <!-- THE IDEA -->
+  <section>
+    <h2>The idea</h2>
+    <p class="sub">Your clinic is full of expertise but short on time. Bernard fixes the hard part — actually producing good content, consistently.</p>
+    <div class="grid three">
+      <div class="card"><b style="color:hsl(var(--primary))">Capture once</b><p class="muted" style="font-size:14px;margin:6px 0 0">One short conversation or video becomes many pieces, across many channels.</p></div>
+      <div class="card"><b style="color:hsl(var(--primary))">Sounds like you</b><p class="muted" style="font-size:14px;margin:6px 0 0">Bernard learns each clinician's real voice and writes in it — never generic AI filler.</p></div>
+      <div class="card"><b style="color:hsl(var(--primary))">Stays on a rhythm</b><p class="muted" style="font-size:14px;margin:6px 0 0">Posts are spaced out week by week and published automatically at sensible times.</p></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section>
+    <h2>How it works</h2>
+    <p class="sub">Five steps, from a clinician's words to a published post.</p>
+    <div class="steps">
+      <div class="step"><div class="k">1 · Capture</div><h4>Talk or upload</h4><p>A short interview, voice memo, video, document, or web link.</p></div>
+      <div class="step"><div class="k">2 · Mine</div><h4>Find the gold</h4><p>Bernard pulls the best moments, quotes and clips from what you gave it.</p></div>
+      <div class="step"><div class="k">3 · Draft</div><h4>Write &amp; design</h4><p>It writes captions, posts and articles, and creates branded photos &amp; clips.</p></div>
+      <div class="step"><div class="k">4 · Plan</div><h4>Review the week</h4><p>You approve a tidy weekly plan; Bernard schedules it across your channels.</p></div>
+      <div class="step"><div class="k">5 · Publish</div><h4>Ship everywhere</h4><p>It posts to social, your website, Google and email — on time, automatically.</p></div>
+    </div>
+  </section>
+
+  <!-- WHAT IT DOES -->
+  <section>
+    <h2>What Bernard does for you</h2>
+    <p class="sub">Everything you need to go from a busy clinic to a steady, on-brand presence.</p>
+    <div class="feat">
+      <div class="item"><div class="ico">🎙️</div><div><b>Capture material easily</b><p>Guided interviews, voice memos, handouts, web-article imports, and a phone-friendly camera capture — record from any device.</p></div></div>
+      <div class="item"><div class="ico">⛏️</div><div><b>Turn your video into reels</b><p>Bernard watches your interview footage and surfaces the most quotable moments, ranked — then turns the ones you pick into polished, captioned reels.</p></div></div>
+      <div class="item"><div class="ico">✍️</div><div><b>Writes in your voice</b><p>Social captions, blog posts, newsletters and pre-visit messages — grounded in what your clinician actually said, not made up.</p></div></div>
+      <div class="item"><div class="ico">🎨</div><div><b>Branded photos &amp; carousels</b><p>A built-in editor bakes headlines, your colours and your fonts onto photos and video, sized correctly for every platform.</p></div></div>
+      <div class="item"><div class="ico">🗓️</div><div><b>Plans &amp; schedules your week</b><p>Bernard composes a balanced weekly plan and good posting times. You review, approve, and it handles the rest.</p></div></div>
+      <div class="item"><div class="ico">📣</div><div><b>Publishes everywhere</b><p>Instagram, Facebook, LinkedIn, TikTok, YouTube, Google Business Profile, your blog and email — all from one place.</p></div></div>
+      <div class="item"><div class="ico">📈</div><div><b>Shows what's working</b><p>Your website search, Google Analytics and Google Business data flow back in to guide topics and aim.</p></div></div>
+      <div class="item"><div class="ico">📐</div><div><b>Creates ad-ready creative</b><p>One-click ad packs from your best photos, clips and carousels — every aspect ratio, ready to upload to Meta or Google Ads.</p></div></div>
+    </div>
+  </section>
+
+  <!-- CHANNELS -->
+  <section>
+    <h2>Where it publishes</h2>
+    <p class="sub">Write the idea once — Bernard tailors and posts it everywhere you show up.</p>
+    <table>
+      <thead><tr><th>Channel</th><th>What goes there</th></tr></thead>
+      <tbody>
+        <tr><td><b>Instagram</b> — posts, reels &amp; stories</td><td>Captions, branded photos, reels</td></tr>
+        <tr><td><b>Facebook &amp; LinkedIn</b></td><td>Posts &amp; media</td></tr>
+        <tr><td><b>TikTok &amp; YouTube</b></td><td>Reels &amp; shorts</td></tr>
+        <tr><td><b>X, Threads, Bluesky</b></td><td>Short posts</td></tr>
+        <tr><td><b>Google Business Profile</b></td><td>Local posts — one per clinic location</td></tr>
+        <tr><td><b>Your website / blog</b></td><td>Articles &amp; long-form (WordPress or your site)</td></tr>
+        <tr><td><b>Email / newsletter</b></td><td>Branded newsletter drafts</td></tr>
+        <tr><td><b>Paid ads</b> (Google &amp; Meta)</td><td>Ready-to-upload ad creative</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:14px;text-align:center;max-width:680px;margin-inline:auto">You connect your own
+    accounts, and each clinic's content stays completely separate from every other clinic's.</p>
+  </section>
+
+  <!-- TRUST -->
+  <section>
+    <h2>Built on trust, not "AI slop"</h2>
+    <p class="sub">The things that make Bernard's content credible — and keep it yours.</p>
+    <div class="callout">
+      <b>Every word and clip traces back to your clinician.</b> Bernard never fabricates footage or
+      synthetic talking heads, and it never invents claims. The content is your real expertise,
+      simply produced — which is exactly why it sounds genuine.
+    </div>
+    <div class="callout">
+      <b>No patient stories, ever.</b> Bernard stays at the level of education and quick wins — never
+      individual patient outcomes or identifiable case details. Privacy is built in by design.
+    </div>
+    <div class="callout">
+      <b>It sounds like the person, not a template.</b> Bernard learns each clinician's real phrases
+      and tone, and checks every draft against them so the writing doesn't drift into bland or
+      off-brand territory.
+    </div>
+  </section>
+
+  <!-- GETTING STARTED -->
+  <section>
+    <h2>Getting started is quick</h2>
+    <p class="sub">Your own workspace, at your own web address, in minutes.</p>
+    <div class="grid two">
+      <div class="card"><b>Sign up &amp; set your brand</b><p class="muted" style="font-size:14px;margin:6px 0 0">A short guided setup creates your workspace and brand kit — Bernard can even scan your website to pre-fill your voice and colours.</p></div>
+      <div class="card"><b>Record your first interview</b><p class="muted" style="font-size:14px;margin:6px 0 0">A clinician talks through a topic; Bernard takes it from there and builds your first week of content.</p></div>
+      <div class="card"><b>Connect your channels</b><p class="muted" style="font-size:14px;margin:6px 0 0">Link the social accounts, website and email you already use. Pick what you want Bernard to publish to.</p></div>
+      <div class="card"><b>Review &amp; approve</b><p class="muted" style="font-size:14px;margin:6px 0 0">Nothing goes out without your say-so. You approve the week; Bernard schedules and publishes it.</p></div>
+    </div>
+  </section>
+
+  <!-- CLOSING CTA -->
+  <div class="closing">
+    <h2>Ready to see it with your own clinic?</h2>
+    <p class="muted" style="max-width:520px;margin:0 auto">Set up your workspace and record one interview — you'll have a week of on-brand content to review.</p>
+    <a href="https://withbernard.ai">Get started with Bernard →</a>
+  </div>
+
+</div>
+
+<footer>
+  <div class="wrap">Bernard — voice-faithful clinical content. &nbsp;·&nbsp; <a href="https://withbernard.ai">withbernard.ai</a></div>
+</footer>
+
+</body>
+</html>
