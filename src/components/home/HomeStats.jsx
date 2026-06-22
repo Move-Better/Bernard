@@ -68,7 +68,7 @@ export default function HomeStats({ stories = [] }) {
       <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground mb-2">This week</div>
         <div className="text-4xl font-extrabold tracking-tight tabular-nums">{metrics.thisWeek}</div>
-        <div className="text-sm text-muted-foreground mt-1">interviews captured</div>
+        <div className="text-sm text-muted-foreground mt-1">stories captured</div>
       </div>
 
       {/* Arrow connector */}
