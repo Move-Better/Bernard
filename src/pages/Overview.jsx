@@ -65,7 +65,7 @@ export default function Overview() {
               Your queue: {readyToDistribute.length} post{readyToDistribute.length === 1 ? '' : 's'} ready to go out the door.
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Aimed by AI, media attached — review &amp; schedule each.
+              Drafted by AI, media attached — review &amp; schedule each.
             </p>
           </div>
           <Link

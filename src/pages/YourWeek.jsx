@@ -35,6 +35,23 @@ const LADDER = [
   ['manage_by_goals', 'Manage by goals'],
 ]
 
+// Friendly zone label so the cadence footer reads "Pacific time", not the raw
+// IANA city ("Los Angeles times" — which also read like the newspaper).
+const TZ_LABELS = {
+  'America/Los_Angeles': 'Pacific time',
+  'America/Tijuana': 'Pacific time',
+  'America/Denver': 'Mountain time',
+  'America/Phoenix': 'Mountain time',
+  'America/Chicago': 'Central time',
+  'America/New_York': 'Eastern time',
+  'America/Anchorage': 'Alaska time',
+  'Pacific/Honolulu': 'Hawaii time',
+}
+function tzLabel(tz) {
+  if (!tz) return 'local time'
+  return TZ_LABELS[tz] || `${tz.split('/').pop().replace(/_/g, ' ')} time`
+}
+
 function timeLabel(iso, tz) {
   if (!iso) return ''
   try {
@@ -386,7 +403,7 @@ export default function YourWeek() {
                 </span>
                 <span className="ml-auto inline-flex items-center gap-1 text-2xs text-muted-foreground">
                   <Clock className="h-3 w-3" aria-hidden="true" />
-                  {tz.replace('America/', '').replace('_', ' ')} times
+                  {tzLabel(tz)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
