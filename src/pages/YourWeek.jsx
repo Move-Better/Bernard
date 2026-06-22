@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
 import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, Shield, Plus,
-  Check, Loader2, Clock, Eye, Send, BookOpen,
+  Check, Loader2, Clock, Eye, Send, BookOpen, ChevronDown,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -69,15 +69,21 @@ function cardState(item) {
   if (cis === 'approved') {
     return { label: 'approved', cls: 'bg-info/10 text-info', action: 'schedule' }
   }
-  // drafted / in_review / draft
-  return { label: 'open to review', cls: 'bg-warning/10 text-warning', action: 'open' }
+  // drafted / in_review / draft — the one state where an inline human "yes"
+  // is the meaningful action (reviewable: true gates the D4 approve affordance).
+  return { label: 'open to review', cls: 'bg-warning/10 text-warning', action: 'open', reviewable: true }
 }
 
-function PlanCard({ item, tz, onDraft, drafting }) {
+function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
   const state = cardState(item)
   const time = item.scheduled_at ? timeLabel(item.scheduled_at, tz) : null
+  const [expanded, setExpanded] = useState(false)
+  // The week is reviewable in place: a piece that's "open to review" with a
+  // drafted excerpt can be approved here — the "this sounds like me" decision
+  // happens with the evidence visible, without leaving the week view (D4).
+  const canReviewInline = state.reviewable && !!item.contentPieceId && !!item.excerpt
 
   return (
     <div className="rounded-lg border border-l-[3px] border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm">
@@ -105,7 +111,16 @@ function PlanCard({ item, tz, onDraft, drafting }) {
             Draft
           </button>
         )}
-        {(state.action === 'open' || state.action === 'schedule') && (
+        {canReviewInline ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"
+          >
+            <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} /> Review
+          </button>
+        ) : (state.action === 'open' || state.action === 'schedule') && (
           <Link
             to={drillTo(item)}
             className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"
@@ -114,6 +129,30 @@ function PlanCard({ item, tz, onDraft, drafting }) {
           </Link>
         )}
       </div>
+      {canReviewInline && expanded && (
+        <div className="mt-1.5 border-t border-border pt-1.5">
+          <p className="text-2xs italic leading-snug text-muted-foreground line-clamp-4">
+            &ldquo;{item.excerpt}&rdquo;
+          </p>
+          <div className="mt-1.5 flex items-center gap-1">
+            <button
+              type="button"
+              disabled={approving}
+              onClick={() => onApprove(item)}
+              className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1 text-3xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              Sounds like me
+            </button>
+            <Link
+              to={drillTo(item)}
+              className="rounded-md border px-2 py-1 text-3xs font-semibold hover:bg-muted"
+            >
+              Change
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -130,6 +169,7 @@ export default function YourWeek() {
   const { data: allThemes = [] } = useCarouselThemes()
 
   const [draftingAtom, setDraftingAtom] = useState(null) // atom id being drafted
+  const [approvingAtom, setApprovingAtom] = useState(null) // atom id being approved inline
   const [scheduleConfirmOpen, setScheduleConfirmOpen] = useState(false)
   const [scheduling, setScheduling] = useState(false)
   const { data, isLoading } = useQuery({
@@ -158,6 +198,27 @@ export default function YourWeek() {
       toast.error('Draft failed', { description: e?.message })
     } finally {
       setDraftingAtom(null)
+    }
+  }
+
+  // Inline approve from the week view (D4): mark the drafted piece approved so
+  // it joins the batch-schedulable set — no navigation away from /week.
+  async function handleApprove(item) {
+    if (approvingAtom || !item.contentPieceId) return
+    setApprovingAtom(item.id)
+    try {
+      await updateStatus.mutateAsync({
+        id: item.contentPieceId,
+        status: 'approved',
+        approvedBy: userEmail,
+        approvedAt: new Date().toISOString(),
+      })
+      toast.success('Approved — ready to schedule')
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+    } catch (e) {
+      toast.error('Approve failed', { description: e?.message })
+    } finally {
+      setApprovingAtom(null)
     }
   }
 
@@ -376,6 +437,8 @@ export default function YourWeek() {
                               tz={tz}
                               onDraft={handleDraft}
                               drafting={draftingAtom === item.id}
+                              onApprove={handleApprove}
+                              approving={approvingAtom === item.id}
                             />
                           ))
                         )}

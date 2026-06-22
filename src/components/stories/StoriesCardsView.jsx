@@ -82,11 +82,11 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
     return (
       <EmptyState
         icon={<Mic className="h-5 w-5" />}
-        title="No stories yet"
-        description="Each interview becomes a story — a cluster of publish-ready drafts your team can review and send out. Start one to see your first story here."
+        title="Your stories start with a conversation"
+        description="Talk for a few minutes about your practice and Bernard turns it into a story — a cluster of publish-ready drafts your team can review and send out."
         action={
           <Button asChild size="sm">
-            <Link to="/new/live-interview">Start an interview</Link>
+            <Link to="/new/live-interview">Start a conversation</Link>
           </Button>
         }
         secondaryAction={
