@@ -41,6 +41,11 @@ function sb(path, init = {}) {
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
 
+// Validate the interview id before interpolating into PostgREST filters (and the
+// interviews PATCH) — a crafted value can inject extra filter params that alter
+// which rows match within the caller's own workspace. (See api/_routes/db/content.js.)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default async function handler(req, res) {
   if (req.method !== 'PATCH') return err(res, 'Method not allowed', 405)
 
@@ -59,6 +64,7 @@ export default async function handler(req, res) {
 
   const interviewId = searchParams.get('interview_id')
   if (!interviewId) return err(res, 'Missing interview_id')
+  if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interview_id', 400)
 
   const { platform, enabled } = req.body || {}
   if (!platform || !ATOM_DEFINITIONS[platform]) return err(res, 'Invalid platform')
