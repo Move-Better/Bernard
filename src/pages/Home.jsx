@@ -122,12 +122,14 @@ export default function Home() {
     }).length
   }, [staff])
 
+  // Each part links to where its detail actually lives, so the strip is a real
+  // jump-list rather than a count that dead-ends on a page that doesn't show it.
   const attentionParts = useMemo(() => {
     const parts = []
-    if (readyForContent.length > 0) parts.push(`${readyForContent.length} to draft`)
-    if (reviewCount > 0) parts.push(`${reviewCount} to review`)
-    if (readyToDistribute.length > 0) parts.push(`${readyToDistribute.length} to publish`)
-    if (overdueCount > 0) parts.push(`${overdueCount} overdue`)
+    if (readyForContent.length > 0) parts.push({ label: `${readyForContent.length} to draft`, to: '/stories?stage=drafting' })
+    if (reviewCount > 0) parts.push({ label: `${reviewCount} to review`, to: '/stories?stage=review' })
+    if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
+    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new' })
     return parts
   }, [readyForContent, reviewCount, readyToDistribute, overdueCount])
 
@@ -240,26 +242,28 @@ export default function Home() {
           Detail lives in Overview; this is just the count + a link. */}
       {attentionTotal > 0 && (
         <div
-          className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3 flex-wrap"
           style={{ background: 'hsl(var(--action) / 0.08)', border: '1px solid hsl(var(--action) / 0.25)' }}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="h-2 w-2 rounded-full bg-action shrink-0" />
-            <span className="text-sm font-medium text-foreground">
-              {attentionTotal} {attentionTotal === 1 ? 'item needs' : 'items need'} your attention
+          <span className="h-2 w-2 rounded-full bg-action shrink-0" />
+          <span className="text-sm font-medium text-foreground">
+            {attentionTotal} {attentionTotal === 1 ? 'item needs' : 'items need'} your attention
+          </span>
+          {attentionParts.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+              {attentionParts.map((part) => (
+                <span key={part.to} className="flex items-center gap-1.5">
+                  <span aria-hidden="true">·</span>
+                  <Link
+                    to={part.to}
+                    className="font-medium text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-0.5"
+                  >
+                    {part.label} <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </span>
+              ))}
             </span>
-            {attentionParts.length > 0 && (
-              <span className="hidden sm:inline text-xs text-muted-foreground">
-                · {attentionParts.join(' · ')}
-              </span>
-            )}
-          </div>
-          <Link
-            to="/overview"
-            className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5 shrink-0"
-          >
-            See all in Overview <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          )}
         </div>
       )}
 
