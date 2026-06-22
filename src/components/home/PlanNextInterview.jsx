@@ -108,7 +108,7 @@ export default function PlanNextInterview({
               <div className="flex items-center gap-1.5 px-5 pt-2 pb-1">
                 {grp.proto?.emoji && <span aria-hidden="true">{grp.proto.emoji}</span>}
                 <span className="text-2xs font-bold uppercase tracking-wide text-primary">
-                  {grp.proto ? `For your ${grp.proto.label}` : 'For all patients'}
+                  {grp.proto ? `For your ${grp.proto.label} patients` : 'For all patients'}
                 </span>
               </div>
               <ul>
