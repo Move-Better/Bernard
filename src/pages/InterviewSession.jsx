@@ -1892,11 +1892,11 @@ export default function InterviewSession() {
                   : 'Turning your interview into a full blog post. We\'ll open the story view when it\'s ready — social, video, and marketing content will generate on demand from there.'}
               </p>
               {coveredSummary && (
-                <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3">
-                  <p className="text-2xs font-bold uppercase tracking-widest text-success mb-1.5">
+                <div className="mt-4 rounded-lg border border-primary/20 bg-primary/10 px-3.5 py-3">
+                  <p className="text-2xs font-bold uppercase tracking-widest text-primary mb-1.5">
                     What you covered
                   </p>
-                  <div className="text-sm text-success/90 leading-relaxed whitespace-pre-line">
+                  <div className="text-sm text-primary/90 leading-relaxed whitespace-pre-line">
                     {coveredSummary}
                   </div>
                 </div>

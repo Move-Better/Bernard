@@ -419,8 +419,8 @@ export default function NewInterview() {
               </button>
             )}
             {suggestionAddedFor && suggestionAddedFor === trimmedCondition && (
-              <p className="text-xs text-success mt-1 inline-flex items-center gap-1">
-                <Sparkles className="h-3 w-3" />
+              <p className="text-xs text-primary mt-1 inline-flex items-center gap-1">
+                <Check className="h-3 w-3" />
                 Added — you&apos;ll see it in your suggestions next time.
               </p>
             )}

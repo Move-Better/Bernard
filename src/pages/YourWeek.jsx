@@ -320,7 +320,7 @@ export default function YourWeek() {
             <div className="rounded-xl border bg-card p-3">
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Filled to your cadence</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-3xs font-semibold text-success">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-3xs font-semibold text-primary">
                   <Sparkles className="h-3 w-3" aria-hidden="true" /> {data.scheduledTotal} scheduled
                 </span>
                 <span className="ml-auto inline-flex items-center gap-1 text-2xs text-muted-foreground">

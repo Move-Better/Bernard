@@ -27,12 +27,12 @@ export default function PipelineStepper({ current, className = '' }) {
         const pill = active
           ? 'bg-primary text-primary-foreground'
           : done
-            ? 'bg-success/10 text-success'
+            ? 'bg-primary/10 text-primary'
             : 'bg-muted text-muted-foreground'
         const badge = active
           ? 'bg-white/25 text-primary-foreground'
           : done
-            ? 'bg-success/15 text-success'
+            ? 'bg-primary/15 text-primary'
             : 'bg-muted-foreground/15 text-muted-foreground'
 
         return (
@@ -48,7 +48,7 @@ export default function PipelineStepper({ current, className = '' }) {
             </span>
             {i < STAGES.length - 1 && (
               <span
-                className={`h-px w-3 sm:w-6 shrink-0 ${done ? 'bg-success/40' : 'bg-border'}`}
+                className={`h-px w-3 sm:w-6 shrink-0 ${done ? 'bg-primary/40' : 'bg-border'}`}
                 aria-hidden="true"
               />
             )}
