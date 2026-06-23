@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>How Bernard works — the mechanisms behind the magic</title>
+<style>
+  :root{
+    --primary: 186 83% 27%;   /* Blue Spruce #0C7580 */
+    --action:  32 95% 44%;    /* amber */
+    --success: 152 76% 40%;   /* emerald */
+    --ink:     222 47% 8%;
+    --muted:   215 16% 47%;
+    --paper:   220 22% 97%;
+    --border:  214 32% 91%;
+    --card: 0 0% 100%;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:hsl(var(--ink));background:hsl(var(--paper));line-height:1.62;-webkit-font-smoothing:antialiased}
+  a{color:hsl(var(--primary));text-decoration:none}a:hover{text-decoration:underline}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px}
+
+  header.top{background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));position:sticky;top:0;z-index:50;
+    backdrop-filter:saturate(180%) blur(6px)}
+  .top .wrap{display:flex;align-items:center;gap:14px;height:60px}
+  .mark{width:30px;height:30px;border-radius:8px;flex:none;background:linear-gradient(135deg,hsl(var(--primary)),hsl(186 83% 20%));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;box-shadow:0 2px 8px -2px hsl(var(--primary)/.5)}
+  .brand b{font-size:16px;letter-spacing:-.01em}
+  .brand small{display:block;color:hsl(var(--muted));font-size:11px;margin-top:-2px}
+  .top .spacer{flex:1}
+  .stamp{font-size:12px;color:hsl(var(--muted));text-align:right;line-height:1.3}
+  .stamp b{color:hsl(var(--ink))}
+
+  .hero{padding:48px 0 8px}
+  .hero .tag{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:hsl(var(--primary));background:hsl(var(--primary)/.08);border:1px solid hsl(var(--primary)/.2);border-radius:999px;padding:4px 12px;margin-bottom:18px}
+  .hero h1{font-size:34px;line-height:1.14;margin:0 0 14px;letter-spacing:-.02em}
+  .hero p.lede{font-size:18px;color:hsl(215 25% 27%);max-width:760px;margin:0}
+
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 6px}
+  nav.toc a{font-size:13px;font-weight:500;color:hsl(var(--ink));background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:999px;padding:6px 13px}
+  nav.toc a:hover{border-color:hsl(var(--primary)/.5);text-decoration:none;background:hsl(var(--primary)/.05)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;font-size:13px;color:hsl(var(--muted));
+    background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:14px 18px;margin-top:14px}
+  .legend .row{display:flex;align-items:center;gap:8px}
+
+  section{padding:34px 0;border-top:1px solid hsl(var(--border))}
+  section:first-of-type{border-top:none}
+  h2{font-size:24px;letter-spacing:-.01em;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  h2 .n{font-size:13px;font-weight:700;color:hsl(var(--primary));background:hsl(var(--primary)/.1);width:26px;height:26px;border-radius:7px;
+    display:inline-flex;align-items:center;justify-content:center;flex:none}
+  .sub{color:hsl(var(--muted));margin:2px 0 18px;font-size:15px}
+  p{margin:10px 0}
+
+  .feature{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;padding:20px 22px;margin:16px 0;
+    box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .feature > h3{font-size:17px;margin:0 0 2px}
+  .feature .promise{font-size:14px;color:hsl(var(--muted));margin:0 0 10px;font-style:italic}
+
+  /* labeled mechanism blocks */
+  .mech{padding:12px 0 2px;border-top:1px dashed hsl(var(--border));margin-top:12px}
+  .mech:first-of-type{border-top:none;margin-top:4px}
+  .lab{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 8px;margin-bottom:6px}
+  .lab-how{color:hsl(var(--primary));background:hsl(var(--primary)/.1)}
+  .lab-trust{color:hsl(32 95% 30%);background:hsl(var(--action)/.12)}
+  .lab-try{color:hsl(152 76% 26%);background:hsl(var(--success)/.12)}
+  .mech p{margin:6px 0}
+  .mech ul,.mech ol{margin:8px 0;padding-left:22px}
+  .mech li{margin:6px 0}
+  .mech.trust{background:hsl(var(--action)/.04);border:1px solid hsl(var(--action)/.18);border-radius:10px;padding:12px 16px;margin-top:12px}
+  .mech.try{background:hsl(var(--success)/.05);border:1px solid hsl(var(--success)/.18);border-radius:10px;padding:12px 16px;margin-top:12px}
+
+  .muted{color:hsl(var(--muted))}
+  .keyword{font-weight:600;color:hsl(var(--ink))}
+  .pill{display:inline-block;font-size:12px;font-weight:500;background:hsl(220 14% 94%);border-radius:6px;padding:1px 7px;margin:1px 2px;color:hsl(215 22% 30%)}
+
+  .note{border-left:3px solid hsl(var(--primary));background:hsl(var(--primary)/.04);border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;font-size:14px}
+  .note b{color:hsl(186 83% 24%)}
+
+  .grid{display:grid;gap:12px}
+  @media(min-width:680px){.grid.two{grid-template-columns:1fr 1fr}}
+  .mini{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:14px 16px}
+  .mini b{font-size:14px}.mini p{margin:5px 0 0;font-size:13px;color:hsl(var(--muted))}
+
+  footer{border-top:1px solid hsl(var(--border));padding:26px 0 56px;color:hsl(var(--muted));font-size:13px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:center}
+
+  @media print{header.top{position:static}nav.toc{display:none}.feature,section{break-inside:avoid}body{background:#fff}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="mark">B</div>
+    <div class="brand"><b>Bernard</b><small>How it works</small></div>
+    <div class="spacer"></div>
+    <div class="stamp"><b>Living document</b><br>Last updated 22 Jun 2026</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <span class="tag">How it works · the mechanisms</span>
+    <h1>How Bernard actually does what it promises</h1>
+    <p class="lede">Talk for a few minutes, get a week of on-brand content — it sounds too good. This page
+    explains, in plain terms, the real machinery behind each promise: how Bernard learns your voice, scores it,
+    finds clips in long video, writes captions, designs graphics, plans the week, and publishes — plus how to
+    use each part, and the guardrails that keep it trustworthy.</p>
+  </div>
+
+  <nav class="toc">
+    <a href="#idea">The core idea</a>
+    <a href="#voice">Your voice</a>
+    <a href="#moments">Finding clips</a>
+    <a href="#reel">Reel editor</a>
+    <a href="#photo">Photos &amp; carousels</a>
+    <a href="#interview">The interview</a>
+    <a href="#week">Planning &amp; cadence</a>
+    <a href="#publish">Publishing</a>
+    <a href="#analytics">Analytics</a>
+    <a href="#trust">Trust &amp; safety</a>
+  </nav>
+
+  <div class="legend">
+    <span style="font-weight:600;color:hsl(var(--ink))">Each feature below has up to three parts:</span>
+    <span class="row"><span class="lab lab-how">How it works</span> the mechanism</span>
+    <span class="row"><span class="lab lab-trust">Why you can trust it</span> the guardrail</span>
+    <span class="row"><span class="lab lab-try">Try it</span> how to use it</span>
+  </div>
+
+  <!-- ── 1. CORE IDEA ── -->
+  <section id="idea">
+    <h2><span class="n">1</span> The core idea</h2>
+    <p class="sub">One principle runs through everything Bernard does.</p>
+    <p><strong>Bernard never invents your expertise.</strong> Every post starts from something a clinician
+    really said — captured in an interview or a video. Bernard's job is to <em>produce</em> from that raw
+    material: it learns the clinician's voice, grounds every draft in the real transcript, scores the result
+    for faithfulness, and waits for a human "yes" before anything publishes. That's why the output sounds
+    genuine instead of like generic AI.</p>
+    <div class="note">
+      <b>What's under the hood.</b> Bernard stands on best-in-class AI — Anthropic's <span class="keyword">Claude</span>
+      does the writing and editorial judgment, OpenAI's <span class="keyword">Whisper</span> turns speech into
+      text, and <span class="keyword">ElevenLabs</span> powers the optional spoken-voice clone. Bernard's own
+      work is the orchestration around them: learning your voice, grounding drafts in real transcripts, scoring
+      fidelity, metering the output, and keeping each clinic's data separate.
+    </div>
+  </section>
+
+  <!-- ── 2. VOICE ── -->
+  <section id="voice">
+    <h2><span class="n">2</span> Your voice — the heart of Bernard</h2>
+    <p class="sub">How content comes out sounding like the clinician, and how that's verified.</p>
+
+    <div class="feature">
+      <h3>How Bernard learns your voice</h3>
+      <p class="promise">Promise: the more you use it, the more it sounds like you.</p>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>Bernard builds a voice profile for each clinician from three signals that accumulate over time:</p>
+        <ul>
+          <li><span class="keyword">Your real phrases.</span> Whenever you approve a piece, Bernard lifts the genuine
+          sentences out of it and banks them as "voice phrases" for that clinician. Phrases you approve again rise
+          in weight, so your most characteristic phrasing floats to the top. It keeps your <em>literal</em> words —
+          not an AI paraphrase — so they can be traced in future drafts.</li>
+          <li><span class="keyword">How you edit.</span> When you rewrite an AI draft, Bernard compares the before and
+          after and summarizes the patterns ("cuts hedging, prefers short sentences") into voice notes that steer the next draft.</li>
+          <li><span class="keyword">Your thinking.</span> After each interview, Bernard distills your philosophy and the
+          way you frame things into a searchable "practice memory," so later pieces can echo how you actually explain ideas.</li>
+        </ul>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>Just use Bernard — the profile builds passively as you do interviews and approve/edit pieces. On a
+        clinician's profile you can hit <span class="keyword">Refresh voice notes</span> to re-learn from recent edits.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <h3>How a caption or post is written</h3>
+      <p class="promise">Promise: a finished, on-voice caption from raw material.</p>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>When you draft a piece, Bernard hands the writer model a brief that separates <em>what</em> from <em>how</em>:</p>
+        <ul>
+          <li><span class="keyword">What to say</span> comes from the actual transcript of the interview or clip — the
+          model paraphrases what was really said and is told not to invent claims.</li>
+          <li><span class="keyword">How to say it</span> comes from your voice profile: your phrases (rhythm and word
+          choice), your editing patterns, and the relevant bits of your practice memory.</li>
+          <li><span class="keyword">Context</span> comes from any active campaign and the channel itself — an Instagram
+          caption, a LinkedIn post, and a Google Business post each get tailored guidance and angle.</li>
+        </ul>
+        <p>Claude writes the draft; carousels also get a slide-by-slide plan.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>In <span class="keyword">Your Week</span>, open a planned item that "needs draft" and click <span class="keyword">Draft</span>.
+        The caption is written on the spot — drafts are generated only when you ask for them, never in bulk.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <h3>How your voice gets a score</h3>
+      <p class="promise">Promise: a number that tells you how true-to-voice a piece is.</p>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>After a piece is generated, a separate AI "judge" reads it and rates it on four things:</p>
+        <ul>
+          <li><span class="keyword">Did it stick to what was said?</span> — checked against the clip's transcript.
+          Inventing or distorting a claim tanks this score.</li>
+          <li><span class="keyword">Does it sound like you?</span> — checked against your voice phrases, in whatever
+          register you used. It does <em>not</em> reward jargon — a warm, plain caption scores just as well as a clinical one.</li>
+          <li><span class="keyword">Is it natural?</span> — does it read like a person, not a content mill.</li>
+          <li><span class="keyword">Is it tight?</span> — no padding; the headline and caption each earn their place.</li>
+        </ul>
+        <p>The four are averaged into one fidelity score shown on the piece. Behind the scenes, Bernard also runs a
+        standing quality gate: captions are scored regularly against real transcripts and the average must stay above
+        a bar before any change to how Bernard writes can ship.</p>
+      </div>
+      <div class="mech trust"><span class="lab lab-trust">Why you can trust it</span>
+        <p>The score is graded against the clinician's <em>real words</em>, not a vibe — and the scoring itself is
+        validated so it measures faithfulness, not jargon-density. It exists to catch drift before a piece ever reaches you.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <h3>Your spoken voice (optional)</h3>
+      <p class="promise">Promise: Bernard can speak in the clinician's own voice.</p>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>On the <span class="keyword">Voice Training</span> page a clinician reads a short (~3–4 minute) script.
+        Bernard creates a private voice clone (via ElevenLabs) tied to that person, and can then read text aloud in
+        their voice — most concretely, to generate a short, personalized <span class="keyword">pre-visit voice message</span>.</p>
+        <p class="muted"><strong>Honest scope:</strong> the spoken clone powers read-aloud and pre-visit messages today.
+        It is <em>not</em> used to narrate published reels — those carry on-screen captions, not synthetic narration.
+        And it's opt-in: nothing is cloned unless a clinician records the sample, and it can be revoked anytime.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>Go to Voice Training and record the script. Revoke or re-clone whenever you like.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3. MOMENT MINER ── -->
+  <section id="moments">
+    <h2><span class="n">3</span> Moment Miner — finding clips in a long video</h2>
+    <p class="sub">Drop in an hour of footage; get the few moments worth posting.</p>
+    <div class="feature">
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>The key insight: Bernard <em>reads</em> the video, it doesn't just chop it up.</p>
+        <ol>
+          <li>It pulls the audio and transcribes it (Whisper), keeping timestamps.</li>
+          <li>An editorial AI reads the full timestamped transcript and <span class="keyword">selects</span> the strongest
+          standalone moments — a vivid teaching beat, a quotable line, a counterintuitive insight — skipping filler and
+          repetition. It aligns each clip to whole sentences (roughly 8–60 seconds) so nothing starts mid-thought.
+          <em>The hard part is selection, not cutting.</em></li>
+          <li>A second pass rates each moment <span class="keyword">0–100 for "quotability"</span> (how well it would stand
+          alone as a Reel) and tags it by type — coaching cue, patient breakthrough, hook, credibility, insight, technique, or story.</li>
+          <li>Your feed shows the moments ranked best-first, each with its quote, score, and tag.</li>
+        </ol>
+        <p>You can kick this off on a video yourself, or Bernard quietly scans new uploads in the background.</p>
+      </div>
+      <div class="mech trust"><span class="lab lab-trust">Why you can trust it</span>
+        <p>This is <span class="keyword">detection only</span> — Bernard finds and ranks moments, but a human decides what's
+        kept and what ships. Every clip is the clinician's real words on camera; Bernard never generates or fakes footage.
+        The principle: automate the <em>labor</em> of finding moments, never the <em>judgment</em> of what represents the clinic.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <ol>
+          <li>Open <span class="keyword">Moment Miner</span> → the <span class="keyword">Uncut footage</span> tab and click
+          <span class="keyword">Find moments</span> on a video.</li>
+          <li>Detection runs for a few minutes (you'll see it working).</li>
+          <li>Switch to <span class="keyword">Ready to review</span>, skim the ranked feed, filter by type or staff member.</li>
+          <li>Save the keepers, or <span class="keyword">Review &amp; trim</span> one to fine-tune it in the editor.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. REEL EDITOR ── -->
+  <section id="reel">
+    <h2><span class="n">4</span> The Reel editor — clip to finished reel</h2>
+    <p class="sub">Turn a raw clip into a captioned, on-brand vertical video.</p>
+    <div class="feature">
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>The editor is a live preview with simple controls. When you export, a server renders the final video (with ffmpeg):</p>
+        <ul>
+          <li><span class="keyword">Format</span> — Reel (9:16), Square (1:1), or Portrait (4:5) from the same clip.</li>
+          <li><span class="keyword">Trim &amp; reframe</span> — set the in/out point, zoom and pan, with optional Ken Burns motion.</li>
+          <li><span class="keyword">Captions</span> — generated from the transcript and burned into the video, with word-by-word
+          "karaoke" highlighting in your brand colour; choose Pop or Fade. You can click any word to fix it.</li>
+          <li><span class="keyword">Brand grade ("vibe")</span> — colour presets or fine sliders; one tap applies your saved brand look.</li>
+          <li><span class="keyword">Overlays</span> — add titles, lower-thirds, or callouts, positioned by drag.</li>
+        </ul>
+        <p>The finished video is saved to your Library and can be scheduled as a post, kept as b-roll, or exported in ad sizes.
+        Your edits autosave, so you can resume on any device.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>From a moment, click <span class="keyword">Review &amp; trim</span> (or open a clip from the Library). Set the trim,
+        pick a format, toggle captions, choose a vibe, then <span class="keyword">Export → Render &amp; send</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. PHOTOS ── -->
+  <section id="photo">
+    <h2><span class="n">5</span> Photos &amp; carousels</h2>
+    <p class="sub">A plain photo becomes an on-brand graphic with a headline.</p>
+    <div class="feature">
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>You compose live in the browser; the <em>published</em> image is baked on the server so it carries your brand
+        exactly. Bernard derives your palette automatically — it reads your Brand Kit colours and picks the darkest as the
+        "ink" and the lightest as the "paper" for backgrounds and text, so templates look on-brand without you choosing hex codes.</p>
+        <p>In the editor you can: add or swap a photo (AI "picks," a describe-the-shot search, your Library, or an upload);
+        place and style headline text (brand fonts, brand-swatch colours, drag to position); apply a "colorist" grade
+        (presets, or <span class="keyword">describe a look</span> and an AI turns it into settings); control fit, zoom and blur;
+        and build multi-slide carousels. <span class="keyword">Generate from brand</span> can even produce template looks for you.</p>
+      </div>
+      <div class="mech trust"><span class="lab lab-trust">Why you can trust it</span>
+        <p>What you approve is re-rendered on the server into the actual published image (the original photo is preserved
+        underneath), so the live output matches your design — it's a real render, not a screenshot of the preview.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>Open a piece that has a photo → the editor. Pick a template or <span class="keyword">Generate from brand</span>, set
+        your headline, tune the look, add slides for a carousel, and save.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. INTERVIEW ── -->
+  <section id="interview">
+    <h2><span class="n">6</span> The guided interview &amp; transcription</h2>
+    <p class="sub">Where it all starts: a natural conversation that captures expertise.</p>
+    <div class="feature">
+      <h3>The guided interview</h3>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>It's a streaming AI conversation. Each question adapts to your last answer — it re-probes shallow answers,
+        follows interesting threads, and wraps up when it has enough. You can <span class="keyword">speak</span> (your browser
+        transcribes as you talk) or <span class="keyword">type</span>. The running Q&amp;A is saved continuously, with a local
+        backup, and becomes the transcript that feeds everything downstream. The raw audio is also kept — purely as future
+        voice-training material, not to make the transcript.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p><span class="keyword">Create → Interview</span>, pick a topic, and talk. Don't over-prepare — the interviewer drives.
+        Finish when it wraps up, and Bernard takes it from there.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <h3>Transcription</h3>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>Uploaded and recorded media — clips, voice memos, even hour-plus seminars — are transcribed by OpenAI Whisper.
+        Long talks are split, transcribed in parallel, and stitched back together; timestamps are saved so clip renders never
+        have to re-transcribe. (Live interview answers use your browser's own speech-to-text for instant feedback.)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7. WEEK ── -->
+  <section id="week">
+    <h2><span class="n">7</span> Your Week — planning &amp; cadence</h2>
+    <p class="sub">A balanced week of content at sensible times — without micromanaging.</p>
+    <div class="feature">
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <ul>
+          <li><span class="keyword">Each interview seeds a plan.</span> Bernard breaks it into planned "pieces" — one per
+          channel and angle (an Instagram hook, a LinkedIn insight, a Google Business post…). A planner AI chooses the strongest
+          pieces per channel and writes a one-line brief for each, validated so it only ever references a real interview.</li>
+          <li><span class="keyword">Cadence is computed, not hand-set.</span> Bernard looks at the channels you've enabled and
+          gives each a posts-per-week target from a sensible default (which is editable). Enable a channel and it automatically
+          gets a cadence — or switch to Manual and set your own.</li>
+          <li><span class="keyword">It's a drip, not a dump.</span> One big interview doesn't flood your feeds. Bernard releases
+          pieces up to each channel's weekly target and banks the rest as backlog, draining it over the following weeks. Posts are
+          spread across non-quiet weekdays at good hours, in your timezone.</li>
+          <li>A piece appears on <span class="keyword">Your Week</span> once it's been slotted for the current week. Captions are
+          written only when you open a piece to draft it.</li>
+        </ul>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <ol>
+          <li>Open <span class="keyword">Your Week</span> and <span class="keyword">Draft</span> the pieces you want.</li>
+          <li>Read each one and click <span class="keyword">"Sounds like me"</span> to approve it.</li>
+          <li>Click <span class="keyword">"Schedule approved"</span> to slot the approved set.</li>
+          <li>To change pace: enable/disable channels in Settings (Auto mode), or set targets yourself (Manual). Quiet days and timezone live there too.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 8. PUBLISH ── -->
+  <section id="publish">
+    <h2><span class="n">8</span> Publishing</h2>
+    <p class="sub">One idea, posted everywhere — automatically, but never without permission.</p>
+    <div class="feature">
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>Bernard connects to <span class="keyword">your own accounts</span> through a posting service (the default plus a newer
+        option), using credentials you provide that are stored encrypted. When you approve and schedule a piece, Bernard hands
+        each channel's version to the service to post at its planned time. The same weekly plan fans out across channels, and
+        Google Business posts can fan out to <span class="keyword">each clinic location</span>. For video and Google-Business
+        items there's also an automatic publisher that posts approved content on schedule.</p>
+      </div>
+      <div class="mech trust"><span class="lab lab-trust">Why you can trust it</span>
+        <p>The hard rule: <span class="keyword">nothing publishes without your yes</span>. Bernard drafts and schedules; you
+        approve. Your connected-account secrets are encrypted at rest, and each clinic only ever posts to its own connected accounts.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>Connect your accounts once in <span class="keyword">Settings → Integrations</span>. After that, approving and scheduling
+        in Your Week is all it takes.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 9. ANALYTICS ── -->
+  <section id="analytics">
+    <h2><span class="n">9</span> Seeing what works</h2>
+    <p class="sub">Bernard learns from results, not guesses.</p>
+    <div class="feature">
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>Bernard connects, read-only, to <span class="keyword">Google Search Console</span>, <span class="keyword">Google Analytics</span>,
+        and <span class="keyword">Google Business Profile</span> to pull real search and traffic performance (per-location for Google
+        Business). That data informs topic suggestions and where to aim — so the plan reflects what's actually landing, not a hunch.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 10. TRUST ── -->
+  <section id="trust">
+    <h2><span class="n">10</span> Trust &amp; safety — the guardrails</h2>
+    <p class="sub">The part clinics ask about most, in one place.</p>
+    <div class="grid two">
+      <div class="mini"><b>Nothing is invented</b><p>Every post traces to something a clinician really said; the writer is grounded in real transcripts and told not to fabricate claims.</p></div>
+      <div class="mini"><b>No AI-generated video, ever</b><p>Bernard never creates synthetic footage or fake talking heads. Clips are your real clinician on camera. Finding moments is automated; deciding what represents the clinic is not.</p></div>
+      <div class="mini"><b>No patient stories</b><p>Content stays at the level of education and quick wins — never individual patient outcomes or identifiable details.</p></div>
+      <div class="mini"><b>Voice is checked</b><p>Every piece is scored for fidelity to the clinician's real words and voice, to catch drift before you see it.</p></div>
+      <div class="mini"><b>A human always approves</b><p>Drafting and scheduling are automated; publishing requires your explicit "yes."</p></div>
+      <div class="mini"><b>Your data is walled off</b><p>Each clinic is its own workspace. Every request is authenticated and scoped, so one clinic can't see another's content.</p></div>
+      <div class="mini"><b>Credentials are encrypted</b><p>Connected-account secrets are stored with strong (AES-256) encryption — never as plain settings.</p></div>
+      <div class="mini"><b>Backed up</b><p>The database is snapshotted automatically every day, with independent manual backups as well.</p></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div><strong style="color:hsl(var(--ink))">Bernard — How it works.</strong><br>A living document. Update it as the mechanisms change.</div>
+    <div style="text-align:right">Source: <span class="pill">docs/bernard-how-it-works.html</span><br>Last updated 22 Jun 2026</div>
+  </div>
+</footer>
+
+</body>
+</html>
