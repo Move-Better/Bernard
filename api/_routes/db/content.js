@@ -168,6 +168,20 @@ export default async function handler(req, res) {
         if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
         if ((await ck.json()).length !== interviewIds.length) return err(res, 'Interview not found in workspace', 422)
       }
+      const staffIds = [...new Set(body.map((row) => row.staff_id).filter(Boolean))]
+      if (staffIds.some((sid) => !UUID_RE.test(sid))) return err(res, 'Invalid staff_id', 400)
+      if (staffIds.length > 0) {
+        const ck = await sb(`staff?id=in.(${staffIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
+        if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+        if ((await ck.json()).length !== staffIds.length) return err(res, 'Staff not found in workspace', 422)
+      }
+      const briefIds = [...new Set(body.map((row) => row.brief_id).filter(Boolean))]
+      if (briefIds.some((bid) => !UUID_RE.test(bid))) return err(res, 'Invalid brief_id', 400)
+      if (briefIds.length > 0) {
+        const ck = await sb(`briefs?id=in.(${briefIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
+        if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+        if ((await ck.json()).length !== briefIds.length) return err(res, 'Brief not found in workspace', 422)
+      }
       const rows = body.map((r) => ({ ...r, workspace_id: ws.id }))
       const r = await sb('content_items', {
         method: 'POST',
@@ -205,6 +219,8 @@ export default async function handler(req, res) {
     if (!id) return err(res, 'Missing id')
     const patch = req.body || {}
 
+    if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) return err(res, 'Invalid status', 400)
+
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
     // archive or `null` to restore.
     const allowed = {
@@ -230,10 +246,13 @@ export default async function handler(req, res) {
       notes:                  patch.notes,
       buffer_metrics:         patch.bufferMetrics,
       buffer_metrics_fetched_at: patch.bufferMetricsFetchedAt,
-      updated_at:             patch.updatedAt,
+      updated_at:             new Date().toISOString(),
       aspect_ratio:           patch.aspectRatio,
     }
-    const body = Object.fromEntries(Object.entries(allowed).filter(([, v]) => v !== undefined))
+    const IMMUTABLE_AUDIT_FIELDS = new Set(['approved_by', 'approved_at', 'reviewed_by'])
+    const body = Object.fromEntries(
+      Object.entries(allowed).filter(([k, v]) => v !== undefined && !(IMMUTABLE_AUDIT_FIELDS.has(k) && v === null))
+    )
 
     const r = await sb(`content_items?id=eq.${id}&${wsFilter}`, {
       method: 'PATCH',

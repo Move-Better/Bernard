@@ -334,7 +334,7 @@ async function processWorkspace(ws, summary) {
         }
 
         // Mark package auto_published_at so the cron skips it next run.
-        await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
+        const patchR = await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
           method: 'PATCH',
           body: JSON.stringify({
             auto_published_at: now,
@@ -349,8 +349,11 @@ async function processWorkspace(ws, summary) {
             },
             updated_at: now,
           }),
-        }).then((r) => { if (!r.ok) r.text().then((body) => console.error('[auto-publish] auto_publish_state final PATCH failed', { pkgId: pkg.id, status: r.status, body: body.slice(0, 300) })) })
-          .catch((e) => console.error('[auto-publish] auto_publish_state final PATCH error:', e?.message))
+        }).catch((e) => { console.error('[auto-publish] auto_publish_state final PATCH error', { pkgId: pkg.id, channel, ciId, bufferId: dispatch.bufferId, error: e?.message }); return null })
+        if (patchR && !patchR.ok) {
+          const body = await patchR.text().catch(() => '')
+          console.error('[auto-publish] auto_publish_state final PATCH failed', { pkgId: pkg.id, channel, ciId, bufferId: dispatch.bufferId, status: patchR.status, body: body.slice(0, 300) })
+        }
 
         dispatched.push({ id: pkg.id, channel, bufferId: dispatch.bufferId, ciId })
         dispatchedAny = true

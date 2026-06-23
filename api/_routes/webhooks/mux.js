@@ -12,16 +12,8 @@
 // signing secret. We MUST verify before touching the DB — webhook URLs are
 // public and a forged payload could mark an asset 'ready' before transcode
 // actually finishes, leaving the player serving a broken stream.
-//
-// Note: Vercel's Node runtime auto-parses req.body for application/json.
-// HMAC verification needs the EXACT raw bytes Mux signed, so we read
-// req.body as the parsed object and re-stringify with JSON.stringify. Mux
-// uses compact JSON without whitespace, which JSON.stringify produces by
-// default — matches the signed payload byte-for-byte in normal cases. If
-// Vercel ever changes its parsing behavior, the signature check will start
-// failing and we'll see 401s in the dashboard before any state is mutated.
 
-export const config = { runtime: 'nodejs' }
+export const config = { runtime: 'nodejs', bodyParser: false }
 
 import { verifyWebhookSignature, mintPlaybackToken, muxSignedConfigured, getAssetDimensions } from '../../_lib/muxClient.js'
 import { put as blobPut } from '@vercel/blob'
@@ -91,16 +83,13 @@ function sb(path, init = {}) {
   })
 }
 
-// Read the raw body as a string. Vercel already JSON-parsed req.body on
-// Node; re-stringify (compact) to reconstruct the signed bytes. If Mux
-// pretty-printed the payload (they don't, but defensively), an alternative
-// path could pass `bodyParser: false` in the function config and read the
-// stream — leave as a follow-up if signature failures start showing up
-// without a Mux dashboard change.
-function readRawBody(req) {
-  if (typeof req.body === 'string') return req.body
-  if (req.body && typeof req.body === 'object') return JSON.stringify(req.body)
-  return ''
+async function readRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    req.on('data', (chunk) => chunks.push(chunk))
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+    req.on('error', reject)
+  })
 }
 
 export default async function handler(req, res) {
@@ -114,13 +103,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'misconfigured', message: 'Webhook secret not configured' })
   }
 
-  const rawBody = readRawBody(req)
+  const rawBody = await readRawBody(req)
   const signature = req.headers['mux-signature'] || req.headers['Mux-Signature']
   if (!verifyWebhookSignature(rawBody, signature, secret)) {
     return res.status(401).json({ error: 'invalid_signature' })
   }
 
-  const event = req.body
+  let event
+  try {
+    event = JSON.parse(rawBody.toString('utf8'))
+  } catch {
+    return res.status(400).json({ error: 'invalid_json' })
+  }
   const type      = event?.type
   const assetId   = event?.data?.id
   const errors    = event?.data?.errors
