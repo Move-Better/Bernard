@@ -421,7 +421,7 @@ function WordsValidatedSwitch({ keystoneTitle }) {
         <div className="my-7 flex items-center justify-center gap-3 text-sm">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/8 text-foreground font-medium">
             <PenLine className="w-4 h-4" />
-            Words: done
+            Stories: done
           </span>
           <ArrowRight className="w-5 h-5 text-primary" />
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground font-semibold">

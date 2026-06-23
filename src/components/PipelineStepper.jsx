@@ -8,7 +8,7 @@ import { Check } from 'lucide-react'
 // `current` is one of the stage ids below.
 const STAGES = [
   ['interview', 'Interview'],
-  ['words', 'Words'],
+  ['words', 'Stories'],
   ['media', 'Media'],
   ['publish', 'Publish'],
 ]
