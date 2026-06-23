@@ -18,11 +18,11 @@ import { getContentStatusToken } from '@/lib/contentStatusTokens'
 // becomes a drag-to-transition board for the REVIEW lanes only — see MOVABLE.
 // Per-lane accent rail color aligns with contentStatusTokens hues.
 const LANES = [
-  { id: 'draft',     icon: FileText,     publisherInbox: false, rail: '#94a3b8' /* slate-400 */ },
+  { id: 'draft',     icon: FileText,     publisherInbox: false, rail: 'hsl(var(--muted-foreground))' },
   { id: 'in_review', icon: Clock,        publisherInbox: false, rail: 'hsl(var(--action))' /* act-now — matches approved lane */ },
   { id: 'approved',  icon: CheckCircle2, publisherInbox: true,  rail: 'hsl(var(--action))' /* act-now */ },
-  { id: 'scheduled', icon: CalendarDays, publisherInbox: false, rail: '#7c3aed' /* violet-600 */ },
-  { id: 'published', icon: Send,         publisherInbox: false, rail: '#059669' /* emerald-600 */ },
+  { id: 'scheduled', icon: CalendarDays, publisherInbox: false, rail: 'hsl(var(--scheduled))' },
+  { id: 'published', icon: Send,         publisherInbox: false, rail: 'hsl(var(--success))' },
 ]
 
 // Statuses a card can be dragged between. draft/in_review/approved are pure

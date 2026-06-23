@@ -97,7 +97,7 @@ export default function HomeRightRail({ stories = [] }) {
       {/* Upcoming scheduled posts */}
       <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: '#7c3aed' /* scheduled accent — no token yet */ }} aria-hidden="true" />
+          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: 'hsl(var(--scheduled))' }} aria-hidden="true" />
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-base font-bold tracking-tight flex-1">Scheduled this week</h2>
         </div>
