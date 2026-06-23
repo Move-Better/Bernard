@@ -498,6 +498,8 @@ async function handler(req, res) {
       user_id: userId,
       created_by_id: userId,
     }),
+  }).then(async r => {
+    if (!r.ok) console.error('[claim] staff seed failed', r.status, await r.text().catch(() => ''))
   }).catch(e => console.error('[claim] clinician seed failed:', e?.message)))
 
   // 3.5. Register <slug>.withbernard.ai as a domain on the shared bernard Vercel

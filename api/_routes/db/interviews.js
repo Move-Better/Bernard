@@ -69,8 +69,6 @@ export default async function handler(req, res) {
   }
   let userId = auth.userId
 
-  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
-
   if (req.method === 'GET') {
     if (id) {
       const r = await sb(

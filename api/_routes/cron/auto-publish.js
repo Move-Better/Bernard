@@ -109,7 +109,8 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
     m.type?.startsWith('video') ? { video: { url: m.url } } : { image: { url: m.url } }
   )
 
-  const firstBufferId = []
+  let firstBufferId = null
+  const failedLocations = []
   for (const { channelId } of locationChannels) {
     const input = {
       channelId,
@@ -134,12 +135,14 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
     `, { input })
     if (r.errors || r.data?.createPost?.__typename !== 'PostActionSuccess') {
       const msg = r.errors?.[0]?.message || r.data?.createPost?.message || 'unknown'
-      console.error('[auto-publish] GBP createPost failed:', msg, 'pkg:', pkg.id)
-      return null
+      console.error('[auto-publish] GBP createPost failed:', msg, 'channelId:', channelId, 'pkg:', pkg.id)
+      failedLocations.push(channelId)
+      continue
     }
-    if (firstBufferId.length === 0) firstBufferId.push(r.data.createPost.post?.id)
+    if (!firstBufferId) firstBufferId = r.data.createPost.post?.id
   }
-  return firstBufferId[0] ? { bufferId: firstBufferId[0] } : null
+  if (!firstBufferId) return null
+  return { bufferId: firstBufferId, failedLocations: failedLocations.length ? failedLocations : undefined }
 }
 
 // Upsert the approved content_items row to scheduled + mark auto_published.
@@ -348,14 +351,14 @@ async function processWorkspace(ws, summary) {
     }
 
     if (dispatchedAny && failedAny) {
-      console.error('[auto-publish] partial channel failure — some channels succeeded, some failed; releasing claim for retry', { pkgId: pkg.id })
+      console.error('[auto-publish] partial channel failure — some channels succeeded, some failed; claim retained to prevent double-posting', { pkgId: pkg.id })
     }
 
-    // We claimed the package (set auto_published_at) but nothing actually
-    // dispatched, OR some channels failed — release the claim so a future run
-    // can retry. Without this a transient failure would permanently strand the
-    // package or silently drop failed channels when another succeeded.
-    if (!dispatchedAny || failedAny) {
+    // Release the claim only when nothing dispatched at all, so a transient
+    // failure retries next run. When at least one channel succeeded, keep the
+    // auto_published_at stamp — overwriting it to null would cause the next run
+    // to re-dispatch to channels that already posted.
+    if (!dispatchedAny) {
       await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ auto_published_at: null }),
