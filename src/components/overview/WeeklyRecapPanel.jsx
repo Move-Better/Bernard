@@ -57,17 +57,17 @@ function RecapBlock({ recap }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100 border-b border-slate-100">
-        <Stat value={stats.wentLive} label="went live" color="hsl(var(--success))" />
+        <Stat value={stats.wentLive} label="published" color="hsl(var(--success))" />
         <Stat value={stats.scheduled} label="scheduled to go out" color="#0284c7" /* info accent — no token yet */ />
-        <Stat value={stats.waiting} label="waiting on review" color="hsl(var(--primary))" />
-        <Stat value={stats.captured} label="new stories captured" color="#334155" />
+        <Stat value={stats.waiting} label="in review" color="hsl(var(--primary))" />
+        <Stat value={stats.captured} label="captured by the team" color="#334155" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
         {/* went live */}
         <div className="p-5">
           <div className="flex items-center gap-2 mb-3">
-            <span className="nx-pill nx-pill-emerald">🎉 Went live</span>
+            <span className="nx-pill nx-pill-emerald">🎉 Published</span>
             <h3 className="text-sm font-bold">{stats.wentLive} {stats.wentLive === 1 ? 'post' : 'posts'} out in the world</h3>
           </div>
           {wentLive.length === 0 ? (
@@ -122,7 +122,7 @@ function RecapBlock({ recap }) {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <span className="nx-pill nx-pill-tint">Needs the team</span>
-              <h3 className="text-sm font-bold">Waiting on review</h3>
+              <h3 className="text-sm font-bold">In review</h3>
             </div>
             {waiting.length === 0 ? (
               <p className="text-xs text-muted-foreground">Nothing waiting — inbox clear.</p>
