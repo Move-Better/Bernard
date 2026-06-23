@@ -84,7 +84,7 @@ function cardState(item) {
     return { label: cis, cls: 'bg-success/10 text-success', action: 'open' }
   }
   if (cis === 'approved') {
-    return { label: 'approved', cls: 'bg-info/10 text-info', action: 'schedule' }
+    return { label: 'approved', cls: 'bg-action/10 text-action', action: 'schedule' }
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
@@ -306,11 +306,11 @@ export default function YourWeek() {
   // Clinician "yours to review" — blog content_items in in_review (2d).
   // Only rendered for non-editors (clinicians). Editors see the full calendar.
   const YourReviewSlice = !isEditor && data?.yourReview?.length ? (
-    <div className="rounded-xl border border-info/30 bg-info/5 p-3.5">
+    <div className="rounded-xl border border-action/30 bg-action/5 p-3.5">
       <div className="mb-2 flex items-center gap-2">
-        <BookOpen className="h-4 w-4 text-info" aria-hidden="true" />
+        <BookOpen className="h-4 w-4 text-action" aria-hidden="true" />
         <span className="text-sm font-bold">Your blog drafts to review</span>
-        <span className="ml-auto inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-2xs font-semibold text-info">
+        <span className="ml-auto inline-flex items-center rounded-full bg-action/10 px-2 py-0.5 text-2xs font-semibold text-action">
           {data.yourReview.length}
         </span>
       </div>
