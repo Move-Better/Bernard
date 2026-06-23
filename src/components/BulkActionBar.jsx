@@ -260,8 +260,10 @@ export default function BulkActionBar({
     // already have it client-side; the bar's master "DELETE" gate is the
     // human safeguard.
     const sel = selectedAssets()
+    const skipped = count - sel.length
     const results = await pMap(sel, (a) => purgeMediaAsset(a.id, a.filename), 3)
-    setMessage(summarize(results, 'Permanently deleted'))
+    const base = summarize(results, 'Permanently deleted')
+    setMessage(skipped > 0 ? `${base} · ${skipped} off-page item${skipped === 1 ? '' : 's'} skipped (reload to delete)` : base)
     setBusy(null); setPurgeOpen(false); setPurgeConfirm('')
     onRefresh?.()
     onClear?.()

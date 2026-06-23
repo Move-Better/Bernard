@@ -58,7 +58,7 @@ function RecapBlock({ recap }) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border border-b border-border">
         <Stat value={stats.wentLive} label="published" color="hsl(var(--success))" />
-        <Stat value={stats.scheduled} label="scheduled to go out" color="#0284c7" /* info accent — no token yet */ />
+        <Stat value={stats.scheduled} label="scheduled to go out" color="hsl(var(--scheduled))" />
         <Stat value={stats.waiting} label="in review" color="hsl(var(--primary))" />
         <Stat value={stats.captured} label="captured by the team" color="#334155" />
       </div>
@@ -209,9 +209,9 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
-        <AllTimeStat value={published.toLocaleString()} label="posts published" color="#34d399" />
-        <AllTimeStat value={captured.toLocaleString()} label="stories captured" color="#38bdf8" />
-        <AllTimeStat value={contributors.toLocaleString()} label="teammates contributing" color="#fdba74" />
+        <AllTimeStat value={published.toLocaleString()} label="posts published" color="hsl(var(--success))" />
+        <AllTimeStat value={captured.toLocaleString()} label="stories captured" color="hsl(var(--info))" />
+        <AllTimeStat value={contributors.toLocaleString()} label="teammates contributing" color="hsl(var(--warning))" />
         <AllTimeStat value={`≈ ${fmtUsd(costTotal)}`} label="total run cost · est." color="#ffffff" />
       </div>
     </div>
