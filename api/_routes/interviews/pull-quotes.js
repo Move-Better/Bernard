@@ -77,6 +77,8 @@ export default async function handler(req, res) {
 
   const { interviewId } = req.body || {}
   if (!interviewId) return err(res, 'Missing interviewId')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
 
   const ivRes = await sb(`interviews?id=eq.${interviewId}&${wsFilter}&select=id,topic,messages`)
   if (!ivRes.ok) return err(res, 'Database error', 500)

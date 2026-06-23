@@ -32,6 +32,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // Sources processed per run. Each detection (audio extract + Whisper + one LLM
 // pass) comfortably fits the 300s budget; a small batch keeps a backlog draining
 // without piling concurrent ffmpeg+Whisper work onto one instance.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const BATCH = 3
 // Only sources long enough to contain a standalone moment. Mirrors the backfill
 // floor; shorter b-roll is left for manual use (and would propose nothing).
@@ -77,11 +78,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'workspace_query_failed' })
   }
   const wsIds = (await wsRes.json()).map((w) => w.id)
-  if (wsIds.length === 0) {
+  const safeIds = wsIds.filter((id) => UUID_RE.test(id))
+  if (safeIds.length === 0) {
     console.info('[auto-detect-clips] no active workspaces — skipping')
     return res.status(200).json({ claimed: 0, reason: 'no_active_workspaces' })
   }
-  const inList = `(${wsIds.join(',')})`
+  const inList = `(${safeIds.join(',')})`
 
   // 2. Candidates: never-detected sources, plus stale 'detecting' rescues.
   const staleBefore = new Date(Date.now() - STALE_DETECTING_MS).toISOString()

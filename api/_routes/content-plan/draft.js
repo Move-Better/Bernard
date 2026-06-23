@@ -65,6 +65,7 @@ export default async function handler(req, res) {
   if (!atomRows.length) return err(res, 'Atom not found', 404)
   const atom = atomRows[0]
 
+  if (!atom.interview_id) return err(res, 'This atom has no linked interview — backlog atoms must be linked to an interview before drafting', 422)
   if (atom.status === 'drafted') return err(res, 'Already drafted')
   if (atom.status === 'skipped') return err(res, 'Atom is skipped — reset to pending first')
 

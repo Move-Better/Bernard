@@ -31,6 +31,7 @@ const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
 const SELECT = 'id,topic,rationale,source,priority,status,interview_id,created_at,updated_at'
 
 const ALLOWED_STATUS = new Set(['pending', 'in_progress', 'completed', 'archived'])
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
@@ -82,6 +83,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'generic'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id')
 
     const patch = req.body || {}
     const allowed = {}
@@ -113,6 +115,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'generic'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id')
     const r = await sb(`topic_backlog?id=eq.${id}&${wsFilter}`, {
       method: 'DELETE',
       headers: { Prefer: 'return=minimal' },

@@ -347,7 +347,8 @@ async function processWorkspace(ws, summary) {
             },
             updated_at: now,
           }),
-        }).catch((e) => console.error('[auto-publish] auto_published_at patch failed:', e?.message))
+        }).then((r) => { if (!r.ok) r.text().then((body) => console.error('[auto-publish] auto_publish_state final PATCH failed', { pkgId: pkg.id, status: r.status, body: body.slice(0, 300) })) })
+          .catch((e) => console.error('[auto-publish] auto_publish_state final PATCH error:', e?.message))
 
         dispatched.push({ id: pkg.id, channel, bufferId: dispatch.bufferId, ciId })
         dispatchedAny = true
