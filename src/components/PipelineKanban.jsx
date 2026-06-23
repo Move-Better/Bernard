@@ -175,7 +175,7 @@ function VoiceDriftChip({ provenance }) {
   const { verbatim_pct = 0, paraphrase_pct = 0 } = provenance.summary
   const ownWords = Math.round(verbatim_pct + paraphrase_pct)
   if (ownWords === 0) return null
-  const color = ownWords >= 60 ? 'text-agreement-signal bg-agreement-signal/10' : ownWords >= 35 ? 'text-amber-700 bg-amber-50' : 'text-slate-600 bg-slate-50'
+  const color = ownWords >= 60 ? 'text-agreement-signal bg-agreement-signal/10' : ownWords >= 35 ? 'text-action bg-action/10' : 'text-muted-foreground bg-muted'
   return (
     <span className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-3xs font-medium ${color}`}>
       {ownWords}% voice

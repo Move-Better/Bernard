@@ -130,7 +130,7 @@
   }
   .nx-pill-emerald { background: #ecfdf5; color: hsl(var(--success)); }
   .nx-pill-amber   { background: #fff7ed; color: hsl(var(--action)); }
-  .nx-pill-sky     { background: #e0f2fe; color: #0284c7; }
+  .nx-pill-sky     { background: hsl(var(--scheduled) / 0.12); color: hsl(var(--scheduled)); }
   .nx-pill-violet  { background: #f5f3ff; color: hsl(var(--scheduled)); }
   .nx-pill-rose    { background: #fff1f2; color: #e11d48; }
   .nx-pill-tint    { background: hsl(var(--action) / 0.10); color: hsl(var(--action)); border: 1px solid hsl(var(--action) / 0.25); }

@@ -116,8 +116,9 @@ export function planToDbOps(plan, existingAtoms = []) {
  * from a workspace-scoped SELECT, so this is belt-and-suspenders, not a live
  * leak fix.
  */
-async function persistPlan({ ops, sb = defaultSb, workspaceId = null }) {
-  const wsFilter = workspaceId ? `&workspace_id=eq.${workspaceId}` : ''
+async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
+  if (!workspaceId) throw new Error('persistPlan: workspaceId required')
+  const wsFilter = `&workspace_id=eq.${workspaceId}`
   if (ops.toDelete.length) {
     const ids = ops.toDelete.map((id) => `"${id}"`).join(',')
     const delR = await sb(`content_plan_atoms?id=in.(${ids})${wsFilter}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })

@@ -56,14 +56,14 @@ function RecapBlock({ recap }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100 border-b border-slate-100">
+      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border border-b border-border">
         <Stat value={stats.wentLive} label="published" color="hsl(var(--success))" />
         <Stat value={stats.scheduled} label="scheduled to go out" color="#0284c7" /* info accent — no token yet */ />
         <Stat value={stats.waiting} label="in review" color="hsl(var(--primary))" />
         <Stat value={stats.captured} label="captured by the team" color="#334155" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
         {/* went live */}
         <div className="p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -79,7 +79,7 @@ function RecapBlock({ recap }) {
                 const labels = platformLabels(item.platforms)
                 return (
                   <Link key={item.storyId} to={`/stories/${item.storyId}`} className="flex items-center gap-3 group">
-                    <span className="h-7 w-7 rounded-full bg-slate-100 text-slate-500 text-2xs font-bold flex items-center justify-center shrink-0">
+                    <span className="h-7 w-7 rounded-full bg-muted text-muted-foreground text-2xs font-bold flex items-center justify-center shrink-0">
                       {getInitials(item.staffName)}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -88,7 +88,7 @@ function RecapBlock({ recap }) {
                         {item.staffName}{labels.length ? ` · ${labels.join(', ')}` : ''} · {dayLabel(item.publishedAt)}
                       </p>
                     </div>
-                    <Icon className="h-4 w-4 text-slate-300 shrink-0" aria-hidden="true" />
+                    <Icon className="h-4 w-4 text-muted-foreground/40 shrink-0" aria-hidden="true" />
                   </Link>
                 )
               })}
@@ -110,7 +110,7 @@ function RecapBlock({ recap }) {
               <div className="space-y-2">
                 {scheduled.slice(0, 4).map((s, i) => (
                   <Link key={`${s.storyId}-${i}`} to={`/stories/${s.storyId}`} className="flex items-center gap-2 text-sm group">
-                    <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                     <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{s.topic}</span>
                     <span className="text-2xs text-muted-foreground shrink-0">{dateTimeLabel(s.scheduledAt)}</span>
                   </Link>
@@ -152,12 +152,12 @@ function MemberCard({ m }) {
   return (
     <div className="bg-white p-4">
       <div className="flex items-center gap-3">
-        <span className={`h-11 w-11 rounded-full text-sm font-bold flex items-center justify-center shrink-0 ${due ? 'bg-slate-100 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>
+        <span className={`h-11 w-11 rounded-full text-sm font-bold flex items-center justify-center shrink-0 ${due ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
           {getInitials(m.name)}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className={`font-bold text-sm ${due ? 'text-slate-500' : ''}`}>{m.name}</p>
+            <p className={`font-bold text-sm ${due ? 'text-muted-foreground' : ''}`}>{m.name}</p>
             {m.week_published > 0 ? (
               <span className="nx-pill nx-pill-emerald">{m.week_published} this week</span>
             ) : due ? (
@@ -171,13 +171,13 @@ function MemberCard({ m }) {
           </p>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+      <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
         {streak > 0 ? (
           <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-600">
             <Flame className="h-3.5 w-3.5" aria-hidden="true" />{streak}-week streak
           </span>
         ) : (
-          <span className="text-xs font-medium text-slate-400">no streak yet</span>
+          <span className="text-xs font-medium text-muted-foreground">no streak yet</span>
         )}
         <span className="text-xs text-muted-foreground"><b className="text-foreground text-sm">{m.all_time_published}</b> all-time</span>
       </div>
@@ -222,7 +222,7 @@ function TeamBlock({ team }) {
   const sorted = sortTeam(team)
   return (
     <div className="rounded-2xl border border-border bg-white overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-3 flex-wrap">
         <Users className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 className="text-base font-bold">The team</h3>
         <span className="nx-pill nx-pill-ink">streaks reward showing up, not posting most</span>
@@ -231,11 +231,11 @@ function TeamBlock({ team }) {
       {sorted.length === 0 ? (
         <p className="p-5 text-sm text-muted-foreground">No team members yet.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border">
           {sorted.map((m) => <MemberCard key={m.id} m={m} />)}
         </div>
       )}
-      <div className="px-5 py-2.5 bg-slate-50/70 border-t border-slate-100 text-2xs text-muted-foreground">
+      <div className="px-5 py-2.5 bg-muted/40 border-t border-border text-2xs text-muted-foreground">
         The streak rewards consistency (a capture every week) and all-time only grows — it celebrates showing up, not cramming volume. Due flags are a nudge, never a ranking.
       </div>
     </div>
@@ -263,7 +263,7 @@ function CostBlock({ cost }) {
   const wow = view.wowPct
   return (
     <div className="rounded-2xl border border-border bg-white overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2 flex-wrap">
         <Receipt className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 className="text-base font-bold">What this week cost to run</h3>
         <span className="nx-pill nx-pill-ink">estimate</span>
@@ -276,18 +276,18 @@ function CostBlock({ cost }) {
           <span className="text-lg font-extrabold">≈ {fmtUsd(view.weekTotal)}</span>
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100">
+      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border">
         <CostLine icon={Mic} label="Transcription" units={`${fmtMinutes(u.transcribe_sec)} of audio · Whisper`} value={lines.transcription} />
         <CostLine icon={Sparkles} label="AI writing" units={`${u.pieces} pieces · Claude`} value={lines.writing} />
         <CostLine icon={Video} label="Video / audio" units={`${fmtMinutes(u.video_sec)} encoded · Mux + ffmpeg`} value={lines.video} />
         <CostLine icon={Volume2} label="Voice (TTS)" units={`${fmtMinutes(u.voice_sec)} narration · ElevenLabs`} value={lines.voice} />
       </div>
-      <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 bg-slate-50/40">
+      <div className="grid grid-cols-3 divide-x divide-border border-t border-border bg-muted/30">
         <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">This week</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(view.weekTotal)}</p></div>
         <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Month to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(view.mtdTotal)}</p></div>
         <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Year to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(view.ytdTotal)}</p></div>
       </div>
-      <div className="px-5 py-2.5 bg-slate-50/70 border-t border-slate-100 text-2xs text-muted-foreground">
+      <div className="px-5 py-2.5 bg-muted/40 border-t border-border text-2xs text-muted-foreground">
         Estimated from counted usage × provider rate card (not exact billed cost). Excludes flat subscriptions (Buffer, hosting).
         {view.perPost != null ? ` ~${fmtUsd(view.perPost)} per published post this week.` : ''}
       </div>

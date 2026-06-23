@@ -309,9 +309,9 @@ function BriefAndPreviewCard({ form, interviewerName }) {
   }
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3.5">
+    <div className="rounded-lg border border-action/30 bg-action/5 px-4 py-3.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-2xs font-semibold uppercase tracking-widest text-amber-800">
+        <p className="text-2xs font-semibold uppercase tracking-widest text-action">
           {interviewerName}&apos;s brief, as he reads it
         </p>
         <Button
@@ -319,7 +319,7 @@ function BriefAndPreviewCard({ form, interviewerName }) {
           disabled={loading}
           size="sm"
           variant="outline"
-          className="h-7 gap-1.5 border-amber-300 bg-amber-100/50 text-amber-900 hover:bg-amber-200/60 hover:text-amber-950"
+          className="h-7 gap-1.5 border-action/40 bg-action/10 text-action hover:bg-action/20 hover:text-action"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           <span className="text-xs">{loading ? 'Generating…' : 'Try a live preview'}</span>

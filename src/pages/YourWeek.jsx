@@ -88,7 +88,7 @@ function cardState(item) {
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
-  return { label: 'in review', cls: 'bg-action/10 text-action', action: 'open', reviewable: true }
+  return { label: 'in review', cls: 'bg-muted text-muted-foreground', action: 'open', reviewable: true }
 }
 
 function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
