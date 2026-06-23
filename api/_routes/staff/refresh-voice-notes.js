@@ -135,7 +135,7 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-sonnet-4-6',
       system: systemPrompt,
       messages: [{ role: 'user', content: 'Analyze the edits and write the rules now.' }],
-      maxOutputTokens: 600,
+      maxTokens: 600,
     })
     analysisText = (result.text || '').trim()
   } catch (e) {

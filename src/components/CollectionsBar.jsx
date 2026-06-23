@@ -164,6 +164,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
                   }`}>
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditing(c); setEditName(c.name) }}
+                      aria-label="Rename"
                       title="Rename"
                       className={`h-full px-1.5 transition-colors ${
                         active ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-foreground'
@@ -173,6 +174,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); archiveCollection(c) }}
+                      aria-label="Archive collection"
                       title="Archive collection"
                       className={`h-full pr-2 pl-1 transition-colors ${
                         active ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-foreground'

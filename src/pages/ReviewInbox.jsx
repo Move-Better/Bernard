@@ -447,7 +447,7 @@ function InboxRow({ piece, group, checked, onToggle, onApprove, busy }) {
             {Icon && <Icon className="h-3 w-3" />}
             {meta.label}
           </span>
-          <span className="text-sm font-semibold truncate">{title}</span>
+          <span className="text-sm font-semibold truncate" title={title}>{title}</span>
         </div>
         <p className="text-2xs text-muted-foreground mt-0.5">
           {piece.staff_name ? `${piece.staff_name} · ` : ''}
