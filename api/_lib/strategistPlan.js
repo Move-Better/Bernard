@@ -133,13 +133,16 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId = null }) {
     // instead of silently writing nothing.
     if (!r.ok) throw new Error(`atom insert ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
   }
+  const patchErrors = []
   for (const u of ops.toUpdate) {
-    await sb(`content_plan_atoms?id=eq.${u.id}${wsFilter}`, {
+    const result = await sb(`content_plan_atoms?id=eq.${u.id}${wsFilter}`, {
       method: 'PATCH',
       body: JSON.stringify(u.patch),
       headers: { Prefer: 'return=minimal' },
     })
+    if (!result.ok) patchErrors.push(`atom patch ${u.id} ${result.status}: ${(await result.text().catch(() => '')).slice(0, 200)}`)
   }
+  if (patchErrors.length) throw new Error(patchErrors.join('; '))
 }
 
 /**

@@ -105,7 +105,7 @@ export default async function handler(req, res) {
   // response tidy ("invalid clinician id") instead of "Database error".
   const target_staff_ids = rawTargets
     .map((v) => (v == null ? '' : String(v)))
-    .filter((v) => /^[0-9a-f-]{8,}$/i.test(v))
+    .filter((v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v))
 
   // Phase 4 Tentpole PR A — multi-campaign fields. Each uses the
   // 'leave-alone' sentinel so omitting from PATCH body doesn't clobber
@@ -124,7 +124,7 @@ export default async function handler(req, res) {
   if (body.target_location_id !== undefined) {
     if (body.target_location_id === null || body.target_location_id === '') {
       target_location_id = null
-    } else if (/^[0-9a-f-]{8,}$/i.test(String(body.target_location_id))) {
+    } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(body.target_location_id))) {
       target_location_id = String(body.target_location_id)
     } else {
       return res.status(400).json({ error: 'invalid target_location_id' })
