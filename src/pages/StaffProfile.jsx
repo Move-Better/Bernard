@@ -1286,7 +1286,7 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
             variant={isComplete ? 'secondary' : 'outline'}
             className={`text-xs ${!isComplete ? 'border-warning/40 text-warning' : ''}`}
           >
-            {isComplete ? 'Content ready' : 'In progress'}
+            {isComplete ? 'Captured' : 'In progress'}
           </Badge>
           <Button asChild variant="ghost" size="icon" className="h-8 w-8">
             <Link to={href}><ChevronRight className="h-4 w-4" /></Link>
