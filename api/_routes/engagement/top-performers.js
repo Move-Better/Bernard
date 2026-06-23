@@ -14,6 +14,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -53,6 +54,9 @@ export default withSentry(async function handler(req, res) {
     const status = auth.reason === 'no-token' ? 401 : 403
     return res.status(status).json({ error: auth.reason })
   }
+
+  const limited = await enforceLimit(req, res, 'generic')
+  if (limited) return
 
   // Fetch the 150 most-recent snapshots for this workspace. We over-fetch so
   // we can dedupe to latest-per-item in JS and still have enough coverage to

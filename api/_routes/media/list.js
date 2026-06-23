@@ -76,7 +76,7 @@ async function handler(req, res) {
     const ciRes = await sb(`collection_items?collection_id=eq.${encodeURIComponent(collectionId)}&select=asset_id`)
     if (!ciRes.ok) return res.status(500).json({ error: 'Database error' })
     const ciRows = await ciRes.json()
-    collectionAssetIds = ciRows.map((r) => r.asset_id)
+    collectionAssetIds = ciRows.map((r) => r.asset_id).filter((id) => id && UUID_RE.test(id))
     if (collectionAssetIds.length === 0) return res.status(200).json([])
   }
   const SELECT = `${scope.column},${compact ? SELECT_COMPACT : SELECT_COMMON}`

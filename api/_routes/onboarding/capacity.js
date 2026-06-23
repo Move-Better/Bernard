@@ -9,6 +9,7 @@ export const config = { runtime: 'nodejs' }
 // further sign-ups when full.
 
 import { FOUNDING_CAP, SEED_SLUGS } from '../../_lib/onboardingValidation.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -21,6 +22,8 @@ async function handler(req, res) {
     console.error('[capacity] Supabase env not configured')
     return res.status(500).json({ error: 'db-error' })
   }
+
+  if (await enforceLimit(req, res, 'generic')) return
 
   // PostgREST: select=slug filter status=eq.active. We count externals client-side
   // (the active workspaces table is small for the foreseeable future).
