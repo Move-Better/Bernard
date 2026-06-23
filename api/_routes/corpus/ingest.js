@@ -82,7 +82,7 @@ export default async function handler(req, res) {
   // An explicit staffId may only be supplied by owners/producers (batch scripts,
   // admin import). Other roles always ingest against their own staff row.
   let staffId
-  if (requestedStaffId && (auth.role === 'owner' || auth.role === 'producer')) {
+  if (requestedStaffId && auth.role === 'admin') {
     // Verify the supplied staffId belongs to this workspace.
     const checkRes = await fetch(
       `${SUPABASE_URL}/rest/v1/staff?id=eq.${requestedStaffId}&workspace_id=eq.${ws.id}&select=id&limit=1`,

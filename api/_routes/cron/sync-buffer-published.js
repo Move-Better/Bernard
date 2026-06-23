@@ -95,6 +95,10 @@ export default async function handler(req, res) {
   }
 
   const wsRes = await sb('workspaces?status=eq.active&select=id,publish_provider,bundle_team_id')
+  if (!wsRes.ok) {
+    console.error('[sync-buffer-published] workspace fetch failed:', wsRes.status)
+    return res.status(500).json({ error: 'workspace fetch failed' })
+  }
   const wsRows = await wsRes.json().catch(() => [])
   const wsMap = {}
   const activeIds = (Array.isArray(wsRows) ? wsRows : []).map((w) => { wsMap[w.id] = w; return w.id })
