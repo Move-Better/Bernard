@@ -57,6 +57,10 @@ export default async function handler(req, res) {
   if (!id || id === 'packages') {
     return res.status(400).json({ error: 'missing_id' })
   }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) {
+    return res.status(400).json({ error: 'invalid_id' })
+  }
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(404).json({ error: 'no_workspace' })

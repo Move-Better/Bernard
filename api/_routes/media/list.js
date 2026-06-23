@@ -97,9 +97,12 @@ async function handler(req, res) {
     qs += `&asset_purpose=eq.${purpose}`
   }
   if (speakerRole && ['clinician', 'admin', 'patient_guest'].includes(speakerRole)) qs += `&speaker_role=eq.${speakerRole}`
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (sources === 'true') qs += `&parent_id=is.null`
-  if (parent)      qs += `&parent_id=eq.${encodeURIComponent(parent)}`
-  if (clipParent)  qs += `&parent_asset_id=eq.${encodeURIComponent(clipParent)}`
+  if (parent && !UUID_RE.test(parent)) return res.status(400).json({ error: 'invalid_parent' })
+  if (parent)      qs += `&parent_id=eq.${parent}`
+  if (clipParent && !UUID_RE.test(clipParent)) return res.status(400).json({ error: 'invalid_parent' })
+  if (clipParent)  qs += `&parent_asset_id=eq.${clipParent}`
   if (collectionAssetIds) {
     qs += `&id=in.(${collectionAssetIds.map(encodeURIComponent).join(',')})`
   }

@@ -381,7 +381,7 @@ async function handler(req, res) {
   // Clerk-dashboard-punchlist item #3 (new orgs got the purple building
   // icon). Once the user completes /onboard/brand-kit, their own logo can
   // replace this; until then the Bernard mark is a much better default.
-  uploadDefaultOrgLogo(org.id, userId)
+  waitUntil(uploadDefaultOrgLogo(org.id, userId).catch(e => console.error('[claim] uploadDefaultOrgLogo failed:', e?.message)))
 
   // Seed the cadence channels from the chosen outputs × the cold-start prior
   // (not a hardcoded trio) so a new tenant's Auto cadence covers exactly what
