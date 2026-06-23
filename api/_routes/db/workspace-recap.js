@@ -51,6 +51,7 @@ export default async function handler(req, res) {
     console.error(`[db/workspace-recap] rpc failed — supabase ${r.status}: ${body.slice(0, 500)}`)
     return res.status(500).json({ error: 'Database error' })
   }
-  const data = await r.json()
+  const data = await r.json().catch(() => null)
+  if (!data) return res.status(500).json({ error: 'Database error' })
   return res.status(200).json(data || { team: [], team_all_time_total: 0, cost: {} })
 }
