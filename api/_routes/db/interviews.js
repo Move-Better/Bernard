@@ -85,8 +85,8 @@ export default async function handler(req, res) {
     if (!topic) return err(res, 'Missing id or topic')
 
     if (excludeId && !UUID_RE.test(excludeId)) return err(res, 'Invalid excludeId', 400)
-    const topicEscaped = topic.replace(/[%_]/g, '')
-    let qs = `interviews?${wsFilter}&topic=ilike.${encodeURIComponent(topicEscaped)}&status=eq.completed`
+    const topicEscaped = topic.replace(/%/g, '\\%').replace(/_/g, '\\_')
+    let qs = `interviews?${wsFilter}&topic=ilike.${encodeURIComponent('%' + topicEscaped + '%')}&status=eq.completed`
     qs += `&select=id,topic,messages,created_at,staff(name)`
     if (excludeId) qs += `&id=neq.${excludeId}`
     qs += `&order=created_at.desc&limit=3`
