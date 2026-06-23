@@ -120,7 +120,8 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId = null }) {
   const wsFilter = workspaceId ? `&workspace_id=eq.${workspaceId}` : ''
   if (ops.toDelete.length) {
     const ids = ops.toDelete.map((id) => `"${id}"`).join(',')
-    await sb(`content_plan_atoms?id=in.(${ids})${wsFilter}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+    const delR = await sb(`content_plan_atoms?id=in.(${ids})${wsFilter}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+    if (!delR.ok) throw new Error(`atom delete ${delR.status}: ${(await delR.text().catch(() => '')).slice(0, 200)}`)
   }
   if (ops.toInsert.length) {
     const r = await sb('content_plan_atoms', {
