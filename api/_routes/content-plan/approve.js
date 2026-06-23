@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     return ok(res, { status: piece.status, alreadyApproved: true })
   }
 
-  const userEmail = auth.user?.emailAddresses?.[0]?.emailAddress || auth.user?.id || 'unknown'
+  const userEmail = auth.userId || 'unknown'
   const nowIso = new Date().toISOString()
   const patchRes = await sb(`content_items?id=eq.${piece_id}&${wsFilter}`, {
     method: 'PATCH',

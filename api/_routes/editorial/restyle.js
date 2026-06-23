@@ -132,7 +132,7 @@ function detectTemplate(instruction) {
     || instruction.match(/make\s+[‘'](.+)[’']\s+orange/i)
   if (accentM) { changes.accentText = accentM[1].trim(); matched = true }
   const labelM = instruction.match(/label\s+(?:it\s+)?["'“](.+?)["'”]/i)
-    || instruction.match(/label\s+(?:it\s+)?(?:to\s+|as\s+)?([A-Za-z][\w\s]{0,28})$/i)
+    || instruction.trimEnd().match(/label\s+(?:it\s+)?(?:to\s+|as\s+)?([A-Za-z][\w\s]{0,28})$/im)
   if (labelM) { changes.label = labelM[1].trim(); matched = true }
   const figM = instruction.match(/(?:badge|figure|metric)\s+(\d+)\s*([A-Za-z%]+)?/i)
     || instruction.match(/(\d+)[-\s]?(min|sec|day|days|week|weeks|month|months|%|x)\b/i)
