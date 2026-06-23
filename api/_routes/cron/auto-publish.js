@@ -326,12 +326,8 @@ async function processWorkspace(ws, summary) {
         }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
         if (ciId == null) {
-          console.error('[auto-publish] markContentItemScheduled returned null — releasing claim for retry', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
-          await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ auto_published_at: null }),
-          }).catch((e) => console.error('[auto-publish] claim release (ci-null) failed:', e?.message))
-          held.push({ id: pkg.id, reasons: [{ signal: 'ci_missing', detail: 'No approved content_item found for package; claim released for retry' }] })
+          console.error('[auto-publish] GBP post fired but markContentItemScheduled returned null — claim kept locked to prevent double-post; manual investigation required', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
+          held.push({ id: pkg.id, reasons: [{ signal: 'ci_missing', detail: 'GBP post already dispatched; no approved content_item found; claim locked for manual investigation' }] })
           failedAny = true
           continue
         }
