@@ -68,13 +68,17 @@ export default async function handler(req, res) {
   if (!atom.interview_id) return err(res, 'This atom has no linked interview — backlog atoms must be linked to an interview before drafting', 422)
   if (atom.status === 'drafted') return err(res, 'Already drafted')
   if (atom.status === 'skipped') return err(res, 'Atom is skipped — reset to pending first')
+  if (atom.status === 'drafting') return err(res, 'Already in progress', 409)
 
-  // Mark drafting so concurrent clicks don't double-generate
-  await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
+  // Mark drafting so concurrent clicks don't double-generate.
+  // Filter on status=eq.pending so two simultaneous requests can't both claim the atom.
+  const claimRes = await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}&status=eq.pending`, {
     method: 'PATCH',
     body: JSON.stringify({ status: 'drafting', updated_at: new Date().toISOString() }),
-    headers: { Prefer: 'return=minimal' },
   })
+  if (!claimRes.ok) return err(res, 'Database error', 500)
+  const claimRows = await claimRes.json()
+  if (!claimRows.length) return err(res, 'Already in progress', 409)
 
   try {
     // Fetch the interview (transcript = primary source; blog = editorial context)

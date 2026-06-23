@@ -329,6 +329,7 @@ async function processWorkspace(ws, summary) {
         if (ciId == null) {
           console.error('[auto-publish] GBP post fired but markContentItemScheduled returned null — claim kept locked to prevent double-post; manual investigation required', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
           held.push({ id: pkg.id, reasons: [{ signal: 'ci_missing', detail: 'GBP post already dispatched; no approved content_item found; claim locked for manual investigation' }] })
+          dispatchedAny = true
           failedAny = true
           continue
         }
