@@ -395,7 +395,7 @@ async function processWorkspaceGA4(ws, summary) {
     item._stats = stats
 
     const latestRes = await sb(
-      `engagement_snapshots?content_item_id=eq.${item.id}&source=eq.ga4&order=fetched_at.desc&limit=1&select=fetched_at`
+      `engagement_snapshots?content_item_id=eq.${item.id}&workspace_id=eq.${ws.id}&source=eq.ga4&order=fetched_at.desc&limit=1&select=fetched_at`
     )
     const latest = latestRes.ok ? (await latestRes.json().catch(() => []))?.[0] : null
     if (latest && latest.fetched_at > freshCutoff) continue

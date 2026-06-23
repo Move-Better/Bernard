@@ -55,6 +55,8 @@ export default async function handler(req, res) {
 
   const { atom_id } = req.body || {}
   if (!atom_id) return err(res, 'Missing atom_id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(atom_id)) return err(res, 'Invalid atom_id', 400)
 
   // Fetch the atom
   const atomRes = await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}&select=*`)
