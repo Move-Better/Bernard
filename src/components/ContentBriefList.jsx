@@ -58,7 +58,7 @@ export default function ContentBriefList({ refreshKey, expandedDefault = true })
         <div className="flex items-center gap-2">
           <span
             className="inline-block w-1 h-5 rounded-full shrink-0"
-            style={{ background: '#d97706' }}
+            style={{ background: 'hsl(var(--action))' }}
             aria-hidden="true"
           />
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

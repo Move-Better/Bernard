@@ -60,7 +60,7 @@ function RecapBlock({ recap }) {
         <Stat value={stats.wentLive} label="published" color="hsl(var(--success))" />
         <Stat value={stats.scheduled} label="scheduled to go out" color="hsl(var(--scheduled))" />
         <Stat value={stats.waiting} label="in review" color="hsl(var(--primary))" />
-        <Stat value={stats.captured} label="captured by the team" color="#334155" />
+        <Stat value={stats.captured} label="captured by the team" color="hsl(var(--primary))" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
@@ -173,7 +173,7 @@ function MemberCard({ m }) {
       </div>
       <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
         {streak > 0 ? (
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-600">
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-action">
             <Flame className="h-3.5 w-3.5" aria-hidden="true" />{streak}-week streak
           </span>
         ) : (
@@ -211,7 +211,7 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
         <AllTimeStat value={published.toLocaleString()} label="posts published" color="hsl(var(--success))" />
         <AllTimeStat value={captured.toLocaleString()} label="stories captured" color="hsl(var(--info))" />
-        <AllTimeStat value={contributors.toLocaleString()} label="teammates contributing" color="hsl(var(--warning))" />
+        <AllTimeStat value={contributors.toLocaleString()} label="teammates contributing" color="hsl(var(--info))" />
         <AllTimeStat value={`≈ ${fmtUsd(costTotal)}`} label="total run cost · est." color="#ffffff" />
       </div>
     </div>
