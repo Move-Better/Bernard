@@ -23,6 +23,7 @@ async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Missing id' })
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
 
   // Segmentation creates content_pieces rows — same gate as content-piece
   // creation: admin or publisher. Clinicians can browse but can't fan out.

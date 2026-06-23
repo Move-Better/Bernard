@@ -40,6 +40,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
 
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })

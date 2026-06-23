@@ -44,6 +44,7 @@ async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(404).json({ error: 'no_workspace' })
   const { id: workspaceId } = scope
 
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })

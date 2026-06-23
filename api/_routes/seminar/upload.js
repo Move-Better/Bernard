@@ -48,6 +48,7 @@ async function handler(req, res) {
   let scope = null
   if (body?.type === 'blob.generate-client-token') {
     scope = await workspaceScope(req)
+    if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
     const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: scope.workspace.clerk_org_id })
     if (!auth.ok) {
       return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })

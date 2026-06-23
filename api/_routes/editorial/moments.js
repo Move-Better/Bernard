@@ -40,7 +40,7 @@ function sb(path, init = {}) {
 function inList(ids) {
   // PostgREST in.() — UUIDs are safe bare; de-dup + drop falsy.
   const deduped = [...new Set(ids.filter(Boolean))]
-  if (!deduped.length) throw new Error('inList called with empty array — guard at call site')
+  if (!deduped.length) return null
   return `(${deduped.join(',')})`
 }
 
@@ -95,9 +95,11 @@ export default async function handler(req, res) {
   // 3. Hydrate source assets + staff names in two small batched reads.
   const sourceIds = segments.map((s) => s.source_asset_id).filter(Boolean)
   const staffIds = segments.map((s) => s.staff_id).filter(Boolean)
+  const srcInList = inList(sourceIds)
+  const staffInList = inList(staffIds)
   const [srcRes, staffRes] = await Promise.all([
-    sourceIds.length ? sb(`media_assets?id=in.${inList(sourceIds)}&workspace_id=eq.${ws.id}&select=id,filename,thumbnail_url,width,height,consent_status`) : Promise.resolve({ ok: true, json: async () => [] }),
-    staffIds.length ? sb(`staff?id=in.${inList(staffIds)}&workspace_id=eq.${ws.id}&select=id,name`) : Promise.resolve({ ok: true, json: async () => [] }),
+    srcInList ? sb(`media_assets?id=in.${srcInList}&workspace_id=eq.${ws.id}&select=id,filename,thumbnail_url,width,height,consent_status`) : Promise.resolve({ ok: true, json: async () => [] }),
+    staffInList ? sb(`staff?id=in.${staffInList}&workspace_id=eq.${ws.id}&select=id,name`) : Promise.resolve({ ok: true, json: async () => [] }),
   ])
   const sources = srcRes.ok ? await srcRes.json().catch(() => []) : []
   const staff = staffRes.ok ? await staffRes.json().catch(() => []) : []

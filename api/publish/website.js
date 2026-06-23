@@ -88,6 +88,7 @@ async function handler(req, res) {
   }
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(404).json({ error: 'no_workspace' })
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   const workspaceId = scope?.workspace?.id
