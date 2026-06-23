@@ -24,11 +24,13 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 const SOURCE_SLUG = 'movebetter-people'
 const TARGET_SLUG = 'qbook'
 
-// Q's Clerk user_id — the single identity that owns both workspaces. The source
-// clinician must be resolved by this id, never by row age: if movebetter-people
-// onboards a second clinician whose staff row predates Q's, an oldest-row lookup
-// would index the wrong person's interviews into the qbook (Author Mode) corpus.
-const Q_USER_ID = 'user_3DWDihgcc6OPc5eVvYkZO9sgqVt'
+// Clerk user_id for the author whose interviews are synced. Must be set via env
+// so it can be changed without a code deploy. The clinician is resolved by this
+// id, never by row age: if movebetter-people onboards a second clinician whose
+// staff row predates the author's, an oldest-row lookup would index the wrong
+// person's interviews into the qbook (Author Mode) corpus.
+const Q_USER_ID = process.env.CORPUS_SYNC_USER_ID
+if (!Q_USER_ID) throw new Error('CORPUS_SYNC_USER_ID env var not set')
 
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 

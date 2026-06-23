@@ -27,6 +27,7 @@ async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Missing id' })
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(404).json({ error: 'no_workspace' })
 
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) {

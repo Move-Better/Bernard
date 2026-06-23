@@ -66,7 +66,11 @@ export default async function handler(req, res) {
   // 1. Workspace staff
   const staffRes = await sb(`staff?workspace_id=eq.${ws.id}&select=id,name&order=name.asc`)
   if (!staffRes.ok) return res.status(500).json({ error: 'db_error_staff' })
-  const staff = await staffRes.json()
+  const staff = await staffRes.json().catch(async (e) => {
+    console.error('[coverage] staff JSON parse failed:', e.message, await staffRes.text().catch(() => '(body unreadable)'))
+    return null
+  })
+  if (!staff) return res.status(500).json({ error: 'db_error_staff_parse' })
 
   // 2. Non-archived assets in workspace (id, staff_id, captured_at, created_at)
   // We aggregate client-side rather than PostgREST group-by because the result
@@ -75,14 +79,22 @@ export default async function handler(req, res) {
     `media_assets?workspace_id=eq.${ws.id}&archived_at=is.null&select=id,staff_id,captured_at,created_at`
   )
   if (!assetsRes.ok) return res.status(500).json({ error: 'db_error_assets' })
-  const assets = await assetsRes.json()
+  const assets = await assetsRes.json().catch(async (e) => {
+    console.error('[coverage] assets JSON parse failed:', e.message, await assetsRes.text().catch(() => '(body unreadable)'))
+    return null
+  })
+  if (!assets) return res.status(500).json({ error: 'db_error_assets_parse' })
 
   // 3. Story packages (non-skipped) for topic coverage rollup
   const packagesRes = await sb(
     `story_packages?workspace_id=eq.${ws.id}&status=in.(complete,approved)&select=id,topic`
   )
   if (!packagesRes.ok) return res.status(500).json({ error: 'db_error_packages' })
-  const packages = await packagesRes.json()
+  const packages = await packagesRes.json().catch(async (e) => {
+    console.error('[coverage] packages JSON parse failed:', e.message, await packagesRes.text().catch(() => '(body unreadable)'))
+    return null
+  })
+  if (!packages) return res.status(500).json({ error: 'db_error_packages_parse' })
 
   // 4. Published winners (performed_well) for the engagement loop. Non-fatal:
   //    if this read fails we still return coverage with zero winners rather

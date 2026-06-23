@@ -47,6 +47,7 @@ async function handler(req, res) {
   const limit = Math.max(1, Math.min(MAX_LIMIT, requested))
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(404).json({ error: 'no_workspace' })
 
   const auth = await requireRole(req, ['admin'], { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) {
