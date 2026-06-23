@@ -66,10 +66,17 @@ async function uploadDefaultOrgLogo(orgId, userId) {
 // intended display name, and (c) has NO workspace bound to it — so we can never
 // hijack an org that's actively serving a workspace.
 async function findReusableOrg(userId, displayName) {
-  let memberships
+  let memberships = []
   try {
-    const r = await clerk().users.getOrganizationMembershipList({ userId, limit: 100 })
-    memberships = r?.data || []
+    const limit = 100
+    let offset = 0
+    while (true) {
+      const r = await clerk().users.getOrganizationMembershipList({ userId, limit, offset })
+      const page = r?.data || []
+      memberships = memberships.concat(page)
+      if (page.length < limit) break
+      offset += limit
+    }
   } catch (e) {
     console.warn('[claim] reusable-org lookup failed:', e?.message)
     return null
