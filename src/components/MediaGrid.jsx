@@ -6,7 +6,7 @@ import { toast } from '@/lib/toast'
 const STATUS_LABEL = {
   raw:      { label: 'Raw',      tone: 'bg-muted text-muted-foreground' },
   tagged:   { label: 'Tagged',   tone: 'bg-info/10 text-info' },
-  rendered: { label: 'Rendered', tone: 'bg-violet-100 text-violet-700' },
+  rendered: { label: 'Rendered', tone: 'bg-scheduled/10 text-scheduled' },
   approved: { label: 'Approved', tone: 'bg-amber-50 text-amber-700' },
   archived: { label: 'Archived', tone: 'bg-muted text-muted-foreground' },
 }

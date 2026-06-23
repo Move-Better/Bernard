@@ -357,13 +357,13 @@ throws on a failed insert) so the caller's fallback/logging fires instead of swa
 extends the existing "validate every query param with `UUID_RE` before interpolating" rule to
 LLM-echoed values, not just request params.
 
-## AI SDK v6 — `maxTokens`, not `maxOutputTokens`
+## AI SDK v6 — `maxOutputTokens`, not `maxTokens`
 
-AI SDK v6 (`generateText`/`generateObject`) uses `maxTokens` to cap the completion length.
-`maxOutputTokens` is silently ignored (not an error, not a warning) — the call succeeds but uses the
+AI SDK v6 (`generateText`/`generateObject`) uses `maxOutputTokens` to cap the completion length.
+`maxTokens` is silently ignored (not an error, not a warning) — the call succeeds but uses the
 model default, which can be much larger than intended. Any handler that calls `generateText` with a
-token budget should use `maxTokens`. Found in `api/_routes/staff/refresh-voice-notes.js` (#1627,
-2026-06-23). Grep check: `grep -rn "maxOutputTokens" api/` should return 0 — if it returns any, fix them.
+token budget should use `maxOutputTokens`. Grep check: `grep -rn "maxTokens:" api/` should return 0
+— if it returns any (other than `max_tokens` in JSON bodies), revert them to `maxOutputTokens`.
 
 ## How `/week` gets populated — the Strategist drip model
 

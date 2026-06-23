@@ -474,12 +474,12 @@ function VerticalTimeline({ ctx }) {
         <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5" style={{ color: 'hsl(var(--primary))' }}><Plus className="h-3 w-3" />Text</button>
       </div>
       <div className="relative flex flex-1 gap-2 p-2.5">
-        <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(220 14% 93%)' }}>
+        <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           <div onClick={() => selectKey('clip')} className="absolute inset-x-0 cursor-pointer rounded-md" style={{ top: `${f(startSec)}%`, height: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(180deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
           <div onMouseDown={trim('in')} className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm" style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11, background: 'hsl(var(--primary))' }} title="Start" />
           <div onMouseDown={trim('out')} className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm" style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11, background: 'hsl(var(--primary))' }} title="End" />
         </div>
-        <div ref={ovColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(220 14% 93%)' }}>
+        <div ref={ovColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           {overlays.length ? overlays.map((o) => {
             const isSel = typeof sel === 'object' && sel.id === o.id
             return (

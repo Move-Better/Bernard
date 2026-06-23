@@ -363,7 +363,8 @@ export default async function handler(req, res) {
         updated_at:       new Date().toISOString(),
       }),
     })
-    const updatedAtomRows = updatedAtomRes.ok ? await updatedAtomRes.json() : []
+    if (!updatedAtomRes.ok) throw new Error(`atom status update failed: ${updatedAtomRes.status}`)
+    const updatedAtomRows = await updatedAtomRes.json()
 
     return ok(res, {
       atom:          updatedAtomRows[0] ?? { ...atom, status: 'drafted', content_piece_id: contentPiece.id },
@@ -374,10 +375,11 @@ export default async function handler(req, res) {
     // atom — otherwise a partial failure (insert succeeded, later step failed)
     // leaves an orphaned draft row that permanently pollutes Stories/Library.
     if (insertedContentPieceId) {
-      await sb(`content_items?id=eq.${insertedContentPieceId}&${wsFilter}`, {
+      const deleteRes = await sb(`content_items?id=eq.${insertedContentPieceId}&${wsFilter}`, {
         method: 'DELETE',
         headers: { Prefer: 'return=minimal' },
       })
+      if (!deleteRes.ok) console.error('[content-plan/draft] cleanup delete failed', insertedContentPieceId, deleteRes.status)
     }
     // Reset atom to pending so the user can retry
     await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {

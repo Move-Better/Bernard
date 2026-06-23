@@ -50,7 +50,7 @@ function SkeletonThemeCard() {
           <div key={i} className="h-7 w-7 bg-muted rounded-full" />
         ))}
       </div>
-      <div className="border-l-2 border-gray-200 pl-3 mb-4 space-y-2">
+      <div className="border-l-2 border-border pl-3 mb-4 space-y-2">
         <div className="h-3 bg-muted rounded w-full" />
         <div className="h-3 bg-muted rounded w-4/5" />
       </div>

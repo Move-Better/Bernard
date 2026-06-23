@@ -311,7 +311,7 @@ export default function Synthesis() {
               <button
                 key={c.id}
                 onClick={() => handleDraft(c)}
-                className="inline-flex items-center gap-1.5 text-xs bg-white border border-action/30 text-action rounded-full px-3 py-1 hover:bg-action/10 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs bg-card border border-action/30 text-action rounded-full px-3 py-1 hover:bg-action/10 transition-colors"
               >
                 {c.label}
                 <span className="text-action/60">({c.notMentionedBy.length} missing)</span>

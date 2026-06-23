@@ -179,7 +179,7 @@ function CommentThread({ pieceId }) {
 const BLOCK_BORDER = {
   verbatim:         'border-l-emerald-400',
   close_paraphrase: 'border-l-sky-400',
-  prior_corpus:     'border-l-teal-400',
+  prior_corpus:     'border-l-info/60',
   synthesis:        'border-l-slate-300',
 }
 
@@ -1563,7 +1563,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             {ownWordsPct}% in clinician&rsquo;s voice
           </span>
           {(provSummary.prior_corpus_pct ?? 0) > 0 && (
-            <span className="inline-flex items-center rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-xs text-teal-700">
+            <span className="inline-flex items-center rounded-full bg-info/10 border border-info/20 px-2 py-0.5 text-xs text-info">
               {provSummary.prior_corpus_pct}% drew on your prior work
             </span>
           )}

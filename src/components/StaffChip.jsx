@@ -3,7 +3,7 @@
 // Themes, Stories Cards, Story Detail, Approval, and Clinician Profile.
 
 const CHIP_COLORS = [
-  'bg-indigo-100 text-indigo-700',
+  'bg-primary/15 text-primary',
   'bg-violet-100 text-violet-700',
   'bg-rose-100 text-rose-700',
   'bg-emerald-100 text-emerald-700',

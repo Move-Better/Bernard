@@ -111,8 +111,8 @@ export async function computeAdaptiveCadenceChannels(wsId, enabledOutputs, prior
     if (!rawPlatform) continue
     const ap = toAtomPlatform(rawPlatform)
     if (!enabledAtomPlatforms.has(ap)) continue
+    if (snap.stats == null) continue
     const score = scoreOf(snap.stats)
-    if (score === 0) continue
     if (!agg[ap]) agg[ap] = { count: 0, totalScore: 0 }
     agg[ap].count += 1
     agg[ap].totalScore += score

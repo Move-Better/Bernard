@@ -58,9 +58,9 @@ export default function UsageGate({ feature, plan, currentPlan, children }) {
   const planLabel     = PLAN_LABELS[requiredPlan] || requiredPlan
 
   return (
-    <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center">
-      <Lock className="mx-auto h-8 w-8 text-gray-400" aria-hidden="true" />
-      <h3 className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+    <div className="rounded-lg border border-dashed border-border p-8 text-center">
+      <Lock className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+      <h3 className="mt-3 text-sm font-semibold text-foreground">
         {planLabel} plan feature
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
