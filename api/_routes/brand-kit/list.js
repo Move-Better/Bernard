@@ -54,7 +54,11 @@ async function handler(req, res) {
   if (!rolesRes.ok)  return res.status(500).json({ error: 'Database error (roles)' })
   if (!styleRes.ok)  return res.status(500).json({ error: 'Database error (style)' })
 
-  const [assets, roleRows, styleRows] = await Promise.all([assetsRes.json(), rolesRes.json(), styleRes.json()])
+  const [assets, roleRows, styleRows] = await Promise.all([
+    assetsRes.ok ? await assetsRes.json().catch(() => []) : [],
+    rolesRes.ok ? await rolesRes.json().catch(() => []) : [],
+    styleRes.ok ? await styleRes.json().catch(() => []) : [],
+  ])
 
   // Roles come back as rows; flatten to a { role: asset_id } map for the UI.
   const roles = {}

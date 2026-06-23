@@ -68,16 +68,28 @@ export default async function handler(req, res) {
   // 2. Lazily score any segment missing a score (pre-scoring-pass rows). One
   // batched LLM call, then persist so it's a one-time cost per segment.
   const unscored = segments.filter((s) => s.score == null)
+  let scorePersistFailed = false
   if (unscored.length) {
     const scores = await scoreSegments(unscored, ws)
-    await Promise.all(unscored.map((s, i) => {
+    const persistResults = await Promise.all(unscored.map(async (s, i) => {
       s.score = scores[i]?.score ?? 55
       s.moment_type = scores[i]?.moment_type ?? 'insight'
-      return sb(`video_segments?id=eq.${s.id}&workspace_id=eq.${ws.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ score: s.score, moment_type: s.moment_type }),
-      }).catch((e) => console.error('[moments] score persist failed', s.id, e?.message))
+      try {
+        const r = await sb(`video_segments?id=eq.${s.id}&workspace_id=eq.${ws.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ score: s.score, moment_type: s.moment_type }),
+        })
+        if (!r.ok) {
+          console.error('[moments] score persist failed', s.id, r.status, await r.text().catch(() => ''))
+          return { id: s.id, ok: false }
+        }
+        return { id: s.id, ok: true }
+      } catch (e) {
+        console.error('[moments] score persist error', s.id, e?.message)
+        return { id: s.id, ok: false }
+      }
     }))
+    scorePersistFailed = persistResults.some((r) => !r.ok)
   }
 
   // 3. Hydrate source assets + staff names in two small batched reads.
@@ -119,5 +131,5 @@ export default async function handler(req, res) {
     }
   }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.startSec - b.startSec)
 
-  return res.status(200).json({ moments })
+  return res.status(200).json({ moments, ...(scorePersistFailed ? { scorePersistFailed: true } : {}) })
 }

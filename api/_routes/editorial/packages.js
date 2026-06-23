@@ -54,6 +54,11 @@ export default async function handler(req, res) {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '20', 10), 1), 100)
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10), 0)
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (staffId && !UUID_RE.test(staffId)) {
+    return res.status(400).json({ error: 'invalid_staff_id' })
+  }
+
   const VALID_STATUSES = ['pending', 'generating', 'complete', 'failed']
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: 'invalid_status' })

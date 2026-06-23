@@ -23,6 +23,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const TOKEN_TTL_DAYS = 90
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -67,6 +68,7 @@ async function resolveTarget(req) {
   // Which clinician? Default to "the one matching auth user_id".
   const url = new URL(req.url, 'http://localhost')
   const staffIdParam = url.searchParams.get('staffId')
+  if (staffIdParam && !UUID_RE.test(staffIdParam)) return { ok: false, status: 400, reason: 'Invalid staffId' }
 
   let staffMember
   if (staffIdParam) {
