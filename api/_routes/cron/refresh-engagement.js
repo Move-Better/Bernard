@@ -465,6 +465,7 @@ async function processWorkspaceGA4(ws, summary) {
 // fetches view counts from the reportInsights API. Runs daily alongside the
 // Buffer / bundle / GA4 walkers. Skipped silently when no GBP credential exists.
 async function processWorkspaceGBP(ws, summary) {
+  if (ws.publish_provider === 'bundle') return
   if (!ws.gbp_location_name) {
     // Not configured — skip silently (not an error; most workspaces won't have this).
     return
