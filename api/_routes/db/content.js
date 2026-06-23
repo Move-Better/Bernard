@@ -204,6 +204,10 @@ export default async function handler(req, res) {
     if (!id) return err(res, 'Missing id')
     const patch = req.body || {}
 
+    if (patch.status && !VALID_STATUSES.includes(patch.status)) {
+      return res.status(400).json({ error: 'invalid_status' })
+    }
+
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
     // archive or `null` to restore.
     const allowed = {

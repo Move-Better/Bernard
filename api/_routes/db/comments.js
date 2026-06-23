@@ -31,6 +31,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
 }
 
 const SELECT = 'id,workspace_id,content_item_id,user_id,user_email,body,kind,created_at'
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const contentItemId = searchParams.get('contentItemId')
     if (!contentItemId) return err(res, 'Missing contentItemId')
+    if (!UUID_RE.test(contentItemId)) return err(res, 'Invalid contentItemId')
 
     const qs = `content_item_comments?${wsFilter}&content_item_id=eq.${contentItemId}&select=${SELECT}&order=created_at.asc`
     const r = await sb(qs)
@@ -67,6 +69,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { contentItemId, body: body_, kind = 'comment' } = req.body || {}
     if (!contentItemId) return err(res, 'Missing contentItemId')
+    if (!UUID_RE.test(contentItemId)) return err(res, 'Invalid contentItemId')
     if (!body_ || !body_.trim()) return err(res, 'Missing body')
     if (!['comment', 'change_request'].includes(kind)) return err(res, 'Invalid kind')
 
@@ -92,6 +95,7 @@ export default async function handler(req, res) {
   if (req.method === 'DELETE') {
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id')
 
     // Fetch the comment first to check ownership
     const checkR = await sb(`content_item_comments?id=eq.${id}&${wsFilter}&select=id,user_id`)

@@ -86,6 +86,7 @@ async function handler(req, res) {
         return {
           allowedContentTypes: ALLOWED_MIME,
           maximumSizeInBytes: MAX_BRAND_ASSET_BYTES,
+          allowedPathPrefixes: [`brand-kit/${scope.id}/`],
           tokenPayload: JSON.stringify({
             scopeColumn: scope.column,
             scopeId: scope.id,
