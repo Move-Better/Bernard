@@ -70,11 +70,13 @@ export default async function handler(req, res) {
   if (atom.status === 'skipped') return err(res, 'Atom is skipped — reset to pending first')
 
   // Mark drafting so concurrent clicks don't double-generate
-  await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
+  const markRes = await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}&status=eq.pending`, {
     method: 'PATCH',
     body: JSON.stringify({ status: 'drafting', updated_at: new Date().toISOString() }),
-    headers: { Prefer: 'return=minimal' },
   })
+  if (!markRes.ok) return err(res, 'Database error', 500)
+  const markRows = await markRes.json()
+  if (!markRows.length || markRows[0].status !== 'drafting') return err(res, 'Atom is no longer pending — another request may be generating it', 409)
 
   try {
     // Fetch the interview (transcript = primary source; blog = editorial context)

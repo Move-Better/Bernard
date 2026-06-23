@@ -65,7 +65,9 @@ async function resolveGbpChannelIds(workspaceId, locationIds) {
     select: 'id,gbp_location_id',
   })
   if (Array.isArray(locationIds) && locationIds.length > 0) {
-    params.set('id', `in.(${locationIds.map((id) => `"${id}"`).join(',')})`)
+    const safeIds = locationIds.filter((id) => UUID_RE.test(String(id)))
+    if (safeIds.length === 0) return []
+    params.set('id', `in.(${safeIds.map((id) => `"${id}"`).join(',')})`)
   }
   const r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_locations?${params.toString()}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
