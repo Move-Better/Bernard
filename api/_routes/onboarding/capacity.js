@@ -23,7 +23,7 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'db-error' })
   }
 
-  if (await enforceLimit(req, res, 'generic')) return
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   // PostgREST: select=slug filter status=eq.active. We count externals client-side
   // (the active workspaces table is small for the foreseeable future).
