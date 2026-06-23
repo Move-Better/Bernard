@@ -30,7 +30,7 @@ export default function Members() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
             <span
               className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-              style={{ background: '#0284c7' }}
+              style={{ background: 'hsl(var(--info))' }}
               aria-hidden="true"
             />
             Members

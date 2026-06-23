@@ -212,7 +212,7 @@ function CardContent({ item, dragging, handle }) {
       </div>
       <p className="font-semibold leading-snug line-clamp-2 text-foreground">{item.topic}</p>
       {snippet && <p className="text-muted-foreground text-2xs line-clamp-2">{snippet}</p>}
-      <div className="flex items-center justify-between gap-2 text-3xs text-muted-foreground pt-1 border-t border-slate-100">
+      <div className="flex items-center justify-between gap-2 text-3xs text-muted-foreground pt-1 border-t border-border">
         <span className="truncate">
           {scheduledAt ? scheduledAt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' }) : formatRelativeDate(item.updated_at)}
         </span>

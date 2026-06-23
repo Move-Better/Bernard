@@ -62,7 +62,7 @@ function summarize(results, verb) {
   const ok = results.filter((r) => r.status === 'fulfilled').length
   const bad = results.length - ok
   if (bad === 0) return `${verb} ${ok} item${ok === 1 ? '' : 's'}.`
-  if (ok === 0) return `Couldn’t ${verb.toLowerCase()} any of ${results.length} — ${results[0]?.reason?.message || 'see console'}.`
+  if (ok === 0) return `Couldn't ${verb.toLowerCase()} any of ${results.length} — ${results[0]?.reason?.message || 'see console'}.`
   return `${verb} ${ok} of ${results.length} — ${bad} failed (${results.find((r) => r.status === 'rejected')?.reason?.message || 'see console'}).`
 }
 
@@ -212,45 +212,50 @@ export default function BulkActionBar({
   async function setStatus(statusId) {
     if (!count) return
     setBusy(`status:${statusId}`); setError('')
-    const results = await pMap(selectedIds, (id) => updateMediaAsset(id, { status: statusId }), 8)
-    setMessage(summarize(results, `Set status to "${statusId}" on`))
-    setBusy(null); setPanel(null)
-    onRefresh?.()
-    onClear?.()
+    try {
+      const results = await pMap(selectedIds, (id) => updateMediaAsset(id, { status: statusId }), 8)
+      setMessage(summarize(results, `Set status to "${statusId}" on`))
+      setPanel(null)
+      onRefresh?.()
+      onClear?.()
+    } finally { setBusy(null) }
   }
 
   async function archiveAll() {
     if (!count) return
-    if (!confirm(`Archive ${count} item${count === 1 ? '' : 's'}? They’ll move to the trash bin and can be restored.`)) return
+    if (!confirm(`Archive ${count} item${count === 1 ? '' : 's'}? They'll move to the trash bin and can be restored.`)) return
     setBusy('archive'); setError('')
-    const results = await pMap(selectedIds, (id) => archiveMediaAsset(id), 8)
-    setMessage(summarize(results, 'Archived'))
-    setBusy(null)
-    onRefresh?.()
-    onClear?.()
+    try {
+      const results = await pMap(selectedIds, (id) => archiveMediaAsset(id), 8)
+      setMessage(summarize(results, 'Archived'))
+      onRefresh?.()
+      onClear?.()
+    } finally { setBusy(null) }
   }
 
   async function restoreAll() {
     if (!count) return
     setBusy('restore'); setError('')
-    const results = await pMap(selectedIds, (id) => restoreMediaAsset(id), 8)
-    setMessage(summarize(results, 'Restored'))
-    setBusy(null)
-    onRefresh?.()
-    onClear?.()
+    try {
+      const results = await pMap(selectedIds, (id) => restoreMediaAsset(id), 8)
+      setMessage(summarize(results, 'Restored'))
+      onRefresh?.()
+      onClear?.()
+    } finally { setBusy(null) }
   }
 
   async function tagAll() {
     if (!count) return
     setBusy('tag'); setError('')
-    // AI tagging is server-heavy (vision + transcription, 10–60s/video). Cap
-    // concurrency low so we don't queue dozens of simultaneous Gemini calls.
-    const results = await pMap(selectedIds, (id) => tagMediaAsset(id), 3)
-    setMessage(summarize(results, 'Re-tagged'))
-    setBusy(null)
-    onRefresh?.()
-    // Selection retained — items stay in view, user may want to chain another
-    // action (e.g. set status to "tagged") on the same set.
+    try {
+      // AI tagging is server-heavy (vision + transcription, 10–60s/video). Cap
+      // concurrency low so we don't queue dozens of simultaneous Gemini calls.
+      const results = await pMap(selectedIds, (id) => tagMediaAsset(id), 3)
+      setMessage(summarize(results, 'Re-tagged'))
+      onRefresh?.()
+      // Selection retained — items stay in view, user may want to chain another
+      // action (e.g. set status to "tagged") on the same set.
+    } finally { setBusy(null) }
   }
 
   async function purgeAll() {
