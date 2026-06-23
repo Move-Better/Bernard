@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   // Any authenticated workspace member can see their own post-call reveal.
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return err(res, auth.reason || 'Unauthorized', auth.reason === 'forbidden' ? 403 : 401)
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const weekMonday = mondayOf(new Date().toISOString())
 
