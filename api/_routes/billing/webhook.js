@@ -313,7 +313,7 @@ async function handler(req, res) {
           await updateWorkspace(workspaceId, {
             plan: 'solo',
             plan_seats: 3,
-          })
+          }, customerId)
         }
         break
       }
