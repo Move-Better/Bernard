@@ -160,7 +160,8 @@ export default async function handler(req, res) {
     // this workspace. Used when the caller didn't bind to a user_id
     // (admin recording an interview with a guest), or when the user is
     // self-interviewing but happens to have no user_id-bound row yet.
-    const findRes = await sb(`staff?${wsFilter}&name=ilike.${encodeURIComponent(name.trim())}&select=${selectExpr}`)
+    const safeName = name.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')
+    const findRes = await sb(`staff?${wsFilter}&name=ilike.${encodeURIComponent(safeName)}&select=${selectExpr}`)
     if (!findRes.ok) return dbErr(res, findRes)
     const found = await findRes.json()
     if (found.length > 0) {

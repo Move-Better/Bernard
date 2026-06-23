@@ -32,9 +32,10 @@ function getRedis() {
 }
 
 const BUCKETS = {
-  ai:        { max: 10, windowSec: 60 },
-  media:     { max: 30, windowSec: 60 },
-  generic:   { max: 60, windowSec: 60 },
+  ai:                    { max: 10, windowSec: 60 },
+  'content-plan-approve': { max: 10, windowSec: 60 },
+  media:                 { max: 30, windowSec: 60 },
+  generic:               { max: 60, windowSec: 60 },
   // Public demo surface (/api/demo/*) — unauthenticated, so keyed by IP and
   // capped tighter than authed buckets. `demo` is the per-minute burst; the
   // demo handlers ALSO check `demoDaily` so one IP can't grind through demo

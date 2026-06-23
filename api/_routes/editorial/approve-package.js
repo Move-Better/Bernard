@@ -200,8 +200,8 @@ export default async function handler(req, res) {
     // detection off `m.type`, and the Drafts UI reads `m.url`. Bare strings
     // would publish a long-form (.mp4) render as a broken image. Derive video
     // vs image from the render extension (video renders are .mp4, photos .jpg).
-    media_urls:     pRenders.map((r) => {
-      const isVideo = String(r.blobUrl || '').toLowerCase().endsWith('.mp4')
+    media_urls:     pRenders.filter((r) => r.blobUrl).map((r) => {
+      const isVideo = String(r.blobUrl).toLowerCase().endsWith('.mp4')
       return { url: r.blobUrl, type: isVideo ? 'video' : 'image', kind: isVideo ? 'video' : 'image' }
     }),
     status:         'approved',
@@ -214,6 +214,16 @@ export default async function handler(req, res) {
       channels:     pRenders.map((r) => r.channel),
     },
   }))
+
+  const emptyMediaRows = rows.filter((r) => r.media_urls.length === 0)
+  if (emptyMediaRows.length > 0) {
+    console.error('[approve-package] partial render failure — null blobUrls on platforms:', emptyMediaRows.map((r) => r.platform))
+    return res.status(409).json({
+      error: 'partial_render_failure',
+      message: 'One or more renders have no valid blob URL. Re-render the package before approving.',
+      platforms: emptyMediaRows.map((r) => r.platform),
+    })
+  }
 
   // Idempotency guard: if content_items already exist for this package, a prior approve
   // wrote them but the PATCH to 'approved' failed. Skip the insert, fix the status, and
