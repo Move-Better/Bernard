@@ -226,7 +226,7 @@ export default function StaffProfile() {
                   />
                 )}
               </svg>
-              Voice
+              Voice model
               {strength && (
                 <span className={`ml-1 text-3xs font-semibold px-1.5 py-px rounded-full leading-none ${
                   activeTab === 'voice'
