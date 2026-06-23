@@ -114,7 +114,7 @@ export function FeedbackWidget() {
 
           {status === 'done' ? (
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-              <CheckCircle className="h-8 w-8 text-green-500" />
+              <CheckCircle className="h-8 w-8 text-success" />
               <p className="text-sm font-medium">Thanks — got it!</p>
             </div>
           ) : (

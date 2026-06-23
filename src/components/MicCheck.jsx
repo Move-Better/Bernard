@@ -299,7 +299,7 @@ export default function MicCheck({ onContinue, ttsSettings }) {
 
               {voiceDetected ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                  <div className="flex items-center gap-2 text-sm font-medium text-success">
                     <Icon as={CheckCircle2} size="md" />
                     Microphone working — we heard you
                   </div>
@@ -376,8 +376,8 @@ export default function MicCheck({ onContinue, ttsSettings }) {
 
           {status === 'speaker-ok' && (
             <>
-              <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-7 w-7 text-green-600" aria-hidden="true" />
+              <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-success" aria-hidden="true" />
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium">You&rsquo;re all set.</p>
@@ -394,8 +394,8 @@ export default function MicCheck({ onContinue, ttsSettings }) {
 
           {status === 'speaker-failed' && (
             <>
-              <div className="h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <VolumeX className="h-7 w-7 text-amber-600" aria-hidden="true" />
+              <div className="h-16 w-16 rounded-full bg-warning/10 flex items-center justify-center">
+                <VolumeX className="h-7 w-7 text-warning" aria-hidden="true" />
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium">No sound?</p>

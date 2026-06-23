@@ -247,7 +247,7 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
                   {platformAtoms.length} {platformAtoms.length === 1 ? 'post' : 'posts'}
                 </span>
                 {allDrafted && (
-                  <IconPrim as={CheckCircle2} size="sm" className={allPublished ? 'text-blue-600' : 'text-green-600'} />
+                  <IconPrim as={CheckCircle2} size="sm" className={allPublished ? 'text-success' : 'text-muted-foreground'} />
                 )}
               </div>
               {isCollapsed ? (
