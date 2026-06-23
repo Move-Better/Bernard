@@ -84,7 +84,7 @@ function cardState(item) {
     return { label: cis, cls: 'bg-success/10 text-success', action: 'open' }
   }
   if (cis === 'approved') {
-    return { label: 'approved', cls: 'bg-action/10 text-action', action: 'schedule' }
+    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule' }
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
@@ -270,34 +270,37 @@ export default function YourWeek() {
     setScheduling(true)
     let okCount = 0
     let failCount = 0
-    for (const item of approvedSchedulable) {
-      try {
-        // Fetch full piece data (needed for slide-baking, media_urls, etc.)
-        const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-        const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
-          scheduledAt: item.scheduled_at || null,
-          useQueue: !item.scheduled_at,
-          userEmail,
-          workspace,
-          themes: allThemes,
-        })
-        if (renderedSlides) {
-          try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
+    try {
+      for (const item of approvedSchedulable) {
+        try {
+          // Fetch full piece data (needed for slide-baking, media_urls, etc.)
+          const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
+          const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
+            scheduledAt: item.scheduled_at || null,
+            useQueue: !item.scheduled_at,
+            userEmail,
+            workspace,
+            themes: allThemes,
+          })
+          if (renderedSlides) {
+            try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
+          }
+          await updateStatus.mutateAsync({
+            id: piece.id,
+            status: 'scheduled',
+            approvedBy: userEmail,
+            approvedAt: new Date().toISOString(),
+            scheduledAt,
+          })
+          okCount++
+        } catch {
+          failCount++
         }
-        await updateStatus.mutateAsync({
-          id: piece.id,
-          status: 'scheduled',
-          approvedBy: userEmail,
-          approvedAt: new Date().toISOString(),
-          scheduledAt,
-        })
-        okCount++
-      } catch {
-        failCount++
       }
+    } finally {
+      setScheduling(false)
+      setScheduleConfirmOpen(false)
     }
-    setScheduling(false)
-    setScheduleConfirmOpen(false)
     qc.invalidateQueries({ queryKey: ['week-summary'] })
     if (okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
     if (failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
@@ -538,7 +541,7 @@ export default function YourWeek() {
         title={`Schedule ${approvedSchedulable.length} approved post${approvedSchedulable.length === 1 ? '' : 's'}?`}
         description="Bernard will add these to your Buffer queue at their planned times. You can still hold or delete them from Buffer before they publish."
         confirmLabel={scheduling ? 'Scheduling…' : 'Schedule all'}
-        confirmDisabled={scheduling}
+        loading={scheduling}
         onConfirm={batchSchedule}
       />
     </div>
