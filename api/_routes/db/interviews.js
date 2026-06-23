@@ -52,6 +52,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
+  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)
@@ -101,6 +102,7 @@ export default async function handler(req, res) {
     const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
     if (!topic?.trim()) return err(res, 'Topic required')
+    if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
 
     // owner_id comes from the verified Clerk token, never the request body.
     // Previously trusted req.body.ownerId — a workspace member could create

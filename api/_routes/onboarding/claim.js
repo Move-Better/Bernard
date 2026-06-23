@@ -16,6 +16,7 @@ export const config = { runtime: 'nodejs' }
 // Auth: Bearer Clerk JWT for any signed-in user. No org/role gate (this is
 // where they CREATE their first org).
 
+import { waitUntil } from '@vercel/functions'
 import { createClerkClient, verifyToken } from '@clerk/backend'
 import { validateSlug, FOUNDING_CAP, SEED_SLUGS } from '../../_lib/onboardingValidation.js'
 import { getCadencePrior, computeAutoCadenceChannels } from '../../_lib/cadenceDefaults.js'
@@ -489,7 +490,7 @@ async function handler(req, res) {
   // 3b. Seed founding clinician row. Fire-and-forget — failure here doesn't block
   // the onboarding flow; the Capture Companion can create the row lazily on first
   // upload. Tied to the Clerk user_id so the capture endpoint can look them up.
-  sb('staff', {
+  waitUntil(sb('staff', {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: row.id,
@@ -497,7 +498,7 @@ async function handler(req, res) {
       user_id: userId,
       created_by_id: userId,
     }),
-  }).catch(e => console.error('[claim] clinician seed failed:', e?.message))
+  }).catch(e => console.error('[claim] clinician seed failed:', e?.message)))
 
   // 3.5. Register <slug>.withbernard.ai as a domain on the shared bernard Vercel
   // project so per-domain cert issuance kicks off. Hard-fail with full rollback

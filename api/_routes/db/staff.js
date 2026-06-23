@@ -66,10 +66,14 @@ const INTERVIEW_FIELDS = 'id,topic,status,capture_mode,created_at,updated_at,own
 const INTERVIEW_FIELDS_CARD = 'id,workspace_id,topic,status,capture_mode,session_state,created_at,updated_at,owner_id,owner_email,location_id,prototype_id,pull_quote_candidates,campaign_id,campaign:campaigns(id,name)'
 const CLINICIAN_FIELDS_CARD = 'id,workspace_id,name,user_id,created_at'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
   const view = searchParams.get('view')   // 'card' = slim shape for Stories list
+
+  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)

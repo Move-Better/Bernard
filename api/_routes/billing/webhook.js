@@ -270,7 +270,7 @@ async function handler(req, res) {
           // Skip any workspace whose stripe_subscription_id is null — that workspace
           // already cancelled, and a late invoice for the final period must not
           // restore its plan. Matches the invoice.payment_failed guard above.
-          const r = await sb(`workspaces?stripe_customer_id=eq.${encodeURIComponent(customerId)}&stripe_subscription_id=not.is.null&select=id&limit=1`)
+          const r = await sb(`workspaces?stripe_customer_id=eq.${encodeURIComponent(customerId)}&stripe_subscription_id=not.is.null&status=eq.active&select=id&limit=1`)
           if (r.ok) {
             const rows = await r.json()
             workspaceId = rows[0]?.id || null

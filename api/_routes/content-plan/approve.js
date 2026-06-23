@@ -59,11 +59,11 @@ export default async function handler(req, res) {
     return ok(res, { status: piece.status, alreadyApproved: true })
   }
 
-  const userEmail = auth.userId || 'unknown'
+  const approvedBy = auth.userId || 'unknown'
   const nowIso = new Date().toISOString()
   const patchRes = await sb(`content_items?id=eq.${piece_id}&${wsFilter}`, {
     method: 'PATCH',
-    body: JSON.stringify({ status: 'approved', approved_by: userEmail, approved_at: nowIso, updated_at: nowIso }),
+    body: JSON.stringify({ status: 'approved', approved_by: approvedBy, approved_at: nowIso, updated_at: nowIso }),
   })
   if (!patchRes.ok) return err(res, 'Failed to approve piece', 500)
 
