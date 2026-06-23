@@ -2,6 +2,7 @@ import { withSentry } from '../_lib/sentry.js'
 import { generateAndPersistThumbnail } from '../_lib/thumbnail.js'
 import { requireRole } from '../_lib/auth.js'
 import { workspaceScope } from '../_lib/workspaceScope.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 
 // One-shot backfill: extract thumbnails for any video in this workspace that
 // has blob_url set but thumbnail_url null. Safe to re-run — the WHERE filters
@@ -47,8 +48,10 @@ async function handler(req, res) {
   const limit = Math.max(1, Math.min(MAX_LIMIT, requested))
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
 
   const auth = await requireRole(req, ['admin'], { orgId: scope.workspace.clerk_org_id })
+  if (!(await enforceLimit(req, res, 'media'))) return
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
