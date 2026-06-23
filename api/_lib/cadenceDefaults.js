@@ -1,4 +1,4 @@
-// Adaptive posting-cadence — Phase 1 (cold-start prior, computed from outputs).
+// Adaptive posting-cadence — Phase 1 (cold-start prior) + Phase 2 (engagement-tuned).
 //
 // The cadence numbers are NOT hardcoded in app logic: the live prior lives in
 // app_config.cadence_defaults (migration 142) and is editable without a deploy.
@@ -13,6 +13,7 @@
 // app_config row (fresh DB / unit tests) — the DB row is the source of truth.
 
 import { atomPlatformsFromEnabledOutputs } from './atomPlan.js'
+import { computeAdaptiveCadenceChannels } from './cadenceAdaptive.js'
 
 // Safety net only — used iff app_config.cadence_defaults is absent. Mirrors the
 // migration-142 seed so behavior is identical before the row is first read.
@@ -50,6 +51,17 @@ export async function getCadencePrior(sb) {
 
 // Test seam: drop the cache so a test can re-read after mutating app_config.
 export function _resetCadencePriorCache() { _cache = null; _cachedAt = 0 }
+
+// Unified cadence resolver for Auto mode.  Tries the Phase 2 adaptive path
+// first; if the workspace doesn't have enough engagement history yet (returns
+// null), falls back transparently to the Phase 1 prior-only computation.
+// This is the ONLY function callers should use — never call
+// computeAutoCadenceChannels() directly from outside cadenceDefaults.
+export async function computeCadenceChannels(wsId, enabledOutputs, prior, sb) {
+  const adaptive = await computeAdaptiveCadenceChannels(wsId, enabledOutputs, prior, sb)
+  if (adaptive) return adaptive
+  return computeAutoCadenceChannels(enabledOutputs, prior)
+}
 
 // PURE: compute the Auto cadence policy `channels` map from a workspace's
 // enabled_outputs and a prior. Returns
