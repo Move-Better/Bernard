@@ -357,6 +357,14 @@ throws on a failed insert) so the caller's fallback/logging fires instead of swa
 extends the existing "validate every query param with `UUID_RE` before interpolating" rule to
 LLM-echoed values, not just request params.
 
+## AI SDK v6 — `maxTokens`, not `maxOutputTokens`
+
+AI SDK v6 (`generateText`/`generateObject`) uses `maxTokens` to cap the completion length.
+`maxOutputTokens` is silently ignored (not an error, not a warning) — the call succeeds but uses the
+model default, which can be much larger than intended. Any handler that calls `generateText` with a
+token budget should use `maxTokens`. Found in `api/_routes/staff/refresh-voice-notes.js` (#1627,
+2026-06-23). Grep check: `grep -rn "maxOutputTokens" api/` should return 0 — if it returns any, fix them.
+
 ## How `/week` gets populated — the Strategist drip model
 
 `/week` (YourWeek.jsx → `GET /api/content-plan/week-summary`) renders ONLY `content_plan_atoms`
@@ -404,4 +412,6 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
     weekly atom cadence — they're digest/single-output governed.
   - This fixed the long-standing bug where Facebook + Instagram Story were enabled-as-output but got
     `0`/disabled cadence (the old hardcoded instagram/linkedin/gbp trio). Phase 2 (engagement-tuned,
-    per-tenant cadence) is spec'd in `.claude/adaptive-cadence-spec.md`.
+    per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
+    wired through `computeCadenceChannels` in `cadenceDefaults.js` (#1628, 2026-06-23). Falls back to
+    prior-only when a workspace has < 5 scored posts per channel (MIN_SAMPLE guard).
