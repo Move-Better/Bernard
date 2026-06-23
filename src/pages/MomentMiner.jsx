@@ -541,7 +541,7 @@ export default function MomentMiner() {
               view === 'clips_to_review'
                 ? 'bg-action text-white border-action'
                 : allMoments.length > 0
-                  ? 'bg-card border-action/40 text-foreground hover:border-action'
+                  ? 'bg-action/10 border-action/40 text-foreground hover:border-action hover:bg-action/20'
                   : 'bg-card border-border text-muted-foreground hover:text-foreground'
             }`}
           >
