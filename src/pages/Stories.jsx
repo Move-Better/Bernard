@@ -14,14 +14,6 @@ import PageHelp from '@/components/PageHelp'
 
 const PLATFORMS = Object.keys(PLATFORM_META)
 
-const STAGES = [
-  { key: 'capture',   label: 'Capture' },
-  { key: 'drafting',  label: 'Drafting' },
-  { key: 'review',    label: 'Review' },
-  { key: 'scheduled', label: 'Scheduled' },
-  { key: 'published', label: 'Published' },
-]
-
 // Quick-filter pills shown above the advanced selects.
 // Labels match the canonical pipeline vocabulary used by the Overview kanban
 // (contentStatusTokens.js) and Storyboard section headers so one mental model
@@ -324,18 +316,6 @@ export default function Stories() {
           <option value="">Platform: All</option>
           {PLATFORMS.map((p) => (
             <option key={p} value={p}>{PLATFORM_META[p].label}</option>
-          ))}
-        </select>
-
-        {/* Stage */}
-        <select
-          value={stageFilter}
-          onChange={(e) => setParam('stage', e.target.value)}
-          className={SELECT_CLS}
-        >
-          <option value="">Stage: All</option>
-          {STAGES.map(({ key, label }) => (
-            <option key={key} value={key}>{label}</option>
           ))}
         </select>
 
