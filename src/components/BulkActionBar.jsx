@@ -261,17 +261,19 @@ export default function BulkActionBar({
   async function purgeAll() {
     if (!count) return
     setBusy('purge'); setError('')
-    // Server requires the exact filename per asset as a typed-confirm. We
-    // already have it client-side; the bar's master "DELETE" gate is the
-    // human safeguard.
     const sel = selectedAssets()
     const skipped = count - sel.length
-    const results = await pMap(sel, (a) => purgeMediaAsset(a.id, a.filename), 3)
-    const base = summarize(results, 'Permanently deleted')
-    setMessage(skipped > 0 ? `${base} · ${skipped} off-page item${skipped === 1 ? '' : 's'} skipped (reload to delete)` : base)
-    setBusy(null); setPurgeOpen(false); setPurgeConfirm('')
-    onRefresh?.()
-    onClear?.()
+    try {
+      const results = await pMap(sel, (a) => purgeMediaAsset(a.id, a.filename), 3)
+      const base = summarize(results, 'Permanently deleted')
+      setMessage(skipped > 0 ? `${base} · ${skipped} off-page item${skipped === 1 ? '' : 's'} skipped (reload to delete)` : base)
+      onRefresh?.()
+      onClear?.()
+    } finally {
+      setBusy(null)
+      setPurgeOpen(false)
+      setPurgeConfirm('')
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -375,9 +377,9 @@ export default function BulkActionBar({
       )}
 
       {/* Result / error toasts */}
-      {(message || error) && (
-        <div className={`rounded-xl px-4 py-2 text-xs shadow-xl ${message ? 'bg-success/90 text-card' : 'bg-destructive/90 text-card'}`}>
-          {message || error}
+      {(error || message) && (
+        <div className={`rounded-xl px-4 py-2 text-xs shadow-xl ${error ? 'bg-destructive/90 text-card' : 'bg-success/90 text-card'}`}>
+          {error || message}
         </div>
       )}
 
