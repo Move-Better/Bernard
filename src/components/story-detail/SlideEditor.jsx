@@ -2033,7 +2033,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         </aside>
 
         {/* 3. Canvas — centre, takes remaining space */}
-        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(220 16% 91%)' }}>
+        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(var(--muted))' }}>
           {/* Safe-zone toggle — slide counter moved to inspector header */}
           <div className="absolute left-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
             <label className="flex cursor-pointer items-center gap-1">
@@ -2044,7 +2044,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
           {activeSlide ? (
             <div
-              className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-[hsl(220_16%_91%)]' : ''}`}
+              className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-muted' : ''}`}
               style={{ height: `min(calc(100vh - 140px), calc((100vw - 640px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
             >
               <SlidePreview

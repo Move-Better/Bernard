@@ -75,17 +75,19 @@ export default async function handler(req, res) {
   if (unscored.length) {
     const scores = await scoreSegments(unscored, ws)
     const persistResults = await Promise.all(unscored.map(async (s, i) => {
-      s.score = scores[i]?.score ?? 55
-      s.moment_type = scores[i]?.moment_type ?? 'insight'
+      const newScore = scores[i]?.score ?? 55
+      const newMomentType = scores[i]?.moment_type ?? 'insight'
       try {
         const r = await sb(`video_segments?id=eq.${s.id}&workspace_id=eq.${ws.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ score: s.score, moment_type: s.moment_type }),
+          body: JSON.stringify({ score: newScore, moment_type: newMomentType }),
         })
         if (!r.ok) {
           console.error('[moments] score persist failed', s.id, r.status, await r.text().catch(() => ''))
           return { id: s.id, ok: false }
         }
+        s.score = newScore
+        s.moment_type = newMomentType
         return { id: s.id, ok: true }
       } catch (e) {
         console.error('[moments] score persist error', s.id, e?.message)
