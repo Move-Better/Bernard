@@ -57,7 +57,7 @@ export default async function handler(req, res) {
   if (!renderedBlobUrl) return res.status(400).json({ error: 'renderedBlobUrl_required' })
   // Only accept URLs from our own Vercel Blob store — prevents arbitrary URL injection
   // into content_items.media_urls which is later published to social platforms.
-  const BLOB_ORIGIN = 'https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/'
+  const BLOB_ORIGIN = process.env.BLOB_STORE_ORIGIN || 'https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/'
   if (!String(renderedBlobUrl).startsWith(BLOB_ORIGIN)) {
     return res.status(400).json({ error: 'invalid_renderedBlobUrl' })
   }
