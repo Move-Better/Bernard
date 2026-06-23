@@ -49,7 +49,7 @@ export default function CapturePicker() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">New</h1>
           <p className="text-sm text-muted-foreground">
-            How would you like to add to your pipeline today?
+            What would you like to capture today?
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ export default function CapturePicker() {
               <div>
                 <div className="font-medium">Interview</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  AI-led conversation. Best when you want to think out loud
+                  Bernard-led conversation. Best when you want to think out loud
                   about a topic and let prompts surface your thinking.
                 </p>
               </div>
@@ -132,7 +132,7 @@ export default function CapturePicker() {
                 <Mic className="h-5 w-5" />
               </div>
               <div>
-                <div className="font-medium">Voice Memo</div>
+                <div className="font-medium">Voice memo</div>
                 <p className="text-sm text-muted-foreground mt-1">
                   Quick capture. Hit record, say what happened, save. For real
                   moments between patients or end-of-day reflections.
@@ -158,7 +158,7 @@ export default function CapturePicker() {
                 <Camera className="h-5 w-5" />
               </div>
               <div>
-                <div className="font-medium">Photos &amp; Video</div>
+                <div className="font-medium">Photos &amp; video</div>
                 <p className="text-sm text-muted-foreground mt-1">
                   Snap or upload photos and clips from any device — phone,
                   tablet, or computer. For in-clinic moments and b-roll.
@@ -191,7 +191,7 @@ export default function CapturePicker() {
                 </span>
               </div>
               <div>
-                <div className="font-medium">Live Interview</div>
+                <div className="font-medium">Live interview</div>
                 <p className="text-sm text-muted-foreground mt-1">
                   Continuous voice conversation with Bernard. No press-to-talk —
                   just talk, pause, think out loud.

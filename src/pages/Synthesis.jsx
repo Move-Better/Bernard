@@ -257,7 +257,7 @@ export default function Synthesis() {
       <div className="flex items-start justify-between">
         <div>
           <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3">
-            <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
+            <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
             <span

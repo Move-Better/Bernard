@@ -32,7 +32,7 @@ const fmt = (s) => {
   return `${m}:${String(ss).padStart(2, '0')}`
 }
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
-const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Lower-third'], ['callout', 'Callout']]
+const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
 
 // Slice whole-source words to a clip window, rebased to 0 (mirrors the server's
