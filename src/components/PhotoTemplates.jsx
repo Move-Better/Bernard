@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText } from 'lucide-react'
+import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
@@ -807,6 +807,16 @@ export default function PhotoTemplates() {
     }
   }
 
+  async function handleDuplicate(theme) {
+    const config = themeToConfig(theme)
+    try {
+      await createTheme.mutateAsync({ name: `${theme.name} (copy)`, is_default: false, config })
+      toast.success(`Copied "${theme.name}" — edit it below`)
+    } catch (e) {
+      toast.error('Failed to copy template', { description: e.message })
+    }
+  }
+
   async function handleGenerate() {
     try {
       const { count } = await generateThemes.mutateAsync({ count: 4 })
@@ -974,17 +984,22 @@ export default function PhotoTemplates() {
                       <div className="text-2xs text-muted-foreground">{t.builtin ? 'Built-in' : 'Custom'}</div>
                     </div>
                   </button>
-                  {t.custom && (
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditing({ theme: t })}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(t)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Duplicate" onClick={() => handleDuplicate(t)} disabled={createTheme.isPending}>
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                    {t.custom && (
+                      <>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Edit" onClick={() => setEditing({ theme: t })}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" title="Delete"
+                          onClick={() => handleDelete(t)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )
             })}
