@@ -48,7 +48,7 @@ export default function DraftsReadyRow({ stories = [] }) {
 
   return (
     <div id="review" className="nx-card-action">
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
         <span
           className="inline-block w-1 h-6 rounded-full shrink-0"
           style={{ background: 'hsl(var(--action))' }}
@@ -77,7 +77,7 @@ export default function DraftsReadyRow({ stories = [] }) {
                 </span>
                 {voice != null ? (
                   <span
-                    className={`text-2xs font-bold ${voice >= 60 ? 'text-agreement-signal' : voice >= 35 ? 'text-amber-700' : 'text-slate-500'}`}
+                    className={`text-2xs font-bold ${voice >= 60 ? 'text-agreement-signal' : voice >= 35 ? 'text-action' : 'text-slate-500'}`}
                   >
                     {voice}% voice
                   </span>
@@ -87,7 +87,7 @@ export default function DraftsReadyRow({ stories = [] }) {
               {piece.staffName ? (
                 <p className="text-2xs text-muted-foreground mt-1 truncate">{piece.staffName}</p>
               ) : null}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
                 <span className="text-2xs text-muted-foreground">Approve · Edit · Publish</span>
                 <span className="text-2xs font-bold text-primary inline-flex items-center gap-0.5">
                   Review <ChevronRight className="h-3 w-3" />
@@ -99,7 +99,7 @@ export default function DraftsReadyRow({ stories = [] }) {
       </div>
 
       {overflow > 0 ? (
-        <div className="border-t border-slate-100 px-5 py-3 text-right">
+        <div className="border-t border-border px-5 py-3 text-right">
           <Link
             to="/stories?stage=review"
             className="text-sm font-bold text-primary hover:underline underline-offset-2 inline-flex items-center gap-0.5"

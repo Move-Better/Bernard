@@ -20,8 +20,8 @@ import {
 const TIER_PILL = {
   owner:     'bg-[#fff7f0] text-[#c04d18] ring-1 ring-[#fde0d2]',
   producer:  'bg-scheduled/8 text-scheduled',
-  clinician: 'bg-[#e0f2fe] text-[#0284c7]',
-  viewer:    'bg-[#f1f5f9] text-[#475569]',
+  clinician: 'bg-info/10 text-info',
+  viewer:    'bg-muted text-muted-foreground',
 }
 const TIER_LABEL = { owner: '★ Owner', producer: 'Producer', clinician: 'Clinician', viewer: 'Viewer' }
 
@@ -164,7 +164,7 @@ export default function AccessMatrix() {
         </h1>
         <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed max-w-2xl">
           One row per person, one column per capability. Click any cell to grant or revoke.
-          An <span className="text-[#d97706] font-semibold">amber dot</span> marks a cell that differs from the tier default for that person &mdash;
+          An <span className="text-action font-semibold">amber dot</span> marks a cell that differs from the tier default for that person &mdash;
           easy to spot custom access as the team grows.
         </p>
       </div>
@@ -414,7 +414,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
   }
 
   return (
-    <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3.5 space-y-3">
+    <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3.5 space-y-3">
       <div className="flex items-start gap-2.5">
         <AlertTriangle className="h-4 w-4 text-[#d97706] shrink-0 mt-0.5" />
         <div>
@@ -456,7 +456,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
         ))}
 
         {doubleBound.map((d) => (
-          <div key={`dup-${d.email}`} className="rounded-lg bg-white/70 ring-1 ring-[#fde68a] px-3 py-2">
+          <div key={`dup-${d.email}`} className="rounded-lg bg-white/70 ring-1 ring-warning/30 px-3 py-2">
             <p className="text-2xs text-[#92400e] flex items-center gap-1.5">
               <GitMerge className="h-3.5 w-3.5 text-[#c04d18] shrink-0" />
               <span><b>{d.email}</b> has two active profiles. Keep one — its data absorbs the other:</span>
@@ -490,7 +490,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
 
 function ReconRow({ icon, text, action }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-white/70 ring-1 ring-[#fde68a] px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-white/70 ring-1 ring-warning/30 px-3 py-2">
       <span className="text-2xs text-[#92400e] flex items-center gap-1.5 min-w-0">
         <span className="shrink-0">{icon}</span>
         <span className="truncate">{text}</span>
@@ -503,7 +503,7 @@ function ReconRow({ icon, text, action }) {
 function ReconBtn({ children, onClick, busy, kind }) {
   const cls =
     kind === 'primary'
-      ? 'bg-[#0284c7] text-white hover:bg-[#0369a1]'
+      ? 'bg-info text-white hover:bg-info/80'
       : kind === 'warn'
         ? 'bg-[#c04d18] text-white hover:bg-[#9a3d12]'
         : 'bg-white text-foreground ring-1 ring-border hover:bg-[#f8fafc]'

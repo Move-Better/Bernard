@@ -131,8 +131,8 @@
   .nx-pill-emerald { background: hsl(var(--success) / 0.08); color: hsl(var(--success)); }
   .nx-pill-amber   { background: hsl(var(--action) / 0.10); color: hsl(var(--action)); }
   .nx-pill-sky     { background: hsl(var(--scheduled) / 0.12); color: hsl(var(--scheduled)); }
-  .nx-pill-violet  { background: #f5f3ff; color: hsl(var(--scheduled)); }
-  .nx-pill-rose    { background: #fff1f2; color: #e11d48; }
+  .nx-pill-violet  { background: hsl(var(--scheduled) / 0.08); color: hsl(var(--scheduled)); }
+  .nx-pill-rose    { background: hsl(var(--destructive) / 0.08); color: hsl(var(--destructive)); }
   .nx-pill-tint    { background: hsl(var(--action) / 0.10); color: hsl(var(--action)); border: 1px solid hsl(var(--action) / 0.25); }
   .nx-pill-ink     { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
   .nx-pill-primary { background: hsl(var(--primary)); color: #fff; }
@@ -234,8 +234,8 @@
   .nx-verbatim {
     padding: 0 4px;
     border-radius: 3px;
-    background: #fef3c7;
-    color: #92400e;
+    background: hsl(var(--verbatim-accent) / 0.15);
+    color: hsl(var(--verbatim-accent));
     font-weight: 600;
   }
 

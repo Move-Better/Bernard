@@ -16,10 +16,10 @@ import { apiFetch } from '@/lib/api'
 
 const KIND_META = {
   archetype:  { label: 'Patient archetypes',   color: 'bg-info/10 text-info border-info/30',   dot: 'bg-info' },
-  condition:  { label: 'Conditions treated',   color: 'bg-green-100 text-green-800 border-green-200', dot: 'bg-green-400' },
-  paradigm:   { label: 'Practice philosophy',  color: 'bg-purple-100 text-purple-800 border-purple-200', dot: 'bg-purple-400' },
-  value:      { label: 'Core values',          color: 'bg-amber-100 text-amber-800 border-amber-200',  dot: 'bg-amber-400' },
-  objection:  { label: 'Patient hesitations',  color: 'bg-rose-100 text-rose-800 border-rose-200',   dot: 'bg-rose-400' },
+  condition:  { label: 'Conditions treated',   color: 'bg-success/10 text-success border-success/30',  dot: 'bg-success' },
+  paradigm:   { label: 'Practice philosophy',  color: 'bg-scheduled/10 text-scheduled border-scheduled/30', dot: 'bg-scheduled' },
+  value:      { label: 'Core values',          color: 'bg-action/10 text-action border-action/30',     dot: 'bg-action' },
+  objection:  { label: 'Patient hesitations',  color: 'bg-destructive/10 text-destructive border-destructive/30', dot: 'bg-destructive' },
 }
 
 const KIND_ORDER = ['condition', 'archetype', 'paradigm', 'value', 'objection']
@@ -50,7 +50,7 @@ function CoverageBar({ mentionedCount, totalCount }) {
     <div className="flex items-center gap-2 mt-1.5">
       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full rounded-full bg-emerald-400 transition-all"
+          className="h-full rounded-full bg-success transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -72,7 +72,7 @@ function ConceptRow({ concept, totalStaff, onDraft }) {
     <div className="group flex items-start gap-3 py-3 border-b last:border-b-0">
       {/* Weight indicator */}
       <div className="shrink-0 mt-0.5 w-1.5 rounded-full self-stretch min-h-[2rem]"
-        style={{ backgroundColor: agreed >= 2 ? '#34d399' : agreed === 1 ? '#fbbf24' : '#e5e7eb' }}
+        style={{ backgroundColor: agreed >= 2 ? 'hsl(var(--success))' : agreed === 1 ? 'hsl(var(--warning))' : 'hsl(var(--border))' }}
       />
 
       <div className="flex-1 min-w-0">
@@ -97,7 +97,7 @@ function ConceptRow({ concept, totalStaff, onDraft }) {
         {/* Staff chips */}
         <div className="flex flex-wrap gap-1 mt-2">
           {concept.mentionedBy.map(c => (
-            <span key={c.id} className="inline-flex items-center gap-1 text-2xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+            <span key={c.id} className="inline-flex items-center gap-1 text-2xs bg-success/10 text-success border border-success/30 rounded-full px-2 py-0.5">
               <CheckCircle2 className="h-2.5 w-2.5" /> {c.name}
             </span>
           ))}
@@ -130,8 +130,8 @@ function KindSection({ kind, concepts, totalStaff, onDraft }) {
           <span className="text-xs text-muted-foreground">{concepts.length} concepts</span>
         </div>
         <div className="flex items-center gap-3 text-2xs text-muted-foreground">
-          {agreed.length > 0 && <span className="text-emerald-600">≡ {agreed.length} shared</span>}
-          {solo.length > 0  && <span className="text-amber-600">○ {solo.length} gaps</span>}
+          {agreed.length > 0 && <span className="text-success">≡ {agreed.length} shared</span>}
+          {solo.length > 0  && <span className="text-action">○ {solo.length} gaps</span>}
         </div>
       </div>
       <div className="px-5">
@@ -279,9 +279,9 @@ export default function Synthesis() {
       {/* Coverage legend — above stats so readers learn the color code
           before they see the numbers it grades. */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400 inline-block" /> Mentioned by ≥2 staff (agreement territory)</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" /> Mentioned by 1 staff member only</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gray-300 inline-block" /> Not yet covered</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success inline-block" /> Mentioned by ≥2 staff (agreement territory)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-warning inline-block" /> Mentioned by 1 staff member only</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-border inline-block" /> Not yet covered</span>
       </div>
 
       {/* Stats */}
@@ -298,12 +298,12 @@ export default function Synthesis() {
 
       {/* Top gaps callout */}
       {topGaps.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+        <div className="rounded-xl border border-action/20 bg-action/5 p-4 space-y-2">
           <div className="flex items-center gap-2">
-            <Circle className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-800">Coverage gaps to close</span>
+            <Circle className="h-4 w-4 text-action" />
+            <span className="text-sm font-medium text-action">Coverage gaps to close</span>
           </div>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-action/80">
             These concepts have staff who haven&apos;t shared their perspective yet — good candidates for Bernard to surface as gap probes.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
@@ -311,10 +311,10 @@ export default function Synthesis() {
               <button
                 key={c.id}
                 onClick={() => handleDraft(c)}
-                className="inline-flex items-center gap-1.5 text-xs bg-white border border-amber-300 text-amber-800 rounded-full px-3 py-1 hover:bg-amber-100 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs bg-white border border-action/30 text-action rounded-full px-3 py-1 hover:bg-action/10 transition-colors"
               >
                 {c.label}
-                <span className="text-amber-500">({c.notMentionedBy.length} missing)</span>
+                <span className="text-action/60">({c.notMentionedBy.length} missing)</span>
                 <ChevronRight className="h-3 w-3" />
               </button>
             ))}

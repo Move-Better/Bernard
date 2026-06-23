@@ -27,8 +27,6 @@ import { ConfirmDialog } from '@/components/ui/alert-dialog'
 const DAYS = [
   ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
 ]
-const DOW_TO_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
-
 const LADDER = [
   ['approve_all', 'Approve everything'],
   ['approve_exception', 'Approve by exception'],
@@ -250,7 +248,7 @@ export default function YourWeek() {
   const byDay = {}
   for (const [k] of DAYS) byDay[k] = []
   for (const item of scheduled) {
-    const k = DOW_TO_KEY[new Date(item.scheduled_at).getUTCDay()]
+    const k = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz }).format(new Date(item.scheduled_at)).toLowerCase().slice(0, 3)
     if (byDay[k]) byDay[k].push(item)
   }
 
@@ -300,10 +298,10 @@ export default function YourWeek() {
     } finally {
       setScheduling(false)
       setScheduleConfirmOpen(false)
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+      if (okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
+      if (failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
     }
-    qc.invalidateQueries({ queryKey: ['week-summary'] })
-    if (okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
-    if (failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
   }
 
   // Clinician "yours to review" — blog content_items in in_review (2d).
@@ -537,7 +535,7 @@ export default function YourWeek() {
 
       <ConfirmDialog
         open={scheduleConfirmOpen}
-        onOpenChange={setScheduleConfirmOpen}
+        onOpenChange={(v) => { if (!scheduling) setScheduleConfirmOpen(v) }}
         title={`Schedule ${approvedSchedulable.length} approved post${approvedSchedulable.length === 1 ? '' : 's'}?`}
         description="Bernard will add these to your Buffer queue at their planned times. You can still hold or delete them from Buffer before they publish."
         confirmLabel={scheduling ? 'Scheduling…' : 'Schedule all'}

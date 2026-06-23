@@ -107,7 +107,7 @@ export default function HomeStats({ stories = [] }) {
         <div className="flex items-center justify-between mb-2">
           <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Published</div>
           {metrics.publishedDelta !== 0 ? (
-            <span className={`text-2xs font-bold ${metrics.publishedDelta > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            <span className={`text-2xs font-bold ${metrics.publishedDelta > 0 ? 'text-success' : 'text-destructive'}`}>
               {metrics.publishedDelta > 0 ? '↗' : '↘'} {metrics.publishedDelta > 0 ? '+' : ''}{metrics.publishedDelta}
             </span>
           ) : null}
