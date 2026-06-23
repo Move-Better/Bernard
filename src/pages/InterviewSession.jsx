@@ -2407,7 +2407,7 @@ function InterviewProgress({ count }) {
     <span className="inline-flex items-center gap-1.5 ml-auto text-3xs text-muted-foreground shrink-0">
       <span className="relative h-1 w-14 rounded-full bg-muted overflow-hidden">
         <span
-          className="absolute inset-y-0 left-0 rounded-full bg-indigo-400 transition-all duration-500"
+          className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </span>

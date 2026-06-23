@@ -69,7 +69,7 @@ export default function DraftsReadyRow({ stories = [] }) {
             <Link
               key={piece.id}
               to={`/stories/${piece.storyId}?piece=${piece.id}`}
-              className="block rounded-xl border border-border bg-white p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="block rounded-xl border border-border bg-card p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className={`inline-flex items-center gap-1 rounded-full text-2xs font-semibold px-2 py-0.5 ${chip.pill}`}>

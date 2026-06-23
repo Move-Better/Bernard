@@ -169,7 +169,7 @@ export default function TranscriptHighlighter({ story, children }) {
           // handler that would immediately dismiss it.
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-1 rounded-lg border bg-white shadow-lg px-1.5 py-1 text-xs">
+          <div className="flex items-center gap-1 rounded-lg border bg-popover shadow-lg px-1.5 py-1 text-xs">
             {confirmed ? (
               <span className="px-2 py-0.5 text-success font-medium">Added ✓</span>
             ) : (

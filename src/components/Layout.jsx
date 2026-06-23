@@ -133,7 +133,7 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-background flex">
 
       {/* ── Left sidebar — desktop only ─────────────────────────────────── */}
-      <aside className={`hidden md:flex fixed inset-y-0 left-0 ${sidebarW} flex-col border-r bg-white z-30 transition-[width] duration-200`}>
+      <aside className={`hidden md:flex fixed inset-y-0 left-0 ${sidebarW} flex-col border-r bg-card z-30 transition-[width] duration-200`}>
 
         {/* Logo */}
         <div className={`h-14 border-b shrink-0 flex items-center ${collapsed ? 'justify-center px-0' : 'px-4 gap-2.5'}`}>
@@ -254,7 +254,7 @@ export default function Layout({ children }) {
       <div className={`flex-1 ${contentML} transition-[margin-left] duration-200`}>
         {/* Header is mobile-only — desktop nav lives in the sidebar.
             h-14 kept so SettingsLayout's mobile sticky top-14 rail stays correct. */}
-        <header className="md:hidden sticky top-0 z-40 h-14 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm flex items-center gap-3 px-4 sm:px-6">
+        <header className="md:hidden sticky top-0 z-40 h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm flex items-center gap-3 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 min-w-0">
             <img src={logoSrc} alt={logoAlt} className="h-8 w-auto shrink-0" />
           </Link>
@@ -456,7 +456,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
           <div
             role="listbox"
             aria-label="Switch workspace"
-            className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-border bg-white shadow-md py-1 z-50"
+            className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-border bg-popover shadow-md py-1 z-50"
           >
             {workspaces.map(ws => (
               <button

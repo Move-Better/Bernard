@@ -715,7 +715,7 @@ function SeriesBadge({ active, pieces, onJump }) {
   const total = active.series_total || siblings.length
 
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-violet-100 text-violet-800">
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[hsl(var(--scheduled)/0.12)] text-scheduled">
       <Layers className="h-3.5 w-3.5" />
       <span className="text-xs font-medium">
         Part {active.series_part || '?'} of {total}
@@ -733,8 +733,8 @@ function SeriesBadge({ active, pieces, onJump }) {
                 title={isActive ? `You are on Part ${s.series_part}` : `Jump to Part ${s.series_part}`}
                 className={`min-w-[1.25rem] rounded px-1 text-xs font-medium transition ${
                   isActive
-                    ? 'bg-violet-300 text-violet-900 cursor-default'
-                    : 'bg-white text-violet-700 hover:bg-violet-200 border border-violet-200'
+                    ? 'bg-[hsl(var(--scheduled)/0.3)] text-foreground cursor-default'
+                    : 'bg-card text-scheduled hover:bg-[hsl(var(--scheduled)/0.2)] border border-[hsl(var(--scheduled)/0.25)]'
                 }`}
               >
                 {s.series_part}
@@ -799,15 +799,15 @@ function SplitIntoSeriesButton({ piece }) {
 
   if (confirming) {
     return (
-      <div className="rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-xs space-y-2">
-        <div className="text-violet-900">
+      <div className="rounded-md border border-[hsl(var(--scheduled)/0.4)] bg-[hsl(var(--scheduled)/0.06)] px-3 py-2 text-xs space-y-2">
+        <div className="text-foreground">
           <div className="font-medium mb-0.5">Split this blog into a series?</div>
-          <div className="text-violet-800/80">
+          <div className="text-scheduled/80">
             The full interview will be re-planned and written as multiple linked posts, each focused on one thread. Your current blog will be archived (kept for rollback). Each new part is a fresh draft and needs review before publish.
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-violet-200">
-          <span className="text-violet-900 font-medium mr-1">Parts:</span>
+        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[hsl(var(--scheduled)/0.25)]">
+          <span className="text-foreground font-medium mr-1">Parts:</span>
           {[2, 3, 4].map((n) => {
             const selected = n === parts
             return (
@@ -817,15 +817,15 @@ function SplitIntoSeriesButton({ piece }) {
                 onClick={() => setParts(n)}
                 className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
                   selected
-                    ? 'border-violet-500 bg-violet-200 text-violet-900 font-medium'
-                    : 'border-violet-300 bg-white text-violet-700 hover:bg-violet-100'
+                    ? 'border-[hsl(var(--scheduled)/0.6)] bg-[hsl(var(--scheduled)/0.2)] text-foreground font-medium'
+                    : 'border-[hsl(var(--scheduled)/0.4)] bg-card text-scheduled hover:bg-[hsl(var(--scheduled)/0.12)]'
                 }`}
               >
                 {n} parts
               </button>
             )
           })}
-          <span className="ml-auto text-2xs text-violet-700/70 italic">
+          <span className="ml-auto text-2xs text-scheduled/70 italic">
             The planner may return fewer parts if there isn&rsquo;t enough material.
           </span>
         </div>
@@ -833,7 +833,7 @@ function SplitIntoSeriesButton({ piece }) {
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs border-violet-400 text-violet-700 hover:bg-violet-100"
+            className="h-7 text-xs border-[hsl(var(--scheduled)/0.5)] text-scheduled hover:bg-[hsl(var(--scheduled)/0.12)]"
             onClick={handleSplit}
           >
             Split into {parts} parts

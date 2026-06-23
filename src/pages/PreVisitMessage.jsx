@@ -206,7 +206,7 @@ export default function PreVisitMessage() {
               >
                 {copied ? (
                   <>
-                    <Check className="h-4 w-4 mr-1.5 text-green-600" />
+                    <Check className="h-4 w-4 mr-1.5 text-success" />
                     Copied!
                   </>
                 ) : (

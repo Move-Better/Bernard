@@ -315,7 +315,7 @@ export default function AccessMatrix() {
             <span className="text-xs text-muted-foreground">No unsaved changes.</span>
           )}
           <span className="flex-1 text-xs text-muted-foreground hidden md:inline">Changes take effect on the next session for that person.</span>
-          <button onClick={resetAll} className="px-3.5 py-2 rounded-[10px] text-xs font-semibold border border-border bg-white text-foreground hover:bg-[#f8fafc]" disabled={saveMutation.isPending}>
+          <button onClick={resetAll} className="px-3.5 py-2 rounded-[10px] text-xs font-semibold border border-border bg-card text-foreground hover:bg-muted/40" disabled={saveMutation.isPending}>
             Reset all to defaults
           </button>
           <button

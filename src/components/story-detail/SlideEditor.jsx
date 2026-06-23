@@ -545,7 +545,7 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
   }
 
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col border-l bg-white overflow-hidden">
+    <aside className="flex w-[220px] shrink-0 flex-col border-l bg-card overflow-hidden">
       <div className="shrink-0 border-b px-3 py-2">
         <span className="flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
           <Type className="h-3 w-3" /> Caption
@@ -736,7 +736,7 @@ function SlideInspector({
             Add text block
           </button>
           {addOpen && (
-            <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-white p-1 shadow-lg">
+            <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-popover p-1 shadow-lg">
               {BLOCK_ROLES.map((role) => (
                 <button
                   key={role}
@@ -1326,7 +1326,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
 
 function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
   return (
-    <aside className="flex w-[92px] shrink-0 flex-col border-r bg-white">
+    <aside className="flex w-[92px] shrink-0 flex-col border-r bg-card">
       <div className="flex items-center px-2 py-2 border-b">
         <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span>
         <span className="ml-auto text-3xs text-muted-foreground">{slides.length}</span>

@@ -154,7 +154,7 @@ export default function StaffProfile() {
     <div className="-mt-8 -mx-6">
 
       {/* ── Sticky profile header ──────────────────────────────────── */}
-      <div className="sticky top-14 z-30 bg-white border-b border-border">
+      <div className="sticky top-14 z-30 bg-card border-b border-border">
         <div className="px-6 pt-5 pb-0">
 
           {/* Identity row */}
@@ -966,7 +966,7 @@ function CaptureCompanionCard({ staffMember }) {
               This is the only time you&apos;ll see the full token. Copy it now and paste into the iOS Shortcut. If you lose it, rotate and start over.
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-white border border-amber-200 rounded px-2 py-1.5 font-mono break-all">
+              <code className="flex-1 text-xs bg-card border border-action/30 rounded px-2 py-1.5 font-mono break-all">
                 {newToken}
               </code>
               <Button size="sm" variant="outline" onClick={copyToClipboard}>

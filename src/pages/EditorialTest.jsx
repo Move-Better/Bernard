@@ -278,7 +278,7 @@ export default function EditorialTest() {
                         <div className="text-sm font-medium">{chLabel}</div>
                         <div className="text-xs text-zinc-500">
                           {r.width}×{r.height} · {Math.round(r.sizeBytes / 1024)}KB
-                          {r.hadSubtitles && <span className="ml-2 text-green-600">+ captions</span>}
+                          {r.hadSubtitles && <span className="ml-2 text-success">+ captions</span>}
                         </div>
                       </div>
                       <a href={r.blobUrl} download target="_blank" rel="noreferrer"
@@ -432,7 +432,7 @@ export default function EditorialTest() {
                       <div className="text-sm font-medium">{chLabel}</div>
                       <div className="text-xs text-zinc-500">
                         {r.width}×{r.height} · {Math.round(r.sizeBytes / 1024)}KB
-                        {r.hadSubtitles && <span className="ml-2 text-green-600">+ captions</span>}
+                        {r.hadSubtitles && <span className="ml-2 text-success">+ captions</span>}
                       </div>
                     </div>
                     <a

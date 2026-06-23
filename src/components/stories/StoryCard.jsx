@@ -31,7 +31,7 @@ const PLATFORM_DOT = {
   gbp:           'bg-green-600',
   google_ads:    'bg-yellow-500',
   instagram_ads: 'bg-rose-500',
-  landing_page:  'bg-purple-500',
+  landing_page:  'bg-primary',
   youtube:       'bg-red-500',
   tiktok:        'bg-fuchsia-500',
   email:         'bg-teal-500',
@@ -72,7 +72,7 @@ export default function StoryCard({ story }) {
         queryFn: () => fetchStory(id),
         staleTime: 30_000,
       })}
-      className="block bg-white rounded-2xl border border-border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_24px_-16px_rgba(15,23,42,0.18)] transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="block bg-card rounded-2xl border border-border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_24px_-16px_rgba(15,23,42,0.18)] transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       {/* Top row: topic (primary, differentiating) + stage badge */}
       <div className="flex items-start justify-between gap-2 mb-2">
