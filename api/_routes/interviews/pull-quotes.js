@@ -101,7 +101,7 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-sonnet-4-6',
       system: prompt,
       messages: [{ role: 'user', content: 'Extract pull quotes now.' }],
-      maxTokens: 1500,
+      maxOutputTokens: 1500,
     })
     text = result.text
   } catch (e) {

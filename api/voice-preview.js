@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-sonnet-4-6',
       system: systemPrompt,
       messages: [{ role: 'user', content: 'Generate the opener.' }],
-      maxTokens: 120,
+      maxOutputTokens: 120,
     })
     const opener = (text || '').trim().replace(/^["']|["']$/g, '')
     if (!opener) return res.status(500).json({ error: 'Empty response' })

@@ -234,11 +234,14 @@ async function probeVideoDims(path) {
 
 // ── Blob path helpers ────────────────────────────────────────────────────────
 
-function variantPathname(sourceAsset, ext) {
+function variantPathname(workspaceId, sourceAsset, ext) {
   // Deterministic-ish but unique per variant: stamp + random suffix is added
   // by blobPut via addRandomSuffix=true to avoid collisions across rapid edits.
+  // workspace_id is the primary namespace component so blob keys are tenant-scoped
+  // without a DB lookup (old format: media/variants/<sourceId>/… is still valid
+  // for existing blobs during transition).
   const stamp = Date.now()
-  return `media/variants/${sourceAsset.id}/${stamp}${ext}`
+  return `media/variants/${workspaceId}/${sourceAsset.id}/${stamp}${ext}`
 }
 
 function extForMime(mimeType, fallback) {
@@ -392,7 +395,7 @@ async function handler(req, res) {
         allowOverwrite: false,
       })
     } else {
-      const pathname = variantPathname(source, outExt)
+      const pathname = variantPathname(scope.id, source, outExt)
       uploaded = await blobPut(pathname, createReadStream(outPath), {
         access: 'public',
         contentType: source.mime_type,

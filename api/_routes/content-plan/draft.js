@@ -197,7 +197,7 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-sonnet-4-6',
       system: systemPrompt,
       messages: aiMessages,
-      maxTokens: 1000,
+      maxOutputTokens: 1000,
     })
 
     if (!text?.trim()) throw new Error('AI returned empty content')
@@ -320,7 +320,7 @@ export default async function handler(req, res) {
                 model: 'anthropic/claude-sonnet-4-6',
                 system: locPrompt,
                 messages: aiMessages,
-                maxTokens: 1000,
+                maxOutputTokens: 1000,
               })
               if (!locText?.trim()) return null
               return [loc.id, {

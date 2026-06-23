@@ -150,7 +150,7 @@ async function generateSuggestions(ws, topPerformers = []) {
     model: 'anthropic/claude-sonnet-4-6',
     system: systemPrompt,
     messages: [{ role: 'user', content: 'Generate the 5 patient questions now.' }],
-    maxTokens: 600,
+    maxOutputTokens: 600,
   })
 
   const text = (result.text || '').trim()

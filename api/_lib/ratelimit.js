@@ -65,13 +65,16 @@ function readHeader(req, name) {
   return h[name] || h[name.toLowerCase()] || null
 }
 
-async function resolveIdentity(req) {
+async function resolveIdentity(req, workspaceId) {
   const header = readHeader(req, 'authorization') || readHeader(req, 'Authorization') || ''
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null
   if (token && process.env.CLERK_SECRET_KEY) {
     try {
       const payload = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY })
-      if (payload?.sub) return `u:${payload.sub}`
+      if (payload?.sub) {
+        const base = `u:${payload.sub}`
+        return workspaceId ? `${base}:${workspaceId}` : base
+      }
     } catch {
       // fall through to IP
     }
@@ -83,10 +86,10 @@ async function resolveIdentity(req) {
 
 // Core check. Returns { allowed: true } if under limit OR if Upstash isn't
 // configured (fail-open). Returns { allowed: false, retryAfter, limit } on hit.
-export async function checkLimit(req, bucket = 'generic') {
+export async function checkLimit(req, bucket = 'generic', workspaceId) {
   const limiter = getLimiter(bucket)
   if (!limiter) return { allowed: true, skipped: true }
-  const id = await resolveIdentity(req)
+  const id = await resolveIdentity(req, workspaceId)
   const { success, limit, remaining, reset } = await limiter.limit(`${bucket}:${id}`)
   if (success) return { allowed: true, limit, remaining, reset }
   const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000))
@@ -95,8 +98,8 @@ export async function checkLimit(req, bucket = 'generic') {
 
 // Node-runtime (req, res) helper. Returns true if allowed; on 429 writes the
 // response (with Retry-After) and returns false — caller should just `return`.
-export async function enforceLimit(req, res, bucket = 'generic') {
-  const r = await checkLimit(req, bucket)
+export async function enforceLimit(req, res, bucket = 'generic', workspaceId) {
+  const r = await checkLimit(req, bucket, workspaceId)
   if (r.allowed) return true
   res.setHeader('Retry-After', String(r.retryAfter))
   res.setHeader('X-RateLimit-Limit', String(r.limit))
@@ -110,8 +113,8 @@ export async function enforceLimit(req, res, bucket = 'generic') {
 }
 
 // Edge-runtime helper. Returns a 429 Response on hit, or null when allowed.
-export async function enforceLimitEdge(req, bucket = 'generic') {
-  const r = await checkLimit(req, bucket)
+export async function enforceLimitEdge(req, bucket = 'generic', workspaceId) {
+  const r = await checkLimit(req, bucket, workspaceId)
   if (r.allowed) return null
   return new Response(
     JSON.stringify({

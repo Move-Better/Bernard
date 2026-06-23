@@ -91,7 +91,7 @@ async function handler(req, res) {
         model:    'anthropic/claude-haiku-4-5-20251001',
         system:   prompts.system,
         messages: [{ role: 'user', content: prompts.user }],
-        maxTokens: 600,
+        maxOutputTokens: 600,
       })
 
       // Build the content_item row for this channel.
