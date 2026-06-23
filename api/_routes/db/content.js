@@ -181,6 +181,7 @@ export default async function handler(req, res) {
     const { interviewId, staffId, staffName, topic, platform, content, status } = body || {}
     if (!interviewId || !platform || !content) return err(res, 'Missing required fields')
     if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
+    if (staffId && !UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
 
     const ck = await sb(`interviews?id=eq.${interviewId}&workspace_id=eq.${ws.id}&select=id`)
     if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')

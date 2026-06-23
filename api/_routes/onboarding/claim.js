@@ -578,12 +578,10 @@ async function handler(req, res) {
       brand_voice    ? `Voice:    ${brand_voice}`    : null,
       clinic_context ? `Context:  ${clinic_context}` : null,
     ].filter(v => v !== null)
-    // Don't await — keeps response latency low. Vercel Fluid Compute keeps the
-    // function alive long enough for fire-and-forget tasks to complete.
-    sendAdminNotification({
+    waitUntil(sendAdminNotification({
       subject: `[Bernard] New signup: ${display_name} (${slug})`,
       text: lines.join('\n'),
-    }).catch(e => console.error('[claim] notifyAdmin error:', e?.message))
+    }).catch(e => console.error('[claim] notifyAdmin error:', e?.message)))
   } catch (e) {
     console.error('[claim] notifyAdmin setup failed (continuing):', e?.message)
   }

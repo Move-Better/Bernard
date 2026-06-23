@@ -101,8 +101,12 @@ export default async function handler(req, res) {
 
     const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
+    if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
     if (!topic?.trim()) return err(res, 'Topic required')
     if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
+
+    const staffCheck = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id`)
+    if (!staffCheck.ok || !(await staffCheck.json()).length) return err(res, 'Staff not found', 404)
 
     // owner_id comes from the verified Clerk token, never the request body.
     // Previously trusted req.body.ownerId — a workspace member could create

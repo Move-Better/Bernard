@@ -319,6 +319,10 @@ async function processWorkspace(ws, summary) {
           failedAny = true
           continue
         }
+        if (dispatch.failedLocations?.length) {
+          console.error('[auto-publish] GBP partial failure', { pkgId: pkg.id, failedLocations: dispatch.failedLocations })
+          held.push({ id: pkg.id, reasons: [{ signal: 'gbp_partial_failure', detail: `GBP locations failed: ${dispatch.failedLocations.join(', ')}` }] })
+        }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
         if (ciId == null) {
           console.error('[auto-publish] markContentItemScheduled returned null — releasing claim for retry', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
