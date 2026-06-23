@@ -189,6 +189,8 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
 
+    if (!userId) return err(res, 'Forbidden', 403)
+
     const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,staff_id,topic,location_id,capture_mode,source_audio_url,selected_outputs,source_published_at,created_at`)
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
