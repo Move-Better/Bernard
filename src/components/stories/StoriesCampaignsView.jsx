@@ -11,7 +11,7 @@ import EmptyState from '@/components/EmptyState'
  * stories. Stories with no campaign roll up under "Standard". Read-only —
  * clicking a chip opens the story.
  */
-export default function StoriesCampaignsView({ stories = [], isLoading = false }) {
+export default function StoriesCampaignsView({ stories = [], campaigns: campaignList = [], isLoading = false }) {
   const navigate = useNavigate()
 
   const campaigns = useMemo(() => {
@@ -28,12 +28,18 @@ export default function StoriesCampaignsView({ stories = [], isLoading = false }
       group.scheduled += s.scheduled ?? 0
       group.rest += (s.draft ?? 0) + (s.in_review ?? 0) + (s.approved ?? 0)
     }
+    // Merge in active campaigns that have no stories yet so they still appear.
+    for (const c of campaignList) {
+      if (c.status === 'active' && !map.has(c.name)) {
+        map.set(c.name, { name: c.name, isCampaign: true, stories: [], published: 0, scheduled: 0, rest: 0 })
+      }
+    }
     // Real campaigns first, then by piece volume.
     return [...map.values()].sort((a, b) => {
       if (a.isCampaign !== b.isCampaign) return a.isCampaign ? -1 : 1
       return (b.published + b.scheduled + b.rest) - (a.published + a.scheduled + a.rest)
     })
-  }, [stories])
+  }, [stories, campaignList])
 
   if (isLoading) {
     return (
