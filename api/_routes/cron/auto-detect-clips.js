@@ -123,7 +123,7 @@ export default async function handler(req, res) {
     const priorFilter = asset.segment_status === null ? 'segment_status=is.null' : 'segment_status=eq.detecting'
     const patch = await sb(
       `media_assets?id=eq.${asset.id}&workspace_id=eq.${asset.workspace_id}&${priorFilter}`,
-      { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ segment_status: 'detecting', segment_error: null }) },
+      { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ segment_status: 'detecting', segment_error: null, updated_at: new Date().toISOString() }) },
     ).catch(() => null)
     // If the conditional PATCH matched no row, another run claimed it — skip.
     if (!patch || !patch.ok) continue

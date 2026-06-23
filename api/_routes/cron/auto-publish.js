@@ -322,6 +322,7 @@ async function processWorkspace(ws, summary) {
         if (dispatch.failedLocations?.length) {
           console.error('[auto-publish] GBP partial failure', { pkgId: pkg.id, failedLocations: dispatch.failedLocations })
           held.push({ id: pkg.id, reasons: [{ signal: 'gbp_partial_failure', detail: `GBP locations failed: ${dispatch.failedLocations.join(', ')}` }] })
+          failedAny = true
         }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
         if (ciId == null) {
