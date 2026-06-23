@@ -129,7 +129,10 @@ export default async function handler(req, res) {
   const byPlatform = {}
   for (const render of renders) {
     const platform = CHANNEL_TO_PLATFORM[render.channel]
-    if (!platform) continue
+    if (!platform) {
+      console.warn('[approve-package] skipping render with unmapped channel:', render.channel)
+      continue
+    }
     if (!byPlatform[platform]) byPlatform[platform] = { platform, renders: [] }
     byPlatform[platform].renders.push(render)
   }
@@ -142,6 +145,14 @@ export default async function handler(req, res) {
   }
 
   if (destination === 'publish' && Object.keys(byPlatform).length === 0) {
+    if (renders.length > 0) {
+      const unmapped = [...new Set(renders.map(r => r.channel).filter(Boolean))]
+      console.warn('[approve-package] renders exist but all channels are unmapped:', unmapped)
+      return res.status(409).json({
+        error: 'no_publishable_renders',
+        message: `Package renders exist but no channels are mapped to a publish platform. Unmapped channels: ${unmapped.join(', ')}.`,
+      })
+    }
     return res.status(409).json({
       error: 'no_renders',
       message: 'Package has no rendered outputs to stage.',
