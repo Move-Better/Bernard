@@ -8,7 +8,7 @@
 // replace-untouched rules are unit-testable without a database.
 
 import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.js'
-import { getCadencePrior, computeAutoCadenceChannels } from './cadenceDefaults.js'
+import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -73,7 +73,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   let cadence
   if (isAuto) {
     const prior = await getCadencePrior(sb)
-    cadence = computeAutoCadenceChannels(workspace.enabled_outputs, prior)
+    cadence = await computeCadenceChannels(workspace.id, workspace.enabled_outputs, prior, sb)
   } else {
     cadence = policy?.channels || {}
   }
