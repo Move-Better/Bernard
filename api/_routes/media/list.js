@@ -87,6 +87,9 @@ async function handler(req, res) {
   let qs = `media_assets?select=${SELECT}&${scope.column}=eq.${scope.id}&order=created_at.desc&limit=${limit}&offset=${offset}`
   if (kind && ['video', 'photo'].includes(kind)) qs += `&kind=eq.${kind}`
   if (status) {
+    if (!['raw', 'tagged', 'rendered', 'approved', 'archived'].includes(status)) {
+      return res.status(400).json({ error: 'invalid_status' })
+    }
     qs += `&status=eq.${status}`
   } else {
     // Default view excludes archived assets — they're recoverable from the
@@ -108,7 +111,7 @@ async function handler(req, res) {
     qs += `&id=in.(${collectionAssetIds.map(encodeURIComponent).join(',')})`
   }
   if (search) {
-    const term = encodeURIComponent(`%${search}%`)
+    const term = encodeURIComponent(`%${search.replace(/[()]/g, '')}%`)
     // PostgREST `or` syntax. Note: jsonb columns can't be ilike'd directly here.
     qs += `&or=(filename.ilike.${term},display_title.ilike.${term},notes.ilike.${term},condition.ilike.${term},patient_pseudonym.ilike.${term},transcription.ilike.${term})`
   }
