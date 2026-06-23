@@ -155,7 +155,7 @@ export default async function handler(req, res) {
       // previous 4k limit silently truncated the JSON array on big
       // transcripts, which then failed the length-match guard and dropped
       // the cleanup entirely.
-      maxTokens: 16000,
+      maxOutputTokens: 16000,
     })
     text = result.text
   } catch (e) {

@@ -275,7 +275,7 @@ export default async function handler(req, res) {
         ...transcriptMessages,
         { role: 'user', content: `Please return the ${partCount}-part series plan as JSON now.` },
       ],
-      maxTokens: 2000,
+      maxOutputTokens: 2000,
     })
     const plan = extractJsonPlan(clusterRaw)
     if (!plan || !Array.isArray(plan.parts) || plan.parts.length === 0) {
@@ -337,7 +337,7 @@ export default async function handler(req, res) {
             content: `Please write Part ${cluster.part} of the series now, per the angle and anchor moments in the system prompt. Stay in this part's lane — let the sibling parts handle their threads.`,
           },
         ],
-        maxTokens: 4096,
+        maxOutputTokens: 4096,
       })
       if (!text?.trim()) throw new Error(`AI returned empty content for part ${cluster.part}`)
 

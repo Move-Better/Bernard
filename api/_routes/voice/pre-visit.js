@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-haiku-4-5',
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
-      maxTokens: 256,
+      maxOutputTokens: 256,
     })
     script = (result.text || '').trim().slice(0, MAX_SCRIPT_LENGTH)
   } catch (e) {

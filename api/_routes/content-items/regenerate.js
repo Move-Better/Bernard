@@ -240,7 +240,7 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-sonnet-4-6',
       system: systemPrompt,
       messages: aiMessages,
-      maxTokens: 1500,
+      maxOutputTokens: 1500,
     })
     if (!text?.trim()) throw new Error('AI returned empty content')
 

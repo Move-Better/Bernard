@@ -228,7 +228,7 @@ async function defaultGenerate({ system, user }) {
     model: 'anthropic/claude-sonnet-4-6',
     system,
     messages: [{ role: 'user', content: user }],
-    maxTokens: 1500,
+    maxOutputTokens: 1500,
   })
   const jsonStr = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
   const parsed = JSON.parse(jsonStr)

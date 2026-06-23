@@ -66,7 +66,7 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
       system: EXTRACTION_PROMPT,
       messages: [{ role: 'user', content: `BRAND BOOK TEXT:\n\n${pdfText}` }],
       temperature: 0.1,
-      maxTokens: 400,
+      maxOutputTokens: 400,
     })
     const trimmed = text.trim()
     // Sanity-check: must have the four core section labels
