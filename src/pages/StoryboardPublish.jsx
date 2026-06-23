@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Eye, Video } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import BackLink from '@/components/ui/BackLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pieceLabel } from '@/lib/pieceLabel'
@@ -149,15 +148,7 @@ export default function StoryboardPublish() {
             )}
           </p>
         </div>
-        {piece.interview_id && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/stories/${piece.interview_id}?piece=${piece.id}`)}
-          >
-            Edit words
-          </Button>
-        )}
+
       </div>
 
       {/* All other formats: two-column preview (left) + controls (right). */}
