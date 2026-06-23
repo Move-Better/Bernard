@@ -68,10 +68,7 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'invalid-price-id' })
   }
 
-  // Build success/cancel URLs from the request host.
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'withbernard.ai'
-  const protocol = 'https'
-  const base = `${protocol}://${host}`
+  const base = `https://${ws.slug}.withbernard.ai`
 
   // Active subscribers must change plans through the billing portal —
   // a second Checkout Session would create a duplicate subscription, and

@@ -79,6 +79,8 @@ export default async function handler(req, res) {
 
   const staffId = req.body?.staff_id
   if (!staffId) return err(res, 'Missing staff_id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(staffId)) return err(res, 'Invalid staff_id')
 
   // Fetch clinician (and confirm they belong to this workspace)
   const clinRes = await sb(`staff?id=eq.${staffId}&${wsFilter}&select=id,name`)

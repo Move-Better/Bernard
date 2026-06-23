@@ -185,7 +185,7 @@ async function uploadGeneratedVideo({ videoUrl, workspace, staffId, topic }) {
     // straight to Blob; peak memory stays bounded by the stream buffer.
     const { size: sizeBytes } = await stat(tmpPath)
     const assetId = randomUUID()
-    const pathname = `media/raw/${workspace.slug}/synthetic/${assetId}.mp4`
+    const pathname = `media/synthetic/${workspace.id}/${assetId}.mp4`
 
     const blob = await blobPut(pathname, createReadStream(tmpPath), {
       access: 'public',

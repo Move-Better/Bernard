@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     )
     if (ciRes.ok) {
       const ciRows = await ciRes.json()
-      for (const ci of ciRows) itemStatusMap[ci.id] = ci
+      if (Array.isArray(ciRows)) { for (const ci of ciRows) itemStatusMap[ci.id] = ci }
     }
   }
 

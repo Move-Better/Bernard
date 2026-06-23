@@ -173,13 +173,20 @@ export default async function handler(req, res) {
     `interviews?id=eq.${item.interview_id}&${wsFilter}` +
     `&select=id,staff_id,topic,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,outputs,audience,story_type`,
   )
-  if (!ivRes.ok) return dbErr(res, ivRes)
+  if (!ivRes.ok) {
+    await unclaimSource('interview-fetch-failed')
+    return dbErr(res, ivRes)
+  }
   const ivRows = await ivRes.json()
-  if (!ivRows.length) return err(res, 'Interview not found', 404)
+  if (!ivRows.length) {
+    await unclaimSource('interview-not-found')
+    return err(res, 'Interview not found', 404)
+  }
   const interview = ivRows[0]
 
   const turns = Array.isArray(interview.messages) ? interview.messages : []
   if (turns.length < 2) {
+    await unclaimSource('transcript-too-short')
     return err(res, 'Interview transcript too short to split into a series', 422)
   }
 

@@ -83,7 +83,7 @@ async function handler(req, res) {
   const ext      = (filename.match(/\.[^.]+$/) || [''])[0]
   const baseName = safeFilename(filename.replace(/\.[^.]+$/, ''))
   const stamp    = new Date().toISOString().replace(/[:.]/g, '-')
-  const folder   = meta.parentId ? 'media/edited' : 'media/raw'
+  const folder   = meta.parentId ? `media/edited/${scope.id}` : `media/raw/${scope.id}`
   const pathname = `${folder}/${stamp}-${baseName}${ext}`
 
   let created
