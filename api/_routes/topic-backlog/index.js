@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    if (!(await enforceLimit(req, res, 'read'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const status = searchParams.get('status')
     // Allowlist the status filter — it lands raw in a PostgREST `eq.` clause, so a
     // crafted value (e.g. `neq.pending`) could otherwise flip the operator and
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'write'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const body = req.body
     const rows = Array.isArray(body) ? body : [body]
     const inserts = rows
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'write'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
 
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'write'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
     const r = await sb(`topic_backlog?id=eq.${id}&${wsFilter}`, {

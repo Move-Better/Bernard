@@ -31,7 +31,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return err(res, 'Method not allowed', 405)
-  if (!(await enforceLimit(req, res, 'read'))) return
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)

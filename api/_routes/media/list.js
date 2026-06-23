@@ -83,7 +83,7 @@ async function handler(req, res) {
 
   // Always workspace-scoped.
   let qs = `media_assets?select=${SELECT}&${scope.column}=eq.${scope.id}&order=created_at.desc&limit=${limit}&offset=${offset}`
-  if (kind)        qs += `&kind=eq.${kind}`
+  if (kind && ['video', 'photo'].includes(kind)) qs += `&kind=eq.${kind}`
   if (status) {
     qs += `&status=eq.${status}`
   } else {
@@ -96,7 +96,7 @@ async function handler(req, res) {
   if (purpose && ['interview', 'broll', 'photo', 'brand'].includes(purpose)) {
     qs += `&asset_purpose=eq.${purpose}`
   }
-  if (speakerRole) qs += `&speaker_role=eq.${speakerRole}`
+  if (speakerRole && ['clinician', 'admin', 'patient_guest'].includes(speakerRole)) qs += `&speaker_role=eq.${speakerRole}`
   if (sources === 'true') qs += `&parent_id=is.null`
   if (parent)      qs += `&parent_id=eq.${encodeURIComponent(parent)}`
   if (clipParent)  qs += `&parent_asset_id=eq.${encodeURIComponent(clipParent)}`

@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   if (req.method === 'GET') {
-    if (!(await enforceLimit(req, res, 'read'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const topicId = searchParams.get('topicId')
     const interviewId = searchParams.get('interviewId')
     if (!topicId && !interviewId) return err(res, 'Missing topicId or interviewId')
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'write'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const body = req.body || {}
     const topicId = body.topicId || null
     const interviewId = body.interviewId || null
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'write'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
     if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
@@ -154,7 +154,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'write'))) return
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
     if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
