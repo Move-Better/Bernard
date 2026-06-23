@@ -20,6 +20,6 @@ import { workspaceContext } from './workspaceContext.js'
 
 export async function workspaceScope(req) {
   const ws = await workspaceContext(req)
-  if (!ws) throw new Error('workspace scope unresolved: no workspace matches the request host')
+  if (!ws) return null
   return { column: 'workspace_id', id: ws.id, workspace: ws }
 }

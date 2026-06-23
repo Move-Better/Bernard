@@ -11,6 +11,7 @@ import { mondayOf } from '../../_lib/strategist.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function sb(path) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -51,13 +52,16 @@ export default async function handler(req, res) {
   const draftedIds = atoms.filter((a) => a.content_piece_id).map((a) => a.content_piece_id)
   let itemStatusMap = {}
   if (draftedIds.length) {
-    const quoted = draftedIds.map((id) => `"${id}"`).join(',')
-    const ciRes = await sb(
-      `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id`,
-    )
-    if (ciRes.ok) {
-      const ciRows = await ciRes.json()
-      if (Array.isArray(ciRows)) { for (const ci of ciRows) itemStatusMap[ci.id] = ci }
+    const safeIds = draftedIds.filter((id) => UUID_RE.test(id))
+    if (safeIds.length) {
+      const quoted = safeIds.map((id) => `"${id}"`).join(',')
+      const ciRes = await sb(
+        `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id`,
+      )
+      if (ciRes.ok) {
+        const ciRows = await ciRes.json()
+        if (Array.isArray(ciRows)) { for (const ci of ciRows) itemStatusMap[ci.id] = ci }
+      }
     }
   }
 
