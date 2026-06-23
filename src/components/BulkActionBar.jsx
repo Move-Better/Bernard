@@ -269,6 +269,8 @@ export default function BulkActionBar({
       setMessage(skipped > 0 ? `${base} · ${skipped} off-page item${skipped === 1 ? '' : 's'} skipped (reload to delete)` : base)
       onRefresh?.()
       onClear?.()
+    } catch (e) {
+      setError(e?.message || 'Delete failed')
     } finally {
       setBusy(null)
       setPurgeOpen(false)

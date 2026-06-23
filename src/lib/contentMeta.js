@@ -21,7 +21,7 @@ export const PLATFORM_META = {
   instagram_story:{ label: 'Instagram Story', icon: Instagram, color: 'text-pink-600',   bg: 'bg-pink-50' },
   facebook:     { label: 'Facebook',        icon: Facebook,   color: 'text-blue-600',   bg: 'bg-blue-50' },
   linkedin:     { label: 'LinkedIn',        icon: Linkedin,   color: 'text-sky-700',    bg: 'bg-sky-50' },
-  gbp:          { label: 'Google Business', icon: MapPin,     color: 'text-green-700',  bg: 'bg-green-50' },
+  gbp:          { label: 'Google Business', icon: MapPin,     color: 'text-primary',    bg: 'bg-primary/10' },
   google_ads:   { label: 'Google Ads',      icon: MousePointer2, color: 'text-yellow-700', bg: 'bg-yellow-50' },
   instagram_ads:{ label: 'Instagram Ads',   icon: Megaphone,  color: 'text-rose-600',   bg: 'bg-rose-50' },
   landing_page: { label: 'Landing Page',    icon: LayoutTemplate, color: 'text-purple-600', bg: 'bg-purple-50' },
@@ -34,9 +34,9 @@ export const PLATFORM_META = {
 export const STATUS_META = {
   draft:      { label: 'Draft',      color: 'bg-slate-100 text-slate-700',   icon: FileText },
   in_review:  { label: 'In Review',  color: 'bg-amber-100 text-amber-700',   icon: Clock },
-  approved:   { label: 'Ready to publish', color: 'bg-purple-100 text-purple-700', icon: CheckCircle2 },
-  scheduled:  { label: 'Scheduled',  color: 'bg-purple-100 text-purple-700', icon: CalendarDays },
-  published:  { label: 'Published',  color: 'bg-green-100 text-green-700',   icon: Send },
+  approved:   { label: 'Ready to publish', color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CheckCircle2 },
+  scheduled:  { label: 'Scheduled',  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CalendarDays },
+  published:  { label: 'Published',  color: 'bg-emerald-100 text-emerald-700', icon: Send },
   archived:   { label: 'Archived',   color: 'bg-zinc-100 text-zinc-600',     icon: Archive },
 }
 
