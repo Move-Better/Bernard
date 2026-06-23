@@ -68,6 +68,8 @@ export default async function handler(req, res) {
   }
   let userId = auth.userId
 
+  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
+
   if (req.method === 'GET') {
     if (id) {
       const r = await sb(
@@ -101,6 +103,7 @@ export default async function handler(req, res) {
     const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
     if (!topic?.trim()) return err(res, 'Topic required')
+    if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
 
     // owner_id comes from the verified Clerk token, never the request body.
     // Previously trusted req.body.ownerId — a workspace member could create
