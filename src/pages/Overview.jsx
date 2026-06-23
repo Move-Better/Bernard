@@ -1,6 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { CheckCircle, Inbox, Building2, Shield, CalendarDays, Flag } from 'lucide-react'
-import { useStories } from '@/lib/queries'
+import { useStories, useCampaigns } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermissionTier } from '@/lib/usePermissionTier'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -18,6 +18,7 @@ export default function Overview() {
   const { isProducer, isStaff } = usePermissionTier()
 
   const { data: stories = [], isLoading } = useStories()
+  const { data: campaigns = [] } = useCampaigns()
 
   // Role gate — individual clinicians don't get the clinic-wide board. Wait for
   // the role to resolve before deciding so we don't bounce an editor mid-load.
@@ -115,7 +116,7 @@ export default function Overview() {
           <Flag className="h-4 w-4 text-primary" aria-hidden="true" />
           Campaigns
         </h2>
-        <StoriesCampaignsView stories={stories} isLoading={isLoading} />
+        <StoriesCampaignsView stories={stories} campaigns={campaigns} isLoading={isLoading} />
       </div>
     </div>
   )
