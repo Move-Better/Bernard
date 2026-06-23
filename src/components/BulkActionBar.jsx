@@ -25,12 +25,12 @@ import { useUserRole } from '@/lib/useUserRole'
 
 // Separator between pill action groups.
 function Sep() {
-  return <span className="w-px h-4 bg-slate-700 shrink-0" aria-hidden />
+  return <span className="w-px h-4 bg-card/30 shrink-0" aria-hidden />
 }
 
 // Dark pill button style helper — returns a className string.
 function pillBtn(extraClass = '') {
-  return `text-xs text-slate-200 hover:text-emerald-300 transition-colors disabled:opacity-50 ${extraClass}`
+  return `text-xs text-card/80 hover:text-primary transition-colors disabled:opacity-50 ${extraClass}`
 }
 
 const STATUS_OPTIONS = [
@@ -277,8 +277,8 @@ export default function BulkActionBar({
 
       {/* Status submenu */}
       {panel === 'status' && canEdit && count > 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900 shadow-2xl p-3 space-y-2 min-w-[260px]">
-          <div className="text-2xs text-slate-400 px-1">
+        <div className="rounded-xl border border-foreground/30 bg-foreground shadow-2xl p-3 space-y-2 min-w-[260px]">
+          <div className="text-2xs text-card/50 px-1">
             Set status on {count} item{count === 1 ? '' : 's'}:
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -289,7 +289,7 @@ export default function BulkActionBar({
                   key={s.id}
                   onClick={() => setStatus(s.id)}
                   disabled={!!busy}
-                  className="text-2xs px-2.5 py-1 rounded-full border border-slate-600 bg-slate-800 text-slate-200 hover:border-emerald-500 hover:text-emerald-300 disabled:opacity-60 flex items-center gap-1.5"
+                  className="text-2xs px-2.5 py-1 rounded-full border border-foreground/30 bg-foreground/80 text-card/80 hover:border-primary hover:text-primary disabled:opacity-60 flex items-center gap-1.5"
                 >
                   {isBusy
                     ? <Icon as={Loader2} size="xs" className="animate-spin" />
@@ -299,19 +299,19 @@ export default function BulkActionBar({
               )
             })}
           </div>
-          <button onClick={() => setPanel(null)} className="text-2xs text-slate-500 hover:text-slate-300 px-1">Close</button>
+          <button onClick={() => setPanel(null)} className="text-2xs text-card/40 hover:text-card/70 px-1">Close</button>
         </div>
       )}
 
       {/* Add-to-collection submenu */}
       {panel === 'collection' && canEdit && count > 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900 shadow-2xl p-3 space-y-2 min-w-[280px] max-w-[380px]">
+        <div className="rounded-xl border border-foreground/30 bg-foreground shadow-2xl p-3 space-y-2 min-w-[280px] max-w-[380px]">
           {loadingList ? (
-            <span className="text-2xs text-slate-400 flex items-center gap-1.5">
+            <span className="text-2xs text-card/50 flex items-center gap-1.5">
               <Icon as={Loader2} size="xs" className="animate-spin" /> Loading…
             </span>
           ) : collections.length === 0 && !creating ? (
-            <div className="text-2xs text-slate-400 italic">No collections yet — create one below.</div>
+            <div className="text-2xs text-card/50 italic">No collections yet — create one below.</div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {collections.map((c) => {
@@ -322,16 +322,16 @@ export default function BulkActionBar({
                     key={c.id}
                     onClick={() => addToExisting(c)}
                     disabled={isBusy}
-                    className="text-2xs px-2.5 py-1 rounded-full border border-slate-600 bg-slate-800 text-slate-200 hover:border-emerald-500 hover:text-emerald-300 disabled:opacity-60 flex items-center gap-1.5"
+                    className="text-2xs px-2.5 py-1 rounded-full border border-foreground/30 bg-foreground/80 text-card/80 hover:border-primary hover:text-primary disabled:opacity-60 flex items-center gap-1.5"
                     title={c.description || c.name}
                   >
                     {isBusy
                       ? <Icon as={Loader2} size="xs" className="animate-spin" />
                       : wasAdded
-                        ? <Icon as={Check} size="xs" className="text-emerald-400" />
+                        ? <Icon as={Check} size="xs" className="text-success" />
                         : <Icon as={Plus} size="xs" />}
                     <span className="truncate max-w-[160px]">{c.name}</span>
-                    {c.item_count > 0 && <span className="text-slate-500">· {c.item_count}</span>}
+                    {c.item_count > 0 && <span className="text-card/40">· {c.item_count}</span>}
                   </button>
                 )
               })}
@@ -339,10 +339,10 @@ export default function BulkActionBar({
           )}
           {!creating ? (
             <div className="flex gap-2">
-              <button onClick={() => setCreating(true)} className="text-2xs text-slate-400 hover:text-emerald-300 flex items-center gap-1">
+              <button onClick={() => setCreating(true)} className="text-2xs text-card/50 hover:text-primary flex items-center gap-1">
                 <Icon as={FolderPlus} size="xs" /> New collection…
               </button>
-              <button onClick={() => setPanel(null)} className="text-2xs text-slate-500 hover:text-slate-300 ml-auto">Close</button>
+              <button onClick={() => setPanel(null)} className="text-2xs text-card/40 hover:text-card/70 ml-auto">Close</button>
             </div>
           ) : (
             <div className="flex gap-2 items-center">
@@ -355,13 +355,13 @@ export default function BulkActionBar({
                   if (e.key === 'Escape') { setCreating(false); setNewName('') }
                 }}
                 placeholder="New collection name"
-                className="h-7 px-2 text-xs flex-1 rounded-md border border-slate-600 bg-slate-800 text-white placeholder:text-slate-500"
+                className="h-7 px-2 text-xs flex-1 rounded-md border border-foreground/30 bg-foreground/80 text-card placeholder:text-card/40"
               />
-              <button onClick={submitNewCollection} disabled={busy === 'new' || !newName.trim()} className="text-2xs text-emerald-400 hover:text-emerald-300 disabled:opacity-50 flex items-center gap-1">
+              <button onClick={submitNewCollection} disabled={busy === 'new' || !newName.trim()} className="text-2xs text-success hover:text-success/80 disabled:opacity-50 flex items-center gap-1">
                 {busy === 'new' && <Icon as={Loader2} size="xs" className="animate-spin" />}
                 Create + add
               </button>
-              <button onClick={() => { setCreating(false); setNewName('') }} className="text-2xs text-slate-500 hover:text-slate-300">Cancel</button>
+              <button onClick={() => { setCreating(false); setNewName('') }} className="text-2xs text-card/40 hover:text-card/70">Cancel</button>
             </div>
           )}
         </div>
@@ -369,13 +369,13 @@ export default function BulkActionBar({
 
       {/* Result / error toasts */}
       {(message || error) && (
-        <div className={`rounded-xl px-4 py-2 text-xs shadow-xl ${message ? 'bg-emerald-800 text-emerald-100' : 'bg-rose-900 text-rose-100'}`}>
+        <div className={`rounded-xl px-4 py-2 text-xs shadow-xl ${message ? 'bg-success/90 text-card' : 'bg-destructive/90 text-card'}`}>
           {message || error}
         </div>
       )}
 
       {/* Primary dark pill ------------------------------------------------- */}
-      <div className="rounded-full bg-slate-900 border border-slate-700 shadow-2xl px-4 py-2.5 flex items-center gap-3 text-xs select-none">
+      <div className="rounded-full bg-foreground border border-foreground/30 shadow-2xl px-4 py-2.5 flex items-center gap-3 text-xs select-none">
         {/* Count */}
         <span className="font-semibold text-white whitespace-nowrap">
           {count === 0 ? `0 of ${visibleCount}` : count} selected
@@ -410,7 +410,7 @@ export default function BulkActionBar({
             {/* Status */}
             {canEdit && (
               <button
-                className={pillBtn(panel === 'status' ? 'text-emerald-300' : '')}
+                className={pillBtn(panel === 'status' ? 'text-primary' : '')}
                 onClick={() => setPanel(panel === 'status' ? null : 'status')}
               >
                 <Icon as={Tag} size="sm" className="inline mr-0.5" />
@@ -421,7 +421,7 @@ export default function BulkActionBar({
             {/* Add to collection */}
             {canEdit && (
               <button
-                className={pillBtn(panel === 'collection' ? 'text-emerald-300' : '')}
+                className={pillBtn(panel === 'collection' ? 'text-primary' : '')}
                 onClick={() => setPanel(panel === 'collection' ? null : 'collection')}
               >
                 <Icon as={Plus} size="sm" className="inline mr-0.5" />
@@ -508,13 +508,13 @@ export default function BulkActionBar({
           <button className={pillBtn()} onClick={onClear}>Clear</button>
         )}
         <button
-          className="text-xs text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+          className="text-xs text-card/50 hover:text-card/80 transition-colors flex items-center gap-1"
           onClick={onExit}
           title="Exit selection mode (Esc)"
         >
           <Icon as={X} size="sm" />
           Done
-          <span className="text-3xs bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-slate-400 font-mono">esc</span>
+          <span className="text-3xs bg-foreground/80 border border-foreground/30 rounded px-1 py-0.5 text-card/50 font-mono">esc</span>
         </button>
       </div>
 
