@@ -208,7 +208,7 @@ async function handler(req, res) {
 
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) {
-    const status = auth.reason === 'no-token' ? 401 : 403
+    const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
 
