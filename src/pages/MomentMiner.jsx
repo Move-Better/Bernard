@@ -112,7 +112,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
             <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-accent text-accent-foreground">{m.momentTypeLabel || 'Moment'}</span>
             {m.staffName && <span className="text-2xs font-medium text-foreground">{m.staffName}</span>}
           </div>
-          <p className="text-3xs text-muted-foreground mt-0.5 truncate">
+          <p className="text-3xs text-muted-foreground mt-0.5 truncate" title={`${m.filename} · @ ${fmtClock(m.startSec)}–${fmtClock(m.endSec)}`}>
             {m.filename} · @ {fmtClock(m.startSec)}–{fmtClock(m.endSec)}
           </p>
         </div>

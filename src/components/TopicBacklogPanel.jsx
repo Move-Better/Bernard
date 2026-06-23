@@ -238,6 +238,7 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
             size="sm"
             variant="ghost"
             className="h-7 text-xs gap-1"
+            aria-label="Mark complete"
             title="Mark complete"
             onClick={() => onComplete(topic)}
           >
@@ -249,6 +250,7 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0 text-muted-foreground"
+            aria-label="Archive"
             title="Archive"
             onClick={() => onArchive(topic)}
           >
