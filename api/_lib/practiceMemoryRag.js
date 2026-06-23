@@ -77,8 +77,14 @@ export function chunkContent(text) {
     if (cur.length + 2 + p.length <= CHUNK_MAX_CHARS) {
       cur = `${cur}\n\n${p}`
     } else {
-      out.push(`${cur}\n\n${p.slice(0, CHUNK_MAX_CHARS - cur.length - 2)}`)
-      cur = p.slice(CHUNK_MAX_CHARS - cur.length - 2)
+      const sliceLen = CHUNK_MAX_CHARS - cur.length - 2
+      if (sliceLen < CHUNK_MIN_CHARS) {
+        out.push(cur)
+        cur = p
+      } else {
+        out.push(`${cur}\n\n${p.slice(0, sliceLen)}`)
+        cur = p.slice(sliceLen)
+      }
     }
   }
   if (cur) out.push(cur)

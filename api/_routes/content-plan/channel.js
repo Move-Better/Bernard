@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'write'))) return
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const interviewId = searchParams.get('interview_id')
   if (!interviewId) return err(res, 'Missing interview_id')

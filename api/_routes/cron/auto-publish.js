@@ -167,7 +167,7 @@ async function markContentItemScheduled({ pkg, workspaceId, bufferId }) {
   }
 
   const now = new Date().toISOString()
-  await sb(`content_items?id=eq.${ci.id}&workspace_id=eq.${workspaceId}`, {
+  const patchRes = await sb(`content_items?id=eq.${ci.id}&workspace_id=eq.${workspaceId}`, {
     method: 'PATCH',
     body: JSON.stringify({
       status:           'scheduled',
@@ -179,6 +179,10 @@ async function markContentItemScheduled({ pkg, workspaceId, bufferId }) {
       notes:            `Auto-published by cron at ${now}`,
     }),
   })
+  if (!patchRes.ok) {
+    console.error('[auto-publish] markContentItemScheduled PATCH failed:', patchRes.status, 'ci:', ci.id, 'pkg:', pkg.id)
+    return null
+  }
   return ci.id
 }
 

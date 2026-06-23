@@ -110,6 +110,8 @@ export default async function handler(req, res) {
 
   const { id, parts, length_preset: bodyLengthPreset } = req.body || {}
   if (!id) return err(res, 'Missing id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return err(res, 'Invalid id')
   const partCount = Number(parts)
   if (!VALID_PART_COUNTS.has(partCount)) {
     return err(res, 'parts must be 2, 3, or 4')

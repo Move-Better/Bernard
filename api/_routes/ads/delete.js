@@ -28,7 +28,7 @@ function sb(path, init = {}) {
 
 export default async function handler(req, res) {
   if (req.method !== 'DELETE') return res.status(405).json({ error: 'Method not allowed' })
-  if (!(await enforceLimit(req, res, 'default'))) return
+  if (!(await enforceLimit(req, res, 'media'))) return
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
