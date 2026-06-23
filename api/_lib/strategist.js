@@ -228,11 +228,16 @@ async function defaultGenerate({ system, user }) {
     model: 'anthropic/claude-sonnet-4-6',
     system,
     messages: [{ role: 'user', content: user }],
-    maxOutputTokens: 1500,
+    maxTokens: 1500,
   })
   const jsonStr = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-  const parsed = JSON.parse(jsonStr)
-  return Array.isArray(parsed) ? parsed : []
+  try {
+    const parsed = JSON.parse(jsonStr)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    console.error('[strategist] defaultGenerate: failed to parse JSON response', jsonStr.slice(0, 200))
+    return []
+  }
 }
 
 /**

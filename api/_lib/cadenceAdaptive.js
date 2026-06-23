@@ -96,7 +96,7 @@ export async function computeAdaptiveCadenceChannels(wsId, enabledOutputs, prior
     // We only need the platform from the parent row.
     const r = await sb(
       `engagement_snapshots?workspace_id=eq.${wsId}&fetched_at=gt.${cutoff}` +
-      `&select=stats,content_items(platform)&limit=5000`
+      `&select=stats,content_items(platform)&order=fetched_at.desc&limit=5000`
     )
     if (!r.ok) return null
     snapshots = await r.json()

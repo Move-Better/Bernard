@@ -43,6 +43,7 @@ export async function getCadencePrior(sb) {
     }
   } catch {
     // network/DB hiccup — fall back to the safety-net prior, never throw.
+    return prior  // don't cache on failure; next request retries immediately
   }
   _cache = prior
   _cachedAt = Date.now()

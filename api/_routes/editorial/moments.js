@@ -67,7 +67,10 @@ export default async function handler(req, res) {
 
   // 2. Lazily score any segment missing a score (pre-scoring-pass rows). One
   // batched LLM call, then persist so it's a one-time cost per segment.
-  const unscored = segments.filter((s) => s.score == null)
+  // Cap inline scoring to 10 per request — avoids exhausting the 60s maxDuration
+  // on large workspaces where 40+ PATCHes + one Sonnet call could timeout.
+  // Any remaining unscored segments are picked up on the next page load.
+  const unscored = segments.filter((s) => s.score == null).slice(0, 10)
   let scorePersistFailed = false
   if (unscored.length) {
     const scores = await scoreSegments(unscored, ws)

@@ -329,7 +329,7 @@ export default function ReviewInbox() {
           {/* Needs review — clinician sign-off that it sounds like them */}
           {needsReview.length > 0 && (
             <section className="space-y-2">
-              <p className="text-2xs font-bold uppercase tracking-wide text-warning flex items-center gap-1.5">
+              <p className="text-2xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5" /> Needs review · {needsReview.length}
                 <span className="font-normal normal-case tracking-normal text-muted-foreground">
                   — sign-off that it sounds like them
@@ -352,7 +352,7 @@ export default function ReviewInbox() {
           {/* Approved · ready to schedule */}
           {readyToSchedule.length > 0 && (
             <section className="space-y-2">
-              <p className="text-2xs font-bold uppercase tracking-wide text-primary flex items-center gap-1.5">
+              <p className="text-2xs font-bold uppercase tracking-wide text-action flex items-center gap-1.5">
                 <Send className="h-3.5 w-3.5" /> Approved · ready to schedule · {readyToSchedule.length}
                 <span className="font-normal normal-case tracking-normal text-muted-foreground">
                   — words signed off; give it a go-live time
