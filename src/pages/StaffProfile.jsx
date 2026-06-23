@@ -197,16 +197,6 @@ export default function StaffProfile() {
                   New Interview
                 </Link>
               </Button>
-              {canPurge && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => setDeleteTarget({ type: 'staff' })}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
             </div>
           </div>
 
@@ -516,6 +506,25 @@ export default function StaffProfile() {
           )}
           {role === 'admin' && <BlogReviewCard staffMember={staffMember} />}
           {role === 'admin' && <StaffRecipeCard staffMember={staffMember} />}
+          {canPurge && (
+            <div className="mt-4 pt-6 border-t border-destructive/20">
+              <p className="text-2xs font-semibold uppercase tracking-widest text-destructive/70 mb-3">Danger zone</p>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Permanently removes this staff member and all their data. This cannot be undone.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/5"
+                  onClick={() => setDeleteTarget({ type: 'staff' })}
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Remove staff member
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
