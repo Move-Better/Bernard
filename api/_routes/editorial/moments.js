@@ -94,10 +94,9 @@ export default async function handler(req, res) {
 
   // 3. Hydrate source assets + staff names in two small batched reads.
   const sourceIds = segments.map((s) => s.source_asset_id).filter(Boolean)
-  if (!sourceIds.length) return res.status(200).json({ moments: [] })
   const staffIds = segments.map((s) => s.staff_id).filter(Boolean)
   const [srcRes, staffRes] = await Promise.all([
-    sb(`media_assets?id=in.${inList(sourceIds)}&workspace_id=eq.${ws.id}&select=id,filename,thumbnail_url,width,height,consent_status`),
+    sourceIds.length ? sb(`media_assets?id=in.${inList(sourceIds)}&workspace_id=eq.${ws.id}&select=id,filename,thumbnail_url,width,height,consent_status`) : Promise.resolve({ ok: true, json: async () => [] }),
     staffIds.length ? sb(`staff?id=in.${inList(staffIds)}&workspace_id=eq.${ws.id}&select=id,name`) : Promise.resolve({ ok: true, json: async () => [] }),
   ])
   const sources = srcRes.ok ? await srcRes.json().catch(() => []) : []

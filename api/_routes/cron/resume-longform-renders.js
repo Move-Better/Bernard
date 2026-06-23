@@ -77,14 +77,17 @@ export default async function handler(req, res) {
   let packageIds = []
   if (candidateIds.length) {
     const inList = candidateIds.map((id) => `"${id}"`).join(',')
-    const pr = await sb(`story_packages?id=in.(${inList})&status=eq.generating${wsIdFilter}&select=id`)
+    const pr = await sb(`story_packages?id=in.(${inList})&status=eq.generating${wsIdFilter}&select=id,workspace_id`)
     if (!pr.ok) {
       const text = await pr.text().catch(() => '')
       console.error('[resume-longform] package query failed:', pr.status, text)
       return res.status(500).json({ error: 'query_failed' })
     }
     const pkgRows = await pr.json().catch(() => [])
-    packageIds = (Array.isArray(pkgRows) ? pkgRows : []).map((x) => x.id)
+    const activeWsSet = new Set(activeWsIds)
+    packageIds = (Array.isArray(pkgRows) ? pkgRows : [])
+      .filter((x) => activeWsSet.has(x.workspace_id))
+      .map((x) => x.id)
   }
 
   const proto = req.headers['x-forwarded-proto'] || 'https'
