@@ -604,7 +604,7 @@ function IntegrationCard({ integration, row, loading, disabled, getToken, onChan
   return (
     <div
       className={`rounded-xl border bg-card overflow-hidden ${
-        integration.recommended ? 'border-orange-300 ring-1 ring-orange-200' : ''
+        integration.recommended ? 'border-action/50 ring-1 ring-action/20' : ''
       }`}
     >
       <button
@@ -1315,7 +1315,7 @@ function TrustDrivenCareCard() {
                     className="shrink-0 font-mono text-xs bg-muted px-2 py-1 rounded border hover:bg-accent transition-colors text-primary min-w-0"
                     title="Click to copy"
                   >
-                    {copiedTag === tag ? <span className="text-green-600">✓ copied</span> : tag}
+                    {copiedTag === tag ? <span className="text-success">✓ copied</span> : tag}
                   </button>
                   <p className="text-xs text-muted-foreground pt-1 leading-tight">{desc}</p>
                 </div>

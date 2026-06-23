@@ -865,7 +865,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
       <div className="flex items-center justify-between gap-2">
         <Label className="text-xs">Your social profiles</Label>
         {detectedCount > 0 && (
-          <span className="text-2xs text-green-600 inline-flex items-center gap-1">
+          <span className="text-2xs text-success inline-flex items-center gap-1">
             <CheckCircle2 className="h-3.5 w-3.5" /> {detectedCount} found on your site
           </span>
         )}
@@ -994,7 +994,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
         : "A few basics — we use these to set up your workspace and make your content sound like it's genuinely from your practice, not generic AI. Nothing here is locked in; you can edit all of it later in settings."}
     >
       {scanned && (
-        <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+        <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-xs text-success">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           <span>Read {scanState.sources.length} page{scanState.sources.length === 1 ? '' : 's'} from your site and pre-filled the fields below.</span>
         </div>
@@ -1270,7 +1270,7 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
             </span>
           )}
           {slugCheck.status === 'done' && slugCheck.available && (
-            <span className="text-green-600 inline-flex items-center gap-1">
+            <span className="text-success inline-flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" /> Available
             </span>
           )}

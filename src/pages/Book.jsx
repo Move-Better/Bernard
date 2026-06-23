@@ -305,13 +305,13 @@ export default function Book() {
 function ManuscriptView({ chapters, fallbackMarkdown, isAdmin, onRefetch }) {
   const proseClasses =
     'prose max-w-none ' +
-    'prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-slate-900 ' +
+    'prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-foreground ' +
     'prose-h2:text-2xl prose-h2:mt-0 prose-h2:mb-4 ' +
     'prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2 ' +
-    'prose-p:leading-relaxed prose-p:text-slate-700 ' +
-    'prose-blockquote:border-l-primary prose-blockquote:text-slate-700 prose-blockquote:italic ' +
-    'prose-strong:text-slate-900 ' +
-    'prose-li:text-slate-700'
+    'prose-p:leading-relaxed prose-p:text-foreground/80 ' +
+    'prose-blockquote:border-l-primary prose-blockquote:text-foreground/80 prose-blockquote:italic ' +
+    'prose-strong:text-foreground ' +
+    'prose-li:text-foreground/80'
 
   // Migration safety: an older book row may have manuscript_md without a
   // populated chapters array. Fall back to rendering the whole markdown if

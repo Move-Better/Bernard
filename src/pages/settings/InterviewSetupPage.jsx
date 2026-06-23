@@ -217,12 +217,12 @@ function VoiceMemoryRoster({ interviewerName }) {
   const { data: staff = [], isLoading } = useStaff()
 
   return (
-    <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-4 py-4">
+    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-4">
       <div className="flex items-start gap-3 mb-3">
-        <Mic className="h-4 w-4 mt-0.5 text-indigo-700/80 shrink-0" />
+        <Mic className="h-4 w-4 mt-0.5 text-primary/70 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-indigo-900">Per-staff voice memory</p>
-          <p className="text-xs text-indigo-700 mt-0.5">
+          <p className="text-sm font-medium text-foreground">Per-staff voice memory</p>
+          <p className="text-xs text-primary mt-0.5">
             As staff edit AI drafts, {interviewerName} learns how each person writes — phrases
             they keep, ones they cut, the way they naturally say things. Open a staff member&rsquo;s profile
             to review or add notes that sharpen every future draft for them.
@@ -232,11 +232,11 @@ function VoiceMemoryRoster({ interviewerName }) {
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-2 pl-7">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-          <span className="text-xs text-indigo-600">Loading staff…</span>
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/40" />
+          <span className="text-xs text-primary/60">Loading staff…</span>
         </div>
       ) : staff.length === 0 ? (
-        <p className="text-xs text-indigo-600 pl-7">No staff yet — add one to start building voice memory.</p>
+        <p className="text-xs text-primary/60 pl-7">No staff yet — add one to start building voice memory.</p>
       ) : (
         <ul className="space-y-1 pl-7">
           {staff.map(c => {
@@ -247,11 +247,11 @@ function VoiceMemoryRoster({ interviewerName }) {
                   to={`/staff/${c.id}`}
                   className="flex items-center gap-2.5 py-1 group"
                 >
-                  <StaffChip id={c.id} name={c.name} size="sm" showName nameClassName="text-xs text-indigo-800 group-hover:text-indigo-950" />
-                  <span className={`text-3xs font-medium px-1.5 py-0.5 rounded-full ${hasNotes ? 'bg-indigo-200 text-indigo-800' : 'bg-indigo-100/60 text-indigo-500'}`}>
+                  <StaffChip id={c.id} name={c.name} size="sm" showName nameClassName="text-xs text-primary group-hover:text-primary" />
+                  <span className={`text-3xs font-medium px-1.5 py-0.5 rounded-full ${hasNotes ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary/50'}`}>
                     {hasNotes ? 'voice notes' : 'no notes yet'}
                   </span>
-                  <ChevronRight className="h-3 w-3 text-indigo-400 group-hover:text-indigo-700 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ChevronRight className="h-3 w-3 text-primary/40 group-hover:text-primary ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
               </li>
             )

@@ -139,7 +139,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
               <ul className="flex-1 space-y-2">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-sm">
-                    <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                    <Check className="h-4 w-4 text-success shrink-0 mt-0.5" />
                     <span>{feature}</span>
                   </li>
                 ))}

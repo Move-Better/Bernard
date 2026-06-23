@@ -68,13 +68,13 @@ export default function VoiceFreshnessCard({ staffId, staffName }) {
   }
 
   return (
-    <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-4 py-3 space-y-2.5">
+    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-2.5">
       <div className="flex items-center gap-2">
-        <Icon as={Mic} size="md" className="text-indigo-700 shrink-0" />
-        <p className="text-sm font-medium text-indigo-900">
+        <Icon as={Mic} size="md" className="text-primary shrink-0" />
+        <p className="text-sm font-medium text-foreground">
           {firstName}&apos;s voice profile
         </p>
-        <span className="text-xs text-indigo-700/80 ml-auto">
+        <span className="text-xs text-primary/80 ml-auto">
           {total} phrase{total === 1 ? '' : 's'} from {pieces} approved piece{pieces === 1 ? '' : 's'}
           {lastSeen ? ` · last grew ${lastSeen}` : ''}
         </span>
@@ -82,14 +82,14 @@ export default function VoiceFreshnessCard({ staffId, staffName }) {
 
       <ul className="space-y-1.5">
         {phrases.map((p, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm text-indigo-950/90">
-            <Quote className="h-3 w-3 text-indigo-400 mt-1 shrink-0" aria-hidden="true" />
+          <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+            <Quote className="h-3 w-3 text-primary/40 mt-1 shrink-0" aria-hidden="true" />
             <span className="italic leading-snug">{p.phrase}</span>
           </li>
         ))}
       </ul>
 
-      <p className="text-xs text-indigo-700/70 leading-snug pt-1">
+      <p className="text-xs text-primary/70 leading-snug pt-1">
         These are sentences {firstName} shipped in approved content. Bernard treats them
         as voice anchors — generated drafts try to echo this phrasing rather than rewrite it.
       </p>

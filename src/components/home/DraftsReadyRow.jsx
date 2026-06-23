@@ -77,7 +77,7 @@ export default function DraftsReadyRow({ stories = [] }) {
                 </span>
                 {voice != null ? (
                   <span
-                    className={`text-2xs font-bold ${voice >= 60 ? 'text-agreement-signal' : voice >= 35 ? 'text-action' : 'text-slate-500'}`}
+                    className={`text-2xs font-bold ${voice >= 60 ? 'text-agreement-signal' : voice >= 35 ? 'text-action' : 'text-muted-foreground'}`}
                   >
                     {voice}% voice
                   </span>

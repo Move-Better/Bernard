@@ -329,12 +329,12 @@ function BriefAndPreviewCard({ form, interviewerName }) {
         <p className="text-sm text-foreground mt-2 leading-relaxed">{summary}</p>
       ) : (
         <p className="text-sm italic text-foreground/70 mt-2 leading-relaxed flex items-center gap-1.5">
-          <Pencil className="h-3 w-3 text-amber-700/80 shrink-0" />
+          <Pencil className="h-3 w-3 text-verbatim-accent/80 shrink-0" />
           {interviewerName} hasn&apos;t learned your voice yet — fill in the sections below and he&apos;ll mirror it back.
         </p>
       )}
       {opener && (
-        <blockquote className="mt-3 border-l-2 border-amber-400/60 pl-3 text-sm italic text-foreground/80 leading-relaxed">
+        <blockquote className="mt-3 border-l-2 border-verbatim-accent/60 pl-3 text-sm italic text-foreground/80 leading-relaxed">
           &ldquo;{opener}&rdquo;
           <footer className="mt-1 text-2xs not-italic text-muted-foreground">— {interviewerName}, sample opener</footer>
         </blockquote>

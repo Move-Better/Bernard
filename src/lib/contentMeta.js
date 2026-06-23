@@ -51,10 +51,10 @@ export const STATUS_TABS = ['all', 'draft', 'in_review', 'approved', 'scheduled'
 // colours so a rebrand to one family (e.g. "social" becomes teal) touches
 // one place.
 export const PLATFORM_FAMILY_PILL = {
-  blog:   'bg-emerald-50 text-emerald-700',
-  email:  'bg-amber-50 text-amber-700',
-  social: 'bg-violet-50 text-violet-700',
-  local:  'bg-sky-50 text-sky-700',
+  blog:   'bg-success/10 text-success',
+  email:  'bg-action/10 text-action',
+  social: 'bg-scheduled/10 text-scheduled',
+  local:  'bg-info/10 text-info',
 }
 
 const PLATFORM_TO_FAMILY = {

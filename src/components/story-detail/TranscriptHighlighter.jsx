@@ -139,7 +139,7 @@ export default function TranscriptHighlighter({ story, children }) {
       label: '→ GBP post',
       icon: MapPin,
       onClick: handleGBP,
-      color: 'text-green-700 hover:bg-green-50',
+      color: 'text-success hover:bg-success/10',
     },
     {
       key: 'verbatim',
@@ -171,7 +171,7 @@ export default function TranscriptHighlighter({ story, children }) {
         >
           <div className="flex items-center gap-1 rounded-lg border bg-white shadow-lg px-1.5 py-1 text-xs">
             {confirmed ? (
-              <span className="px-2 py-0.5 text-green-700 font-medium">Added ✓</span>
+              <span className="px-2 py-0.5 text-success font-medium">Added ✓</span>
             ) : (
               actions.map(({ key, label, icon: Icon, onClick, color }) => (
                 <button

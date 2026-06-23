@@ -210,7 +210,7 @@ export default function CredentialForm({
       </div>
       <div className="flex items-center gap-2 justify-end flex-wrap">
         {saved && (
-          <span className="text-xs text-green-600 flex items-center gap-1">
+          <span className="text-xs text-success flex items-center gap-1">
             <Icon as={CheckCircle2} size="sm" /> Saved
           </span>
         )}
@@ -220,7 +220,7 @@ export default function CredentialForm({
           </span>
         )}
         {testResult?.ok && (
-          <span className="text-xs text-green-600 flex items-center gap-1">
+          <span className="text-xs text-success flex items-center gap-1">
             <Icon as={CheckCircle2} size="sm" />
             Verified{
               // Each tester returns a different info shape: buffer→account,
