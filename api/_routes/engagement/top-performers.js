@@ -55,8 +55,7 @@ export default withSentry(async function handler(req, res) {
     return res.status(status).json({ error: auth.reason })
   }
 
-  const limited = await enforceLimit(req, res, 'generic')
-  if (limited) return
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   // Fetch the 150 most-recent snapshots for this workspace. We over-fetch so
   // we can dedupe to latest-per-item in JS and still have enough coverage to
