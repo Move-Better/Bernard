@@ -1057,7 +1057,7 @@ function VoiceDock({
             {isSpeaking && (
               <span
                 className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: 'hsl(210 90% 54% / 0.22)', animationDuration: '1.8s' }}
+                style={{ background: 'hsl(var(--info) / 0.22)', animationDuration: '1.8s' }}
                 aria-hidden="true"
               />
             )}
@@ -1083,7 +1083,7 @@ function VoiceDock({
                 background: isListening
                   ? 'hsl(var(--destructive))'
                   : isSpeaking
-                  ? 'hsl(210 90% 54%)'
+                  ? 'hsl(var(--info))'
                   : streaming
                   ? 'hsl(var(--muted))'
                   : 'hsl(var(--primary))',

@@ -486,9 +486,9 @@ function GBPPreview({ content, locationOverrides }) {
             <p className="text-3xs text-muted-foreground">{MB_LOCATION}</p>
           </div>
         </div>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800">{displayContent}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{displayContent}</p>
       </div>
-      <div className="px-4 py-3 border-t bg-slate-50">
+      <div className="px-4 py-3 border-t bg-muted">
         <button className="text-xs text-blue-600 font-medium">Book appointment →</button>
       </div>
     </div>

@@ -194,7 +194,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
       {/* Clinician initial badge — bottom left */}
       {asset.created_by && (
         <div className="absolute bottom-6 left-1.5 z-10" title={`Uploaded by: ${asset.created_by}`}>
-          <div className="bg-indigo-600 text-white text-3xs font-bold rounded-full w-5 h-5 flex items-center justify-center leading-none">
+          <div className="bg-primary text-primary-foreground text-3xs font-bold rounded-full w-5 h-5 flex items-center justify-center leading-none">
             {createdByInitials}
           </div>
         </div>

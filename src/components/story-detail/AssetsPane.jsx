@@ -1568,7 +1568,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             </span>
           )}
           {echoCount > 0 && (
-            <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-xs text-indigo-700">
+            <span className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs text-primary">
               {echoCount} phrase{echoCount === 1 ? '' : 's'} echo prior work
             </span>
           )}

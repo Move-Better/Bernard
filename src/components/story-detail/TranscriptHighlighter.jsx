@@ -78,7 +78,7 @@ export default function TranscriptHighlighter({ story, children }) {
       Math.max(rect.left + rect.width / 2, 80),
       window.innerWidth - 80,
     )
-    const y = rect.top + window.scrollY - 8 // 8px gap above selection
+    const y = rect.top - 8 // 8px gap above selection (position: fixed, viewport-relative)
 
     setPopover({ x, y, text })
     setConfirmed(null)
