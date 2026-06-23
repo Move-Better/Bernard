@@ -28,6 +28,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 // Stop kicking off new workspaces after this many elapsed ms — leaves
 // headroom to write results back and return the response within 300s.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SOFT_DEADLINE_MS = 270_000
 
 // Cap workspaces per run regardless of time budget. Prevents one cron from
@@ -131,7 +133,7 @@ export default async function handler(req, res) {
 
     // Fetch the full workspace rows in one shot (synthesizeBook needs the
     // brand_voice, display_name, etc).
-    const ids = stale.map((s) => s.workspace_id)
+    const ids = stale.map((s) => s.workspace_id).filter((id) => UUID_RE.test(id))
     const wsRes = await sb(`workspaces?id=in.(${ids.join(',')})&select=*`)
     if (!wsRes.ok) {
       await logSbErr('list workspaces', wsRes)
@@ -144,6 +146,10 @@ export default async function handler(req, res) {
     for (const s of stale) {
       const elapsed = Date.now() - runStarted
       if (elapsed > SOFT_DEADLINE_MS) {
+        summary.skipped++
+        continue
+      }
+      if (!UUID_RE.test(s.workspace_id)) {
         summary.skipped++
         continue
       }

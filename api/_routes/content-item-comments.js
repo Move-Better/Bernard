@@ -16,6 +16,8 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
@@ -60,6 +62,7 @@ export default async function handler(req, res) {
     const { searchParams } = new URL(req.url, 'http://localhost')
     const itemId = searchParams.get('itemId')
     if (!itemId) return err(res, 'Missing itemId')
+    if (!UUID_RE.test(itemId)) return err(res, 'Invalid itemId', 400)
 
     const r = await sb(
       `content_item_comments?content_item_id=eq.${itemId}&${wsFilter}&select=id,user_id,user_email,body,kind,created_at&order=created_at.asc`
@@ -72,6 +75,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'media'))) return
     const { itemId, body, kind } = req.body || {}
     if (!itemId) return err(res, 'Missing itemId')
+    if (!UUID_RE.test(itemId)) return err(res, 'Invalid itemId', 400)
     if (typeof body !== 'string' || !body.trim()) return err(res, 'Missing body')
 
     // Confirm the item belongs to this workspace.

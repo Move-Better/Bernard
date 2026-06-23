@@ -249,6 +249,7 @@ export default async function handler(req, res) {
     if (!rows.length) return err(res, 'Not found', 404)
 
     const mergeTo = searchParams.get('mergeTo')
+    if (mergeTo && !UUID_RE.test(mergeTo)) return err(res, 'Invalid mergeTo', 400)
     const force = searchParams.get('force') === 'true'
 
     // Preferred path for a staff row with attached history: route through the
