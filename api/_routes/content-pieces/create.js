@@ -35,6 +35,7 @@ async function handler(req, res) {
   if (!sourceAssetId) return res.status(400).json({ error: 'sourceAssetId required' })
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
 
   // Brief creation is the same gate as media metadata edits — admin/publisher.
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: scope.workspace.clerk_org_id })

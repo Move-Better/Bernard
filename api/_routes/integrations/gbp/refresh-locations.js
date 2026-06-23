@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'workspace_not_resolved' })
 
-  const auth = await requireRole(req, 'admin', { orgId: ws.clerk_org_id })
+  const auth = await requireRole(req, ['admin'], { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 
   if (!(await enforceLimit(req, res, 'gbp-refresh-locations'))) return

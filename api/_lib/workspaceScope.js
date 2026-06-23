@@ -13,8 +13,8 @@
 //
 // `column` is always 'workspace_id' on the shared deployment. The pair shape
 // is retained so call sites don't need rewriting; if the request's host can't
-// be resolved to a workspace this throws — silently defaulting to a brand was
-// only safe on the (now-decommissioned) per-brand deployments.
+// be resolved to a workspace this returns null — callers must null-check before
+// dereferencing the result, e.g. `if (!scope) return res.status(404).json(…)`.
 
 import { workspaceContext } from './workspaceContext.js'
 

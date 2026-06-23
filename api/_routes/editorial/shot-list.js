@@ -27,6 +27,7 @@ export const config = { runtime: 'nodejs' }
 
 import { generateText } from 'ai'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 
@@ -79,6 +80,9 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'method_not_allowed' })
   }
+
+  const limited = await enforceLimit(req, res, 'ai')
+  if (limited) return
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(404).json({ error: 'no_workspace' })

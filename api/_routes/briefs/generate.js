@@ -39,7 +39,7 @@ function toPlatformKey(outputId) {
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'ai'))) return
 
   const ws   = await workspaceContext(req)
   if (!ws) return res.status(401).json({ error: 'Workspace not found' })

@@ -48,6 +48,7 @@ async function handler(req, res) {
   const kind = ALLOWED_KINDS.has(body.kind) ? body.kind : 'campaign'
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
 
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) {

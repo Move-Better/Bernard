@@ -51,6 +51,7 @@ async function handler(req, res) {
   const offset      = parseInt(searchParams.get('offset') || '0', 10)
 
   const scope = await workspaceScope(req)
+  if (!scope) return res.status(404).json({ error: 'no_workspace' })
 
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) {
@@ -67,6 +68,7 @@ async function handler(req, res) {
   // collection_id can probe membership via response shape, and a future drop
   // of the final workspace_id filter on media_assets would turn this into a
   // real cross-tenant read.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   let collectionAssetIds = null
   if (collectionId) {
     const ownRes = await sb(`collections?id=eq.${encodeURIComponent(collectionId)}&${scope.column}=eq.${scope.id}&select=id&limit=1`)
@@ -97,7 +99,6 @@ async function handler(req, res) {
     qs += `&asset_purpose=eq.${purpose}`
   }
   if (speakerRole && ['clinician', 'admin', 'patient_guest'].includes(speakerRole)) qs += `&speaker_role=eq.${speakerRole}`
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (sources === 'true') qs += `&parent_id=is.null`
   if (parent && !UUID_RE.test(parent)) return res.status(400).json({ error: 'invalid_parent' })
   if (parent)      qs += `&parent_id=eq.${parent}`
