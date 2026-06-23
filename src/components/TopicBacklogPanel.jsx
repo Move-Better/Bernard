@@ -142,7 +142,7 @@ export default function TopicBacklogPanel() {
             onClick={() => setStatusFilter(t.id)}
             className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
               statusFilter === t.id
-                ? 'border-foreground text-foreground'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -205,7 +205,7 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
             <Badge className="text-xs bg-warning/15 text-warning border-0 px-1.5 py-0">In progress</Badge>
           )}
           {isCompleted && (
-            <Badge className="text-xs bg-green-100 text-green-700 border-0 px-1.5 py-0 gap-1">
+            <Badge className="text-xs bg-success/10 text-success border-0 px-1.5 py-0 gap-1">
               <CheckCircle2 className="h-2.5 w-2.5" />
               Done
             </Badge>

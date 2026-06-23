@@ -4,7 +4,7 @@ import { Video, Image as ImageIcon, Play, Check, Download, Link2 } from 'lucide-
 import { toast } from '@/lib/toast'
 
 const STATUS_LABEL = {
-  raw:      { label: 'Raw',      tone: 'bg-slate-200 text-slate-700' },
+  raw:      { label: 'Raw',      tone: 'bg-muted text-muted-foreground' },
   tagged:   { label: 'Tagged',   tone: 'bg-info/10 text-info' },
   rendered: { label: 'Rendered', tone: 'bg-violet-100 text-violet-700' },
   approved: { label: 'Approved', tone: 'bg-amber-50 text-amber-700' },

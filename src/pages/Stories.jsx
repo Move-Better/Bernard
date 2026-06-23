@@ -20,14 +20,14 @@ const PLATFORMS = Object.keys(PLATFORM_META)
 // spans all three surfaces.
 const QUICK_FILTERS = [
   { key: '',            label: 'All' },
-  { key: 'needs_words', label: 'Draft',                stages: ['capture', 'drafting'] },
+  { key: 'needs_words', label: 'Needs words',          stages: ['drafting', 'capture'] },
   { key: 'ready',       label: 'In Review',             stages: ['review'] },
   { key: 'published',   label: 'Published',             stages: ['published'] },
 ]
 
 const SELECT_CLS =
   'shrink-0 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground ' +
-  'cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-colors ' +
+  'cursor-pointer hover:border-primary/30 hover:bg-muted transition-colors ' +
   'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
 
 /**
