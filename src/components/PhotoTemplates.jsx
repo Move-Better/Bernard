@@ -978,7 +978,7 @@ export default function PhotoTemplates() {
                       <div className="text-xs font-semibold text-foreground truncate flex items-center gap-1.5">
                         {t.name}
                         {t.is_default && (
-                          <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-2xs font-semibold text-green-700">Default</span>
+                          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-2xs font-semibold text-primary">Default</span>
                         )}
                       </div>
                       <div className="text-2xs text-muted-foreground">{t.builtin ? 'Built-in' : 'Custom'}</div>

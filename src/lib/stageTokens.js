@@ -27,7 +27,7 @@ export const STATUS_DOT = {
   approved:  'bg-scheduled',
   scheduled: 'bg-scheduled',
   published: 'bg-emerald-500',
-  archived:  'bg-zinc-400',
+  archived:  'bg-muted-foreground/40',
 }
 
 /** @param {string} status @returns {string} Tailwind bg class for the status dot */

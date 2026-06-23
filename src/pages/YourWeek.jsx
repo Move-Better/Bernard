@@ -268,6 +268,7 @@ export default function YourWeek() {
     setScheduling(true)
     let okCount = 0
     let failCount = 0
+    let outerError = false
     try {
       for (const item of approvedSchedulable) {
         try {
@@ -296,13 +297,14 @@ export default function YourWeek() {
         }
       }
     } catch (e) {
+      outerError = true
       toast.error('Scheduling failed', { description: e?.message || 'Something went wrong.' })
     } finally {
       setScheduling(false)
       setScheduleConfirmOpen(false)
       qc.invalidateQueries({ queryKey: ['week-summary'] })
-      if (okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
-      if (failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
+      if (!outerError && okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
+      if (!outerError && failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
     }
   }
 

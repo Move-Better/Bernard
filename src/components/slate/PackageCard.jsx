@@ -107,7 +107,7 @@ function SimilarityBadge({ similarity }) {
 function CampaignChip({ campaign }) {
   const styleClass = {
     promotional:  'bg-amber-50 text-amber-800 border-amber-200',
-    relationship: 'bg-purple-50 text-purple-800 border-purple-200',
+    relationship: 'bg-scheduled/8 text-scheduled border-scheduled/20',
     clinical:     'bg-sky-50 text-sky-800 border-sky-200',
   }[campaign.content_style] || 'bg-muted text-muted-foreground border-border'
   const eventInfo = (() => {

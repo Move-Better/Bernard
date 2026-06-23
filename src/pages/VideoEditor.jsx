@@ -282,7 +282,7 @@ function GradeInspector({ ctx }) {
           disabled={!brandGrade}
           title={brandGrade ? 'Your saved brand look' : 'Dial in a grade, then “Save as Brand look” below'}
           className="rounded-full border px-2.5 py-1 text-2xs font-medium disabled:opacity-50"
-          style={{ borderColor: 'hsl(var(--action))', color: 'hsl(38 60% 30%)', background: 'hsl(var(--action)/0.08)' }}
+          style={{ borderColor: 'hsl(var(--action))', color: 'hsl(var(--action))', background: 'hsl(var(--action)/0.08)' }}
         >★ Brand</button>
         {GRADE_VIBES.map((v) => (
           <button key={v.id} onClick={() => applyVibe(v.params)} className="rounded-full border px-2.5 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>{v.label}</button>
@@ -295,7 +295,7 @@ function GradeInspector({ ctx }) {
           <input type="range" min={-50} max={50} value={grade[s.key] || 0} onChange={(e) => setGradeKey(s.key, +e.target.value)} className="w-full" />
         </div>
       ))}
-      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(38 60% 30%)' }}>
+      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(var(--action))' }}>
         {savingBrand ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>★</span>}Save as Brand look
       </button>
       <button onClick={resetGrade} className="mt-1 w-full rounded-md py-1.5 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reset adjustments</button>
@@ -331,7 +331,7 @@ function CaptionInspector({ ctx }) {
       {seg('Position', ['top', 'center', 'bottom'], 'position')}
       {seg('Size', ['small', 'medium', 'large'], 'size')}
       {lines.length === 0 ? (
-        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(38 60% 30%)' }}>
+        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(var(--action))' }}>
           {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
         </button>
       ) : (

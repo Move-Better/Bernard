@@ -295,7 +295,7 @@ function ConditionCard({ conditionKey, condition, onChange, onRename, onRemove }
           {summary || <em>No audience profile yet</em>}
         </span>
         {c.chronicRelevant && (
-          <span className="text-3xs px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 shrink-0">chronic</span>
+          <span className="text-3xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">chronic</span>
         )}
         {expanded
           ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

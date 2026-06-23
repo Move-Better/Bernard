@@ -501,7 +501,7 @@ export default function StoryboardPiece() {
               {instagramFormat && (
                 <span className={`rounded-full px-2 py-0.5 text-3xs font-semibold ${
                   instagramFormat === 'Reel'
-                    ? 'bg-purple-100 text-purple-700'
+                    ? 'bg-scheduled/10 text-scheduled'
                     : instagramFormat === 'Carousel'
                       ? 'bg-info/10 text-info'
                       : 'bg-muted text-muted-foreground'
