@@ -57,7 +57,7 @@ const NAV_SECTIONS = [
       // Slate — the cutting desk (video → clips). Sits between Stories and
       // Publish so the Produce section reads as the pipeline: words → cut →
       // assemble/ship. Still gated on the workspace's video pipeline opt-in.
-      { to: '/moments',    label: 'Moment Miner', hint: 'Mine moments',   match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
+      { to: '/moments',    label: 'Moments', hint: 'Mine moments',   match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
       // Ads — ad-creative export hub (Library/Slate exports collect here,
       // grouped by campaign). Editor-gated like the other producer surfaces.
       { to: '/ads',        label: 'Ads',        hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone,

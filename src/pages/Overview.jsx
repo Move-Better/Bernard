@@ -92,7 +92,7 @@ export default function Overview() {
             to="/stories?stage=review"
             className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
-            Validate your words →
+            Review your drafts →
           </Link>
         </div>
       )}

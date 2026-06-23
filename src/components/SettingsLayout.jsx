@@ -32,7 +32,7 @@ const GROUPS = [
     items: [
       { to: '/settings/workspace',           label: 'General',            icon: Settings,   exact: true },
       {
-        label: 'AI Interviewer',
+        label: 'Voice & tone',
         icon: Mic2,
         children: [
           { to: '/settings/workspace/voice',      label: 'Your voice' },
@@ -56,6 +56,7 @@ const GROUPS = [
   },
   {
     label: 'Account',
+    noHeader: true,
     items: [
       { to: '/settings/workspace/billing',  label: 'Plan & billing',     icon: CreditCard },
     ],
@@ -228,9 +229,11 @@ export default function SettingsLayout() {
 
             return (
               <div key={group.label}>
-                <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
-                  {group.label}
-                </p>
+                {!group.noHeader && (
+                  <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
+                    {group.label}
+                  </p>
+                )}
                 <nav className="space-y-0.5">
                   {items.map((item) => (
                     item.children

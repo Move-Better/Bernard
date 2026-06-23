@@ -496,13 +496,13 @@ export default function YourWeek() {
               </div>
 
               {data.digest && (
-                <div className="rounded-xl border border-action/30 bg-gradient-to-b from-card to-action/5 p-3.5">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
                   <div className="mb-1.5 flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-action" aria-hidden="true" />
+                    <Mail className="h-4 w-4 text-primary" aria-hidden="true" />
                     <span className="text-sm font-bold">Newsletter — assembling</span>
                   </div>
                   <p className="text-2xs text-muted-foreground">
-                    Highlights feed your {data.digest.frequency || ''} <span className="font-semibold text-action">{data.digest.label}</span> digest{data.digest.next_send ? ` · sends ${data.digest.next_send}` : ''} — assembled, not per-capture.
+                    Highlights feed your {data.digest.frequency || ''} <span className="font-semibold text-primary lowercase">{data.digest.label}</span> digest{data.digest.next_send ? ` · sends ${data.digest.next_send}` : ''} — assembled, not per-capture.
                   </p>
                 </div>
               )}

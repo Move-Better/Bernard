@@ -59,8 +59,8 @@ const INTEGRATIONS = [
   // Buffer profile ID pasted into Workspace Settings → Locations.
   {
     id: 'wordpress',
-    label: 'WordPress (REST publish)',
-    description: 'Publish blog posts directly to a WordPress site via the REST API + an application password.',
+    label: 'WordPress',
+    description: 'Publish blog posts directly to your WordPress site using an application password.',
     platforms: ['Website'],
     secretLabel: 'Application password',
     secretPlaceholder: 'xxxx xxxx xxxx xxxx',

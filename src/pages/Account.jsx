@@ -27,13 +27,13 @@ export default function Account() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
             <span
               className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-              style={{ background: 'hsl(var(--muted-foreground))' }}
+              style={{ background: 'hsl(var(--primary))' }}
               aria-hidden="true"
             />
             Account &amp; security
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Email, password, multi-factor authentication, and active sessions. Looking for your display name, voice pace, or content focus? Those live on your staff profile — open it from the avatar menu in the top-right.
+            Email, password, multi-factor authentication, and active sessions. Looking for your display name, voice pace, or content focus? Those live on your staff profile — open it from the avatar menu in the bottom-left of the sidebar.
           </p>
         </div>
       </div>
