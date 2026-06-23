@@ -306,7 +306,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece,
   const actionLabel = isPublished ? 'View post' : 'View draft'
 
   return (
-    <div className={`rounded-xl border border-primary/30 bg-primary/5 overflow-hidden ${act1 ? 'shadow-[0_12px_32px_-8px_hsl(160_84%_39%_/_0.18)]' : 'shadow-[0_8px_24px_-12px_rgba(47,95,255,0.25)]'}`}>
+    <div className={`rounded-xl border border-primary/30 bg-primary/5 overflow-hidden ${act1 ? 'shadow-[0_12px_32px_-8px_hsl(var(--primary)/0.18)]' : 'shadow-[0_8px_24px_-12px_rgba(47,95,255,0.25)]'}`}>
       {/* Header band */}
       <div className="px-5 pt-4 pb-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -434,7 +434,7 @@ function WordsValidatedSwitch({ keystoneTitle }) {
         <button
           type="button"
           onClick={() => navigate('/publish')}
-          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_4px_16px_hsl(160_84%_39%_/_0.3)] hover:bg-[hsl(160_84%_33%)] transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_4px_16px_hsl(var(--primary)/0.3)] hover:bg-primary/90 transition-colors"
         >
           Let&apos;s get this published
           <ArrowRight className="w-4 h-4" />

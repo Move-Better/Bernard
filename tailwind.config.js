@@ -61,6 +61,7 @@ export default {
         'success':          'hsl(var(--success) / <alpha-value>)',
         'warning':          'hsl(var(--warning) / <alpha-value>)',
         'info':             'hsl(var(--info) / <alpha-value>)',
+        'scheduled':        'hsl(var(--scheduled) / <alpha-value>)',
         // Act-now signal (amber) — see src/index.css. Distinct from --primary
         // (Blue Spruce brand) and --success (emerald "done") so "do this now" never
         // reads as "already done". Enables bg-action/10, border-action/40, etc.

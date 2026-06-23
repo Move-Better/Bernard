@@ -19,7 +19,7 @@ import {
 
 const TIER_PILL = {
   owner:     'bg-[#fff7f0] text-[#c04d18] ring-1 ring-[#fde0d2]',
-  producer:  'bg-[#f5f3ff] text-[#7c3aed]',
+  producer:  'bg-scheduled/8 text-scheduled',
   clinician: 'bg-[#e0f2fe] text-[#0284c7]',
   viewer:    'bg-[#f1f5f9] text-[#475569]',
 }
@@ -202,7 +202,7 @@ export default function AccessMatrix() {
         <Legend swatch="bg-agreement-signal/10 text-agreement-signal" icon={<Check className="h-3 w-3" />} label="tier default on" />
         <Legend swatch="bg-[#faf0eb] text-[#c04d18] ring-1 ring-[#fde0d2]" icon={<Check className="h-3 w-3" />} label="custom grant" />
         <Legend swatch="bg-[#f8fafc] text-[#cbd5e1]" icon={<Minus className="h-3 w-3" />} label="off" />
-        <Legend swatch="bg-white ring-1 ring-[#e2e8f0] text-[#94a3b8]" icon={<Lock className="h-2.5 w-2.5" />} label="owner-only" />
+        <Legend swatch="bg-white ring-1 ring-slate-200 text-slate-400" icon={<Lock className="h-2.5 w-2.5" />} label="owner-only" />
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#f59f0a] inline-block" /> custom override</span>
       </div>
 
@@ -348,7 +348,7 @@ function Cell({ person, st, onClick }) {
   if (st.locked) {
     return (
       <span
-        className="inline-flex items-center justify-center rounded-full bg-white ring-1 ring-[#e2e8f0] text-[#94a3b8]"
+        className="inline-flex items-center justify-center rounded-full bg-white ring-1 ring-slate-200 text-slate-400"
         style={{ width: 30, height: 30 }}
         title={st.isOwner ? 'Owner always has access' : 'Owner-only — cannot be granted to other tiers'}
       >
