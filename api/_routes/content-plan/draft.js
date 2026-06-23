@@ -80,6 +80,8 @@ export default async function handler(req, res) {
   const claimRows = await claimRes.json()
   if (!claimRows.length) return err(res, 'Already in progress', 409)
 
+  let insertedContentPieceId = null
+
   try {
     // Fetch the interview (transcript = primary source; blog = editorial context)
     const ivRes = await sb(
@@ -274,6 +276,7 @@ export default async function handler(req, res) {
     }
     const itemRows = await itemRes.json()
     const contentPiece = itemRows[0]
+    insertedContentPieceId = contentPiece.id
 
     // For GBP atoms: generate a per-location variant for every workspace_location
     // that has a gbp_location_id configured. Each variant uses the same interview
@@ -367,6 +370,15 @@ export default async function handler(req, res) {
       content_piece: contentPiece,
     })
   } catch (e) {
+    // Delete any content_items row inserted in this request before resetting the
+    // atom — otherwise a partial failure (insert succeeded, later step failed)
+    // leaves an orphaned draft row that permanently pollutes Stories/Library.
+    if (insertedContentPieceId) {
+      await sb(`content_items?id=eq.${insertedContentPieceId}&${wsFilter}`, {
+        method: 'DELETE',
+        headers: { Prefer: 'return=minimal' },
+      })
+    }
     // Reset atom to pending so the user can retry
     await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
       method: 'PATCH',
