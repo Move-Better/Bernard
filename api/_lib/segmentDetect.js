@@ -275,6 +275,7 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
       system: buildSystemPrompt(ws, maxSegments),
       messages: [{ role: 'user', content: buildUserMessage(cues, durationSec) }],
       temperature: 0.4,
+      abortSignal: AbortSignal.timeout(180_000),
     })
 
     const segments = normalizeSegments(object.segments || [], maxSegments, durationSec)

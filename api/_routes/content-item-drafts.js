@@ -50,10 +50,13 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
   if (req.method === 'GET') {
     const { searchParams } = new URL(req.url, 'http://localhost')
     const itemId = searchParams.get('itemId')
     if (!itemId) return err(res, 'Missing itemId')
+    if (!UUID_RE.test(itemId)) return err(res, 'Invalid itemId', 400)
 
     const r = await sb(
       `content_item_drafts?content_item_id=eq.${itemId}&${wsFilter}&select=id,body,ai_generated,created_at&order=created_at.desc&limit=${DRAFT_CAP}`
@@ -66,6 +69,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'media'))) return
     const { itemId, body, aiGenerated } = req.body || {}
     if (!itemId) return err(res, 'Missing itemId')
+    if (!UUID_RE.test(itemId)) return err(res, 'Invalid itemId', 400)
     if (typeof body !== 'string') return err(res, 'Missing body')
 
     // Defense-in-depth: confirm the content_item belongs to this workspace
