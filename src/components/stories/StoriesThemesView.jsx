@@ -40,26 +40,26 @@ function groupByTopic(stories) {
 
 function SkeletonThemeCard() {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 animate-pulse">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5 animate-pulse">
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="h-5 bg-gray-200 rounded w-2/3" />
-        <div className="h-5 bg-gray-200 rounded-full w-20 shrink-0" />
+        <div className="h-5 bg-muted rounded w-2/3" />
+        <div className="h-5 bg-muted rounded-full w-20 shrink-0" />
       </div>
       <div className="flex gap-1.5 mb-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-7 w-7 bg-gray-200 rounded-full" />
+          <div key={i} className="h-7 w-7 bg-muted rounded-full" />
         ))}
       </div>
       <div className="border-l-2 border-gray-200 pl-3 mb-4 space-y-2">
-        <div className="h-3 bg-gray-200 rounded w-full" />
-        <div className="h-3 bg-gray-200 rounded w-4/5" />
+        <div className="h-3 bg-muted rounded w-full" />
+        <div className="h-3 bg-muted rounded w-4/5" />
       </div>
       <div className="flex gap-1.5 mb-4">
         {[1, 2].map((i) => (
-          <div key={i} className="h-3 w-3 bg-gray-200 rounded-full" />
+          <div key={i} className="h-3 w-3 bg-muted rounded-full" />
         ))}
       </div>
-      <div className="h-8 bg-gray-100 rounded w-full" />
+      <div className="h-8 bg-muted rounded w-full" />
     </div>
   )
 }
@@ -159,11 +159,11 @@ function ThemeCard({ topic, stories, workspace }) {
   const hasContrast   = stories.length >= 2
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-semibold text-gray-900 text-base leading-snug">{topic}</h3>
-        <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full shrink-0">
+        <h3 className="font-semibold text-foreground text-base leading-snug">{topic}</h3>
+        <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2.5 py-1 rounded-full shrink-0">
           <Users size={11} />
           {staff.length} {staff.length === 1 ? 'staff member' : 'staff'}
         </span>
@@ -174,11 +174,11 @@ function ThemeCard({ topic, stories, workspace }) {
           has no patient_context.prototypes[]. */}
       {showMix && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-3xs uppercase tracking-wide text-gray-400 mr-1">Archetypes</span>
+          <span className="text-3xs uppercase tracking-wide text-muted-foreground mr-1">Archetypes</span>
           {byArchetype.map((row) => (
             <span
               key={row.id}
-              className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200"
+              className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
             >
               {row.emoji && <span>{row.emoji}</span>}
               {row.count} {row.label.toLowerCase()}
@@ -186,7 +186,7 @@ function ThemeCard({ topic, stories, workspace }) {
           ))}
           {untagged > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200"
+              className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border"
               title="Story topics that didn't match any tagged topic_suggestions[] keyword"
             >
               untagged {untagged}
@@ -201,7 +201,7 @@ function ThemeCard({ topic, stories, workspace }) {
           <StaffChip key={c.id} id={c.id} name={c.name} />
         ))}
         {staff.length > 5 && (
-          <span className="inline-flex items-center justify-center h-7 px-2 rounded-full bg-gray-100 text-gray-500 text-xs">
+          <span className="inline-flex items-center justify-center h-7 px-2 rounded-full bg-muted text-muted-foreground text-xs">
             +{staff.length - 5}
           </span>
         )}
@@ -210,11 +210,11 @@ function ThemeCard({ topic, stories, workspace }) {
       {/* Contrasting perspectives */}
       {hasContrast && (
         <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
             {perspLabel}
           </p>
           {verbatimCount === 0 ? (
-            <p className="text-sm italic text-gray-400 leading-snug">
+            <p className="text-sm italic text-muted-foreground leading-snug">
               No verbatim quotes captured yet — keep interviewing to see contrast.
             </p>
           ) : (
@@ -231,14 +231,14 @@ function ThemeCard({ topic, stories, workspace }) {
                       size="sm"
                       className="mt-0.5 shrink-0"
                     />
-                    <p className="text-sm leading-snug text-gray-800 italic">
+                    <p className="text-sm leading-snug text-foreground italic">
                       &ldquo;{p.snippet}&rdquo;
                     </p>
                   </div>
                 ))}
               </div>
               {verbatimCount === 1 && (
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   Contrast emerges when 2+ staff weigh in.
                 </p>
               )}
@@ -252,7 +252,7 @@ function ThemeCard({ topic, stories, workspace }) {
         {stagesPresent.map(([stage, count]) => {
           const tok = getStageToken(stage)
           return (
-            <span key={stage} className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <span key={stage} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
                 className={`h-2.5 w-2.5 rounded-full shrink-0 ${tok.dot}`}
                 title={tok.label}
@@ -267,7 +267,7 @@ function ThemeCard({ topic, stories, workspace }) {
       <button
         type="button"
         onClick={() => navigate(`/new?topic=${encodeURIComponent(topic)}`)}
-        className="mt-auto w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-medium transition-colors"
+        className="mt-auto w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-primary/10 hover:bg-primary/15 text-primary text-sm font-medium transition-colors"
       >
         Build content from this theme
         <ArrowRight size={14} />
@@ -281,11 +281,11 @@ function ThemeCard({ topic, stories, workspace }) {
 function ThemesEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
-        <Layers size={22} className="text-indigo-400" />
+      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+        <Layers size={22} className="text-primary/60" />
       </div>
-      <h3 className="text-base font-medium text-gray-700 mb-1">No shared themes yet</h3>
-      <p className="text-sm text-gray-500 max-w-xs">
+      <h3 className="text-base font-medium text-foreground mb-1">No shared themes yet</h3>
+      <p className="text-sm text-muted-foreground max-w-xs">
         No shared themes yet — more interviews will reveal patterns across your team.
       </p>
     </div>
@@ -345,8 +345,8 @@ export default function StoriesThemesView({ stories = [], isLoading = false }) {
       <div className="space-y-6">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-gray-700">{locationLabel}</h2>
-          <span className="text-xs text-gray-400">{locationStories.length} stories</span>
+          <h2 className="text-sm font-semibold text-foreground">{locationLabel}</h2>
+          <span className="text-xs text-muted-foreground">{locationStories.length} stories</span>
         </div>
         {sharedThemes.length === 0 ? (
           <ThemesEmptyState />

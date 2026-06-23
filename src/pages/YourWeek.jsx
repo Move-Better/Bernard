@@ -295,6 +295,8 @@ export default function YourWeek() {
           failCount++
         }
       }
+    } catch (e) {
+      toast.error('Scheduling failed', { description: e?.message || 'Something went wrong.' })
     } finally {
       setScheduling(false)
       setScheduleConfirmOpen(false)

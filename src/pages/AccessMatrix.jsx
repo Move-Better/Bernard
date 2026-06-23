@@ -203,7 +203,7 @@ export default function AccessMatrix() {
         <Legend swatch="bg-[#faf0eb] text-[#c04d18] ring-1 ring-[#fde0d2]" icon={<Check className="h-3 w-3" />} label="custom grant" />
         <Legend swatch="bg-[#f8fafc] text-[#cbd5e1]" icon={<Minus className="h-3 w-3" />} label="off" />
         <Legend swatch="bg-white ring-1 ring-slate-200 text-slate-400" icon={<Lock className="h-2.5 w-2.5" />} label="owner-only" />
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#f59f0a] inline-block" /> custom override</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-action inline-block" /> custom override</span>
       </div>
 
       {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading team&hellip;</div>}
@@ -377,7 +377,7 @@ function Cell({ person, st, onClick }) {
       }
     >
       {icon}
-      {st.hasOverride && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#f59f0a] ring-2 ring-white" />}
+      {st.hasOverride && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-action ring-2 ring-white" />}
     </button>
   )
 }

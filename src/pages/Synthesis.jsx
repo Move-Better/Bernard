@@ -119,7 +119,7 @@ function KindSection({ kind, concepts, totalStaff, onDraft }) {
   if (!meta || !concepts.length) return null
 
   const agreed = concepts.filter(c => c.mentionedBy.length >= 2)
-  const solo   = concepts.filter(c => c.mentionedBy.length === 0)
+  const solo   = concepts.filter(c => c.mentionedBy.length === 1)
 
   return (
     <section className="rounded-xl border bg-card">
@@ -281,7 +281,7 @@ export default function Synthesis() {
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success inline-block" /> Mentioned by ≥2 staff (agreement territory)</span>
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-warning inline-block" /> Mentioned by 1 staff member only</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-border inline-block" /> Not yet covered</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-foreground/20 inline-block" /> Not yet covered</span>
       </div>
 
       {/* Stats */}

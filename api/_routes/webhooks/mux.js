@@ -52,10 +52,13 @@ async function rehostMuxThumbnail(playbackId, assetId, workspaceId) {
     }
     // Namespace the blob key by the immutable workspace UUID so thumbnail keys
     // aren't a flat, cross-tenant-predictable namespace (CLAUDE.md blob rule).
-    // Fall back to the unscoped key if the workspace couldn't be resolved.
-    const key = workspaceId
-      ? `media/thumbs/${workspaceId}/${assetId}.jpg`
-      : `media/thumbs/${assetId}.jpg`
+    // Skip rehost entirely if workspace couldn't be resolved — an un-namespaced
+    // key would be guessable by anyone who knows the Mux asset ID.
+    if (!workspaceId) {
+      console.warn(`[mux/webhook] rehostMuxThumbnail: no workspaceId for asset ${assetId}; skipping rehost`)
+      return null
+    }
+    const key = `media/thumbs/${workspaceId}/${assetId}.jpg`
     const uploaded = await blobPut(key, buf, {
       access: 'public',
       contentType: 'image/jpeg',
