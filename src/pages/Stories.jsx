@@ -26,7 +26,7 @@ const QUICK_FILTERS = [
 ]
 
 const SELECT_CLS =
-  'shrink-0 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground ' +
+  'shrink-0 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground ' +
   'cursor-pointer hover:border-primary/30 hover:bg-muted transition-colors ' +
   'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
 
@@ -194,7 +194,7 @@ export default function Stories() {
                 className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
                   isActive
                     ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border text-muted-foreground hover:border-primary/40 bg-white'
+                    : 'border-border text-muted-foreground hover:border-primary/40 bg-background'
                 }`}
               >
                 {qf.label}

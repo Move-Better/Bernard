@@ -55,9 +55,17 @@ function sb(path, init = {}) {
 }
 
 function scoreOf(stats) {
-  const s = stats?.statistics
-  if (!s || typeof s !== 'object') return 0
-  return Object.values(s).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0)
+  if (!stats || typeof stats !== 'object') return 0
+  const s = stats.statistics
+  if (s && typeof s === 'object') {
+    return Object.values(s).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0)
+  }
+  // GBP stores flat { views, actions, service } with no .statistics key
+  let score = 0
+  for (const [k, v] of Object.entries(stats)) {
+    if (['pageviews', 'sessions', 'views', 'actions', 'clicks'].includes(k) && typeof v === 'number') score += v
+  }
+  return score
 }
 
 function median(nums) {
@@ -68,7 +76,7 @@ function median(nums) {
 }
 
 async function getCredSecret(workspaceId, service) {
-  const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.${service}&status=eq.active&select=secret_ciphertext&limit=1`
+  const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.${service}&status=eq.active&select=secret_ciphertext&order=created_at.desc&limit=1`
   const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } })
   if (!r.ok) return null
   const rows = await r.json().catch(() => null)
@@ -81,7 +89,7 @@ async function getBufferToken(workspaceId) {
   // Inline cred read (the getCredential helper is fine, but this cron is
   // service-side and skipping the helper avoids any future ambient-env
   // fallback that would mask a missing per-workspace token).
-  const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.buffer&status=eq.active&select=secret_ciphertext&limit=1`
+  const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.buffer&status=eq.active&select=secret_ciphertext&order=created_at.desc&limit=1`
   const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } })
   if (!r.ok) return null
   const rows = await r.json().catch(() => null)
@@ -473,7 +481,7 @@ async function processWorkspaceGBP(ws, summary) {
 
   // Fetch the GBP analytics credential row (includes config.v4_location_name).
   const credRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${ws.id}&service=eq.gbp_analytics&status=eq.active&select=secret_ciphertext,config&limit=1`,
+    `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${ws.id}&service=eq.gbp_analytics&status=eq.active&select=secret_ciphertext,config&order=created_at.desc&limit=1`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   )
   if (!credRes.ok) {

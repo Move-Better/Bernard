@@ -460,7 +460,7 @@ function InboxRow({ piece, group, checked, onToggle, onApprove, busy }) {
           type="button"
           onClick={onApprove}
           disabled={busy}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-success hover:underline disabled:opacity-50 shrink-0"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-success hover:text-success/80 disabled:opacity-50 shrink-0"
         >
           <Check className="h-3.5 w-3.5" /> Approve
         </button>

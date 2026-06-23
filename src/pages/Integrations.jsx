@@ -766,7 +766,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Drive</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">
                   Connected
                 </span>
               ) : !loading ? (
@@ -819,9 +819,9 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
                   personal account exposes that account's whole media library
                   to the team. Dedicated/limited account is the safer default
                   and matches how most clinics actually organize source files. */}
-              <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3.5 py-2.5 flex items-start gap-2.5">
-                <Lightbulb className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-900 leading-relaxed">
+              <div className="rounded-lg border border-action/30 bg-action/5 px-3.5 py-2.5 flex items-start gap-2.5">
+                <Lightbulb className="h-4 w-4 text-action shrink-0 mt-0.5" />
+                <div className="text-xs text-foreground leading-relaxed">
                   <span className="font-semibold">Tip — connect with a dedicated account.</span>{' '}
                   Pick a Google account whose Drive contains only the photos and videos you want Bernard to see — ideally a shared clinic account, or one whose Drive holds your media Shared Drive. Every workspace member who imports will see the same Drive view, so avoid using a personal account with private photos.
                 </div>
@@ -1187,9 +1187,9 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
           ) : (
             <div className="space-y-3">
               {locationDetectFailed && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                <div className="rounded-lg bg-action/5 border border-action/30 px-3 py-2 text-sm text-foreground">
                   <p className="font-medium mb-1">Location data not loaded yet</p>
-                  <p className="text-xs text-amber-700">The Google API rate-limited the location lookup during connect. Click below to retry — it only takes a second.</p>
+                  <p className="text-xs text-muted-foreground">The Google API rate-limited the location lookup during connect. Click below to retry — it only takes a second.</p>
                   <Button size="sm" className="mt-2" onClick={handleRetryLocations} disabled={retrying || disabled}>
                     {retrying ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Detecting locations…</> : 'Retry location detection'}
                   </Button>

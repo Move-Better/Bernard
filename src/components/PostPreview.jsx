@@ -38,7 +38,7 @@ function SocialText({ text }) {
     <span>
       {parts.map((part, i) => {
         if (part.startsWith('#') || part.startsWith('@')) {
-          return <span key={i} className="text-blue-500">{part}</span>
+          return <span key={i} className="text-primary">{part}</span>
         }
         return <span key={i}>{part}</span>
       })}

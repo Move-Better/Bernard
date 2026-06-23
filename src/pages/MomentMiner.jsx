@@ -81,7 +81,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
   return (
     <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
       <div
-        className="w-[78px] shrink-0 rounded-lg overflow-hidden bg-gradient-to-b from-slate-600 to-slate-800 relative grid place-items-center"
+        className="w-[78px] shrink-0 rounded-lg overflow-hidden bg-foreground/75 relative grid place-items-center"
         style={{ aspectRatio: m.width && m.height ? `${m.width} / ${m.height}` : '9 / 16' }}
       >
         {m.thumbnailUrl
@@ -628,35 +628,6 @@ export default function MomentMiner() {
           <p className="text-sm text-destructive font-medium">Failed to load videos</p>
           <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
         </div>
-      ) : visibleVideos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center rounded-xl border-2 border-dashed border-border">
-          <Film className="h-10 w-10 text-muted-foreground" />
-          <div>
-            <p className="font-semibold text-base">
-              {view === 'in_progress'
-                ? 'No clips in progress'
-                : view === 'clips_to_review'
-                  ? 'Nothing waiting for review'
-                  : 'No source videos yet'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              {view === 'in_progress'
-                ? 'Cut a clip from a source video to see it here.'
-                : view === 'clips_to_review'
-                  ? 'Run "Find moments" on uncut footage and the AI-proposed clips land here for a keep/discard decision.'
-                  : 'Upload videos via Capture or the Library. Once a video is in your library, it appears here for clipping.'}
-            </p>
-          </div>
-          {view === 'clips_to_review' ? (
-            <Button size="sm" variant="outline" onClick={() => setView('needs_cutting')}>
-              See uncut footage
-            </Button>
-          ) : view !== 'in_progress' && (
-            <Button size="sm" variant="outline" onClick={() => navigate('/library')}>
-              Go to Library
-            </Button>
-          )}
-        </div>
       ) : view === 'clips_to_review' ? (
         <MomentFeed
           loading={momentsLoading}
@@ -673,6 +644,27 @@ export default function MomentMiner() {
           onDismiss={handleDismissMoment}
           onSeeUncut={() => setView('needs_cutting')}
         />
+      ) : visibleVideos.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center rounded-xl border-2 border-dashed border-border">
+          <Film className="h-10 w-10 text-muted-foreground" />
+          <div>
+            <p className="font-semibold text-base">
+              {view === 'in_progress'
+                ? 'No clips in progress'
+                : 'No source videos yet'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+              {view === 'in_progress'
+                ? 'Cut a clip from a source video to see it here.'
+                : 'Upload videos via Capture or the Library. Once a video is in your library, it appears here for clipping.'}
+            </p>
+          </div>
+          {view !== 'in_progress' && (
+            <Button size="sm" variant="outline" onClick={() => navigate('/library')}>
+              Go to Library
+            </Button>
+          )}
+        </div>
       ) : (
         <div className={`grid sm:grid-cols-2 lg:grid-cols-3 ${view === 'needs_cutting' ? 'xl:grid-cols-4' : ''} gap-3`}>
           {visibleVideos.map((asset) => (

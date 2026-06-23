@@ -42,9 +42,9 @@ function Thumb({ asset }) {
       {asset.thumbnail_url ? (
         <img src={asset.thumbnail_url} alt={alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
       ) : (
-        <div className="h-full bg-slate-800 flex flex-col items-center justify-center gap-1 px-1">
-          <Video className="h-6 w-6 text-slate-400 shrink-0" />
-          <span className="text-3xs text-slate-400 text-center leading-tight line-clamp-3">{asset.filename}</span>
+        <div className="h-full bg-foreground/80 flex flex-col items-center justify-center gap-1 px-1">
+          <Video className="h-6 w-6 text-card/50 shrink-0" />
+          <span className="text-3xs text-card/50 text-center leading-tight line-clamp-3">{asset.filename}</span>
         </div>
       )}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
