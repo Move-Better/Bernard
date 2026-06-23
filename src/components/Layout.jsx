@@ -52,12 +52,12 @@ const NAV_SECTIONS = [
       // composed week. Supersedes the Review Inbox (which redirects to /week).
       { to: '/week',       label: 'Your week',  hint: 'Plan · approve',  match: (p) => p.startsWith('/week'),     icon: CalendarRange,
         requiresEditor: true },
-      { to: '/stories',    label: 'Stories',    hint: 'Words',           match: (p) => p.startsWith('/stories'),  icon: Newspaper,
+      { to: '/stories',    label: 'Stories',    hint: 'Stories',         match: (p) => p.startsWith('/stories'),  icon: Newspaper,
         requiresCapability: CAP_INTERVIEW_START },
       // Slate — the cutting desk (video → clips). Sits between Stories and
       // Publish so the Produce section reads as the pipeline: words → cut →
       // assemble/ship. Still gated on the workspace's video pipeline opt-in.
-      { to: '/moments',    label: 'Moments', hint: 'Mine moments',   match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
+      { to: '/moments',    label: 'Moments', hint: 'Moments',        match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
       // Ads — ad-creative export hub (Library/Slate exports collect here,
       // grouped by campaign). Editor-gated like the other producer surfaces.
       { to: '/ads',        label: 'Ads',        hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone,

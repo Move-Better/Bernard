@@ -1276,7 +1276,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       // we rest on this screen and surface a single, primary "Add media in
       // Storyboard →" handoff (the banner rendered below) so the next step is
       // unmistakable and they can still review the story's other drafts first.
-      toast.success('Words approved — ready for media')
+      toast.success('Stories approved — ready for media')
     } catch (err) {
       toast.error('Failed to approve', { description: err.message })
     }
@@ -1609,7 +1609,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
         <div className="rounded-lg border border-success/30 bg-success/10 p-4 flex flex-wrap items-center justify-between gap-3">
           <p className="inline-flex items-center gap-2 text-sm font-medium text-success">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            Words approved — ready for media
+            Stories approved — ready for media
           </p>
           <div className="flex items-center gap-3">
             <button

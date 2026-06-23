@@ -85,7 +85,7 @@ export default function HomeStats({ stories = [] }) {
           <div className="text-2xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.65)' }}>Voice match</div>
           {typeof metrics.voiceMatch === 'number' ? (
             <span className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-agreement-signal/20 text-agreement-signal">
-              {metrics.voiceMatch >= 60 ? 'strong' : metrics.voiceMatch >= 35 ? 'fair' : 'low'}
+              {metrics.voiceMatch >= 60 ? 'strong' : metrics.voiceMatch >= 40 ? 'fair' : 'building'}
             </span>
           ) : null}
         </div>
