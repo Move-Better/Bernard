@@ -98,7 +98,10 @@ export default async function handler(req, res) {
     }
     if (patch.topic !== undefined) allowed.topic = String(patch.topic).trim()
     if (patch.rationale !== undefined) allowed.rationale = patch.rationale
-    if (patch.interview_id !== undefined) allowed.interview_id = patch.interview_id || null
+    if (patch.interview_id !== undefined) {
+      if (patch.interview_id !== null && !UUID_RE.test(patch.interview_id)) return err(res, 'invalid_interview_id')
+      allowed.interview_id = patch.interview_id || null
+    }
     if (Object.keys(allowed).length === 0) return err(res, 'No editable fields supplied')
 
     allowed.updated_at = new Date().toISOString()

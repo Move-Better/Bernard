@@ -18,6 +18,8 @@ import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // Look back at most 30 days to avoid hammering Buffer for very old orphaned rows.
 const LOOKBACK_DAYS = 30
 // Cap items processed per run to keep latency predictable.
@@ -102,11 +104,12 @@ export default async function handler(req, res) {
   const wsRows = await wsRes.json().catch(() => [])
   const wsMap = {}
   const activeIds = (Array.isArray(wsRows) ? wsRows : []).map((w) => { wsMap[w.id] = w; return w.id })
-  if (!activeIds.length) {
+  const safeIds = activeIds.filter(id => UUID_RE.test(id))
+  if (!safeIds.length) {
     console.info('[sync-buffer-published] no active workspaces; skipping sync')
     return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })
   }
-  const wsScope = `&workspace_id=in.(${activeIds.map(id => `"${id}"`).join(',')})`
+  const wsScope = `&workspace_id=in.(${safeIds.map(id => `"${id}"`).join(',')})`
   const items = await fetchOverdueItems(wsScope)
   if (items.length === 0) {
     return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })
