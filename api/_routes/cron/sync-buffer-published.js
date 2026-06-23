@@ -98,7 +98,11 @@ export default async function handler(req, res) {
   const wsRows = await wsRes.json().catch(() => [])
   const wsMap = {}
   const activeIds = (Array.isArray(wsRows) ? wsRows : []).map((w) => { wsMap[w.id] = w; return w.id })
-  const wsScope = activeIds.length ? `&workspace_id=in.(${activeIds.map(id => `"${id}"`).join(',')})` : ''
+  if (!activeIds.length) {
+    console.info('[sync-buffer-published] no active workspaces; skipping sync')
+    return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })
+  }
+  const wsScope = `&workspace_id=in.(${activeIds.map(id => `"${id}"`).join(',')})`
   const items = await fetchOverdueItems(wsScope)
   if (items.length === 0) {
     return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })

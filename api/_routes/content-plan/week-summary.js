@@ -53,7 +53,7 @@ export default async function handler(req, res) {
   if (draftedIds.length) {
     const quoted = draftedIds.map((id) => `"${id}"`).join(',')
     const ciRes = await sb(
-      `content_items?id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id`,
+      `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id`,
     )
     if (ciRes.ok) {
       const ciRows = await ciRes.json()

@@ -14,8 +14,6 @@ import { enforceLimit } from './_lib/ratelimit.js'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!(await enforceLimit(req, res, 'ai'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
 
@@ -24,6 +22,8 @@ export default async function handler(req, res) {
     const status = auth.reason === 'no-token' ? 401 : 403
     return res.status(status).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'ai'))) return
 
   const interviewerName = ws.interviewer_name || 'Bernard'
   const clinicName = ws.display_name || 'your clinic'
