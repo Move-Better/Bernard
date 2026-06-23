@@ -310,7 +310,13 @@ async function processWorkspace(ws, summary) {
         }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
         if (ciId == null) {
-          console.error('[auto-publish] markContentItemScheduled returned null — content_item may not have been created', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
+          console.error('[auto-publish] markContentItemScheduled returned null — releasing claim for retry', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
+          await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ auto_published_at: null }),
+          }).catch((e) => console.error('[auto-publish] claim release (ci-null) failed:', e?.message))
+          held.push({ id: pkg.id, reasons: [{ signal: 'ci_missing', detail: 'No approved content_item found for package; claim released for retry' }] })
+          continue
         }
 
         // Mark package auto_published_at so the cron skips it next run.

@@ -45,6 +45,8 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
   const { piece_id } = req.body || {}
   if (!piece_id) return err(res, 'Missing piece_id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(piece_id)) return err(res, 'Invalid piece_id')
 
   // Verify piece belongs to this workspace and is in an approvable state.
   const ciRes = await sb(`content_items?id=eq.${piece_id}&${wsFilter}&select=id,status`)

@@ -21,6 +21,8 @@ import { waitUntil } from '@vercel/functions'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -81,10 +83,11 @@ export default async function handler(req, res) {
     const excludeId = searchParams.get('excludeId')
     if (!topic) return err(res, 'Missing id or topic')
 
+    if (excludeId && !UUID_RE.test(excludeId)) return err(res, 'Invalid excludeId', 400)
     const topicEscaped = topic.replace(/%/g, '\\%').replace(/_/g, '\\_')
     let qs = `interviews?${wsFilter}&topic=ilike.${encodeURIComponent(topicEscaped)}&status=eq.completed`
     qs += `&select=id,topic,messages,created_at,staff(name)`
-    if (excludeId) qs += `&id=neq.${encodeURIComponent(excludeId)}`
+    if (excludeId) qs += `&id=neq.${excludeId}`
     qs += `&order=created_at.desc&limit=3`
 
     const r = await sb(qs)
