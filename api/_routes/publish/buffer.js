@@ -119,7 +119,8 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const scope = await workspaceScope(req)
+  let scope
+  try { scope = await workspaceScope(req) } catch { return res.status(404).json({ error: 'workspace_not_found' }) }
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 

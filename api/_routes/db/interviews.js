@@ -70,6 +70,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     if (id) {
+      if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
       const r = await sb(
         `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,campaign_id,created_at,updated_at`
       )
@@ -142,8 +143,13 @@ export default async function handler(req, res) {
     // row onto the new interview, so the reading list survives after the topic
     // is archived. Best-effort — a copy failure must not 500 the interview
     // create (the row is already inserted above).
-    if (topicBacklogId && interview?.id) {
+    if (topicBacklogId && interview?.id && UUID_RE.test(topicBacklogId)) {
       try {
+        const topicChk = await sb(`topic_backlog?id=eq.${topicBacklogId}&workspace_id=eq.${ws.id}&select=id`)
+        if (!topicChk.ok || !(await topicChk.json()).length) {
+          console.error(`[db/interviews] reference carryover skipped — topic ${topicBacklogId} not found in ws=${ws.slug}`)
+          return ok(res, interview, 201)
+        }
         const refsRes = await sb(`interview_references?topic_id=eq.${topicBacklogId}&${wsFilter}&select=url,title,notes,use_as_source,added_by`)
         if (refsRes.ok) {
           const refs = await refsRes.json()
@@ -182,6 +188,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'media'))) return
 
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
     const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,staff_id,topic,location_id,capture_mode,source_audio_url,selected_outputs,source_published_at,created_at`)
     if (!chk.ok) return dbErr(res, chk)
@@ -481,6 +488,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'media'))) return
 
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
     const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,capture_mode`)
     if (!chk.ok) return dbErr(res, chk)

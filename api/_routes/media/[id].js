@@ -57,8 +57,15 @@ async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const id  = url.pathname.split('/').pop()
   if (!id) return res.status(400).json({ error: 'Missing id' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Invalid id' })
 
-  const scope = await workspaceScope(req)
+  let scope
+  try {
+    scope = await workspaceScope(req)
+  } catch {
+    return res.status(404).json({ error: 'workspace_not_found' })
+  }
 
   const auth = await requireRole(req, ROLE_REQUIREMENTS[req.method], { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) {

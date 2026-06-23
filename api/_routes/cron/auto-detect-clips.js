@@ -76,7 +76,13 @@ export default async function handler(req, res) {
     console.error('[auto-detect-clips] workspace query failed:', wsRes.status, await wsRes.text().catch(() => ''))
     return res.status(500).json({ error: 'workspace_query_failed' })
   }
-  const wsIds = (await wsRes.json()).map((w) => w.id)
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const rawIds = (await wsRes.json()).map((w) => w.id)
+  const wsIds = rawIds.filter((id) => {
+    if (UUID_RE.test(id)) return true
+    console.warn('[auto-detect-clips] skipping malformed workspace id:', id)
+    return false
+  })
   if (wsIds.length === 0) {
     console.info('[auto-detect-clips] no active workspaces — skipping')
     return res.status(200).json({ claimed: 0, reason: 'no_active_workspaces' })

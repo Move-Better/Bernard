@@ -58,6 +58,10 @@ export default async function handler(req, res) {
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: 'invalid_status' })
   }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (staffId && !UUID_RE.test(staffId)) {
+    return res.status(400).json({ error: 'Invalid staffId' })
+  }
 
   // Build query — embed consent fields from the source asset for the Slate UI.
   // PostgREST auto-resolves the single FK between story_packages and
