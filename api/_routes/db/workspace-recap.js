@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'workspace-recap'))) return
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const r = await sb('rpc/workspace_recap', {
     method: 'POST',
