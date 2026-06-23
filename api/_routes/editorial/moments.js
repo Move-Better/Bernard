@@ -39,7 +39,9 @@ function sb(path, init = {}) {
 
 function inList(ids) {
   // PostgREST in.() — UUIDs are safe bare; de-dup + drop falsy.
-  return `(${[...new Set(ids.filter(Boolean))].join(',')})`
+  const deduped = [...new Set(ids.filter(Boolean))]
+  if (!deduped.length) throw new Error('inList called with empty array — guard at call site')
+  return `(${deduped.join(',')})`
 }
 
 export default async function handler(req, res) {

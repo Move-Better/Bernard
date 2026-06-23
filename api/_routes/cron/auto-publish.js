@@ -283,18 +283,21 @@ async function processWorkspace(ws, summary) {
 
     // Dispatch each eligible channel.
     let dispatchedAny = false
+    let failedAny = false
     for (const channel of result.channels) {
       if (channel === 'gbp') {
         let dispatch
         if (isBundle) {
           if (bundleGbpTargets.length === 0) {
             held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No bundle GBP locations configured' }] })
+            failedAny = true
             continue
           }
           dispatch = await dispatchGbpBundle({ pkg, workspace: ws, targets: bundleGbpTargets })
         } else {
           if (gbpChannels.length === 0) {
             held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No GBP locations configured' }] })
+            failedAny = true
             continue
           }
           dispatch = await dispatchGbp({
@@ -306,6 +309,7 @@ async function processWorkspace(ws, summary) {
         }
         if (!dispatch) {
           held.push({ id: pkg.id, reasons: [{ signal: 'dispatch_error', detail: 'GBP dispatch failed' }] })
+          failedAny = true
           continue
         }
         const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
@@ -316,6 +320,7 @@ async function processWorkspace(ws, summary) {
             body: JSON.stringify({ auto_published_at: null }),
           }).catch((e) => console.error('[auto-publish] claim release (ci-null) failed:', e?.message))
           held.push({ id: pkg.id, reasons: [{ signal: 'ci_missing', detail: 'No approved content_item found for package; claim released for retry' }] })
+          failedAny = true
           continue
         }
 
@@ -342,10 +347,15 @@ async function processWorkspace(ws, summary) {
       }
     }
 
+    if (dispatchedAny && failedAny) {
+      console.error('[auto-publish] partial channel failure — some channels succeeded, some failed; releasing claim for retry', { pkgId: pkg.id })
+    }
+
     // We claimed the package (set auto_published_at) but nothing actually
-    // dispatched — release the claim so a future run can retry it. Without this
-    // a transient Buffer failure would permanently strand the package.
-    if (!dispatchedAny) {
+    // dispatched, OR some channels failed — release the claim so a future run
+    // can retry. Without this a transient failure would permanently strand the
+    // package or silently drop failed channels when another succeeded.
+    if (!dispatchedAny || failedAny) {
       await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ auto_published_at: null }),
