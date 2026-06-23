@@ -20,6 +20,7 @@ export const config = { runtime: 'nodejs' }
 import { generateText } from 'ai'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
+import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../../_lib/atomPrompts.js'
 import { getContextBlock } from '../../_lib/conceptRetrieval.js'
@@ -60,7 +61,7 @@ export default async function handler(req, res) {
 
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)
-  const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
+  const auth = await requireRole(req, EDITOR_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   const wsFilter = `workspace_id=eq.${ws.id}`
 

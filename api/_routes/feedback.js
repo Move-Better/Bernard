@@ -20,7 +20,9 @@ const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const auth = await requireRole(req, null) // any authenticated user
+  const wsCtx = await workspaceContext(req).catch(() => null)
+
+  const auth = await requireRole(req, null, { orgId: wsCtx?.clerk_org_id ?? null })
   if (!auth.ok) return res.status(401).json({ error: auth.reason })
 
   if (!(await enforceLimit(req, res, 'feedback'))) return
@@ -35,10 +37,6 @@ export default async function handler(req, res) {
     console.warn('[feedback] RESEND_API_KEY not set; dropping feedback submission')
     return res.status(200).json({ ok: true })
   }
-
-  // Resolve workspace server-side so the slug in the admin email is verified,
-  // not caller-supplied (an authenticated user could otherwise inject any slug).
-  const wsCtx = await workspaceContext(req).catch(() => null)
 
   const attachments = []
   if (screenshotDataUrl?.startsWith('data:image/')) {
