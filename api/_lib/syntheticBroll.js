@@ -320,7 +320,7 @@ export async function generateSyntheticBroll({
           workspace,
           staffName: staffName || '',
         })
-        const pathname = `media/renders/${workspace.slug}/${assetId}/${channel}-${safeSlug}.mp4`
+        const pathname = `media/renders/${workspace.id}/${assetId}/${channel}-${safeSlug}.mp4`
         const blob = await blobPut(pathname, buffer, {
           access: 'public', contentType: 'video/mp4', addRandomSuffix: false, allowOverwrite: true,
         })

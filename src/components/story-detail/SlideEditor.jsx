@@ -220,7 +220,7 @@ function BlockRow({ block, onChange, onRemove }) {
               <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
             ))}
           </select>
-          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-rose-600" title="Delete block">
+          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive" title="Delete block">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -680,7 +680,7 @@ function SlideInspector({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-1 rounded p-0.5 text-muted-foreground hover:text-rose-600"
+          className="ml-1 rounded p-0.5 text-muted-foreground hover:text-destructive"
           title="Delete slide"
         >
           <X className="h-3.5 w-3.5" />

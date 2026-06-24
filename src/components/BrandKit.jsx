@@ -138,10 +138,10 @@ function AssetPreview({ asset, size = 'md', backdrop = 'checker' }) {
   if (asset.mime_type === 'application/pdf') {
     return (
       <div
-        className="w-full rounded-md bg-rose-50 dark:bg-rose-950/30 flex flex-col items-center justify-center gap-1"
+        className="w-full rounded-md bg-muted flex flex-col items-center justify-center gap-1"
         style={{ height: `${heightPx}px` }}
       >
-        <FileText className="h-8 w-8 text-rose-600 dark:text-rose-300" />
+        <FileText className="h-8 w-8 text-muted-foreground" />
         <span className="text-3xs text-rose-700 dark:text-rose-200 font-medium uppercase tracking-wide">PDF</span>
       </div>
     )

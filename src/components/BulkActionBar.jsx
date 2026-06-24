@@ -501,7 +501,7 @@ export default function BulkActionBar({
             {/* Delete permanently */}
             {viewingArchived && canPurge && (
               <button
-                className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
+                className="text-xs text-destructive/70 hover:text-destructive transition-colors"
                 onClick={() => setPurgeOpen(true)}
                 disabled={busy === 'purge'}
               >

@@ -27,7 +27,7 @@ export const PLATFORM_META = {
   landing_page: { label: 'Landing Page',    icon: LayoutTemplate, color: 'text-primary',    bg: 'bg-primary/10' },
   youtube:      { label: 'YouTube',         icon: Youtube,       color: 'text-red-600',    bg: 'bg-red-50' },
   tiktok:       { label: 'TikTok / Reels', icon: Music2,        color: 'text-fuchsia-600', bg: 'bg-fuchsia-50' },
-  email:        { label: 'Email',           icon: Mail,       color: 'text-teal-600',   bg: 'bg-teal-50' },
+  email:        { label: 'Email',           icon: Mail,       color: 'text-muted-foreground', bg: 'bg-muted' },
 }
 
 // See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders; same "Ready to publish" label for the approved status).
@@ -37,7 +37,7 @@ export const STATUS_META = {
   approved:   { label: 'Ready to publish', color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CheckCircle2 },
   scheduled:  { label: 'Scheduled',  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CalendarDays },
   published:  { label: 'Published',  color: 'bg-success/10 text-success', icon: Send },
-  archived:   { label: 'Archived',   color: 'bg-zinc-100 text-zinc-600',     icon: Archive },
+  archived:   { label: 'Archived',   color: 'bg-muted text-muted-foreground', icon: Archive },
 }
 
 // 'archived' is a UI-only pseudo-tab — there's no `archived` value on the
