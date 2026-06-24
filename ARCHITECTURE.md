@@ -415,3 +415,40 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
     per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
     wired through `computeCadenceChannels` in `cadenceDefaults.js` (#1628, 2026-06-23). Falls back to
     prior-only when a workspace has < 5 scored posts per channel (MIN_SAMPLE guard).
+
+## Unified editor shell (carousel + reel)
+
+Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) and the clip/reel
+(`src/pages/VideoEditor.jsx`) — render through ONE shared shell so editor surfaces stay consistent
+(shipped 2026-06-24, #1667–#1676). The pieces:
+
+- **`src/lib/editorArchetype.js` — the single source of truth.** `resolveArchetype(piece)` maps a
+  `content_items` row → one of 9 archetypes (carousel · visual · story · storyvid · vvideo · lvideo ·
+  doc · email · ad · textad) by platform + media (instagram+video→vvideo, instagram_story+video→
+  storyvid). Each archetype declares its `surface` (slides | timeline | variants | none), `rail`
+  sections, `canvas` kind, `aspects` (first = default), and `mediaTier` (required | optional | none).
+  `needsMediaToPublish(piece)` is the publish gate. **Route by archetype, never ad-hoc platform/media
+  flags** — `StoryboardPublish.jsx` does this (`resolveArchetype` replaced the old `isReel`/`isCarousel`
+  booleans, verified-equivalent).
+- **`src/components/editor/EditorChrome.jsx`** — the shared top bar (back · title · format badge ·
+  aspect seg · right-aligned action slot). Both editors render their header through it; per-editor
+  buttons (Preview/Save/Schedule/Export/transport) go in `children`. Extracted verbatim from
+  SlideEditor's header → adoption was a visual no-op.
+- **`src/components/editor/IconRail.jsx`** — the shared left rail. Purely presentational:
+  `items=[{key,icon,label}]` + `active` + `onPick`. Each editor passes its archetype's sections.
+- **Carousel inspector = one panel per rail tool** (Words / Slide / Media / Text), NOT an accordion.
+  Two orthogonal states that SYNC: `tool` drives which inspector panel shows; `selection`
+  (`{type:'photo'|'text',idx}`) drives the canvas (photo ring + `TextDragLayer` block drag). Clicking a
+  photo/block on the canvas sets the rail tool; picking a tool sets a canvas selection. The Text panel
+  is a block list (HOOK/BODY/CTA + Add) → the selected block's `TextInspector`. The slide-thumbnail
+  rail is the right-edge "surface"; **Words = the caption editor** (`CaptionPanel`, moved out of the
+  old right column into the rail).
+- **`PostPreview.jsx` has a `switch` case per platform.** A channel that hits `default` →
+  `PlainPreview` raw-dumps its content (the Story `LINK_STICKER_TEXT:` bug class). Every enabled
+  channel now has a case; add one for any new channel.
+
+**Deliberately NOT unified** (a real object boundary, not missing work): `/publish/:pieceId`
+(`content_items`, piece-based) and `/slate/clip/:assetId` (`media_assets`, asset-based, from Moment
+Miner) edit DIFFERENT objects at different pipeline stages — they share the chrome/rail components but
+are NOT one route. Thin-edit channels (FB/LinkedIn/GBP) stay on the two-column preview+schedule page;
+the full-bleed canvas shell is for rich carousel/reel editing only. See `memory/project-unified-shell.md`.
