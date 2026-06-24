@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, ArrowLeft, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
@@ -23,6 +23,7 @@ import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGra
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
+import EditorChrome from '@/components/editor/EditorChrome'
 
 // Role label + chip colors. Mirrors the mockup palette.
 const ROLE_META = {
@@ -1854,77 +1855,49 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         </Dialog>
       )}
 
-      {/* ── TOP BAR (~52px) — the only persistent chrome ─────────────────── */}
-      <header className="flex items-center gap-3 border-b bg-card px-4 py-2.5 shrink-0">
+      {/* ── TOP BAR — shared EditorChrome (unified shell) ─────────────────── */}
+      <EditorChrome
+        onBack={goBack}
+        title={piece?.topic}
+        badge={{ icon: Instagram, label: formatLabel || 'Instagram Carousel', sub: formatSub || `${slides.length} slides` }}
+        note={photoCount != null && photoCount !== slides.length
+          ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
+          : null}
+        aspect={{ value: aspect, options: ['1:1', '4:5', '9:16'], onChange: setAspect }}
+      >
         <button
           type="button"
-          onClick={goBack}
-          className="flex items-center text-muted-foreground hover:text-foreground"
-          title="Back to media"
+          onClick={() => setFullPreviewOpen(true)}
+          className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title="Preview as Instagram"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <Smartphone className="mr-1 inline h-3.5 w-3.5" />
+          Preview
         </button>
-        <span className="text-sm font-semibold truncate max-w-[200px]">{piece?.topic || 'Untitled'}</span>
-        {/* Persistent format badge */}
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold" style={{ background: 'hsl(var(--info)/.12)', color: 'hsl(var(--info))' }}>
-          <Instagram className="h-3.5 w-3.5" />
-          {formatLabel || 'Instagram Carousel'} · {formatSub || `${slides.length} slides`}
-        </span>
-        {photoCount != null && photoCount !== slides.length && (
-          <span className="hidden text-3xs text-muted-foreground lg:inline">
-            {slides.length} slides from {photoCount} photo{photoCount === 1 ? '' : 's'}
-          </span>
-        )}
-
-        {/* Aspect selector */}
-        <div className="flex overflow-hidden rounded-md border border-border">
-          {['1:1', '4:5', '9:16'].map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setAspect(a)}
-              className={`px-2 py-0.5 text-2xs font-medium transition-colors ${aspect === a ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-            >
-              {a}
-            </button>
-          ))}
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
+        {hasMedia && (
           <button
             type="button"
-            onClick={() => setFullPreviewOpen(true)}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title="Preview as Instagram"
+            onClick={() => setAdExportOpen(true)}
+            className="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action hover:bg-action/10 transition-colors"
+            title="Render into ad sizes"
           >
-            <Smartphone className="mr-1 inline h-3.5 w-3.5" />
-            Preview
+            <Megaphone className="mr-1 inline h-3.5 w-3.5" />
+            Ads
           </button>
-          {hasMedia && (
-            <button
-              type="button"
-              onClick={() => setAdExportOpen(true)}
-              className="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action hover:bg-action/10 transition-colors"
-              title="Render into ad sizes"
-            >
-              <Megaphone className="mr-1 inline h-3.5 w-3.5" />
-              Ads
-            </button>
-          )}
-          {dirty && (
-            <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
-          )}
-          <Button size="sm" variant={dirty ? 'default' : 'outline'} onClick={handleSave} disabled={busy || !dirty} loading={busy}>
-            {rendering ? 'Rendering…' : updateItem.isPending ? 'Saving…' : dirty ? 'Save' : 'Saved'}
+        )}
+        {dirty && (
+          <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
+        )}
+        <Button size="sm" variant={dirty ? 'default' : 'outline'} onClick={handleSave} disabled={busy || !dirty} loading={busy}>
+          {rendering ? 'Rendering…' : updateItem.isPending ? 'Saving…' : dirty ? 'Save' : 'Saved'}
+        </Button>
+        {scheduleNode && (
+          <Button size="sm" onClick={() => setScheduleOpen(true)} className="bg-action text-action-foreground hover:bg-action/90">
+            <CalendarClock className="mr-1 h-3.5 w-3.5" />
+            Schedule
           </Button>
-          {scheduleNode && (
-            <Button size="sm" onClick={() => setScheduleOpen(true)} className="bg-action text-action-foreground hover:bg-action/90">
-              <CalendarClock className="mr-1 h-3.5 w-3.5" />
-              Schedule
-            </Button>
-          )}
-        </div>
-      </header>
+        )}
+      </EditorChrome>
 
       {/* ── WORK AREA: rail | inspector | canvas | caption ─────────────── */}
       <div className="flex min-h-0 flex-1">

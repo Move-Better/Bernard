@@ -4,7 +4,8 @@ import { ArrowRight, Eye, Video } from 'lucide-react'
 import BackLink from '@/components/ui/BackLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pieceLabel } from '@/lib/pieceLabel'
-import { isInstagramReel, postFormat } from '@/lib/mediaEntry'
+import { postFormat } from '@/lib/mediaEntry'
+import { resolveArchetype } from '@/lib/editorArchetype'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import PostPreview from '@/components/PostPreview'
@@ -65,11 +66,13 @@ export default function StoryboardPublish() {
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—' }
   const Icon = meta.icon
   const title = piece.topic || firstHeading(piece.content) || 'Untitled draft'
-  // An Instagram piece with a video attached publishes as a Reel, not a photo
-  // carousel — so the photo-slide composer doesn't apply. Only show the carousel
-  // composer for an Instagram piece that is NOT a reel.
-  const isReel = piece.platform === 'instagram' && isInstagramReel(piece.media_urls)
-  const isCarousel = piece.platform === 'instagram' && !isReel
+  // Route by editing archetype (the unified-shell resolver) instead of ad-hoc
+  // platform/media flags. An Instagram piece with a video is a Reel ('vvideo'),
+  // without is a carousel; instagram_story routes to the Story composer whether
+  // it's a photo frame ('story') or a video story ('storyvid').
+  const archetype = resolveArchetype(piece)
+  const isReel = piece.platform === 'instagram' && archetype === 'vvideo'
+  const isCarousel = archetype === 'carousel'
   const isStory = piece.platform === 'instagram_story'
   // Named format + slide-count badge from the shared helper — the header used to
   // count source photos ("1 media attached") next to N slide cards.
