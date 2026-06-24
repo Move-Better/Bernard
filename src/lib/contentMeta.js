@@ -12,7 +12,7 @@ import {
   Instagram, Facebook, Linkedin, FileText, Mail,
   MapPin, Clock, CheckCircle2, Send, CalendarDays,
   MousePointer2, LayoutTemplate, Youtube, Music2, Megaphone,
-  Archive,
+  Archive, AlertTriangle,
 } from 'lucide-react'
 
 export const PLATFORM_META = {
@@ -37,6 +37,7 @@ export const STATUS_META = {
   approved:   { label: 'Ready to publish', color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CheckCircle2 },
   scheduled:  { label: 'Scheduled',  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CalendarDays },
   published:  { label: 'Published',  color: 'bg-success/10 text-success', icon: Send },
+  failed:     { label: 'Failed',     color: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
   archived:   { label: 'Archived',   color: 'bg-muted text-muted-foreground', icon: Archive },
 }
 

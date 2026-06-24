@@ -87,6 +87,24 @@ async function promoteToPublished(id, workspaceId, sentAt) {
   return r.ok
 }
 
+// Mark a scheduled post as permanently failed, with the reason bundle returned.
+// Guarded on status=eq.scheduled so a row a webhook already resolved (Phase 2)
+// is never clobbered by this slower cron pass.
+async function markFailed(id, workspaceId, reason) {
+  const r = await sb(
+    `content_items?id=eq.${id}&workspace_id=eq.${workspaceId}&status=eq.scheduled`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status:        'failed',
+        publish_error: (reason || 'Publishing failed on the network.').slice(0, 2000),
+        updated_at:    new Date().toISOString(),
+      }),
+    }
+  )
+  return r.ok
+}
+
 export default async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
@@ -108,20 +126,20 @@ export default async function handler(req, res) {
   const safeIds = activeIds.filter(id => UUID_RE.test(id))
   if (!safeIds.length) {
     console.info('[sync-buffer-published] no active workspaces; skipping sync')
-    return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })
+    return res.status(200).json({ checked: 0, promoted: 0, failed: 0, skipped: 0, errors: 0 })
   }
   const wsScope = `&workspace_id=in.(${safeIds.map(id => `"${id}"`).join(',')})`
   const items = await fetchOverdueItems(wsScope)
   if (items.length === 0) {
-    return res.status(200).json({ checked: 0, promoted: 0, skipped: 0, errors: 0 })
+    return res.status(200).json({ checked: 0, promoted: 0, failed: 0, skipped: 0, errors: 0 })
   }
 
   const byWorkspace = groupByWorkspace(items)
-  const summary = { checked: items.length, promoted: 0, skipped: 0, errors: 0, workspaces: [] }
+  const summary = { checked: items.length, promoted: 0, failed: 0, skipped: 0, errors: 0, workspaces: [] }
 
   for (const [workspaceId, wsItems] of Object.entries(byWorkspace)) {
     const wsRow = wsMap[workspaceId] || {}
-    const wsResult = { workspaceId, promoted: 0, skipped: 0, errors: 0, notFound: 0 }
+    const wsResult = { workspaceId, promoted: 0, failed: 0, skipped: 0, errors: 0, notFound: 0 }
 
     if (!wsRow.id) {
       console.warn('[sync-buffer-published] skipping unknown workspace:', workspaceId)
@@ -152,10 +170,19 @@ export default async function handler(req, res) {
             continue
           }
           if (!status.isPosted) {
-            // SCHEDULED / PROCESSING / REVIEW / RETRYING — still in flight, check next run.
-            // ERROR / DELETED — permanent failure; leave as scheduled so it's visible in the UI.
-            if (!status.isFailed) { summary.skipped++; wsResult.skipped++ }
-            else wsResult.notFound++
+            if (status.isError) {
+              // Network rejected it permanently — mark failed so the UI surfaces it
+              // (badge + Home banner) instead of it sitting forever as "scheduled".
+              const failed = await markFailed(item.id, workspaceId, status.error)
+              if (failed) { summary.failed++; wsResult.failed++ }
+              else { summary.errors++; wsResult.errors++ }
+            } else if (status.isFailed) {
+              // DELETED in bundle (usually intentional) — not a publish failure; leave as-is.
+              wsResult.notFound++
+            } else {
+              // SCHEDULED / PROCESSING / REVIEW / RETRYING — still in flight, check next run.
+              summary.skipped++; wsResult.skipped++
+            }
             continue
           }
           const promoted = await promoteToPublished(

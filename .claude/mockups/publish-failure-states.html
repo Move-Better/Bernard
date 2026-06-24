@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Publish-failure surfacing (Option C mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          background: 'hsl(var(--background))',
+          foreground: 'hsl(var(--foreground))',
+          card: 'hsl(var(--card))',
+          primary: 'hsl(var(--primary))',
+          'primary-foreground': 'hsl(var(--primary-foreground))',
+          muted: 'hsl(var(--muted))',
+          'muted-foreground': 'hsl(var(--muted-foreground))',
+          accent: 'hsl(var(--accent))',
+          border: 'hsl(var(--border))',
+          success: 'hsl(var(--success))',
+          warning: 'hsl(var(--warning))',
+          destructive: 'hsl(var(--destructive))',
+          action: 'hsl(var(--action))',
+          scheduled: 'hsl(var(--scheduled))',
+        },
+        borderRadius: { xl: '0.85rem' },
+      },
+    },
+  }
+</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+    --action: 32 95% 44%;
+    --scheduled: 262 83% 58%;
+  }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .legend { border: 1px dashed hsl(var(--primary) / 0.5); background: hsl(var(--primary) / 0.04); }
+  .ico { width: 1rem; height: 1rem; }
+</style>
+</head>
+<body class="py-10">
+  <div class="mx-auto max-w-5xl px-6 space-y-10">
+
+    <header class="space-y-2">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground"><i data-lucide="bell-ring" class="ico"></i></span>
+        <h1 class="text-xl font-semibold tracking-tight">Publish-failure surfacing — Option&nbsp;C</h1>
+      </div>
+      <p class="text-sm text-muted-foreground max-w-2xl">How a failed social post becomes <em>visible</em> inside Bernard instead of silently stuck. New state is <span class="font-medium text-destructive">red</span>; everything else is existing chrome. Decisions baked in: <b>instant email + in-app</b>, <b>manual one-click retry</b>, <b>routed to each workspace owner</b>.</p>
+    </header>
+
+    <!-- ============ 1. PUBLISH PAGE — status row, all states ============ -->
+    <section class="space-y-3">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">1 · Publish page — the status row (today's states + the new one)</h2>
+
+      <!-- Published (existing) -->
+      <div class="rounded-xl border border-border bg-card p-4 flex items-start gap-3">
+        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600"><i data-lucide="instagram" class="ico"></i></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm text-foreground/90 leading-snug">Three things your low back wants you to stop doing at your desk…</p>
+          <div class="mt-3 inline-flex flex-wrap items-center gap-2.5">
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-2.5 py-1 text-xs font-medium text-success"><i data-lucide="send" class="ico"></i> Published to Instagram</span>
+            <span class="text-xs text-muted-foreground">Jun 24, 2026, 9:02 AM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scheduled (existing) -->
+      <div class="rounded-xl border border-border bg-card p-4 flex items-start gap-3">
+        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600"><i data-lucide="facebook" class="ico"></i></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm text-foreground/90 leading-snug">The 20-second reset that calms an angry sciatic nerve.</p>
+          <div class="mt-3 rounded-lg border border-scheduled/25 bg-scheduled/10 p-3">
+            <div class="flex items-center gap-1.5 text-xs font-medium text-scheduled"><i data-lucide="calendar-days" class="ico"></i> Scheduled on bundle.social</div>
+            <p class="mt-1 text-sm font-medium">Jun 25, 2026, 8:00 AM</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAILED (new) -->
+      <div class="rounded-xl border border-destructive/30 bg-card p-4 flex items-start gap-3 ring-1 ring-destructive/10">
+        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600"><i data-lucide="instagram" class="ico"></i></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm text-foreground/90 leading-snug">Why your morning stiffness isn't "just getting older."</p>
+          <div class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 space-y-2.5">
+            <div class="flex items-center gap-1.5 text-xs font-semibold text-destructive"><i data-lucide="alert-triangle" class="ico"></i> Failed to publish</div>
+            <p class="text-sm text-foreground/80 leading-snug"><span class="font-medium">Instagram rejected the post:</span> media aspect ratio not supported (must be between 4:5 and 1.91:1).</p>
+            <p class="text-xs text-muted-foreground">Detected Jun 24, 2026, 9:05 AM · was scheduled for 9:00 AM</p>
+            <div class="flex flex-wrap items-center gap-2 pt-0.5">
+              <button class="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"><i data-lucide="refresh-cw" class="ico"></i> Retry now</button>
+              <button class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-muted"><i data-lucide="pencil" class="ico"></i> Edit &amp; retry</button>
+              <a href="#" class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">View on bundle.social <i data-lucide="external-link" class="ico" style="width:.8rem;height:.8rem"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend rounded-lg px-3 py-2 text-xs text-foreground/70">
+        <b>What changed:</b> a third terminal state, <span class="text-destructive font-medium">Failed</span>, mirroring the existing Published / Scheduled blocks. It shows bundle.social's real rejection reason (<code>data.error</code>), when it was detected, and a <b>manual</b> retry (your pick — Bernard never silently re-sends). "Edit &amp; retry" routes back to the editor first; "Retry now" re-publishes as-is.
+      </div>
+    </section>
+
+    <!-- ============ 2. LIBRARY — list badge ============ -->
+    <section class="space-y-3">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">2 · Library / Storyboard — the status pill in lists</h2>
+      <div class="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+        <div class="flex items-center gap-3 px-4 py-3">
+          <i data-lucide="instagram" class="ico text-pink-600"></i>
+          <span class="flex-1 truncate text-sm">Three things your low back wants you to stop doing…</span>
+          <span class="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 text-xs font-medium text-success"><i data-lucide="send" style="width:.8rem;height:.8rem"></i> Published</span>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3">
+          <i data-lucide="facebook" class="ico text-blue-600"></i>
+          <span class="flex-1 truncate text-sm">The 20-second reset that calms an angry sciatic nerve.</span>
+          <span class="inline-flex items-center gap-1 rounded-md bg-scheduled/10 px-2 py-0.5 text-xs font-medium text-scheduled"><i data-lucide="calendar-days" style="width:.8rem;height:.8rem"></i> Scheduled</span>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3 bg-destructive/[0.03]">
+          <i data-lucide="instagram" class="ico text-pink-600"></i>
+          <span class="flex-1 truncate text-sm">Why your morning stiffness isn't "just getting older."</span>
+          <span class="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"><i data-lucide="alert-triangle" style="width:.8rem;height:.8rem"></i> Failed</span>
+        </div>
+      </div>
+      <div class="legend rounded-lg px-3 py-2 text-xs text-foreground/70">
+        <b>What changed:</b> one new entry in <code>STATUS_META</code> (<code>failed → bg-destructive/10 text-destructive</code>). The pill shows up everywhere a status pill already renders — Library, Storyboard, calendar — with a faint red row tint so a failure draws the eye in a long list.
+      </div>
+    </section>
+
+    <!-- ============ 3. HOME — needs attention ============ -->
+    <section class="space-y-3">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">3 · Home — proactive in-app alert</h2>
+
+      <!-- failed alert: distinct, destructive -->
+      <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background: hsl(var(--destructive) / 0.07); border: 1px solid hsl(var(--destructive) / 0.28);">
+        <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive"><i data-lucide="alert-triangle" class="ico"></i></span>
+        <span class="text-sm font-medium">1 post failed to publish</span>
+        <a href="#" class="text-sm font-medium text-destructive hover:underline">Review &amp; retry →</a>
+      </div>
+
+      <!-- existing attention bar, for context -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3" style="background: hsl(var(--action) / 0.08); border: 1px solid hsl(var(--action) / 0.25);">
+        <span class="h-2 w-2 shrink-0 rounded-full bg-action"></span>
+        <span class="text-sm font-medium">3 items need your attention</span>
+        <span class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>·</span><a href="#" class="font-medium text-primary">2 ready to review</a>
+          <span>·</span><a href="#" class="font-medium text-primary">1 ready to distribute</a>
+        </span>
+      </div>
+
+      <div class="legend rounded-lg px-3 py-2 text-xs text-foreground/70">
+        <b>What changed:</b> failures get their <em>own</em> red banner above the existing amber "needs attention" bar — a failed post is more urgent than a to-do, so it doesn't get buried in the comma list. Reuses the Home worklist pattern; clicking jumps to the filtered failed view.
+      </div>
+    </section>
+
+    <!-- ============ 4. EMAIL ============ -->
+    <section class="space-y-3">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">4 · Instant email — to the workspace owner</h2>
+      <div class="rounded-xl border border-border bg-card overflow-hidden">
+        <div class="border-b border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+          <div><b class="text-foreground/80">From:</b> Bernard &lt;noreply@withbernard.ai&gt;</div>
+          <div><b class="text-foreground/80">To:</b> owner@movebetter.co</div>
+          <div><b class="text-foreground/80">Subject:</b> ⚠️ A post failed to publish — Move Better</div>
+        </div>
+        <div class="p-5 space-y-3 text-sm leading-relaxed">
+          <p>Hi — one of your scheduled posts didn't go out.</p>
+          <div class="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+            <p class="font-medium">Instagram · "Why your morning stiffness isn't 'just getting older.'"</p>
+            <p class="text-muted-foreground"><b>Reason:</b> media aspect ratio not supported (must be between 4:5 and 1.91:1).</p>
+            <p class="text-muted-foreground text-xs">Was scheduled for Jun 25, 8:00 AM.</p>
+          </div>
+          <a href="#" class="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground">Review &amp; retry in Bernard <i data-lucide="arrow-right" class="ico"></i></a>
+          <p class="text-xs text-muted-foreground pt-1">You're getting this because you own the Move Better workspace.</p>
+        </div>
+      </div>
+      <div class="legend rounded-lg px-3 py-2 text-xs text-foreground/70">
+        <b>What changed:</b> reuses the existing Resend helper, generalized to send to the <b>workspace owner</b> (resolved from <code>created_by_clerk_user_id</code> → Clerk email). Fires the moment the webhook reports <code>ERROR</code> — typically seconds after the failed publish, not the next hourly cron.
+      </div>
+    </section>
+
+    <footer class="pt-2 text-xs text-muted-foreground">
+      Mockup · not wired · for sign-off before any source change.
+    </footer>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

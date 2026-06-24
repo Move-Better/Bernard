@@ -54,6 +54,25 @@ const CLINIC_NETWORKS = [
   'TIKTOK', 'YOUTUBE', 'LINKEDIN', 'BLUESKY', 'MASTODON',
 ]
 
+// Pull a human-readable failure reason out of a bundle.social post response.
+// bundle surfaces failures on the post object (status=ERROR) and in the webhook
+// payload identically: errorsVerbose (richest) -> error -> errors[]. Exported so
+// the bundle webhook handler can reuse the exact same extraction.
+export function bundleErrorText(res) {
+  if (!res) return null
+  const verbose = typeof res.errorsVerbose === 'string' ? res.errorsVerbose.trim() : ''
+  if (verbose) return verbose
+  const single = typeof res.error === 'string' ? res.error.trim() : ''
+  if (single) return single
+  if (Array.isArray(res.errors) && res.errors.length) {
+    const parts = res.errors
+      .map((e) => (typeof e === 'string' ? e : e?.message || e?.error || ''))
+      .filter(Boolean)
+    if (parts.length) return parts.join('; ')
+  }
+  return null
+}
+
 export class BundlePublisher extends SocialPublisher {
   /**
    * @param {Object} workspace Full `workspaces` row.
@@ -189,11 +208,17 @@ export class BundlePublisher extends SocialPublisher {
   async getPostStatus({ postId } = {}) {
     if (!postId) throw publishError('getPostStatus requires postId', 400)
     const res = await this.sdk.post.postGet({ id: postId })
+    const status = res?.status ?? null
     return {
-      status:   res?.status ?? null,
+      status,
       postedAt: res?.postedDate ?? null,
-      isPosted: res?.status === 'POSTED',
-      isFailed: res?.status === 'ERROR' || res?.status === 'DELETED',
+      isPosted: status === 'POSTED',
+      // ERROR = bundle tried and the network rejected it → a real publish
+      // failure we surface to the user. DELETED = removed in bundle (usually
+      // intentional) → not a failure; the cron leaves it as-is.
+      isError:  status === 'ERROR',
+      isFailed: status === 'ERROR' || status === 'DELETED',
+      error:    status === 'ERROR' ? bundleErrorText(res) : null,
     }
   }
 
