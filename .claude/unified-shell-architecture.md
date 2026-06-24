@@ -3,9 +3,15 @@
 **Status:** APPROVED (Q, 2026-06-24) — build in progress. See `.claude/unified-shell-morning-checklist.md` for live status + `.claude/unified-shell-phases-2-4-spec.md` for the Phase 2–4 implementation spec.
 
 **Build status (2026-06-24 overnight sprint):**
-- ✅ **Phase 0 — Story editor** SHIPPED to prod + prod-verified (#1668). `instagram_story` now has a real composer + 9:16 preview; killed the raw `LINK_STICKER_TEXT:` dump.
-- ✅ **Phase 1 — Shared EditorChrome + archetype backbone** SHIPPED to prod + prod-verified (#1669). Carousel editor top bar + work area identical through the shared chrome — visual no-op confirmed on prod.
-- 📋 **Phases 2–4** spec'd (`.claude/unified-shell-phases-2-4-spec.md`) — not built blind (they restructure the editors' layouts → need Chrome-verify). Execute with Q in the loop.
+**SPRINT COMPLETE 2026-06-24 — 9 PRs (#1667–#1675), all gate-green + prod-verified via Q's Chrome.**
+- ✅ **Phase 0 — Story editor** (#1668). `instagram_story` composer + 9:16 preview; killed the raw `LINK_STICKER_TEXT:` dump.
+- ✅ **Phase 1 — Shared EditorChrome + `editorArchetype.js` backbone** (#1669). Carousel adopts the shared chrome; StoryboardPublish routes via `resolveArchetype()`.
+- ✅ **Phase 2 — VideoEditor adopts EditorChrome** (#1672). Controls lifted from the left-inspector header into the top bar; both editors share one chrome.
+- ✅ **Phase 3 — Unified IconRail** (#1673 shared component + #1674 carousel adopts it). Carousel accordion → icon-rail (Words/Slide/Media/Text), CaptionPanel → Words tool, slide-rail → right edge, `tool`↔`selection` sync. Q click-tested ("feels good").
+- ✅ **Phase 4 — Canvas states** (#1675). PostPreview covers every enabled channel (X/Threads/Bluesky/Mastodon, TikTok/YouTube/Shorts, Google Ads, landing page) — no channel raw-dumps.
+- ❌ **Phase 4 — route-fold + shell-fold: deliberately NOT built.** `/publish/:pieceId` (content_items) and `/slate/clip/:assetId` (media_assets) edit different objects → a "single route" is incoherent. Folding thin-edit channels (FB/LinkedIn/GBP) into the full-bleed shell is a downgrade (empty canvas, rail mostly N/A, schedule hidden, lost page context) — mockup `mockups/phase4-visual-channel-fold.html` showed the tradeoff; Q chose keep-today's two-column. The preview+schedule page is correct for caption-only channels.
+
+Outcome: the two RICH editors (carousel + reel) share one chrome + rail; Story has a real editor; every channel has a consistent preview. The unification paid off where rich editing happens; thin-edit channels keep their fit-for-purpose page.
 
 **Origin:** Q asked "all media should go to the same editor, same visual landing page, but the left bar adapts to the kind of post + media." Then: research how other companies handle the split → plan the merged shell carefully → ship Story into the existing shell as step 1.
 

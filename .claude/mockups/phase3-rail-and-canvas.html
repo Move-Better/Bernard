@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 3 — Unified IconRail + canvas states</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{primary:'#0C7580',action:'#d97706',info:'#0369a1'}}}}</script>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;background:#eef1f3;margin:0;}
+  .chrome-btn{font-size:12px;font-weight:500;color:#374151;padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;}
+  .save-btn{font-size:12px;font-weight:600;color:#fff;background:#0C7580;padding:5px 14px;border-radius:6px;border:none;cursor:pointer;}
+  .pub-btn{font-size:12px;font-weight:600;color:#3a2a00;background:#d97706;padding:5px 14px;border-radius:6px;border:none;cursor:pointer;}
+  /* icon rail */
+  .rail-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0;width:100%;cursor:pointer;border:none;background:none;color:#9ca3af;font-size:9px;font-weight:600;border-left:2px solid transparent;}
+  .rail-item.active{color:#0C7580;border-left-color:#0C7580;}
+  .rail-item.active .rail-icon{background:rgba(12,117,128,.1);}
+  .rail-item:hover:not(.active) .rail-icon{background:#f1f5f9;}
+  .rail-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+  /* inspector */
+  .field-label{font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;display:block;}
+  .text-input{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 9px;font-size:13px;outline:none;box-sizing:border-box;}
+  .text-input:focus{border-color:#0C7580;box-shadow:0 0 0 2px rgba(12,117,128,.12);}
+  .seg{display:inline-flex;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;border:none;background:#fff;color:#6b7280;cursor:pointer;border-right:1px solid #e5e7eb;}
+  .seg button:last-child{border-right:none;}
+  .seg button.on{background:#0C7580;color:#fff;}
+  /* layer list row (the resolution for carousel's per-block text layers) */
+  .layer-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff;}
+  .layer-row.sel{border-color:#0C7580;background:rgba(12,117,128,.04);}
+  .layer-row:hover:not(.sel){border-color:#cbd5e1;}
+  .canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#dfe4e8;position:relative;overflow:hidden;}
+  .artifact{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,.18);background:#111;}
+  .slide-rail{width:78px;background:#f7f8f9;border-left:1px solid #e5e7eb;padding:8px;display:flex;flex-direction:column;gap:7px;}
+  .slide-mini{aspect-ratio:4/5;border-radius:6px;background:linear-gradient(160deg,#2d4a5e,#162635);border:2px solid transparent;position:relative;}
+  .slide-mini.sel{border-color:#0C7580;}
+  .slide-mini .num{position:absolute;top:3px;left:5px;font-size:9px;color:rgba(255,255,255,.8);font-weight:600;}
+  .slide-add{aspect-ratio:4/5;border-radius:6px;border:1.5px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;color:#94a3b8;}
+  .timeline{width:78px;background:#1a1d21;border-left:1px solid #2a2e33;padding:10px 8px;display:flex;flex-direction:column;gap:8px;}
+  .tl-track{flex:1;background:#23272c;border-radius:6px;position:relative;min-height:170px;}
+  .tl-handle{position:absolute;left:6px;right:6px;height:13px;background:#d97706;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#3a2a00;}
+  .tl-clip{position:absolute;left:6px;right:6px;background:linear-gradient(180deg,#1e3a4a,#0f2230);border-radius:4px;}
+  .tl-playhead{position:absolute;left:0;right:0;height:2px;background:#fff;}
+  .ov-text{position:absolute;left:0;right:0;text-align:center;padding:0 22px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);text-transform:uppercase;line-height:1.18;letter-spacing:.03em;}
+  .play-badge{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;}
+  .scenario-tab{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;}
+  .scenario-tab.active{background:#0C7580;color:#fff;}
+  .scenario-tab.inactive{background:#fff;color:#4b5563;border-color:#e5e7eb;}
+  .legend{font-size:11px;color:#475569;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:9px 12px;}
+</style>
+</head>
+<body>
+<div style="padding:14px 18px 6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  <span style="font-size:13px;color:#475569;font-weight:600;margin-right:4px;">Phase 3 — unified rail + canvas states:</span>
+  <button class="scenario-tab active" onclick="setS('carousel')">Carousel (per-block text)</button>
+  <button class="scenario-tab inactive" onclick="setS('reel')">Reel</button>
+  <button class="scenario-tab inactive" onclick="setS('text')">X · text-only</button>
+  <button class="scenario-tab inactive" onclick="setS('textad')">Google Ads · text</button>
+</div>
+<div style="padding:0 18px 8px;"><p class="legend" id="legend"></p></div>
+
+<div style="margin:0 18px 18px;border:1px solid #d8dde1;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.05);">
+  <!-- chrome (Phase 1/2, shared) -->
+  <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #e5e7eb;">
+    <button class="chrome-btn" style="padding:5px 8px;">←</button>
+    <span style="font-size:14px;font-weight:700;color:#111827;">Low back pain</span>
+    <span id="badge" style="display:inline-flex;align-items:center;gap:5px;background:rgba(3,105,161,.1);color:#0369a1;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;"></span>
+    <div style="margin-left:auto;display:flex;gap:8px;"><button class="chrome-btn">👁 Preview</button><button class="save-btn">Save</button><button class="pub-btn" id="pub">Schedule ▾</button></div>
+  </div>
+  <div style="display:flex;height:520px;">
+    <div style="width:58px;background:#fafbfc;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;padding-top:4px;" id="rail"></div>
+    <div style="width:280px;border-right:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:12px;" id="insp"></div>
+    <div class="canvas-wrap" id="canvas"></div>
+    <div id="surface"></div>
+  </div>
+</div>
+
+<script>
+const I={
+  words:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  media:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',
+  slide:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>',
+  text:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>',
+  grade:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/></svg>',
+  trim:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 8.5L20 18M8.5 15.5L20 6"/></svg>',
+  caption:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M15 15h2M7 11h10"/></svg>',
+  seo:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+};
+const RL={words:'Words',media:'Media',slide:'Slide',text:'Text',grade:'Grade',trim:'Trim',caption:'Captions',seo:'SEO'};
+
+// per-scenario: rail sections, active section, badge, pub, surface, canvas kind, inspector renderer
+const S={
+  carousel:{badge:'Instagram Carousel',pub:'Schedule ▾',rail:['words','slide','media','text','grade'],active:'text',surface:'slides',canvas:'visual',
+    legend:'The open question: carousel has MANY text blocks (Hook/Body/CTA). Resolution → rail "Text" is ONE icon; the inspector lists the blocks (multiplicity lives in the panel, not the rail). Same pattern as reel\'s Captions/Overlays.'},
+  reel:{badge:'Instagram Reel',pub:'Export ▾',rail:['media','trim','caption','text','grade'],active:'trim',surface:'timeline',canvas:'video',
+    legend:'Reel: same rail component, different sections (Media·Trim·Captions·Text·Grade). Timeline surface. The rail is one matrix-driven component shared with the carousel — no more two bespoke rails.'},
+  text:{badge:'X Post',pub:'Schedule ▾',rail:['words','media','text'],active:'words',surface:'none',canvas:'textcard',
+    legend:'Media-OPTIONAL channel, no media attached → canvas shows a real text-post card (not a "needs media" block). Media is one click away. Text-only is a valid finished post.'},
+  textad:{badge:'Google Ads · search',pub:'Export ▾',rail:['words','seo'],active:'words',surface:'none',canvas:'textad',
+    legend:'Text-only by platform (no media slot). Rail has NO Media section. Canvas = the search-ad copy preview (headlines + descriptions).'},
+};
+
+function railHTML(rail,active){return rail.map(s=>`<button class="rail-item ${s===active?'active':''}" onclick="pick('${s}')"><span class="rail-icon">${I[s]}</span>${RL[s]}</button>`).join('');}
+
+let CUR='carousel', SEL='text';
+function inspHTML(scn,sel){
+  if(sel==='text' && scn==='carousel') return `
+    <p style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin:0 0 8px">Text blocks</p>
+    <div class="layer-row sel"><span style="font-size:9px;font-weight:700;color:#0C7580;background:rgba(12,117,128,.1);padding:2px 6px;border-radius:4px">HOOK</span><span style="font-size:12px;color:#111;flex:1">Your back isn't the problem…</span></div>
+    <div class="layer-row"><span style="font-size:9px;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px">BODY</span><span style="font-size:12px;color:#475569;flex:1">Here's the pattern we look for</span></div>
+    <div class="layer-row"><span style="font-size:9px;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px">CTA</span><span style="font-size:12px;color:#475569;flex:1">Reserve your seat</span></div>
+    <button style="width:100%;border:1.5px dashed #cbd5e1;border-radius:8px;padding:7px;font-size:12px;color:#0C7580;font-weight:600;background:none;cursor:pointer;margin-top:2px">+ Add text block</button>
+    <div style="border-top:1px solid #eee;margin:12px 0 10px"></div>
+    <p style="font-size:10px;color:#9ca3af;margin:0 0 8px">Editing: <b style="color:#0C7580">HOOK</b></p>
+    <label class="field-label">Size</label><input type="range" min="50" max="200" value="120" style="width:100%;margin-bottom:10px">
+    <label class="field-label">Weight</label><div class="seg"><button>Reg</button><button class="on">Bold</button></div>`;
+  if(sel==='trim') return `<p class="field-label">Trim</p><div style="display:flex;gap:8px;margin-bottom:10px"><div style="flex:1"><label class="field-label">Start</label><input class="text-input" value="0:04"></div><div style="flex:1"><label class="field-label">End</label><input class="text-input" value="0:27"></div></div><p style="font-size:10px;color:#9ca3af">Drag the amber handles on the timeline →</p>`;
+  if(sel==='words') return `<label class="field-label">Caption</label><textarea class="text-input" rows="6" style="resize:none">Your back isn't the problem — the movement pattern is. Here's what we look for in a first assessment 👇</textarea><p style="font-size:10px;color:#9ca3af;margin-top:5px">${scn==='textad'?'Headlines + descriptions →':'2,200 char · 4 hashtags'}</p>`;
+  // generic section panels
+  const titles={words:'Caption',media:'Media',slide:'Slide — layout & theme',text:'Text',grade:'Grade — Brand vibe',caption:'Captions — karaoke',seo:'SEO / final URL'};
+  return `<p class="field-label">${titles[sel]||sel}</p><p style="font-size:12px;color:#9ca3af">${sel} controls…</p>`;
+}
+function canvasHTML(scn){
+  if(scn==='textcard') return `<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div class="seg"><button class="on" style="padding:4px 12px">Text only</button><button style="padding:4px 12px">With media</button></div>
+    <div style="width:380px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 6px 30px rgba(0,0,0,.1);padding:16px 18px">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px"><div style="width:34px;height:34px;border-radius:50%;background:#0C7580;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">M</div><div><div style="font-size:13px;font-weight:700;color:#111">Move Better</div><div style="font-size:11px;color:#9ca3af">@movebetter · now</div></div></div>
+      <div style="font-size:14px;line-height:1.55;color:#111">Your back isn't the problem — the movement pattern is. Here's what we look for in a first assessment 👇</div>
+      <div style="margin-top:12px;border:1.5px dashed #d1d5db;border-radius:10px;padding:14px;text-align:center;color:#9ca3af;font-size:12px;font-weight:600;cursor:pointer">+ Add photo or video <span style="font-weight:400">(optional)</span></div>
+    </div></div>`;
+  if(scn==='textad') return `<div style="width:460px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.1);padding:20px 22px">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="font-size:11px;font-weight:800;color:#202124;border:1px solid #202124;border-radius:3px;padding:0 4px">Ad</span><span style="font-size:12px;color:#202124">movebetter.co/assessment</span></div>
+    <div style="font-size:19px;color:#1a0dab;line-height:1.3;margin-bottom:6px">Stop guessing about back pain | Find the real pattern | Move Better</div>
+    <div style="font-size:13px;color:#4d5156;line-height:1.5">A movement assessment that finds what's actually driving your pain. Book today.</div></div>`;
+  // visual / video artifact
+  const h=scn==='reel'?470:440, ar=scn==='reel'?'9/16':'4/5';
+  return `<div class="artifact" style="height:${h}px;aspect-ratio:${ar}">
+    <div style="position:absolute;inset:0;background:linear-gradient(160deg,#2d4a5e,#162635 70%,#0a1622)"></div><div style="position:absolute;inset:0;background:rgba(0,0,0,.32)"></div>
+    ${scn==='reel'?'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"><div class="play-badge"><svg width="19" height="19" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div></div><div style="position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px">0:23</div>':''}
+    <div class="ov-text" style="top:50%;transform:translateY(-50%);font-size:22px">YOUR BACK ISN'T THE PROBLEM — THE PATTERN IS</div></div>`;
+}
+function surfaceHTML(kind){
+  if(kind==='slides'){let m='';for(let i=1;i<=4;i++)m+=`<div class="slide-mini ${i===1?'sel':''}"><span class="num">${i}</span></div>`;return `<div class="slide-rail">${m}<div class="slide-add">+</div></div>`;}
+  if(kind==='timeline')return `<div class="timeline"><div style="font-size:9px;color:#9ca3af;font-weight:700">TIMELINE</div><div class="tl-track"><div class="tl-clip" style="top:36px;bottom:36px"></div><div class="tl-handle" style="top:36px">⋮⋮</div><div class="tl-handle" style="bottom:36px">⋮⋮</div><div class="tl-playhead" style="top:100px"></div></div></div>`;
+  return '';
+}
+function pick(s){SEL=s;document.getElementById('rail').innerHTML=railHTML(S[CUR].rail,s);document.getElementById('insp').innerHTML=inspHTML(CUR,s);}
+function setS(k){CUR=k;const s=S[k];SEL=s.active;
+  document.querySelectorAll('.scenario-tab').forEach((t,i)=>{t.className='scenario-tab '+(['carousel','reel','text','textad'][i]===k?'active':'inactive')});
+  document.getElementById('legend').innerHTML=s.legend;
+  document.getElementById('badge').textContent=s.badge;
+  document.getElementById('pub').textContent=s.pub;
+  document.getElementById('rail').innerHTML=railHTML(s.rail,s.active);
+  document.getElementById('insp').innerHTML=inspHTML(k,s.active);
+  document.getElementById('canvas').innerHTML=canvasHTML(s.canvas);
+  document.getElementById('surface').innerHTML=surfaceHTML(s.surface);
+}
+setS('carousel');
+</script>
+</body>
+</html>
