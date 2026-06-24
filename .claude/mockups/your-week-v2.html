@@ -1,0 +1,310 @@
+<!--
+  Your week — v2 mockup
+  Two asks from Q (2026-06-24):
+   (1) FIX the UI overflow in the expanded "Review" card (Sounds like me / Change cram + wrap).
+   (2) ADD forward week navigation so the producer can plan ahead.
+       Q chose: "Generate it now" (empty future weeks get a one-click Plan button)
+                + "Up to ~4 weeks" of forward paging.
+  Real Bernard index.css tokens. Illustrative, not production code.
+  Use the ◀ ▶ arrows (or the Plan button) to feel the flow.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Your week v2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    background:'hsl(var(--background)/<alpha-value>)', foreground:'hsl(var(--foreground)/<alpha-value>)',
+    card:'hsl(var(--card)/<alpha-value>)', primary:'hsl(var(--primary)/<alpha-value>)',
+    'primary-foreground':'hsl(var(--primary-foreground)/<alpha-value>)', action:'hsl(var(--action)/<alpha-value>)',
+    success:'hsl(var(--success)/<alpha-value>)', info:'hsl(var(--info)/<alpha-value>)', warning:'hsl(var(--warning)/<alpha-value>)',
+    scheduled:'hsl(var(--scheduled)/<alpha-value>)',
+    muted:'hsl(var(--muted)/<alpha-value>)', 'muted-foreground':'hsl(var(--muted-foreground)/<alpha-value>)',
+    accent:'hsl(var(--accent)/<alpha-value>)', border:'hsl(var(--border)/<alpha-value>)' },
+    fontFamily:{ sans:['Geist','Inter','system-ui','sans-serif'] },
+    fontSize:{ '3xs':['0.625rem',{lineHeight:'1rem'}], '2xs':['0.6875rem',{lineHeight:'1rem'}] } } } };
+</script>
+<style>
+  :root{ --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%; --primary:186 83% 27%;
+    --primary-foreground:0 0% 100%; --muted:220 14% 96%; --muted-foreground:215 16% 47%; --accent:160 60% 95%;
+    --border:214 32% 91%; --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%; --action:32 95% 44%;
+    --scheduled:262 83% 58%; }
+  body{ background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:'Geist','Inter',system-ui,sans-serif; margin:0; }
+  h1,h2,h3,h4{ font-weight:700; letter-spacing:-0.025em; }
+  .nx-card{ background:#fff; border:1px solid hsl(var(--border)); border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10); }
+  .nx-btn-primary{ background:hsl(var(--primary)); color:#fff; font-weight:600; border-radius:10px; }
+  .nx-btn-primary:hover{ background:hsl(186 83% 21%); }
+  .day{ display:flex; min-height:160px; flex-direction:column; border-radius:12px; border:1px solid hsl(var(--border)); }
+  .day-quiet{ background:hsl(var(--muted)/0.4); }
+  .plan-card{ border-radius:10px; border:1px solid hsl(var(--border)); border-left:3px solid hsl(var(--primary)); background:#fff; padding:8px; transition:all .15s; }
+  .plan-card:hover{ border-color:hsl(var(--primary)/0.6); box-shadow:0 1px 2px rgba(15,23,42,.05); }
+  .plan-card.sel{ border-color:hsl(var(--primary)); box-shadow:0 0 0 3px hsl(var(--primary)/0.18); }
+  .pill{ display:inline-flex; align-items:center; border-radius:9999px; padding:1px 6px; font-size:10px; font-weight:600; }
+  .legend{ border:1px dashed hsl(var(--primary)/0.5); background:hsl(var(--primary)/0.04); border-radius:12px; }
+  [data-old]{ filter:grayscale(.1); }
+</style>
+
+<body class="min-h-screen">
+  <div class="mx-auto max-w-[1380px] px-6 py-6">
+
+    <!-- ===== Page header (matches YourWeek.jsx) ===== -->
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="flex items-center gap-2 text-xl font-semibold"><i data-lucide="calendar-range" class="h-5 w-5 text-primary"></i> Your week</h1>
+        <p class="mt-1 text-sm text-muted-foreground">The week I&rsquo;d run for you, built from your captures. Open anything to review it. <b>Nothing publishes without your yes.</b></p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="schedBtn" class="hidden items-center gap-1.5 rounded-lg nx-btn-primary px-3 py-1.5 text-sm"><i data-lucide="send" class="h-4 w-4"></i> Schedule 2 approved</button>
+        <span class="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground"><i data-lucide="shield" class="h-3 w-3"></i> Producer view</span>
+      </div>
+    </div>
+
+    <!-- ===== NEW: week navigation bar ===== -->
+    <div class="legend mt-4 mb-1 px-3 py-1.5 text-3xs text-primary font-semibold flex items-center gap-1.5">
+      <i data-lucide="sparkles" class="h-3 w-3"></i> NEW — page back through finished weeks (read-only) or forward up to 4 weeks to plan ahead.
+    </div>
+    <div class="nx-card mt-2 flex items-center justify-between gap-3 px-3 py-2.5">
+      <button id="prevBtn" class="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed">
+        <i data-lucide="chevron-left" class="h-4 w-4"></i> Prev
+      </button>
+      <div class="flex items-center gap-2 text-center">
+        <i data-lucide="calendar" class="h-4 w-4 text-muted-foreground"></i>
+        <div>
+          <div id="weekLabel" class="text-sm font-bold leading-tight">Jun 22 – 28</div>
+          <div id="weekSub" class="text-3xs font-semibold uppercase tracking-wide text-primary">This week</div>
+        </div>
+        <button id="todayBtn" class="ml-2 hidden rounded-md border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted">Back to this week</button>
+      </div>
+      <button id="nextBtn" class="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed">
+        Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+      </button>
+    </div>
+    <!-- ===== Banner for the active week ===== -->
+    <div id="banner" class="mt-4"></div>
+
+    <!-- ===== Grid area (rendered by JS) ===== -->
+    <div class="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div class="min-w-0 flex-1">
+        <div id="grid" class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"></div>
+      </div>
+      <!-- right rail (static-ish; backlog is week-agnostic) -->
+      <div class="w-full shrink-0 space-y-3 lg:w-72">
+        <div class="nx-card p-3.5">
+          <div class="mb-2 flex items-center gap-2"><i data-lucide="archive" class="h-4 w-4 text-muted-foreground"></i><span class="text-sm font-bold">Backlog</span>
+            <span class="ml-auto rounded-full bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground">7 banked</span></div>
+          <p class="text-2xs text-muted-foreground">Banked surplus. <b>Generate ahead</b> pulls from here to fill a future week.</p>
+        </div>
+        <div id="emptyRail" class="legend p-3.5 text-2xs text-primary hidden">
+          <div class="flex items-center gap-1.5 font-bold mb-1"><i data-lucide="info" class="h-3.5 w-3.5"></i> Planning ahead</div>
+          Generating a future week pulls from your backlog (and any captures already in that week&rsquo;s window). It never auto-publishes — you still approve every piece.
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== What-changed legend ===== -->
+    <div class="legend mt-6 p-4">
+      <div class="flex items-center gap-2 text-sm font-bold text-primary mb-2"><i data-lucide="wand-2" class="h-4 w-4"></i> What changed here</div>
+      <ul class="space-y-1.5 text-xs text-foreground/80 list-disc pl-5">
+        <li><b>Overflow fix:</b> the expanded Review panel now <b>stacks</b> its two actions full-width (&ldquo;Sounds like me&rdquo; over &ldquo;Open to change&rdquo;) instead of cramming them side-by-side. They can never wrap or spill out of a narrow day column again.</li>
+        <li><b>Week navigation:</b> ◀ Prev / Next ▶ with a week-of label + relative tag (&ldquo;Last week&rdquo;, &ldquo;In 3 weeks&rdquo;) and &ldquo;Back to this week.&rdquo; Page <b>back through finished weeks (read-only)</b> or forward up to <b>+4 weeks</b> to plan ahead.</li>
+        <li><b>Generate ahead:</b> an un-planned future week shows a single <b>Plan this week</b> CTA → Bernard composes it from backlog + captures, then you review/approve early. (Click Next, then Plan, to feel it.)</li>
+      </ul>
+    </div>
+
+    <!-- before/after inset -->
+    <div class="grid sm:grid-cols-2 gap-4 mt-4">
+      <div class="nx-card p-3">
+        <div class="text-3xs font-bold uppercase tracking-wide text-destructive mb-2" style="color:hsl(var(--action))">Before — overflows in a narrow column</div>
+        <div class="plan-card" style="max-width:150px" data-old>
+          <div class="mb-1 flex items-center gap-1.5"><i data-lucide="instagram" class="h-3 w-3 text-muted-foreground"></i><span class="text-3xs font-bold uppercase tracking-wide text-muted-foreground">IG STORY · 8:00</span></div>
+          <div class="text-2xs font-semibold leading-snug mb-1.5">Story</div>
+          <div class="mt-1.5 border-t pt-1.5">
+            <p class="text-2xs italic leading-snug text-muted-foreground">&ldquo;Your back isn&rsquo;t the problem…&rdquo;</p>
+            <div class="mt-1.5 flex items-center gap-1">
+              <button class="inline-flex flex-1 items-center justify-center gap-1 rounded-md nx-btn-primary px-2 py-1 text-3xs"><i data-lucide="check" class="h-3 w-3"></i> Sounds like me</button>
+              <a class="rounded-md border px-2 py-1 text-3xs font-semibold">Change</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nx-card p-3">
+        <div class="text-3xs font-bold uppercase tracking-wide mb-2" style="color:hsl(var(--success))">After — stacked, fits any width</div>
+        <div class="plan-card" style="max-width:150px">
+          <div class="mb-1 flex items-center gap-1.5"><i data-lucide="instagram" class="h-3 w-3 text-muted-foreground"></i><span class="text-3xs font-bold uppercase tracking-wide text-muted-foreground">IG STORY · 8:00</span></div>
+          <div class="text-2xs font-semibold leading-snug mb-1.5">Story</div>
+          <div class="mt-1.5 border-t pt-1.5">
+            <p class="text-2xs italic leading-snug text-muted-foreground">&ldquo;Your back isn&rsquo;t the problem…&rdquo;</p>
+            <div class="mt-1.5 flex flex-col gap-1">
+              <button class="inline-flex w-full items-center justify-center gap-1 rounded-md nx-btn-primary px-2 py-1.5 text-3xs"><i data-lucide="check" class="h-3 w-3"></i> Sounds like me</button>
+              <a class="inline-flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"><i data-lucide="pencil" class="h-3 w-3"></i> Open to change</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  // ---- mock week state (offset from THIS week's Monday) ----
+  const MIN_OFFSET = -8, MAX_OFFSET = 4;     // past 8 wks read-only · forward 4 wks plannable
+  const THIS_MONDAY = new Date(2026, 5, 22); // Jun 22 2026 (Mon)
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function weekMeta(off){
+    const mon = new Date(THIS_MONDAY); mon.setDate(mon.getDate()+off*7);
+    const sun = new Date(mon); sun.setDate(sun.getDate()+6);
+    const label = mon.getMonth()===sun.getMonth()
+      ? `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${sun.getDate()}`
+      : `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${MONTHS[sun.getMonth()]} ${sun.getDate()}`;
+    let sub;
+    if(off===0) sub='This week'; else if(off===1) sub='Next week'; else if(off===-1) sub='Last week';
+    else if(off>1) sub=`In ${off} weeks`; else sub=`${-off} weeks ago`;
+    return { label, sub };
+  }
+  // planned[off]=true means a future week has been generated. Past weeks + this week
+  // always have content; future weeks start un-planned.
+  const state = { off:0, planned:{0:true} };
+
+  function pill(txt, kind){
+    const map = {
+      review:'background:hsl(var(--muted));color:hsl(var(--muted-foreground))',
+      needs:'background:hsl(var(--action)/0.1);color:hsl(var(--action))',
+      approved:'background:hsl(var(--primary)/0.1);color:hsl(var(--primary))',
+      scheduled:'background:hsl(var(--success)/0.1);color:hsl(var(--success))',
+      open:'background:hsl(var(--success)/0.1);color:hsl(var(--success))',
+    };
+    return `<span class="pill" style="${map[kind]||map.review}">${txt}</span>`;
+  }
+
+  // a single collapsed card
+  function card({plat,icon,time,title,state:st,label}){
+    let action = '';
+    if(st==='needs') action = `<button class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"><i data-lucide="sparkles" class="h-3 w-3"></i> Draft</button>`;
+    else if(st==='review') action = `<button class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"><i data-lucide="chevron-down" class="h-3 w-3"></i> Review</button>`;
+    else action = `<a class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"><i data-lucide="eye" class="h-3 w-3"></i> Open</a>`;
+    return `<div class="plan-card">
+      <div class="mb-1 flex items-center gap-1.5"><i data-lucide="${icon}" class="h-3 w-3 text-muted-foreground"></i><span class="text-3xs font-bold uppercase tracking-wide text-muted-foreground">${plat}${time?' · '+time:''}</span></div>
+      <div class="text-2xs font-semibold leading-snug mb-1.5" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${title}</div>
+      <div class="flex items-center justify-between gap-1">${pill(label,st)}${action}</div>
+    </div>`;
+  }
+
+  // the FIXED expanded review card (stacked actions)
+  function expandedCard(){
+    return `<div class="plan-card sel">
+      <div class="mb-1 flex items-center gap-1.5"><i data-lucide="instagram" class="h-3 w-3 text-muted-foreground"></i><span class="text-3xs font-bold uppercase tracking-wide text-muted-foreground">IG STORY · 8:00 AM</span></div>
+      <div class="text-2xs font-semibold leading-snug mb-1.5">Story</div>
+      <div class="flex items-center justify-between gap-1">${pill('in review','review')}
+        <button class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"><i data-lucide="chevron-up" class="h-3 w-3"></i> Review</button></div>
+      <div class="mt-1.5 border-t pt-1.5">
+        <p class="text-2xs italic leading-snug text-muted-foreground" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">&ldquo;Your back isn&rsquo;t the problem — the pattern is. Here&rsquo;s the one change that breaks the cycle…&rdquo;</p>
+        <div class="mt-1.5 flex flex-col gap-1">
+          <button class="inline-flex w-full items-center justify-center gap-1 rounded-md nx-btn-primary px-2 py-1.5 text-3xs"><i data-lucide="check" class="h-3 w-3"></i> Sounds like me</button>
+          <a class="inline-flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"><i data-lucide="pencil" class="h-3 w-3"></i> Open to change</a>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function dayCol(name, inner, quiet){
+    return `<div class="day ${quiet?'day-quiet':''}">
+      <div class="px-2.5 pt-2.5 pb-1.5 text-2xs font-bold">${name}</div>
+      <div class="flex flex-1 flex-col gap-2 px-2 pb-2">${inner||(quiet?`<div class="flex flex-1 flex-col items-center justify-center gap-1 text-muted-foreground"><i data-lucide="moon" class="h-4 w-4"></i><span class="text-3xs font-semibold">Quiet</span></div>`:'')}</div>
+    </div>`;
+  }
+
+  function renderThisWeek(){
+    const cols = [
+      dayCol('Mon',
+        card({plat:'LINKEDIN',icon:'linkedin',time:'7:00 AM',title:'Clinical Perspective',state:'review',label:'in review'})
+        + expandedCard()),
+      dayCol('Tue',
+        card({plat:'IG STORY',icon:'instagram',time:'8:00 AM',title:'Quick win',state:'needs',label:'needs draft'})),
+      dayCol('Wed',
+        card({plat:'INSTAGRAM',icon:'instagram',time:'11:00 AM',title:'Pattern of the week',state:'approved',label:'approved'})),
+      dayCol('Thu',
+        card({plat:'GBP',icon:'map-pin',time:'9:00 AM',title:'Office update',state:'scheduled',label:'scheduled'})),
+      dayCol('Fri',
+        card({plat:'LINKEDIN',icon:'linkedin',time:'7:00 AM',title:'Founder note',state:'review',label:'in review'})),
+      dayCol('Sat','',true),
+      dayCol('Sun','',true),
+    ];
+    return cols.join('');
+  }
+
+  function renderGenerated(){
+    const cols = [
+      dayCol('Mon', card({plat:'LINKEDIN',icon:'linkedin',time:'7:00 AM',title:'From backlog: posture myth',state:'needs',label:'needs draft'})),
+      dayCol('Tue', card({plat:'IG STORY',icon:'instagram',time:'8:00 AM',title:'Quick win',state:'needs',label:'needs draft'})),
+      dayCol('Wed', card({plat:'INSTAGRAM',icon:'instagram',time:'11:00 AM',title:'Banked: recovery tip',state:'needs',label:'needs draft'})),
+      dayCol('Thu', card({plat:'GBP',icon:'map-pin',time:'9:00 AM',title:'Office update',state:'needs',label:'needs draft'})),
+      dayCol('Fri', card({plat:'LINKEDIN',icon:'linkedin',time:'7:00 AM',title:'Banked: case angle',state:'needs',label:'needs draft'})),
+      dayCol('Sat','',true),
+      dayCol('Sun','',true),
+    ];
+    return cols.join('');
+  }
+
+  function renderEmpty(){
+    return `<div class="col-span-2 sm:col-span-4 lg:col-span-7 nx-card p-10 text-center" style="border-style:dashed">
+      <i data-lucide="calendar-plus" class="mx-auto h-9 w-9 text-primary/60"></i>
+      <p class="mt-2 text-sm font-semibold">Nothing planned for ${weekMeta(state.off).label} yet</p>
+      <p class="mx-auto mt-1 max-w-md text-xs text-muted-foreground">I&rsquo;ll compose this week from your backlog and any captures in its window — paced across your channels. You review and approve before anything schedules.</p>
+      <button id="planBtn" class="mt-4 inline-flex items-center gap-1.5 rounded-lg nx-btn-primary px-4 py-2 text-sm"><i data-lucide="sparkles" class="h-4 w-4"></i> Plan this week</button>
+    </div>`;
+  }
+
+  // Past week — read-only history. Cards show final state, no Draft/approve actions.
+  function renderPast(){
+    const cols = [
+      dayCol('Mon', card({plat:'LINKEDIN',icon:'linkedin',time:'7:00 AM',title:'Posture myth',state:'open',label:'published'})),
+      dayCol('Tue', card({plat:'IG STORY',icon:'instagram',time:'8:00 AM',title:'Quick win',state:'open',label:'published'})),
+      dayCol('Wed', card({plat:'INSTAGRAM',icon:'instagram',time:'11:00 AM',title:'Pattern of the week',state:'open',label:'published'})),
+      dayCol('Thu','',true),
+      dayCol('Fri', card({plat:'LINKEDIN',icon:'linkedin',time:'7:00 AM',title:'Founder note',state:'open',label:'published'})),
+      dayCol('Sat','',true),
+      dayCol('Sun','',true),
+    ];
+    return cols.join('');
+  }
+
+  function render(){
+    const m = weekMeta(state.off);
+    const isPast = state.off < 0, isFuture = state.off > 0, isNow = state.off === 0;
+    document.getElementById('weekLabel').textContent = m.label;
+    document.getElementById('weekSub').textContent = m.sub;
+    document.getElementById('prevBtn').disabled = state.off === MIN_OFFSET;
+    document.getElementById('nextBtn').disabled = state.off === MAX_OFFSET;
+    document.getElementById('todayBtn').classList.toggle('hidden', isNow);
+    document.getElementById('schedBtn').classList.toggle('hidden', !isNow);
+    document.getElementById('schedBtn').classList.toggle('flex', isNow);
+    document.getElementById('emptyRail').classList.toggle('hidden', !(isFuture && state.planned[state.off]));
+
+    // banner
+    const banner = document.getElementById('banner');
+    if(isPast){
+      banner.innerHTML = `<div class="legend px-3 py-2 text-2xs text-muted-foreground flex items-center gap-1.5" style="border-color:hsl(var(--border));background:hsl(var(--muted)/0.4)"><i data-lucide="history" class="h-3.5 w-3.5"></i> <b>Past week — read-only.</b> What ran the week of ${m.label}. Open any piece to view it; finished weeks can&rsquo;t be re-planned.</div>`;
+    } else if(isFuture && state.planned[state.off]){
+      banner.innerHTML = `<div class="legend px-3 py-2 text-2xs text-primary flex items-center gap-1.5"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i> <b>Planned ahead.</b> Review &amp; approve these now — they sit ready until ${m.label}. Nothing publishes without your yes.</div>`;
+    } else { banner.innerHTML = ''; }
+
+    // grid
+    const grid = document.getElementById('grid');
+    if(isPast) grid.innerHTML = renderPast();
+    else if(isNow) grid.innerHTML = renderThisWeek();
+    else grid.innerHTML = state.planned[state.off] ? renderGenerated() : renderEmpty();
+
+    lucide.createIcons();
+    const pb = document.getElementById('planBtn');
+    if(pb) pb.onclick = ()=>{ state.planned[state.off]=true; render(); };
+  }
+
+  document.getElementById('prevBtn').onclick = ()=>{ if(state.off>MIN_OFFSET){state.off--;render();} };
+  document.getElementById('nextBtn').onclick = ()=>{ if(state.off<MAX_OFFSET){state.off++;render();} };
+  document.getElementById('todayBtn').onclick = ()=>{ state.off=0; render(); };
+
+  lucide.createIcons();
+  render();
+</script>
+</body>
