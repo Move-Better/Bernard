@@ -332,7 +332,7 @@ export default function VoiceTraining() {
           Record yourself reading the passage below — about 3 minutes works best. After you submit, Bernard will create a voice clone you can use for blog audio, handouts, and other narration.
         </p>
         {!staffId && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-2">
+          <p className="text-sm text-warning bg-warning/10 border border-warning/30 rounded px-3 py-2 mt-2">
             You don&apos;t have a clinician profile in this workspace yet — complete your first interview before training a voice clone.
           </p>
         )}

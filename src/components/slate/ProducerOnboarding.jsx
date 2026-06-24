@@ -202,7 +202,7 @@ function TabsStep() {
 function TabRow({ Icon, name, desc, accent }) {
   const colorMap = {
     primary: 'text-primary',
-    amber:   'text-amber-600',
+    amber:   'text-warning',
     sky:     'text-sky-600',
     emerald: 'text-success',
   }

@@ -134,7 +134,7 @@ export default async function handler(req, res) {
     // Fetch the full workspace rows in one shot (synthesizeBook needs the
     // brand_voice, display_name, etc).
     const ids = stale.map((s) => s.workspace_id).filter((id) => UUID_RE.test(id))
-    const wsRes = await sb(`workspaces?id=in.(${ids.join(',')})&select=*`)
+    const wsRes = await sb(`workspaces?id=in.(${ids.join(',')})&status=eq.active&select=*`)
     if (!wsRes.ok) {
       await logSbErr('list workspaces', wsRes)
       return res.status(200).json({ ...summary, error: 'workspace fetch failed' })

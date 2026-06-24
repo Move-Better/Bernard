@@ -527,7 +527,7 @@ function GenerationStyleSwitcher({ piece, story }) {
             Switch to <span className="font-medium">{GENERATION_STYLE_LABELS[pending]}</span>?
             The current draft and approval state will be replaced with a fresh AI generation.
           </p>
-          <p className="text-amber-800/80">
+          <p className="text-warning/80">
             {GENERATION_STYLE_DESCRIPTIONS[pending]}
           </p>
           <div className="flex gap-1.5 justify-end">
@@ -628,7 +628,7 @@ function RegenerateButton({ piece, story }) {
           <span className="text-warning">
             Replace this draft with a fresh AI generation? Current text and approval state will be lost.
             {piece.staff_name && (
-              <span className="block mt-0.5 text-amber-700/80">
+              <span className="block mt-0.5 text-warning/80">
                 Bernard will apply {piece.staff_name}&rsquo;s voice settings.
               </span>
             )}
@@ -636,7 +636,7 @@ function RegenerateButton({ piece, story }) {
         </div>
         {isBlog && (
           <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-warning/30">
-            <span className="text-amber-800 font-medium mr-1">Length:</span>
+            <span className="text-warning font-medium mr-1">Length:</span>
             {LENGTH_PRESETS.map((p) => {
               const selected = p.id === lengthPreset
               return (
@@ -647,8 +647,8 @@ function RegenerateButton({ piece, story }) {
                   title={`${p.description} (${p.targetWords} words)`}
                   className={`rounded-full border px-2 py-0.5 text-xs transition ${
                     selected
-                      ? 'border-amber-500 bg-amber-200 text-amber-900 font-medium'
-                      : 'border-amber-300 bg-card text-amber-700 hover:bg-warning/10'
+                      ? 'border-warning/60 bg-warning/30 text-warning font-medium'
+                      : 'border-warning/30 bg-card text-warning hover:bg-warning/10'
                   }`}
                 >
                   {p.emoji} {p.label}
@@ -1162,7 +1162,7 @@ function WhenToPublishCard({
             className="h-8 text-sm w-fit"
           />
           {customConflict && (
-            <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-warning/10 border border-warning/30 rounded px-2 py-1.5">
+            <div className="flex items-start gap-1.5 text-xs text-warning bg-warning/10 border border-warning/30 rounded px-2 py-1.5">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
                 Another {PLATFORM_META[piece.platform]?.label || piece.platform} post is scheduled near this time
@@ -1754,7 +1754,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             onClick={() => setChangeRequestOpen((v) => !v)}
             disabled={isBusy}
           >
-            <XCircle className="h-3.5 w-3.5 mr-1.5 text-amber-600" />
+            <XCircle className="h-3.5 w-3.5 mr-1.5 text-warning" />
             Request changes
             <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${changeRequestOpen ? 'rotate-180' : ''}`} />
           </Button>
@@ -1819,7 +1819,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               variant="outline"
               disabled={!changeRequestBody.trim() || isBusy}
               loading={isBusy}
-              className="border-amber-400 text-amber-700 hover:bg-warning/10"
+              className="border-warning/40 text-warning hover:bg-warning/10"
             >
               Submit request
             </Button>
@@ -2021,7 +2021,7 @@ export default function AssetsPane({
             const schedDate = new Date(active.scheduled_at)
             const isStale = schedDate < new Date()
             return isStale ? (
-              <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+              <span className="flex items-center gap-1 text-xs text-warning font-medium">
                 <span>⚠ Schedule expired ({fmt(schedDate)}) — repick a time before publishing</span>
               </span>
             ) : (

@@ -162,15 +162,19 @@ function isPlainObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
 }
 
+const JSONB_MAX_BYTES = 50_000
+
 function sanitizePatientContext(value) {
   if (value === null || value === undefined) return {}
   if (!isPlainObject(value)) return null
+  if (JSON.stringify(value).length > JSONB_MAX_BYTES) return null
   return value
 }
 
 function sanitizeInterviewContext(value) {
   if (value === null || value === undefined) return {}
   if (!isPlainObject(value)) return null
+  if (JSON.stringify(value).length > JSONB_MAX_BYTES) return null
   return value
 }
 

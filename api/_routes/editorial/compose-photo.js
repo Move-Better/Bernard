@@ -29,6 +29,7 @@ import { renderWhoopPhoto, WHOOP_TEMPLATE_IDS } from '../../_lib/whoopTemplates.
 
 // Templates that render a full card without a source photo.
 const NO_PHOTO_TEMPLATES = new Set(['dark-claim', 'light-claim'])
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -70,6 +71,7 @@ export default async function handler(req, res) {
   const body = req.body || {}
   const pieceId = String(body.pieceId || '').trim()
   if (!pieceId) return res.status(400).json({ error: 'pieceId_required' })
+  if (!UUID_RE.test(pieceId)) return res.status(400).json({ error: 'invalid_pieceId' })
 
   const treatment = (body.treatment && typeof body.treatment === 'object') ? body.treatment : {}
 
