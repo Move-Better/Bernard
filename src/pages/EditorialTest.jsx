@@ -42,7 +42,7 @@ function similarityBadge(sim) {
   const pct = Math.round(sim * 100)
   const color =
     pct >= 80 ? 'bg-green-100 text-green-800' :
-    pct >= 65 ? 'bg-yellow-100 text-yellow-800' :
+    pct >= 65 ? 'bg-warning/10 text-warning' :
                 'bg-zinc-100 text-zinc-700'
   return (
     <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${color}`}>

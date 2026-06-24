@@ -20,7 +20,7 @@ export const PLATFORM_META = {
   instagram:    { label: 'Instagram',       icon: Instagram,  color: 'text-pink-600',   bg: 'bg-pink-50' },
   instagram_story:{ label: 'Instagram Story', icon: Instagram, color: 'text-pink-600',   bg: 'bg-pink-50' },
   facebook:     { label: 'Facebook',        icon: Facebook,   color: 'text-blue-600',   bg: 'bg-blue-50' },
-  linkedin:     { label: 'LinkedIn',        icon: Linkedin,   color: 'text-sky-700',    bg: 'bg-sky-50' },
+  linkedin:     { label: 'LinkedIn',        icon: Linkedin,   color: 'text-info',       bg: 'bg-info/10' },
   gbp:          { label: 'Google Business', icon: MapPin,     color: 'text-primary',    bg: 'bg-primary/10' },
   google_ads:   { label: 'Google Ads',      icon: MousePointer2, color: 'text-yellow-700', bg: 'bg-yellow-50' },
   instagram_ads:{ label: 'Instagram Ads',   icon: Megaphone,  color: 'text-rose-600',   bg: 'bg-rose-50' },

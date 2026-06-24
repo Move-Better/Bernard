@@ -27,14 +27,14 @@ const PLATFORM_DOT = {
   blog:          'bg-muted-foreground/60',
   instagram:     'bg-pink-500',
   facebook:      'bg-blue-500',
-  linkedin:      'bg-sky-600',
+  linkedin:      'bg-info',
   gbp:           'bg-green-600',
   google_ads:    'bg-yellow-500',
   instagram_ads: 'bg-rose-500',
   landing_page:  'bg-primary',
   youtube:       'bg-red-500',
   tiktok:        'bg-fuchsia-500',
-  email:         'bg-teal-500',
+  email:         'bg-info',
 }
 
 /**

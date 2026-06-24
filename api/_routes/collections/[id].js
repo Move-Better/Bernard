@@ -110,11 +110,12 @@ async function handler(req, res) {
       body:   JSON.stringify(body),
     })
     if (!r.ok) {
-      const text = await r.text()
+      const text = await r.text().catch(() => '')
+      console.error('[collections/patch] supabase error:', text.slice(0, 300))
       if (text.includes('23505')) {
-        return res.status(409).json({ error: 'A collection with that slug already exists', detail: text })
+        return res.status(409).json({ error: 'A collection with that slug already exists' })
       }
-      return res.status(500).json({ error: 'Update failed', detail: text })
+      return res.status(500).json({ error: 'Update failed' })
     }
     const data = await r.json()
     return res.status(200).json(data[0] ?? null)

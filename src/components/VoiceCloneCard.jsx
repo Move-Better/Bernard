@@ -83,7 +83,7 @@ export default function VoiceCloneCard({ staffMember }) {
               <Button asChild variant="outline" size="sm">
                 <Link to="/settings/voice-training">Re-train</Link>
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={onRevoke} disabled={revoking} className="text-red-700 hover:text-red-800 hover:bg-red-50">
+              <Button type="button" variant="ghost" size="sm" onClick={onRevoke} disabled={revoking} className="text-destructive hover:text-destructive/80 hover:bg-destructive/10">
                 {revoking ? (
                   <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Revoking…</>
                 ) : (

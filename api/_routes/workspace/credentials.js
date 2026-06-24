@@ -109,7 +109,7 @@ async function handler(req, res) {
 
     let r
     if (existing?.id) {
-      r = await sb(`workspace_credentials?id=eq.${existing.id}`, {
+      r = await sb(`workspace_credentials?id=eq.${existing.id}&workspace_id=eq.${workspace.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ config: safeConfig, secret_ciphertext, status: 'active' }),
       })

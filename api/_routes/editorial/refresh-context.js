@@ -13,7 +13,10 @@ export const config = { runtime: 'nodejs', maxDuration: 60 }
 import { requireRole } from '../../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { fetchFusedRagContext } from '../../_lib/ragFusion.js'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -43,9 +46,12 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
+  if (!(await enforceLimit(req, res, 'ai'))) return
+
   const body = req.body || {}
   const packageId = String(body.packageId || '').trim()
   if (!packageId) return res.status(400).json({ error: 'packageId_required' })
+  if (!UUID_RE.test(packageId)) return res.status(400).json({ error: 'invalid_packageId' })
 
   // Fetch the package (workspace-scoped)
   const pkgRes = await sb(
