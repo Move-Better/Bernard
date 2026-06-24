@@ -65,11 +65,13 @@ async function handler(req, res) {
       const staffId = String(body.staffId || '')
       const userId = String(body.userId || '')
       if (!staffId || !userId) return res.status(400).json({ error: 'Missing staffId or userId' })
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'Invalid staffId' })
 
       // The claim target must be a real member of this org — never bind a row
-      // to an arbitrary Clerk id.
+      // to an arbitrary Clerk id. If Clerk is unavailable, fail safe (reject).
       const members = await fetchClerkMembers(auth.orgId)
-      if (members.length && !members.some((m) => m.user_id === userId)) {
+      if (!members.length || !members.some((m) => m.user_id === userId)) {
         return res.status(400).json({ error: 'Target user is not a member of this workspace' })
       }
 
@@ -114,6 +116,9 @@ async function handler(req, res) {
       const targetId = String(body.targetId || '')
       if (!sourceId || !targetId) return res.status(400).json({ error: 'Missing sourceId or targetId' })
       if (sourceId === targetId) return res.status(400).json({ error: 'Source and target are the same row' })
+      const UUID_RE_MERGE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!UUID_RE_MERGE.test(sourceId)) return res.status(400).json({ error: 'Invalid sourceId' })
+      if (!UUID_RE_MERGE.test(targetId)) return res.status(400).json({ error: 'Invalid targetId' })
 
       // Both rows must live in this workspace (defense-in-depth — merge_staff()
       // re-checks, but fail fast with a clear message and never leak the RPC's

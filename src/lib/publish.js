@@ -97,7 +97,9 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
       // copy to each Google listing instead of the same canonical body.
       if (location_overrides && typeof location_overrides === 'object') {
         body.locationContents = Object.fromEntries(
-          Object.entries(location_overrides).map(([id, v]) => [id, v.content]),
+          Object.entries(location_overrides)
+            .filter(([, v]) => v && typeof v === 'object')
+            .map(([id, v]) => [id, v.content]),
         )
       }
     }
