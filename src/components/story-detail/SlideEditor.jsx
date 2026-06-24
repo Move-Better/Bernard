@@ -26,7 +26,7 @@ import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 
 // Role label + chip colors. Mirrors the mockup palette.
 const ROLE_META = {
-  hook:        { label: 'Hook',        chip: 'bg-amber-100 text-amber-800' },
+  hook:        { label: 'Hook',        chip: 'bg-action/10 text-action' },
   body:        { label: 'Body',        chip: 'bg-primary/10 text-primary' },
   caption:     { label: 'Caption',     chip: 'bg-primary/10 text-primary' },
   cta:         { label: 'CTA',         chip: 'bg-muted text-muted-foreground' },

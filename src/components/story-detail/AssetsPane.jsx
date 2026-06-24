@@ -130,7 +130,7 @@ function CommentThread({ pieceId }) {
           key={c.id}
           className={`rounded-md p-2.5 text-xs ${
             c.kind === 'change_request'
-              ? 'bg-amber-50 border border-amber-200'
+              ? 'bg-warning/10 border border-warning/30'
               : 'bg-muted/40 border border-border'
           }`}
         >
@@ -140,7 +140,7 @@ function CommentThread({ pieceId }) {
               {timeAgo(c.created_at)}
             </span>
             {c.kind === 'change_request' && (
-              <span className="ml-auto text-amber-700 font-medium">Change request</span>
+              <span className="ml-auto text-warning font-medium">Change request</span>
             )}
           </div>
           <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">{c.body}</p>
@@ -522,8 +522,8 @@ function GenerationStyleSwitcher({ piece, story }) {
       </p>
 
       {pending && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs space-y-2">
-          <p className="text-amber-900">
+        <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs space-y-2">
+          <p className="text-warning">
             Switch to <span className="font-medium">{GENERATION_STYLE_LABELS[pending]}</span>?
             The current draft and approval state will be replaced with a fresh AI generation.
           </p>
@@ -534,7 +534,7 @@ function GenerationStyleSwitcher({ piece, story }) {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-100"
+              className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
               onClick={() => handleSwitch(pending)}
             >
               Switch &amp; regenerate
@@ -623,9 +623,9 @@ function RegenerateButton({ piece, story }) {
 
   if (confirming) {
     return (
-      <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs space-y-2">
+      <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs space-y-2">
         <div className="flex items-start gap-2">
-          <span className="text-amber-800">
+          <span className="text-warning">
             Replace this draft with a fresh AI generation? Current text and approval state will be lost.
             {piece.staff_name && (
               <span className="block mt-0.5 text-amber-700/80">
@@ -635,7 +635,7 @@ function RegenerateButton({ piece, story }) {
           </span>
         </div>
         {isBlog && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-amber-200">
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-warning/30">
             <span className="text-amber-800 font-medium mr-1">Length:</span>
             {LENGTH_PRESETS.map((p) => {
               const selected = p.id === lengthPreset
@@ -648,7 +648,7 @@ function RegenerateButton({ piece, story }) {
                   className={`rounded-full border px-2 py-0.5 text-xs transition ${
                     selected
                       ? 'border-amber-500 bg-amber-200 text-amber-900 font-medium'
-                      : 'border-amber-300 bg-white text-amber-700 hover:bg-amber-100'
+                      : 'border-amber-300 bg-card text-amber-700 hover:bg-warning/10'
                   }`}
                 >
                   {p.emoji} {p.label}
@@ -661,7 +661,7 @@ function RegenerateButton({ piece, story }) {
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-100"
+            className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
             onClick={handleRegenerate}
           >
             Regenerate
@@ -1162,7 +1162,7 @@ function WhenToPublishCard({
             className="h-8 text-sm w-fit"
           />
           {customConflict && (
-            <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+            <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-warning/10 border border-warning/30 rounded px-2 py-1.5">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
                 Another {PLATFORM_META[piece.platform]?.label || piece.platform} post is scheduled near this time
@@ -1685,7 +1685,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               onClick={handleCancelScheduled}
               disabled={publishing || !piece.buffer_update_id}
               loading={publishing}
-              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              className="border-warning/30 text-warning hover:bg-warning/10"
             >
               {!publishing && <XCircle className="h-3.5 w-3.5 mr-1.5" />}
               Cancel scheduled post
@@ -1739,7 +1739,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             onClick={handleUnapprove}
             disabled={isBusy}
             loading={isBusy && updateStatus.isPending}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+            className="border-warning/30 text-warning hover:bg-warning/10"
           >
             {!(isBusy && updateStatus.isPending) && <RotateCcw className="h-3.5 w-3.5 mr-1.5" />}
             Unapprove
@@ -1806,7 +1806,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       {!isPublish && changeRequestOpen && (
         <form onSubmit={handleRequestChanges} className="space-y-2">
           <textarea
-            className="w-full text-xs rounded border border-amber-300 bg-amber-50 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 min-h-[72px]"
+            className="w-full text-xs rounded border border-warning/30 bg-warning/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-warning/50 min-h-[72px]"
             placeholder="Describe what needs to change…"
             value={changeRequestBody}
             onChange={(e) => setChangeRequestBody(e.target.value)}
@@ -1819,7 +1819,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               variant="outline"
               disabled={!changeRequestBody.trim() || isBusy}
               loading={isBusy}
-              className="border-amber-400 text-amber-700 hover:bg-amber-50"
+              className="border-amber-400 text-amber-700 hover:bg-warning/10"
             >
               Submit request
             </Button>

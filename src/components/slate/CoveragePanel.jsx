@@ -31,7 +31,7 @@ function StaffRow({ c }) {
               No clips
             </span>
           ) : stale ? (
-            <span className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-action/10 text-action border border-action/30">
               Stale
             </span>
           ) : null}
@@ -70,7 +70,7 @@ function TopicRow({ t }) {
           ? <CheckCircle2 className="h-4 w-4 text-success" />
           : priority === 'high'
             ? <TrendingDown className="h-4 w-4 text-destructive" />
-            : <Lightbulb className="h-4 w-4 text-amber-600" />}
+            : <Lightbulb className="h-4 w-4 text-action" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{t.topic}</p>
@@ -142,7 +142,7 @@ export default function CoveragePanel() {
             Staff capture activity
           </h2>
           {staleStaffCount > 0 && (
-            <span className="text-2xs font-semibold text-amber-700">
+            <span className="text-2xs font-semibold text-action">
               {staleStaffCount} need{staleStaffCount !== 1 ? '' : 's'} attention
             </span>
           )}
@@ -166,7 +166,7 @@ export default function CoveragePanel() {
             Topic coverage
           </h2>
           {gapsCount > 0 && (
-            <span className="text-2xs font-semibold text-amber-700">
+            <span className="text-2xs font-semibold text-action">
               {gapsCount} gap{gapsCount !== 1 ? 's' : ''}
             </span>
           )}

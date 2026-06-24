@@ -111,7 +111,7 @@ export default function StoryCard({ story }) {
               key={p}
               className="inline-flex items-center gap-1 text-2xs font-semibold text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5"
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_DOT[p] ?? 'bg-gray-400'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_DOT[p] ?? 'bg-muted-foreground/60'}`} />
               {PLATFORM_SHORT[p] ?? p}
             </span>
           ))}

@@ -36,7 +36,7 @@ export const STATUS_META = {
   in_review:  { label: 'In Review',  color: 'bg-amber-100 text-amber-700',   icon: Clock },
   approved:   { label: 'Ready to publish', color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CheckCircle2 },
   scheduled:  { label: 'Scheduled',  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CalendarDays },
-  published:  { label: 'Published',  color: 'bg-emerald-100 text-emerald-700', icon: Send },
+  published:  { label: 'Published',  color: 'bg-success/10 text-success', icon: Send },
   archived:   { label: 'Archived',   color: 'bg-zinc-100 text-zinc-600',     icon: Archive },
 }
 

@@ -7,7 +7,7 @@ import { toast } from '@/lib/toast'
 const STATUS_META = {
   not_required: { label: 'No consent needed',  icon: Shield,       cls: 'text-muted-foreground' },
   pending:      { label: 'Consent pending',    icon: ShieldAlert,  cls: 'text-amber-700' },
-  obtained:     { label: 'Consent obtained',   icon: ShieldCheck,  cls: 'text-emerald-700' },
+  obtained:     { label: 'Consent obtained',   icon: ShieldCheck,  cls: 'text-success' },
   revoked:      { label: 'Consent revoked',    icon: ShieldOff,    cls: 'text-destructive' },
 }
 
@@ -73,7 +73,7 @@ export default function ConsentControls({ sourceAssetId, consentStatus = 'not_re
 
   const bgCls =
     status === 'pending'  ? 'bg-amber-50 border-amber-200'         :
-    status === 'obtained' ? 'bg-emerald-50 border-emerald-200'     :
+    status === 'obtained' ? 'bg-success/10 border-success/30'     :
     status === 'revoked'  ? 'bg-destructive/5 border-destructive/30' :
                             'bg-muted/30 border-border'
 
@@ -91,7 +91,7 @@ export default function ConsentControls({ sourceAssetId, consentStatus = 'not_re
           <Button
             size="sm"
             variant="outline"
-            className="h-6 text-3xs px-2 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+            className="h-6 text-3xs px-2 border-emerald-300 text-success hover:bg-emerald-100"
             onClick={() => updateConsent('obtained')}
             disabled={saving}
           >

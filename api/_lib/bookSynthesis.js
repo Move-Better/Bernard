@@ -252,7 +252,12 @@ function parseChapters(text) {
   const end   = raw.lastIndexOf('}')
   if (start > 0) raw = raw.slice(start, end + 1)
 
-  const parsed = JSON.parse(raw)
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (e) {
+    throw new Error(`Book synthesis: model output was not valid JSON — ${e.message}`)
+  }
   if (!parsed || !Array.isArray(parsed.chapters)) {
     throw new Error('Model output missing chapters array')
   }

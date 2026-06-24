@@ -506,7 +506,7 @@ function ReconBtn({ children, onClick, busy, kind }) {
       ? 'bg-info text-white hover:bg-info/80'
       : kind === 'warn'
         ? 'bg-[#c04d18] text-white hover:bg-[#9a3d12]'
-        : 'bg-white text-foreground ring-1 ring-border hover:bg-[#f8fafc]'
+        : 'bg-card text-foreground ring-1 ring-border hover:bg-muted/50'
   return (
     <button
       onClick={onClick}

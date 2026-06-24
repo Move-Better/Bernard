@@ -240,7 +240,7 @@ export default function Book() {
         {isAdmin && hasManuscript && (
           <div className="flex items-center gap-2 shrink-0">
             {staleBadge && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
                 New material since the last rebuild
               </span>
             )}
