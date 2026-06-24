@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Loader2, RefreshCw, ChevronRight, Mic2 } from 'lucide-react'
+import { BookOpen, Loader2, RefreshCw, ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import LoadingState from '@/components/LoadingState'
 import { Button } from '@/components/ui/button'
@@ -135,6 +135,15 @@ export default function Home() {
 
   const attentionTotal = readyForContent.length + reviewCount + readyToDistribute.length + overdueCount
 
+  // Failed posts — a publish bundle.social rejected. A distribution concern, so
+  // it's gated to editors like readyToDistribute. Surfaced as its OWN banner
+  // (below) rather than folded into the attention strip: a dead post is more
+  // urgent than a to-do and must not get buried in the comma list.
+  const failedPieces = useMemo(
+    () => (isEditor ? stories.flatMap((s) => (s.pieces || []).filter((p) => p.status === 'failed')) : []),
+    [stories, isEditor]
+  )
+
   // Blog review nudge — clinicians who opted in and have posts awaiting their read
   const { data: weekData } = useQuery({
     queryKey: ['week-summary'],
@@ -198,6 +207,28 @@ export default function Home() {
 
       {/* Call-first hero — only for realtime-voice workspaces. */}
       {callFirst && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
+
+      {/* Failed-publish alert — a post bundle.social rejected. Rendered above the
+          amber attention strip because a dead post is more urgent than a to-do and
+          must not get buried in the comma list. Links straight to the failed
+          piece (single) so the fix is one click away. */}
+      {failedPieces.length > 0 && (
+        <Link
+          to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories'}
+          className="flex items-center gap-3 rounded-xl px-4 py-3 hover:brightness-[0.98] transition"
+          style={{ background: 'hsl(var(--destructive) / 0.07)', border: '1px solid hsl(var(--destructive) / 0.28)' }}
+        >
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">
+            <AlertTriangle className="h-4 w-4" />
+          </span>
+          <span className="text-sm font-medium text-foreground">
+            {failedPieces.length} {failedPieces.length === 1 ? 'post' : 'posts'} failed to publish
+          </span>
+          <span className="ml-auto inline-flex items-center gap-0.5 text-sm font-medium text-destructive">
+            Review <ChevronRight className="h-3.5 w-3.5" />
+          </span>
+        </Link>
+      )}
 
       {/* Compact attention strip — work before reward: the queue sits directly
           under the greeting so pending items are seen before the celebratory

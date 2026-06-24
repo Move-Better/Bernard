@@ -1697,6 +1697,32 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
         </div>
       )}
 
+      {/* Failed state — bundle.social rejected the post on the network. Phase 1
+          surfaces the reason read-only so the failure is visible instead of the
+          piece sitting forever as "scheduled"; the one-click Retry lands in a
+          later phase. */}
+      {piece.status === 'failed' && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Failed to publish
+          </div>
+          {piece.publish_error && (
+            <p className="text-sm text-foreground/80 leading-snug">{piece.publish_error}</p>
+          )}
+          {piece.updated_at && (
+            <p className="text-xs text-muted-foreground">
+              Detected {new Date(piece.updated_at).toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         {/* Send for review — all roles, only on draft, only when review workflow is on */}
