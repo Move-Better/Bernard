@@ -1442,6 +1442,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
           <div className="overflow-hidden rounded-[1.9rem] bg-white">
             {/* IG header */}
             <div className="flex items-center gap-2 px-3 py-2">
+              {/* Instagram gradient ring — platform chrome simulation, not Bernard tokens */}
               <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 p-[2px]">
                 <div className="h-full w-full rounded-full bg-white p-[1.5px]"><div className="h-full w-full rounded-full bg-muted" /></div>
               </div>

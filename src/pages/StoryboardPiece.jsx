@@ -594,7 +594,7 @@ export default function StoryboardPiece() {
                       onClick={() => setStudioOpen(true)}
                       className="rounded-lg border-2 border-primary bg-primary/5 p-2"
                     >
-                      <div className="mb-1 flex aspect-square items-center justify-center rounded bg-gradient-to-br from-orange-200 to-amber-100 text-accent-foreground">
+                      <div className="mb-1 flex aspect-square items-center justify-center rounded bg-primary/10 text-accent-foreground">
                         <Pen className="h-4 w-4" />
                       </div>
                       Text template

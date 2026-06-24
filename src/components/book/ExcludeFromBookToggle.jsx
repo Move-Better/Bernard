@@ -91,7 +91,7 @@ function HeaderVariant({ isExcluded, isLoading, pending, regenPending, onToggle,
         }
         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-50 ${
           isExcluded
-            ? 'border-amber-300/60 bg-amber-50 text-amber-900 hover:bg-amber-100'
+            ? 'border-warning/60 bg-warning/10 text-warning hover:bg-warning/20'
             : 'border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground'
         }`}
       >

@@ -38,5 +38,6 @@ export async function authByCaptureToken(token) {
   if (!wr.ok) return null
   const wsRows = await wr.json()
   const workspace = wsRows?.[0]
+  if (!workspace) return null
   return { staffMember, workspace }
 }

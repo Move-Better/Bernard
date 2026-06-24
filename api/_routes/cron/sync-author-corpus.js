@@ -72,7 +72,7 @@ export async function syncAuthorCorpus({ log = false, dryRun = false } = {}) {
   if (!Q_USER_ID) throw new Error('CORPUS_SYNC_USER_ID env var not set')
 
   // ── Resolve workspaces ─────────────────────────────────────────────────
-  const wsRes = await sb(`workspaces?slug=in.(${SOURCE_SLUG},${TARGET_SLUG})&select=id,slug`)
+  const wsRes = await sb(`workspaces?slug=in.(${SOURCE_SLUG},${TARGET_SLUG})&status=eq.active&select=id,slug`)
   if (!wsRes.ok) throw new Error(`workspaces fetch ${wsRes.status}`)
   const workspaces = await wsRes.json()
   const srcWs  = workspaces.find((w) => w.slug === SOURCE_SLUG)
