@@ -122,6 +122,13 @@ export default async function handler(req, res) {
     const wsRow = wsMap[workspaceId] || {}
     const wsResult = { workspaceId, promoted: 0, skipped: 0, errors: 0, notFound: 0 }
 
+    if (!wsRow.id) {
+      console.warn('[sync-buffer-published] skipping unknown workspace:', workspaceId)
+      summary.skipped += wsItems.length
+      summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'unknown-workspace' })
+      continue
+    }
+
     if (wsRow.publish_provider === 'bundle') {
       // bundle.social path: postGet({ id }) returns { status, postedDate }.
       // bundle transitions SCHEDULED → POSTED autonomously within seconds/minutes.

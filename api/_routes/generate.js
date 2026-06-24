@@ -28,7 +28,7 @@ async function handler(req, res) {
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   let messages, systemPrompt, model
   try {

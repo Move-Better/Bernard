@@ -137,7 +137,7 @@ export default async function handler(req, res) {
   const auth = await requireRole(req, ['admin'], { orgId: ws.clerk_org_id })
   if (!auth.ok) return err(res, auth.reason, auth.reason === 'forbidden' ? 403 : 401)
 
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   if (!process.env.AI_GATEWAY_API_KEY) {
     return err(res, 'AI_GATEWAY_API_KEY is not set on this deployment', 500)

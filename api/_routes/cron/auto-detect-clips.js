@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       `media_assets?segment_status=eq.detecting&updated_at=lt.${staleBefore}${common}` +
       `&select=${select}&order=updated_at.asc&limit=${BATCH - candidates.length}`,
     )
-    if (staleRes.ok) candidates = candidates.concat(await staleRes.json())
+    if (staleRes.ok) candidates = candidates.concat(await staleRes.json().catch(() => { console.warn('[auto-detect-clips] stale-rescue response was not valid JSON'); return [] }))
   }
 
   if (candidates.length === 0) return res.status(200).json({ claimed: 0 })

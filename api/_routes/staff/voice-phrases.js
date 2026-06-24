@@ -53,6 +53,8 @@ async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const staffId = url.searchParams.get('staff_id')
   if (!staffId) return res.status(400).json({ error: 'Missing staff_id' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'Invalid staff_id' })
 
   const limitRaw = parseInt(url.searchParams.get('limit') || '', 10)
   const limit = Number.isFinite(limitRaw) && limitRaw > 0

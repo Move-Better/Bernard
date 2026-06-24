@@ -68,6 +68,8 @@ export default async function handler(req, res) {
   const body = req.body || {}
   const assetId = body.assetId ? String(body.assetId) : ''
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_asset_id' })
 
   // Fetch the source asset (workspace-scoped).
   const aRes = await sb(

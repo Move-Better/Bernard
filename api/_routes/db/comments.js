@@ -69,6 +69,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { contentItemId, body: body_, kind = 'comment' } = req.body || {}
     if (!contentItemId) return err(res, 'Missing contentItemId')
+    if (!UUID_RE.test(contentItemId)) return err(res, 'Invalid contentItemId', 400)
     if (!body_ || !body_.trim()) return err(res, 'Missing body')
     if (!['comment', 'change_request'].includes(kind)) return err(res, 'Invalid kind')
 

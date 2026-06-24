@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     return res.status(status).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   const interviewerName = ws.interviewer_name || 'Bernard'
   const clinicName = ws.display_name || 'your clinic'

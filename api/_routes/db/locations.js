@@ -51,6 +51,6 @@ export default async function handler(req, res) {
   if (!r.ok) return dbErr(res, r)
 
   const rows = await r.json().catch(() => [])
-  res.setHeader('Cache-Control', 'private, max-age=300')
+  res.setHeader('Cache-Control', 'no-store')
   return res.status(200).json(Array.isArray(rows) ? rows : [])
 }
