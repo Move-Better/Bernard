@@ -1,6 +1,12 @@
 # Unified editor shell — architecture plan (for Q sign-off)
 
-**Status:** PLAN — awaiting Q sign-off before any code.
+**Status:** APPROVED (Q, 2026-06-24) — build in progress. See `.claude/unified-shell-morning-checklist.md` for live status + `.claude/unified-shell-phases-2-4-spec.md` for the Phase 2–4 implementation spec.
+
+**Build status (2026-06-24 overnight sprint):**
+- ✅ **Phase 0 — Story editor** SHIPPED to prod (#1668). `instagram_story` now has a real composer + 9:16 preview; killed the raw `LINK_STICKER_TEXT:` dump.
+- ⏳ **Phase 1 — Shared EditorChrome + archetype backbone** built, gates green, **HELD PR #1669** for Q's Chrome-verify (carousel top-bar change can't be verified blind).
+- 📋 **Phases 2–4** spec'd (not built blind — they restructure the editors' layouts, which needs Chrome-verify). Execute from the spec with Q in the loop.
+
 **Origin:** Q asked "all media should go to the same editor, same visual landing page, but the left bar adapts to the kind of post + media." Then: research how other companies handle the split → plan the merged shell carefully → ship Story into the existing shell as step 1.
 
 Related: [[project-unified-editor]] (carousel editor, FEATURE COMPLETE), `unified-editor-plan.md` (U1–U5 log). This plan is the U4/U5 "one shell for every format" layer, now research-backed.
