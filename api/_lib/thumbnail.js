@@ -130,8 +130,8 @@ async function extractFrame(inPath, outPath) {
 // unique segment so every regen produces a fresh URL — same cache-bust
 // reasoning as the edit endpoint's replace-master blob. Old thumbnail blobs
 // are deleted fire-and-forget after the DB row is updated.
-function thumbPathname(asset) {
-  return `media/thumbs/${asset.id}.jpg`
+function thumbPathname(workspaceId, asset) {
+  return `media/thumbs/${workspaceId}/${asset.id}.jpg`
 }
 
 // Core: upload a JPEG from a local path, PATCH thumbnail_url, clean up the
@@ -151,7 +151,7 @@ export async function generateThumbnailFromPath(videoPath, asset, scope) {
     // in-place overwrite (same URL) keeps serving the pre-rotation frame until
     // the CDN TTL expires. addRandomSuffix guarantees a new URL.
     const oldThumbnailUrl = asset.thumbnail_url || null
-    const uploaded = await blobPut(thumbPathname(asset), jpeg, {
+    const uploaded = await blobPut(thumbPathname(s.id, asset), jpeg, {
       access: 'public',
       contentType: 'image/jpeg',
       addRandomSuffix: true,

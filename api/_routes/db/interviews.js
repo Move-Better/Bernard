@@ -22,6 +22,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const VALID_INTERVIEW_STATUSES = new Set(['in_progress', 'completed', 'abandoned'])
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -206,7 +207,10 @@ export default async function handler(req, res) {
     const patch = { updated_at: new Date().toISOString() }
     if (body.messages !== undefined) patch.messages = body.messages
     if (body.outputs !== undefined) patch.outputs = body.outputs
-    if (body.status !== undefined) patch.status = body.status
+    if (body.status !== undefined) {
+      if (!VALID_INTERVIEW_STATUSES.has(body.status)) return err(res, `invalid status: ${body.status}`)
+      patch.status = body.status
+    }
     if (body.locationId !== undefined) patch.location_id = body.locationId || null
     if (body.pullQuoteSelectedId !== undefined) patch.pull_quote_selected_id = body.pullQuoteSelectedId || null
     if (body.verbatimFlags !== undefined) patch.verbatim_flags = body.verbatimFlags

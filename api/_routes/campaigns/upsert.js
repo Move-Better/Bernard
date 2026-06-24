@@ -107,6 +107,20 @@ export default async function handler(req, res) {
     .map((v) => (v == null ? '' : String(v)))
     .filter((v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v))
 
+  // Verify every target staff UUID belongs to this workspace — prevents
+  // cross-workspace contamination (producer on workspace A adding workspace B's
+  // staff to a campaign).
+  if (target_staff_ids.length) {
+    const staffInClause = target_staff_ids.map((id) => `"${id}"`).join(',')
+    const staffChk = await sb(
+      `staff?id=in.(${staffInClause})&workspace_id=eq.${ws.id}&select=id`,
+    )
+    const staffRows = staffChk.ok ? await staffChk.json() : []
+    if (staffRows.length !== target_staff_ids.length) {
+      return res.status(400).json({ error: 'one or more staff ids not found in workspace' })
+    }
+  }
+
   // Phase 4 Tentpole PR A — multi-campaign fields. Each uses the
   // 'leave-alone' sentinel so omitting from PATCH body doesn't clobber
   // existing values, while explicit null clears them.

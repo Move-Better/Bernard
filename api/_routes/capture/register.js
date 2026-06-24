@@ -29,6 +29,9 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const ALLOWED_VIDEO_MIME = new Set([
   'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v',
 ])
+const ALLOWED_PHOTO_MIME = new Set([
+  'image/jpeg', 'image/jpg', 'image/heic', 'image/heif', 'image/png',
+])
 
 // eslint-disable-next-line bernard/require-workspace-scope -- Capture token auth — workspace resolved from clinicians.workspace_id via capture token, not Host header
 async function sb(path, init = {}) {
@@ -46,6 +49,7 @@ async function sb(path, init = {}) {
 
 function kindFromMime(mime) {
   if (ALLOWED_VIDEO_MIME.has(mime)) return 'video'
+  if (ALLOWED_PHOTO_MIME.has(mime)) return 'photo'
   return null
 }
 
@@ -100,6 +104,8 @@ export default async function handler(req, res) {
   const MIME_EXT = {
     'video/mp4': 'mp4', 'video/quicktime': 'mov',
     'video/webm': 'webm', 'video/x-m4v': 'm4v',
+    'image/jpeg': 'jpg', 'image/jpg': 'jpg',
+    'image/heic': 'heic', 'image/heif': 'heif', 'image/png': 'png',
   }
   let displayFilename = filename
   if (/^capture\.(mov|mp4|m4v|webm)$/i.test(filename)) {

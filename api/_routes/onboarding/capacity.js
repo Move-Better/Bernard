@@ -47,7 +47,7 @@ async function handler(req, res) {
   const used = rows.filter(row => !SEED_SLUGS.has(row.slug)).length
   const remaining = Math.max(0, FOUNDING_CAP - used)
 
-  res.setHeader('Cache-Control', 'public, max-age=30')
+  res.setHeader('Cache-Control', 'private, max-age=30')
   return res.status(200).json({
     cap: FOUNDING_CAP,
     used,
