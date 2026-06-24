@@ -679,6 +679,66 @@ function PlainPreview({ content }) {
   )
 }
 
+// ── Generic short-form social (X / Threads / Bluesky / Mastodon) ──────────────
+// Media-optional post card: caption + optional media. Replaces the raw
+// PlainPreview dump for the text-first networks that share the "single visual"
+// archetype.
+const NETWORK_META = {
+  twitter: 'X', threads: 'Threads', bluesky: 'Bluesky', mastodon: 'Mastodon',
+}
+function SimpleSocialPreview({ content, mediaUrls = [], platform }) {
+  const label = NETWORK_META[platform] || 'Post'
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  return (
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{MB_NAME}</p>
+            <p className="text-3xs text-muted-foreground">{MB_HANDLE} · {label}</p>
+          </div>
+        </div>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+      </div>
+      {media.length > 0 && <div className="border-t"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+    </div>
+  )
+}
+
+// ── Video channels (TikTok / YouTube / YouTube Short) ─────────────────────────
+function VideoChannelPreview({ content, mediaUrls = [] }) {
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  const video = media.find(isVideoEntry) || null
+  return (
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
+      {video ? <ReelPreview video={video} /> : <MediaCarousel mediaUrls={media} aspectClass="aspect-[9/16]" />}
+      <div className="px-4 py-3">
+        <p className="text-xs leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+      </div>
+    </div>
+  )
+}
+
+// ── Text ad (Google Ads search) — copy-only, no creative ──────────────────────
+function TextAdPreview({ content }) {
+  const lines = (content || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const headline = lines[0] || 'Your ad headline'
+  const desc = lines.slice(1).join(' ')
+  return (
+    <div className="max-w-md mx-auto bg-white border rounded-xl shadow-sm overflow-hidden">
+      <div className="px-5 py-4">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-3xs font-bold text-slate-900 border border-slate-900 rounded px-1">Ad</span>
+          <span className="text-xs text-slate-700">{MB_HOSTNAME}</span>
+        </div>
+        <p className="text-lg leading-snug text-[#1a0dab]">{headline}</p>
+        {desc && <p className="mt-1 text-xs leading-relaxed text-slate-600">{desc}</p>}
+      </div>
+    </div>
+  )
+}
+
 // ── Instagram Story — 9:16 phone frame ───────────────────────────────────────
 // Renders the real Story: media (photo / video first frame) or a branded card
 // when none is attached, with the overlay headline printed over it and the
@@ -932,8 +992,17 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
     case 'linkedin':    return <LinkedInPreview  content={content} />
     case 'gbp':         return <GBPPreview       content={content} locationOverrides={locationOverrides} />
     case 'blog':        return <BlogPreview      content={content} mediaUrls={mediaUrls} />
+    case 'landing_page': return <BlogPreview     content={content} mediaUrls={mediaUrls} />
     case 'email':       return <EmailPreview     content={content} mediaUrls={mediaUrls} />
     case 'instagram_ads': return <InstagramAdsPreview content={content} mediaUrls={mediaUrls} />
+    case 'google_ads':  return <TextAdPreview    content={content} />
+    case 'twitter':
+    case 'threads':
+    case 'bluesky':
+    case 'mastodon':    return <SimpleSocialPreview content={content} mediaUrls={mediaUrls} platform={platform} />
+    case 'tiktok':
+    case 'youtube':
+    case 'youtube_short': return <VideoChannelPreview content={content} mediaUrls={mediaUrls} />
     default:            return <PlainPreview     content={content} />
   }
 }
