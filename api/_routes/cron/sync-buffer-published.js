@@ -14,6 +14,7 @@ export const config = { runtime: 'nodejs' }
 import { getCredential } from '../../_lib/getCredential.js'
 import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
+import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -51,7 +52,7 @@ async function fetchOverdueItems(wsFilter) {
     `&scheduled_at=lt.${new Date().toISOString()}` +
     `&scheduled_at=gte.${cutoff}` +
     wsFilter +
-    `&select=id,workspace_id,buffer_update_id,scheduled_at` +
+    `&select=id,workspace_id,buffer_update_id,scheduled_at,platform,topic` +
     `&order=scheduled_at.asc` +
     `&limit=${MAX_ITEMS}`
   )
@@ -102,7 +103,12 @@ async function markFailed(id, workspaceId, reason) {
       }),
     }
   )
-  return r.ok
+  if (!r.ok) return { ok: false, transitioned: false }
+  // return=representation → updated rows; an empty array means the row was no
+  // longer 'scheduled' (e.g. the webhook beat us to it), so this run did NOT
+  // cause the transition and must not re-send the owner email.
+  const rows = await r.json().catch(() => [])
+  return { ok: true, transitioned: Array.isArray(rows) && rows.length > 0 }
 }
 
 export default async function handler(req, res) {
@@ -173,9 +179,15 @@ export default async function handler(req, res) {
             if (status.isError) {
               // Network rejected it permanently — mark failed so the UI surfaces it
               // (badge + Home banner) instead of it sitting forever as "scheduled".
-              const failed = await markFailed(item.id, workspaceId, status.error)
-              if (failed) { summary.failed++; wsResult.failed++ }
-              else { summary.errors++; wsResult.errors++ }
+              const reason = status.error || 'Publishing failed on the network.'
+              const r = await markFailed(item.id, workspaceId, reason)
+              if (!r.ok) { summary.errors++; wsResult.errors++ }
+              else if (r.transitioned) {
+                summary.failed++; wsResult.failed++
+                // Phase 4: alert the workspace owner — only on a real transition,
+                // so the cron and webhook never double-email the same failure.
+                await notifyPublishFailure({ workspaceId, item, reason })
+              }
             } else if (status.isFailed) {
               // DELETED in bundle (usually intentional) — not a publish failure; leave as-is.
               wsResult.notFound++

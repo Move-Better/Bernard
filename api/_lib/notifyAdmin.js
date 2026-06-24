@@ -1,23 +1,28 @@
-// Best-effort admin notification email via Resend's HTTP API.
+// Best-effort transactional email via Resend's HTTP API.
 //
 // No dependency: posts to https://api.resend.com/emails directly.
 // Env:
 //   RESEND_API_KEY      — required; if missing the call is a no-op (warn only)
-//   ADMIN_NOTIFY_EMAIL  — defaults to drq@withbernard.ai
+//   ADMIN_NOTIFY_EMAIL  — admin recipient; defaults to drq@withbernard.ai
 //   ADMIN_NOTIFY_FROM   — defaults to "Bernard <noreply@withbernard.ai>"
 //
 // Always resolves; never throws. Caller should not await success.
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
-export async function sendAdminNotification({ subject, text, html }) {
+// Core sender — one email to any recipient(s). `to` is a string or array.
+export async function sendEmail({ to, subject, text, html }) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
-    console.warn('[notifyAdmin] RESEND_API_KEY not set; skipping notification')
+    console.warn('[notify] RESEND_API_KEY not set; skipping email')
     return { ok: false, skipped: true }
   }
-  const to   = process.env.ADMIN_NOTIFY_EMAIL || 'drq@withbernard.ai'
-  const from = process.env.ADMIN_NOTIFY_FROM  || 'Bernard <noreply@withbernard.ai>'
+  const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean)
+  if (recipients.length === 0) {
+    console.warn('[notify] no recipient; skipping email')
+    return { ok: false, skipped: true }
+  }
+  const from = process.env.ADMIN_NOTIFY_FROM || 'Bernard <noreply@withbernard.ai>'
 
   try {
     const r = await fetch(RESEND_ENDPOINT, {
@@ -28,7 +33,7 @@ export async function sendAdminNotification({ subject, text, html }) {
       },
       body: JSON.stringify({
         from,
-        to: [to],
+        to: recipients,
         subject,
         text,
         ...(html ? { html } : {}),
@@ -36,12 +41,19 @@ export async function sendAdminNotification({ subject, text, html }) {
     })
     if (!r.ok) {
       const body = await r.text().catch(() => '')
-      console.error(`[notifyAdmin] resend ${r.status}:`, body.slice(0, 500))
+      console.error(`[notify] resend ${r.status}:`, body.slice(0, 500))
       return { ok: false, status: r.status }
     }
     return { ok: true }
   } catch (e) {
-    console.error('[notifyAdmin] network error:', e?.message)
+    console.error('[notify] network error:', e?.message)
     return { ok: false, error: e?.message }
   }
+}
+
+// Admin notification — to the operator (drq@). Thin wrapper over sendEmail;
+// unchanged signature so existing callers (feedback, etc.) are unaffected.
+export async function sendAdminNotification({ subject, text, html }) {
+  const to = process.env.ADMIN_NOTIFY_EMAIL || 'drq@withbernard.ai'
+  return sendEmail({ to, subject, text, html })
 }
