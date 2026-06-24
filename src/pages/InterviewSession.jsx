@@ -1734,14 +1734,14 @@ export default function InterviewSession() {
       </div>
 
       {showResumeBanner && (
-        <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center gap-2 shrink-0" role="status">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" aria-hidden="true" />
+        <div className="mb-2 rounded-lg bg-warning/10 border border-warning/30 px-4 py-2 text-xs text-warning flex items-center gap-2 shrink-0" role="status">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse shrink-0" aria-hidden="true" />
           Resuming your session…
         </div>
       )}
 
       {saveStatus === 'error' && (
-        <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800 flex items-center gap-2 shrink-0" role="alert">
+        <div className="mb-2 rounded-lg bg-warning/10 border border-warning/30 px-4 py-2.5 text-xs text-warning flex items-center gap-2 shrink-0" role="alert">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span className="flex-1">Server save failed — your answers are kept locally.</span>
           <button
@@ -1844,13 +1844,13 @@ export default function InterviewSession() {
           </p>
           <div className="flex flex-wrap gap-1.5">
             {interview.verbatim_flags.map((f) => (
-              <span key={f.id} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-900 border border-amber-200 rounded-full pl-2.5 pr-1 py-0.5 max-w-md">
+              <span key={f.id} className="inline-flex items-center gap-1 text-xs bg-warning/10 text-warning border border-warning/30 rounded-full pl-2.5 pr-1 py-0.5 max-w-md">
                 <span className="truncate italic">{'“'}{f.text}{'”'}</span>
                 <button
                   type="button"
                   onClick={() => removeVerbatimFlag(f.id)}
                   aria-label="Remove verbatim flag"
-                  className="shrink-0 rounded-full hover:bg-amber-200 p-0.5"
+                  className="shrink-0 rounded-full hover:bg-warning/20 p-0.5"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -2023,14 +2023,14 @@ export default function InterviewSession() {
           <button
             type="button"
             onClick={handleRestoreAudio}
-            className="w-full rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100 active:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="w-full rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left hover:bg-warning/15 active:bg-warning/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/50"
             aria-label="Audio interrupted. Tap to restore audio and replay the last question."
           >
             <div className="flex items-center gap-3">
-              <Volume2 className="h-5 w-5 text-amber-700 shrink-0" aria-hidden="true" />
+              <Volume2 className="h-5 w-5 text-warning shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-amber-900">Audio interrupted</p>
-                <p className="text-xs text-amber-800">
+                <p className="text-sm font-medium text-warning">Audio interrupted</p>
+                <p className="text-xs text-warning">
                   Tap to restore audio and replay the last question. Often happens when headphones or CarPlay change connection.
                 </p>
               </div>

@@ -8,7 +8,7 @@ import { Textarea2 } from '@/components/settings/helpers'
 
 const PRIORITY_COLORS = {
   high: 'bg-rose-100 text-rose-700',
-  medium: 'bg-amber-100 text-amber-700',
+  medium: 'bg-warning/10 text-warning',
   low: 'bg-muted text-muted-foreground',
 }
 

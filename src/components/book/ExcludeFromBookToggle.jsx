@@ -148,7 +148,7 @@ function InlineVariant({ isExcluded, isLoading, pending, onToggle }) {
       aria-label={isExcluded ? 'Include in book' : 'Exclude from book'}
       className={`shrink-0 inline-flex items-center justify-center h-6 w-6 rounded-md transition-colors disabled:opacity-50 ${
         isExcluded
-          ? 'text-amber-700 hover:bg-amber-100'
+          ? 'text-warning hover:bg-warning/10'
           : 'text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted/60 hover:text-foreground'
       }`}
     >

@@ -106,7 +106,7 @@ function SimilarityBadge({ similarity }) {
 
 function CampaignChip({ campaign }) {
   const styleClass = {
-    promotional:  'bg-amber-50 text-amber-800 border-amber-200',
+    promotional:  'bg-warning/10 text-warning border-warning/30',
     relationship: 'bg-scheduled/8 text-scheduled border-scheduled/20',
     clinical:     'bg-sky-50 text-sky-800 border-sky-200',
   }[campaign.content_style] || 'bg-muted text-muted-foreground border-border'
@@ -131,7 +131,7 @@ function CampaignChip({ campaign }) {
 function TriageBadge({ reason }) {
   const config = {
     'Render failed':           { icon: XCircle,        cls: 'bg-destructive/10 text-destructive border-destructive/30' },
-    'Low confidence':          { icon: AlertTriangle,  cls: 'bg-amber-50 text-amber-800 border-amber-200' },
+    'Low confidence':          { icon: AlertTriangle,  cls: 'bg-warning/10 text-warning border-warning/30' },
     'Stale — needs decision':  { icon: Clock,          cls: 'bg-sky-50 text-sky-800 border-sky-200' },
   }[reason] || { icon: AlertTriangle, cls: 'bg-muted text-muted-foreground border-border' }
   const Icon = config.icon

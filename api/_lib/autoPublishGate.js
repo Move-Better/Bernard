@@ -34,8 +34,19 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
     return results
   }
 
-  // 2. Consent gate (workspace-level — same for all channels).
-  const consent = sourceAsset?.consent_status ?? pkg?.source_asset?.consent_status
+  // 2. Source-asset presence check — must happen before consent so the gated
+  // reason is accurate when the asset has been deleted.
+  const resolvedSourceAsset = sourceAsset ?? pkg?.source_asset
+  if (resolvedSourceAsset == null) {
+    results.reasons.push({
+      signal: 'source_asset_missing',
+      detail: 'Source asset is missing or deleted — cannot verify consent or QC flags; blocking to prevent unsafe publish',
+    })
+    return results
+  }
+
+  // 3. Consent gate (workspace-level — same for all channels).
+  const consent = resolvedSourceAsset.consent_status
   if (consent === 'pending' || consent === 'revoked' || consent == null) {
     results.reasons.push({
       signal:    'consent',
@@ -46,7 +57,7 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
     return results
   }
 
-  // 3. QC flag check (workspace-level).
+  // 4. QC flag check (workspace-level).
   const qcFlags = pkg?.qc_flags
   if (qcFlags != null && !Array.isArray(qcFlags)) {
     results.reasons.push({ signal: 'qc_flags_invalid_shape', detail: 'Package qc_flags is not an array — blocking to fail closed' })
@@ -60,18 +71,6 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
     })
     return results
   }
-  // Fail closed if the source asset is missing — we cannot verify QC flags are
-  // clear, so blocking is safer than silently passing. (A deleted source asset
-  // would leave both values null/undefined, making Array.isArray return false
-  // and the check appear to pass when it should not.)
-  const resolvedSourceAsset = sourceAsset ?? pkg?.source_asset
-  if (resolvedSourceAsset == null) {
-    results.reasons.push({
-      signal: 'source_asset_missing',
-      detail: 'Source asset is missing or deleted — cannot verify QC flags; blocking to prevent unsafe publish',
-    })
-    return results
-  }
   const assetQcFlags = resolvedSourceAsset.qc_flags
   if (Array.isArray(assetQcFlags) && assetQcFlags.length > 0) {
     results.reasons.push({
@@ -82,7 +81,7 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
     return results
   }
 
-  // 4. Per-channel signal evaluation.
+  // 5. Per-channel signal evaluation.
   const eligibleChannels = []
   const channelReasons = []
 

@@ -16,7 +16,7 @@ import { apiFetch } from '@/lib/api'
 
 const PRIORITY_STYLE = {
   high:   'bg-destructive/10 text-destructive border-destructive/30',
-  medium: 'bg-amber-50 text-amber-800 border-amber-200',
+  medium: 'bg-warning/10 text-warning border-warning/30',
   low:    'bg-muted text-muted-foreground border-border',
 }
 

@@ -72,7 +72,7 @@ export default function DraftDiffView({
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
             {title}
-            <Badge className="ml-auto text-xs font-normal bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-50">
+            <Badge className="ml-auto text-xs font-normal bg-warning/10 text-warning border border-warning/30 hover:bg-warning/10">
               All AI changes off by default
             </Badge>
           </DialogTitle>
@@ -146,7 +146,7 @@ function ChangeChip({ segment, accepted, onToggle }) {
       onClick={onToggle}
       className={`inline align-baseline cursor-pointer rounded px-1 -mx-0.5 transition-colors border ${
         accepted
-          ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+          ? 'bg-success/10 border-success/30 hover:bg-success/15'
           : 'bg-rose-50/60 border-rose-200/70 hover:bg-rose-100/60'
       }`}
       title={accepted ? 'Accepted — click to reject' : 'Rejected — click to accept'}

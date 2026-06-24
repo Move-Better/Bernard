@@ -157,7 +157,7 @@ function WelcomeStep({ workspaceName }) {
         team&rsquo;s latest media + topic gaps. Your job is to review them,
         approve the good ones, and skip the rest.
       </p>
-      <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-3 py-2.5 text-xs leading-relaxed mt-1">
+      <div className="rounded-lg bg-warning/10 border border-warning/30 text-warning px-3 py-2.5 text-xs leading-relaxed mt-1">
         <strong>{`Note:`}</strong>{` you won't see Home, Stories, Library, or
         Settings in the nav — those are for clinicians and admins. If you need
         something locked, ask the workspace owner.`}
@@ -204,7 +204,7 @@ function TabRow({ Icon, name, desc, accent }) {
     primary: 'text-primary',
     amber:   'text-amber-600',
     sky:     'text-sky-600',
-    emerald: 'text-emerald-600',
+    emerald: 'text-success',
   }
   return (
     <li className="flex items-start gap-3">

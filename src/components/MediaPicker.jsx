@@ -443,8 +443,8 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                 : (selected?.kind === 'video' && selected?.duration_s > REEL_MAX_SECONDS ? [selected] : [])
               if (!longVideos.length) return null
               return (
-                <div className="mx-5 mb-2 rounded-md bg-amber-50 border border-amber-300 px-3 py-2 flex gap-2 items-start text-xs text-amber-800">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                <div className="mx-5 mb-2 rounded-md bg-warning/10 border border-warning/30 px-3 py-2 flex gap-2 items-start text-xs text-warning">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-warning" />
                   <div>
                     <span className="font-medium">Clip too long for Instagram reels (60s max).</span>{' '}
                     {longVideos.map((v) => (

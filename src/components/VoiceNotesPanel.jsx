@@ -91,7 +91,7 @@ export default function VoiceNotesPanel({ staffMember }) {
           </pre>
         </div>
       ) : result?.message ? (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-900">
+        <div className="rounded-lg bg-warning/10 border border-warning/30 px-4 py-3 text-xs text-warning">
           {result.message}
         </div>
       ) : everAnalyzed ? (
