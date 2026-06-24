@@ -3,9 +3,9 @@
 **Status:** APPROVED (Q, 2026-06-24) — build in progress. See `.claude/unified-shell-morning-checklist.md` for live status + `.claude/unified-shell-phases-2-4-spec.md` for the Phase 2–4 implementation spec.
 
 **Build status (2026-06-24 overnight sprint):**
-- ✅ **Phase 0 — Story editor** SHIPPED to prod (#1668). `instagram_story` now has a real composer + 9:16 preview; killed the raw `LINK_STICKER_TEXT:` dump.
-- ⏳ **Phase 1 — Shared EditorChrome + archetype backbone** built, gates green, **HELD PR #1669** for Q's Chrome-verify (carousel top-bar change can't be verified blind).
-- 📋 **Phases 2–4** spec'd (not built blind — they restructure the editors' layouts, which needs Chrome-verify). Execute from the spec with Q in the loop.
+- ✅ **Phase 0 — Story editor** SHIPPED to prod + prod-verified (#1668). `instagram_story` now has a real composer + 9:16 preview; killed the raw `LINK_STICKER_TEXT:` dump.
+- ✅ **Phase 1 — Shared EditorChrome + archetype backbone** SHIPPED to prod + prod-verified (#1669). Carousel editor top bar + work area identical through the shared chrome — visual no-op confirmed on prod.
+- 📋 **Phases 2–4** spec'd (`.claude/unified-shell-phases-2-4-spec.md`) — not built blind (they restructure the editors' layouts → need Chrome-verify). Execute with Q in the loop.
 
 **Origin:** Q asked "all media should go to the same editor, same visual landing page, but the left bar adapts to the kind of post + media." Then: research how other companies handle the split → plan the merged shell carefully → ship Story into the existing shell as step 1.
 
