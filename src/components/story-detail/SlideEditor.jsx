@@ -1610,10 +1610,22 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       const idx = photoOnly.findIndex((m) => mediaEntryKey(m) === mediaEntryKey(pick))
       return idx >= 0 ? { ...s, photo_idx: idx } : s
     })
-    if (toAdd.length > 0) {
-      updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw } }).catch(() => {})
-    }
     setSlides(newSlides)
+    if (toAdd.length > 0) {
+      // Persist BOTH the new media_urls AND the per-slide photo_idx binding in one
+      // patch. media_urls alone (the previous behavior) survives reload but the
+      // binding lived only in local state until an explicit Save — so a reload
+      // before saving showed "N photos" attached but unbound (auto-attach won't
+      // re-fire once media is non-empty). Saving the binding here makes the
+      // auto-populate durable. No bake: the slide images bake on an explicit Save,
+      // and publish has its own render fallback (same as the render-failed path).
+      // Mark the persisted slides as the saved baseline so the editor isn't dirty
+      // from a binding the user never touched.
+      const persisted = JSON.stringify(newSlides)
+      updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw, slides: newSlides } })
+        .then(() => setSavedSlidesJson(persisted))
+        .catch(() => {})
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoSuggestions])
 
