@@ -9,6 +9,7 @@ import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import PostPreview from '@/components/PostPreview'
 import SlideEditor from '@/components/story-detail/SlideEditor'
+import StoryComposer from '@/components/story-detail/StoryComposer'
 import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
@@ -69,6 +70,7 @@ export default function StoryboardPublish() {
   // composer for an Instagram piece that is NOT a reel.
   const isReel = piece.platform === 'instagram' && isInstagramReel(piece.media_urls)
   const isCarousel = piece.platform === 'instagram' && !isReel
+  const isStory = piece.platform === 'instagram_story'
   // Named format + slide-count badge from the shared helper — the header used to
   // count source photos ("1 media attached") next to N slide cards.
   const fmt = postFormat(piece)
@@ -120,6 +122,32 @@ export default function StoryboardPublish() {
           photoCount={photoCount}
           scheduleNode={scheduleNode}
         />
+      </div>
+    )
+  }
+
+  // Instagram Story → the dedicated single-frame composer (media + overlay text
+  // + link sticker), inside the standard page chrome.
+  if (isStory) {
+    return (
+      <div className="space-y-5 py-6">
+        <Breadcrumb
+          items={[
+            { label: 'Publish queue', to: '/publish' },
+            { label: pieceLabel(piece) },
+          ]}
+        />
+        <div className="min-w-0">
+          <BackLink to="/publish">Back to Publish</BackLink>
+          <h1 className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
+            {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+            <span className="truncate">{title}</span>
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            {fmt.label} · {photoCount === 0 ? 'no media yet' : `${photoCount} ${photoCount === 1 ? 'item' : 'items'}`}
+          </p>
+        </div>
+        <StoryComposer piece={piece} remainingNeedsMedia={remainingNeedsMedia} />
       </div>
     )
   }

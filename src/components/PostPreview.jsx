@@ -9,6 +9,7 @@ import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
 import { isVideoEntry, photoSourceUrl } from '@/lib/mediaEntry'
+import { deriveStory } from '@/lib/storyFields'
 
 // Pull the best logo URL for previews, preferring Brand Kit (primary_logo_url
 // is resolved by api/workspace/me from brand_kit_roles), then any legacy
@@ -678,6 +679,85 @@ function PlainPreview({ content }) {
   )
 }
 
+// ── Instagram Story — 9:16 phone frame ───────────────────────────────────────
+// Renders the real Story: media (photo / video first frame) or a branded card
+// when none is attached, with the overlay headline printed over it and the
+// link-sticker pill near the bottom. Derives all three from the row defensively
+// (deriveStory) so a raw "LINK_STICKER_TEXT:" line never leaks into the preview.
+function InstagramStoryPreview({ content, mediaUrls = [], overlayText = null, textCard = null }) {
+  const { overlay, sticker } = deriveStory({ content, overlay_text: overlayText, text_card: textCard })
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  const first = media[0] || null
+  const isVideo = first ? isVideoEntry(first) : false
+  const src = first ? (photoSourceUrl(first) || mediaSrc(first)) : null
+  const logoSrc = useWorkspaceLogo()
+
+  return (
+    <div className="mx-auto w-full max-w-[280px]">
+      <div className="relative aspect-[9/16] overflow-hidden rounded-2xl bg-slate-900 shadow-md select-none">
+        {/* Background: media, or a branded gradient card when none attached */}
+        {src ? (
+          <img
+            src={src}
+            alt={first?.name || 'Story media'}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+            {logoSrc && <img src={logoSrc} alt={workspace.name} className="h-14 w-auto opacity-20" />}
+          </div>
+        )}
+
+        {/* Scrim so overlay text stays legible over any photo */}
+        <div className="absolute inset-0 bg-black/30" aria-hidden="true" />
+
+        {/* Top progress bar (story chrome) */}
+        <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-2.5">
+          <div className="h-0.5 flex-1 rounded-full bg-white/90" />
+          <span className="text-3xs font-medium text-white/80">{MB_HANDLE}</span>
+        </div>
+
+        {/* Video affordance */}
+        {isVideo && (
+          <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/25">
+              <Play className="ml-0.5 h-6 w-6 text-white" />
+            </div>
+          </div>
+        )}
+
+        {/* Overlay headline */}
+        {overlay && (
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 text-center">
+            <p className="text-lg font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+              {overlay}
+            </p>
+          </div>
+        )}
+
+        {/* Link sticker */}
+        {sticker && (
+          <div className="absolute inset-x-0 bottom-10 flex justify-center">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-2xs font-bold text-slate-900 shadow">
+              {sticker}
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
+            </span>
+          </div>
+        )}
+      </div>
+
+      {media.length === 0 && (
+        <p className="mt-2 text-center text-3xs text-muted-foreground">
+          No media yet — add a photo or video, or publish the branded card.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ── Email — parse sections + visual mock matching the TDC master template ────
 function parseEmailSections(content) {
   if (!content) return {}
@@ -833,8 +913,11 @@ function EmailPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText: _overlayText = null, locationOverrides = null, photoTemplateId = null }) {
-  if (!content?.trim()) {
+export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText = null, textCard = null, locationOverrides = null, photoTemplateId = null }) {
+  // A Story is valid with media + no caption (the overlay/sticker live in
+  // dedicated fields), so it must not trip the "no content" guard below.
+  const isStory = platform === 'instagram_story'
+  if (!isStory && !content?.trim()) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
         No content to preview yet.
@@ -844,6 +927,7 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
 
   switch (platform) {
     case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} />
+    case 'instagram_story': return <InstagramStoryPreview content={content} mediaUrls={mediaUrls} overlayText={overlayText} textCard={textCard} />
     case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} />
     case 'linkedin':    return <LinkedInPreview  content={content} />
     case 'gbp':         return <GBPPreview       content={content} locationOverrides={locationOverrides} />
