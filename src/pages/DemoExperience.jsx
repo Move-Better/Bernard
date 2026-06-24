@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, RotateCcw, Sparkles, Lock, ChevronLeft,
   Star, HelpCircle, Lightbulb, Globe, Instagram, Linkedin,
+  Mic, Square, Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -11,16 +12,19 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 /**
  * DemoExperience — the no-login public demo (/demo/try).
  *
- * Phase 1: sample-first. Flow:
+ * Phase 2: sample-first + voice. Flow:
  *   1. Pick one of 3 topic cards
- *   2. Optionally type a personal answer (or leave blank)
- *   3. "Watch it write" → streams blog + Instagram + GBP posts
- *   4. See results + sign-up CTA
+ *   2. Answer via type (textarea) or speak (MediaRecorder → Whisper)
+ *      — voice: record → transcribe → auto-generate
+ *      — text:  type/paste → "Watch it write"
+ *   3. Blog + Instagram + GBP stream in live
+ *   4. Done screen with /onboard CTA
  *
  * Nothing is persisted. Scope: .claude/scope-no-login-demo.md
  */
 
-// Three interview archetypes mapped to core content types.
+const MAX_SECONDS = 90
+
 const TOPICS = [
   {
     id: 'story',
@@ -69,7 +73,28 @@ const OUTPUT_SECTIONS = [
   { key: 'gbp', label: 'Google Business post', Icon: Linkedin, desc: 'Local search visibility' },
 ]
 
-// Parse the accumulated stream text into sections using [BLOG]...[/BLOG] markers.
+const PREFERRED_MIME_TYPES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
+  'audio/mp4',
+  'audio/mpeg',
+]
+
+function pickMimeType() {
+  if (typeof MediaRecorder === 'undefined') return null
+  for (const t of PREFERRED_MIME_TYPES) {
+    if (MediaRecorder.isTypeSupported(t)) return t
+  }
+  return ''
+}
+
+function formatTime(sec) {
+  const s = Math.max(0, Math.floor(sec))
+  const mm = Math.floor(s / 60)
+  const ss = (s % 60).toString().padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
 function parseSections(raw) {
   const result = { blog: null, instagram: null, gbp: null }
   for (const name of ['BLOG', 'INSTAGRAM', 'GBP']) {
@@ -88,6 +113,7 @@ function parseSections(raw) {
 }
 
 // Module-level sub-components (ESLint static-components rule).
+
 function TopicCard({ topic, onClick }) {
   return (
     <button
@@ -138,9 +164,7 @@ function SectionCard({ section, content, isStreaming }) {
           <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{content}</p>
         ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {isEmpty ? (
-              <span>Waiting…</span>
-            ) : (
+            {isEmpty ? <span>Waiting…</span> : (
               <>
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
                 <span>Writing…</span>
@@ -156,33 +180,44 @@ function SectionCard({ section, content, isStreaming }) {
 export default function DemoExperience() {
   useDocumentTitle('Try Bernard — see your words become content')
 
-  // phase: picking | composing | generating | done
+  // Top-level phase: picking | composing | generating | done
   const [phase, setPhase] = useState('picking')
   const [topicId, setTopicId] = useState(null)
+  const [inputMode, setInputMode] = useState('voice') // 'voice' | 'type'
   const [userText, setUserText] = useState('')
   const [rawStream, setRawStream] = useState('')
   const [error, setError] = useState('')
+
+  // Voice recording sub-state: idle | requesting | recording | transcribing
+  const [voicePhase, setVoicePhase] = useState('idle')
+  const [elapsed, setElapsed] = useState(0)
+
   const abortRef = useRef(null)
+  const recorderRef = useRef(null)
+  const recorderErrorRef = useRef(false)
+  const chunksRef = useRef([])
+  const streamRef = useRef(null)
+  const timerRef = useRef(null)
+  const startTimeRef = useRef(0)
+  const mimeRef = useRef('')
 
   const topic = TOPICS.find((t) => t.id === topicId) || null
   const sections = parseSections(rawStream)
 
-  const handleTopicClick = useCallback((t) => {
-    setTopicId(t.id)
-    setUserText('')
-    setError('')
-    setPhase('composing')
+  // Stop mic tracks and clear the timer on unmount / reset.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      try { streamRef.current?.getTracks().forEach((t) => t.stop()) } catch { /* ignore */ }
+    }
   }, [])
 
-  const reset = useCallback(() => {
-    abortRef.current?.abort()
-    abortRef.current = null
-    setPhase('picking')
-    setTopicId(null)
-    setUserText('')
-    setRawStream('')
-    setError('')
+  const stopTracks = useCallback(() => {
+    try { streamRef.current?.getTracks().forEach((t) => t.stop()) } catch { /* ignore */ }
+    streamRef.current = null
   }, [])
+
+  // ── Generation ──────────────────────────────────────────────────────────────
 
   const runGeneration = useCallback(async (text, tId) => {
     setPhase('generating')
@@ -193,7 +228,7 @@ export default function DemoExperience() {
     abortRef.current = ctrl
 
     try {
-      // eslint-disable-next-line bernard/no-raw-api-fetch -- public unauthenticated demo endpoint; no Bearer token, apiFetch doesn't apply.
+      // eslint-disable-next-line bernard/no-raw-api-fetch -- public unauthenticated demo endpoint; no Bearer token.
       const res = await fetch('/api/demo/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -212,15 +247,15 @@ export default function DemoExperience() {
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
-      let buffer = ''
+      let buf = ''
       let accumulated = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop()
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop()
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const data = line.slice(6).trim()
@@ -245,14 +280,156 @@ export default function DemoExperience() {
     }
   }, [])
 
+  // ── Voice recording ─────────────────────────────────────────────────────────
+
+  const stopRecording = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    const rec = recorderRef.current
+    if (rec && rec.state !== 'inactive') rec.stop()
+  }, [])
+
+  const transcribeBlob = useCallback(async (blob, mime, currentTopicId) => {
+    setVoicePhase('transcribing')
+    try {
+      // eslint-disable-next-line bernard/no-raw-api-fetch -- public unauthenticated demo endpoint; raw binary audio body.
+      const res = await fetch('/api/demo/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': mime || blob.type || 'audio/webm' },
+        body: blob,
+      })
+      if (!res.ok) {
+        let msg = "We couldn't transcribe that — give it another try."
+        if (res.status === 429) msg = "You've hit the demo limit — try again in a minute."
+        else { const d = await res.json().catch(() => null); if (d?.message) msg = d.message }
+        setError(msg)
+        setVoicePhase('idle')
+        return
+      }
+      const data = await res.json()
+      const text = (data?.transcript || '').trim()
+      if (!text) {
+        setError("We didn't catch any speech — try somewhere quieter.")
+        setVoicePhase('idle')
+        return
+      }
+      // Populate textarea (user can see what was heard) then auto-generate.
+      setUserText(text)
+      setVoicePhase('idle')
+      runGeneration(text, currentTopicId)
+    } catch {
+      setError('Something went wrong. Check your connection and try again.')
+      setVoicePhase('idle')
+    }
+  }, [runGeneration])
+
+  const startRecording = useCallback(async (currentTopicId) => {
+    setError('')
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setError("This browser can't record audio. Try Safari or Chrome.")
+      return
+    }
+    setVoicePhase('requesting')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      streamRef.current = stream
+      const mime = pickMimeType()
+      mimeRef.current = mime || 'audio/webm'
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      recorderRef.current = rec
+      recorderErrorRef.current = false
+      chunksRef.current = []
+
+      rec.ondataavailable = (e) => { if (e.data?.size > 0) chunksRef.current.push(e.data) }
+      rec.onstop = () => {
+        stopTracks()
+        if (recorderErrorRef.current) return
+        const type = rec.mimeType || mimeRef.current || 'audio/webm'
+        const blob = new Blob(chunksRef.current, { type })
+        if (!blob.size) {
+          setError("That recording came through empty — try again.")
+          setVoicePhase('idle')
+          return
+        }
+        transcribeBlob(blob, type, currentTopicId)
+      }
+      rec.onerror = () => {
+        recorderErrorRef.current = true
+        setError('Recording stopped unexpectedly — try again.')
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+        const r = recorderRef.current
+        if (r && r.state !== 'inactive') r.stop()
+        setVoicePhase('idle')
+      }
+
+      rec.start(1000)
+      startTimeRef.current = Date.now()
+      setElapsed(0)
+      setVoicePhase('recording')
+      timerRef.current = setInterval(() => {
+        const secs = (Date.now() - startTimeRef.current) / 1000
+        setElapsed(secs)
+        if (secs >= MAX_SECONDS) stopRecording()
+      }, 200)
+    } catch (e) {
+      const denied = e?.name === 'NotAllowedError' || e?.name === 'SecurityError'
+      setError(denied
+        ? 'Allow microphone access and tap record again.'
+        : "Couldn't start the microphone — check it's connected.")
+      stopTracks()
+      setVoicePhase('idle')
+    }
+  }, [stopTracks, stopRecording, transcribeBlob])
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
+  const handleTopicClick = useCallback((t) => {
+    setTopicId(t.id)
+    setUserText('')
+    setError('')
+    setVoicePhase('idle')
+    setElapsed(0)
+    setPhase('composing')
+  }, [])
+
+  const reset = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    const rec = recorderRef.current
+    if (rec) { rec.onstop = null; if (rec.state !== 'inactive') rec.stop() }
+    stopTracks()
+    setPhase('picking')
+    setTopicId(null)
+    setInputMode('voice')
+    setUserText('')
+    setRawStream('')
+    setError('')
+    setVoicePhase('idle')
+    setElapsed(0)
+  }, [stopTracks])
+
   const handleGenerate = useCallback(() => {
     if (!topic) return
-    const seed = userText.trim() || topic.question
-    runGeneration(seed, topicId)
+    runGeneration(userText.trim() || topic.question, topicId)
   }, [topic, topicId, userText, runGeneration])
+
+  const handleSwitchMode = useCallback((mode) => {
+    // Stop any active recording when switching away from voice.
+    if (mode !== 'voice' && (voicePhase === 'recording' || voicePhase === 'requesting')) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+      const rec = recorderRef.current
+      if (rec) { rec.onstop = null; if (rec.state !== 'inactive') rec.stop() }
+      stopTracks()
+      setVoicePhase('idle')
+    }
+    setError('')
+    setInputMode(mode)
+  }, [voicePhase, stopTracks])
 
   const generating = phase === 'generating'
   const done = phase === 'done'
+  const remaining = Math.max(0, MAX_SECONDS - elapsed)
+  const busy = voicePhase === 'requesting' || voicePhase === 'recording' || voicePhase === 'transcribing'
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -278,8 +455,8 @@ export default function DemoExperience() {
                   <em className="not-italic text-primary">Watch Bernard write.</em>
                 </h1>
                 <p className="mt-3 text-base text-muted-foreground text-balance">
-                  Type a quick answer — or leave it blank and see what Bernard does
-                  with just the question.
+                  Speak your answer out loud — or type it. Bernard turns it into
+                  a blog post, Instagram caption, and Google Business post.
                 </p>
               </div>
               <div className="flex flex-col gap-3">
@@ -288,7 +465,7 @@ export default function DemoExperience() {
                 ))}
               </div>
               <p className="mt-6 text-center text-xs text-muted-foreground">
-                Nothing is saved. Your text is used only for this generation.
+                Nothing is saved. Your recording or text is used only for this generation.
               </p>
             </>
           )}
@@ -305,6 +482,7 @@ export default function DemoExperience() {
                 Pick a different question
               </button>
 
+              {/* Topic callout */}
               <div className={cn('rounded-2xl border-2 p-5 mb-5', topic.bg, topic.selectedBorder)}>
                 <div className="flex items-center gap-2 mb-2">
                   <topic.Icon className={cn('h-4 w-4', topic.color)} aria-hidden="true" />
@@ -313,23 +491,121 @@ export default function DemoExperience() {
                 <p className="text-base font-medium text-foreground leading-snug">{topic.question}</p>
               </div>
 
-              <div className="mb-5">
-                <label htmlFor="user-answer" className="block text-sm font-medium text-foreground mb-2">
-                  Your answer <span className="text-muted-foreground font-normal">(optional — type or paste something, or leave blank)</span>
-                </label>
-                <textarea
-                  id="user-answer"
-                  value={userText}
-                  onChange={(e) => setUserText(e.target.value)}
-                  placeholder={topic.placeholder}
-                  rows={5}
-                  maxLength={2000}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                />
-                {userText.length > 1800 && (
-                  <p className="mt-1 text-xs text-muted-foreground text-right">{userText.length}/2000</p>
-                )}
+              {/* Input mode tabs */}
+              <div className="flex rounded-xl border border-border overflow-hidden mb-5">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode('voice')}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition',
+                    inputMode === 'voice'
+                      ? 'bg-card text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                  )}
+                >
+                  <Mic className="h-3.5 w-3.5" aria-hidden="true" />
+                  Speak
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode('type')}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition border-l border-border',
+                    inputMode === 'type'
+                      ? 'bg-card text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                  )}
+                >
+                  Type
+                </button>
               </div>
+
+              {/* ── Voice input ── */}
+              {inputMode === 'voice' && (
+                <div className="mb-5 rounded-2xl border border-border bg-card shadow-sm p-8 flex flex-col items-center text-center min-h-[200px] justify-center">
+
+                  {voicePhase === 'idle' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startRecording(topicId)}
+                        className={cn(
+                          'h-20 w-20 rounded-full border-2 border-primary/30 bg-primary/10 flex items-center justify-center mb-4',
+                          'hover:bg-primary/20 hover:border-primary/50 active:scale-95 transition-all duration-150',
+                          'focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30'
+                        )}
+                        aria-label="Start recording"
+                      >
+                        <Mic className="h-8 w-8 text-primary" aria-hidden="true" />
+                      </button>
+                      <p className="text-sm font-medium text-foreground">Tap to speak your answer</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Up to 90 seconds</p>
+                    </>
+                  )}
+
+                  {voicePhase === 'requesting' && (
+                    <>
+                      <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" aria-hidden="true" />
+                      <p className="text-sm font-medium text-foreground">Opening your microphone…</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Allow access when prompted</p>
+                    </>
+                  )}
+
+                  {voicePhase === 'recording' && (
+                    <>
+                      <div className="relative mb-4">
+                        {/* Outer pulse ring */}
+                        <div className="absolute inset-0 rounded-full bg-destructive/20 animate-ping" />
+                        <button
+                          type="button"
+                          onClick={stopRecording}
+                          className={cn(
+                            'relative h-20 w-20 rounded-full border-2 border-destructive/60 bg-destructive/15 flex items-center justify-center',
+                            'hover:bg-destructive/25 active:scale-95 transition-all duration-150',
+                            'focus:outline-none focus-visible:ring-4 focus-visible:ring-destructive/30'
+                          )}
+                          aria-label="Stop recording"
+                        >
+                          <Square className="h-7 w-7 text-destructive fill-destructive" aria-hidden="true" />
+                        </button>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{formatTime(elapsed)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Tap to stop · {formatTime(remaining)} remaining
+                      </p>
+                    </>
+                  )}
+
+                  {voicePhase === 'transcribing' && (
+                    <>
+                      <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" aria-hidden="true" />
+                      <p className="text-sm font-medium text-foreground">Transcribing your answer…</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Then Bernard writes — no click needed</p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── Text input ── */}
+              {inputMode === 'type' && (
+                <div className="mb-5">
+                  <label htmlFor="user-answer" className="block text-sm font-medium text-foreground mb-2">
+                    Your answer <span className="text-muted-foreground font-normal">(optional — type or paste, or leave blank)</span>
+                  </label>
+                  <textarea
+                    id="user-answer"
+                    value={userText}
+                    onChange={(e) => setUserText(e.target.value)}
+                    placeholder={topic.placeholder}
+                    rows={5}
+                    maxLength={2000}
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  />
+                  {userText.length > 1800 && (
+                    <p className="mt-1 text-xs text-muted-foreground text-right">{userText.length}/2000</p>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
@@ -337,13 +613,18 @@ export default function DemoExperience() {
                 </div>
               )}
 
-              <Button className="w-full" size="lg" onClick={handleGenerate}>
-                <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
-                Watch it write
-              </Button>
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Generates a blog post, Instagram caption, and Google Business post — in seconds.
-              </p>
+              {/* Generate button shown only in text mode (voice auto-generates after transcription) */}
+              {inputMode === 'type' && (
+                <>
+                  <Button className="w-full" size="lg" onClick={handleGenerate} disabled={busy}>
+                    <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Watch it write
+                  </Button>
+                  <p className="mt-3 text-center text-xs text-muted-foreground">
+                    Generates a blog post, Instagram caption, and Google Business post — in seconds.
+                  </p>
+                </>
+              )}
             </>
           )}
 
@@ -367,7 +648,6 @@ export default function DemoExperience() {
                 )}
               </div>
 
-              {/* Selected topic callout */}
               <div className={cn('rounded-xl border p-4 mb-6 flex items-start gap-3', topic.bg, topic.border)}>
                 <topic.Icon className={cn('h-4 w-4 mt-0.5 shrink-0', topic.color)} aria-hidden="true" />
                 <div>
