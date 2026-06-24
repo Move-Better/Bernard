@@ -212,7 +212,7 @@ function AttributedView({ content, blocks, onHighlight }) {
       })}
       <div className="flex items-center gap-3 pt-1 border-t border-border/50 text-muted-foreground">
         <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-agreement-signal" />Verbatim</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-sky-400" />Paraphrase</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-info" />Paraphrase</span>
         <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-muted-foreground/40" />Synthesis</span>
         <span className="ml-auto italic">Click a paragraph to jump to its source in the transcript</span>
       </div>

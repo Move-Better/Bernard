@@ -203,7 +203,7 @@ function TabRow({ Icon, name, desc, accent }) {
   const colorMap = {
     primary: 'text-primary',
     amber:   'text-warning',
-    sky:     'text-sky-600',
+    sky:     'text-info',
     emerald: 'text-success',
   }
   return (

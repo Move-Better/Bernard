@@ -387,7 +387,7 @@ export default function VoiceTraining() {
               onClick={recording ? stopRecording : startRecording}
               disabled={uploading || requesting || !staffId}
               aria-label={recording ? 'Stop recording' : 'Start recording'}
-              className={`h-20 w-20 rounded-full p-0 ${recording ? 'bg-red-600 hover:bg-red-700' : ''}`}
+              className={`h-20 w-20 rounded-full p-0 ${recording ? 'bg-destructive hover:bg-destructive/90' : ''}`}
             >
               {requesting ? (
                 <Loader2 className="h-7 w-7 animate-spin" />

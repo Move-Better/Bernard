@@ -28,12 +28,12 @@ function sb(path, init = {}) {
 
 export default async function handler(req, res) {
   if (req.method !== 'DELETE') return res.status(405).json({ error: 'Method not allowed' })
-  if (!(await enforceLimit(req, res, 'media'))) return
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'media'))) return
 
   const url = new URL(req.url, 'http://localhost')
   const id = url.searchParams.get('id') || ''

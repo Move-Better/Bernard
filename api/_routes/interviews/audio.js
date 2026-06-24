@@ -61,6 +61,8 @@ export default async function handler(req, res) {
         const payload = JSON.parse(clientPayload || '{}')
         const interviewId = payload.interviewId
         if (!interviewId) throw new Error('interviewId required in clientPayload')
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!UUID_RE.test(interviewId)) throw new Error('invalid interviewId in clientPayload')
 
         // Confirm the interview belongs to this workspace + this user.
         const ivRes = await sb(

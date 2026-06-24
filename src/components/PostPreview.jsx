@@ -156,7 +156,7 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
 
   if (total === 0) {
     return (
-      <div className={`bg-gradient-to-br from-orange-100 to-orange-50 ${aspectClass} flex flex-col items-center justify-center gap-2`}>
+      <div className={`bg-muted ${aspectClass} flex flex-col items-center justify-center gap-2`}>
         <img src={logoSrc} alt={workspace.name} className="h-16 w-auto opacity-30" />
         <p className="text-xs text-muted-foreground">Add media in the editor</p>
       </div>

@@ -48,9 +48,15 @@ async function handler(req, res) {
     return
   }
 
-  // Callers pass either a bare Anthropic model id ("claude-sonnet-4-6",
-  // "claude-opus-4-7") or nothing. Normalize to AI Gateway's "anthropic/<id>".
+  // Allowlisted models only — prevents workspace members from invoking
+  // more expensive tiers at the billing account's cost.
+  const ALLOWED_MODELS = new Set(['claude-haiku-4-5', 'claude-sonnet-4-6'])
   const requested = model || 'claude-sonnet-4-6'
+  const bareModel = requested.includes('/') ? requested.split('/').pop() : requested
+  if (!ALLOWED_MODELS.has(bareModel)) {
+    res.status(400).json({ error: `Model not allowed: ${bareModel}` })
+    return
+  }
   const gatewayModel = requested.includes('/') ? requested : `anthropic/${requested}`
 
   try {
