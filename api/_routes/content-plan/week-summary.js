@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     if (safeIds.length) {
       const quoted = safeIds.map((id) => `"${id}"`).join(',')
       const ciRes = await sb(
-        `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id`,
+        `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id,voice_fidelity_score,voice_audit`,
       )
       if (ciRes.ok) {
         const ciRows = await ciRes.json()
@@ -86,6 +86,8 @@ export default async function handler(req, res) {
       contentItemStatus: ci?.status || null,
       excerpt: excerptOf(ci),
       interviewId: a.interview_id,
+      voiceFidelityScore: ci?.voice_fidelity_score ?? null,
+      voiceFlag: ci?.voice_audit?.red_flag || null,
     }
   }
 
