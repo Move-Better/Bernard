@@ -148,7 +148,7 @@ export async function computeAdaptiveCadenceChannels(wsId, enabledOutputs, prior
     //   1. Exploration floor — always keep a channel alive for continued learning.
     //   2. Prior ceiling    — prior represents best-practice max; don't exceed it.
     //   3. Max step         — damp oscillation; cadence moves ≤ MAX_STEP/wk.
-    const clamped = Math.min(priorTpw, Math.max(EXPLORATION_FLOOR, raw))
+    const clamped = Math.max(EXPLORATION_FLOOR, Math.min(priorTpw, raw))
     const stepped = Math.max(priorTpw - MAX_STEP, Math.min(priorTpw + MAX_STEP, clamped))
 
     out[ap] = { target_per_week: Math.round(stepped), enabled: true, adaptive: true }

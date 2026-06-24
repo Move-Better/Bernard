@@ -27,6 +27,8 @@ const BUFFER_GQL    = 'https://api.buffer.com/graphql'
 // How many approved packages to consider per workspace per run.
 const BATCH_SIZE = 20
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; each DB query is scoped by workspace_id from the workspace list
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -148,6 +150,10 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
 // Upsert the approved content_items row to scheduled + mark auto_published.
 async function markContentItemScheduled({ pkg, workspaceId, bufferId }) {
   // Find the GBP content_item created by approve-package for this package.
+  if (!UUID_RE.test(pkg.id)) {
+    console.error('[auto-publish] invalid pkg.id format:', pkg.id)
+    return null
+  }
   const ciRes = await sb(
     `content_items?workspace_id=eq.${workspaceId}` +
     `&provenance->>package_id=eq.${pkg.id}` +

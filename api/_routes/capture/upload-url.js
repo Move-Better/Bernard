@@ -28,6 +28,7 @@ import { authByCaptureToken } from '../../_lib/captureAuth.js'
 
 const ALLOWED_MIME = new Set([
   'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v',
+  'image/jpeg', 'image/jpg', 'image/heic', 'image/heif', 'image/png',
 ])
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB — the Vercel Blob hard limit

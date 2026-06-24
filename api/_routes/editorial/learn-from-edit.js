@@ -117,6 +117,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'staff_id is required' })
   }
 
+  // Verify staff_id belongs to this workspace — prevents poisoning another
+  // tenant's voice library by supplying a cross-workspace staff UUID.
+  const staffChk = await sb(`staff?id=eq.${encodeURIComponent(staff_id)}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+  const staffRows = staffChk.ok ? await staffChk.json() : []
+  if (!staffRows.length) {
+    return res.status(403).json({ error: 'staff_not_in_workspace' })
+  }
+
   // Skip if identical or trivially different
   if (original === edited) {
     return res.status(200).json({ captured: 0 })
