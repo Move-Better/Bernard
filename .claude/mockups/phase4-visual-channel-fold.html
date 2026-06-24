@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 4 — visual channel: today vs shell</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{primary:'#0C7580',action:'#d97706',info:'#0369a1'}}}}</script>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;background:#eef1f3;margin:0;}
+  .tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;}
+  .tab.active{background:#0C7580;color:#fff;}
+  .tab.inactive{background:#fff;color:#4b5563;border-color:#e5e7eb;}
+  .legend{font-size:11px;color:#475569;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:9px 12px;}
+  .chrome-btn{font-size:12px;font-weight:500;color:#374151;padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;}
+  .save-btn{font-size:12px;font-weight:600;color:#fff;background:#0C7580;padding:5px 14px;border-radius:6px;border:none;}
+  .pub-btn{font-size:12px;font-weight:600;color:#3a2a00;background:#d97706;padding:5px 14px;border-radius:6px;border:none;}
+  .label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;}
+  .rail-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;width:100%;border:none;background:none;color:#9ca3af;font-size:9px;font-weight:600;border-left:2px solid transparent;}
+  .rail-item.active{color:#0C7580;border-left-color:#0C7580;}
+  .rail-item.active .ri{background:rgba(12,117,128,.1);}
+  .ri{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .li-card{border:1px solid #e5e7eb;border-radius:12px;background:#fff;overflow:hidden;max-width:340px;}
+  .gain{color:#15803d;} .loss{color:#b91c1c;}
+</style>
+</head>
+<body>
+<div style="padding:14px 18px 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+  <span style="font-size:13px;color:#475569;font-weight:600;margin-right:4px;">LinkedIn post (a thin-edit channel):</span>
+  <button class="tab active" onclick="setV('today')">Today — publish page</button>
+  <button class="tab inactive" onclick="setV('shell')">Proposed — editor shell</button>
+</div>
+<div style="padding:0 18px 8px;"><p class="legend" id="legend"></p></div>
+
+<div id="stage" style="margin:0 18px 18px;"></div>
+
+<script>
+const LI = `<div class="li-card">
+  <div style="padding:14px 14px 10px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:44px;height:44px;border-radius:4px;background:linear-gradient(135deg,#fb923c,#0C7580);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px">MB</div>
+      <div><div style="font-size:13px;font-weight:700;color:#111">Move Better</div><div style="font-size:11px;color:#9ca3af">Health, Wellness & Fitness · Portland</div><div style="font-size:10px;color:#9ca3af">Just now · 🌐</div></div>
+    </div>
+    <div style="font-size:13px;line-height:1.55;color:#111">Most people treat low back pain as a structural failure. But what we see in the clinic is a movement pattern that loads the spine the same way, every rep. Here's the three-part assessment we run…</div>
+  </div>
+  <div style="border-top:1px solid #eee;padding:8px 14px;display:flex;gap:16px;color:#6b7280;font-size:12px"><span>👍 Like</span><span>💬 Comment</span><span>🔁 Repost</span><span>➤ Send</span></div>
+</div>`;
+
+const SCHED = `<div style="border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span class="label">Publish</span><span style="font-size:11px;font-weight:600;background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:20px">Draft</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px"><button class="pub-btn" style="flex:1">📅 Schedule</button><button class="chrome-btn">Send now</button></div>
+  <p style="font-size:11px;color:#9ca3af">Posts via Buffer · LinkedIn</p>
+</div>`;
+
+function todayView(){
+  return `<div style="background:#fff;border:1px solid #d8dde1;border-radius:12px;padding:22px 26px;box-shadow:0 2px 12px rgba(0,0,0,.05)">
+    <div style="font-size:12px;color:#0C7580;margin-bottom:10px">Publish queue &nbsp;›&nbsp; <span style="color:#64748b">LinkedIn (Dr. Q)</span></div>
+    <div style="font-size:12px;color:#0C7580;margin-bottom:2px">← Back to Publish</div>
+    <div style="font-size:18px;font-weight:700;color:#111;margin-bottom:2px">Disc herniation</div>
+    <div style="font-size:12px;color:#9ca3af;margin-bottom:18px">LinkedIn Post · 0 media</div>
+    <div style="display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:24px;align-items:start">
+      <div><p class="label" style="margin-bottom:6px">👁 Live preview</p>${LI}</div>
+      <div>${SCHED}</div>
+    </div>
+  </div>`;
+}
+function shellView(){
+  return `<div style="background:#fff;border:1px solid #d8dde1;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05)">
+    <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #e5e7eb">
+      <button class="chrome-btn" style="padding:5px 8px">←</button>
+      <span style="font-size:14px;font-weight:700;color:#111">Disc herniation</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(3,105,161,.1);color:#0369a1;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px">LinkedIn Post</span>
+      <div style="margin-left:auto;display:flex;gap:8px"><button class="chrome-btn">👁 Preview</button><button class="save-btn">Save</button><button class="pub-btn">Schedule ▾</button></div>
+    </div>
+    <div style="display:flex;height:440px">
+      <div style="width:56px;background:#fafbfc;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;padding-top:6px">
+        <button class="rail-item active"><span class="ri"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>Words</button>
+        <button class="rail-item"><span class="ri"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></span>Media</button>
+        <button class="rail-item"><span class="ri"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg></span>Text</button>
+        <button class="rail-item" style="opacity:.5"><span class="ri"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg></span>Grade</button>
+      </div>
+      <div style="width:280px;border-right:1px solid #e5e7eb;padding:14px">
+        <p class="label" style="margin-bottom:8px">Caption</p>
+        <textarea style="width:100%;height:230px;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:13px;line-height:1.5;resize:none;box-sizing:border-box">Most people treat low back pain as a structural failure. But what we see in the clinic is a movement pattern that loads the spine the same way, every rep. Here's the three-part assessment we run…</textarea>
+        <p style="font-size:10px;color:#9ca3af;margin-top:6px">3,000 char limit</p>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#dfe4e8">${LI}</div>
+    </div>
+  </div>`;
+}
+const LEG={
+  today:'<b>Today.</b> Page with breadcrumb + back + heading. Two columns: live preview (left) + Schedule/Send (right) — both visible at once. Caption is edited upstream on the Stories page; this page is preview + schedule. Different chrome from the carousel/reel/story editors.',
+  shell:'<b>Proposed shell.</b> Same EditorChrome as carousel/reel/story (consistency ✓). But: rail is mostly <b class="loss">empty</b> for a caption-only post (Media optional, Text/Grade N/A), <b class="loss">Schedule now hides behind a button</b> (was side-by-side), and the <b class="loss">breadcrumb/page context is gone</b>. Gains consistent chrome; loses preview+schedule-at-a-glance.',
+};
+function setV(v){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.className='tab '+((['today','shell'][i]===v)?'active':'inactive'));
+  document.getElementById('legend').innerHTML=LEG[v];
+  document.getElementById('stage').innerHTML = v==='today'?todayView():shellView();
+}
+setV('today');
+</script>
+</body>
+</html>
