@@ -90,9 +90,11 @@ async function handler(req, res) {
       url: blob.url,
       pathname: blob.pathname,
       contentType: blob.contentType,
-      // completeMultipartUpload does not return size; reconstruct from the
-      // assembled total so recordUploadedAsset can stamp size_bytes.
-      size: typeof req.body.totalSize === 'number' ? req.body.totalSize : null,
+      // completeMultipartUpload does not return size; use client-supplied total
+      // clamped to 10 GB so a forged value can't inflate size_bytes arbitrarily.
+      size: typeof req.body.totalSize === 'number' && req.body.totalSize > 0
+        ? Math.min(req.body.totalSize, 10 * 1024 * 1024 * 1024)
+        : null,
     },
     tokenPayload: parsedPayload,
   })

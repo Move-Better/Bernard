@@ -156,6 +156,18 @@ async function handler(req, res) {
     if (!bufferUpdateId || typeof bufferUpdateId !== 'string') {
       return res.status(400).json({ error: 'Missing bufferUpdateId' })
     }
+    // Verify the scheduled post belongs to this workspace before cancelling —
+    // prevents a member of workspace A from cancelling workspace B's posts.
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      const ownerCheck = await fetch(
+        `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(bufferUpdateId)}&workspace_id=eq.${workspaceId}&select=id`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      )
+      if (ownerCheck.ok) {
+        const rows = await ownerCheck.json()
+        if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
+      }
+    }
     const r = await gql(BUFFER_TOKEN, `
       mutation DeletePost($input: DeletePostInput!) {
         deletePost(input: $input) {
@@ -189,8 +201,25 @@ async function handler(req, res) {
   // locationContents: { [workspace_locations.id]: string } — per-location body overrides.
   // Generated at draft time and stored in content_items.location_overrides.
   // Falls back to canonical `content` for any location without an override.
-  const { platform, content, mediaUrls = [], scheduledAt, useQueue, locationIds, locationContents } = body
+  const { platform, content, mediaUrls = [], scheduledAt, useQueue, locationIds, locationContents, contentItemId } = body
   if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
+
+  // When the caller provides a content item ID, verify it belongs to this workspace.
+  // This closes the editorial-bypass path where a member could publish arbitrary text
+  // without the piece having gone through the approval workflow.
+  if (contentItemId) {
+    if (!UUID_RE.test(contentItemId)) return res.status(400).json({ error: 'Invalid contentItemId' })
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      const ciCheck = await fetch(
+        `${SUPABASE_URL}/rest/v1/content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}&select=id`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      )
+      if (ciCheck.ok) {
+        const rows = await ciCheck.json()
+        if (!rows.length) return res.status(403).json({ error: 'Content item not found in this workspace' })
+      }
+    }
+  }
 
   const service = PLATFORM_TO_SERVICE[platform]
   if (!service) return res.status(400).json({ error: `Unsupported Buffer platform: ${platform}` })

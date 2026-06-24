@@ -108,7 +108,7 @@ function CampaignChip({ campaign }) {
   const styleClass = {
     promotional:  'bg-warning/10 text-warning border-warning/30',
     relationship: 'bg-scheduled/8 text-scheduled border-scheduled/20',
-    clinical:     'bg-sky-50 text-sky-800 border-sky-200',
+    clinical:     'bg-info/10 text-info border-info/30',
   }[campaign.content_style] || 'bg-muted text-muted-foreground border-border'
   const eventInfo = (() => {
     if (!campaign.event_at) return null
@@ -132,7 +132,7 @@ function TriageBadge({ reason }) {
   const config = {
     'Render failed':           { icon: XCircle,        cls: 'bg-destructive/10 text-destructive border-destructive/30' },
     'Low confidence':          { icon: AlertTriangle,  cls: 'bg-warning/10 text-warning border-warning/30' },
-    'Stale — needs decision':  { icon: Clock,          cls: 'bg-sky-50 text-sky-800 border-sky-200' },
+    'Stale — needs decision':  { icon: Clock,          cls: 'bg-info/10 text-info border-info/30' },
   }[reason] || { icon: AlertTriangle, cls: 'bg-muted text-muted-foreground border-border' }
   const Icon = config.icon
   return (

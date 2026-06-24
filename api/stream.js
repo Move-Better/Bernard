@@ -45,8 +45,16 @@ async function handler(req, res) {
     return
   }
 
-  // Normalize bare Anthropic ids to AI Gateway form.
+  // Allowlisted models only — prevents a workspace member from invoking a
+  // more expensive tier (e.g. Opus) at the billing account's cost.
+  const ALLOWED_MODELS = new Set(['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-7'])
   const requested = model || 'claude-sonnet-4-6'
+  // Strip provider prefix before checking allowlist.
+  const bareModel = requested.includes('/') ? requested.split('/').pop() : requested
+  if (!ALLOWED_MODELS.has(bareModel)) {
+    res.status(400).json({ error: `Model not allowed: ${bareModel}` })
+    return
+  }
   const gatewayModel = requested.includes('/') ? requested : `anthropic/${requested}`
 
   // Default keeps short interview turns cheap; blog/long-form callers pass
