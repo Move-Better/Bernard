@@ -106,9 +106,15 @@ export default async function handler(req, res) {
     if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
     if (!topic?.trim()) return err(res, 'Topic required')
     if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
+    if (campaignId && !UUID_RE.test(campaignId)) return err(res, 'Invalid campaignId', 400)
 
     const staffCheck = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id`)
     if (!staffCheck.ok || !(await staffCheck.json()).length) return err(res, 'Staff not found', 404)
+
+    if (campaignId) {
+      const campCheck = await sb(`campaigns?id=eq.${campaignId}&workspace_id=eq.${ws.id}&select=id`)
+      if (!campCheck.ok || !(await campCheck.json()).length) return err(res, 'Campaign not found in workspace', 422)
+    }
 
     // owner_id comes from the verified Clerk token, never the request body.
     // Previously trusted req.body.ownerId — a workspace member could create

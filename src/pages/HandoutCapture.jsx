@@ -242,7 +242,7 @@ export default function HandoutCapture() {
           )}
 
           {error && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded px-3 py-2">{error}</div>
           )}
           {uploading && (
             <div className="text-xs text-muted-foreground text-center pt-2">

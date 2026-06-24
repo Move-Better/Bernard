@@ -147,7 +147,7 @@ function ChangeChip({ segment, accepted, onToggle }) {
       className={`inline align-baseline cursor-pointer rounded px-1 -mx-0.5 transition-colors border ${
         accepted
           ? 'bg-success/10 border-success/30 hover:bg-success/15'
-          : 'bg-rose-50/60 border-rose-200/70 hover:bg-rose-100/60'
+          : 'bg-destructive/5 border-destructive/20 hover:bg-destructive/10'
       }`}
       title={accepted ? 'Accepted — click to reject' : 'Rejected — click to accept'}
     >
@@ -159,13 +159,13 @@ function ChangeChip({ segment, accepted, onToggle }) {
         </span>
       )}
       {isDeletion && (
-        <span className={accepted ? 'line-through text-rose-700' : 'text-foreground'}>{oldText}</span>
+        <span className={accepted ? 'line-through text-destructive' : 'text-foreground'}>{oldText}</span>
       )}
       {isInsertion && (
         <span className={accepted ? 'text-success font-medium' : 'text-muted-foreground/60 line-through'}>{newText}</span>
       )}
       <span className="inline-flex items-center justify-center align-middle ml-0.5 w-3.5 h-3.5 rounded-full bg-card border text-3xs">
-        {accepted ? <Check className="h-2.5 w-2.5 text-success" /> : <X className="h-2.5 w-2.5 text-rose-500" />}
+        {accepted ? <Check className="h-2.5 w-2.5 text-success" /> : <X className="h-2.5 w-2.5 text-destructive" />}
       </span>
     </button>
   )

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea2 } from '@/components/settings/helpers'
 
 const PRIORITY_COLORS = {
-  high: 'bg-rose-100 text-rose-700',
+  high: 'bg-destructive/10 text-destructive',
   medium: 'bg-warning/10 text-warning',
   low: 'bg-muted text-muted-foreground',
 }

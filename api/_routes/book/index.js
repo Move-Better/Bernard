@@ -21,8 +21,6 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
 
@@ -31,6 +29,8 @@ export default async function handler(req, res) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const headers = {
     apikey:        SUPABASE_KEY,
