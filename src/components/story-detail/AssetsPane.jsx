@@ -1697,12 +1697,12 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
         </div>
       )}
 
-      {/* Failed state — bundle.social rejected the post on the network. Phase 1
-          surfaces the reason read-only so the failure is visible instead of the
-          piece sitting forever as "scheduled"; the one-click Retry lands in a
-          later phase. */}
+      {/* Failed state — bundle.social rejected the post on the network. Shows the
+          reason + a one-click Retry that re-dispatches the piece as-is through the
+          shared publish path (creates a fresh bundle post; status flips off
+          'failed'). Manual only — Bernard never silently re-sends (Q's call). */}
       {piece.status === 'failed' && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 space-y-2">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
             <AlertTriangle className="h-3.5 w-3.5" />
             Failed to publish
@@ -1719,6 +1719,19 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
                 minute: '2-digit',
               })}
             </p>
+          )}
+          {canReview && (
+            <div className="flex flex-wrap gap-2 pt-0.5">
+              <Button
+                size="sm"
+                onClick={() => handlePublish({})}
+                disabled={publishing}
+                loading={publishing}
+              >
+                {!publishing && <RotateCcw className="h-3.5 w-3.5 mr-1.5" />}
+                Retry now
+              </Button>
+            </div>
           )}
         </div>
       )}
