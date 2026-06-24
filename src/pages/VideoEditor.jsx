@@ -15,6 +15,7 @@ import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/c
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
+import EditorIconRail from '@/components/editor/IconRail'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -412,24 +413,20 @@ function MomentsInspector({ ctx }) {
 function IconRail({ ctx }) {
   const { sel, selectKey, overlays, addOverlay } = ctx
   const selKey = typeof sel === 'object' ? 'overlay' : sel
-  const tools = [['moments', Scissors, 'Clips'], ['clip', Film, 'Clip'], ['grade', Sparkles, 'Grade'], ['caption', Captions, 'Caps'], ['text', Type, 'Text']]
+  // 'overlay' selection lights the 'text' tool (overlays ARE the text layer).
+  const active = selKey === 'overlay' ? 'text' : selKey
+  const items = [
+    { key: 'moments', icon: Scissors, label: 'Clips' },
+    { key: 'clip', icon: Film, label: 'Clip' },
+    { key: 'grade', icon: Sparkles, label: 'Grade' },
+    { key: 'caption', icon: Captions, label: 'Caps' },
+    { key: 'text', icon: Type, label: 'Text' },
+  ]
   const pick = (k) => {
     if (k === 'text') { if (overlays.length) selectKey(`overlay:${overlays[overlays.length - 1].id}`); else addOverlay() }
     else selectKey(k)
   }
-  return (
-    <aside className="flex w-[58px] shrink-0 flex-col border-r bg-card py-1" style={{ borderColor: 'hsl(var(--border))' }}>
-      {tools.map(([k, Icon, label]) => {
-        const on = selKey === k || (k === 'text' && selKey === 'overlay')
-        return (
-          <button key={k} onClick={() => pick(k)} className="flex w-full flex-col items-center gap-1 py-2.5" style={{ borderLeft: `2px solid ${on ? 'hsl(var(--primary))' : 'transparent'}`, background: on ? 'hsl(var(--primary)/0.07)' : undefined }}>
-            <Icon className="h-4 w-4" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
-            <span className="text-3xs" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
-          </button>
-        )
-      })}
-    </aside>
-  )
+  return <EditorIconRail items={items} active={active} onPick={pick} />
 }
 
 // Right vertical timeline (v3) — source-relative (0..videoDuration). The Clip
