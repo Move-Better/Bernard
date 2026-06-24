@@ -1582,7 +1582,13 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     // NOT a bare array. (The Swap-photo panel reads `sugg.clips` correctly; this
     // effect previously read `photoSuggestions.length`/`[i]`, so the guard always
     // bailed and the auto-attach silently never ran — "5 slides from 0 photos".)
-    const picks = Array.isArray(photoSuggestions?.clips) ? photoSuggestions.clips : []
+    // Each clip is a SUGGESTION shape ({ blobUrl, assetId, kind, … }), NOT a
+    // media_urls entry — it must go through clipToMediaEntry (same as the Swap
+    // panel's `attach(clipToMediaEntry(clip))`) or the stored entry has url:null
+    // and mediaEntryKey (which reads mediaAssetId) can't dedup or bind it.
+    const picks = (Array.isArray(photoSuggestions?.clips) ? photoSuggestions.clips : [])
+      .map(clipToMediaEntry)
+      .filter((e) => e && e.url && e.type !== 'video')
     if (!picks.length) return
     const allEmpty = mediaUrls.length === 0
     if (!allEmpty) { autoAttachDoneRef.current = true; return }
