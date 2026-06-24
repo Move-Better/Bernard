@@ -19,6 +19,7 @@ import {
   buildTentpoleGbpLocationBlock,
 } from '../../_lib/tentpoleCampaignContext.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
+import { buildFidelityPrompt, parseFidelity } from '../../_lib/captionFidelityRubric.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -200,22 +201,94 @@ export default async function handler(req, res) {
       },
     ]
 
-    // Call the AI
-    const { text } = await generateText({
+    // Call the AI — first attempt
+    const { text: rawText1 } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
       system: systemPrompt,
       messages: aiMessages,
       maxOutputTokens: 1000,
     })
 
-    if (!text?.trim()) throw new Error('AI returned empty content')
+    if (!rawText1?.trim()) throw new Error('AI returned empty content')
 
-    // Split slides block from caption. Instagram prompts append a
-    // ---SLIDES--- JSON section; other platforms don't, so this is a no-op
-    // for them. Also strip the <PROVENANCE> trailer — long-form prompts append
-    // it as per-paragraph source attribution, but the trailer is metadata,
-    // not body copy, and must never reach the editor surface.
-    const [captionRaw, slidesRaw] = extractProvenanceBlock(text.trim()).content.split('---SLIDES---')
+    // Voice-judge gate: score the draft against the interview transcript + voice
+    // profile. If below threshold, try once more with the red_flag as coaching.
+    const HAIKU = 'anthropic/claude-haiku-4-5'
+    const GATE  = 6.5
+    const clinicianSaid = turns
+      .filter((t) => t.role === 'user')
+      .map((t) => t.content)
+      .join('\n\n')
+      .slice(0, 2500)
+    const caption1 = extractProvenanceBlock(rawText1.trim()).content.split('---SLIDES---')[0].trim()
+
+    let rawText      = rawText1
+    let voiceScore   = null
+    let voiceAttempts = 1
+
+    try {
+      const ep1 = buildFidelityPrompt({
+        topic: interview.topic, caption: caption1,
+        transcript: clinicianSaid, phrases: voicePhrases,
+        staffName, workspaceName: ws.name || ws.slug || 'practice',
+      })
+      const { text: evalRaw1 } = await generateText({
+        model: HAIKU, system: ep1.system,
+        messages: [{ role: 'user', content: ep1.user }],
+        maxOutputTokens: 240,
+      })
+      voiceScore = parseFidelity(evalRaw1, {
+        model: HAIKU, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(),
+      })
+    } catch (e) {
+      console.warn('[draft] voice-judge eval-1 failed:', e.message)
+    }
+
+    if (voiceScore && voiceScore.overall < GATE) {
+      const redFlag = voiceScore.breakdown?.red_flag || 'voice drift from transcript'
+      try {
+        const { text: rawText2 } = await generateText({
+          model: 'anthropic/claude-sonnet-4-6',
+          system: systemPrompt,
+          messages: [
+            ...aiMessages,
+            { role: 'assistant', content: rawText1.trim() },
+            {
+              role: 'user',
+              content: `That draft was flagged: "${redFlag}". Please rewrite it, staying much closer to the actual words and speaking style from our conversation. Don't smooth or professionalize — capture what was actually said.`,
+            },
+          ],
+          maxOutputTokens: 1000,
+        })
+        if (rawText2?.trim()) {
+          voiceAttempts = 2
+          rawText = rawText2
+          const caption2 = extractProvenanceBlock(rawText2.trim()).content.split('---SLIDES---')[0].trim()
+          const ep2 = buildFidelityPrompt({
+            topic: interview.topic, caption: caption2,
+            transcript: clinicianSaid, phrases: voicePhrases,
+            staffName, workspaceName: ws.name || ws.slug || 'practice',
+          })
+          const { text: evalRaw2 } = await generateText({
+            model: HAIKU, system: ep2.system,
+            messages: [{ role: 'user', content: ep2.user }],
+            maxOutputTokens: 240,
+          })
+          const score2 = parseFidelity(evalRaw2, {
+            model: HAIKU, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(),
+          })
+          if (score2) voiceScore = score2
+        }
+      } catch (e) {
+        console.warn('[draft] voice-judge regen failed:', e.message)
+        rawText = rawText1  // keep first attempt on regen failure
+      }
+    }
+
+    // Split slides block from caption on the final rawText. Instagram prompts
+    // append a ---SLIDES--- JSON section; other platforms don't. Also strip
+    // the <PROVENANCE> trailer — it's metadata, not body copy.
+    const [captionRaw, slidesRaw] = extractProvenanceBlock(rawText.trim()).content.split('---SLIDES---')
     const caption = captionRaw.trim()
 
     let slides = null
@@ -278,6 +351,20 @@ export default async function handler(req, res) {
     const itemRows = await itemRes.json()
     const contentPiece = itemRows[0]
     insertedContentPieceId = contentPiece.id
+
+    // Persist voice-judge score so /week can surface low-fidelity cards.
+    // Non-blocking: a score failure never aborts the draft.
+    if (voiceScore) {
+      sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          voice_fidelity_score: Math.round(voiceScore.overall * 10),
+          voice_audit: { ...voiceScore.breakdown, attempts: voiceAttempts },
+          updated_at: new Date().toISOString(),
+        }),
+        headers: { Prefer: 'return=minimal' },
+      }).catch((e) => console.warn('[draft] voice score persist failed:', e.message))
+    }
 
     // For GBP atoms: generate a per-location variant for every workspace_location
     // that has a gbp_location_id configured. Each variant uses the same interview
