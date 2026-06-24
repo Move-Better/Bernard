@@ -219,7 +219,7 @@ async function handler(req, res) {
                 extracted_guidelines: guidelines,
                 ...(Object.keys(stylePatch).length > 0 ? { extracted_style: stylePatch } : {}),
               }
-              const upd = await sb(`brand_assets?id=eq.${inserted.id}`, {
+              const upd = await sb(`brand_assets?id=eq.${inserted.id}&${scopeColumn}=eq.${scopeId}`, {
                 method: 'PATCH',
                 headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify({ ai_classification: updatedClassification }),

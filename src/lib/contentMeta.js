@@ -74,7 +74,7 @@ export function getPlatformFamilyPill(platform) {
   const family = PLATFORM_TO_FAMILY[platform] || 'social'
   return {
     label: meta?.label?.replace(' Post', '') ?? platform,
-    pill:  PLATFORM_FAMILY_PILL[family] ?? 'bg-slate-100 text-slate-700',
+    pill:  PLATFORM_FAMILY_PILL[family] ?? 'bg-muted text-muted-foreground',
   }
 }
 

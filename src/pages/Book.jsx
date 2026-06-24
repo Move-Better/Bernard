@@ -349,7 +349,7 @@ function ChapterView({ chapter, isAdmin, proseClasses, onRefetch }) {
   return (
     <section className="group">
       <header className="flex items-baseline justify-between gap-3 mb-3">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 m-0">{chapter.title}</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground m-0">{chapter.title}</h2>
         {isAdmin && (
           <button
             type="button"

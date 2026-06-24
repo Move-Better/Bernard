@@ -548,10 +548,14 @@ async function processWorkspaceGBP(ws, summary) {
     const WINDOW_MS = 30 * 60 * 1000  // ±30 minutes proximity window
     for (const item of unmatched) {
       const pubAt = new Date(item.published_at).getTime()
-      const match = localPosts.find((p) => {
+      const match = localPosts.reduce((best, p) => {
         const created = new Date(p.createTime || p.updateTime || 0).getTime()
-        return Math.abs(created - pubAt) <= WINDOW_MS
-      })
+        const delta = Math.abs(created - pubAt)
+        if (delta > WINDOW_MS) return best
+        if (!best) return p
+        const bestDelta = Math.abs(new Date(best.createTime || best.updateTime || 0).getTime() - pubAt)
+        return delta < bestDelta ? p : best
+      }, null)
       if (!match?.name) continue
       const patch = await sb(`content_items?id=eq.${item.id}&workspace_id=eq.${ws.id}`, {
         method: 'PATCH',

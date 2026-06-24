@@ -1329,10 +1329,10 @@ function Header({ topic }) {
 // ────────────────────────────────────────────────────────────────────────────
 
 function qualityDotColor(quality) {
-  if (!quality) return 'bg-emerald-500'
-  if (quality.quality === 'red')    return 'bg-red-500'
-  if (quality.quality === 'yellow') return 'bg-amber-500'
-  return 'bg-emerald-500'
+  if (!quality) return 'bg-success'
+  if (quality.quality === 'red')    return 'bg-destructive'
+  if (quality.quality === 'yellow') return 'bg-warning'
+  return 'bg-success'
 }
 
 function qualityLabel(connState, quality) {

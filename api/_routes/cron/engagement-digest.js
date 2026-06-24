@@ -151,7 +151,7 @@ async function handler(req, res) {
       const cIds = [...new Set(queued.map((q) => q.staff_id).filter(Boolean))]
       let cMap = {}
       if (cIds.length) {
-        const cRes = await sb(`staff?id=in.(${cIds.join(',')})&select=id,name`)
+        const cRes = await sb(`staff?id=in.(${cIds.join(',')})&workspace_id=eq.${ws.id}&select=id,name`)
         if (cRes.ok) {
           const rows = await cRes.json()
           cMap = Object.fromEntries(rows.map((r) => [r.id, r.name]))

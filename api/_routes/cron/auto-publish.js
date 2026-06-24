@@ -376,10 +376,20 @@ async function processWorkspace(ws, summary) {
     // auto_published_at stamp — overwriting it to null would cause the next run
     // to re-dispatch to channels that already posted.
     if (!dispatchedAny) {
-      await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ auto_published_at: null }),
-      }).catch((e) => console.error('[auto-publish] claim release failed:', e?.message))
+      // Config errors (no channels configured) are permanent — retaining the
+      // claim prevents the cron from re-attempting every 10 min forever. An
+      // admin must fix the channel config and clear auto_published_at to re-arm.
+      const isConfigOnlyHold = held.some(
+        (h) => h.id === pkg.id && h.reasons?.every((r) => r.signal === 'config'),
+      )
+      if (isConfigOnlyHold) {
+        console.error('[auto-publish] config-only hold — retaining claim to prevent infinite retry', { pkgId: pkg.id, held })
+      } else {
+        await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ auto_published_at: null }),
+        }).catch((e) => console.error('[auto-publish] claim release failed:', e?.message))
+      }
     }
   }
 
