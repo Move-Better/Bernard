@@ -326,7 +326,7 @@ export async function persistDriveCredential({ workspaceId, refreshToken, accoun
 
   let r
   if (existing?.id) {
-    r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}`, {
+    r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}&workspace_id=eq.${workspaceId}`, {
       method: 'PATCH',
       headers: {
         apikey: SUPABASE_KEY,

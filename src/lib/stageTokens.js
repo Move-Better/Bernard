@@ -7,7 +7,7 @@
 export const STAGE_TOKENS = {
   capture:   { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50' },
   drafting:  { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50'  },
-  review:    { label: 'In Review',  badge: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-400'  },
+  review:    { label: 'In Review',  badge: 'bg-warning/10 text-warning',   dot: 'bg-warning'    },
   scheduled: { label: 'Scheduled',  badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', dot: 'bg-scheduled' },
   published: { label: 'Published',  badge: 'bg-success/10 text-success', dot: 'bg-success' },
 }
@@ -23,7 +23,7 @@ export function getStageToken(stage) {
 // (zinc = retired) to communicate item state rather than story pipeline stage.
 export const STATUS_DOT = {
   draft:     'bg-muted-foreground/50',
-  in_review: 'bg-amber-400',
+  in_review: 'bg-warning',
   approved:  'bg-scheduled',
   scheduled: 'bg-scheduled',
   published: 'bg-success',

@@ -216,6 +216,8 @@ async function handler(req, res) {
 
   const { campaign_id } = req.body || {}
   if (!campaign_id) return res.status(400).json({ error: 'campaign_id is required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(campaign_id)) return res.status(400).json({ error: 'invalid campaign_id' })
 
   const result = await runCampaignSpin(campaign_id, ws.id)
   if (!result) return res.status(404).json({ error: 'Campaign not found' })

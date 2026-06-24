@@ -62,7 +62,7 @@ export default function ContentBriefList({ refreshKey, expandedDefault = true })
             aria-hidden="true"
           />
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <Sparkles className="h-4 w-4 text-amber-600" />
+          <Sparkles className="h-4 w-4 text-action" />
           <span className="text-base font-bold tracking-tight">Edit briefs</span>
           {pendingCount > 0 && (
             <span className="ml-1 inline-flex items-center rounded-full bg-action/10 text-action text-2xs font-bold px-2 py-0.5">{pendingCount} active</span>

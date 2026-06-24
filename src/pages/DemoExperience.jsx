@@ -35,9 +35,9 @@ const TOPICS = [
     placeholder: 'e.g. "I had a patient last week who\'d been dealing with sciatica for two years…"',
     color: 'text-action',
     bg: 'bg-action/10',
-    border: 'border-amber-200 dark:border-amber-800',
-    hoverBorder: 'hover:border-amber-400 dark:hover:border-amber-600',
-    selectedBorder: 'border-amber-400 dark:border-amber-600',
+    border: 'border-warning/40 dark:border-warning/40',
+    hoverBorder: 'hover:border-warning dark:hover:border-warning',
+    selectedBorder: 'border-warning dark:border-warning',
   },
   {
     id: 'faq',

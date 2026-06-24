@@ -883,17 +883,17 @@ export default function OnboardingInterview() {
             <button
               type="button"
               onClick={handleRestoreAudio}
-              className="mb-3 w-full rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100 active:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="mb-3 w-full rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-left hover:bg-warning/20 active:bg-warning/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/60"
             >
               <div className="flex items-center gap-3">
-                <Volume2 className="h-5 w-5 text-amber-700 shrink-0" aria-hidden="true" />
+                <Volume2 className="h-5 w-5 text-warning shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-amber-900">Audio interrupted</p>
-                  <p className="text-xs text-amber-800">
+                  <p className="text-sm font-medium text-warning">Audio interrupted</p>
+                  <p className="text-xs text-warning/80">
                     Tap to restore audio and replay the last question. Often happens when headphones or CarPlay change connection.
                   </p>
                 </div>
-                <RefreshCw className="h-4 w-4 text-amber-700 shrink-0" aria-hidden="true" />
+                <RefreshCw className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
               </div>
             </button>
           )}

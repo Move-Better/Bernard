@@ -259,7 +259,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
       {hovered && !multiSelect && (
         <div className="absolute inset-0 bg-black/40 flex flex-col items-end justify-start p-1.5 gap-1 z-20 pointer-events-none">
           <button
-            className="pointer-events-auto h-6 w-6 rounded bg-white/90 flex items-center justify-center hover:bg-white transition-colors"
+            className="pointer-events-auto h-6 w-6 rounded bg-white/90 flex items-center justify-center hover:bg-card transition-colors"
             aria-label="Download"
             title="Download"
             onClick={(e) => quickDownload(e, asset)}
@@ -267,7 +267,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
             <Download className="h-3.5 w-3.5 text-foreground" />
           </button>
           <button
-            className="pointer-events-auto h-6 w-6 rounded bg-white/90 flex items-center justify-center hover:bg-white transition-colors"
+            className="pointer-events-auto h-6 w-6 rounded bg-white/90 flex items-center justify-center hover:bg-card transition-colors"
             aria-label="Copy link"
             title="Copy link"
             onClick={(e) => quickCopyLink(e, asset)}
