@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, Play, Pause, Film, Sparkles, Captions, Type,
+  Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors,
 } from 'lucide-react'
@@ -14,6 +14,7 @@ import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
+import EditorChrome from '@/components/editor/EditorChrome'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -846,79 +847,83 @@ export default function VideoEditor() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
-      <IconRail ctx={ctx} />
-      {/* LEFT CONTROL PANEL — title + transport + Save&publish/outputs (was the top
-          bar), then the contextual inspector. Everything on the sides → max video. */}
-      <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
-        <div className="border-b p-2.5" style={{ borderColor: 'hsl(var(--border))' }}>
-          <div className="mb-2 flex items-center gap-2">
-            <button onClick={() => navigate('/moments')} style={{ color: 'hsl(var(--muted-foreground))' }} title="Back to Moment Miner"><ArrowLeft className="h-4 w-4" /></button>
-            <span className="truncate text-xs font-semibold">{asset.display_title || asset.filename || 'Reel'}</span>
-          </div>
-          <div className="mb-2 flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
-            <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
-              {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+      {/* Shared top chrome (unified shell). Format switcher + transport + Export
+          fold into the action slot; the side panel below is inspector-only. */}
+      <EditorChrome
+        onBack={() => navigate('/moments')}
+        title={asset.display_title || asset.filename || 'Reel'}
+        badge={{ icon: Film, label: (FORMATS[format] || FORMATS.reel).label, sub: (FORMATS[format] || FORMATS.reel).dim }}
+      >
+        {/* Transport */}
+        <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
+          <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
+            {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          </button>
+          <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
+        </div>
+        {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
+        <div className="flex gap-1" role="group" aria-label="Output format">
+          {FORMAT_KEYS.map((k) => (
+            <button
+              key={k} onClick={() => setFormat(k)}
+              className="flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight"
+              style={segBtn(format === k)}
+              title={`${FORMATS[k].label} · ${FORMATS[k].dim}`}
+            >
+              <span className="font-medium">{FORMATS[k].label}</span>
+              <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
             </button>
-            <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
-          </div>
-          {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
-          <div className="mb-2 flex gap-1" role="group" aria-label="Output format">
-            {FORMAT_KEYS.map((k) => (
-              <button
-                key={k} onClick={() => setFormat(k)}
-                className="flex flex-1 flex-col items-center gap-0.5 rounded-md border py-1 text-3xs leading-tight"
-                style={segBtn(format === k)}
-                title={`${FORMATS[k].label} · ${FORMATS[k].dim}`}
-              >
-                <span className="font-medium">{FORMATS[k].label}</span>
-                <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
-              </button>
-            ))}
-          </div>
-          {/* Export — one render, multiple destinations (pick any). */}
-          <div className="relative">
-            <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="w-full justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
-              {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
-            </Button>
-            {exportOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setExportOpen(false)} />
-                <div className="absolute inset-x-0 top-full z-40 mt-1 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
-                  <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Send this clip to — pick any</p>
-                  {[
-                    { k: 'post', icon: CalendarClock, label: 'Schedule a post', sub: 'Pick channels & schedule on Publish' },
-                    { k: 'broll', icon: FolderOpen, label: 'Save to Library', sub: 'Reusable b-roll clip' },
-                    { k: 'ad', icon: Megaphone, label: 'Export for ads', sub: 'Download ad-sized versions' },
-                  ].map((o) => (
-                    <label key={o.k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
-                      <input type="checkbox" checked={dest[o.k]} onChange={() => toggleDest(o.k)} />
-                      <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                      <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
-                    </label>
-                  ))}
-                  <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
-                    {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Render &amp; send →
-                  </Button>
-                  <div className="my-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }} />
-                  <button disabled={busy} onClick={() => { setExportOpen(false); wholeMutation.mutate() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-3xs hover:bg-muted disabled:opacity-50" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    <Film className="h-3.5 w-3.5 shrink-0" />Render the whole untrimmed video instead
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          ))}
         </div>
-        <div className="min-h-0 flex-1 overflow-auto p-3">
-          {sel === 'moments' && <MomentsInspector ctx={ctx} />}
-          {sel === 'clip' && <ClipInspector ctx={ctx} />}
-          {sel === 'grade' && <GradeInspector ctx={ctx} />}
-          {sel === 'caption' && <CaptionInspector ctx={ctx} />}
-          {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
+        {/* Export — one render, multiple destinations (pick any). */}
+        <div className="relative">
+          <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
+          </Button>
+          {exportOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setExportOpen(false)} />
+              <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Send this clip to — pick any</p>
+                {[
+                  { k: 'post', icon: CalendarClock, label: 'Schedule a post', sub: 'Pick channels & schedule on Publish' },
+                  { k: 'broll', icon: FolderOpen, label: 'Save to Library', sub: 'Reusable b-roll clip' },
+                  { k: 'ad', icon: Megaphone, label: 'Export for ads', sub: 'Download ad-sized versions' },
+                ].map((o) => (
+                  <label key={o.k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
+                    <input type="checkbox" checked={dest[o.k]} onChange={() => toggleDest(o.k)} />
+                    <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                    <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
+                  </label>
+                ))}
+                <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+                  {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Render &amp; send →
+                </Button>
+                <div className="my-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }} />
+                <button disabled={busy} onClick={() => { setExportOpen(false); wholeMutation.mutate() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-3xs hover:bg-muted disabled:opacity-50" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <Film className="h-3.5 w-3.5 shrink-0" />Render the whole untrimmed video instead
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </aside>
-      <Canvas ctx={ctx} />
-      <VerticalTimeline ctx={ctx} />
+      </EditorChrome>
+      {/* WORK AREA: rail | inspector | canvas | timeline */}
+      <div className="flex min-h-0 flex-1">
+        <IconRail ctx={ctx} />
+        <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="min-h-0 flex-1 overflow-auto p-3">
+            {sel === 'moments' && <MomentsInspector ctx={ctx} />}
+            {sel === 'clip' && <ClipInspector ctx={ctx} />}
+            {sel === 'grade' && <GradeInspector ctx={ctx} />}
+            {sel === 'caption' && <CaptionInspector ctx={ctx} />}
+            {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
+          </div>
+        </aside>
+        <Canvas ctx={ctx} />
+        <VerticalTimeline ctx={ctx} />
+      </div>
       {adExportOpen && (
         <AdVideoExportModal
           clip={{ assetId, startSec, durationSec, captionText: captionSummary(), overlayPosition: caption.position, overlaySize: caption.size, title: asset?.display_title || asset?.filename }}
