@@ -168,7 +168,7 @@ export default async function handler(req, res) {
   const capAuth = await requireCapability(req, ws, [CAP_SETTINGS_EDIT])
   if (!capAuth.ok) return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
 
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
   if (!process.env.AI_GATEWAY_API_KEY) return res.status(503).json({ error: 'ai_unavailable' })
 
   // Conversation: [{ role: 'user'|'assistant', content: string }]. Keep the last

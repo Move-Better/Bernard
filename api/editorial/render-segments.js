@@ -162,11 +162,14 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const body = req.body || {}
-  const segmentIds = Array.isArray(body.segmentIds)
+  const rawIds = Array.isArray(body.segmentIds)
     ? [...new Set(body.segmentIds.map((s) => String(s)).filter(Boolean))]
     : []
-  if (!segmentIds.length) return res.status(400).json({ error: 'segmentIds_required' })
+  if (!rawIds.length) return res.status(400).json({ error: 'segmentIds_required' })
+  if (rawIds.some((id) => !UUID_RE.test(id))) return res.status(400).json({ error: 'invalid_segment_id' })
+  const segmentIds = rawIds
   if (segmentIds.length > 12) return res.status(400).json({ error: 'too_many_segments', max: 12 })
 
   // Fetch the requested segments (workspace-scoped) + their source asset so we

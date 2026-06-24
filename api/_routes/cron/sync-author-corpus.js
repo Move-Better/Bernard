@@ -24,12 +24,6 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 const SOURCE_SLUG = 'movebetter-people'
 const TARGET_SLUG = 'qbook'
 
-// Q's Clerk user_id — the single identity that owns both workspaces. The source
-// clinician must be resolved by this id, never by row age: if movebetter-people
-// onboards a second clinician whose staff row predates Q's, an oldest-row lookup
-// would index the wrong person's interviews into the qbook (Author Mode) corpus.
-const Q_USER_ID = 'user_3DWDihgcc6OPc5eVvYkZO9sgqVt'
-
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -68,6 +62,14 @@ export default async function handler(req, res) {
 
 export async function syncAuthorCorpus({ log = false, dryRun = false } = {}) {
   const emit = log ? console.info : () => {}
+
+  // The Clerk user_id of the account that owns both workspaces — set via the
+  // CORPUS_SYNC_USER_ID env var. The source clinician must be resolved by this id,
+  // never by row age: if movebetter-people onboards a second clinician whose staff
+  // row predates Q's, an oldest-row lookup would index the wrong person's interviews
+  // into the qbook (Author Mode) corpus.
+  const Q_USER_ID = process.env.CORPUS_SYNC_USER_ID
+  if (!Q_USER_ID) throw new Error('CORPUS_SYNC_USER_ID env var not set')
 
   // ── Resolve workspaces ─────────────────────────────────────────────────
   const wsRes = await sb(`workspaces?slug=in.(${SOURCE_SLUG},${TARGET_SLUG})&select=id,slug`)

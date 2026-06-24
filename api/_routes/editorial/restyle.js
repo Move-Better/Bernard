@@ -223,7 +223,7 @@ export default async function handler(req, res) {
   }
 
   // Rate limit
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   // Validate body
   const body = req.body || {}

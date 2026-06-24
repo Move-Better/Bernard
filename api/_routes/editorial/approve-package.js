@@ -212,7 +212,7 @@ export default async function handler(req, res) {
     // would publish a long-form (.mp4) render as a broken image. Derive video
     // vs image from the render extension (video renders are .mp4, photos .jpg).
     media_urls:     pRenders.filter((r) => r.blobUrl).map((r) => {
-      const isVideo = String(r.blobUrl).toLowerCase().endsWith('.mp4')
+      const isVideo = ['.mp4', '.webm', '.mov', '.m4v'].some((ext) => String(r.blobUrl).toLowerCase().endsWith(ext))
       return { url: r.blobUrl, type: isVideo ? 'video' : 'image', kind: isVideo ? 'video' : 'image' }
     }),
     status:         'approved',

@@ -9,6 +9,8 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
@@ -33,6 +35,7 @@ async function handler(req, res) {
   const body = req.body || {}
   const sourceAssetId = body.sourceAssetId
   if (!sourceAssetId) return res.status(400).json({ error: 'sourceAssetId required' })
+  if (!UUID_RE.test(sourceAssetId)) return res.status(400).json({ error: 'invalid_sourceAssetId' })
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })

@@ -74,6 +74,7 @@ async function dispatchGbpBundle({ pkg, workspace, targets }) {
     : []
 
   let firstPostId = null
+  const failedLocations = []
   for (const target of targets) {
     const pub = new BundlePublisher(workspace, { teamId: target.teamId })
     try {
@@ -81,9 +82,11 @@ async function dispatchGbpBundle({ pkg, workspace, targets }) {
       if (!firstPostId && result?.postId) firstPostId = result.postId
     } catch (e) {
       console.error('[auto-publish] bundle GBP dispatch failed for location:', target.label, e?.message)
+      failedLocations.push(target.teamId)
     }
   }
-  return firstPostId ? { bufferId: firstPostId } : null
+  if (!firstPostId) return null
+  return { bufferId: firstPostId, failedLocations: failedLocations.length ? failedLocations : undefined }
 }
 
 // Resolve Buffer GBP channel IDs for a workspace (same logic as api/publish/buffer.js).

@@ -67,6 +67,7 @@ async function handler(req, res) {
           allowedContentTypes: ALLOWED_MIME,
           maximumSizeInBytes: MAX_BYTES,
           addRandomSuffix: true,
+          allowedPathPrefixes: [`seminar/${scope.id}/`],
           tokenPayload: JSON.stringify({
             scopeColumn: scope?.column || null,
             scopeId: scope?.id || null,

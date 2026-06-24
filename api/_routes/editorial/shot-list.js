@@ -81,11 +81,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed' })
   }
 
-  const limited = await enforceLimit(req, res, 'ai')
-  if (limited) return
-
   const ws = await workspaceContext(req)
   if (!ws) return res.status(404).json({ error: 'no_workspace' })
+
+  const limited = await enforceLimit(req, res, 'ai', ws.id)
+  if (limited) return
   const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
