@@ -116,7 +116,7 @@ export default function MyWorkCard({ stories = [], userId }) {
 
       <Link
         to="/stories?owner=me"
-        className="block px-4 py-2.5 bg-slate-50/60 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+        className="block px-4 py-2.5 bg-muted/40 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
       >
         See all my work →
       </Link>

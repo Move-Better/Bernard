@@ -84,7 +84,7 @@ function StatusBadge({ status }) {
   const sm = STATUS_META[status] || { label: status || '—' }
   const stage = STATUS_TO_STAGE[status]
   const token = stage ? getStageToken(stage) : null
-  const badgeClass = token?.badge ?? 'bg-slate-100 text-slate-700'
+  const badgeClass = token?.badge ?? 'bg-muted text-muted-foreground'
   return <Badge className={`text-xs border-0 ${badgeClass}`}>{sm.label}</Badge>
 }
 
@@ -213,7 +213,7 @@ function AttributedView({ content, blocks, onHighlight }) {
       <div className="flex items-center gap-3 pt-1 border-t border-border/50 text-muted-foreground">
         <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-emerald-400" />Verbatim</span>
         <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-sky-400" />Paraphrase</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-slate-300" />Synthesis</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-muted-foreground/40" />Synthesis</span>
         <span className="ml-auto italic">Click a paragraph to jump to its source in the transcript</span>
       </div>
     </div>
@@ -1554,12 +1554,12 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       {provSummary && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {verbatimCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-success/10 text-success border border-success/30 font-medium">
               <Quote className="h-3 w-3" aria-hidden="true" />
               {verbatimCount} verbatim phrase{verbatimCount === 1 ? '' : 's'} preserved
             </span>
           )}
-          <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs text-emerald-700">
+          <span className="inline-flex items-center rounded-full bg-success/10 border border-success/30 px-2 py-0.5 text-xs text-success">
             {ownWordsPct}% in clinician&rsquo;s voice
           </span>
           {(provSummary.prior_corpus_pct ?? 0) > 0 && (
@@ -1573,7 +1573,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             </span>
           )}
           {provSummary.synthesis_pct > 40 && (
-            <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-700">
+            <span className="inline-flex items-center rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
               {provSummary.synthesis_pct}% model-invented — read closely
             </span>
           )}
@@ -1942,7 +1942,7 @@ export default function AssetsPane({
   }
 
   const active = pieces[activeIdx] ?? pieces[0]
-  const pm = PLATFORM_META[active?.platform] || { label: active?.platform || 'Unknown', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100' }
+  const pm = PLATFORM_META[active?.platform] || { label: active?.platform || 'Unknown', icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
   const PlatformIcon = pm.icon
 
   return (
@@ -1958,7 +1958,7 @@ export default function AssetsPane({
           }
           const platformIdx = {}
           return pieces.map((piece, i) => {
-            const meta = PLATFORM_META[piece.platform] || { label: piece.platform, icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100' }
+            const meta = PLATFORM_META[piece.platform] || { label: piece.platform, icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
             const Icon = meta.icon
             const isActive = i === activeIdx
             const total = platformCounts[piece.platform]

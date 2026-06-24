@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 export const PLATFORM_META = {
-  blog:         { label: 'Blog Post',       icon: FileText,   color: 'text-slate-600',  bg: 'bg-slate-100' },
+  blog:         { label: 'Blog Post',       icon: FileText,   color: 'text-muted-foreground', bg: 'bg-muted' },
   instagram:    { label: 'Instagram',       icon: Instagram,  color: 'text-pink-600',   bg: 'bg-pink-50' },
   instagram_story:{ label: 'Instagram Story', icon: Instagram, color: 'text-pink-600',   bg: 'bg-pink-50' },
   facebook:     { label: 'Facebook',        icon: Facebook,   color: 'text-blue-600',   bg: 'bg-blue-50' },
@@ -32,7 +32,7 @@ export const PLATFORM_META = {
 
 // See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders; same "Ready to publish" label for the approved status).
 export const STATUS_META = {
-  draft:      { label: 'Draft',      color: 'bg-slate-100 text-slate-700',   icon: FileText },
+  draft:      { label: 'Draft',      color: 'bg-muted text-muted-foreground', icon: FileText },
   in_review:  { label: 'In Review',  color: 'bg-amber-100 text-amber-700',   icon: Clock },
   approved:   { label: 'Ready to publish', color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CheckCircle2 },
   scheduled:  { label: 'Scheduled',  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CalendarDays },

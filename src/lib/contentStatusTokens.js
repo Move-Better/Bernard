@@ -11,7 +11,7 @@
 
 // See also src/lib/contentMeta.js (STATUS_META — badge+icon variant used by ContentHub/Stories surfaces with the "Approved" label and an `archived` row).
 export const CONTENT_STATUS_TOKENS = {
-  draft:     { label: 'Draft',               badge: 'bg-slate-100 text-slate-700',    accent: 'border-slate-200'   },
+  draft:     { label: 'Draft',               badge: 'bg-muted text-muted-foreground',  accent: 'border-border'   },
   in_review: { label: 'In Review',           badge: 'bg-amber-100 text-amber-700',    accent: 'border-amber-200'   },
   approved:  { label: 'Ready to publish',    badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', accent: 'border-scheduled/30' },
   scheduled: { label: 'Scheduled',           badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', accent: 'border-scheduled/30' },
@@ -24,8 +24,8 @@ export function getContentStatusToken(status) {
   return (
     CONTENT_STATUS_TOKENS[status] ?? {
       label: status,
-      badge: 'bg-slate-100 text-slate-600',
-      accent: 'border-slate-200',
+      badge: 'bg-muted text-muted-foreground',
+      accent: 'border-border',
     }
   )
 }

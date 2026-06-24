@@ -9,7 +9,7 @@ import { Textarea2 } from '@/components/settings/helpers'
 const PRIORITY_COLORS = {
   high: 'bg-rose-100 text-rose-700',
   medium: 'bg-amber-100 text-amber-700',
-  low: 'bg-slate-100 text-slate-600',
+  low: 'bg-muted text-muted-foreground',
 }
 
 export function TopicSuggestionsEditor({ topicsJson, patientContextJson, onChange }) {

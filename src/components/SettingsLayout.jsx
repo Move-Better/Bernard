@@ -151,7 +151,7 @@ function MobileNavRail({ visibleItems }) {
               className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
                 isActive
                   ? 'border-primary/20 bg-primary/10 text-primary'
-                  : 'border-border bg-white text-muted-foreground active:bg-accent/40 hover:text-foreground hover:border-primary/30'
+                  : 'border-border bg-card text-muted-foreground active:bg-accent/40 hover:text-foreground hover:border-primary/30'
               }`}
             >
               <item.icon className="h-3.5 w-3.5 shrink-0" />

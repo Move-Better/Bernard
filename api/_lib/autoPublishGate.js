@@ -48,6 +48,10 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
 
   // 3. QC flag check (workspace-level).
   const qcFlags = pkg?.qc_flags
+  if (qcFlags != null && !Array.isArray(qcFlags)) {
+    results.reasons.push({ signal: 'qc_flags_invalid_shape', detail: 'Package qc_flags is not an array — blocking to fail closed' })
+    return results
+  }
   if (Array.isArray(qcFlags) && qcFlags.length > 0) {
     results.reasons.push({
       signal: 'qc_flag',
