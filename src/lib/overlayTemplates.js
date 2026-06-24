@@ -735,7 +735,7 @@ function whoopTextZone(layout, palette) {
   return null                                                  // claim: full solid ground, leave as-is
 }
 
-function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null, W = SIZE, H = SIZE) {
+function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, palette = null, W = SIZE, H = SIZE, skipZone = false) {
   const role = BLOCK_ROLES.includes(block.role) ? block.role : 'body'
   const typo = roleTypography(role, brandStyle, themeBlock, blockStyleOf(block), H)
   const raw = (block.text || '').trim()
@@ -753,7 +753,7 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   const hasCustomPos = block.position && typeof block.position === 'object'
     && Number.isFinite(block.position.x) && Number.isFinite(block.position.y)
   const zone = whoopTextZone(layout, palette)
-  if (zone && WHOOP_CONTENT_ROLES.has(role) && !hasCustomPos) {
+  if (zone && WHOOP_CONTENT_ROLES.has(role) && !hasCustomPos && !skipZone) {
     const [zt, zb] = zone
     // `anchorY` is a BASELINE. A `top` block's glyphs rise ABOVE the baseline by
     // ~one ascent, so anchoring the baseline at the zone top pushes the text up
@@ -1314,9 +1314,21 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
 
   // Blocks render at their (fractional) positions; drawWhoopLayout is aspect-aware
   // so the panels line up with the text zones at any aspect.
+  //
+  // The full-bleed `photo` layout pulls a SINGLE headline down onto the bottom
+  // scrim (U2.1c). But a multi-block slide (explainer = hook+body, cta =
+  // hook+body+cta) crammed into that ~0.34-tall zone overlaps — a 3-line hook is
+  // ~0.2 of the canvas by itself, so it grows down over the body. The whole
+  // full-bleed frame is legible (top + bottom scrims), so for multi-content photo
+  // slides let the blocks keep their natural top/center/bottom spread across the
+  // canvas instead. split/badge keep the zone — their text must sit in the panel.
+  const contentCount = blocks.filter(
+    (b) => WHOOP_CONTENT_ROLES.has(b.role) && (b.text || '').trim()
+  ).length
+  const skipZone = layout === 'photo' && contentCount > 1
   for (const block of blocks) {
     const themeBlock = theme?.blocks?.[block.role] ?? null
-    drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, useWhoop ? layout : null, useWhoop ? palette : null, W, H)
+    drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, useWhoop ? layout : null, useWhoop ? palette : null, W, H, skipZone)
   }
 
   return target

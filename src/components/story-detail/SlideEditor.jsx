@@ -380,7 +380,11 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
 // renderer's resolvePosition + the WHOOP panel auto-zone, so the drag handle
 // starts over the actual text. A user-dragged custom {x,y} is used verbatim.
 const WHOOP_CONTENT = new Set(['hook', 'body', 'caption', 'cta'])
-function blockFraction(block, theme) {
+// `skipZone` mirrors the renderer (overlayTemplates.drawFreeformBlock): a
+// multi-content full-bleed `photo` slide does NOT pull its blocks into the
+// bottom scrim zone (they'd overlap), so the drag handle must sit at the block's
+// natural top/center/bottom position to stay aligned with the rendered text.
+function blockFraction(block, theme, skipZone = false) {
   const pos = block.position
   if (pos && typeof pos === 'object' && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
     return { x: Math.max(0, Math.min(1, pos.x)), y: Math.max(0, Math.min(1, pos.y)) }
@@ -395,7 +399,7 @@ function blockFraction(block, theme) {
   const zone = layout === 'split' ? [0.70, 0.95]
     : layout === 'badge' ? (palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93])
     : layout === 'photo' ? [0.58, 0.92] : null
-  if (zone && WHOOP_CONTENT.has(block.role)) {
+  if (zone && WHOOP_CONTENT.has(block.role) && !skipZone) {
     y = row === 'top' ? zone[0] : row === 'bottom' ? zone[1] : (zone[0] + zone[1]) / 2
   }
   return { x, y }
@@ -428,11 +432,15 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
+  const contentCount = (slide.blocks || []).filter(
+    (b) => WHOOP_CONTENT.has(b.role) && (b.text || '').trim()
+  ).length
+  const skipZone = theme?.layout === 'photo' && contentCount > 1
   return (
     <div ref={rootRef} className="pointer-events-none absolute inset-0 rounded-xl">
       {(slide.blocks || []).map((b, idx) => {
         if (!(b.text || '').trim()) return null
-        const f = blockFraction(b, theme)
+        const f = blockFraction(b, theme, skipZone)
         const sel = selection.type === 'text' && selection.idx === idx
         const w = Math.max(0.2, Math.min(1, Number.isFinite(b.width) ? b.width : 0.72))
         return (
@@ -1570,7 +1578,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const { data: photoSuggestions } = useMediaSuggestions(piece?.id, { enabled: !!piece?.id, kind: 'photo', k: 6 })
   useEffect(() => {
     if (autoAttachDoneRef.current) return
-    if (!photoSuggestions?.length) return
+    // useMediaSuggestions returns the raw suggest-media response — { clips: [...] },
+    // NOT a bare array. (The Swap-photo panel reads `sugg.clips` correctly; this
+    // effect previously read `photoSuggestions.length`/`[i]`, so the guard always
+    // bailed and the auto-attach silently never ran — "5 slides from 0 photos".)
+    const picks = Array.isArray(photoSuggestions?.clips) ? photoSuggestions.clips : []
+    if (!picks.length) return
     const allEmpty = mediaUrls.length === 0
     if (!allEmpty) { autoAttachDoneRef.current = true; return }
     autoAttachDoneRef.current = true
@@ -1578,7 +1591,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const seen = new Set(raw.map(mediaEntryKey))
     const toAdd = []
     for (let i = 0; i < slides.length; i++) {
-      const pick = photoSuggestions[i % photoSuggestions.length]
+      const pick = picks[i % picks.length]
       if (!pick) break
       const key = mediaEntryKey(pick)
       if (!seen.has(key)) { toAdd.push(pick); seen.add(key) }
@@ -1586,7 +1599,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const nextRaw = [...raw, ...toAdd]
     const photoOnly = nextRaw.filter((m) => m && m.type !== 'video' && m.url)
     const newSlides = slides.map((s, i) => {
-      const pick = photoSuggestions[i % photoSuggestions.length]
+      const pick = picks[i % picks.length]
       if (!pick) return s
       const idx = photoOnly.findIndex((m) => mediaEntryKey(m) === mediaEntryKey(pick))
       return idx >= 0 ? { ...s, photo_idx: idx } : s
