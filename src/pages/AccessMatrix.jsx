@@ -201,7 +201,7 @@ export default function AccessMatrix() {
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
         <Legend swatch="bg-agreement-signal/10 text-agreement-signal" icon={<Check className="h-3 w-3" />} label="tier default on" />
         <Legend swatch="bg-[#faf0eb] text-[#c04d18] ring-1 ring-[#fde0d2]" icon={<Check className="h-3 w-3" />} label="custom grant" />
-        <Legend swatch="bg-[#f8fafc] text-[#cbd5e1]" icon={<Minus className="h-3 w-3" />} label="off" />
+        <Legend swatch="bg-muted/20 text-muted-foreground/30" icon={<Minus className="h-3 w-3" />} label="off" />
         <Legend swatch="bg-card ring-1 ring-border text-muted-foreground" icon={<Lock className="h-2.5 w-2.5" />} label="owner-only" />
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-action inline-block" /> custom override</span>
       </div>
@@ -235,7 +235,7 @@ export default function AccessMatrix() {
                     <th
                       key={cap}
                       title={capabilityLabel(cap)}
-                      className={`bg-card border-b-2 border-border align-bottom px-1 pb-2 ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-[#edf0f4]'}`}
+                      className={`bg-card border-b-2 border-border align-bottom px-1 pb-2 ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-border/50'}`}
                       style={{ height: 110 }}
                     >
                       <span
@@ -255,7 +255,7 @@ export default function AccessMatrix() {
                 return (
                   <tr key={person.id} className="group">
                     {/* person cell */}
-                    <td className="sticky left-0 z-10 bg-card group-hover:bg-[#fafbfc] border-b border-border border-r-2 border-r-border px-4 py-2.5" style={{ minWidth: 220 }}>
+                    <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/20 border-b border-border border-r-2 border-r-border px-4 py-2.5" style={{ minWidth: 220 }}>
                       <div className="flex items-center gap-2.5">
                         <span
                           className="inline-flex items-center justify-center rounded-full text-white font-bold shrink-0"
@@ -267,7 +267,7 @@ export default function AccessMatrix() {
                           <div className="font-semibold text-xs leading-tight flex items-center gap-1.5 truncate">
                             <span className={person.pending ? 'opacity-60' : ''}>{person.name}</span>
                             {person.is_self && <span className="text-3xs text-muted-foreground">&middot; you</span>}
-                            {person.pending && <span className="px-1.5 py-px rounded-full text-3xs font-bold bg-[#fff7ed] text-[#d97706]">invite pending</span>}
+                            {person.pending && <span className="px-1.5 py-px rounded-full text-3xs font-bold bg-action/10 text-action">invite pending</span>}
                           </div>
                           <div className="mt-1 flex items-center gap-1.5">
                             <span className={`px-2 py-px rounded-full text-3xs font-bold ${TIER_PILL[person.permission_tier] || TIER_PILL.viewer}`}>
@@ -288,7 +288,7 @@ export default function AccessMatrix() {
                         return (
                           <td
                             key={cap}
-                            className={`text-center border-b border-border group-hover:bg-[#fafbfc] ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-[#edf0f4]'}`}
+                            className={`text-center border-b border-border group-hover:bg-muted/20 ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-border/50'}`}
                             style={{ height: 52 }}
                           >
                             <Cell person={person} st={st} onClick={() => toggleCap(person, cap)} />
@@ -308,7 +308,7 @@ export default function AccessMatrix() {
       {!isLoading && !error && (
         <div className="sticky bottom-0 z-20 -mx-6 md:mx-0 px-4 py-3 flex items-center gap-3 border md:rounded-lg border-x-0 md:border-x border-border bg-background/95 backdrop-blur">
           {dirtyIds.size > 0 ? (
-            <span className="text-xs text-[#d97706] font-semibold flex items-center gap-1.5">
+            <span className="text-xs text-action font-semibold flex items-center gap-1.5">
               {dirtyIds.size} {dirtyIds.size === 1 ? 'person' : 'people'} changed
             </span>
           ) : (
@@ -343,7 +343,7 @@ function Legend({ swatch, icon, label }) {
 
 function Cell({ person, st, onClick }) {
   if (person.pending) {
-    return <span className="inline-flex items-center justify-center rounded-full bg-[#fafafa] text-[#d1d5db]" style={{ width: 30, height: 30 }} title="Not yet accepted invite"><Minus className="h-3.5 w-3.5" /></span>
+    return <span className="inline-flex items-center justify-center rounded-full bg-muted/30 text-muted-foreground/30" style={{ width: 30, height: 30 }} title="Not yet accepted invite"><Minus className="h-3.5 w-3.5" /></span>
   }
   if (st.locked) {
     return (
@@ -359,7 +359,7 @@ function Cell({ person, st, onClick }) {
   let cls
   if (st.hasOverride && st.effective) cls = 'bg-[#faf0eb] text-[#c04d18] ring-2 ring-[#fde0d2]'
   else if (st.effective) cls = 'bg-agreement-signal/10 text-agreement-signal'
-  else cls = 'bg-[#f8fafc] text-[#cbd5e1]'
+  else cls = 'bg-muted/20 text-muted-foreground/30'
   const icon = st.effective ? <Check className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />
 
   return (
@@ -406,7 +406,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
     return (
       <div className="rounded-xl border border-agreement-signal/20 bg-agreement-signal/10 px-4 py-3 flex items-center gap-2.5">
         <UserCheck className="h-4 w-4 text-agreement-signal shrink-0" />
-        <p className="text-2xs text-[#065f46]">
+        <p className="text-2xs text-success">
           <b>All reconciled.</b> Everyone who can sign in has exactly one profile here — no strays, no duplicates.
         </p>
       </div>
@@ -416,7 +416,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
   return (
     <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3.5 space-y-3">
       <div className="flex items-start gap-2.5">
-        <AlertTriangle className="h-4 w-4 text-[#d97706] shrink-0 mt-0.5" />
+        <AlertTriangle className="h-4 w-4 text-action shrink-0 mt-0.5" />
         <div>
           <p className="text-xs font-bold text-[#92400e]">
             {total} {total === 1 ? 'profile needs' : 'profiles need'} attention
@@ -432,7 +432,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
         {orphans.map((p) => (
           <ReconRow
             key={`claim-${p.staff_id}`}
-            icon={<UserCheck className="h-3.5 w-3.5 text-[#0284c7]" />}
+            icon={<UserCheck className="h-3.5 w-3.5 text-info" />}
             text={<><b>{p.name || p.email}</b> has recordings but isn&rsquo;t linked to <b>{p.member_name || p.email}</b>&rsquo;s login yet.</>}
             action={
               <ReconBtn busy={busy} onClick={() => onClaim(p.staff_id, p.member_user_id)} kind="primary">
@@ -478,7 +478,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
         {missing.map((m) => (
           <ReconRow
             key={`missing-${m.user_id}`}
-            icon={<UserPlus className="h-3.5 w-3.5 text-[#64748b]" />}
+            icon={<UserPlus className="h-3.5 w-3.5 text-muted-foreground" />}
             text={<><b>{m.name || m.email}</b> can sign in but has no profile yet — it appears automatically the next time they open the app.</>}
             action={<span className="text-3xs text-muted-foreground italic px-2">no action needed</span>}
           />

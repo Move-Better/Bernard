@@ -58,6 +58,10 @@ export default async function handler(req, res) {
   if (piece.status === 'approved' || piece.status === 'scheduled' || piece.status === 'published') {
     return ok(res, { status: piece.status, alreadyApproved: true })
   }
+  const APPROVABLE_STATUSES = new Set(['draft', 'in_review'])
+  if (!APPROVABLE_STATUSES.has(piece.status)) {
+    return err(res, `Piece is not ready to approve (status: ${piece.status})`, 422)
+  }
 
   const approvedBy = auth.userId || 'unknown'
   const nowIso = new Date().toISOString()

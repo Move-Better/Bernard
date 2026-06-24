@@ -30,7 +30,7 @@ export const ANNOUNCEMENTS = [
         icon: FileText,
         title: 'AI drafts your content',
         body: 'Each completed interview produces a full content set — long-form article, social posts, email, and ad copy — written in your own voice from the recorded answers.',
-        accent: 'bg-sky-100 text-sky-700',
+        accent: 'bg-info/10 text-info',
       },
       {
         icon: ImageIcon,

@@ -148,7 +148,8 @@ async function handler(req, res) {
       const queued       = queuedRes.ok       ? await queuedRes.json()       : []
 
       // Resolve clinician names for queued packages (small fetch).
-      const cIds = [...new Set(queued.map((q) => q.staff_id).filter(Boolean))]
+      const UUID_RE_DIG = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      const cIds = [...new Set(queued.map((q) => q.staff_id).filter((id) => id && UUID_RE_DIG.test(id)))]
       let cMap = {}
       if (cIds.length) {
         const cRes = await sb(`staff?id=in.(${cIds.join(',')})&workspace_id=eq.${ws.id}&select=id,name`)
