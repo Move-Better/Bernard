@@ -91,7 +91,7 @@ export default function ConsentControls({ sourceAssetId, consentStatus = 'not_re
           <Button
             size="sm"
             variant="outline"
-            className="h-6 text-3xs px-2 border-emerald-300 text-success hover:bg-emerald-100"
+            className="h-6 text-3xs px-2 border-success/40 text-success hover:bg-success/10"
             onClick={() => updateConsent('obtained')}
             disabled={saving}
           >

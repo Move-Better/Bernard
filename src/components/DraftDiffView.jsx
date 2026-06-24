@@ -155,17 +155,17 @@ function ChangeChip({ segment, accepted, onToggle }) {
         <span>
           <span className={accepted ? 'line-through text-muted-foreground/60' : 'text-foreground'}>{oldText}</span>
           <ArrowRight className="inline h-3 w-3 mx-1 align-baseline text-muted-foreground" />
-          <span className={accepted ? 'text-emerald-800 font-medium' : 'text-muted-foreground/60 line-through'}>{newText}</span>
+          <span className={accepted ? 'text-success font-medium' : 'text-muted-foreground/60 line-through'}>{newText}</span>
         </span>
       )}
       {isDeletion && (
         <span className={accepted ? 'line-through text-rose-700' : 'text-foreground'}>{oldText}</span>
       )}
       {isInsertion && (
-        <span className={accepted ? 'text-emerald-800 font-medium' : 'text-muted-foreground/60 line-through'}>{newText}</span>
+        <span className={accepted ? 'text-success font-medium' : 'text-muted-foreground/60 line-through'}>{newText}</span>
       )}
       <span className="inline-flex items-center justify-center align-middle ml-0.5 w-3.5 h-3.5 rounded-full bg-card border text-3xs">
-        {accepted ? <Check className="h-2.5 w-2.5 text-emerald-700" /> : <X className="h-2.5 w-2.5 text-rose-500" />}
+        {accepted ? <Check className="h-2.5 w-2.5 text-success" /> : <X className="h-2.5 w-2.5 text-rose-500" />}
       </span>
     </button>
   )
