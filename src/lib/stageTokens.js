@@ -5,8 +5,8 @@
 // label — human-readable stage name
 
 export const STAGE_TOKENS = {
-  capture:   { label: 'Draft',       badge: 'bg-slate-100 text-slate-600',  dot: 'bg-slate-400'  },
-  drafting:  { label: 'Draft',       badge: 'bg-slate-100 text-slate-600',  dot: 'bg-slate-400'  },
+  capture:   { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50' },
+  drafting:  { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50'  },
   review:    { label: 'In Review',  badge: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-400'  },
   scheduled: { label: 'Scheduled',  badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', dot: 'bg-scheduled' },
   published: { label: 'Published',  badge: 'bg-success/10 text-success', dot: 'bg-success' },
@@ -14,7 +14,7 @@ export const STAGE_TOKENS = {
 
 /** @param {string} stage @returns {{ label: string, badge: string, dot: string }} */
 export function getStageToken(stage) {
-  return STAGE_TOKENS[stage] ?? { label: stage, badge: 'bg-slate-100 text-slate-600', dot: 'bg-slate-300' }
+  return STAGE_TOKENS[stage] ?? { label: stage, badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/40' }
 }
 
 // Dot colours keyed by content_item.status — single source so AssetsPane
@@ -22,7 +22,7 @@ export function getStageToken(stage) {
 // differ from STAGE_TOKENS.dot for 'draft' (slate = inert) and 'archived'
 // (zinc = retired) to communicate item state rather than story pipeline stage.
 export const STATUS_DOT = {
-  draft:     'bg-slate-400',
+  draft:     'bg-muted-foreground/50',
   in_review: 'bg-amber-400',
   approved:  'bg-scheduled',
   scheduled: 'bg-scheduled',
@@ -32,5 +32,5 @@ export const STATUS_DOT = {
 
 /** @param {string} status @returns {string} Tailwind bg class for the status dot */
 export function getStatusDot(status) {
-  return STATUS_DOT[status] ?? 'bg-slate-300'
+  return STATUS_DOT[status] ?? 'bg-muted-foreground/40'
 }

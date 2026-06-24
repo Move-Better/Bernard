@@ -182,7 +182,18 @@ export default async function handler(req, res) {
         if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
         if ((await ck.json()).length !== briefIds.length) return err(res, 'Brief not found in workspace', 422)
       }
-      const rows = body.map((r) => ({ ...r, workspace_id: ws.id }))
+      const BULK_ALLOWED = new Set([
+      'interview_id', 'brief_id', 'staff_id', 'staff_name', 'topic', 'platform',
+      'content', 'status', 'channel_override', 'ai_original_content',
+    ])
+    const rows = body.map((r) => {
+      const row = { workspace_id: ws.id }
+      for (const [k, v] of Object.entries(r)) {
+        if (BULK_ALLOWED.has(k)) row[k] = v
+      }
+      if (row.status !== undefined && !VALID_STATUSES.has(row.status)) row.status = 'draft'
+      return row
+    })
       const r = await sb('content_items', {
         method: 'POST',
         body: JSON.stringify(rows),
@@ -201,6 +212,7 @@ export default async function handler(req, res) {
     if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
     if (!(await ck.json()).length) return err(res, 'Interview not found in workspace', 422)
 
+    if (status && !VALID_STATUSES.has(status)) return err(res, 'Invalid status', 400)
     const row = { workspace_id: ws.id, interview_id: interviewId, staff_id: staffId, staff_name: staffName, topic, platform, content }
     if (status) row.status = status
     const r = await sb('content_items', {

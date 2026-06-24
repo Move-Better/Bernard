@@ -185,7 +185,7 @@ function VoiceDriftChip({ provenance }) {
 
 // Pure visual card body. Shared by the static Link card and the DragOverlay.
 function CardContent({ item, dragging, handle }) {
-  const pm = PLATFORM_META[item.platform] || { label: item.platform, icon: FileText, color: 'text-slate-600', bg: 'bg-slate-50' }
+  const pm = PLATFORM_META[item.platform] || { label: item.platform, icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
   const Icon = pm.icon
   const hasMedia = Array.isArray(item.media_urls) && item.media_urls.length > 0
   const snippet = (item.content || '').slice(0, 90)

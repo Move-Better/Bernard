@@ -31,7 +31,7 @@ const ROLE_META = {
   caption:     { label: 'Caption',     chip: 'bg-primary/10 text-primary' },
   cta:         { label: 'CTA',         chip: 'bg-muted text-muted-foreground' },
   attribution: { label: 'Attribution', chip: 'bg-muted text-muted-foreground' },
-  page:        { label: 'Page #',      chip: 'bg-slate-200 text-slate-700' },
+  page:        { label: 'Page #',      chip: 'bg-muted text-muted-foreground' },
 }
 
 // Normalize a slide loaded from the DB so the editor never has to defensively

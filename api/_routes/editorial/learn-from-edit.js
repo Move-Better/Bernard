@@ -66,11 +66,17 @@ function normalizePhrase(phrase) {
 }
 
 /**
- * Rough diff: compute absolute character difference between two strings.
- * Not a true diff algo — just used as a cheap "is this a meaningful change?" gate.
+ * Rough content-diff: count characters that appear only in one string.
+ * Measures actual rewrite depth, not just length delta — so "foo bar" → "bar baz"
+ * (same length, completely different content) registers as a real change.
+ * Uses a character-frequency bag approach: extra chars in either string are diff.
  */
 function charDiff(a, b) {
-  return Math.abs(a.length - b.length) + (a === b ? 0 : 1)
+  if (a === b) return 0
+  const freq = {}
+  for (const c of a) freq[c] = (freq[c] || 0) + 1
+  for (const c of b) freq[c] = (freq[c] || 0) - 1
+  return Object.values(freq).reduce((sum, v) => sum + Math.abs(v), 0)
 }
 
 /**

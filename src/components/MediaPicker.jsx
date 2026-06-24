@@ -375,8 +375,8 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                                 <img src={previewSrc} alt={a.filename} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                               ) : (
                                 <div className="h-full bg-slate-800 flex flex-col items-center justify-center gap-1 px-1">
-                                  <Video className="h-5 w-5 text-slate-400 shrink-0" />
-                                  <span className="text-3xs text-slate-400 text-center leading-tight line-clamp-3">{a.filename}</span>
+                                  <Video className="h-5 w-5 text-muted-foreground shrink-0" />
+                                  <span className="text-3xs text-muted-foreground text-center leading-tight line-clamp-3">{a.filename}</span>
                                 </div>
                               )}
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

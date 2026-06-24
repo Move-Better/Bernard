@@ -39,7 +39,8 @@ function sb(path, init = {}) {
   })
 }
 
-async function fetchOverdueItems(wsFilter = '') {
+async function fetchOverdueItems(wsFilter) {
+  if (!wsFilter) throw new Error('[sync-buffer-published] wsFilter is required — refusing unscoped query')
   const cutoff = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString()
   // scheduled_at.lt.now() catches everything past its window;
   // scheduled_at.gte.cutoff avoids touching rows older than 30 days.

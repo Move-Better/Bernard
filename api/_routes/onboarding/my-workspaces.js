@@ -102,7 +102,7 @@ async function handler(req, res) {
   //    URL on file.
   let suggested = []
   if (emailDomain && !PUBLIC_EMAIL_DOMAINS.has(emailDomain)) {
-    const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&website_hostname=not.is.null&select=slug,display_name,website_hostname,clerk_org_id`
+    const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&website_hostname=ilike.${encodeURIComponent('%' + emailDomain)}&select=slug,display_name,website_hostname,clerk_org_id&limit=50`
     const rows = await sbGet(url)
     if (rows != null) {
       const myOrgSet = new Set(orgIds)

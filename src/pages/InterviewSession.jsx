@@ -1815,7 +1815,7 @@ export default function InterviewSession() {
 
           {isStreaming && !streamingText && (
             <div className="flex items-start gap-3">
-              <div className="h-8 w-8 rounded-full bg-white border border-border flex items-center justify-center shrink-0 p-1">
+              <div className="h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center shrink-0 p-1">
                 <Loader2 className="h-4 w-4 text-primary animate-spin" />
               </div>
               <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
@@ -2450,7 +2450,7 @@ function MessageBubble({ message, staffName, isStreaming }) {
   return (
     <div className={`flex items-start gap-3 ${!isAI ? 'flex-row-reverse' : ''}`}>
       {isAI ? (
-        <div className="h-8 w-8 rounded-full bg-white border border-border flex items-center justify-center shrink-0 p-1">
+        <div className="h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center shrink-0 p-1">
           <img src={iconUrl} alt={runtimeWs?.display_name || workspace.name} className="h-full w-full" />
         </div>
       ) : (

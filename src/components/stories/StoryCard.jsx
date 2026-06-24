@@ -24,7 +24,7 @@ const PLATFORM_SHORT = {
 
 // Platform chip colors (dot accent).
 const PLATFORM_DOT = {
-  blog:          'bg-slate-400',
+  blog:          'bg-muted-foreground/60',
   instagram:     'bg-pink-500',
   facebook:      'bg-blue-500',
   linkedin:      'bg-sky-600',
@@ -109,7 +109,7 @@ export default function StoryCard({ story }) {
           {platforms.map((p) => (
             <span
               key={p}
-              className="inline-flex items-center gap-1 text-2xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-2xs font-semibold text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5"
             >
               <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_DOT[p] ?? 'bg-gray-400'}`} />
               {PLATFORM_SHORT[p] ?? p}

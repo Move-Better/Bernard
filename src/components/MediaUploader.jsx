@@ -531,7 +531,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             </div>
             <div className="space-y-1.5">
               {pending.map((p) => (
-                <div key={p.id} className="flex items-center gap-2.5 bg-white rounded-md px-2.5 py-1.5 text-xs">
+                <div key={p.id} className="flex items-center gap-2.5 bg-card rounded-md px-2.5 py-1.5 text-xs">
                   <span className="w-8 h-8 rounded bg-muted flex items-center justify-center text-base shrink-0">
                     {p.kind === 'video' ? '▶' : p.kind === 'image' ? '📷' : '?'}
                   </span>

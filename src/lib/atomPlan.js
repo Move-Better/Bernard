@@ -53,7 +53,7 @@ export const PLATFORM_UI = {
   facebook:  { label: 'Facebook',          icon: Facebook,  color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    dot: 'bg-blue-600'    },
   gbp:       { label: 'Google Business',   icon: MapPin,    color: 'text-primary',     bg: 'bg-primary/10', border: 'border-primary/20',  dot: 'bg-primary'     },
   tiktok:    { label: 'TikTok / Reels',    icon: Music2,    color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', dot: 'bg-fuchsia-600' },
-  twitter:   { label: 'X / Twitter',       icon: Twitter,   color: 'text-slate-700',   bg: 'bg-slate-50',   border: 'border-slate-200',   dot: 'bg-slate-700'   },
+  twitter:   { label: 'X / Twitter',       icon: Twitter,   color: 'text-foreground',    bg: 'bg-muted',      border: 'border-border',       dot: 'bg-foreground'   },
   threads:   { label: 'Threads',           icon: AtSign,    color: 'text-zinc-700',    bg: 'bg-zinc-50',    border: 'border-zinc-200',    dot: 'bg-zinc-700'    },
   bluesky:   { label: 'Bluesky',           icon: Cloud,     color: 'text-sky-600',     bg: 'bg-sky-50',     border: 'border-sky-200',     dot: 'bg-sky-500'     },
   mastodon:  { label: 'Mastodon',          icon: Hash,      color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-200',  dot: 'bg-violet-600'  },

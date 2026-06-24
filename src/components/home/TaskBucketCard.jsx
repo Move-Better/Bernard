@@ -27,7 +27,7 @@ export default function TaskBucketCard({
 }) {
   const surface = highlight
     ? 'rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[hsl(var(--primary)/0.05)] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(12,117,128,0.22)]'
-    : 'rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
+    : 'rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
   return (
     <div id={id} className={surface}>
       <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
@@ -43,7 +43,7 @@ export default function TaskBucketCard({
             className={
               highlight
                 ? 'inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-2xs font-bold px-1.5'
-                : 'inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-slate-100 text-slate-600 text-2xs font-bold px-1.5'
+                : 'inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-muted text-muted-foreground text-2xs font-bold px-1.5'
             }
           >
             {items.length}

@@ -1002,7 +1002,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                     value={purgeConfirm}
                     onChange={(e) => setPurgeConfirm(e.target.value)}
                     placeholder={asset.filename}
-                    className="h-8 text-sm bg-white"
+                    className="h-8 text-sm bg-card"
                   />
                 </div>
               )}

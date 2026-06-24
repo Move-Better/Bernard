@@ -146,7 +146,7 @@ export default function TranscriptHighlighter({ story, children }) {
       label: '→ Verbatim quote',
       icon: Quote,
       onClick: handleVerbatim,
-      color: 'text-slate-600 hover:bg-slate-50',
+      color: 'text-muted-foreground hover:bg-muted/50',
     },
   ]
 
