@@ -213,7 +213,10 @@ export default async function handler(req, res) {
       if (!VALID_INTERVIEW_STATUSES.has(body.status)) return err(res, `invalid status: ${body.status}`)
       patch.status = body.status
     }
-    if (body.locationId !== undefined) patch.location_id = body.locationId || null
+    if (body.locationId !== undefined) {
+      if (body.locationId && !UUID_RE.test(body.locationId)) return err(res, 'Invalid locationId', 400)
+      patch.location_id = body.locationId || null
+    }
     if (body.pullQuoteSelectedId !== undefined) patch.pull_quote_selected_id = body.pullQuoteSelectedId || null
     if (body.verbatimFlags !== undefined) patch.verbatim_flags = body.verbatimFlags
     if (body.generationStyle !== undefined) patch.generation_style = body.generationStyle === 'minimal_edits' ? 'minimal_edits' : 'blog_post'
@@ -223,7 +226,10 @@ export default async function handler(req, res) {
     // rows. Empty string is treated as null so the editor can "clear" a slot.
     if (body.audience !== undefined)   patch.audience    = body.audience    || null
     if (body.storyType !== undefined)  patch.story_type  = body.storyType  || null
-    if (body.campaignId !== undefined) patch.campaign_id = body.campaignId || null
+    if (body.campaignId !== undefined) {
+      if (body.campaignId && !UUID_RE.test(body.campaignId)) return err(res, 'Invalid campaignId', 400)
+      patch.campaign_id = body.campaignId || null
+    }
     // topic — story title. Trim and reject empty strings (a story must
     // always have a title visible in the header / lists). Length-capped to
     // 300 chars to keep the header layout sane on long entries.

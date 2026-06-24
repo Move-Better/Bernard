@@ -24,7 +24,7 @@ export const ANNOUNCEMENTS = [
         icon: Mic,
         title: 'Start with a conversation',
         body: 'Pick a topic and start talking. Bernard asks the questions in a 15–30 minute interview — you (or a teammate) just answer out loud. No writing required.',
-        accent: 'bg-amber-100 text-amber-700',
+        accent: 'bg-warning/10 text-warning',
       },
       {
         icon: FileText,
@@ -36,7 +36,7 @@ export const ANNOUNCEMENTS = [
         icon: ImageIcon,
         title: 'Pair drafts with your media',
         body: 'Upload photos and videos to the Library, organize them into collections, and attach them to posts before publishing. Your library stays searchable across every campaign.',
-        accent: 'bg-emerald-100 text-emerald-700',
+        accent: 'bg-success/10 text-success',
       },
       {
         icon: Send,
@@ -58,7 +58,7 @@ export const ANNOUNCEMENTS = [
   //       icon: FolderTree,
   //       title: 'Collections in the Media Hub',
   //       body: 'Group related photos and videos into reusable sets. Attach a whole collection to a post in one click.',
-  //       accent: 'bg-emerald-100 text-emerald-700',
+  //       accent: 'bg-success/10 text-success',
   //     },
   //   ],
   // },

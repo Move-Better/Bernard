@@ -366,7 +366,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                           key={a.id}
                           onClick={() => toggleAsset(a)}
                           className={`relative rounded-lg overflow-hidden border-2 aspect-square transition-all ${
-                            sel && tooLong ? 'border-amber-400' : sel ? 'border-primary' : 'border-transparent hover:border-muted-foreground/30'
+                            sel && tooLong ? 'border-warning' : sel ? 'border-primary' : 'border-transparent hover:border-muted-foreground/30'
                           }`}
                         >
                           {a.kind === 'video' ? (
@@ -399,7 +399,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                             </span>
                           ) : null}
                           {tooLong && (
-                            <span className="absolute bottom-1 left-1 right-1 text-3xs font-medium px-1 py-0.5 rounded bg-amber-400/90 text-amber-900 flex items-center gap-0.5 leading-tight">
+                            <span className="absolute bottom-1 left-1 right-1 text-3xs font-medium px-1 py-0.5 rounded bg-action/80 text-foreground flex items-center gap-0.5 leading-tight">
                               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
                               {fmtDur(a.duration_s)} — too long
                             </span>

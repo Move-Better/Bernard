@@ -80,7 +80,7 @@ async function handler(req, res) {
 
   // ─── Fetch eligible workspaces ──────────────────────────────────────────
   const wsRes = await sb(
-    'workspaces?engagement_digest_enabled=eq.true' +
+    'workspaces?engagement_digest_enabled=eq.true&status=eq.active' +
     '&select=id,slug,display_name,name,primary_logo_url,colors,clerk_org_id,' +
     'engagement_digest_recipients,engagement_digest_last_sent_at'
   )

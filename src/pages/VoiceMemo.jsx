@@ -413,10 +413,10 @@ export default function VoiceMemo() {
           tab was backgrounded/killed mid-record on a phone). Surfaced from
           IndexedDB on mount so the audio is never silently lost. */}
       {recoverable.length > 0 && !recording && !recorded && !uploading && (
-        <Card className="border-amber-500/40 bg-amber-500/5">
+        <Card className="border-warning/40 bg-warning/5">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start gap-2">
-              <RotateCcw className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+              <RotateCcw className="h-4 w-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
               <div className="text-sm">
                 <span className="font-medium">We saved {recoverable.length === 1 ? 'a recording' : `${recoverable.length} recordings`} that didn&apos;t finish uploading.</span>{' '}
                 <span className="text-muted-foreground">Recover and send {recoverable.length === 1 ? 'it' : 'them'}, or discard.</span>
@@ -424,7 +424,7 @@ export default function VoiceMemo() {
             </div>
             <div className="space-y-2">
               {recoverable.map((s) => (
-                <div key={s.id} className="flex items-center gap-2 rounded-md bg-background/60 border border-amber-500/20 px-3 py-2">
+                <div key={s.id} className="flex items-center gap-2 rounded-md bg-background/60 border border-warning/20 px-3 py-2">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{s.filename || 'voice memo'}</div>
                     <div className="text-xs text-muted-foreground tabular-nums">

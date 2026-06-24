@@ -485,9 +485,9 @@ function RealQuotesSection({ pieceId, onInsertQuote }) {
               key={q.id}
               type="button"
               onClick={() => onInsertQuote?.(q.quote)}
-              className="w-full text-left rounded-md border border-l-[3px] border-l-amber-400 bg-card px-2.5 py-2 text-2xs leading-snug text-foreground hover:bg-amber-50/60 transition-colors"
+              className="w-full text-left rounded-md border border-l-[3px] border-l-verbatim-accent bg-card px-2.5 py-2 text-2xs leading-snug text-foreground hover:bg-verbatim-accent/5 transition-colors"
             >
-              <span className="text-3xs font-bold uppercase tracking-wide text-amber-500 block mb-0.5">● verbatim</span>
+              <span className="text-3xs font-bold uppercase tracking-wide text-verbatim-accent block mb-0.5">● verbatim</span>
               &ldquo;{q.quote}&rdquo;
             </button>
           ))}
@@ -614,7 +614,7 @@ function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onC
       type="button"
       onClick={() => onChange({ ...slide, template_id: t.id })}
       className={`group relative overflow-hidden rounded-md border text-left transition-all ${
-        selected ? 'border-amber-400 ring-1 ring-amber-400/40' : 'border-border hover:border-primary/40'
+        selected ? 'border-verbatim-accent ring-1 ring-verbatim-accent/40' : 'border-border hover:border-primary/40'
       }`}
       title={`${t.name}${selected ? ' (this slide only)' : ''}`}
     >
@@ -629,7 +629,7 @@ function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onC
       </div>
       <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">{t.name}</div>
       {selected && (
-        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-1 ring-amber-400/40" />
+        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
       )}
     </button>
   )

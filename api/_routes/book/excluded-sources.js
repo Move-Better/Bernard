@@ -25,6 +25,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const VALID_TABLES = new Set(['interviews', 'staff_corpus_documents'])
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -74,6 +75,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'source_table must be interviews or staff_corpus_documents' })
     }
     if (!sourceId) return res.status(400).json({ error: 'source_id required' })
+    if (!UUID_RE.test(sourceId)) return res.status(400).json({ error: 'invalid source_id' })
 
     const r = await sb(`book_excluded_sources?on_conflict=workspace_id,source_table,source_id`, {
       method: 'POST',
@@ -103,6 +105,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'source_table invalid' })
     }
     if (!sourceId) return res.status(400).json({ error: 'source_id required' })
+    if (!UUID_RE.test(sourceId)) return res.status(400).json({ error: 'invalid source_id' })
 
     const r = await sb(
       `book_excluded_sources?workspace_id=eq.${ws.id}` +

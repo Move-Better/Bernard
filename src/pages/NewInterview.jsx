@@ -623,7 +623,7 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
             <span className="text-base shrink-0">{display.emoji || '⭐'}</span>
             <span className="text-sm font-medium truncate">{display.name}</span>
             {selected?.is_default && (
-              <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />
+              <Star className="h-3.5 w-3.5 text-action fill-action shrink-0" />
             )}
           </span>
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -640,7 +640,7 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
                 <span className="text-base">{r.emoji || '⭐'}</span>
                 <span className="flex-1 truncate">{r.name}</span>
                 {r.is_default && (
-                  <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                  <Star className="h-3.5 w-3.5 text-action fill-action shrink-0" />
                 )}
                 {r.id === selectedId && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
               </button>

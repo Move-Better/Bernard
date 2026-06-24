@@ -122,9 +122,10 @@ export function parseFidelity(rawText, extra = {}) {
     const cleaned = String(rawText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     try { r = JSON.parse(cleaned) } catch { return null }
   }
-  const valid = FIDELITY_DIMENSIONS.filter((d) => typeof r[d] === 'number')
+  const valid = FIDELITY_DIMENSIONS.filter((d) => typeof r[d] === 'number' && isFinite(r[d]))
   if (!valid.length) return null
-  const overall = Number((valid.reduce((s, d) => s + r[d], 0) / valid.length).toFixed(2))
+  const clampedScores = valid.map((d) => Math.max(1, Math.min(10, r[d])))
+  const overall = Number((clampedScores.reduce((s, v) => s + v, 0) / valid.length).toFixed(2))
   const breakdown = {
     said_fidelity: r.said_fidelity ?? null,
     voice_match:   r.voice_match ?? null,

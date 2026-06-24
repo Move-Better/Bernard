@@ -1238,7 +1238,7 @@ export default function PhoneCall() {
               title={qualityTooltip(connState, quality)}
               className={
                 connState === 'connecting' || connState === 'reconnecting'
-                  ? 'h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse'
+                  ? 'h-2.5 w-2.5 rounded-full bg-action animate-pulse'
                 : connState === 'connected'
                   ? `h-2.5 w-2.5 rounded-full ${qualityDotColor(quality)}`
                   : 'h-2.5 w-2.5 rounded-full bg-muted-foreground/30'

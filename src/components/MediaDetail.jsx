@@ -997,7 +997,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               </div>
               {showPurge && purgeReady && (
                 <div className="space-y-1.5">
-                  <p className="text-amber-950">Type <code className="bg-amber-100 px-1 rounded">{asset.filename}</code> to permanently delete this file. The blob and database row will be erased and cannot be recovered.</p>
+                  <p className="text-foreground">Type <code className="bg-warning/10 px-1 rounded">{asset.filename}</code> to permanently delete this file. The blob and database row will be erased and cannot be recovered.</p>
                   <Input
                     value={purgeConfirm}
                     onChange={(e) => setPurgeConfirm(e.target.value)}

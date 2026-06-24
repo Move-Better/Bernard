@@ -79,6 +79,19 @@ async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     const patch = req.body || {}
+
+    const ALLOWED_STATUSES = new Set(['raw', 'tagged', 'archived'])
+    if (patch.status !== undefined && !ALLOWED_STATUSES.has(patch.status)) {
+      return res.status(400).json({ error: 'Invalid status' })
+    }
+
+    if (patch.capturedAt !== undefined && patch.capturedAt !== null) {
+      const ts = new Date(patch.capturedAt)
+      if (!isFinite(ts.getTime())) {
+        return res.status(400).json({ error: 'Invalid capturedAt — must be ISO timestamp' })
+      }
+    }
+
     const allowed = {
       status:            patch.status,
       tags:              patch.tags,

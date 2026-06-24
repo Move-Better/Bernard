@@ -305,7 +305,7 @@ export async function persistGbpCredential({ workspaceId, refreshToken, accessTo
 
   let r
   if (existing?.id) {
-    r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}`, {
+    r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}&workspace_id=eq.${workspaceId}`, {
       method: 'PATCH',
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ config, secret_ciphertext, status: 'active' }),

@@ -85,9 +85,9 @@ function campaignWindowState(c) {
 }
 
 const TONE_CLASS = {
-  emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  emerald: 'bg-success/10 text-success border-success/30',
   sky:     'bg-sky-50 text-sky-800 border-sky-200',
-  amber:   'bg-amber-50 text-amber-800 border-amber-200',
+  amber:   'bg-warning/10 text-warning border-warning/30',
   muted:   'bg-muted text-muted-foreground border-border',
 }
 

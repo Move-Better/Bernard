@@ -957,12 +957,12 @@ function CaptureCompanionCard({ staffMember }) {
         </div>
 
         {newToken && (
-          <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3 space-y-2">
-            <div className="flex items-start gap-2 text-amber-900">
+          <div className="rounded-lg border-2 border-warning/40 bg-warning/10 p-3 space-y-2">
+            <div className="flex items-start gap-2 text-warning">
               <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <div className="text-sm font-medium">Token created — copy it now</div>
             </div>
-            <p className="text-xs text-amber-800">
+            <p className="text-xs text-warning/80">
               This is the only time you&apos;ll see the full token. Copy it now and paste into the iOS Shortcut. If you lose it, rotate and start over.
             </p>
             <div className="flex items-center gap-2">
@@ -1210,7 +1210,7 @@ function RecipeRow({ recipe, workspace, voiceModes, onSetDefault, onDelete, busy
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium truncate">{recipe.name}</p>
           {recipe.is_default && (
-            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" aria-label="Default recipe" />
+            <Star className="h-3.5 w-3.5 text-action fill-action shrink-0" aria-label="Default recipe" />
           )}
         </div>
         {pills.length > 0 ? (
@@ -1236,7 +1236,7 @@ function RecipeRow({ recipe, workspace, voiceModes, onSetDefault, onDelete, busy
             onClick={onSetDefault}
             disabled={busy}
             title="Make default"
-            className="p-1.5 rounded text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-50"
+            className="p-1.5 rounded text-muted-foreground hover:text-action hover:bg-action/10 disabled:opacity-50"
           >
             <Star className="h-3.5 w-3.5" />
           </button>
