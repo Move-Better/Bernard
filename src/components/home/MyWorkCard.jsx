@@ -71,8 +71,8 @@ export default function MyWorkCard({ stories = [], userId }) {
   const rows = mine.slice(0, MAX_ROWS)
 
   return (
-    <div className="rounded-2xl border border-border bg-white overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 flex-wrap">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border flex-wrap">
         <h2 className="text-base font-bold tracking-tight">My work &amp; where it stands</h2>
         <span className="nx-pill nx-pill-ink">{mine.length} {mine.length === 1 ? 'piece' : 'pieces'}</span>
         <div className="ml-auto hidden md:flex items-center gap-1 text-2xs">
@@ -88,7 +88,7 @@ export default function MyWorkCard({ stories = [], userId }) {
         </div>
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-border">
         {rows.map((s) => {
           const meta = STAGE[s.story_stage] || STAGE.capture
           const platforms = platformSummary(s)

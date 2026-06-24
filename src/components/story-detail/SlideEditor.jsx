@@ -1823,7 +1823,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       )}
 
       {/* ── TOP BAR (~52px) — the only persistent chrome ─────────────────── */}
-      <header className="flex items-center gap-3 border-b bg-white px-4 py-2.5 shrink-0">
+      <header className="flex items-center gap-3 border-b bg-card px-4 py-2.5 shrink-0">
         <button
           type="button"
           onClick={goBack}
@@ -1906,7 +1906,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         />
 
         {/* 2. Inspector — LEFT of canvas with accordion layers */}
-        <aside className="flex w-[280px] shrink-0 flex-col border-r bg-white overflow-hidden">
+        <aside className="flex w-[280px] shrink-0 flex-col border-r bg-card overflow-hidden">
           {activeSlide ? (
             <>
               {/* Slide N of M + prev/next nav */}

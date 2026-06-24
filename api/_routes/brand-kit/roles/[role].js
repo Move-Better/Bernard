@@ -91,7 +91,7 @@ async function handler(req, res) {
     // When the brand book is assigned, sync its extracted guidelines to the
     // workspace row so prompts can read them without a separate brand-kit query.
     if (role === 'brand_book') {
-      const assetRes = await sb(`brand_assets?select=ai_classification&id=eq.${encodeURIComponent(assetId)}&limit=1`)
+      const assetRes = await sb(`brand_assets?select=ai_classification&id=eq.${encodeURIComponent(assetId)}&${scope.column}=eq.${scope.id}&limit=1`)
       if (assetRes.ok) {
         const assetRows = await assetRes.json()
         const cls = assetRows?.[0]?.ai_classification || {}

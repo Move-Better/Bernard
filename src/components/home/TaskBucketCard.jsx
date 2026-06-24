@@ -30,7 +30,7 @@ export default function TaskBucketCard({
     : 'rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
   return (
     <div id={id} className={surface}>
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
         <span
           className="inline-block w-1 h-6 rounded-full shrink-0"
           style={{ background: accent }}
@@ -53,7 +53,7 @@ export default function TaskBucketCard({
       {items.length === 0 ? (
         <p className="px-4 py-5 text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-border">
           {items.map((item, i) => (
             // renderItem is responsible for the key on its root element; we wrap
             // in a li but pass the index as a fallback key at the li level only.
@@ -62,7 +62,7 @@ export default function TaskBucketCard({
         </ul>
       )}
       {footer && items.length > 0 && (
-        <div className="border-t border-slate-100 px-4 py-2.5 text-right">{footer}</div>
+        <div className="border-t border-border px-4 py-2.5 text-right">{footer}</div>
       )}
     </div>
   )

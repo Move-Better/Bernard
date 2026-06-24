@@ -124,7 +124,7 @@ async function upsertOneVoicePhrase({ workspaceId, staffId, phrase, phraseNormal
   const existing = (await lookupRes.json())[0]
 
   if (existing) {
-    const patchRes = await sb(`staff_voice_phrases?id=eq.${existing.id}`, {
+    const patchRes = await sb(`staff_voice_phrases?id=eq.${existing.id}&workspace_id=eq.${workspaceId}`, {
       method: 'PATCH',
       body: JSON.stringify({
         approve_count: existing.approve_count + 1,

@@ -86,7 +86,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
               to={`/stories/${item.storyId}`}
               className="flex items-center gap-3 px-4 py-3 hover:bg-agreement-signal/5 transition-colors group"
             >
-              <div className="h-11 w-11 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+              <div className="h-11 w-11 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">

@@ -54,7 +54,7 @@ export default function PlanNextInterview({
     : null
 
   return (
-    <div className="rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
       {/* Header row */}
       <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border">
         <div>

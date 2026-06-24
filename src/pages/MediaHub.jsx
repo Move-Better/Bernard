@@ -571,7 +571,7 @@ export default function MediaHub() {
           <span className="text-2xs text-muted-foreground">Editorial groupings — campaigns, series, ad-hoc sets</span>
         </button>
         {collectionsOpen && (
-          <div className="border-t border-slate-100 px-3 py-2">
+          <div className="border-t border-border px-3 py-2">
             <CollectionsBar
               selectedId={collectionId}
               onSelect={setCollectionId}

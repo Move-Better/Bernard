@@ -9,7 +9,7 @@ export const STAGE_TOKENS = {
   drafting:  { label: 'Draft',       badge: 'bg-slate-100 text-slate-600',  dot: 'bg-slate-400'  },
   review:    { label: 'In Review',  badge: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-400'  },
   scheduled: { label: 'Scheduled',  badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', dot: 'bg-scheduled' },
-  published: { label: 'Published',  badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+  published: { label: 'Published',  badge: 'bg-success/10 text-success', dot: 'bg-success' },
 }
 
 /** @param {string} stage @returns {{ label: string, badge: string, dot: string }} */
@@ -26,7 +26,7 @@ export const STATUS_DOT = {
   in_review: 'bg-amber-400',
   approved:  'bg-scheduled',
   scheduled: 'bg-scheduled',
-  published: 'bg-emerald-500',
+  published: 'bg-success',
   archived:  'bg-muted-foreground/40',
 }
 

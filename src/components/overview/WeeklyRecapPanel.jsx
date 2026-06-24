@@ -198,8 +198,8 @@ function AllTimeStat({ value, label, color }) {
 function AllTimeBlock({ published, captured, contributors, costTotal }) {
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)]"
-      style={{ background: 'linear-gradient(120deg,#1e293b 0%,#334155 100%)' }}
+      className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)]"
+      style={{ background: 'linear-gradient(120deg, hsl(222 47% 12%) 0%, hsl(215 28% 22%) 100%)' }}
     >
       <div className="px-6 py-3.5 flex items-center gap-3 text-white border-b border-white/10">
         <InfinityIcon className="h-5 w-5 opacity-90" aria-hidden="true" />

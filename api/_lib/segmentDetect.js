@@ -284,13 +284,13 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
     // Moment Miner feed ranks on). Aligned to `segments` order; never throws.
     const scores = segments.length ? await scoreSegments(segments, ws) : []
 
-    // Replace any prior proposals (re-run support); leave human-touched rows
-    // (kept/discarded/rendered). Also clear stale 'rendering' rows — a render
-    // hard-killed at the 300s wall never leaves 'rendering', so a re-detect is
-    // the clinician's self-heal path for a clip that's stuck in flight.
-    await sb(`video_segments?source_asset_id=eq.${asset.id}&workspace_id=eq.${ws.id}&status=in.(proposed,rendering)`, {
-      method: 'DELETE',
-    })
+    // Fetch old proposed/rendering IDs BEFORE inserting so we can delete
+    // them only after the insert succeeds. Avoids permanent data loss if the
+    // insert fails — prior proposals survive and the user can retry.
+    const oldSegRes = await sb(
+      `video_segments?source_asset_id=eq.${asset.id}&workspace_id=eq.${ws.id}&status=in.(proposed,rendering)&select=id`,
+    )
+    const oldIds = oldSegRes.ok ? (await oldSegRes.json()).map((r) => r.id) : []
 
     if (segments.length) {
       const rows = segments.map((s, i) => ({
@@ -314,6 +314,14 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
         const text = await ins.text().catch(() => '')
         throw new Error(`video_segments insert failed: ${text.slice(0, 300)}`)
       }
+    }
+
+    // Insert succeeded (or no new segments) — safe to delete prior proposals now.
+    if (oldIds.length) {
+      await sb(
+        `video_segments?id=in.(${oldIds.join(',')})&workspace_id=eq.${ws.id}`,
+        { method: 'DELETE' },
+      ).catch((e) => console.error('[segmentDetect] stale segment delete failed:', e?.message))
     }
 
     // Non-fatal note: source was longer than we transcribed.

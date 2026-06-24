@@ -365,6 +365,7 @@ export default async function handler(req, res) {
     })
     if (!updatedAtomRes.ok) throw new Error(`atom status update failed: ${updatedAtomRes.status}`)
     const updatedAtomRows = await updatedAtomRes.json()
+    if (!updatedAtomRows.length) throw new Error('atom status update matched 0 rows — concurrent modification or workspace filter mismatch')
 
     return ok(res, {
       atom:          updatedAtomRows[0] ?? { ...atom, status: 'drafted', content_piece_id: contentPiece.id },

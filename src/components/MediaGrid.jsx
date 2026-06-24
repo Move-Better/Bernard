@@ -7,7 +7,7 @@ const STATUS_LABEL = {
   raw:      { label: 'Raw',      tone: 'bg-muted text-muted-foreground' },
   tagged:   { label: 'Tagged',   tone: 'bg-info/10 text-info' },
   rendered: { label: 'Rendered', tone: 'bg-scheduled/10 text-scheduled' },
-  approved: { label: 'Approved', tone: 'bg-amber-50 text-amber-700' },
+  approved: { label: 'Approved', tone: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled' },
   archived: { label: 'Archived', tone: 'bg-muted text-muted-foreground' },
 }
 
@@ -226,7 +226,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
         )}
         {asset._lifecycle === 'shipped' && firstStoryId && (
           <button
-            className="text-3xs bg-slate-700 text-white px-1.5 py-0.5 rounded-full leading-none hover:bg-slate-600 transition-colors"
+            className="text-3xs bg-success/80 text-white px-1.5 py-0.5 rounded-full leading-none hover:bg-success transition-colors"
             title="Already published — click to open the post"
             onClick={(e) => {
               e.stopPropagation()
@@ -264,7 +264,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
             title="Download"
             onClick={(e) => quickDownload(e, asset)}
           >
-            <Download className="h-3.5 w-3.5 text-slate-700" />
+            <Download className="h-3.5 w-3.5 text-foreground" />
           </button>
           <button
             className="pointer-events-auto h-6 w-6 rounded bg-white/90 flex items-center justify-center hover:bg-white transition-colors"
@@ -272,7 +272,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
             title="Copy link"
             onClick={(e) => quickCopyLink(e, asset)}
           >
-            <Link2 className="h-3.5 w-3.5 text-slate-700" />
+            <Link2 className="h-3.5 w-3.5 text-foreground" />
           </button>
         </div>
       )}

@@ -45,10 +45,10 @@ export default function TranscriptPane({ story, isLoadingTranscript = false, pro
           <p className="text-sm font-medium">Transcript</p>
         </div>
         <div className="p-4 space-y-3 animate-pulse">
-          <div className="h-3 bg-gray-200 rounded w-3/4" />
-          <div className="h-3 bg-gray-200 rounded w-full" />
-          <div className="h-3 bg-gray-200 rounded w-5/6" />
-          <div className="h-3 bg-gray-200 rounded w-2/3" />
+          <div className="h-3 bg-muted rounded w-3/4" />
+          <div className="h-3 bg-muted rounded w-full" />
+          <div className="h-3 bg-muted rounded w-5/6" />
+          <div className="h-3 bg-muted rounded w-2/3" />
         </div>
       </div>
     )
@@ -95,7 +95,7 @@ export default function TranscriptPane({ story, isLoadingTranscript = false, pro
                   key={i}
                   ref={isHighlighted ? highlightedRef : null}
                   className={`text-xs leading-relaxed rounded px-1 -mx-1 transition-colors duration-300 ${
-                    isHighlighted ? 'bg-sky-50 ring-1 ring-sky-300' : ''
+                    isHighlighted ? 'bg-contrast-signal/10 ring-1 ring-contrast-signal/40' : ''
                   }`}
                 >
                   <span className={`font-medium ${m.role === 'user' ? 'text-primary' : 'text-muted-foreground'}`}>
