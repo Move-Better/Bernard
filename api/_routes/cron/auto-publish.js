@@ -331,6 +331,9 @@ async function processWorkspace(ws, summary) {
         if (dispatch.failedLocations?.length) {
           console.error('[auto-publish] GBP partial failure', { pkgId: pkg.id, failedLocations: dispatch.failedLocations })
           held.push({ id: pkg.id, reasons: [{ signal: 'gbp_partial_failure', detail: `GBP locations failed: ${dispatch.failedLocations.join(', ')}` }] })
+          // Mark dispatchedAny=true so the claim is retained and the package
+          // is not re-dispatched to already-posted locations on the next run.
+          dispatchedAny = true
           failedAny = true
           continue
         }

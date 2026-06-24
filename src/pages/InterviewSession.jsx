@@ -2034,7 +2034,7 @@ export default function InterviewSession() {
                   Tap to restore audio and replay the last question. Often happens when headphones or CarPlay change connection.
                 </p>
               </div>
-              <RefreshCw className="h-4 w-4 text-amber-700 shrink-0" aria-hidden="true" />
+              <RefreshCw className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
             </div>
           </button>
         </div>

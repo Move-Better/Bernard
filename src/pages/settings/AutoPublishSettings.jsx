@@ -151,9 +151,9 @@ export default function AutoPublishSettings() {
 
       <DigestCard enabled={digestEnabled} onToggle={setDigestEnabled} />
 
-      <Card className="bg-amber-50 border-amber-200">
+      <Card className="bg-warning/10 border-warning/30">
         <CardContent className="pt-4 pb-3">
-          <div className="flex gap-2 text-sm text-amber-800">
+          <div className="flex gap-2 text-sm text-warning">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <p>
               <strong>Safety model:</strong> auto-published posts go into your Buffer queue (not

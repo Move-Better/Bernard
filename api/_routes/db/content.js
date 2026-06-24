@@ -250,9 +250,6 @@ export default async function handler(req, res) {
       target_locations:   patch.targetLocations,
       location_id:        patch.locationId,
       location_overrides: patch.locationOverrides,
-      reviewed_by:     patch.reviewedBy,
-      approved_by:     patch.approvedBy,
-      approved_at:     patch.approvedAt,
       performed_well:         patch.performedWell,
       archived_at:            patch.archivedAt,
       notes:                  patch.notes,
@@ -261,9 +258,18 @@ export default async function handler(req, res) {
       updated_at:             new Date().toISOString(),
       aspect_ratio:           patch.aspectRatio,
     }
-    const IMMUTABLE_AUDIT_FIELDS = new Set(['approved_by', 'approved_at', 'reviewed_by'])
+    // Audit fields are server-set only — never accept from the client.
+    // approved_by/approved_at are set when status transitions to 'approved';
+    // reviewed_by is set when status transitions to 'in_review'.
+    if (patch.status === 'approved') {
+      allowed.approved_by = auth.userId
+      allowed.approved_at = new Date().toISOString()
+    }
+    if (patch.status === 'in_review') {
+      allowed.reviewed_by = auth.userId
+    }
     const body = Object.fromEntries(
-      Object.entries(allowed).filter(([k, v]) => v !== undefined && !(IMMUTABLE_AUDIT_FIELDS.has(k) && v === null))
+      Object.entries(allowed).filter(([_k, v]) => v !== undefined)
     )
 
     const r = await sb(`content_items?id=eq.${id}&${wsFilter}`, {

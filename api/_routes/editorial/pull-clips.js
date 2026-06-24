@@ -37,6 +37,7 @@ import { searchClips } from '../../_lib/clipSearch.js'
 
 const DEFAULT_K = 8
 const DEFAULT_MIN_SCORE = 0.5
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -66,6 +67,9 @@ export default async function handler(req, res) {
     ? Math.min(Math.max(body.minScore, 0), 1)
     : DEFAULT_MIN_SCORE
   const staffId = body.staffId ? String(body.staffId) : null
+  if (staffId && !UUID_RE.test(staffId)) {
+    return res.status(400).json({ error: 'invalid_staffId' })
+  }
 
   // --- Search visual memory via shared helper ---
   let clips

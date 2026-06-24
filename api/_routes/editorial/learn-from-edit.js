@@ -20,6 +20,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Max phrases to capture per save — keeps noise low and prevents flooding the
 // voice library when a user pastes in a whole new document.
@@ -121,6 +122,9 @@ export default async function handler(req, res) {
   }
   if (!staff_id) {
     return res.status(400).json({ error: 'staff_id is required' })
+  }
+  if (!UUID_RE.test(staff_id)) {
+    return res.status(400).json({ error: 'invalid staff_id' })
   }
 
   // Verify staff_id belongs to this workspace — prevents poisoning another
