@@ -31,7 +31,22 @@ export default async function handler(req, res) {
   if (!auth.ok) return err(res, auth.reason || 'Unauthorized', auth.reason === 'forbidden' ? 403 : 401)
   if (!(await enforceLimit(req, res, 'generic'))) return
 
-  const weekMonday = mondayOf(new Date().toISOString())
+  // Week navigation (F2): default to the current week, but accept ?week=YYYY-MM-DD
+  // to view a past week (read-only, up to 8 weeks back) or a future week (up to 4
+  // weeks ahead, plannable). The value must be a Monday within that window — the
+  // client computes it the same UTC way mondayOf() does, so this stays in lockstep.
+  const NAV_BACK = 8, NAV_FWD = 4
+  const nowMonday = mondayOf(new Date().toISOString())
+  let weekMonday = nowMonday
+  const weekParam = new URL(req.url, 'http://localhost').searchParams.get('week')
+  if (weekParam) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(weekParam) || mondayOf(weekParam) !== weekParam) {
+      return err(res, 'Invalid week — must be a Monday (YYYY-MM-DD)', 400)
+    }
+    const offsetWeeks = Math.round((Date.parse(weekParam) - Date.parse(nowMonday)) / (7 * 86400000))
+    if (offsetWeeks < -NAV_BACK || offsetWeeks > NAV_FWD) return err(res, 'Week out of range', 400)
+    weekMonday = weekParam
+  }
 
   // This week's planned atoms (Strategist output for plan_week). Full detail so
   // the /week calendar can render cards + drill in to the per-piece review.

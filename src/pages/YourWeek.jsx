@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
 import {
-  CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, Shield, Plus,
-  Check, Loader2, Clock, Eye, Send, BookOpen, ChevronDown, AlertTriangle,
+  CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus,
+  Check, Loader2, Clock, Eye, Send, BookOpen, ChevronDown, AlertTriangle, Pencil,
+  History, CalendarPlus,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -32,6 +33,80 @@ const LADDER = [
   ['approve_exception', 'Approve by exception'],
   ['manage_by_goals', 'Manage by goals'],
 ]
+
+// Week navigation (F2): page back through finished weeks (read-only, up to 8) or
+// forward to plan ahead (up to 4). Must mirror the server's bounds in week-summary.js
+// + plan-week.js.
+const NAV_BACK = 8
+const NAV_FWD = 4
+
+// UTC-Monday for an offset from this week — mirrors strategist mondayOf() exactly,
+// so the Monday/range the server validates is the same value we compute & send.
+function weekMondayDate(offset) {
+  const d = new Date()
+  const dow = (d.getUTCDay() + 6) % 7 // 0 = Monday
+  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+function weekMondayISO(offset) {
+  return weekMondayDate(offset).toISOString().slice(0, 10)
+}
+function weekRangeLabel(offset) {
+  const mon = weekMondayDate(offset)
+  const sun = new Date(mon)
+  sun.setUTCDate(sun.getUTCDate() + 6)
+  const f = (dt, withMonth) => dt.toLocaleDateString('en-US', { month: withMonth ? 'short' : undefined, day: 'numeric', timeZone: 'UTC' })
+  return mon.getUTCMonth() === sun.getUTCMonth()
+    ? `${f(mon, true)} – ${f(sun, false)}`
+    : `${f(mon, true)} – ${f(sun, true)}`
+}
+function weekRelative(offset) {
+  if (offset === 0) return 'This week'
+  if (offset === 1) return 'Next week'
+  if (offset === -1) return 'Last week'
+  return offset > 0 ? `In ${offset} weeks` : `${-offset} weeks ago`
+}
+
+// Module-scope per the react-hooks/static-components rule.
+function WeekNav({ offset, onPrev, onNext, onToday }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-2.5">
+      <button
+        type="button"
+        onClick={onPrev}
+        disabled={offset <= -NAV_BACK}
+        className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Prev
+      </button>
+      <div className="flex items-center gap-2 text-center">
+        <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div>
+          <div className="text-sm font-bold leading-tight">{weekRangeLabel(offset)}</div>
+          <div className="text-3xs font-semibold uppercase tracking-wide text-primary">{weekRelative(offset)}</div>
+        </div>
+        {offset !== 0 && (
+          <button
+            type="button"
+            onClick={onToday}
+            className="ml-1 rounded-md border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
+          >
+            Back to this week
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={offset >= NAV_FWD}
+        className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
 
 // Friendly zone label so the cadence footer reads "Pacific time", not the raw
 // IANA city ("Los Angeles times" — which also read like the newspaper).
@@ -89,7 +164,7 @@ function cardState(item) {
   return { label: 'in review', cls: 'bg-muted text-muted-foreground', action: 'open', reviewable: true }
 }
 
-function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
+function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
   const state = cardState(item)
@@ -98,7 +173,11 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
   // The week is reviewable in place: a piece that's "open to review" with a
   // drafted excerpt can be approved here — the "this sounds like me" decision
   // happens with the evidence visible, without leaving the week view (D4).
-  const canReviewInline = state.reviewable && !!item.contentPieceId && !!item.excerpt
+  // Past weeks are read-only: no draft/approve affordances, just view.
+  const canReviewInline = !readOnly && state.reviewable && !!item.contentPieceId && !!item.excerpt
+  const showOpen = readOnly
+    ? (!!item.contentPieceId || !!item.interviewId)
+    : (state.action === 'open' || state.action === 'schedule')
 
   return (
     <div className="rounded-lg border border-l-[3px] border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm">
@@ -115,7 +194,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-semibold ${state.cls}`}>
           {state.label}
         </span>
-        {state.action === 'draft' && (
+        {!readOnly && state.action === 'draft' && (
           <button
             type="button"
             disabled={drafting}
@@ -135,14 +214,14 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
           >
             <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} /> Review
           </button>
-        ) : (state.action === 'open' || state.action === 'schedule') && (
+        ) : (showOpen && (
           <Link
             to={drillTo(item)}
             className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"
           >
             <Eye className="h-3 w-3" /> Open
           </Link>
-        )}
+        ))}
       </div>
       {item.voiceFidelityScore !== null && item.voiceFidelityScore !== undefined && item.voiceFidelityScore < 65 && (
         <div className="mt-1 flex items-center gap-1">
@@ -158,21 +237,23 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving }) {
           <p className="text-2xs italic leading-snug text-muted-foreground line-clamp-4">
             &ldquo;{item.excerpt}&rdquo;
           </p>
-          <div className="mt-1.5 flex items-center gap-1">
+          {/* Stacked full-width actions: side-by-side overflowed/wrapped in a
+              narrow day column (the label cramped onto two lines). */}
+          <div className="mt-1.5 flex flex-col gap-1">
             <button
               type="button"
               disabled={approving}
               onClick={() => onApprove(item)}
-              className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1 text-3xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-3xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
             >
               {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
               Sounds like me
             </button>
             <Link
               to={drillTo(item)}
-              className="rounded-md border px-2 py-1 text-3xs font-semibold hover:bg-muted"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
             >
-              Change
+              <Pencil className="h-3 w-3" /> Open to change
             </Link>
           </div>
         </div>
@@ -196,12 +277,17 @@ export default function YourWeek() {
   const [approvingAtom, setApprovingAtom] = useState(null) // atom id being approved inline
   const [scheduleConfirmOpen, setScheduleConfirmOpen] = useState(false)
   const [scheduling, setScheduling] = useState(false)
+  const [weekOffset, setWeekOffset] = useState(0) // 0 = this week; <0 past (read-only); >0 future (plannable)
+  const [planningWeek, setPlanningWeek] = useState(false)
   const { data, isLoading } = useQuery({
-    queryKey: ['week-summary'],
-    queryFn: () => apiFetch('/api/content-plan/week-summary'),
+    queryKey: ['week-summary', weekOffset],
+    queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset)}` : ''}`),
     enabled: !roleLoading,
     refetchOnWindowFocus: false,
   })
+
+  const isPast = weekOffset < 0
+  const isFuture = weekOffset > 0
 
   const userEmail = user?.primaryEmailAddress?.emailAddress || user?.id || ''
 
@@ -243,6 +329,32 @@ export default function YourWeek() {
       toast.error('Approve failed', { description: e?.message })
     } finally {
       setApprovingAtom(null)
+    }
+  }
+
+  // Generate-ahead: compose the viewed FUTURE week from backlog + captures so it
+  // can be reviewed/approved early. The endpoint gates to future weeks (+1..+4).
+  async function handlePlanAhead() {
+    if (planningWeek || weekOffset <= 0) return
+    setPlanningWeek(true)
+    try {
+      const r = await apiFetch('/api/content-plan/plan-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week: weekMondayISO(weekOffset) }),
+      })
+      if (r?.skipped === 'no-inputs') {
+        toast.info('Nothing to plan ahead yet', {
+          description: 'This week fills as you capture more or your backlog builds up.',
+        })
+      } else {
+        toast.success('Planned ahead — review when ready')
+      }
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+    } catch (e) {
+      toast.error('Plan failed', { description: e?.message })
+    } finally {
+      setPlanningWeek(false)
     }
   }
 
@@ -357,7 +469,7 @@ export default function YourWeek() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {approvedSchedulable.length > 0 && (
+          {!isPast && approvedSchedulable.length > 0 && (
             <button
               type="button"
               onClick={() => setScheduleConfirmOpen(true)}
@@ -394,17 +506,66 @@ export default function YourWeek() {
         </div>
       )}
 
-      {!data?.hasPlan ? (
-        <div className="rounded-lg border bg-muted/20 py-12 text-center">
-          <Sparkles className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
-          <p className="mt-2 text-sm font-medium text-foreground">No plan for this week yet</p>
-          <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-            Complete an interview and I&apos;ll compose your week — paced across your channels, with the rest banked as backlog.
-          </p>
-          <Link to="/new" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
-            <Plus className="h-4 w-4" aria-hidden="true" /> Start a capture
-          </Link>
+      {/* Week navigation (F2): page back through finished weeks or forward to plan ahead */}
+      <WeekNav
+        offset={weekOffset}
+        onPrev={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
+        onNext={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
+        onToday={() => setWeekOffset(0)}
+      />
+
+      {/* Per-week context banner */}
+      {isPast && (
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-2xs text-muted-foreground">
+          <History className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span><b className="text-foreground">Past week — read-only.</b> What ran the week of {weekRangeLabel(weekOffset)}. Open any piece to view it; finished weeks can&apos;t be re-planned.</span>
         </div>
+      )}
+      {isFuture && data?.hasPlan && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-2xs text-primary">
+          <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span><b>Planned ahead.</b> Review &amp; approve these now — they sit ready until {weekRangeLabel(weekOffset)}. Nothing publishes without your yes.</span>
+        </div>
+      )}
+
+      {!data?.hasPlan ? (
+        isFuture ? (
+          <div className="rounded-lg border border-dashed bg-muted/20 py-12 text-center">
+            <CalendarPlus className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium text-foreground">Nothing planned for {weekRangeLabel(weekOffset)} yet</p>
+            <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+              I&apos;ll compose this week from your backlog and any captures in its window — paced across your channels. You review and approve before anything schedules.
+            </p>
+            <button
+              type="button"
+              disabled={planningWeek}
+              onClick={handlePlanAhead}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              {planningWeek ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+              {planningWeek ? 'Planning…' : 'Plan this week'}
+            </button>
+          </div>
+        ) : isPast ? (
+          <div className="rounded-lg border bg-muted/20 py-12 text-center">
+            <Moon className="mx-auto h-8 w-8 text-muted-foreground/60" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium text-foreground">Nothing ran the week of {weekRangeLabel(weekOffset)}</p>
+            <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+              No content was planned for this past week.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border bg-muted/20 py-12 text-center">
+            <Sparkles className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium text-foreground">No plan for this week yet</p>
+            <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+              Complete an interview and I&apos;ll compose your week — paced across your channels, with the rest banked as backlog.
+            </p>
+            <Link to="/new" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
+              <Plus className="h-4 w-4" aria-hidden="true" /> Start a capture
+            </Link>
+          </div>
+        )
       ) : (
         <>
           {/* Cadence strip */}
@@ -470,6 +631,7 @@ export default function YourWeek() {
                               drafting={draftingAtom === item.id}
                               onApprove={handleApprove}
                               approving={approvingAtom === item.id}
+                              readOnly={isPast}
                             />
                           ))
                         )}
@@ -522,7 +684,7 @@ export default function YourWeek() {
               )}
 
               {/* Batch schedule status summary */}
-              {approvedSchedulable.length > 0 && (
+              {!isPast && approvedSchedulable.length > 0 && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
                   <div className="mb-1.5 flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" aria-hidden="true" />
