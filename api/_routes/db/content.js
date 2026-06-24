@@ -208,6 +208,12 @@ export default async function handler(req, res) {
     if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
     if (staffId && !UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
 
+    if (staffId) {
+      const sk = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id`)
+      if (!sk.ok) return dbErr(res, sk, 'Staff ownership check failed')
+      if (!(await sk.json()).length) return err(res, 'Staff not found in workspace', 422)
+    }
+
     const ck = await sb(`interviews?id=eq.${interviewId}&workspace_id=eq.${ws.id}&select=id`)
     if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
     if (!(await ck.json()).length) return err(res, 'Interview not found in workspace', 422)
