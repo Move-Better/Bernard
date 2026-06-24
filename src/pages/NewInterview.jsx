@@ -629,7 +629,7 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {open && (
-          <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-white shadow-md py-1">
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-md py-1">
             {recipes.map((r) => (
               <button
                 key={r.id}

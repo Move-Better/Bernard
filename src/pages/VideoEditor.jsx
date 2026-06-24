@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
+import { BERNARD_PRIMARY } from '@/lib/brand'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
@@ -519,7 +520,7 @@ export default function VideoEditor() {
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
   const [kenBurns, setKenBurnsState] = useState({ motion: 'none', intensity: 50 })
   const [speed, setSpeedState] = useState(1)
-  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: '#0C7580', anim: 'none' })
+  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none' })
   const [overlays, setOverlays] = useState([])
   const [safeZones, setSafeZones] = useState(true)
   const [selectedSegmentId, setSelectedSegmentId] = useState(null)

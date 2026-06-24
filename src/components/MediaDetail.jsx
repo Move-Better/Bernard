@@ -505,7 +505,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               title="Copy the public Vercel Blob URL for this asset"
             >
               {copied
-                ? <><Check className="h-3.5 w-3.5 text-green-600" /> Copied</>
+                ? <><Check className="h-3.5 w-3.5 text-success" /> Copied</>
                 : <><Link2 className="h-3.5 w-3.5" /> Copy link</>}
             </Button>
             <Button
@@ -780,7 +780,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 ))}
                 {aiTags.length > 0 && (
                   <span
-                    className="self-center inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium text-violet-700 dark:text-violet-300 ml-1 mr-0.5"
+                    className="self-center inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium text-muted-foreground ml-1 mr-0.5"
                     title="AI-generated suggestions — click an existing tag chip to remove, or type below to add your own."
                   >
                     <Sparkles className="h-3 w-3" />
@@ -791,14 +791,14 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   <Badge
                     key={`ai-${t}`}
                     variant="outline"
-                    className="gap-1 border-dashed border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300"
+                    className="gap-1 border-dashed border-border bg-muted text-muted-foreground"
                   >
                     {t}
                     <button
                       type="button"
                       onClick={() => promoteAiTag(t)}
                       title="Add to your tags"
-                      className="-mr-0.5 rounded-full p-0.5 hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                      className="-mr-0.5 rounded-full p-0.5 hover:bg-accent transition-colors"
                     >
                       <Plus className="h-3 w-3" />
                     </button>
@@ -806,7 +806,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                       type="button"
                       onClick={() => removeAiTag(t)}
                       title="Dismiss this suggestion"
-                      className="-mr-0.5 rounded-full p-0.5 hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                      className="-mr-0.5 rounded-full p-0.5 hover:bg-accent transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>

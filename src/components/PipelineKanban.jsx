@@ -193,7 +193,7 @@ function CardContent({ item, dragging, handle }) {
   const showVoiceDrift = ['approved', 'scheduled', 'published'].includes(item.status)
 
   return (
-    <div className={`relative rounded-xl border border-border bg-white p-2.5 text-xs space-y-1.5 ${dragging ? 'shadow-[0_12px_28px_-12px_rgba(15,23,42,0.35)] ring-2 ring-primary/40' : ''}`}>
+    <div className={`relative rounded-xl border border-border bg-card p-2.5 text-xs space-y-1.5 ${dragging ? 'shadow-[0_12px_28px_-12px_rgba(15,23,42,0.35)] ring-2 ring-primary/40' : ''}`}>
       {handle}
       <div className="flex items-center justify-between gap-1.5">
         <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full ${pm.bg}`}>

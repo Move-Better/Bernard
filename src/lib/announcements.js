@@ -42,7 +42,7 @@ export const ANNOUNCEMENTS = [
         icon: Send,
         title: 'Review, schedule, and publish',
         body: 'Review and edit each draft, then publish it to your connected channels. You stay in control of every word that ships.',
-        accent: 'bg-violet-100 text-violet-700',
+        accent: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled',
       },
     ],
   },

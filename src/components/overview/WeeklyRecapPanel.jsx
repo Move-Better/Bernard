@@ -44,7 +44,7 @@ function Stat({ value, label, color }) {
 function RecapBlock({ recap }) {
   const { stats, wentLive, scheduled, waiting } = recap
   return (
-    <div className="rounded-2xl overflow-hidden border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.3)]">
+    <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.3)]">
       <div
         className="px-6 py-4 flex items-center gap-3 text-white"
         style={{ background: 'linear-gradient(100deg,hsl(var(--primary)) 0%,hsl(var(--primary)/0.75) 100%)' }}
@@ -150,7 +150,7 @@ function MemberCard({ m }) {
   const streak = computeStreak(m.capture_weeks)
   const due = kind === 'due' || kind === 'new'
   return (
-    <div className="bg-white p-4">
+    <div className="bg-card p-4">
       <div className="flex items-center gap-3">
         <span className={`h-11 w-11 rounded-full text-sm font-bold flex items-center justify-center shrink-0 ${due ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
           {getInitials(m.name)}
@@ -221,7 +221,7 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
 function TeamBlock({ team }) {
   const sorted = sortTeam(team)
   return (
-    <div className="rounded-2xl border border-border bg-white overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center gap-3 flex-wrap">
         <Users className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 className="text-base font-bold">The team</h3>
@@ -262,7 +262,7 @@ function CostBlock({ cost }) {
   const u = view.units
   const wow = view.wowPct
   return (
-    <div className="rounded-2xl border border-border bg-white overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center gap-2 flex-wrap">
         <Receipt className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 className="text-base font-bold">What this week cost to run</h3>
