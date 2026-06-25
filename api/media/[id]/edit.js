@@ -532,7 +532,7 @@ async function handler(req, res) {
     })
   } catch (e) {
     console.error('[edit] failed:', e?.message)
-    return res.status(500).json({ error: e?.message || 'Edit failed' })
+    return res.status(500).json({ error: 'edit_failed' })
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {})
   }

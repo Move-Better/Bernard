@@ -98,7 +98,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[book/regenerate] synthesizeBook failed:', e?.message)
     await markError(ws.id, e?.message)
-    return res.status(500).json({ error: e?.message || 'Synthesis failed' })
+    return res.status(500).json({ error: 'synthesis_failed' })
   }
 
   const ok = await upsertBookRow(ws.id, {
