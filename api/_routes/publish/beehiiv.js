@@ -67,7 +67,6 @@ async function handler(req, res) {
   if (!cred?.secret) {
     return res.status(503).json({
       error:   'not_configured',
-      message: `Beehiiv is not connected for this workspace${scope?.workspace?.slug ? ` (${scope.workspace.slug})` : ''}. Add a Beehiiv API key in Settings → Integrations → Beehiiv.`,
     })
   }
   const rawPublicationId = cred.config?.publication_id

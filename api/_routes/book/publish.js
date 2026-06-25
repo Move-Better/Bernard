@@ -93,7 +93,6 @@ async function handler(req, res) {
   if (!astroCred?.secret) {
     return res.status(503).json({
       error:   'not_configured',
-      message: `No Astro+GitHub publish target is configured for this workspace${ws.slug ? ` (${ws.slug})` : ''}. Add credentials in Workspace Settings → Publishing credentials.`,
     })
   }
   const receiverUrl = astroCred.config?.url
@@ -185,18 +184,15 @@ async function handler(req, res) {
     })
   }
   if (upstream.status >= 500 && upstream.status < 600) {
+    console.error('[book/publish] upstream error:', upstream.status)
     return res.status(502).json({
       error:    upstream.status === 502 ? 'github_error' : 'website_misconfigured',
-      message:  `Website returned ${upstream.status}.`,
       retriable: upstream.status === 502,
     })
   }
 
-  return res.status(502).json({
-    error:   'upstream_error',
-    message: `Website returned ${upstream.status}.`,
-    status:  upstream.status,
-  })
+  console.error('[book/publish] unexpected upstream status:', upstream.status)
+  return res.status(502).json({ error: 'upstream_error' })
 }
 
 export default withSentry(handler)

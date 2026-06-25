@@ -124,6 +124,7 @@ async function handler(req, res) {
     // client can't attribute an asset to a clinician from another tenant.
     // null is allowed (clears attribution).
     if (body.staff_id !== undefined && body.staff_id !== null) {
+      if (!UUID_RE.test(body.staff_id)) return res.status(400).json({ error: 'invalid_staff_id' })
       const cRes = await sb(`staff?id=eq.${body.staff_id}&${scope.column}=eq.${scope.id}&select=id`)
       if (!cRes.ok) return res.status(500).json({ error: 'Clinician lookup failed' })
       const cRows = await cRes.json()

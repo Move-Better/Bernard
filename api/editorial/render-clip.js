@@ -131,17 +131,14 @@ export default async function handler(req, res) {
   // 'granted' is NOT a valid value, so the old `!== 'granted'` gate 403'd every real asset.
   // Matches the sibling handlers (render-segments / clip-to-broll / clip-to-post).
   if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') {
-    return res.status(403).json({
-      error: 'consent_not_granted',
-      message: `Asset consent is '${asset.consent_status}'. Consent must be resolved before rendering.`,
-    })
+    return res.status(403).json({ error: 'consent_not_granted' })
   }
   if (!asset.blob_url) return res.status(500).json({ error: 'asset_missing_blob_url' })
 
   const isVideo = asset.kind === 'video'
   const isPhoto = asset.kind === 'photo'
   if (!isVideo && !isPhoto) {
-    return res.status(415).json({ error: 'unsupported_asset_kind', kind: asset.kind })
+    return res.status(415).json({ error: 'unsupported_asset_kind' })
   }
 
   // Resolve channels + validate against the appropriate spec map for this kind.

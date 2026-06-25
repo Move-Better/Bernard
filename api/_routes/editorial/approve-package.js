@@ -150,10 +150,7 @@ export default async function handler(req, res) {
     if (renders.length > 0) {
       const unmapped = [...new Set(renders.map(r => r.channel).filter(Boolean))]
       console.warn('[approve-package] renders exist but all channels are unmapped:', unmapped)
-      return res.status(409).json({
-        error: 'no_publishable_renders',
-        message: `Package renders exist but no channels are mapped to a publish platform. Unmapped channels: ${unmapped.join(', ')}.`,
-      })
+      return res.status(409).json({ error: 'no_publishable_renders' })
     }
     return res.status(409).json({
       error: 'no_renders',

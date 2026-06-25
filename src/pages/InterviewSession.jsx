@@ -1664,13 +1664,14 @@ export default function InterviewSession() {
                 <AlertTriangle className="h-3 w-3" />Save failed — your progress may not be saved
               </span>
             : <span
+                role="status"
                 className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-action' : 'text-muted-foreground'}`}
               >
                 {saveStatus === 'saving'
-                  ? <><Loader2 className="h-3 w-3 animate-spin" />Saving…</>
+                  ? <><Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />Saving…</>
                   : saveStatus === 'saved'
-                  ? <><Check className="h-3 w-3" />Saved</>
-                  : <><RefreshCw className="h-3 w-3" />Saved to this device</>
+                  ? <><Check aria-hidden="true" className="h-3 w-3" />Saved</>
+                  : <><RefreshCw aria-hidden="true" className="h-3 w-3" />Saved to this device</>
                 }
               </span>
         )}
@@ -1821,9 +1822,10 @@ export default function InterviewSession() {
           )}
 
           {isStreaming && !streamingText && (
-            <div className="flex items-start gap-3">
+            <div role="status" className="flex items-start gap-3">
+              <span className="sr-only">Bernard is thinking…</span>
               <div className="h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center shrink-0 p-1">
-                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <Loader2 aria-hidden="true" className="h-4 w-4 text-primary animate-spin" />
               </div>
               <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
                 <div className="flex gap-1 items-center h-5">
