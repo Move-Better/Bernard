@@ -61,6 +61,8 @@ async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const id  = url.searchParams.get('id')
   if (!id) return res.status(400).json({ error: 'missing_id' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
 
   const where = `id=eq.${encodeURIComponent(id)}&${scope.column}=eq.${scope.id}`
   const r = await sb(`media_assets?${where}&select=id,mux_playback_id,transcode_status`)
