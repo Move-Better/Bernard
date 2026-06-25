@@ -41,14 +41,11 @@ async function handler(req, res) {
     const thumbnailUrl = await thumbnailById(id, scope)
     return res.status(200).json({ thumbnail_url: thumbnailUrl })
   } catch (e) {
-    let msg = e?.message || 'Thumbnail generation failed'
-    // Strip raw ffmpeg stderr from user-facing errors — keep only the first sentence.
-    if (msg.startsWith('ffmpeg exit')) {
-      msg = 'Thumbnail generation failed — the video may be corrupted or in an unsupported format. Try re-uploading.'
-    }
-    const status = msg === 'Not found' ? 404 : msg === 'Not a video' ? 400 : 500
-    console.error('[thumbnail] error:', e?.message)
-    return res.status(status).json({ error: msg })
+    const rawMsg = e?.message || ''
+    const status = rawMsg === 'Not found' ? 404 : rawMsg === 'Not a video' ? 400 : 500
+    console.error('[thumbnail] error:', rawMsg)
+    const errorKey = status === 404 ? 'not_found' : status === 400 ? 'not_a_video' : 'thumbnail_failed'
+    return res.status(status).json({ error: errorKey })
   }
 }
 
