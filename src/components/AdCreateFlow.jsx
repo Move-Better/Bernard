@@ -251,8 +251,8 @@ export default function AdCreateFlow({ onClose }) {
   }
   if (stage === 'loadingPhoto') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div role="status" className="flex items-center gap-2 rounded-xl bg-background px-5 py-4 text-sm text-muted-foreground shadow-2xl">
+      <div role="status" aria-label="Loading photo" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="flex items-center gap-2 rounded-xl bg-background px-5 py-4 text-sm text-muted-foreground shadow-2xl">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading photo…
         </div>
       </div>
