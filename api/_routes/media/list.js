@@ -69,6 +69,7 @@ async function handler(req, res) {
   // of the final workspace_id filter on media_assets would turn this into a
   // real cross-tenant read.
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (collectionId && !UUID_RE.test(collectionId)) return res.status(400).json({ error: 'invalid_collectionId' })
   let collectionAssetIds = null
   if (collectionId) {
     const ownRes = await sb(`collections?id=eq.${encodeURIComponent(collectionId)}&${scope.column}=eq.${scope.id}&select=id&limit=1`)
