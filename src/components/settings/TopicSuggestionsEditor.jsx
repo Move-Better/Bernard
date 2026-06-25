@@ -120,9 +120,11 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
         <button
           type="button"
           onClick={() => setExpanded(e => !e)}
+          aria-label={expanded ? 'Collapse topic options' : 'Expand topic options'}
+          aria-expanded={expanded}
           className="shrink-0 text-3xs text-muted-foreground hover:text-foreground px-1"
         >
-          {expanded ? '▲' : '▼'}
+          <span aria-hidden="true">{expanded ? '▲' : '▼'}</span>
         </button>
       </div>
 

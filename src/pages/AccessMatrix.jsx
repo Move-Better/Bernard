@@ -363,7 +363,12 @@ function Cell({ person, st, onClick }) {
   if (st.hasOverride && st.effective) cls = 'bg-[hsl(var(--owner-accent-bg))] text-[hsl(var(--owner-accent))] ring-2 ring-[hsl(var(--owner-accent-border))]'
   else if (st.effective) cls = 'bg-agreement-signal/10 text-agreement-signal'
   else cls = 'bg-muted/20 text-muted-foreground/30'
-  const icon = st.effective ? <Check className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />
+  const icon = st.effective ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+  const ariaLabel = person.is_self
+    ? 'You cannot change your own access'
+    : st.hasOverride
+      ? (st.effective ? 'Custom grant (tier default: off)' : 'Custom revoke (tier default: on)')
+      : (st.effective ? 'On — tier default' : 'Off — tier default')
 
   return (
     <button
@@ -371,13 +376,8 @@ function Cell({ person, st, onClick }) {
       disabled={!st.clickable}
       className={`relative inline-flex items-center justify-center rounded-full transition ${cls} ${st.clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
       style={{ width: 30, height: 30 }}
-      title={
-        person.is_self
-          ? 'You cannot change your own access'
-          : st.hasOverride
-            ? (st.effective ? 'Custom grant (tier default: off)' : 'Custom revoke (tier default: on)')
-            : (st.effective ? 'On — tier default' : 'Off — tier default')
-      }
+      title={ariaLabel}
+      aria-label={ariaLabel}
     >
       {icon}
       {st.hasOverride && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-action ring-2 ring-white" />}
