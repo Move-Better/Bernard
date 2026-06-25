@@ -1,4 +1,5 @@
 import { withSentry } from '../../_lib/sentry.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 export const config = { runtime: 'nodejs' }
 // POST /api/onboarding/claim
 //
@@ -212,6 +213,8 @@ async function handler(req, res) {
 
   const userId = await authUserId(req)
   if (!userId) return res.status(401).json({ error: 'unauthenticated' })
+
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const body = req.body || {}
 

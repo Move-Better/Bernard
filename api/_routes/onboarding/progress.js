@@ -14,6 +14,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { withSentry } from '../../_lib/sentry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -113,6 +114,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // ── GET ──────────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {

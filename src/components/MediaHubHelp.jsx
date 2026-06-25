@@ -43,7 +43,7 @@ export default function MediaHubHelp() {
           <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
               <h2 className="font-semibold text-sm">Media Hub — how it works</h2>
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><Icon as={X} size="md" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Close" onClick={() => setOpen(false)}><Icon as={X} size="md" aria-hidden="true" /></Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-5 text-sm">

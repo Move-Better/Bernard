@@ -9,6 +9,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { CAP_BILLING_EDIT } from '../../_lib/capabilities.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { buildPricePlanMap } from '../../_lib/stripePlans.js'
 
 export const config = { runtime: 'nodejs' }
@@ -46,6 +47,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // Phase 4 PR 3: capability gate. billing.edit covers starting a checkout
   // (committing to a paid plan) — billing.view alone is read-only and goes
