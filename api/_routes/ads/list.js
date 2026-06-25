@@ -39,12 +39,11 @@ const SELECT = [
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const r = await sb(
     `ad_creatives?workspace_id=eq.${ws.id}&select=${SELECT}&order=created_at.desc`,
