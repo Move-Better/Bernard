@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Loader2, ClipboardList, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,9 +45,11 @@ export default function NewBrief() {
   useDocumentTitle('New Brief')
   const navigate  = useNavigate()
   const workspace = useWorkspace()
+  const [searchParams] = useSearchParams()
 
-  // Form state
-  const [title,    setTitle]    = useState('')
+  // Form state. `?topic=` seeds the internal title — used by the SEO
+  // Opportunities feed's "Draft content" action (and any other deep link).
+  const [title,    setTitle]    = useState(() => searchParams.get('topic') || '')
   const [body,     setBody]     = useState('')
   const [eventAt,  setEventAt]  = useState('')
   const [location, setLocation] = useState('')
