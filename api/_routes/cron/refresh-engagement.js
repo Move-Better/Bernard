@@ -26,6 +26,7 @@ import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { refreshGbpToken } from '../../_lib/gbpAuth.js'
 import { listLocalPosts, fetchPostViewInsights } from '../../_lib/gbpClient.js'
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -621,10 +622,7 @@ async function processWorkspaceGBP(ws, summary) {
 }
 
 async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  const auth = req.headers?.authorization || req.headers?.Authorization
-  if (auth !== `Bearer ${cronSecret}`) {
+    if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

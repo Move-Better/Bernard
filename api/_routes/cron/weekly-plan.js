@@ -11,15 +11,13 @@ export const config = { runtime: 'nodejs' }
 
 import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
 import { mondayOf } from '../../_lib/strategist.js'
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  const auth = req.headers?.authorization || req.headers?.Authorization
-  if (auth !== `Bearer ${cronSecret}`) return res.status(401).json({ error: 'Unauthorized' })
+    if (!verifyCronSecret(req)) return res.status(401).json({ error: 'Unauthorized' })
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Supabase env not configured' })
 
   // Active workspaces + cadence_policy + enabled_outputs (in Auto, the Strategist

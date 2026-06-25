@@ -5,6 +5,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 120 }
 
 import { generateText } from 'ai'
+import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
@@ -355,15 +356,17 @@ export default async function handler(req, res) {
     // Persist voice-judge score so /week can surface low-fidelity cards.
     // Non-blocking: a score failure never aborts the draft.
     if (voiceScore) {
-      sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          voice_fidelity_score: Math.round(voiceScore.overall * 10),
-          voice_audit: { ...voiceScore.breakdown, attempts: voiceAttempts },
-          updated_at: new Date().toISOString(),
-        }),
-        headers: { Prefer: 'return=minimal' },
-      }).catch((e) => console.warn('[draft] voice score persist failed:', e.message))
+      waitUntil(
+        sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            voice_fidelity_score: Math.round(voiceScore.overall * 10),
+            voice_audit: { ...voiceScore.breakdown, attempts: voiceAttempts },
+            updated_at: new Date().toISOString(),
+          }),
+          headers: { Prefer: 'return=minimal' },
+        }).catch((e) => console.warn('[draft] voice score persist failed:', e.message))
+      )
     }
 
     // For GBP atoms: generate a per-location variant for every workspace_location

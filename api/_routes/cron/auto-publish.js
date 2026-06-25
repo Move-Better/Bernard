@@ -19,6 +19,7 @@ import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -410,10 +411,7 @@ async function processWorkspace(ws, summary) {
 }
 
 export default async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  const auth = req.headers?.authorization
-  if (auth !== `Bearer ${cronSecret}`) return res.status(401).json({ error: 'Unauthorized' })
+  if (!verifyCronSecret(req)) return res.status(401).json({ error: 'Unauthorized' })
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return res.status(503).json({ error: 'Supabase env not configured' })
