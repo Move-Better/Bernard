@@ -50,6 +50,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
                 value={proto.emoji || ''}
                 onChange={e => onChange({ emoji: e.target.value })}
                 placeholder="👤"
+                aria-label="Emoji"
               />
             </div>
             <div>
@@ -59,6 +60,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
                 value={proto.shortLabel || ''}
                 onChange={e => onChange({ shortLabel: e.target.value })}
                 placeholder="e.g. Reconnect"
+                aria-label="Short label"
               />
             </div>
             <div>
@@ -68,6 +70,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
                 value={proto.id || ''}
                 onChange={e => onChange({ id: e.target.value })}
                 placeholder="reconnect"
+                aria-label="ID (internal)"
               />
             </div>
           </div>
@@ -78,6 +81,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
               value={proto.label || ''}
               onChange={e => onChange({ label: e.target.value })}
               placeholder="e.g. The Reconnector"
+              aria-label="Full label"
             />
           </div>
           <div>
@@ -87,6 +91,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
               value={proto.coreDesire || ''}
               onChange={e => onChange({ coreDesire: e.target.value })}
               placeholder="What does this archetype most want?"
+              aria-label="Core desire"
             />
           </div>
           <Textarea2

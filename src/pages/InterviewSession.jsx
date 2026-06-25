@@ -1545,15 +1545,17 @@ export default function InterviewSession() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+      <div className="flex items-center justify-center py-20" role="status">
+        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     )
   }
 
   if (interviewLoading || staffMemberLoading) return (
-    <div className="flex items-center justify-center py-20">
-      <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+    <div className="flex items-center justify-center py-20" role="status">
+      <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" aria-hidden="true" />
+      <span className="sr-only">Loading…</span>
     </div>
   )
   if (!staffMember || !interview) return null

@@ -419,12 +419,14 @@ function GradePanel({ piece, aspect }) {
               value={treatment.figure}
               onChange={(e) => setTreatment((t) => ({ ...t, figure: e.target.value }))}
               placeholder="2"
+              aria-label="Badge number"
               className="w-12 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
             />
             <input
               value={treatment.figureUnit}
               onChange={(e) => setTreatment((t) => ({ ...t, figureUnit: e.target.value }))}
               placeholder="min"
+              aria-label="Badge unit"
               className="w-16 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
             />
           </div>
@@ -438,6 +440,7 @@ function GradePanel({ piece, aspect }) {
             max={100}
             value={treatment.grade}
             onChange={(e) => setTreatment((t) => ({ ...t, grade: Number(e.target.value) }))}
+            aria-label="Light and color grade"
             className="mt-1 w-full accent-primary"
           />
         </div>
