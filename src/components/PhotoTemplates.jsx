@@ -302,6 +302,7 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Font size</label>
         <select value={c.fontSize || 'base'} onChange={(e) => set('fontSize', e.target.value)}
+          aria-label="Font size"
           className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
           {FONT_SIZES.map((s) => (
             <option key={s} value={s}>{s} — {FONT_SIZE_PX[s]}px</option>
@@ -311,6 +312,7 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Weight</label>
         <select value={c.fontWeight || 'semibold'} onChange={(e) => set('fontWeight', e.target.value)}
+          aria-label="Font weight"
           className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
           {FONT_WEIGHTS.map((w) => <option key={w} value={w}>{w}</option>)}
         </select>
@@ -332,6 +334,7 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Shadow</label>
         <select value={c.shadow || 'medium'} onChange={(e) => set('shadow', e.target.value)}
+          aria-label="Shadow"
           className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
           {SHADOWS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -339,6 +342,7 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Background</label>
         <select value={c.background || 'none'} onChange={(e) => set('background', e.target.value)}
+          aria-label="Background style"
           className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
           {BACKGROUNDS.map((b) => <option key={b} value={b}>{b}</option>)}
         </select>
