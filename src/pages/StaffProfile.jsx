@@ -201,7 +201,7 @@ export default function StaffProfile() {
           </div>
 
           {/* Tab bar */}
-          <div className="flex" role="tablist">
+          <div className="flex" role="tablist" aria-label="Staff profile sections">
             <ProfileTab active={activeTab === 'activity'} onClick={() => setActiveTab('activity')}>
               Activity
               {inProgress.length > 0 && (

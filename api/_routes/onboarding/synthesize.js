@@ -259,7 +259,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[onboarding/synthesize] generateText failed:', e?.message)
     await revertClaim()
-    return err(res, e?.message || 'Synthesis call failed', 502)
+    return err(res, 'synthesis_failed', 502)
   }
 
   let parsed
@@ -277,7 +277,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[onboarding/synthesize] validation failed:', e?.message, 'parsed:', JSON.stringify(parsed).slice(0, 1000))
     await revertClaim()
-    return err(res, `Synthesis validation failed: ${e?.message}`, 502)
+    return err(res, 'synthesis_validation_failed', 502)
   }
 
   // ── DRY RUN: short-circuit before any writes ────────────────────────────

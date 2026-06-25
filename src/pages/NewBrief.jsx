@@ -252,9 +252,10 @@ export default function NewBrief() {
                     <button
                       type="button"
                       onClick={removeMedia}
+                      aria-label="Remove attached media"
                       className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
                 ) : (
