@@ -290,8 +290,8 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
       {/* Thumbnail */}
       <div className="relative aspect-[4/5] bg-muted overflow-hidden">
         {showGenerating ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-900/80 text-white">
-            <Loader2 className="h-6 w-6 animate-spin" />
+          <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-900/80 text-white">
+            <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
             <span className="text-xs font-medium">
               {rerendering ? 'Re-rendering…' : isGeneratingBroll ? 'Generating b-roll…' : 'Generating…'}
             </span>
