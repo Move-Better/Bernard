@@ -751,9 +751,9 @@ function PublishedPostRow({ post }) {
           <p className="text-xs text-muted-foreground">{formatRelativeDate(date)}</p>
         </div>
         <ChannelBadge platform={post.platform} />
-        <Button asChild variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+        <Button asChild variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="View story">
           <Link to={post.interview_id ? `/stories/${post.interview_id}` : `/stories/${post.id}`}>
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </Button>
       </CardContent>
@@ -1289,8 +1289,8 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
           >
             {isComplete ? 'Captured' : 'In progress'}
           </Badge>
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-            <Link to={href}><ChevronRight className="h-4 w-4" /></Link>
+          <Button asChild variant="ghost" size="icon" className="h-8 w-8" aria-label="View interview">
+            <Link to={href}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
           </Button>
           {isOwner && (
             <Button
@@ -1298,8 +1298,9 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-destructive"
               onClick={onDelete}
+              aria-label="Delete interview"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           )}
         </div>

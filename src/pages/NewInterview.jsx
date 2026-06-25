@@ -297,9 +297,9 @@ export default function NewInterview() {
     <div className="space-y-5">
       <PipelineStepper current="interview" />
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
+        <Button variant="ghost" size="icon" asChild aria-label="Back">
           <Link to="/">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
         </Button>
         <div>

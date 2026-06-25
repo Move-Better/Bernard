@@ -100,7 +100,7 @@ export default function AdExportModal({ asset, onClose, treatment, templateId, s
           <Megaphone className="h-4 w-4 text-action" />
           <span className="text-sm font-semibold">Export for ads</span>
           <span className="truncate text-2xs text-muted-foreground">· {asset?.display_title || asset?.filename}</span>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close"><X className="h-4 w-4" aria-hidden="true" /></Button>
         </div>
 
         <div className="overflow-y-auto px-5 py-4">

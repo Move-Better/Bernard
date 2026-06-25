@@ -1567,8 +1567,8 @@ export default function InterviewSession() {
     return (
       <div className="py-4">
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/new"><ArrowLeft className="h-4 w-4" /></Link>
+          <Button variant="ghost" size="icon" asChild aria-label="Back">
+            <Link to="/new"><ArrowLeft className="h-4 w-4" aria-hidden="true" /></Link>
           </Button>
           <div>
             <p className="font-medium text-sm">{staffMember.name}</p>

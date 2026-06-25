@@ -213,7 +213,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
             </h2>
             <Badge variant="outline" className="text-3xs uppercase">{brief.status}</Badge>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" aria-hidden="true" /></Button>
         </div>
 
         <div className="flex-1 overflow-y-auto">

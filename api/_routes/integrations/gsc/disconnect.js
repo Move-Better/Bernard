@@ -3,6 +3,7 @@ import { requireRole, requireCapability } from '../../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../../_lib/capabilities.js'
 import { workspaceContext } from '../../../_lib/workspaceContext.js'
 import { deleteGscCredential } from '../../../_lib/gscAuth.js'
+import { enforceLimit } from '../../../_lib/ratelimit.js'
 
 // DELETE /api/integrations/gsc/disconnect
 
@@ -19,6 +20,8 @@ async function handler(req, res) {
 
   const capAuth = await requireCapability(req, workspace, [CAP_INTEGRATIONS_CONNECT])
   if (!capAuth.ok) return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
+
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   try {
     await deleteGscCredential(workspace.id)

@@ -73,7 +73,7 @@ async function handler(req, res) {
     return res.status(200).json({ url })
   } catch (e) {
     console.error('[bundle/connect] failed:', e?.stack || e?.message)
-    return res.status(e?.status || 502).json({ error: e?.code || 'portal-link-failed' })
+    return res.status(502).json({ error: 'portal-link-failed' })
   }
 }
 
