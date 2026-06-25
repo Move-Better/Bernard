@@ -294,6 +294,7 @@ export default function AuthorMode() {
             />
             <div className="border-t border-border" />
             <textarea
+              aria-label="Article body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Start writing…"

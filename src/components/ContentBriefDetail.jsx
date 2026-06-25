@@ -203,7 +203,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
   const showPatientWarning = !!source?.patient_pseudonym || source?.speaker_role === 'patient_guest'
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Edit brief">
       <div className="bg-background rounded-xl shadow-2xl w-full max-w-full sm:max-w-3xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
           <div className="flex items-center gap-2 min-w-0">

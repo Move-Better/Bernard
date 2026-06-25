@@ -286,6 +286,6 @@ export default async function handler(req, res) {
     return ok(res, updRows[0] ?? null)
   } catch (e) {
     console.error('[content-items/regenerate]', e?.message || e)
-    return err(res, e?.message || 'Regeneration failed', 500)
+    return err(res, 'Regeneration failed', 500)
   }
 }

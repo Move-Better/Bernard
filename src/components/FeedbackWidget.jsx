@@ -121,6 +121,7 @@ export function FeedbackWidget() {
             <div className="space-y-3 p-4">
               {/* Message */}
               <textarea
+                aria-label="Describe the issue"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 placeholder="Describe what happened or what looks wrong…"

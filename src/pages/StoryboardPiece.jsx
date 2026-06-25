@@ -638,6 +638,7 @@ export default function StoryboardPiece() {
                 </span>
               </div>
               <textarea
+                aria-label="Caption"
                 rows={3}
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
@@ -773,6 +774,7 @@ export default function StoryboardPiece() {
                   <div className="flex items-start gap-2">
                     <span className="w-14 shrink-0 pt-1 text-muted-foreground">Headline</span>
                     <textarea
+                      aria-label="Headline"
                       rows={2}
                       value={treatment.headline || ''}
                       onChange={(e) => setTreatment((t) => ({ ...t, headline: e.target.value }))}
