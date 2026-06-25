@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo post = carousel editor, 1 slide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{primary:'#0C7580',action:'#d97706',navy:'#10243f'}}}}</script>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;background:#eef1f3;margin:0;color:#111827;}
+  .rail-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0;width:100%;border:none;background:none;color:#9ca3af;font-size:9px;font-weight:600;border-left:2px solid transparent;cursor:pointer;}
+  .rail-item.active{color:#0C7580;border-left-color:#0C7580;}
+  .rail-item.active .ri{background:rgba(12,117,128,.1);border-radius:8px;}
+  .ri{width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+  .field-label{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;display:block;}
+  .seg{display:flex;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;}
+  .seg button{flex:1;font-size:11px;font-weight:600;padding:5px 0;border:none;background:#fff;color:#6b7280;cursor:pointer;}
+  .seg button.on{background:#0C7580;color:#fff;}
+  .theme{aspect-ratio:4/5;border-radius:7px;border:2px solid transparent;cursor:pointer;position:relative;overflow:hidden;}
+  .theme.sel{border-color:#0C7580;}
+  .theme .tl{position:absolute;left:5px;right:5px;bottom:5px;font-size:8px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:left;line-height:1;}
+  .photo{position:relative;border-radius:12px;overflow:hidden;background:#1a2433;box-shadow:0 8px 30px rgba(0,0,0,.18);}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .scrim{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 42%,rgba(16,36,63,.92) 100%);}
+  .bake{position:absolute;left:0;right:0;bottom:0;padding:18px 20px;}
+  .bake h3{font-size:24px;font-weight:800;line-height:1.13;color:#fff;margin:0;text-shadow:0 1px 8px rgba(0,0,0,.35);}
+  .bake .who{display:flex;align-items:center;gap:8px;margin-top:11px;}
+  .bake .bar{height:3px;width:28px;border-radius:9px;background:#0C7580;}
+  .bake .name{font-size:12px;font-weight:600;color:rgba(255,255,255,.95);}
+  .ann{position:relative;}
+  .ann::after{content:attr(data-note);position:absolute;font-size:10px;font-weight:600;color:#9a3412;background:#fff7ed;border:1px dashed #fdba74;border-radius:6px;padding:3px 7px;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div style="max-width:1180px;margin:0 auto;padding:18px;">
+
+  <div style="background:#fff7ed;border:1px dashed #fdba74;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#7c2d12;line-height:1.55;">
+    <b>Photo posts open the SAME editor the carousel uses — just one slide.</b> Same rail, same templates, same Grade, same canvas, same Save/Schedule.
+    The <b>only</b> difference: the slide rail has a single slide and <b>no “+ Add slide.”</b> No separate “Photo Post” editor.
+    On open, a media-capable post <b>auto-attaches the top AI photo suggestion</b> so you start from a real image, not a blank.
+  </div>
+
+  <div style="border:1px solid #d8dde1;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+    <!-- top bar (identical to carousel) -->
+    <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #e5e7eb;">
+      <span style="color:#6b7280;">&larr;</span>
+      <span style="font-size:14px;font-weight:700;">Sciatica</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(3,105,161,.1);color:#0369a1;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;">LinkedIn · Single photo</span>
+      <div class="seg" style="width:auto;border-radius:6px;margin-left:4px;"><button>1:1</button><button class="on">4:5</button><button>9:16</button></div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button style="font-size:12px;font-weight:500;color:#374151;padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;">👁 Preview</button>
+        <button style="font-size:12px;font-weight:600;color:#fff;background:#0C7580;padding:5px 14px;border-radius:6px;border:none;">Save</button>
+        <button style="font-size:12px;font-weight:600;color:#3a2a00;background:#d97706;padding:5px 14px;border-radius:6px;border:none;">Schedule ▾</button>
+      </div>
+    </div>
+
+    <div style="display:flex;height:560px;">
+      <!-- rail (identical to carousel) -->
+      <div style="width:58px;background:#fafbfc;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;padding-top:4px;">
+        <button class="rail-item"><span class="ri">&#128172;</span>Words</button>
+        <button class="rail-item active"><span class="ri">&#9707;</span>Slide</button>
+        <button class="rail-item"><span class="ri">&#128247;</span>Photo</button>
+        <button class="rail-item"><span class="ri">T</span>Text</button>
+        <button class="rail-item"><span class="ri">&#9673;</span>Grade</button>
+      </div>
+
+      <!-- inspector: Slide panel = layout + theme/templates (identical to carousel) -->
+      <div style="width:284px;border-right:1px solid #e5e7eb;overflow-y:auto;padding:12px;">
+        <span class="field-label">Template / theme</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:16px;">
+          <div class="theme sel" style="background:linear-gradient(160deg,#33536b,#10243f)"><span class="tl">EDITORIAL</span></div>
+          <div class="theme" style="background:#0C7580"><span class="tl">BOLD CLAIM</span></div>
+          <div class="theme" style="background:#f4f1ea"><span class="tl" style="color:#10243f;text-shadow:none">LIGHT</span></div>
+          <div class="theme" style="background:linear-gradient(160deg,#1a1a1a,#000)"><span class="tl">DARK SPLIT</span></div>
+          <div class="theme" style="background:#0C7580"><span class="tl">BADGE</span></div>
+          <div class="theme" style="background:linear-gradient(160deg,#2b3a2f,#16241b)"><span class="tl">EVERGREEN</span></div>
+        </div>
+        <p style="font-size:10px;color:#9ca3af;margin:-8px 0 16px;">The exact same template set the carousel offers.</p>
+
+        <span class="field-label">Layout</span>
+        <div class="seg" style="margin-bottom:16px;"><button class="on">Bottom</button><button>Center</button><button>Top</button></div>
+
+        <span class="field-label">Headline</span>
+        <textarea rows="2" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 9px;font-size:13px;resize:none;box-sizing:border-box;margin-bottom:16px;">Is the disc actually generating this pain?</textarea>
+
+        <span class="field-label">Grade — light &amp; color</span>
+        <input type="range" min="0" max="100" value="42" style="width:100%;accent-color:#0C7580;">
+        <p style="font-size:10px;color:#9ca3af;margin-top:6px;">Same Grade controls as the carousel’s Photo panel.</p>
+      </div>
+
+      <!-- canvas (identical to carousel) -->
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#dfe4e8;padding:22px;">
+        <div class="photo" style="width:330px;aspect-ratio:4/5;">
+          <img src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/3873ac62-07f5-44fc-9f4b-e38d219231fb-X2LUlV0OOupdG1koBWe82h3btDRSbj.jpg" alt="" style="filter:brightness(1.05) saturate(1.08);">
+          <div class="scrim"></div>
+          <div class="bake">
+            <h3>Is the disc actually<br>generating this pain?</h3>
+            <div class="who"><span class="bar"></span><span class="name">Dr. Zachary Cullen · Move Better</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- slide rail: ONE slide, NO add-slide -->
+      <div style="width:96px;background:#f7f8f9;border-left:1px solid #e5e7eb;padding:8px;display:flex;flex-direction:column;gap:7px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.06em;color:#94a3b8;text-align:center;">SLIDE</div>
+        <div style="aspect-ratio:4/5;border-radius:6px;border:2px solid #0C7580;position:relative;overflow:hidden;">
+          <img src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/3873ac62-07f5-44fc-9f4b-e38d219231fb-X2LUlV0OOupdG1koBWe82h3btDRSbj.jpg" alt="" style="width:100%;height:100%;object-fit:cover;">
+          <span style="position:absolute;top:3px;left:5px;font-size:9px;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)">1</span>
+        </div>
+        <div style="border:1.5px dashed #e2c9a0;border-radius:6px;padding:8px 4px;text-align:center;background:#fffaf2;">
+          <p style="font-size:9px;color:#9a6a17;font-weight:700;margin:0;line-height:1.3;">No “+ Add slide”</p>
+          <p style="font-size:8px;color:#b88a3e;margin:3px 0 0;line-height:1.3;">the only difference from the carousel</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:11px;color:#64748b;margin:14px 2px 0;line-height:1.55;">
+    <b>Implementation:</b> route <code>visual</code> posts (LinkedIn/Facebook/X/GBP…) into the carousel’s <code>SlideEditor</code> as a 1-slide piece, with the “Add slide” control hidden. They inherit the full rail, every template, Grade, the canvas, and Save/Schedule for free — because it’s literally the same component. The separate <code>UnifiedEditor</code> I built gets retired.
+  </p>
+</div>
+
+</body>
+</html>

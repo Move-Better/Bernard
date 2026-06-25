@@ -1312,7 +1312,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
 
 // ── Slide rail (left vertical thumbnail column, replaces bottom filmstrip) ────
 
-function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
+function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = true }) {
   return (
     <aside className="flex w-[92px] shrink-0 flex-col border-r bg-card">
       <div className="flex items-center px-2 py-2 border-b">
@@ -1347,14 +1347,16 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd }) {
             </div>
           )
         })}
-        <button
-          type="button"
-          onClick={onAdd}
-          className="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed border-muted-foreground/30 py-3 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="text-3xs mt-0.5">Add</span>
-        </button>
+        {canAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed border-muted-foreground/30 py-3 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="text-3xs mt-0.5">Add</span>
+          </button>
+        )}
       </div>
     </aside>
   )
@@ -1497,7 +1499,7 @@ const ASPECT_STAGE = {
 
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
 
-export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode }) {
+export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode, singleSlide = false, badgeIcon = null }) {
   const workspace = useWorkspace()
   const navigate = useNavigate()
   const brandStyle = workspace?.brand_style || {}
@@ -1848,7 +1850,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       <EditorChrome
         onBack={goBack}
         title={piece?.topic}
-        badge={{ icon: Instagram, label: formatLabel || 'Instagram Carousel', sub: formatSub || `${slides.length} slides` }}
+        badge={{ icon: badgeIcon || Instagram, label: formatLabel || 'Instagram Carousel', sub: formatSub || `${slides.length} slides` }}
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
           : null}
@@ -2089,13 +2091,16 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           )}
         </section>
 
-        {/* 4. Slide rail — the surface (right edge) */}
+        {/* 4. Slide rail — the surface (right edge). For single-slide (photo)
+            posts the one slide still shows, but "Add slide" is hidden — the only
+            difference from the carousel. */}
         <SlideRail
           slides={slides}
           activeIdx={activeSlideIdx}
           mediaUrls={mediaUrls}
           onSelect={goToSlide}
           onAdd={addSlide}
+          canAdd={!singleSlide}
         />
       </div>
     </div>
