@@ -61,8 +61,10 @@
        separate so a tenant theme can rebrand probe signals without
        affecting the rest of the app's status UI. */
     --success: 152 76% 40%;
+    --success-foreground: 0 0% 100%;   /* white on emerald-600 passes WCAG AA */
     --warning:  38 92% 50%;
     --info:    199 95% 40%;
+    --info-foreground: 0 0% 100%;      /* white on sky-600 passes WCAG AA */
 
     /* ── Act-now signal ─────────────────────────────────────────────────────
        The "it's your turn / do this now" accent — publisher inbox, awaiting-

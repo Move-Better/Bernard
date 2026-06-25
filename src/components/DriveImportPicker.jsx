@@ -348,7 +348,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
                       </div>
                     </div>
                     {status === 'imported' && (
-                      <div className="absolute inset-x-0 bottom-0 bg-success/90 text-white text-3xs px-2 py-1 flex items-center gap-1 font-medium">
+                      <div className="absolute inset-x-0 bottom-0 bg-success/90 text-success-foreground text-3xs px-2 py-1 flex items-center gap-1 font-medium">
                         <CheckCircle2 className="h-3 w-3" /> Imported
                       </div>
                     )}

@@ -255,8 +255,9 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
             {/* Editable fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">Target platform</label>
+                <label htmlFor="brief-platform" className="text-xs font-medium text-muted-foreground block mb-1.5">Target platform</label>
                 <select
+                  id="brief-platform"
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
                   className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full"

@@ -68,7 +68,7 @@ function AutoPublishBadge({ state }) {
     return (
       <span
         title={`Auto-publish eligible${channels ? ` (${channels})` : ''}`}
-        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-3xs font-bold text-white bg-success/90 backdrop-blur-sm"
+        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-3xs font-bold text-success-foreground bg-success/90 backdrop-blur-sm"
       >
         <Zap className="h-2.5 w-2.5" />
         Auto

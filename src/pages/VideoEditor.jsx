@@ -475,8 +475,30 @@ function VerticalTimeline({ ctx }) {
       <div className="relative flex flex-1 gap-2 p-2.5">
         <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           <div onClick={() => selectKey('clip')} className="absolute inset-x-0 cursor-pointer rounded-md" style={{ top: `${f(startSec)}%`, height: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(180deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
-          <div onMouseDown={trim('in')} className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm" style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11, background: 'hsl(var(--primary))' }} title="Start" />
-          <div onMouseDown={trim('out')} className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm" style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11, background: 'hsl(var(--primary))' }} title="End" />
+          <div
+            role="slider"
+            tabIndex={0}
+            aria-label="Trim start"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(endSec - 1)}
+            aria-valuenow={Math.round(startSec)}
+            onMouseDown={trim('in')}
+            onKeyDown={(e) => { if (e.key === 'ArrowUp') setStartSec((s) => clamp(s - 0.5, 0, endSec - 1)); else if (e.key === 'ArrowDown') setStartSec((s) => clamp(s + 0.5, 0, endSec - 1)) }}
+            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11, background: 'hsl(var(--primary))' }}
+          />
+          <div
+            role="slider"
+            tabIndex={0}
+            aria-label="Trim end"
+            aria-valuemin={Math.round(startSec + 1)}
+            aria-valuemax={Math.round(span)}
+            aria-valuenow={Math.round(endSec)}
+            onMouseDown={trim('out')}
+            onKeyDown={(e) => { if (e.key === 'ArrowUp') setEndSec((s) => clamp(s - 0.5, startSec + 1, span)); else if (e.key === 'ArrowDown') setEndSec((s) => clamp(s + 0.5, startSec + 1, span)) }}
+            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11, background: 'hsl(var(--primary))' }}
+          />
         </div>
         <div ref={ovColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           {overlays.length ? overlays.map((o) => {
