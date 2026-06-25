@@ -104,8 +104,9 @@ export default function CoveragePanel() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div role="status" className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     )
   }
