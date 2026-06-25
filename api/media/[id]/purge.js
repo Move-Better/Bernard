@@ -86,7 +86,7 @@ async function handler(req, res) {
   if (ageDays < COOLDOWN_DAYS) {
     const remaining = Math.ceil(COOLDOWN_DAYS - ageDays)
     return res.status(400).json({
-      error: `Cooldown active — ${remaining} day${remaining === 1 ? '' : 's'} remaining before purge`,
+      error: 'cooldown_active',
       remainingDays: remaining,
     })
   }

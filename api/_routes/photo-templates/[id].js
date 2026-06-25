@@ -94,7 +94,7 @@ export default async function handler(req, res) {
     if (!inUse.ok) return dbErr(res, inUse)
     const rows = await inUse.json()
     if (rows.length > 0) {
-      return err(res, `Template is used by ${rows.length} story(s). Reassign them first.`, 409)
+      return err(res, 'template_in_use', 409)
     }
 
     const r = await sb(

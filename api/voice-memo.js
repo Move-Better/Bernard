@@ -105,10 +105,7 @@ export default async function handler(req, res) {
   }
 
   if (audioBuffer.byteLength > WHISPER_MAX_BYTES) {
-    const mb = Math.round(audioBuffer.byteLength / 1024 / 1024)
-    return res.status(413).json({
-      error: `Recording is ${mb}MB — the 25MB transcription limit is around 90 minutes at standard quality. Trim the recording or export at a lower bitrate (e.g. mono 16kbps) and try again.`,
-    })
+    return res.status(413).json({ error: 'recording_too_large' })
   }
 
   // ── 2. Upload to Vercel Blob ──────────────────────────────────────────────

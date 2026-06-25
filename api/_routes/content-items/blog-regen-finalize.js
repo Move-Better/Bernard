@@ -86,7 +86,7 @@ export default async function handler(req, res) {
   if (!itemRows.length) return err(res, 'Content item not found', 404)
   const item = itemRows[0]
   if (item.platform !== 'blog') {
-    return err(res, `blog-regen-finalize only supports blog pieces (got ${item.platform})`, 422)
+    return err(res, 'platform_not_supported', 422)
   }
 
   const ivRes = await sb(

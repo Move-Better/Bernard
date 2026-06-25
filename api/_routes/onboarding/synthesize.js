@@ -169,7 +169,7 @@ export default async function handler(req, res) {
   // resetting status.
   const allowedStatuses = isDryRun ? ['completed', 'synthesized'] : ['completed']
   if (!allowedStatuses.includes(interview.status)) {
-    return err(res, `Cannot synthesize ${interview.status} interview${isDryRun ? ' (dry-run)' : ''}`, 409)
+    return err(res, 'interview_not_synthesizable', 409)
   }
 
   const messages = Array.isArray(interview.messages) ? interview.messages : []

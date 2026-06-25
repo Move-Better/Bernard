@@ -80,7 +80,7 @@ export default async function handler(req, res) {
   if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staffId' })
   if (durationSec && durationSec < MIN_SAMPLE_SECONDS) {
     return res.status(400).json({
-      error: `Recording is too short — ${MIN_SAMPLE_SECONDS}s minimum for a usable voice clone.`,
+      error: 'recording_too_short',
     })
   }
 
@@ -107,10 +107,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Empty audio body' })
   }
   if (audioBuffer.byteLength > MAX_SAMPLE_BYTES) {
-    const mb = Math.round(audioBuffer.byteLength / 1024 / 1024)
-    return res.status(413).json({
-      error: `Recording is ${mb}MB — the limit for voice cloning is 15MB. Trim or re-record at a lower bitrate.`,
-    })
+    return res.status(413).json({ error: 'recording_too_large' })
   }
 
   // ── Upload to Blob ──────────────────────────────────────────────────────────

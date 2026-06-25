@@ -141,7 +141,7 @@ async function handler(req, res) {
   const cred = await getCredential(workspaceId, 'buffer')
   if (!cred?.secret) {
     return res.status(503).json({
-      error: `Buffer is not configured for this workspace${scope?.workspace?.slug ? ` (${scope.workspace.slug})` : ''}. Add a Buffer access token in Workspace Settings → Publishing credentials.`,
+      error: 'not_configured',
     })
   }
   const BUFFER_TOKEN = cred.secret

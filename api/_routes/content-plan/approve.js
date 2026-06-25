@@ -61,7 +61,7 @@ export default async function handler(req, res) {
   }
   const APPROVABLE_STATUSES = new Set(['draft', 'in_review'])
   if (!APPROVABLE_STATUSES.has(piece.status)) {
-    return err(res, `Piece is not ready to approve (status: ${piece.status})`, 422)
+    return err(res, 'piece_not_ready', 422)
   }
 
   const approvedBy = auth.userId || 'unknown'

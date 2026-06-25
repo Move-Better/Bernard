@@ -223,7 +223,7 @@ export default async function handler(req, res) {
     if (body.messages !== undefined) patch.messages = body.messages
     if (body.outputs !== undefined) patch.outputs = body.outputs
     if (body.status !== undefined) {
-      if (!VALID_INTERVIEW_STATUSES.has(body.status)) return err(res, `invalid status: ${body.status}`)
+      if (!VALID_INTERVIEW_STATUSES.has(body.status)) return err(res, 'invalid_status')
       patch.status = body.status
     }
     if (body.locationId !== undefined) {

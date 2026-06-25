@@ -141,7 +141,7 @@ export default async function handler(req, res) {
     if (!row) return err(res, 'Not found', 404)
     if (row.owner_id !== auth.userId) return err(res, 'Forbidden', 403)
     if (row.status === 'synthesized' || row.status === 'abandoned') {
-      return err(res, `Cannot modify ${row.status} interview`, 409)
+      return err(res, 'interview_not_modifiable', 409)
     }
 
     const patch = { updated_at: new Date().toISOString() }
