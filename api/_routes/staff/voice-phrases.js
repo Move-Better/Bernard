@@ -13,6 +13,7 @@ export const config = { runtime: 'nodejs' }
 
 import { withSentry } from '../../_lib/sentry.js'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -49,6 +50,8 @@ async function handler(req, res) {
 
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
 
   const url = new URL(req.url, 'http://localhost')
   const staffId = url.searchParams.get('staff_id')

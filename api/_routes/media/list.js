@@ -5,6 +5,7 @@ export const config = { runtime: 'nodejs' }
 // Vercel's Node runtime req is an IncomingMessage, not a Web Request.
 
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -57,6 +58,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
 
   // Resolve a collection filter into an asset-id whitelist before composing
   // the main query. Two queries instead of a PostgREST embed because the

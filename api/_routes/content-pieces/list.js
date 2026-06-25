@@ -8,6 +8,7 @@ import { withSentry } from '../../_lib/sentry.js'
 // Runs on Node (Fluid Compute). Brand-scoped reads only.
 
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -77,6 +78,9 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
+
   const SELECT = `${scope.column},${SELECT_COMMON}`
   let qs = `content_pieces?select=${SELECT}&${scope.column}=eq.${scope.id}&order=created_at.desc&limit=${limit}&offset=${offset}`
   if (status)     qs += `&status=eq.${status}`

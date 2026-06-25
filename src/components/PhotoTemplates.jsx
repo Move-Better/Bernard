@@ -707,11 +707,11 @@ function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, sa
 
             {recentPhotos.length > 0 && (
               <div className="flex items-center justify-center gap-1.5 flex-wrap" style={{ maxWidth: maxBoxW }}>
-                <button type="button" onClick={() => setPreviewPhotoIdx(-1)} title="No photo (gradient)"
+                <button type="button" onClick={() => setPreviewPhotoIdx(-1)} aria-label="No photo (gradient)"
                   className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${previewPhotoIdx === -1 ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}
                   style={{ background: 'linear-gradient(135deg,#475569 0%,#1e293b 100%)' }} />
                 {recentPhotos.map((url, i) => (
-                  <button key={i} type="button" onClick={() => setPreviewPhotoIdx(i)} title={`Photo ${i + 1}`}
+                  <button key={i} type="button" onClick={() => setPreviewPhotoIdx(i)} aria-label={`Photo ${i + 1}`}
                     className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${previewPhotoIdx === i ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}>
                     <img src={url} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -918,7 +918,7 @@ export default function PhotoTemplates() {
               <button
                 type="button"
                 onClick={() => setPreviewPhotoIdx(-1)}
-                title="No photo (gradient)"
+                aria-label="No photo (gradient)"
                 className={`h-8 w-8 rounded-md border-2 transition-colors overflow-hidden shrink-0 ${
                   previewPhotoIdx === -1
                     ? 'border-primary'

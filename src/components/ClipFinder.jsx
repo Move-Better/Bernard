@@ -158,7 +158,7 @@ function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview,
                 checked={isSelected}
                 onChange={() => onToggleSelect(s.id)}
                 className="h-3.5 w-3.5 accent-primary"
-                title="Include when creating clips"
+                aria-label="Include when creating clips"
               />
               <button
                 type="button"

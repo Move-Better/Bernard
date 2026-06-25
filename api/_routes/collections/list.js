@@ -6,6 +6,7 @@ export const config = { runtime: 'nodejs' }
 // items per collection so the UI can show "12 items" without a second hop.
 
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -53,6 +54,9 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
+
   const SELECT = `id,${scope.column},${SELECT_COMMON}`
 
   // Resolve an assetId membership filter into a collection-id whitelist
