@@ -63,7 +63,7 @@ export default async function handler(req, res) {
   } = req.body || {}
 
   if (!docType || !ALLOWED_DOC_TYPES.has(docType)) {
-    return err(res, `docType must be one of: ${[...ALLOWED_DOC_TYPES].join(', ')}`)
+    return err(res, 'invalid_doc_type')
   }
   if (!title || typeof title !== 'string' || !title.trim()) {
     return err(res, 'title is required')
@@ -72,10 +72,10 @@ export default async function handler(req, res) {
     return err(res, 'body is required')
   }
   if (title.length > MAX_TITLE_LEN) {
-    return err(res, `title must be ${MAX_TITLE_LEN} characters or fewer`)
+    return err(res, 'title_too_long')
   }
   if (body.length > MAX_BODY_LEN) {
-    return err(res, `body exceeds maximum length (${MAX_BODY_LEN} chars)`)
+    return err(res, 'body_too_long')
   }
 
   // ── Resolve staff row ───────────────────────────────────────────────────
