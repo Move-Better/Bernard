@@ -42,11 +42,6 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
   }
 
-  // Rate limit. enforceLimit returns TRUE when allowed, FALSE when limited
-  // (and has already written the 429 response in the latter case).
-  // See feedback_enforce_limit_polarity — easy to invert.
-  if (!(await enforceLimit(req, res, 'publish-beehiiv'))) return
-
   const payload = (typeof req.body === 'object' && req.body) ? req.body : null
   if (!payload) {
     return res.status(400).json({ error: 'invalid_json', message: 'Request body is not valid JSON.' })
@@ -65,6 +60,7 @@ async function handler(req, res) {
   if (!scope) return res.status(404).json({ error: 'no_workspace' })
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'publish-beehiiv', scope.workspace.id))) return
   const workspaceId = scope?.workspace?.id
 
   const cred = await getCredential(workspaceId, 'beehiiv')
