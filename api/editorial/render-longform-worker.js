@@ -19,6 +19,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { waitUntil } from '@vercel/functions'
+import { verifyCronSecret } from '../_lib/auth.js'
 import { runChunkPass } from '../_lib/longformEngine.js'
 
 export default async function handler(req, res) {
@@ -26,9 +27,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed' })
   }
 
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  if (req.headers?.authorization !== `Bearer ${cronSecret}`) {
+  if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'unauthorized' })
   }
 

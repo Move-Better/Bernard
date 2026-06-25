@@ -2,6 +2,7 @@ import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
 import { del as blobDel } from '@vercel/blob'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
@@ -48,6 +49,7 @@ async function handler(req, res) {
 
   const auth = await requireRole(req, WRITE_ROLES, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'generic', scope.workspace.id))) return
 
   if (req.method === 'PATCH') {
     const body = req.body || {}

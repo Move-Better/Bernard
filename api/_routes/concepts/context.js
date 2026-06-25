@@ -124,7 +124,9 @@ export default async function handler(req, res) {
 
   const { searchParams } = new URL(req.url, 'http://localhost')
   const topic       = searchParams.get('topic') || null
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const staffId = searchParams.get('staff_id') || null
+  if (staffId && !UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staff_id' })
 
   const [block, concepts, agreementProbes, gapProbes] = await Promise.all([
     getContextBlock({ workspaceId: ws.id, topic }),

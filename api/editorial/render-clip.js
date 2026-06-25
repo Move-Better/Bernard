@@ -76,8 +76,10 @@ export default async function handler(req, res) {
 
   // --- Validate body ---
   const body = req.body || {}
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const assetId = String(body.assetId || '').trim()
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
+  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
 
   const captionText = String(body.captionText || '').slice(0, 500)
   const startSec = body.startSec != null ? Number(body.startSec) : undefined

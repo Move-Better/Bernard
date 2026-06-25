@@ -76,6 +76,8 @@ export default async function handler(req, res) {
   const contentType = req.headers['content-type'] || 'audio/webm'
 
   if (!staffId) return res.status(400).json({ error: 'staffId required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staffId' })
   if (durationSec && durationSec < MIN_SAMPLE_SECONDS) {
     return res.status(400).json({
       error: `Recording is too short — ${MIN_SAMPLE_SECONDS}s minimum for a usable voice clone.`,

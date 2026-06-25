@@ -103,6 +103,6 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('[render-longform] kickLongformRender failed:', e?.message || e)
-    return res.status(500).json({ error: e?.message || 'render_failed' })
+    return res.status(500).json({ error: 'render_failed' })
   }
 }

@@ -16,6 +16,7 @@ export const config = { runtime: 'nodejs' }
 
 import { randomBytes } from 'node:crypto'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 
@@ -119,6 +120,7 @@ export default async function handler(req, res) {
   const t = await resolveTarget(req)
   if (!t.ok) return res.status(t.status).json({ error: t.reason })
   const { staffMember, ws } = t
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   if (req.method === 'GET') {
     return res.status(200).json({

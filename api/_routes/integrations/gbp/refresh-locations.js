@@ -24,6 +24,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, locations: locationInfo.locations })
   } catch (e) {
     console.error('[gbp/refresh-locations]', e?.message)
-    return res.status(200).json({ ok: false, error: e?.message })
+    return res.status(200).json({ ok: false, error: 'refresh_failed' })
   }
 }
