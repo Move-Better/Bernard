@@ -101,7 +101,7 @@ async function regenOne(workspace, started) {
       regen_status: 'error',
       regen_error:  String(msg).slice(0, 1000),
     })
-    return { ok: false, error: msg }
+    return { ok: false, error: 'book_regen_failed' }
   }
 }
 
@@ -170,6 +170,6 @@ export default async function handler(req, res) {
     return res.status(200).json(summary)
   } catch (e) {
     console.error('[cron/regenerate-stale-books] threw:', e?.message)
-    return res.status(200).json({ ...summary, error: e?.message })
+    return res.status(200).json({ ...summary, error: 'cron_failed' })
   }
 }

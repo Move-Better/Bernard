@@ -150,8 +150,8 @@ async function testGA4({ config, secret }) {
     // Reuse the existing `endpoint` info slot so the shared "Verified · …"
     // renderer in CredentialForm shows the result without special-casing.
     return { ok: true, info: { endpoint: `Property ${propertyId} · ${pageviews.toLocaleString()} pageviews (7d)` } }
-  } catch (e) {
-    return { ok: false, error: e?.message || 'GA4 test failed.' }
+  } catch (_e) {
+    return { ok: false, error: 'ga4_test_failed' }
   }
 }
 
@@ -162,8 +162,8 @@ async function testSearchConsole({ config, secret }) {
   try {
     const { totalImpressions } = await testSearchConsoleAccess({ credential, siteUrl })
     return { ok: true, info: { endpoint: `${siteUrl} · ${totalImpressions.toLocaleString()} impressions (7d)` } }
-  } catch (e) {
-    return { ok: false, error: e?.message || 'Search Console test failed.' }
+  } catch (_e) {
+    return { ok: false, error: 'gsc_test_failed' }
   }
 }
 
@@ -220,7 +220,7 @@ async function handler(req, res) {
   } catch (e) {
     const message = e?.name === 'AbortError'
       ? 'Test timed out after 8 seconds — endpoint slow or unreachable.'
-      : e?.message || 'Network error.'
+      : 'network_error'
     return res.status(502).json({ ok: false, error: message })
   }
 

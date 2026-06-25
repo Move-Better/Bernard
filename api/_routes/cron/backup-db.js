@@ -139,8 +139,7 @@ async function handler(req, res) {
       retained_count: retainedCount,
       deleted_count: deletedCount,
     })
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) })
+  } catch (_e) {res.status(500).json({ ok: false, error: 'backup_failed' })
   } finally {
     await pool.end().catch(() => {})
   }

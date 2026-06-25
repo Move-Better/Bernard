@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     return res.status(200).json(result)
   } catch (e) {
     console.error('[cron/sync-author-corpus] threw:', e?.message)
-    return res.status(200).json({ error: e?.message, synced: 0, skipped: 0 })
+    return res.status(200).json({ error: 'sync_failed', synced: 0, skipped: 0 })
   }
 }
 

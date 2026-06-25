@@ -180,7 +180,7 @@ export default async function handler(req, res) {
     existsResp = await githubGet(ghToken, filePath)
   } catch (e) {
     console.error(tag, 'github existence-check network error:', e?.message)
-    return res.status(502).json({ error: 'github_error', message: `Could not reach GitHub: ${e.message}`, retriable: true })
+    return res.status(502).json({ error: 'github_error', retriable: true })
   }
   if (existsResp.ok) {
     return res.status(409).json({
@@ -232,7 +232,7 @@ export default async function handler(req, res) {
     putResp = await githubPut(ghToken, filePath, fileContent, commitMessage)
   } catch (e) {
     console.error(tag, 'github PUT network error:', e?.message)
-    return res.status(502).json({ error: 'github_error', message: `Could not reach GitHub: ${e.message}`, retriable: true })
+    return res.status(502).json({ error: 'github_error', retriable: true })
   }
 
   let putData = {}
