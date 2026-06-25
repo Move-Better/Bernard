@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, X, Loader2, CheckCircle2, AlertCircle, Ban, RotateCw, Play, PauseCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import Icon from '@/components/ui/Icon'
 import { useUploadProgress } from '@/lib/UploadProgressContext'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
@@ -109,18 +110,7 @@ export default function UploadTray() {
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold truncate">{headerLabel}</div>
           {active.length > 0 && (
-            <div
-              className="mt-1 h-1 rounded-full bg-muted overflow-hidden"
-              role="progressbar"
-              aria-valuenow={aggregatePct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                className="h-full bg-primary transition-[width] duration-200"
-                style={{ width: `${aggregatePct}%` }}
-              />
-            </div>
+            <Progress value={aggregatePct} className="mt-1 h-1" />
           )}
         </div>
         <button
@@ -207,18 +197,7 @@ export default function UploadTray() {
                       <div className="text-2xs text-muted-foreground">Converting HEIC…</div>
                     ) : (
                       <>
-                        <div
-                          className="h-1.5 rounded-full bg-muted overflow-hidden"
-                          role="progressbar"
-                          aria-valuenow={r.progress || 0}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <div
-                            className="h-full bg-primary transition-[width] duration-200"
-                            style={{ width: `${Math.min(100, Math.max(0, r.progress || 0))}%` }}
-                          />
-                        </div>
+                        <Progress value={r.progress || 0} className="h-1.5" />
                         <div className="mt-1 flex items-center justify-between text-2xs text-muted-foreground tabular-nums">
                           <span>
                             {formatBytes(r.loaded || 0)} / {formatBytes(r.total || r.size || 0)} · {r.progress || 0}%

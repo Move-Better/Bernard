@@ -91,9 +91,20 @@ export default {
           '0%':   { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' },
         },
+        // Radix Accordion open/close — animate to the content's measured height.
+        'accordion-down': {
+          from: { height: '0' },
+          to:   { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to:   { height: '0' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.6s ease-in-out infinite',
+        'accordion-down': 'accordion-down 0.22s cubic-bezier(0.4,0,0.2,1)',
+        'accordion-up': 'accordion-up 0.22s cubic-bezier(0.4,0,0.2,1)',
       },
     },
   },
