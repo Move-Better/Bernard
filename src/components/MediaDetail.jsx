@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import {
   getMediaAsset,
   updateMediaAsset,
@@ -504,117 +505,149 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               bridge to tools whose file pickers can't see Vercel Blob. */}
           <div className="px-5 pt-4 -mb-1 flex items-center gap-2 flex-wrap">
             <span className="text-2xs text-muted-foreground mr-1">Use elsewhere:</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={copyLink}
-              className="h-7 gap-1.5 text-2xs"
-              title="Copy the public Vercel Blob URL for this asset"
-            >
-              {copied
-                ? <><Check className="h-3.5 w-3.5 text-success" /> Copied</>
-                : <><Link2 className="h-3.5 w-3.5" /> Copy link</>}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={downloadAsset}
-              disabled={downloading}
-              className="h-7 gap-1.5 text-2xs"
-              title="Download to your computer with the original filename"
-            >
-              {downloading
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Download className="h-3.5 w-3.5" />}
-              Download
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={copyLink}
+                  className="h-7 gap-1.5 text-2xs"
+                >
+                  {copied
+                    ? <><Check className="h-3.5 w-3.5 text-success" /> Copied</>
+                    : <><Link2 className="h-3.5 w-3.5" /> Copy link</>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy the public Vercel Blob URL for this asset</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={downloadAsset}
+                  disabled={downloading}
+                  className="h-7 gap-1.5 text-2xs"
+                >
+                  {downloading
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Download className="h-3.5 w-3.5" />}
+                  Download
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download to your computer with the original filename</TooltipContent>
+            </Tooltip>
             {asset.kind === 'photo' && canEdit && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setAdExportOpen(true)}
-                className="h-7 gap-1.5 text-2xs border-action/40 text-action hover:bg-action/10"
-                title="Render this photo into every ad size (1:1, 4:5, 9:16, 16:9) and download the pack"
-              >
-                <Megaphone className="h-3.5 w-3.5" />
-                Export for ads
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAdExportOpen(true)}
+                    className="h-7 gap-1.5 text-2xs border-action/40 text-action hover:bg-action/10"
+                  >
+                    <Megaphone className="h-3.5 w-3.5" />
+                    Export for ads
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Render this photo into every ad size (1:1, 4:5, 9:16, 16:9) and download the pack</TooltipContent>
+              </Tooltip>
             )}
             {hasOriginal && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={downloadOriginal}
-                disabled={downloadingOriginal}
-                className="h-7 gap-1.5 text-2xs"
-                title="The web variant is recommended for embedding. Use the original only when you need the source format — e.g. archival, re-processing, or pixel-perfect editing."
-              >
-                {downloadingOriginal
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <FileDown className="h-3.5 w-3.5" />}
-                Download original ({originalLabel})
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={downloadOriginal}
+                    disabled={downloadingOriginal}
+                    className="h-7 gap-1.5 text-2xs"
+                  >
+                    {downloadingOriginal
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <FileDown className="h-3.5 w-3.5" />}
+                    Download original ({originalLabel})
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>The web variant is recommended for embedding. Use the original only when you need the source format — e.g. archival, re-processing, or pixel-perfect editing.</TooltipContent>
+              </Tooltip>
             )}
             {asset.kind === 'video' && canEdit && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleRegenerateThumbnail}
-                disabled={thumbing}
-                className="h-7 gap-1.5 text-2xs"
-                title={asset.thumbnail_url
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleRegenerateThumbnail}
+                    disabled={thumbing}
+                    className="h-7 gap-1.5 text-2xs"
+                  >
+                    {thumbing
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <ImageIcon className="h-3.5 w-3.5" />}
+                    {asset.thumbnail_url ? 'Redo thumbnail' : 'Make thumbnail'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{asset.thumbnail_url
                   ? 'Re-extract poster frame from this video'
-                  : 'Extract a poster frame so this video shows a thumbnail in the grid'}
-              >
-                {thumbing
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <ImageIcon className="h-3.5 w-3.5" />}
-                {asset.thumbnail_url ? 'Redo thumbnail' : 'Make thumbnail'}
-              </Button>
+                  : 'Extract a poster frame so this video shows a thumbnail in the grid'}</TooltipContent>
+              </Tooltip>
             )}
             {canEdit && !asset.parent_id && (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickRotate(270)}
-                  disabled={rotatingQuick}
-                  className="h-7 gap-1.5 text-2xs"
-                  title="Rotate 90° counter-clockwise — overwrites the original in place"
-                  aria-label="Rotate left 90 degrees"
-                >
-                  {rotatingQuick
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <RotateCcw className="h-3.5 w-3.5" />}
-                  Rotate left
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickRotate(90)}
-                  disabled={rotatingQuick}
-                  className="h-7 gap-1.5 text-2xs"
-                  title="Rotate 90° clockwise — overwrites the original in place"
-                  aria-label="Rotate right 90 degrees"
-                >
-                  {rotatingQuick
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <RotateCw className="h-3.5 w-3.5" />}
-                  Rotate right
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleQuickRotate(270)}
+                      disabled={rotatingQuick}
+                      className="h-7 gap-1.5 text-2xs"
+                      aria-label="Rotate left 90 degrees"
+                    >
+                      {rotatingQuick
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RotateCcw className="h-3.5 w-3.5" />}
+                      Rotate left
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Rotate 90° counter-clockwise — overwrites the original in place</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleQuickRotate(90)}
+                      disabled={rotatingQuick}
+                      className="h-7 gap-1.5 text-2xs"
+                      aria-label="Rotate right 90 degrees"
+                    >
+                      {rotatingQuick
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RotateCw className="h-3.5 w-3.5" />}
+                      Rotate right
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Rotate 90° clockwise — overwrites the original in place</TooltipContent>
+                </Tooltip>
               </>
             )}
             {canEdit && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => { setIsFullscreen(true); setShowEdit(true) }}
-                className="h-7 gap-1.5 text-2xs"
-                title="Crop this asset — opens fullscreen crop editor"
-              >
-                <Crop className="h-3.5 w-3.5" />
-                Crop
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setIsFullscreen(true); setShowEdit(true) }}
+                    className="h-7 gap-1.5 text-2xs"
+                  >
+                    <Crop className="h-3.5 w-3.5" />
+                    Crop
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Crop this asset — opens fullscreen crop editor</TooltipContent>
+              </Tooltip>
             )}
             {asset.kind === 'photo' && (
               <span className="text-2xs text-muted-foreground">
@@ -685,24 +718,30 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Asset purpose</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {PURPOSES.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setAssetPurpose(p.id)}
-                      className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
-                        assetPurpose === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
-                      }`}
-                      title={p.id === 'interview'
-                        ? 'Spoken-on-camera footage — feeds the editor brief queue'
-                        : p.id === 'broll'
-                          ? 'Video without spoken narrative — tagged for search, no brief queue'
-                          : p.id === 'photo'
-                            ? 'Still image of the clinic, team, or moment'
-                            : 'Logos, headshots, graphics'}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
+                  {PURPOSES.map((p) => {
+                    const purposeTip = p.id === 'interview'
+                      ? 'Spoken-on-camera footage — feeds the editor brief queue'
+                      : p.id === 'broll'
+                        ? 'Video without spoken narrative — tagged for search, no brief queue'
+                        : p.id === 'photo'
+                          ? 'Still image of the clinic, team, or moment'
+                          : 'Logos, headshots, graphics'
+                    return (
+                      <Tooltip key={p.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setAssetPurpose(p.id)}
+                            className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
+                              assetPurpose === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{purposeTip}</TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -763,21 +802,25 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Tags</label>
                 {canEdit && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleTag}
-                    disabled={tagging}
-                    className="h-7 gap-1.5 text-2xs"
-                    title={asset.kind === 'video'
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleTag}
+                        disabled={tagging}
+                        className="h-7 gap-1.5 text-2xs"
+                      >
+                        {tagging
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Sparkles className="h-3.5 w-3.5" />}
+                        {aiTags.length ? 'Re-tag with AI' : 'Tag with AI'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{asset.kind === 'video'
                       ? 'Run AI tagging + transcription + visual narrative (10–60s)'
-                      : 'Run AI tagging on this image'}
-                  >
-                    {tagging
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      : <Sparkles className="h-3.5 w-3.5" />}
-                    {aiTags.length ? 'Re-tag with AI' : 'Tag with AI'}
-                  </Button>
+                      : 'Run AI tagging on this image'}</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -880,21 +923,23 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   <div className="flex gap-1.5">
                     {canEdit && (
                       <>
-                        <Button
-                          size="sm" variant="outline" onClick={handleSegment}
-                          disabled={segmenting || !canSegment}
-                          title={
-                            assetPurpose !== 'interview'
-                              ? 'Only interview-purpose video feeds the segmenter. Switch purpose to Interview to enable.'
-                              : canSegment
-                                ? 'Re-run AI segmenter on this source'
-                                : 'Tag with AI first to enable'
-                          }
-                          className="h-7 gap-1.5 text-2xs"
-                        >
-                          {segmenting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                          {linkedBriefs.length ? 'Re-segment' : 'Segment'}
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm" variant="outline" onClick={handleSegment}
+                              disabled={segmenting || !canSegment}
+                              className="h-7 gap-1.5 text-2xs"
+                            >
+                              {segmenting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                              {linkedBriefs.length ? 'Re-segment' : 'Segment'}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{assetPurpose !== 'interview'
+                            ? 'Only interview-purpose video feeds the segmenter. Switch purpose to Interview to enable.'
+                            : canSegment
+                              ? 'Re-run AI segmenter on this source'
+                              : 'Tag with AI first to enable'}</TooltipContent>
+                        </Tooltip>
                         <Button
                           size="sm" variant="outline" onClick={handleNewBrief}
                           disabled={creatingBrief}
