@@ -36,9 +36,12 @@ function sb(path, init = {}) {
   })
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function handler(req, res) {
   const id = req.query?.id
   if (!id) return res.status(400).json({ error: 'id required' })
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
