@@ -108,10 +108,7 @@ async function handler(req, res) {
     return publishToAstro(res, payload, astroCred, workspaceSlug)
   }
 
-  return res.status(503).json({
-    error:   'not_configured',
-    message: `No publish target is configured for this workspace${scope?.workspace?.slug ? ` (${scope.workspace.slug})` : ''}. Add WordPress or Astro+GitHub credentials in Workspace Settings → Publishing credentials.`,
-  })
+  return res.status(503).json({ error: 'not_configured' })
 }
 
 // ── Astro mode ────────────────────────────────────────────────────────────────
@@ -204,7 +201,7 @@ async function publishToAstro(res, payload, cred, workspaceSlug) {
     return res.status(502).json({ error: 'github_error', retriable: true })
   }
   console.error('[publish/website] unexpected upstream status:', upstream.status)
-  return res.status(502).json({ error: 'upstream_error', status: upstream.status })
+  return res.status(502).json({ error: 'upstream_error' })
 }
 
 // ── WordPress mode ────────────────────────────────────────────────────────────
@@ -216,7 +213,8 @@ async function publishToWordPress(res, payload, cred) {
   }
   const wpRoot = wpRestRoot(baseUrl)
   if (!wpRoot) {
-    return res.status(503).json({ error: 'not_configured', message: `WordPress site_url must include /wp-json/ (got ${baseUrl}). Expected something like https://example.com/wp-json/wp/v2/posts.` })
+    console.error('[publish/website] invalid wordpress site_url:', baseUrl)
+    return res.status(503).json({ error: 'not_configured' })
   }
 
   const user = cred.config?.user

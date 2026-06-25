@@ -121,7 +121,7 @@ export default async function handler(req, res) {
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => '')
     console.error('[tts] upstream error', upstream.status, detail.slice(0, 500))
-    return res.status(502).json({ error: 'TTS upstream error', status: upstream.status })
+    return res.status(502).json({ error: 'tts_upstream_error' })
   }
 
   res.setHeader('Content-Type', 'audio/mpeg')

@@ -186,11 +186,8 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'github_error', retriable: true })
   }
   if (existsResp.ok) {
-    return res.status(409).json({
-      error: 'slug_taken',
-      slug,
-      message: `The slug "${slug}" is already published at ${filePath}. Rename and try again — the website never overwrites.`,
-    })
+    console.error(tag, 'slug_taken:', slug, filePath)
+    return res.status(409).json({ error: 'slug_taken', slug })
   }
   if (existsResp.status === 401 || existsResp.status === 403) {
     console.error(tag, `github auth ${existsResp.status} on existence check`)
@@ -216,12 +213,7 @@ export default async function handler(req, res) {
     const collision = findSlugPrefixCollision(slug, existingSlugs)
     if (collision) {
       console.error(tag, `slug_prefix_collision with "${collision}"`)
-      return res.status(409).json({
-        error: 'slug_prefix_collision',
-        slug,
-        collidesWith: collision,
-        message: `The slug "${slug}" is a near-duplicate of the already-published "${collision}" (one is a prefix of the other). This usually means the same article is being published twice under different truncations. Rename the title, or update the existing post instead of creating a second URL.`,
-      })
+      return res.status(409).json({ error: 'slug_prefix_collision', slug, collidesWith: collision })
     }
   }
 

@@ -95,8 +95,8 @@ export default function ImportUrl() {
             </div>
 
             {loading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin shrink-0" />
                 Fetching and extracting text — takes a few seconds&hellip;
               </div>
             )}

@@ -56,7 +56,7 @@ async function handler(req, res) {
     if (!r.ok) {
       const text = await r.text().catch(() => '')
       console.error('[drive/test] about failed:', r.status, text)
-      return res.status(502).json({ error: 'drive-api-failed', status: r.status })
+      return res.status(502).json({ error: 'drive_api_failed' })
     }
     about = await r.json()
   } catch (e) {

@@ -52,7 +52,7 @@ export default function MediaPreviewDialog({ clip, open, onOpenChange, attached,
         <div className="flex items-center justify-center overflow-hidden rounded-md bg-black">
           {isVideo ? (
             assetLoading ? (
-              <div className="flex h-72 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-white/80" /></div>
+              <div role="status" className="flex h-72 items-center justify-center"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-white/80" /><span className="sr-only">Loading video…</span></div>
             ) : assetError || !asset ? (
               <div className="flex h-72 items-center justify-center text-sm text-white/80">Couldn’t load this video.</div>
             ) : (
