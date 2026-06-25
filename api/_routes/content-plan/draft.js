@@ -480,6 +480,6 @@ export default async function handler(req, res) {
       headers: { Prefer: 'return=minimal' },
     })
     console.error('[content-plan/draft]', e.message)
-    return err(res, e.message || 'Draft generation failed', 500)
+    return err(res, 'draft_generation_failed', 500)
   }
 }

@@ -24,7 +24,7 @@ async function handler(req, res) {
     await deleteGbpCredential(workspace.id)
   } catch (e) {
     console.error('[gbp/disconnect] failed:', e?.message)
-    return res.status(500).json({ error: 'disconnect-failed', message: e?.message })
+    return res.status(500).json({ error: 'disconnect-failed' })
   }
 
   return res.status(200).json({ ok: true })

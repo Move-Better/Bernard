@@ -51,6 +51,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ planned: true, weekMonday: week, stats })
   } catch (e) {
     console.error('[content-plan/plan-week]', e.message, e.stack)
-    return err(res, e.message || 'Plan-ahead failed', 500)
+    return err(res, 'plan_ahead_failed', 500)
   }
 }

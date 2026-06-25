@@ -241,7 +241,7 @@ export default async function handler(req, res) {
         stale:       true,
       })
     }
-    return err(res, e.message || 'AI suggestion failed', 500)
+    return err(res, 'ai_suggestion_failed', 500)
   }
 
   if (suggestions.length === 0) {

@@ -91,7 +91,7 @@ async function handler(req, res) {
     })
   } catch (e) {
     console.error('[playback-token] mint failed:', e?.message)
-    return res.status(500).json({ error: 'mint_failed', message: e?.message || 'Unknown error' })
+    return res.status(500).json({ error: 'mint_failed' })
   }
 }
 

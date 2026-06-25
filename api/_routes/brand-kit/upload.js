@@ -260,8 +260,8 @@ async function handler(req, res) {
     })
 
     return res.status(200).json(result)
-  } catch (e) {
-    return res.status(400).json({ error: e.message || 'Upload handler failed' })
+  } catch (_e) {
+    return res.status(400).json({ error: 'upload_failed' })
   }
 }
 
