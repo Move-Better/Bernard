@@ -47,6 +47,7 @@ import { pipeline } from 'node:stream/promises'
 import { getCredential } from '../_lib/getCredential.js'
 import { workspaceScope } from '../_lib/workspaceScope.js'
 import { requireRole } from '../_lib/auth.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 import { rewriteMarkdownImageUrls } from '../_lib/publishImageMirror.js'
 import { findBodyH1, deriveSeoTitle, SEO_TITLE_MAX } from '../../src/lib/blogOutput.js'
 
@@ -91,6 +92,7 @@ async function handler(req, res) {
   if (!scope) return res.status(404).json({ error: 'no_workspace' })
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'publish', scope.workspace.id))) return
   const workspaceId = scope?.workspace?.id
   const workspaceSlug = scope?.workspace?.slug
 

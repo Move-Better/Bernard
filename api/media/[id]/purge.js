@@ -3,6 +3,7 @@ export const config = { runtime: 'nodejs' }
 import { del as blobDel } from '@vercel/blob'
 import { recordAudit, snapshot } from '../../_lib/audit.js'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
 // Hard delete (purge) for an archived media asset.
@@ -67,6 +68,8 @@ async function handler(req, res) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'media', scope.workspace.id))) return
   const SELECT = `${scope.column},${SELECT_COMMON}`
   const where  = `id=eq.${id}&${scope.column}=eq.${scope.id}`
   const before = await fetchRow(where, SELECT)

@@ -58,6 +58,8 @@ export default async function handler(req, res) {
   // has a live voice clone, use the clone. Caller's explicit voiceId is the
   // next fallback, then env, then the Adam default.
   let cloneVoiceId = null
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (staffId && !UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staffId' })
   if (staffId) {
     try {
       const r = await fetch(
