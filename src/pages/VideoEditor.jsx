@@ -18,6 +18,7 @@ import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -876,23 +877,32 @@ export default function VideoEditor() {
       >
         {/* Transport */}
         <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
-          <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
-            {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} aria-label={playing ? 'Pause' : 'Play'}>
+                {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
+          </Tooltip>
           <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
         </div>
         {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
         <div className="flex gap-1" role="group" aria-label="Output format">
           {FORMAT_KEYS.map((k) => (
-            <button
-              key={k} onClick={() => setFormat(k)}
-              className="flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight"
-              style={segBtn(format === k)}
-              title={`${FORMATS[k].label} · ${FORMATS[k].dim}`}
-            >
-              <span className="font-medium">{FORMATS[k].label}</span>
-              <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
-            </button>
+            <Tooltip key={k}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setFormat(k)}
+                  className="flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight"
+                  style={segBtn(format === k)}
+                >
+                  <span className="font-medium">{FORMATS[k].label}</span>
+                  <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{`${FORMATS[k].label} · ${FORMATS[k].dim}`}</TooltipContent>
+            </Tooltip>
           ))}
         </div>
         {/* Export — one render, multiple destinations (pick any). */}
