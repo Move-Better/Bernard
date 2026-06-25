@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs' }
 import crypto from 'node:crypto'
 import { workspaceContext } from '../../../_lib/workspaceContext.js'
 import { requireRole } from '../../../_lib/auth.js'
+import { enforceLimit } from '../../../_lib/ratelimit.js'
 
 const CLIENT_ID = process.env.BUFFER_CLIENT_ID
 const CLIENT_SECRET = process.env.BUFFER_CLIENT_SECRET
@@ -41,6 +42,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   const nonce = crypto.randomBytes(16).toString('hex')
   const state = signState({ workspace_id: workspace.id, nonce })

@@ -1,6 +1,7 @@
 import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
 // Combined read for the Brand Kit UI — returns the asset library, the current
@@ -36,6 +37,8 @@ async function handler(req, res) {
 
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
 
   // Three parallel reads — assets, roles, and the brand_style column on the
   // workspace row. brand_style lives on workspaces (not its own table) because

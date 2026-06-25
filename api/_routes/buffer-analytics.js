@@ -16,6 +16,7 @@ export const config = { runtime: 'nodejs' }
 import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 import { getCredential } from '../_lib/getCredential.js'
 import { fetchPostStats } from '../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../_lib/social/index.js'
@@ -72,6 +73,8 @@ export default async function handler(req, res) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // Fetch the content item — must belong to this workspace
   const itemRes = await sb(
