@@ -74,10 +74,10 @@ export default async function handler(req, res) {
     return err(res, 'Missing content')
   }
   if (bodyLengthPreset != null && !VALID_LENGTH_PRESETS.has(bodyLengthPreset)) {
-    return err(res, `Invalid length_preset: ${bodyLengthPreset}`)
+    return err(res, 'invalid_length_preset')
   }
   if (bodyGenerationStyle != null && !VALID_GENERATION_STYLES.has(bodyGenerationStyle)) {
-    return err(res, `Invalid generation_style: ${bodyGenerationStyle}`)
+    return err(res, 'invalid_generation_style')
   }
 
   const itemRes = await sb(`content_items?id=eq.${id}&${wsFilter}&select=*`)

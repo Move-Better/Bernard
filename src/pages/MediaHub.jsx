@@ -758,7 +758,10 @@ export default function MediaHub() {
           {hasMore && (
             <div ref={sentinelRef} className="flex items-center justify-center py-6">
               {loadingMore ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading more" />
+                <div role="status">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+                  <span className="sr-only">Loading more…</span>
+                </div>
               ) : (
                 <Button size="sm" variant="outline" onClick={loadMore} className="text-xs">
                   Load more
