@@ -8,9 +8,9 @@ import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea2 } from '@/components/settings/helpers'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = true }) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
   // Keep the textarea text in local state so spaces and blank lines aren't
   // eaten on every keystroke. The parent stores characteristics as a normalized
   // string array (trimmed, no empties); we still push that up on every change
@@ -23,25 +23,21 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
   }, [proto.id])
 
   return (
-    <div className="rounded-lg border border-input bg-card">
-      <div
-        className="flex items-center gap-2 p-3 cursor-pointer select-none"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <span className="text-base w-6 text-center shrink-0">{proto.emoji || '👤'}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">
-            {proto.label || <em className="font-normal text-muted-foreground">Untitled archetype</em>}
-          </p>
-          {proto.coreDesire && (
-            <p className="text-xs text-muted-foreground truncate">{proto.coreDesire}</p>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground shrink-0">{expanded ? '▲' : '▼'}</span>
-      </div>
-
-      {expanded && (
-        <div className="border-t border-input p-3 space-y-3">
+    <div className="rounded-lg border border-input bg-card overflow-hidden">
+      <Accordion type="single" collapsible defaultValue={defaultExpanded ? 'proto' : undefined}>
+        <AccordionItem value="proto" className="border-0">
+          <AccordionTrigger className="flex items-center gap-2 px-3 py-3 hover:bg-accent/30 hover:no-underline text-left w-full">
+            <span className="text-base w-6 text-center shrink-0">{proto.emoji || '👤'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {proto.label || <em className="font-normal text-muted-foreground">Untitled archetype</em>}
+              </p>
+              {proto.coreDesire && (
+                <p className="text-xs text-muted-foreground truncate">{proto.coreDesire}</p>
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="border-t border-input p-3 space-y-3 pb-3">
           <div className="grid grid-cols-3 gap-2">
             <div>
               <Label className="text-xs mb-1 block">Emoji</Label>
@@ -111,8 +107,9 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
           >
             Remove this archetype
           </button>
-        </div>
-      )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }

@@ -3,6 +3,7 @@
 // patient archetypes (so the topic only surfaces for matching archetypes).
 
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea2 } from '@/components/settings/helpers'
 
@@ -123,9 +124,9 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
           onClick={() => setExpanded(e => !e)}
           aria-label={expanded ? 'Collapse topic options' : 'Expand topic options'}
           aria-expanded={expanded}
-          className="shrink-0 text-3xs text-muted-foreground hover:text-foreground px-1"
+          className="shrink-0 text-muted-foreground hover:text-foreground px-1"
         >
-          <span aria-hidden="true">{expanded ? '▲' : '▼'}</span>
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
       </div>
 
