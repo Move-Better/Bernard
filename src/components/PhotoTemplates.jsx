@@ -665,6 +665,7 @@ function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, sa
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
+              aria-label="Describe a change"
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}

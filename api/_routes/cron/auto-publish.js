@@ -430,7 +430,8 @@ export default async function handler(req, res) {
     try {
       await processWorkspace(ws, summary)
     } catch (e) {
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, error: e?.message || 'unknown' })
+      console.error('[cron/auto-publish] workspace threw:', e?.message)
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, error: 'workspace_error' })
     }
   }
   summary.finishedAt = new Date().toISOString()

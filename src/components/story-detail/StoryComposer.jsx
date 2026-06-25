@@ -141,6 +141,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
               <Type className="h-3.5 w-3.5 text-muted-foreground" /> Overlay text
             </label>
             <textarea
+              aria-label="Overlay text"
               value={overlay}
               onChange={(e) => setOverlay(e.target.value)}
               onBlur={saveOverlay}

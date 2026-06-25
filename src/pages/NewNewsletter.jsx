@@ -193,8 +193,8 @@ export default function NewNewsletter() {
           <div className="space-y-1.5">
             <Label>Who&apos;s talking?</Label>
             {staffLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Loading staff…
+              <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /><span className="sr-only">Loading staff…</span><span aria-hidden="true">Loading staff…</span>
               </div>
             ) : staffList.length > 0 ? (
               <div className="flex flex-wrap gap-2 items-center">
@@ -262,8 +262,8 @@ export default function NewNewsletter() {
             </div>
 
             {campaignsLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                <Loader2 className="h-3 w-3 animate-spin" /> Loading goals…
+              <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /><span className="sr-only">Loading goals…</span><span aria-hidden="true">Loading goals…</span>
               </div>
             ) : goals.length === 0 && !showNewGoal ? (
               <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-center space-y-2">
@@ -400,7 +400,7 @@ function NewGoalForm({ onCreate, onCancel, pending }) {
 
   return (
     <div className="mt-2 rounded-lg border bg-card p-3 space-y-3">
-      <Input placeholder="Goal name — e.g. &quot;Community outreach — sponsor patients' causes&quot;" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <Input aria-label="Goal name" placeholder="Goal name — e.g. &quot;Community outreach — sponsor patients' causes&quot;" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       <textarea
         aria-label="Campaign goal description"
         rows={2}
