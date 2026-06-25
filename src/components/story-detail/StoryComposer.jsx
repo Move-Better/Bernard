@@ -114,7 +114,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
                 className="text-muted-foreground hover:text-foreground"
                 aria-label="Remove media"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           ) : (

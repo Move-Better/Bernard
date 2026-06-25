@@ -94,7 +94,7 @@ export default function TextPostStudio({ pieceId, initialState, brandStyle, work
             className="ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
             aria-label="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
