@@ -398,7 +398,7 @@ export default function BulkActionBar({
       {/* Primary dark pill ------------------------------------------------- */}
       <div className="rounded-full bg-foreground border border-foreground/30 shadow-2xl px-4 py-2.5 flex items-center gap-3 text-xs select-none">
         {/* Count */}
-        <span className="font-semibold text-white whitespace-nowrap">
+        <span className="font-semibold text-background whitespace-nowrap">
           {count === 0 ? `0 of ${visibleCount}` : count} selected
         </span>
 

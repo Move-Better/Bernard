@@ -22,6 +22,7 @@ export const config = { runtime: 'nodejs' }
 import { waitUntil } from '@vercel/functions'
 import { authByCaptureToken } from '../../_lib/captureAuth.js'
 import { recordUploadedAsset } from '../../_lib/recordUploadedAsset.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -64,6 +65,8 @@ export default async function handler(req, res) {
 
   const auth = await authByCaptureToken(m[1].trim())
   if (!auth) return res.status(401).json({ error: 'invalid_or_expired_token' })
+
+  if (!(await enforceLimit(req, res, 'generic', auth.workspace.id))) return
 
   const { blobPathname, filename, contentType, sizeBytes, capturedAt, locationHint, caption } =
     req.body || {}

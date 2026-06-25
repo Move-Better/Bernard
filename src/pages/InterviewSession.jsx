@@ -1687,7 +1687,7 @@ export default function InterviewSession() {
                   aria-label={canFinish ? 'Finish interview' : finishHelper}
                   className="gap-1.5"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                   Finish
                 </Button>
                 {!canFinish && (

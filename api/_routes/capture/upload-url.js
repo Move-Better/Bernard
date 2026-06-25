@@ -25,6 +25,7 @@ export const config = { runtime: 'nodejs' }
 
 import { generateClientTokenFromReadWriteToken } from '@vercel/blob/client'
 import { authByCaptureToken } from '../../_lib/captureAuth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const ALLOWED_MIME = new Set([
   'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v',
@@ -44,6 +45,8 @@ export default async function handler(req, res) {
 
   const auth = await authByCaptureToken(m[1].trim())
   if (!auth) return res.status(401).json({ error: 'invalid_or_expired_token' })
+
+  if (!(await enforceLimit(req, res, 'generic', auth.workspace.id))) return
 
   const { filename, contentType } = req.body || {}
   if (!filename || !contentType) {
