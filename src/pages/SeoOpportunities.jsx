@@ -89,9 +89,10 @@ function OpportunityCard({ opp, onStartInterview, onDraft, onDismiss, dismissing
         <button
           onClick={() => onDismiss(opp)}
           disabled={dismissing}
-          className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1.5 disabled:opacity-50"
+          className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1.5 disabled:opacity-50 aria-[busy=true]:cursor-wait"
+          title="Dismiss this opportunity"
         >
-          <X className="w-3.5 h-3.5" /> Dismiss
+          <X className="w-3.5 h-3.5" /> {dismissing ? 'Dismissing…' : 'Dismiss'}
         </button>
       </div>
     </div>
@@ -168,7 +169,12 @@ export default function SeoOpportunities() {
   // query + intent) is wired in P2.
   const onStartInterview = (opp) => navigate(`/new/interview?seed=${encodeURIComponent(opp.query)}`)
   const onDraft          = (opp) => navigate(`/new?seed=${encodeURIComponent(opp.query)}`)
-  const onDismiss        = (opp) => dismiss.mutate({ query: opp.query })
+  const onDismiss        = (opp) => dismiss.mutate({ query: opp.query }, {
+    onError: () => {
+      // Surface the failure — the dismiss button re-enables automatically when isPending clears
+      console.error('[SeoOpportunities] dismiss failed for query:', opp.query)
+    },
+  })
 
   const opps = data?.opportunities || []
   const filteredOpps = filter === 'striking' ? opps.filter((o) => o.type === 'striking_distance')
@@ -199,12 +205,23 @@ export default function SeoOpportunities() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground py-12 text-center">Reading your Search Console data…</div>
+        <div className="space-y-3 mt-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[0,1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+          </div>
+          {[0,1,2].map(i => <div key={i} className="h-32 rounded-xl bg-muted animate-pulse" />)}
+        </div>
       ) : data?.connected === false ? (
         <div className="mt-5"><NotConnected /></div>
       ) : data?.error === 'gsc_fetch_failed' ? (
-        <div className="mt-5 bg-card border border-border rounded-xl p-6 text-sm text-muted-foreground">
-          Couldn’t reach Search Console right now. This is usually temporary — try again shortly.
+        <div className="mt-5 bg-card border border-border rounded-xl p-6 text-sm text-muted-foreground flex items-center justify-between gap-4">
+          <span>Couldn&apos;t reach Search Console right now. This is usually temporary.</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="shrink-0 text-sm font-medium text-primary hover:underline"
+          >
+            Try again
+          </button>
         </div>
       ) : (
         <>
@@ -258,7 +275,7 @@ export default function SeoOpportunities() {
               <>
                 <LockedCard
                   tag="Decaying" icon={TrendingDown} label="Pages slipping in rank"
-                  why="Compares each query’s position week-over-week to catch rankings that are falling before they leave page 1."
+                  why="Compares each query's position week-over-week to catch rankings that are falling before they leave page 1."
                 />
                 <LockedCard
                   tag="Cannibalization" icon={GitBranch} label="Two pages competing for one query"

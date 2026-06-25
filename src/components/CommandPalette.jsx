@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Building2, BarChart3, CalendarRange, Newspaper, Pickaxe,
-  Megaphone, FolderOpen, BookOpen, PenLine, Mic2, Settings, Palette, Plug, Plus, Mic,
+  Megaphone, FolderOpen, BookOpen, PenLine, Mic2, Settings, Palette, Plug, Plus, Mic, TrendingUp,
 } from 'lucide-react'
 import {
   CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut,
@@ -12,13 +12,14 @@ import {
 // Mounted once in the authed shell (Layout). Mirrors the sidebar nav so the two
 // stay in step; if a nav destination is added, add it here too.
 const ACTIONS = [
-  { icon: Plus, label: 'New post', to: '/new', shortcut: 'N' },
-  { icon: Mic, label: 'New interview', to: '/new' },
+  { icon: Plus, label: 'New post', to: '/new' },
+  { icon: Mic, label: 'New interview', to: '/new/interview' },
 ]
 const GO_TO = [
   { icon: LayoutDashboard, label: 'Home', to: '/' },
   { icon: Building2, label: 'Overview', to: '/overview' },
   { icon: BarChart3, label: 'Insights', to: '/analytics' },
+  { icon: TrendingUp, label: 'SEO', to: '/seo' },
   { icon: CalendarRange, label: 'Your week', to: '/week' },
   { icon: Newspaper, label: 'Stories', to: '/stories' },
   { icon: Pickaxe, label: 'Moments', to: '/moments' },
