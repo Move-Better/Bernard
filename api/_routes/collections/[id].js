@@ -10,6 +10,7 @@ export const config = { runtime: 'nodejs' }
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -49,6 +50,8 @@ async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const id  = url.pathname.split('/').pop()
   if (!id) return res.status(400).json({ error: 'Missing id' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
@@ -91,7 +94,18 @@ async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const patch = req.body || {}
+
+    // Verify cover_asset_id belongs to this workspace before binding it.
+    if (patch.coverAssetId) {
+      if (!UUID_RE.test(patch.coverAssetId)) return res.status(400).json({ error: 'invalid_coverAssetId' })
+      const assetChk = await sb(`media_assets?id=eq.${patch.coverAssetId}&${scope.column}=eq.${scope.id}&select=id&limit=1`)
+      if (!assetChk.ok || !(await assetChk.json()).length) {
+        return res.status(404).json({ error: 'cover_asset_not_found' })
+      }
+    }
+
     const allowed = {
       name:           patch.name,
       slug:           patch.slug,
@@ -122,6 +136,7 @@ async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const r = await sb(`collections?${where}`, { method: 'DELETE' })
     if (!r.ok) {
       console.error('[[id].js] db error:', r.status)

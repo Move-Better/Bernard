@@ -107,7 +107,7 @@ export default async function handler(req, res) {
           await sb(`content_item_drafts?id=in.(${ids})&${wsFilter}`, { method: 'DELETE' })
         }
       }
-    } catch { /* non-fatal */ }
+    } catch (e) { console.error('[content-item-drafts] trim failed:', e?.message) }
 
     return ok(res, rows[0], 201)
   }

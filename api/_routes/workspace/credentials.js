@@ -14,6 +14,7 @@ export const config = { runtime: 'nodejs' }
 import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../_lib/capabilities.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { encryptSecret } from '../../_lib/credentialCrypto.js'
 import { listConfiguredServices } from '../../_lib/getCredential.js'
 
@@ -69,6 +70,10 @@ async function handler(req, res) {
   if (req.method === 'GET') {
     const services = await listConfiguredServices(workspace.id)
     return res.status(200).json({ services })
+  }
+
+  if (req.method === 'PUT' || req.method === 'POST' || req.method === 'DELETE') {
+    if (!(await enforceLimit(req, res, 'default'))) return
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {

@@ -484,7 +484,7 @@ function VerticalTimeline({ ctx }) {
             return (
               <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-x-0 cursor-grab overflow-hidden rounded-md" style={{ top: `${f(startSec + o.in)}%`, height: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
                 <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
-                <div className="flex h-full items-center justify-center"><Type className="h-3 w-3" style={{ color: '#3a2a00' }} /></div>
+                <div className="flex h-full items-center justify-center"><Type className="h-3 w-3" style={{ color: 'hsl(var(--action-foreground))' }} /></div>
                 <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
               </div>
             )
@@ -875,7 +875,7 @@ export default function VideoEditor() {
         </div>
         {/* Export — one render, multiple destinations (pick any). */}
         <div className="relative">
-          <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+          <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center" style={{ background: 'hsl(var(--action))', color: 'hsl(var(--action-foreground))' }}>
             {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
           </Button>
           {exportOpen && (
@@ -894,7 +894,7 @@ export default function VideoEditor() {
                     <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
                   </label>
                 ))}
-                <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center" style={{ background: 'hsl(var(--action))', color: '#3a2a00' }}>
+                <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center" style={{ background: 'hsl(var(--action))', color: 'hsl(var(--action-foreground))' }}>
                   {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Render &amp; send →
                 </Button>
                 <div className="my-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }} />

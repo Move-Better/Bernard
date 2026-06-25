@@ -74,7 +74,6 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
-  if (!(await enforceLimit(req, res, 'default'))) return
 
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
@@ -90,9 +89,12 @@ export default async function handler(req, res) {
   if (!capAuth.ok) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
+  if (!(await enforceLimit(req, res, 'default'))) return
 
   const body = req.body || {}
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const id = body.id ? String(body.id) : null
+  if (id && !UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
   const name = String(body.name || '').trim()
   if (!name) return res.status(400).json({ error: 'name required' })
 

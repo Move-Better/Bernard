@@ -111,7 +111,7 @@ export default async function handler(req, res) {
       title: body.title ? String(body.title).trim().slice(0, 500) : null,
       notes: body.notes ? String(body.notes).trim().slice(0, 2000) : null,
       use_as_source: Boolean(body.useAsSource),
-      added_by: body.addedBy || null,
+      added_by: auth.userId || null,
     }
     const r = await sb('interview_references', { method: 'POST', body: JSON.stringify(insert) })
     if (!r.ok) {

@@ -294,14 +294,14 @@ function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplat
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b">
-        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
           {MB_INITIALS}
         </div>
         <div>
           <p className="text-xs font-semibold">{MB_HANDLE}</p>
           <p className="text-3xs text-muted-foreground">{MB_LOCATION}</p>
         </div>
-        <button className="ml-auto text-xs font-semibold text-blue-500">Follow</button>
+        <button className="ml-auto text-xs font-semibold text-info">Follow</button>
       </div>
 
       {/* Reel (video) takes precedence over the photo carousel. */}
@@ -347,7 +347,7 @@ function FacebookPreview({ content, mediaUrls = [] }) {
       <div className="px-4 pt-4 pb-3">
         {/* Author */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
             MB
           </div>
           <div>
@@ -362,7 +362,7 @@ function FacebookPreview({ content, mediaUrls = [] }) {
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
           <SocialText text={showFull ? content : preview} />
           {!showFull && hasMore && (
-            <button onClick={() => setShowFull(true)} className="text-blue-500 ml-1 text-sm">See more</button>
+            <button onClick={() => setShowFull(true)} className="text-info ml-1 text-sm">See more</button>
           )}
         </p>
       </div>
@@ -381,9 +381,9 @@ function FacebookPreview({ content, mediaUrls = [] }) {
 
       {/* Reactions bar */}
       <div className="px-4 py-2 border-t flex items-center gap-4 text-xs text-muted-foreground">
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><ThumbsUp className="h-4 w-4" /> Like</button>
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><MessageCircle className="h-4 w-4" /> Comment</button>
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><Repeat2 className="h-4 w-4" /> Share</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><ThumbsUp className="h-4 w-4" /> Like</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><MessageCircle className="h-4 w-4" /> Comment</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><Repeat2 className="h-4 w-4" /> Share</button>
       </div>
     </div>
   )
@@ -400,7 +400,7 @@ function LinkedInPreview({ content }) {
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-start gap-3 mb-3">
-          <div className="h-12 w-12 rounded-sm bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
+          <div className="h-12 w-12 rounded-sm bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
             MB
           </div>
           <div>
@@ -408,7 +408,7 @@ function LinkedInPreview({ content }) {
             <p className="text-2xs text-muted-foreground">{MB_INDUSTRY} · {MB_LOCATION}</p>
             <p className="text-3xs text-muted-foreground">Just now · 🌐</p>
           </div>
-          <button className="ml-auto text-xs font-semibold text-blue-600 border border-blue-600 rounded-full px-3 py-1">+ Follow</button>
+          <button className="ml-auto text-xs font-semibold text-info border border-info rounded-full px-3 py-1">+ Follow</button>
         </div>
 
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -420,10 +420,10 @@ function LinkedInPreview({ content }) {
       </div>
 
       <div className="px-4 py-2 border-t flex items-center gap-4 text-xs text-muted-foreground">
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><ThumbsUp className="h-4 w-4" /> Like</button>
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><MessageCircle className="h-4 w-4" /> Comment</button>
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><Repeat2 className="h-4 w-4" /> Repost</button>
-        <button className="flex items-center gap-1.5 hover:text-blue-500"><Send className="h-4 w-4" /> Send</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><ThumbsUp className="h-4 w-4" /> Like</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><MessageCircle className="h-4 w-4" /> Comment</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><Repeat2 className="h-4 w-4" /> Repost</button>
+        <button className="flex items-center gap-1.5 hover:text-info"><Send className="h-4 w-4" /> Send</button>
       </div>
     </div>
   )
@@ -474,12 +474,12 @@ function GBPPreview({ content, locationOverrides }) {
         </div>
       )}
       <div className="bg-slate-50 px-4 py-3 border-b flex items-center gap-2">
-        <MapPin className="h-4 w-4 text-red-500 shrink-0" />
+        <MapPin className="h-4 w-4 text-destructive shrink-0" />
         <p className="text-xs font-semibold">{MB_NAME} · Google Business Profile</p>
       </div>
       <div className="px-4 py-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
             MB
           </div>
           <div>
@@ -490,7 +490,7 @@ function GBPPreview({ content, locationOverrides }) {
         <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{displayContent}</p>
       </div>
       <div className="px-4 py-3 border-t bg-muted">
-        <button className="text-xs text-blue-600 font-medium">Book appointment →</button>
+        <button className="text-xs text-info font-medium">Book appointment →</button>
       </div>
     </div>
   )
@@ -597,7 +597,7 @@ function InstagramAdsPreview({ content, mediaUrls = [] }) {
       {/* Mock feed ad */}
       <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
         <div className="flex items-center gap-3 px-4 py-3 border-b">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
             {MB_INITIALS}
           </div>
           <div className="flex-1 min-w-0">
@@ -693,7 +693,7 @@ function SimpleSocialPreview({ content, mediaUrls = [], platform }) {
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{MB_NAME}</p>
             <p className="text-3xs text-muted-foreground">{MB_HANDLE} · {label}</p>

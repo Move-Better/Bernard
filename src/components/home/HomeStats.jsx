@@ -79,7 +79,7 @@ export default function HomeStats({ stories = [] }) {
       {/* Voice match — center hero: the core moat KPI */}
       <div
         className="flex-1 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
-        style={{ background: 'hsl(var(--foreground))', borderColor: 'hsl(var(--foreground))', color: '#fff' }}
+        style={{ background: 'hsl(var(--foreground))', borderColor: 'hsl(var(--foreground))', color: 'white' }}
       >
         <div className="flex items-center justify-between mb-2">
           <div className="text-2xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.65)' }}>Voice match</div>

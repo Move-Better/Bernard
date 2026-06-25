@@ -539,7 +539,7 @@ export default function StoryboardPiece() {
                       <>
                         <div
                           className="pointer-events-none absolute inset-0"
-                          style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || '#10243f') : '#10243f')}e0 100%)` }}
+                          style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || 'hsl(var(--primary))') : 'hsl(var(--primary))')}e0 100%)` }}
                         />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
                           <div
