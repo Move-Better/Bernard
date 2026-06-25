@@ -157,22 +157,22 @@ export function FeedbackWidget() {
                 <button
                   onClick={captureScreen}
                   disabled={status !== 'idle'}
-                  title="Capture screen"
+                  aria-label="Capture screen"
                   className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
                 >
                   {status === 'capturing'
-                    ? <Loader2 className="h-4 w-4 animate-spin" />
-                    : <Camera className="h-4 w-4" />}
+                    ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    : <Camera className="h-4 w-4" aria-hidden="true" />}
                 </button>
 
                 {/* File upload */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={status !== 'idle'}
-                  title="Attach image"
+                  aria-label="Attach image"
                   className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
                 >
-                  <Paperclip className="h-4 w-4" />
+                  <Paperclip className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <input
                   ref={fileInputRef}

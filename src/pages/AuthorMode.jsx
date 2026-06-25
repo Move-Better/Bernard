@@ -309,10 +309,10 @@ export default function AuthorMode() {
                   <button
                     type="button"
                     onClick={handleNew}
-                    title="New draft"
+                    aria-label="New draft"
                     className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 )}
                 <Button

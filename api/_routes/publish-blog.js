@@ -244,9 +244,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'misconfigured', message: 'The GitHub token lacks contents:write. Update PAT permissions and re-paste.' })
     }
     if (putResp.status === 422) {
-      return res.status(409).json({ error: 'slug_taken', slug, message: putData.message || 'GitHub rejected the file — likely a race condition with another publish. Try again.' })
+      return res.status(409).json({ error: 'slug_taken', slug, message: 'GitHub rejected the file — likely a race condition with another publish. Try again.' })
     }
-    return res.status(502).json({ error: 'github_error', message: putData.message || `GitHub returned ${putResp.status}.`, retriable: true })
+    return res.status(502).json({ error: 'github_error', message: `GitHub returned ${putResp.status}.`, retriable: true })
   }
 
   return res.status(200).json({

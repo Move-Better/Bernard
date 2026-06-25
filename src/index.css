@@ -79,6 +79,15 @@
        Distinct from --success (published/done) and --action (act-now signal).
        Reference as text-scheduled / bg-scheduled or hsl(var(--scheduled)). */
     --scheduled: 262 83% 58%;         /* violet-600 #7c3aed */
+
+    /* ── Owner-tier accent ─────────────────────────────────────────────────
+       Warm burnt-orange used exclusively for the "owner" role in AccessMatrix.
+       Kept as a token so it can be themed without hunting raw hex literals.
+       #c04d18 ≈ hsl(20 74% 42%) for text; light tints derived from it. */
+    --owner-accent: 20 74% 42%;
+    --owner-accent-bg: 20 60% 96%;
+    --owner-accent-border: 20 60% 88%;
+    --owner-accent-muted: 20 60% 30%;
   }
 }
 

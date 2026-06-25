@@ -22,9 +22,9 @@ export default function EditorChrome({ onBack, title, badge, note, aspect, child
         type="button"
         onClick={onBack}
         className="flex items-center text-muted-foreground hover:text-foreground"
-        title="Back"
+        aria-label="Back"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       </button>
 
       <span className="text-sm font-semibold truncate max-w-[200px]">{title || 'Untitled'}</span>

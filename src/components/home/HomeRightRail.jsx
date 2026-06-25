@@ -178,10 +178,10 @@ export default function HomeRightRail({ stories = [] }) {
             type="button"
             onClick={handleRefresh}
             disabled={isLoading || isFetching || refreshing}
-            title="Refresh suggestions"
+            aria-label="Refresh suggestions"
             className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/20 transition-colors disabled:opacity-40"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching || refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching || refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
         </div>
 
