@@ -16,6 +16,7 @@ export const config = { runtime: 'nodejs' }
 import { workspaceContext, invalidateWorkspaceCacheById } from '../../_lib/workspaceContext.js'
 import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { CAP_SETTINGS_EDIT } from '../../_lib/capabilities.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -130,6 +131,8 @@ async function handler(req, res) {
   if (!capAuth.ok) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   if (req.method === 'POST') {
     const body = req.body || {}

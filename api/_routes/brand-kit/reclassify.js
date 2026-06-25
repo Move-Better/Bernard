@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs', maxDuration: 120 }
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import {
   parseFilenameTokens,
   scoreRoleCandidates,
@@ -44,6 +45,8 @@ export default async function handler(req, res) {
 
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+
+  if (!(await enforceLimit(req, res, 'ai', scope.id))) return
 
   const r = await sb(
     `brand_assets?${scope.column}=eq.${scope.id}&select=id,blob_url,mime_type,original_filename,ai_classification`

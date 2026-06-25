@@ -7,6 +7,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { requireRole } from '../../_lib/auth.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 // Per-method role requirements — mirrors /api/media/[id]:
 //   GET    → any authenticated user
@@ -59,6 +60,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+  if (req.method !== 'GET' && !(await enforceLimit(req, res, 'generic', scope.id))) return
+
   const SELECT = `${scope.column},${SELECT_COMMON}`
   const where = `id=eq.${id}&${scope.column}=eq.${scope.id}`
 
