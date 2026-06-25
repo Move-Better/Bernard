@@ -263,8 +263,8 @@ async function handler(req, res) {
       const errMsg = result.errors?.[0]?.message || `Buffer channels query returned ${result.status}`
       const hint = result.status === 401 || result.status === 403
         ? 'Buffer access token rejected (401/403). Regenerate the token in Workspace Settings → Publishing credentials.'
-        : errMsg
-      console.error('[publish/buffer] channels query failed', result.status, JSON.stringify(result.errors))
+        : 'buffer_channels_query_failed'
+      console.error('[publish/buffer] channels query failed', result.status, errMsg, JSON.stringify(result.errors))
       return res.status(502).json({ error: hint })
     }
     const channels = result.data?.channels ?? []
