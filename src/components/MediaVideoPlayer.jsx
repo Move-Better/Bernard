@@ -232,8 +232,9 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
   }
   if (!muxReady || tokenState.loading) {
     return (
-      <div className={baseClass} style={{ minHeight: 240 }}>
-        <Loader2 className="h-4 w-4 animate-spin text-white/80" />
+      <div role="status" className={baseClass} style={{ minHeight: 240 }}>
+        <Loader2 className="h-4 w-4 animate-spin text-white/80" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     )
   }
