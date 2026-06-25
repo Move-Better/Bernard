@@ -4,6 +4,7 @@ import { recordAudit, snapshot } from '../../_lib/audit.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 // Per-method role requirements (HANDOFF.md → Locked decisions):
 //   GET    → any authenticated user
@@ -67,6 +68,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+  if (req.method !== 'GET' && !(await enforceLimit(req, res, 'generic', scope.id))) return
+
   const SELECT = `${scope.column},${SELECT_COMMON}`
   const where  = `id=eq.${id}&${scope.column}=eq.${scope.id}`
 

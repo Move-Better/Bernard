@@ -750,6 +750,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 <select
                   value={speakerRole}
                   onChange={(e) => setSpeakerRole(e.target.value)}
+                  aria-label="Who's speaking?"
                   className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full sm:max-w-xs"
                 >
                   {SPEAKER_ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}

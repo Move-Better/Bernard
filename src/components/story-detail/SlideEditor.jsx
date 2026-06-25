@@ -1422,9 +1422,10 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
           type="button"
           onClick={() => onNav(-1)}
           disabled={activeIdx === 0}
+          aria-label="Previous slide"
           className="h-12 w-12 shrink-0 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-20 transition-colors"
         >
-          <ChevronLeft className="h-7 w-7" />
+          <ChevronLeft className="h-7 w-7" aria-hidden="true" />
         </button>
 
         {/* iPhone frame with IG chrome + the real rendered slide */}
@@ -1453,7 +1454,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
               )}
             </div>
             {/* IG actions */}
-            <div className="flex items-center gap-4 px-3 py-2 text-foreground">
+            <div className="flex items-center gap-4 px-3 py-2 text-foreground" aria-hidden="true">
               <Heart className="h-5 w-5" />
               <MessageCircle className="h-5 w-5" />
               <Send className="h-5 w-5" />
@@ -1479,9 +1480,10 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
           type="button"
           onClick={() => onNav(1)}
           disabled={activeIdx === slides.length - 1}
+          aria-label="Next slide"
           className="h-12 w-12 shrink-0 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-20 transition-colors"
         >
-          <ChevronRight className="h-7 w-7" />
+          <ChevronRight className="h-7 w-7" aria-hidden="true" />
         </button>
       </div>
 

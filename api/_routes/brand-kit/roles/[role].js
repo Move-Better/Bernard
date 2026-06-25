@@ -3,6 +3,7 @@ export const config = { runtime: 'nodejs' }
 import { requireRole } from '../../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../../_lib/roles.js'
 import { workspaceScope } from '../../../_lib/workspaceScope.js'
+import { enforceLimit } from '../../../_lib/ratelimit.js'
 import { invalidateWorkspaceCacheById } from '../../../_lib/workspaceContext.js'
 
 // Assign or clear a role within the current workspace's Brand Kit.
@@ -54,6 +55,8 @@ async function handler(req, res) {
 
   const auth = await requireRole(req, ROLE_WRITE_ROLES, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
 
   if (req.method === 'PUT') {
     const { assetId } = req.body || {}

@@ -53,6 +53,7 @@ export default async function handler(req, res) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
   if (req.method === 'GET') {
+    if (!(await enforceLimit(req, res, 'generic', ws.id))) return
     const { searchParams } = new URL(req.url, 'http://localhost')
     const itemId = searchParams.get('itemId')
     if (!itemId) return err(res, 'Missing itemId')
