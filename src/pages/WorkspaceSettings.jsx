@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId } from 'react'
 import { Navigate, Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import { Button } from '@/components/ui/button'
@@ -548,10 +548,12 @@ function Grid({ children }) {
 }
 
 function Field({ label, value, onChange, placeholder, hint, type = 'text', autoComplete }) {
+  const id = useId()
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium">{label}</Label>
+      <Label htmlFor={id} className="text-sm font-medium">{label}</Label>
       <Input
+        id={id}
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}

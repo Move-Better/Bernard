@@ -1782,8 +1782,8 @@ function LaunchingScreen({ redirectUrl }) {
       title="Setting up your workspace…"
       subtitle="Provisioning your subdomain and wiring up your voice context. This usually takes 5–15 seconds."
     >
-      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      <div role="status" className="flex items-center gap-3 text-sm text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
         <span>
           {ready
             ? `Redirecting to ${redirectUrl ? new URL(redirectUrl).host : ''}…`

@@ -1247,8 +1247,8 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
   if (status === 'running') {
     return (
       <Card className="border-primary/40 bg-primary/5">
-        <CardContent className="pt-6 text-center space-y-3">
-          <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
+        <CardContent role="status" className="pt-6 text-center space-y-3">
+          <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" aria-hidden="true" />
           <div className="space-y-1">
             <p className="font-medium">
               {dryRun ? 'Running dry-run synthesis…' : 'Interview complete — synthesizing your voice…'}
