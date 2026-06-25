@@ -311,6 +311,7 @@ function ConditionCard({ conditionKey, condition, onChange, onRename, onRemove }
               onChange={e => setKeyDraft(e.target.value)}
               onBlur={() => onRename(keyDraft.trim())}
               placeholder="e.g. low_back_pain"
+              aria-label="Condition key"
             />
             <p className="text-2xs text-muted-foreground mt-1">
               Lowercase identifier. Bernard matches incoming topics against this key.
@@ -392,6 +393,7 @@ function AliasRow({ keyword, target, conditionKeys, onChange, onRemove }) {
         value={keyword}
         onChange={e => onChange(e.target.value, target)}
         placeholder="keyword"
+        aria-label="Alias keyword"
       />
       <span className="text-muted-foreground text-2xs">→</span>
       <select

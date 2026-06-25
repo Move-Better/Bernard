@@ -106,6 +106,7 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
           value={row.topic || ''}
           onChange={e => onUpdate({ topic: e.target.value })}
           placeholder="Topic name"
+          aria-label="Topic name"
         />
         <select
           value={row.priority || 'medium'}
@@ -161,6 +162,7 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
               value={row.category || ''}
               onChange={e => onUpdate({ category: e.target.value })}
               placeholder="e.g. Recovery, Prevention"
+              aria-label="Category"
             />
           </div>
           <div>
@@ -172,6 +174,7 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
                 onUpdate({ keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean) })
               }
               placeholder="e.g. knee, rehab, return to sport"
+              aria-label="Keywords (comma-separated)"
             />
           </div>
           {'pnwNote' in row && (
@@ -181,6 +184,7 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
                 className="w-full text-xs rounded-md border border-input bg-background px-2 py-1"
                 value={row.pnwNote || ''}
                 onChange={e => onUpdate({ pnwNote: e.target.value })}
+                aria-label="Regional note"
               />
             </div>
           )}

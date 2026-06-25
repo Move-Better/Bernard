@@ -208,6 +208,7 @@ export default function AutoPublishSettings() {
                     type="range" min={5} max={10} step={0.5}
                     value={ch.voice_fidelity_min}
                     onChange={(e) => setChannel(id, { voice_fidelity_min: parseFloat(e.target.value) })}
+                    aria-label="Minimum voice fidelity score"
                     className="w-full h-2 rounded-full accent-primary cursor-pointer"
                   />
                   <div className="flex justify-between text-2xs text-muted-foreground/60 mt-0.5">
@@ -232,6 +233,7 @@ export default function AutoPublishSettings() {
                     type="range" min={0.40} max={0.95} step={0.01}
                     value={ch.similarity_min}
                     onChange={(e) => setChannel(id, { similarity_min: parseFloat(e.target.value) })}
+                    aria-label="Minimum clip-topic similarity"
                     className="w-full h-2 rounded-full accent-primary cursor-pointer"
                   />
                   <div className="flex justify-between text-2xs text-muted-foreground/60 mt-0.5">

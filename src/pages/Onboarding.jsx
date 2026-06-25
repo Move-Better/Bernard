@@ -380,9 +380,9 @@ function Card({ title, subtitle, children, footer }) {
 
 function LoadingScreen() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-6">
+    <div className="flex flex-col items-center justify-center py-24 gap-6" role="status">
       <img src={BERNARD_LOGO_URL} alt="Bernard" className="h-9 w-auto" />
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
       <p className="text-sm text-muted-foreground">Checking availability…</p>
     </div>
   )
