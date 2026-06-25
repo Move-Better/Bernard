@@ -269,29 +269,29 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">CTA text</label>
-                <Input value={ctaText} onChange={(e) => setCtaText(e.target.value)} className="h-8 text-sm" placeholder="e.g. Book at MoveBetter.co" />
+                <Input aria-label="CTA text" value={ctaText} onChange={(e) => setCtaText(e.target.value)} className="h-8 text-sm" placeholder="e.g. Book at MoveBetter.co" />
               </div>
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">Caption</label>
-              <Textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={4} className="text-sm" />
+              <Textarea aria-label="Caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={4} className="text-sm" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Hashtags</label>
-                <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} className="h-8 text-sm" placeholder="#MoveBetter #LowBack" />
+                <Input aria-label="Hashtags" value={hashtags} onChange={(e) => setHashtags(e.target.value)} className="h-8 text-sm" placeholder="#MoveBetter #LowBack" />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">CTA URL (optional)</label>
-                <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} className="h-8 text-sm" placeholder="https://…" />
+                <Input aria-label="CTA URL" value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} className="h-8 text-sm" placeholder="https://…" />
               </div>
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">Notes</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm" placeholder="Anything for the editor…" />
+              <Textarea aria-label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm" placeholder="Anything for the editor…" />
             </div>
 
             {/* Finished file return + preview */}

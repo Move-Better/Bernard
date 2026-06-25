@@ -59,6 +59,7 @@ function Field({ label, value, onChange }) {
         {label}
       </label>
       <Input
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-7 text-xs"

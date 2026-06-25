@@ -1072,7 +1072,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
                     onChange={(hex) => setStyle((s) => ({ ...s, accent_color: hex }))}
                     ariaLabel="Pick accent color"
                   />
-                  <Input value={style.accent_color || ''} onChange={(e) => setStyle((s) => ({ ...s, accent_color: e.target.value }))} className="h-8 text-xs font-mono" placeholder="#0a7f3f" />
+                  <Input aria-label="Accent color hex value" value={style.accent_color || ''} onChange={(e) => setStyle((s) => ({ ...s, accent_color: e.target.value }))} className="h-8 text-xs font-mono" placeholder="#0a7f3f" />
                 </div>
               </div>
             </div>
@@ -1392,6 +1392,7 @@ function BrandBookReference() {
         <div>
           <Label className="text-xs">Brand book notes</Label>
           <Textarea
+            aria-label="Brand book notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}

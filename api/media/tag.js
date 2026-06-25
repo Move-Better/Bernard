@@ -24,6 +24,9 @@ async function handler(req, res) {
   const id = req.body?.id
   if (!id) return res.status(400).json({ error: 'Missing id' })
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
+
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
 
@@ -39,9 +42,9 @@ async function handler(req, res) {
     const row = await tagById(id, scope)
     return res.status(200).json(row)
   } catch (e) {
-    const msg = e?.message || 'Tagging failed'
-    const status = msg === 'Not found' ? 404 : 500
-    return res.status(status).json({ error: msg })
+    const isNotFound = e?.message === 'Not found'
+    console.error('[media/tag] tagging failed:', e?.message)
+    return res.status(isNotFound ? 404 : 500).json({ error: isNotFound ? 'not_found' : 'tagging_failed' })
   }
 }
 

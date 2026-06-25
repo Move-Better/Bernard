@@ -178,6 +178,7 @@ export default function MediaEditModal({ asset, onClose, onSaved, inline = false
                 </span>
               </label>
               <Input
+                aria-label="Variant label"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="e.g. Instagram Reel"

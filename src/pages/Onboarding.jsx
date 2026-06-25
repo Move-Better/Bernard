@@ -1028,6 +1028,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
             <div key={idx} className="grid grid-cols-12 gap-2 items-start">
               <div className="col-span-5">
                 <Input
+                  aria-label="City"
                   value={loc.city}
                   onChange={e => updateLocation(idx, 'city', e.target.value)}
                   placeholder={idx === 0 ? 'Portland' : 'Vancouver'}
@@ -1039,6 +1040,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
               </div>
               <div className="col-span-3">
                 <Input
+                  aria-label="State"
                   value={loc.region}
                   onChange={e => updateLocation(idx, 'region', e.target.value)}
                   placeholder={idx === 0 ? 'OR' : 'WA'}
@@ -1050,6 +1052,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
               </div>
               <div className="col-span-3">
                 <Input
+                  aria-label="Short name"
                   value={loc.label}
                   onChange={e => updateLocation(idx, 'label', e.target.value)}
                   placeholder={idx === 0 ? 'e.g. PDX' : 'e.g. Vancouver'}

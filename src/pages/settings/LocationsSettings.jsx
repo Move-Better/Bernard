@@ -358,21 +358,22 @@ function LocationFields({ draft, setDraft }) {
       <div className="grid grid-cols-12 gap-2">
         <div className="col-span-5 space-y-1">
           <Label className="text-xs">City</Label>
-          <Input value={draft.city} onChange={e => set('city')(e.target.value)} placeholder="Portland" className="text-sm" autoComplete="address-level2" />
+          <Input aria-label="City" value={draft.city} onChange={e => set('city')(e.target.value)} placeholder="Portland" className="text-sm" autoComplete="address-level2" />
         </div>
         <div className="col-span-3 space-y-1">
           <Label className="text-xs">State</Label>
-          <Input value={draft.region} onChange={e => set('region')(e.target.value)} placeholder="OR" className="text-sm" autoComplete="address-level1" />
+          <Input aria-label="State" value={draft.region} onChange={e => set('region')(e.target.value)} placeholder="OR" className="text-sm" autoComplete="address-level1" />
         </div>
         <div className="col-span-4 space-y-1">
           <Label className="text-xs">Label</Label>
-          <Input value={draft.label} onChange={e => set('label')(e.target.value)} placeholder="optional" className="text-sm" />
+          <Input aria-label="Label" value={draft.label} onChange={e => set('label')(e.target.value)} placeholder="optional" className="text-sm" />
         </div>
       </div>
       <div className="grid grid-cols-12 gap-2">
         <div className="col-span-6 space-y-1">
           <Label className="text-xs">Location keyword</Label>
           <Input
+            aria-label="Location keyword"
             value={draft.location_keyword}
             onChange={e => set('location_keyword')(e.target.value)}
             placeholder="Portland"
@@ -383,6 +384,7 @@ function LocationFields({ draft, setDraft }) {
         <div className="col-span-6 space-y-1">
           <Label className="text-xs">Location hashtag</Label>
           <Input
+            aria-label="Location hashtag"
             value={draft.location_hashtag}
             onChange={e => set('location_hashtag')(e.target.value)}
             placeholder="#YourCity"
@@ -405,6 +407,7 @@ function LocationFields({ draft, setDraft }) {
       <div className="space-y-1">
         <Label className="text-xs">Buffer GBP channel ID</Label>
         <Input
+          aria-label="Buffer GBP channel ID"
           value={draft.gbp_location_id}
           onChange={e => set('gbp_location_id')(e.target.value)}
           placeholder="e.g. 6612a8c7d4e3f2b1a09f8765"

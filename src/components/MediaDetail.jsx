@@ -1000,6 +1000,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 </span>
               </label>
               <Input
+                aria-label="Alt text"
                 value={altText}
                 onChange={(e) => setAltText(e.target.value)}
                 placeholder="e.g. Clinician demonstrating a hip hinge with a patient"
@@ -1011,7 +1012,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             {/* Notes */}
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">Notes</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Anything else worth remembering about this clip…" className="text-sm" />
+              <Textarea aria-label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Anything else worth remembering about this clip…" className="text-sm" />
             </div>
 
             {/* Metadata */}
