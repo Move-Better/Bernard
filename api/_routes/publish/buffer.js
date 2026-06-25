@@ -222,7 +222,7 @@ async function handler(req, res) {
   }
 
   const service = PLATFORM_TO_SERVICE[platform]
-  if (!service) return res.status(400).json({ error: `Unsupported Buffer platform: ${platform}` })
+  if (!service) return res.status(400).json({ error: 'unsupported_platform' })
 
   // 1. Resolve target Buffer channel IDs.
   //    GBP: stored per-location in workspace_locations.gbp_location_id.
@@ -270,7 +270,7 @@ async function handler(req, res) {
     const channels = result.data?.channels ?? []
     const match = channels.find((c) => c.service === service && !c.isDisconnected)
     if (!match) {
-      return res.status(404).json({ error: `No connected Buffer channel found for ${platform}. Connect it at buffer.com.` })
+      return res.status(404).json({ error: 'no_buffer_channel' })
     }
     channelIds = [match.id]
   }

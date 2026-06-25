@@ -125,6 +125,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
                 <span className="font-mono text-primary">{fmt(start)}</span>
               </div>
               <input
+                aria-label="Clip start time"
                 type="range" min={0} max={duration || 1} step={0.5} value={start}
                 disabled={!ready}
                 onChange={(e) => handleStart(e.target.value)}
@@ -137,6 +138,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
                 <span className="font-mono text-primary">{fmt(end)}</span>
               </div>
               <input
+                aria-label="Clip end time"
                 type="range" min={0} max={duration || 1} step={0.5} value={end}
                 disabled={!ready}
                 onChange={(e) => handleEnd(e.target.value)}

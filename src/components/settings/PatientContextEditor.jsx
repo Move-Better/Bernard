@@ -87,6 +87,7 @@ function PrimaryAvatarEditor({ value, onChange, interviewerName }) {
       <div>
         <Label className="text-xs mb-1 block">Name</Label>
         <input
+          aria-label="Name"
           className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm"
           value={av.name || ''}
           onChange={e => update({ name: e.target.value })}

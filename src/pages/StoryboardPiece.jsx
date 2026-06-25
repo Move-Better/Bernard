@@ -567,8 +567,9 @@ export default function StoryboardPiece() {
                       </div>
                     )}
                     {composing && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                      <div role="status" className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden="true" />
+                        <span className="sr-only">Baking image…</span>
                       </div>
                     )}
                   </>
@@ -786,6 +787,7 @@ export default function StoryboardPiece() {
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 text-muted-foreground">Accent</span>
                     <input
+                      aria-label="Accent"
                       value={treatment.accentText || ''}
                       onChange={(e) => setTreatment((t) => ({ ...t, accentText: e.target.value }))}
                       placeholder="word(s) to highlight orange — e.g. 'isn't tight'"
@@ -795,6 +797,7 @@ export default function StoryboardPiece() {
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 text-muted-foreground">Label</span>
                     <input
+                      aria-label="Label"
                       value={treatment.label || ''}
                       onChange={(e) => setTreatment((t) => ({ ...t, label: e.target.value }))}
                       placeholder="THE SCIENCE"
@@ -805,12 +808,14 @@ export default function StoryboardPiece() {
                     <div className="flex items-center gap-2">
                       <span className="w-14 shrink-0 text-muted-foreground">Badge</span>
                       <input
+                        aria-label="Badge figure"
                         value={treatment.figure || ''}
                         onChange={(e) => setTreatment((t) => ({ ...t, figure: e.target.value }))}
                         placeholder="2"
                         className="w-12 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:ring-1 focus:ring-primary/40"
                       />
                       <input
+                        aria-label="Badge unit"
                         value={treatment.figureUnit || ''}
                         onChange={(e) => setTreatment((t) => ({ ...t, figureUnit: e.target.value }))}
                         placeholder="min"
@@ -822,6 +827,7 @@ export default function StoryboardPiece() {
                   <div className="flex items-center gap-2">
                     <span className="w-14 shrink-0 text-muted-foreground">Grade</span>
                     <input
+                      aria-label="Grade (0–100)"
                       type="range" min={0} max={100} value={treatment.grade}
                       onChange={(e) => setTreatment((t) => ({ ...t, grade: Number(e.target.value) }))}
                       className="flex-1 accent-primary"

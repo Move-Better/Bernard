@@ -403,9 +403,9 @@ async function handler(req, res) {
       if (e instanceof DriveAuthError) {
         // No more imports will succeed without reconnect — bail with whatever
         // we've collected so far and let the UI prompt the admin.
+        console.error('[drive/import] DriveAuthError:', e.message)
         return res.status(412).json({
           error: e.code,
-          message: e.message,
           results,
         })
       }

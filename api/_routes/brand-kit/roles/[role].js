@@ -47,7 +47,7 @@ function sb(path, init = {}) {
 async function handler(req, res) {
   const role = req.query?.role
   if (!role || !VALID_ROLES.has(role)) {
-    return res.status(400).json({ error: `Unknown role: ${role}` })
+    return res.status(400).json({ error: 'invalid_role' })
   }
 
   const scope = await workspaceScope(req)
