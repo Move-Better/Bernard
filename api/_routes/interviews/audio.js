@@ -18,6 +18,7 @@ export const config = { runtime: 'nodejs' }
 
 import { handleUpload } from '@vercel/blob/client'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -47,6 +48,13 @@ const ALLOWED_AUDIO_MIME = [
 
 export default async function handler(req, res) {
   try {
+    // Pre-auth rate-limit check before handleUpload (the callback can't write to res directly).
+    const wsEarly = await workspaceContext(req)
+    if (wsEarly) {
+      const authEarly = await requireRole(req, null, { orgId: wsEarly.clerk_org_id })
+      if (authEarly.ok && !(await enforceLimit(req, res, 'media', wsEarly.id))) return
+    }
+
     const jsonResponse = await handleUpload({
       body:    req.body,
       request: req,
