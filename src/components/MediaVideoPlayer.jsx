@@ -195,8 +195,8 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
   if (status === 'pending' || status === 'processing') {
     return (
       <div className={baseClass} style={{ minHeight: 240 }}>
-        <div className="flex items-center gap-2 text-white/80 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div role="status" className="flex items-center gap-2 text-white/80 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           Transcoding for cross-browser playback… (usually under 2 minutes)
         </div>
       </div>

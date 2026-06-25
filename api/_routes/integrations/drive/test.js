@@ -41,7 +41,7 @@ async function handler(req, res) {
     if (e instanceof DriveAuthError) {
       // 412 Precondition Failed reads cleanly as "you need to connect first /
       // again" without overloading 401 (which the UI treats as session expired).
-      return res.status(412).json({ error: e.code })
+      return res.status(412).json({ error: e.code === 'not_connected' ? 'not_connected' : e.code === 'decrypt_failed' ? 'decrypt_failed' : 'reconnect_required' })
     }
     console.error('[drive/test] access token failed:', e?.message)
     return res.status(502).json({ error: 'refresh-failed' })

@@ -617,8 +617,8 @@ function RegenerateButton({ piece, story }) {
 
   if (regenerate.isPending) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
         Regenerating — this can take 30–60 seconds…
       </div>
     )
@@ -793,8 +793,8 @@ function SplitIntoSeriesButton({ piece }) {
 
   if (split.isPending) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
         Planning + writing — this can take 1–3 minutes (one Opus pass to plan, one per part).
       </div>
     )
