@@ -33,8 +33,6 @@ function sb(path, init = {}) {
 }
 
 export default async function handler(req, res) {
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
 
@@ -43,6 +41,7 @@ export default async function handler(req, res) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   if (req.method === 'POST') {
     const slug = (req.body?.chapter_slug || '').trim()

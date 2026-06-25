@@ -38,8 +38,6 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'workspace_not_resolved' })
 
@@ -48,6 +46,7 @@ async function handler(req, res) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // 1. Load the current book row.
   const bookRes = await fetch(

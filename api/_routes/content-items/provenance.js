@@ -62,12 +62,11 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return err(res, 'Method not allowed', 405)
-  if (!(await enforceLimit(req, res, 'media'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   const { contentItemId, trailer } = req.body || {}
