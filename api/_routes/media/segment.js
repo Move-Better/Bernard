@@ -1,6 +1,7 @@
 import { withSentry } from '../../_lib/sentry.js'
 import { segmentById } from '../../_lib/segmentInterview.js'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
@@ -33,6 +34,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'ai', scope.workspace.id))) return
 
   try {
     const pieces = await segmentById(id, scope)
