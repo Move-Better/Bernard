@@ -6,6 +6,7 @@ import {
   ShieldCheck, PlayCircle, Search, Sparkles, Gem, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useStaffSummaries } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
@@ -153,15 +154,15 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
       {staffOptions.length > 0 && (
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Staff</span>
-          <select
-            aria-label="Filter by staff"
-            value={staffFilter}
-            onChange={(e) => setStaffFilter(e.target.value)}
-            className="border border-border rounded-lg px-2.5 py-1.5 bg-card outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="all">All staff</option>
-            {staffOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <Select value={staffFilter} onValueChange={setStaffFilter}>
+            <SelectTrigger className="h-9 text-sm w-auto min-w-[120px]" aria-label="Filter by staff">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All staff</SelectItem>
+              {staffOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       )}
       <div className="flex items-center gap-2 flex-wrap">
