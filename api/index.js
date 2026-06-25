@@ -21,8 +21,8 @@ app.disable('x-powered-by')
 // every migrated route is JSON in/out (stream/raw-body handlers stay separate).
 //
 // The verify callback exposes req.rawBody (a Buffer) for webhook signature
-// verification. The Stripe webhook handler reads req.rawBody; the Mux webhook
-// re-stringifies req.body (compact JSON matches the signed payload byte-for-byte).
+// verification. The Stripe, Mux, and bundle.social webhook handlers all read
+// req.rawBody (the exact signed bytes) — re-reading the consumed stream hangs.
 app.use(express.json({
   limit: '20mb',
   verify: (req, _res, buf) => { req.rawBody = buf },
