@@ -434,7 +434,7 @@ function WordsValidatedSwitch({ keystoneTitle }) {
         <button
           type="button"
           onClick={() => navigate('/publish')}
-          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_4px_16px_hsl(var(--primary)/0.3)] hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-[0_4px_16px_hsl(var(--primary)/0.3)] hover:bg-primary/90 transition-colors"
         >
           Let&apos;s get this published
           <ArrowRight className="w-4 h-4" />

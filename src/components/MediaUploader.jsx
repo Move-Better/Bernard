@@ -284,7 +284,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
           Picking wrong = wrong downstream noise. */}
       <div className="mb-3 rounded-xl border bg-card p-4">
         <div className="flex items-center gap-2 mb-2.5">
-          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-semibold">1</span>
+          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold">1</span>
           <div>
             <div className="text-sm font-semibold">
               What kind of asset is this? <span className="text-destructive">*</span>
@@ -336,7 +336,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                     onClick={() => setSpeakerRole(r.id)}
                     className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
                       active
-                        ? 'bg-primary text-white border-primary'
+                        ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                     }`}
                   >
@@ -366,7 +366,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       {showStaffPicker && (
         <div className="mb-3 rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2 mb-2.5">
-            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
               {stepStaff}
             </span>
             <div>
@@ -387,7 +387,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               onClick={() => setStaffId('')}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 !staffId
-                  ? 'bg-primary text-white border-primary'
+                  ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
@@ -400,7 +400,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                 onClick={() => setStaffId(c.id === staffId ? '' : c.id)}
                 className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
                   staffId === c.id
-                    ? 'bg-primary text-white border-primary'
+                    ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                 }`}
               >
@@ -421,7 +421,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       {collections.length > 0 && (
         <div className="mb-3 rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2 mb-2.5">
-            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
               {stepCollection}
             </span>
             <div>
@@ -442,7 +442,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               onClick={() => setCollectionId('')}
               className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
                 !collectionId
-                  ? 'bg-primary text-white border-primary'
+                  ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
@@ -456,7 +456,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                 title={c.description || c.name}
                 className={`inline-flex items-center gap-1 text-2xs px-2.5 py-1 rounded-full border transition-colors ${
                   collectionId === c.id
-                    ? 'bg-primary text-white border-primary'
+                    ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
               >
@@ -472,7 +472,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
           steps showed (speaker role, clinician, collection). */}
       <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center gap-2 mb-2.5">
-          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-semibold">
+          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
             {stepDrop}
           </span>
           <div>
@@ -498,7 +498,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
-            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors mb-2"
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-2"
           >
             <Folder className="h-3.5 w-3.5" />
             Browse files

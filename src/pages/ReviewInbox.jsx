@@ -282,7 +282,7 @@ export default function ReviewInbox() {
                 type="button"
                 onClick={bulkApprove}
                 disabled={selectedReviewable.length === 0 || updateStatus.isPending}
-                className="inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 bg-action text-action-foreground text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {updateStatus.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -299,7 +299,7 @@ export default function ReviewInbox() {
                   type="button"
                   onClick={() => setScheduleConfirmOpen(true)}
                   disabled={scheduling}
-                  className="inline-flex items-center gap-1.5 bg-primary text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
                   Add {selectedSchedulable.length} to Buffer queue

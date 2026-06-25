@@ -83,7 +83,7 @@ export default function ContentBriefList({ refreshKey, expandedDefault = true })
                 key={s.id || 'all'}
                 onClick={() => setFilter(s.id)}
                 className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
-                  filter === s.id ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                  filter === s.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                 }`}
               >
                 {s.label}

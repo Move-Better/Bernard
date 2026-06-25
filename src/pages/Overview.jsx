@@ -71,7 +71,7 @@ export default function Overview() {
           </div>
           <Link
             to="/publish"
-            className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            className="shrink-0 inline-flex items-center gap-1.5 bg-action text-action-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             Review &amp; publish →
           </Link>
@@ -91,7 +91,7 @@ export default function Overview() {
           </div>
           <Link
             to="/stories?stage=review"
-            className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            className="shrink-0 inline-flex items-center gap-1.5 bg-action text-action-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             Review your drafts →
           </Link>

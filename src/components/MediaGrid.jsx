@@ -238,7 +238,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
         )}
         {!asset._lifecycle && firstStoryId && (
           <button
-            className="text-3xs bg-primary text-white px-1.5 py-0.5 rounded-full leading-none hover:bg-primary/90 transition-colors"
+            className="text-3xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none hover:bg-primary/90 transition-colors"
             title={usageCount === 1 ? 'Used in 1 story — click to open' : `Used in ${usageCount} stories — click to open the first`}
             onClick={(e) => {
               e.stopPropagation()

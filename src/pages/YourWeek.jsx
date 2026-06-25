@@ -246,7 +246,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
               type="button"
               disabled={approving}
               onClick={() => onApprove(item)}
-              className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-3xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-3xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
               Sounds like me
@@ -475,7 +475,7 @@ export default function YourWeek() {
             <button
               type="button"
               onClick={() => setScheduleConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Send className="h-4 w-4" aria-hidden="true" />
               Schedule {approvedSchedulable.length} approved
@@ -542,7 +542,7 @@ export default function YourWeek() {
               type="button"
               disabled={planningWeek}
               onClick={handlePlanAhead}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {planningWeek ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
               {planningWeek ? 'Planning…' : 'Plan this week'}
@@ -563,7 +563,7 @@ export default function YourWeek() {
             <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
               Complete an interview and I&apos;ll compose your week — paced across your channels, with the rest banked as backlog.
             </p>
-            <Link to="/new" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
+            <Link to="/new" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4" aria-hidden="true" /> Start a capture
             </Link>
           </div>
@@ -698,7 +698,7 @@ export default function YourWeek() {
                   <button
                     type="button"
                     onClick={() => setScheduleConfirmOpen(true)}
-                    className="w-full rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+                    className="w-full rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                   >
                     <Send className="inline h-3.5 w-3.5 mr-1" aria-hidden="true" />
                     Schedule all

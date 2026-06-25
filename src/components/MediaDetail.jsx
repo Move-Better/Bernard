@@ -673,7 +673,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                       key={s}
                       onClick={() => setStatus(s)}
                       className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
-                        status === s ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                        status === s ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                       }`}
                     >
                       {s}
@@ -689,7 +689,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                       key={p.id}
                       onClick={() => setAssetPurpose(p.id)}
                       className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
-                        assetPurpose === p.id ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                        assetPurpose === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                       }`}
                       title={p.id === 'interview'
                         ? 'Spoken-on-camera footage — feeds the editor brief queue'
