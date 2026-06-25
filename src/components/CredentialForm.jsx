@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import Icon from '@/components/ui/Icon'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Shared per-service publishing-credentials form. Owns config/secret state,
 // save (PUT /api/workspace/credentials) and remove (DELETE) handlers, plus the
@@ -66,6 +67,7 @@ export default function CredentialForm({
   const [testResult, setTestResult] = useState(null)
   const configured = Boolean(row)
   const canTest = configured && TESTABLE.has(service.id)
+  const confirm = useConfirm()
 
   useEffect(() => {
     setConfig(configFromRow(service, row))
@@ -137,7 +139,7 @@ export default function CredentialForm({
   async function handleRemove() {
     if (!configured) return
     const msg = confirmMessage?.(service) || `Remove ${service.label} credentials for this workspace?`
-    if (!confirm(msg)) return
+    if (!(await confirm({ title: msg, confirmLabel: 'Remove' }))) return
     setSaving(true)
     setError(null)
     try {

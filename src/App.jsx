@@ -66,6 +66,7 @@ const Capture = lazy(() => import('@/pages/Capture'))
 import { workspace } from '@/lib/workspace'
 import { WorkspaceProvider, useWorkspaceState } from '@/lib/WorkspaceContext'
 import { UploadProgressProvider, useUploadProgress } from '@/lib/UploadProgressContext'
+import { ConfirmProvider, useConfirm } from '@/lib/useConfirm'
 import UploadTray from '@/components/UploadTray'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary'
@@ -766,6 +767,7 @@ function ProtectedAppWithProvider() {
   return (
     <WorkspaceProvider>
       <UploadProgressProvider>
+        <ConfirmProvider>
         <ProtectedApp />
         {/* Floating upload tray — only renders when uploads.length > 0.
             Lives at the protected-app layer so progress survives modal
@@ -777,6 +779,7 @@ function ProtectedAppWithProvider() {
             the in-memory transcript before it's persisted. */}
         <VersionUpdateHost />
         <FeedbackWidget />
+        </ConfirmProvider>
       </UploadProgressProvider>
     </WorkspaceProvider>
   )
@@ -787,12 +790,16 @@ function VersionUpdateHost() {
   const { hasActiveUploads } = useUploadProgress()
   const interactiveBusy = useAppBusy()
   const busy = hasActiveUploads || interactiveBusy
+  const confirm = useConfirm()
 
-  function handleReload() {
+  async function handleReload() {
     if (busy) {
-      const ok = window.confirm(
-        'You have work in progress (a recording, generation, or upload). Reloading now may discard unsaved changes. Reload anyway?',
-      )
+      const ok = await confirm({
+        title: 'Reload now?',
+        description: 'You have work in progress (a recording, generation, or upload). Reloading now may discard unsaved changes.',
+        confirmLabel: 'Reload anyway',
+        destructive: false,
+      })
       if (!ok) return
     }
     reload()
