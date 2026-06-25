@@ -92,8 +92,8 @@ export default function SplitSuggestionBanner({ piece }) {
 
   if (split.isPending) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
-        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+      <div role="status" className="flex items-center gap-2 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
+        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden="true" />
         Planning + writing your {parts}-part series — this can take 1–3 minutes.
       </div>
     )

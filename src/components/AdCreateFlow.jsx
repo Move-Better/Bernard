@@ -103,8 +103,8 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
           </div>
 
           {!ready && !metaFailed && (
-            <p className="mt-3 flex items-center gap-1.5 text-2xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading video length…
+            <p role="status" className="mt-3 flex items-center gap-1.5 text-2xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Reading video length…
             </p>
           )}
           {!ready && metaFailed && (

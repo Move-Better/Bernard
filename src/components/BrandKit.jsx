@@ -900,9 +900,9 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
             </div>
             {uploadRows.map((row, i) => (
               <div key={i} className="rounded-lg border bg-card px-3 py-2 space-y-1">
-                <div className="flex items-center justify-between gap-2">
+                <div role={row.status === 'uploading' ? 'status' : undefined} className="flex items-center justify-between gap-2">
                   <span className="text-xs truncate flex-1" title={row.name}>{row.name}</span>
-                  {row.status === 'uploading' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
+                  {row.status === 'uploading' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" aria-hidden="true" />}
                   {row.status === 'done'      && <Check className="h-3 w-3 text-success shrink-0" />}
                   {row.status === 'error'     && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
                 </div>
