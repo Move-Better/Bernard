@@ -32,6 +32,7 @@ import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { indexMediaAsset } from '../_lib/visualMemoryIndex.js'
 import { authByCaptureToken } from '../_lib/captureAuth.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -106,6 +107,7 @@ export default async function handler(req, res) {
 
   const auth = await authByCaptureToken(token)
   if (!auth) return res.status(401).json({ error: 'invalid_or_expired_token' })
+  if (!(await enforceLimit(req, res, 'media'))) return
 
   // --- Parse query ---
   const url = new URL(req.url, 'http://localhost')
