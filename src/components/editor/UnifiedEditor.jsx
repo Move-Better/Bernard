@@ -418,13 +418,13 @@ function GradePanel({ piece, aspect }) {
               value={treatment.figure}
               onChange={(e) => setTreatment((t) => ({ ...t, figure: e.target.value }))}
               placeholder="2"
-              className="w-12 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary"
+              className="w-12 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
             />
             <input
               value={treatment.figureUnit}
               onChange={(e) => setTreatment((t) => ({ ...t, figureUnit: e.target.value }))}
               placeholder="min"
-              className="w-16 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary"
+              className="w-16 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
             />
           </div>
         )}

@@ -243,7 +243,7 @@ export default function AuthorMode() {
                 <button
                   type="button"
                   onClick={handleNew}
-                  className="text-xs text-primary hover:underline focus:outline-none"
+                  className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
                 >
                   + New
                 </button>
@@ -290,7 +290,7 @@ export default function AuthorMode() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Title"
-              className="text-xl font-semibold bg-transparent border-none outline-none placeholder:text-muted-foreground/50 w-full"
+              className="text-xl font-semibold bg-transparent border-none outline-none focus-visible:outline-none placeholder:text-muted-foreground/50 w-full"
             />
             <div className="border-t border-border" />
             <textarea
@@ -298,7 +298,7 @@ export default function AuthorMode() {
               onChange={(e) => setBody(e.target.value)}
               placeholder="Start writing…"
               rows={22}
-              className="w-full resize-none bg-transparent border-none outline-none text-base leading-relaxed placeholder:text-muted-foreground/40 font-serif"
+              className="w-full resize-none bg-transparent border-none outline-none focus-visible:outline-none text-base leading-relaxed placeholder:text-muted-foreground/40 font-serif"
             />
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <span className="text-xs text-muted-foreground">

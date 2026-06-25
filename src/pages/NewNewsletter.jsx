@@ -407,6 +407,7 @@ function NewGoalForm({ onCreate, onCancel, pending }) {
       />
       <div className="grid grid-cols-2 gap-2">
         <select
+          aria-label="Content style"
           value={contentStyle}
           onChange={(e) => setContentStyle(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"

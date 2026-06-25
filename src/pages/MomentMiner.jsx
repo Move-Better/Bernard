@@ -154,6 +154,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Staff</span>
           <select
+            aria-label="Filter by staff"
             value={staffFilter}
             onChange={(e) => setStaffFilter(e.target.value)}
             className="border border-border rounded-lg px-2.5 py-1.5 bg-card outline-none focus:ring-2 focus:ring-primary/30"
