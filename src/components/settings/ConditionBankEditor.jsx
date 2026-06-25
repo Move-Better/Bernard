@@ -24,6 +24,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, X, ChevronDown, ChevronUp, Code } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Textarea2 } from '@/components/settings/helpers'
 
 function tryParse(jsonText) {
@@ -396,17 +397,17 @@ function AliasRow({ keyword, target, conditionKeys, onChange, onRemove }) {
         aria-label="Alias keyword"
       />
       <span className="text-muted-foreground text-2xs">→</span>
-      <select
-        className="flex-1 h-7 rounded-md border border-input bg-background px-2 text-xs font-mono"
-        value={target}
-        onChange={e => onChange(keyword, e.target.value)}
-        aria-label="Map to condition"
-      >
-        <option value="">(none)</option>
-        {conditionKeys.map(k => (
-          <option key={k} value={k}>{k}</option>
-        ))}
-      </select>
+      <Select value={target} onValueChange={(v) => onChange(keyword, v)}>
+        <SelectTrigger className="flex-1 h-7 text-xs font-mono" aria-label="Map to condition">
+          <SelectValue placeholder="(none)" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">(none)</SelectItem>
+          {conditionKeys.map(k => (
+            <SelectItem key={k} value={k}>{k}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <button
         type="button"
         onClick={onRemove}

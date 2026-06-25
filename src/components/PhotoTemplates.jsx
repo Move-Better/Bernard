@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useConfirm } from '@/lib/useConfirm'
 import {
@@ -301,21 +302,27 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
     <div className="grid grid-cols-2 gap-3">
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Font size</label>
-        <select value={c.fontSize || 'base'} onChange={(e) => set('fontSize', e.target.value)}
-          aria-label="Font size"
-          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
-          {FONT_SIZES.map((s) => (
-            <option key={s} value={s}>{s} — {FONT_SIZE_PX[s]}px</option>
-          ))}
-        </select>
+        <Select value={c.fontSize || 'base'} onValueChange={(v) => set('fontSize', v)}>
+          <SelectTrigger className="h-7 text-xs w-full" aria-label="Font size">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_SIZES.map((s) => (
+              <SelectItem key={s} value={s}>{s} — {FONT_SIZE_PX[s]}px</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Weight</label>
-        <select value={c.fontWeight || 'semibold'} onChange={(e) => set('fontWeight', e.target.value)}
-          aria-label="Font weight"
-          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
-          {FONT_WEIGHTS.map((w) => <option key={w} value={w}>{w}</option>)}
-        </select>
+        <Select value={c.fontWeight || 'semibold'} onValueChange={(v) => set('fontWeight', v)}>
+          <SelectTrigger className="h-7 text-xs w-full" aria-label="Font weight">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_WEIGHTS.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Text color</label>
@@ -333,19 +340,25 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
       </div>
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Shadow</label>
-        <select value={c.shadow || 'medium'} onChange={(e) => set('shadow', e.target.value)}
-          aria-label="Shadow"
-          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
-          {SHADOWS.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <Select value={c.shadow || 'medium'} onValueChange={(v) => set('shadow', v)}>
+          <SelectTrigger className="h-7 text-xs w-full" aria-label="Shadow">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SHADOWS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <label className="text-2xs font-medium text-muted-foreground block mb-1">Background</label>
-        <select value={c.background || 'none'} onChange={(e) => set('background', e.target.value)}
-          aria-label="Background style"
-          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
-          {BACKGROUNDS.map((b) => <option key={b} value={b}>{b}</option>)}
-        </select>
+        <Select value={c.background || 'none'} onValueChange={(v) => set('background', v)}>
+          <SelectTrigger className="h-7 text-xs w-full" aria-label="Background style">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BACKGROUNDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       {(c.background === 'pill' || c.background === 'rect') && (
         <div>

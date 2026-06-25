@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, AlertCircle, CheckCircle2, HardDrive, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 
@@ -376,26 +377,26 @@ export default function DriveImportPicker({ onComplete, onClose }) {
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="text-3xs uppercase tracking-wide text-muted-foreground font-semibold block mb-1">Purpose for batch</label>
-              <select
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                className="h-7 px-2 rounded border bg-card text-xs"
-                aria-label="Purpose for batch"
-              >
-                {PURPOSES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
+              <Select value={purpose} onValueChange={setPurpose}>
+                <SelectTrigger className="h-7 text-xs w-auto min-w-[120px]" aria-label="Purpose for batch">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PURPOSES.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             {purpose === 'interview' && (
               <div>
                 <label className="text-3xs uppercase tracking-wide text-muted-foreground font-semibold block mb-1">Speaker role</label>
-                <select
-                  value={speakerRole}
-                  onChange={(e) => setSpeakerRole(e.target.value)}
-                  className="h-7 px-2 rounded border bg-card text-xs"
-                  aria-label="Speaker role"
-                >
-                  {SPEAKER_ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-                </select>
+                <Select value={speakerRole} onValueChange={setSpeakerRole}>
+                  <SelectTrigger className="h-7 text-xs w-auto min-w-[120px]" aria-label="Speaker role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPEAKER_ROLES.map((r) => <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             )}
             <a

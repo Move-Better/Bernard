@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { StaffChip } from '@/components/StaffChip'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -636,17 +637,17 @@ export default function StaffProfile() {
               <p className="text-sm font-medium">Merge into another staff member</p>
               <p className="text-2xs text-muted-foreground mt-0.5">All history moves to the chosen member — nothing is lost.</p>
             </div>
-            <select
-              aria-label="Select staff member to merge into"
-              value={mergeTargetId}
-              onChange={(e) => setMergeTargetId(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Select a staff member…</option>
-              {staffList.filter((s) => s.id !== staffId).map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <Select value={mergeTargetId} onValueChange={setMergeTargetId}>
+              <SelectTrigger className="w-full h-9 text-sm" aria-label="Select staff member to merge into">
+                <SelectValue placeholder="Select a staff member…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Select a staff member…</SelectItem>
+                {staffList.filter((s) => s.id !== staffId).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               className="w-full"
               disabled={!mergeTargetId || deleteStaffMut.isPending}

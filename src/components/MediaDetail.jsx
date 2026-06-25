@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import {
   getMediaAsset,
   updateMediaAsset,
@@ -730,31 +731,30 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   </span>
                 )}
               </div>
-              <select
-                value={staffId}
-                onChange={(e) => setStaffId(e.target.value)}
-                disabled={!canEdit}
-                aria-label="Attribute to staff member"
-                className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full sm:max-w-xs"
-              >
-                <option value="">(unattributed)</option>
-                {staff.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <Select value={staffId} onValueChange={setStaffId} disabled={!canEdit}>
+                <SelectTrigger className="h-8 text-sm w-full sm:max-w-xs" aria-label="Attribute to staff member">
+                  <SelectValue placeholder="(unattributed)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">(unattributed)</SelectItem>
+                  {staff.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {assetPurpose === 'interview' && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Who&apos;s speaking?</label>
-                <select
-                  value={speakerRole}
-                  onChange={(e) => setSpeakerRole(e.target.value)}
-                  aria-label="Who's speaking?"
-                  className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full sm:max-w-xs"
-                >
-                  {SPEAKER_ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-                </select>
+                <Select value={speakerRole} onValueChange={setSpeakerRole}>
+                  <SelectTrigger className="h-8 text-sm w-full sm:max-w-xs" aria-label="Who's speaking?">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPEAKER_ROLES.map((r) => <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
