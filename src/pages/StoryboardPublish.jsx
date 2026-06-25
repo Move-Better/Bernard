@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, Eye, Video } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import BackLink from '@/components/ui/BackLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pieceLabel } from '@/lib/pieceLabel'
@@ -8,11 +8,11 @@ import { postFormat } from '@/lib/mediaEntry'
 import { resolveArchetype } from '@/lib/editorArchetype'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
-import PostPreview from '@/components/PostPreview'
 import SlideEditor from '@/components/story-detail/SlideEditor'
 import StoryComposer from '@/components/story-detail/StoryComposer'
 import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
+import UnifiedEditor from '@/components/editor/UnifiedEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
 import { useContentItem, useContentItems } from '@/lib/queries'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -71,7 +71,6 @@ export default function StoryboardPublish() {
   // without is a carousel; instagram_story routes to the Story composer whether
   // it's a photo frame ('story') or a video story ('storyvid').
   const archetype = resolveArchetype(piece)
-  const isReel = piece.platform === 'instagram' && archetype === 'vvideo'
   const isCarousel = archetype === 'carousel'
   const isStory = piece.platform === 'instagram_story'
   // Named format + slide-count badge from the shared helper — the header used to
@@ -155,95 +154,19 @@ export default function StoryboardPublish() {
     )
   }
 
+  // Everything else — visual (LinkedIn/Facebook/Twitter/GBP…), video posts,
+  // doc (blog/landing), email, text ads, ad creative — flows through the unified
+  // shell editor (full-bleed, same chrome as the carousel/reel editors).
   return (
-    <div className="space-y-5 py-6">
-      <Breadcrumb
-        items={[
-          { label: 'Publish queue', to: '/publish' },
-          { label: pieceLabel(piece) },
-        ]}
+    <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
+      <UnifiedEditor
+        piece={piece}
+        onBack={() => navigate('/publish')}
+        formatLabel={fmt.label}
+        formatSub={`${fmt.count} ${fmt.unit}`}
+        photoCount={photoCount}
+        remainingNeedsMedia={remainingNeedsMedia}
       />
-
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <BackLink to="/publish">Back to Publish</BackLink>
-          <h1 className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">
-            {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-            <span className="truncate">{title}</span>
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            {fmt.label} · {fmt.count} {fmt.unit}
-            {fmt.kind === 'carousel' && photoCount !== fmt.count && (
-              <span className="text-muted-foreground/70"> · from {photoCount} photo{photoCount === 1 ? '' : 's'}</span>
-            )}
-          </p>
-        </div>
-
-      </div>
-
-      {/* All other formats: two-column preview (left) + controls (right). */}
-      {(
-        <div className="grid grid-cols-1 gap-6 lg:[grid-template-columns:minmax(0,380px)_minmax(0,1fr)]">
-          {/* Left — live preview (reference) */}
-          <div className="lg:sticky lg:top-20 lg:self-start space-y-2">
-            <p className="inline-flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Eye className="h-3.5 w-3.5" /> Live preview
-            </p>
-            <div className="rounded-lg border bg-card p-3">
-              <PostPreview
-                platform={piece.platform}
-                content={typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)}
-                mediaUrls={Array.isArray(piece.media_urls) ? piece.media_urls : []}
-                slides={Array.isArray(piece.slides) ? piece.slides : null}
-                overlayText={piece.overlay_text || null}
-                locationOverrides={piece.location_overrides || null}
-                photoTemplateId={piece.photo_template_id || null}
-              />
-            </div>
-          </div>
-
-          {/* Right — compose + publish */}
-          <div className="space-y-4">
-            {isReel && (
-              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                <Video className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <p>
-                  <span className="font-medium text-foreground">This posts as a Reel.</span> A video
-                  publishes on its own — Instagram can&apos;t combine a video and photos in one carousel.
-                  Any on-screen text is baked into the clip itself.
-                </p>
-              </div>
-            )}
-            <ApprovalPanel piece={piece} mode="publish" />
-            {remainingNeedsMedia.length > 0 && (
-              <Link
-                to="/publish"
-                className="group block rounded-lg border border-primary/20 bg-accent/20 p-3 transition-colors hover:border-primary/40"
-              >
-                <p className="mb-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Next up
-                </p>
-                <span className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-foreground">
-                    <b className="font-medium">
-                      {remainingNeedsMedia.length} more draft{remainingNeedsMedia.length === 1 ? '' : 's'}
-                    </b>{' '}
-                    need media
-                  </span>
-                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-                    Publish <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </span>
-              </Link>
-            )}
-            {piece.status === 'published' && piece.buffer_update_id && (
-              <BufferMetricsRow contentItemId={piece.id} />
-            )}
-            {piece.status === 'published' && <WinnerToggle piece={piece} />}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
