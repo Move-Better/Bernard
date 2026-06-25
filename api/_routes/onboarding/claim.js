@@ -536,7 +536,7 @@ async function handler(req, res) {
         console.error('[claim] rollback delete workspace failed:', rollbackErr?.message)
       }
       try { await clerk().organizations.deleteOrganization(org.id) } catch { /* swallow */ }
-      return res.status(502).json({ error: 'domain-registration-failed', code: detail.code })
+      return res.status(502).json({ error: 'domain_registration_failed' })
     }
   } else {
     console.warn('[claim] VERCEL_TOKEN/VERCEL_PROJECT_ID not configured; skipping domain auto-register for', domainName)

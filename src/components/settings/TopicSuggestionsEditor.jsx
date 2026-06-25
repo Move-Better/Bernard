@@ -110,6 +110,7 @@ function TopicRow({ row, archetypes, onUpdate, onRemove, onToggleArchetype }) {
         <select
           value={row.priority || 'medium'}
           onChange={e => onUpdate({ priority: e.target.value })}
+          aria-label="Priority"
           className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full border-0 cursor-pointer appearance-none ${PRIORITY_COLORS[row.priority] || PRIORITY_COLORS.medium}`}
         >
           <option value="high">high</option>

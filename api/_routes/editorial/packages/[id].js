@@ -69,7 +69,7 @@ export default async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   const body = req.body || {}
   const { status, captionText } = body

@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   const body = req.body || {}
   const packageId = String(body.packageId || '').trim()

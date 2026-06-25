@@ -224,6 +224,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
+            aria-label="Collection type"
             className="text-2xs h-8 px-2 rounded-md border border-border bg-background text-foreground"
           >
             {KIND_OPTIONS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}

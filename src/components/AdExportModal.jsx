@@ -111,6 +111,7 @@ export default function AdExportModal({ asset, onClose, treatment, templateId, s
               <select
                 value={campaignId}
                 onChange={(e) => setCampaignId(e.target.value)}
+                aria-label="Group under campaign"
                 className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/40"
               >
                 <option value="">— none —</option>

@@ -97,6 +97,7 @@ export default function AdCarouselExportModal({ piece, slides, mediaUrls, brandS
                 value={campaignId}
                 onChange={(e) => setCampaignId(e.target.value)}
                 disabled={running}
+                aria-label="Group under campaign"
                 className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
               >
                 <option value="">— none —</option>
