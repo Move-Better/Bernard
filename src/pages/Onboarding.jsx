@@ -1002,11 +1002,11 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
       )}
 
       <FieldRow label="Business name *" hint="What you'd put on a sign.">
-        <Input value={form.display_name} onChange={e => setField('display_name')(e.target.value)} placeholder="Acme Movement" autoComplete="organization" />
+        <Input aria-label="Business name" value={form.display_name} onChange={e => setField('display_name')(e.target.value)} placeholder="Acme Movement" autoComplete="organization" />
       </FieldRow>
       <FieldRow label="Website" hint="Used to draft your voice and find your social profiles.">
         <div className="flex gap-2">
-          <Input type="url" value={form.website} onChange={e => setField('website')(e.target.value)} placeholder="https://yourpractice.com" autoComplete="url" />
+          <Input aria-label="Website" type="url" value={form.website} onChange={e => setField('website')(e.target.value)} placeholder="https://yourpractice.com" autoComplete="url" />
           <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={runScan} disabled={!canScan}>
             {isScanning && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
             {isScanning ? 'Scanning…' : scanned ? 'Re-scan' : 'Scan'}
@@ -1138,6 +1138,7 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
 
       <FieldRow label="What you do" hint="1–3 sentences. Your method, who you serve, what makes you distinct.">
         <Textarea
+          aria-label="What you do"
           value={form.clinic_context}
           onChange={e => setField('clinic_context')(e.target.value)}
           rows={3}
@@ -1147,6 +1148,7 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
       </FieldRow>
       <FieldRow label="Audience (short)" hint="One tight phrase. ~10 words.">
         <Input
+          aria-label="Audience (short)"
           value={form.audience_short}
           onChange={e => setField('audience_short')(e.target.value)}
           placeholder={VOICE_PLACEHOLDERS.audience_short}
@@ -1154,6 +1156,7 @@ function VoiceScreen({ form, setField, scanState, onBack, onContinue }) {
       </FieldRow>
       <FieldRow label="Brand voice" hint="3–5 sentences on tone, vocabulary, things you avoid.">
         <Textarea
+          aria-label="Brand voice"
           value={form.brand_voice}
           onChange={e => setField('brand_voice')(e.target.value)}
           rows={5}
