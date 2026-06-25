@@ -229,7 +229,8 @@ async function processWorkspaceBundle(ws, summary) {
   try {
     publisher = new BundlePublisher(ws)
   } catch (e) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', skipped: 'bundle-init-failed', error: e?.message })
+    console.error('[cron/refresh-engagement] bundle init failed:', e?.message)
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', skipped: 'bundle-init-failed', error: 'bundle_init_error' })
     return
   }
 
@@ -387,7 +388,8 @@ async function processWorkspaceGA4(ws, summary) {
       pagePaths,
     })
   } catch (e) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'ga4', error: e?.message || 'ga4 fetch failed' })
+    console.error('[cron/refresh-engagement] ga4 fetch failed:', e?.message)
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'ga4', error: 'ga4_fetch_failed' })
     return
   }
 
@@ -506,7 +508,8 @@ async function processWorkspaceGBP(ws, summary) {
   try {
     accessToken = await refreshGbpToken(refreshToken)
   } catch (e) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: `token-refresh: ${e?.message}` })
+    console.error('[cron/refresh-engagement] gbp token-refresh failed:', e?.message)
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: 'token_refresh_failed' })
     return
   }
 
@@ -643,22 +646,26 @@ async function handler(req, res) {
     try {
       await processWorkspace(ws, summary)
     } catch (e) {
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'buffer', error: e?.message || 'unknown' })
+      console.error('[cron/refresh-engagement] buffer workspace threw:', e?.message)
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'buffer', error: 'workspace_error' })
     }
     try {
       await processWorkspaceBundle(ws, summary)
     } catch (e) {
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', error: e?.message || 'unknown' })
+      console.error('[cron/refresh-engagement] bundle workspace threw:', e?.message)
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', error: 'workspace_error' })
     }
     try {
       await processWorkspaceGA4(ws, summary)
     } catch (e) {
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'ga4', error: e?.message || 'unknown' })
+      console.error('[cron/refresh-engagement] ga4 workspace threw:', e?.message)
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'ga4', error: 'workspace_error' })
     }
     try {
       await processWorkspaceGBP(ws, summary)
     } catch (e) {
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: e?.message || 'unknown' })
+      console.error('[cron/refresh-engagement] gbp workspace threw:', e?.message)
+      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: 'workspace_error' })
     }
   }
   summary.finishedAt = new Date().toISOString()

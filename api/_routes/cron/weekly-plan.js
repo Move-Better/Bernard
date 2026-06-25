@@ -38,7 +38,7 @@ async function handler(req, res) {
       summary.push({ slug: ws.slug, ...stats })
     } catch (e) {
       console.error(`[cron/weekly-plan] ${ws.slug} threw: ${e?.message}\n${e?.stack || ''}`)
-      summary.push({ slug: ws.slug, error: e?.message || 'failed' })
+      summary.push({ slug: ws.slug, error: 'failed' })
     }
   }
   return res.status(200).json({ weekMonday, workspaces: workspaces.length, summary })

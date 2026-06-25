@@ -165,7 +165,7 @@ export default function Home() {
         <p className="text-xs text-muted-foreground mb-4">{storiesError.message}</p>
         <Button size="sm" variant="outline" onClick={() => refetchStories()} disabled={isRefetchingStories}>
           {isRefetchingStories ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden="true" />
           ) : (
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
           )}

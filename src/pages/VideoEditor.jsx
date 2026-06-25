@@ -902,8 +902,8 @@ export default function VideoEditor() {
           </Button>
           {exportOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setExportOpen(false)} />
-              <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+              <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setExportOpen(false)} />
+              <div role="menu" aria-label="Export destination" className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
                 <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Send this clip to — pick any</p>
                 {[
                   { k: 'post', icon: CalendarClock, label: 'Schedule a post', sub: 'Pick channels & schedule on Publish' },
