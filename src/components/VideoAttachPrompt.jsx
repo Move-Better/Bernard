@@ -110,7 +110,7 @@ export default function VideoAttachPrompt({ interviewId, staffName, onDone }) {
           ref={fileInputRef}
           type="file"
           accept="video/*"
-          className="sr-only"
+          className="hidden"
           onChange={handleFileChange}
         />
       </div>
