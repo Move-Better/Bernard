@@ -383,6 +383,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
       ) : (
         <textarea
           ref={taRef}
+          aria-label="Draft body"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           spellCheck

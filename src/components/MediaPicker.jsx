@@ -348,8 +348,9 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
               {libraryError ? (
                 <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 text-center">{libraryError}</div>
               ) : libraryLoading && libraryItems.length === 0 ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div role="status" className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
+                  <span className="sr-only">Loading library…</span>
                 </div>
               ) : libraryItems.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground text-sm">
@@ -487,6 +488,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
         {tab === 'upload' && (
           <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
             <div
+              role={uploading ? 'status' : undefined}
               onClick={() => !uploading && fileInputRef.current?.click()}
               className={`w-full border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
                 uploading
@@ -495,9 +497,9 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
               }`}
             >
               {uploading ? (
-                <Loader2 className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3 animate-spin" />
+                <Loader2 className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3 animate-spin" aria-hidden="true" />
               ) : (
-                <Upload className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <Upload className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
               )}
               <p className="text-sm font-medium mb-1">
                 {uploading ? 'Uploading…' : 'Click to upload a photo or video'}
