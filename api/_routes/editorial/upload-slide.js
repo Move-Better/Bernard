@@ -65,6 +65,8 @@ export default async function handler(req, res) {
   const dataUrl = typeof body.dataUrl === 'string' ? body.dataUrl : ''
 
   if (!pieceId) return res.status(400).json({ error: 'invalid_payload', message: 'pieceId required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(pieceId)) return res.status(400).json({ error: 'invalid_pieceId' })
   if (!Number.isInteger(idx) || idx < 0) return res.status(400).json({ error: 'invalid_payload', message: 'idx required' })
   if (!sig) return res.status(400).json({ error: 'invalid_payload', message: 'sig required' })
 

@@ -115,6 +115,8 @@ export default async function handler(req, res) {
   if (!interviewId) {
     return res.status(400).json({ error: 'interviewId is required' })
   }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(interviewId)) return res.status(400).json({ error: 'invalid_interviewId' })
 
   const ivRes = await sb(
     `interviews?id=eq.${encodeURIComponent(interviewId)}&workspace_id=eq.${ws.id}&select=id,topic&limit=1`,

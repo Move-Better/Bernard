@@ -113,6 +113,8 @@ export default async function handler(req, res) {
 
   const { contentItemId } = req.body || {}
   if (!contentItemId) return err(res, 'Missing contentItemId')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(contentItemId)) return err(res, 'Invalid contentItemId', 400)
 
   // Fetch the content_item, scoped to this workspace.
   const itemRes = await sb(`content_items?id=eq.${contentItemId}&${wsFilter}&select=id,interview_id,topic,platform`)

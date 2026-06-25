@@ -98,9 +98,12 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'media', scope.id))) return
 
   const { interviewId, assetId } = req.body || {}
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!interviewId || !assetId) {
     return res.status(400).json({ error: 'interviewId and assetId are required' })
   }
+  if (!UUID_RE.test(interviewId)) return res.status(400).json({ error: 'invalid_interviewId' })
+  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
 
   // Verify the interview belongs to this workspace
   const iRes = await sb(

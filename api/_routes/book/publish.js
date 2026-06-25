@@ -186,14 +186,14 @@ async function handler(req, res) {
   if (upstream.status >= 500 && upstream.status < 600) {
     return res.status(502).json({
       error:    upstream.status === 502 ? 'github_error' : 'website_misconfigured',
-      message:  data.message || `Website returned ${upstream.status}.`,
+      message:  (data.message || `Website returned ${upstream.status}.`).slice(0, 200),
       retriable: upstream.status === 502,
     })
   }
 
   return res.status(502).json({
     error:   'upstream_error',
-    message: data.message || `Website returned ${upstream.status}.`,
+    message: (data.message || `Website returned ${upstream.status}.`).slice(0, 200),
     status:  upstream.status,
   })
 }

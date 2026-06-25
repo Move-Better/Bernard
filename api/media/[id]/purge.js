@@ -58,6 +58,8 @@ async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const parts = url.pathname.split('/').filter(Boolean)
   const id = parts[parts.length - 2]
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
   if (!id) return res.status(400).json({ error: 'Missing id' })
 
   const scope  = await workspaceScope(req)

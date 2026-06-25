@@ -68,6 +68,8 @@ export default async function handler(req, res) {
     generation_style: bodyGenerationStyle,
   } = req.body || {}
   if (!id) return err(res, 'Missing id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
   if (typeof rawContent !== 'string' || !rawContent.trim()) {
     return err(res, 'Missing content')
   }
