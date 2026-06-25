@@ -301,8 +301,8 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
             background; the source moves to "Ready to review" when it lands. */}
         {onFind && (proposals === null || proposals === 0) && (
           asset.segment_status === 'detecting' ? (
-            <div className="w-full px-3 py-1.5 rounded-lg text-3xs text-muted-foreground flex items-center justify-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" />finding moments…
+            <div role="status" className="w-full px-3 py-1.5 rounded-lg text-3xs text-muted-foreground flex items-center justify-center gap-1.5">
+              <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />finding moments…
             </div>
           ) : (
             <button

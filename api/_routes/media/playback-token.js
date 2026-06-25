@@ -73,10 +73,7 @@ async function handler(req, res) {
   const row = rows[0]
   if (!row) return res.status(404).json({ error: 'not_found' })
   if (!row.mux_playback_id) {
-    return res.status(409).json({
-      error: 'no_playback_id',
-      message: `Asset is in transcode_status='${row.transcode_status || 'unknown'}'; playback ID is not yet allocated.`,
-    })
+    return res.status(409).json({ error: 'no_playback_id' })
   }
 
   try {

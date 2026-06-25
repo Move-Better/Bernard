@@ -345,8 +345,8 @@ export default function ClipFinder({ asset, canEdit }) {
 
       {/* Detecting */}
       {detecting && (
-        <div className="flex items-center gap-2 text-2xs text-muted-foreground bg-muted/40 rounded px-2.5 py-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <div role="status" className="flex items-center gap-2 text-2xs text-muted-foreground bg-muted/40 rounded px-2.5 py-2">
+          <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
           Transcribing + finding standalone moments… you can close this drawer; it keeps running.
         </div>
       )}
@@ -413,7 +413,7 @@ export default function ClipFinder({ asset, canEdit }) {
           <ul className="space-y-1">
             {renderingSegs.map((s) => (
               <li key={s.id} className="flex items-center gap-1.5 text-2xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
+                <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin text-primary shrink-0" />
                 <span className="truncate" title={s.hook}>{s.hook || 'Clip'}</span>
                 <span className="text-3xs">· {mmss(s.start_sec)}–{mmss(s.end_sec)}</span>
               </li>

@@ -265,8 +265,8 @@ export default function CaptureReview() {
       {isGenerating && streamingText && (
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-sm font-medium mb-3">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <div role="status" className="flex items-center gap-2 text-sm font-medium mb-3">
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin text-primary" />
               <span>Writing your blog post…</span>
             </div>
             <div className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground max-h-64 overflow-y-auto">
