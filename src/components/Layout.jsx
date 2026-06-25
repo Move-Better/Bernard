@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { UserButton, useAuth, useClerk } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
+import CommandPalette from '@/components/CommandPalette'
 import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
@@ -131,6 +132,9 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-background flex">
+
+      {/* Global ⌘K command palette (mounted once for the whole authed shell). */}
+      <CommandPalette />
 
       {/* ── Left sidebar — desktop only ─────────────────────────────────── */}
       <aside className={`hidden md:flex fixed inset-y-0 left-0 ${sidebarW} flex-col border-r bg-card z-30 transition-[width] duration-200`}>
