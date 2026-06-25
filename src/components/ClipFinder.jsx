@@ -406,7 +406,7 @@ export default function ClipFinder({ asset, canEdit }) {
 
       {/* Rendering segments — clips in flight (off the request path) */}
       {renderingSegs.length > 0 && (
-        <div className="pt-1">
+        <div role="status" className="pt-1">
           <div className="text-3xs uppercase tracking-wide font-medium text-muted-foreground mb-1">
             Rendering ({renderingSegs.length})
           </div>

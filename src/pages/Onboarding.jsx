@@ -1274,8 +1274,8 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
         </div>
         <div className="text-xs h-5 mt-1">
           {slugCheck.status === 'checking' && (
-            <span className="text-muted-foreground inline-flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Checking…
+            <span role="status" className="text-muted-foreground inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Checking…
             </span>
           )}
           {slugCheck.status === 'done' && slugCheck.available && (

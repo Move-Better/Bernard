@@ -244,11 +244,8 @@ async function handler(req, res) {
     const acct = await gql(BUFFER_TOKEN, '{ account { organizations { id } } }')
     if (!acct.ok || acct.errors) {
       const errMsg = acct.errors?.[0]?.message || `Buffer account query returned ${acct.status}`
-      const hint = acct.status === 401 || acct.status === 403
-        ? 'Buffer access token rejected (401/403). Regenerate the token in Workspace Settings → Publishing credentials.'
-        : 'buffer_account_query_failed'
       console.error('[publish/buffer] account query failed', acct.status, errMsg, JSON.stringify(acct.errors))
-      return res.status(502).json({ error: hint })
+      return res.status(502).json({ error: acct.status === 401 || acct.status === 403 ? 'buffer_auth_rejected' : 'buffer_account_query_failed' })
     }
     const organizationId = acct.data?.account?.organizations?.[0]?.id
     if (!organizationId) {
@@ -261,11 +258,8 @@ async function handler(req, res) {
     )
     if (!result.ok || result.errors) {
       const errMsg = result.errors?.[0]?.message || `Buffer channels query returned ${result.status}`
-      const hint = result.status === 401 || result.status === 403
-        ? 'Buffer access token rejected (401/403). Regenerate the token in Workspace Settings → Publishing credentials.'
-        : 'buffer_channels_query_failed'
       console.error('[publish/buffer] channels query failed', result.status, errMsg, JSON.stringify(result.errors))
-      return res.status(502).json({ error: hint })
+      return res.status(502).json({ error: result.status === 401 || result.status === 403 ? 'buffer_auth_rejected' : 'buffer_channels_query_failed' })
     }
     const channels = result.data?.channels ?? []
     const match = channels.find((c) => c.service === service && !c.isDisconnected)

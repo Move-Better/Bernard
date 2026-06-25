@@ -229,8 +229,9 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
             Suggested for this post
           </p>
           {isLoading ? (
-            <div className="flex items-center justify-center py-6 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+            <div role="status" className="flex items-center justify-center py-6 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <span className="sr-only">Loading…</span>
             </div>
           ) : clips.length === 0 ? (
             <p className="py-4 text-center text-2xs text-muted-foreground">
