@@ -31,12 +31,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return err(res, 'Method not allowed', 405)
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   const ws = await workspaceContext(req)
   if (!ws) return err(res, 'Workspace not resolved', 400)
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const id = new URL(req.url, 'http://localhost').searchParams.get('id')
   if (!id || !UUID_RE.test(id)) return err(res, 'Missing or invalid id')
