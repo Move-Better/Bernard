@@ -104,8 +104,8 @@ function EmptyState({ isAdmin, onRegenerate, isRegenerating }) {
 
 function RegeneratingState() {
   return (
-    <div className="rounded-lg border border-border bg-card px-8 py-16 flex flex-col items-center gap-3 text-center">
-      <RefreshCw className="h-7 w-7 text-primary animate-spin" />
+    <div role="status" className="rounded-lg border border-border bg-card px-8 py-16 flex flex-col items-center gap-3 text-center">
+      <RefreshCw className="h-7 w-7 text-primary animate-spin" aria-hidden="true" />
       <div className="max-w-md flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-foreground">Weaving your book…</h2>
         <p className="text-sm text-muted-foreground">
@@ -270,8 +270,9 @@ export default function Book() {
 
       {/* Body */}
       {isLoading ? (
-        <div className="rounded-lg border border-border bg-card px-8 py-16 flex items-center justify-center">
-          <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
+        <div role="status" className="rounded-lg border border-border bg-card px-8 py-16 flex items-center justify-center">
+          <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading chapter…</span>
         </div>
       ) : isRegenerating && !hasManuscript ? (
         <RegeneratingState />

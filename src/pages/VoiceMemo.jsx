@@ -535,8 +535,8 @@ export default function VoiceMemo() {
 
           {/* Uploading */}
           {uploading && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div role="status" className="flex flex-col items-center gap-3 py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
               <div className="text-sm font-medium">Uploading & transcribing…</div>
               <div className="text-xs text-muted-foreground text-center max-w-xs">
                 Long recordings take a bit. We&apos;ll route you to the review screen as soon as the transcript is ready.
