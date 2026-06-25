@@ -1,4 +1,5 @@
 import { withSentry } from '../../_lib/sentry.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 export const config = { runtime: 'nodejs' }
 // POST /api/onboarding/check-slug
 //
@@ -18,6 +19,8 @@ async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ available: false, reason: 'method-not-allowed' })
   }
+
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const body = req.body || {}
   const v = validateSlug(body.slug)

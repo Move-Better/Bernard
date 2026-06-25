@@ -247,7 +247,7 @@ function BlockRow({ block, onChange, onRemove }) {
             )}
             {bSwatches.slice(0, 5).map((color) => (
               <button
-                key={color} type="button" title={color} onClick={() => applyColor(color)}
+                key={color} type="button" aria-label={color} onClick={() => applyColor(color)}
                 className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
                 style={{ background: color }}
               />
@@ -255,7 +255,7 @@ function BlockRow({ block, onChange, onRemove }) {
             {bSwatches.length > 0 && <span className="mx-0.5 h-4 w-px bg-zinc-700" />}
             {['#FFFFFF', '#000000'].map((c) => (
               <button
-                key={c} type="button" title={c === '#FFFFFF' ? 'White' : 'Black'} onClick={() => applyColor(c)}
+                key={c} type="button" aria-label={c === '#FFFFFF' ? 'White' : 'Black'} onClick={() => applyColor(c)}
                 className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
                 style={{ background: c }}
               />
@@ -1226,7 +1226,7 @@ function TextStyleControls({ block, onSet }) {
           >Auto</button>
           {TEXT_COLORS.map((c) => (
             <button
-              key={c.value} type="button" onClick={() => onSet('color', c.value)} title={c.label}
+              key={c.value} type="button" onClick={() => onSet('color', c.value)} aria-label={c.label}
               className={`h-6 w-6 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
               style={{ background: c.value }}
             />

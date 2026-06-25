@@ -1,4 +1,5 @@
 import { withSentry } from '../../_lib/sentry.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 export const config = { runtime: 'nodejs' }
 // GET /api/workspace/list
 //
@@ -45,6 +46,8 @@ async function handler(req, res) {
     return res.status(401).json({ error: 'invalid-token' })
   }
   if (!userId) return res.status(401).json({ error: 'unauthenticated' })
+
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   let orgIds = []
   try {

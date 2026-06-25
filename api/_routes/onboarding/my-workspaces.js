@@ -1,4 +1,5 @@
 import { withSentry } from '../../_lib/sentry.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 export const config = { runtime: 'nodejs' }
 // GET /api/onboarding/my-workspaces
 //
@@ -56,6 +57,8 @@ async function handler(req, res) {
 
   const userId = await authUserId(req)
   if (!userId) return res.status(401).json({ error: 'unauthenticated' })
+
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   // 1. Enumerate the user's Clerk org memberships AND grab their primary
   //    email (for the domain-match suggestion path below).
