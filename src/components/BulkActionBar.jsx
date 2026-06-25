@@ -328,8 +328,8 @@ export default function BulkActionBar({
       {panel === 'collection' && canEdit && count > 0 && (
         <div className="rounded-xl border border-foreground/30 bg-foreground shadow-2xl p-3 space-y-2 min-w-[280px] max-w-[380px]">
           {loadingList ? (
-            <span className="text-2xs text-card/50 flex items-center gap-1.5">
-              <Icon as={Loader2} size="xs" className="animate-spin" /> Loading…
+            <span role="status" className="text-2xs text-card/50 flex items-center gap-1.5">
+              <Icon as={Loader2} size="xs" className="animate-spin" aria-hidden="true" /> Loading…
             </span>
           ) : collections.length === 0 && !creating ? (
             <div className="text-2xs text-card/50 italic">No collections yet — create one below.</div>
