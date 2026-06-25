@@ -76,6 +76,8 @@ async function staffInWorkspace(workspaceId, staffId) {
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
   const staffId = searchParams.get('staffId')
 
   const ws = await workspaceContext(req)
@@ -90,7 +92,6 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     if (!(await enforceLimit(req, res, 'generic'))) return
     if (!staffId) return err(res, 'Missing staffId')
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
     const r = await sb(`staff_recipes?${wsFilter}&staff_id=eq.${staffId}&select=${RECIPE_FIELDS}&order=is_default.desc,created_at.asc`)
     if (!r.ok) return dbErr(res, r)
