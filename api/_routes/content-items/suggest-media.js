@@ -75,6 +75,8 @@ export default async function handler(req, res) {
   // --- Resolve the query ---
   const body = req.body || {}
   const id = body.id ? String(body.id) : null
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (id && !UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
   let query = body.query ? String(body.query).trim() : ''
   // Platform drives which media kinds are valid to suggest (see `kind`, below).
   // A caller may pass it for a query-only call; the draft fetch overrides it.

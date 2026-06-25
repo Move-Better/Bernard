@@ -248,6 +248,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ name, config, reply, summary })
   } catch (e) {
     console.error('[photo-templates/chat] model call failed:', e?.stack || e?.message || e)
-    return res.status(502).json({ error: 'chat_failed', message: e?.message || 'unknown' })
+    console.error('[handler] chat_failed:', e?.message)
+    return res.status(502).json({ error: 'chat_failed' })
   }
 }

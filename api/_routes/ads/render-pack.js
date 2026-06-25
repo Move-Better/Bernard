@@ -101,7 +101,8 @@ export default async function handler(req, res) {
     }
   } catch (e) {
     console.error('[ads/render-pack] render failed:', e?.stack || e?.message || e)
-    return res.status(500).json({ error: 'render_failed', message: e?.message || 'unknown' })
+    console.error('[handler] render_failed:', e?.message)
+    return res.status(500).json({ error: 'render_failed' })
   }
 
   return res.status(200).json({ files })

@@ -183,6 +183,7 @@ export default async function handler(req, res) {
     return res.status(201).json({ templates: created, count: created.length })
   } catch (e) {
     console.error('[photo-templates/generate] model call failed:', e?.stack || e?.message || e)
-    return res.status(502).json({ error: 'generate_failed', message: e?.message || 'unknown' })
+    console.error('[handler] generate_failed:', e?.message)
+    return res.status(502).json({ error: 'generate_failed' })
   }
 }
