@@ -85,15 +85,15 @@ async function handler(req, res) {
     // Validate the overrides map.
     for (const [cap, val] of Object.entries(overrides)) {
       if (!ALL_CAPABILITIES.includes(cap)) {
-        return res.status(400).json({ error: `Unknown capability: ${cap}` })
+        return res.status(400).json({ error: 'invalid_capability' })
       }
       if (typeof val !== 'boolean') {
-        return res.status(400).json({ error: `Value for ${cap} must be a boolean` })
+        return res.status(400).json({ error: 'capability_value_not_boolean' })
       }
       if (val === true && OWNER_ONLY_CAPABILITIES.has(cap)) {
         return res
           .status(400)
-          .json({ error: `${cap} is owner-only and cannot be granted to a ${target.permission_tier}` })
+          .json({ error: 'capability_owner_only' })
       }
     }
 

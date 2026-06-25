@@ -490,8 +490,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 title="Drag this image into another browser tab to upload it there, or use Copy / Download below."
               />
               {isOptimizing && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 text-white text-2xs">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                <div role="status" className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 text-white text-2xs">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                   Optimizing for web…
                 </div>
               )}
