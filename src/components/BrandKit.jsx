@@ -212,7 +212,7 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
               {asset.width ? `${asset.width}×${asset.height}` : '—'} · {(asset.byte_size / 1024).toFixed(0)} KB · {asset.mime_type}
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground shrink-0"><X className="h-4 w-4" aria-hidden="true" /></button>
         </div>
 
         <div className="p-4">
@@ -322,7 +322,7 @@ function RolePickerModal({ role, assets, currentAssetId, onPick, onClose }) {
             {backdropBtn('checker', 'Transparent')}
             {backdropBtn('light', 'Light')}
             {backdropBtn('dark', 'Dark')}
-            <button onClick={onClose} className="ml-2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            <button onClick={onClose} aria-label="Close" className="ml-2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" aria-hidden="true" /></button>
           </div>
         </div>
         <div className="p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-4">

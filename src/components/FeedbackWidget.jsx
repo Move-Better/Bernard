@@ -107,8 +107,8 @@ export function FeedbackWidget() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-semibold">Send feedback</span>
-            <button onClick={close} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
+            <button onClick={close} aria-label="Close feedback" className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 

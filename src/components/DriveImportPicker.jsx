@@ -358,7 +358,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
                       </div>
                     )}
                     {failed && (
-                      <div className="absolute inset-x-0 bottom-0 bg-destructive/90 text-white text-3xs px-2 py-1 font-medium truncate" title={String(status).slice(7)}>
+                      <div className="absolute inset-x-0 bottom-0 bg-destructive/90 text-destructive-foreground text-3xs px-2 py-1 font-medium truncate" title={String(status).slice(7)}>
                         Failed
                       </div>
                     )}

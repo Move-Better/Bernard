@@ -35,6 +35,8 @@ export default async function handler(req, res) {
 
   const { id } = req.body || {}
   if (!id) return err(res, 'Missing id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return err(res, 'invalid_id', 400)
 
   const result = await detectInterviewThreads(ws, id)
   const status = result.reason === 'item_not_found' ? 404 : 200
