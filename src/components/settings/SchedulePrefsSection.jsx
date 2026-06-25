@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronDown, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { PLATFORM_SCHEDULE_PREFS } from '@/lib/scheduleHeuristics'
 
 // Platforms surfaced in the settings UI. Mirrors PLATFORM_SCHEDULE_PREFS, but
@@ -53,7 +54,6 @@ function summarize(prefs) {
 }
 
 function PlatformRow({ label, override, defaults, onChange }) {
-  const [open, setOpen] = useState(false)
   const effective = override || defaults
   const isOverridden = !!override
 
@@ -90,85 +90,81 @@ function PlatformRow({ label, override, defaults, onChange }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{label}</span>
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="prefs" className="border-0">
+          <AccordionTrigger className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/40 hover:no-underline transition-colors">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">{label}</span>
+                {isOverridden && (
+                  <span className="text-2xs uppercase tracking-wide rounded-full bg-primary/10 text-primary px-1.5 py-0.5">
+                    Workspace
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {summarize(effective)}
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="border-t px-3 py-3 space-y-3 pb-3">
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1.5">Days of week</div>
+              <div className="flex flex-wrap gap-1.5">
+                {DAY_NAMES.map((name, i) => {
+                  const selected = draftDays.includes(i)
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => toggleDay(i)}
+                      className={`px-2.5 py-1 rounded-full border text-xs ${
+                        selected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-muted-foreground border-input hover:bg-accent'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1.5">
+                Hours (24-hour, comma-separated)
+              </div>
+              <input
+                type="text"
+                aria-label="Draft hours (24-hour, comma-separated)"
+                value={draftHoursText}
+                onChange={(e) => setDraftHoursText(e.target.value)}
+                onBlur={onHoursBlur}
+                placeholder="e.g. 8, 10, 14"
+                className={`w-full h-8 px-2 text-sm rounded border ${hoursError ? 'border-destructive' : 'border-input'} bg-background`}
+              />
+              {hoursError && (
+                <p className="text-xs text-destructive mt-1">
+                  Enter integers between 0 and 23, separated by commas.
+                </p>
+              )}
+            </div>
+
             {isOverridden && (
-              <span className="text-2xs uppercase tracking-wide rounded-full bg-primary/10 text-primary px-1.5 py-0.5">
-                Workspace
-              </span>
+              <button
+                type="button"
+                onClick={reset}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset to default ({summarize(defaults)})
+              </button>
             )}
-          </div>
-          <div className="text-xs text-muted-foreground mt-0.5 truncate">
-            {summarize(effective)}
-          </div>
-        </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="border-t px-3 py-3 space-y-3">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground mb-1.5">Days of week</div>
-            <div className="flex flex-wrap gap-1.5">
-              {DAY_NAMES.map((name, i) => {
-                const selected = draftDays.includes(i)
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => toggleDay(i)}
-                    className={`px-2.5 py-1 rounded-full border text-xs ${
-                      selected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background text-muted-foreground border-input hover:bg-accent'
-                    }`}
-                  >
-                    {name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs font-medium text-muted-foreground mb-1.5">
-              Hours (24-hour, comma-separated)
-            </div>
-            <input
-              type="text"
-              aria-label="Draft hours (24-hour, comma-separated)"
-              value={draftHoursText}
-              onChange={(e) => setDraftHoursText(e.target.value)}
-              onBlur={onHoursBlur}
-              placeholder="e.g. 8, 10, 14"
-              className={`w-full h-8 px-2 text-sm rounded border ${hoursError ? 'border-destructive' : 'border-input'} bg-background`}
-            />
-            {hoursError && (
-              <p className="text-xs text-destructive mt-1">
-                Enter integers between 0 and 23, separated by commas.
-              </p>
-            )}
-          </div>
-
-          {isOverridden && (
-            <button
-              type="button"
-              onClick={reset}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Reset to default ({summarize(defaults)})
-            </button>
-          )}
-        </div>
-      )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }

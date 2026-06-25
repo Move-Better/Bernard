@@ -22,7 +22,8 @@
 // needs to paste a blob, but the structured form is the default surface.
 
 import { useEffect, useState } from 'react'
-import { Plus, X, ChevronDown, ChevronUp, Code } from 'lucide-react'
+import { Plus, X, Code } from 'lucide-react'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Textarea2 } from '@/components/settings/helpers'
@@ -277,7 +278,6 @@ export function ConditionBankEditor({ value, onChange }) {
 // ── A single condition card ──────────────────────────────────────────────
 
 function ConditionCard({ conditionKey, condition, onChange, onRename, onRemove }) {
-  const [expanded, setExpanded] = useState(false)
   const [keyDraft, setKeyDraft] = useState(conditionKey)
   // Sync draft when parent renames the key externally (e.g. undo/redo)
   useEffect(() => { setKeyDraft(conditionKey) }, [conditionKey])
@@ -285,49 +285,44 @@ function ConditionCard({ conditionKey, condition, onChange, onRename, onRemove }
   const summary = (c.audienceProfile || '').slice(0, 80)
 
   return (
-    <div className="rounded-lg border border-input bg-card">
-      <button
-        type="button"
-        onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-accent/30 rounded-lg text-left"
-      >
-        <code className="text-2xs font-mono bg-muted/60 text-foreground px-1.5 py-0.5 rounded shrink-0">{conditionKey}</code>
-        <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
-          {summary || <em>No audience profile yet</em>}
-        </span>
-        {c.chronicRelevant && (
-          <span className="text-3xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">chronic</span>
-        )}
-        {expanded
-          ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-      </button>
-      {expanded && (
-        <div className="border-t border-input p-3 space-y-3">
-          <div>
-            <Label className="text-xs mb-1 block">Condition key</Label>
-            <input
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm font-mono"
-              value={keyDraft}
-              onChange={e => setKeyDraft(e.target.value)}
-              onBlur={() => onRename(keyDraft.trim())}
-              placeholder="e.g. low_back_pain"
-              aria-label="Condition key"
-            />
-            <p className="text-2xs text-muted-foreground mt-1">
-              Lowercase identifier. Bernard matches incoming topics against this key.
-            </p>
-          </div>
-          <ConditionFields condition={c} onChange={onChange} />
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-xs text-destructive hover:underline"
-          >
-            Remove this condition
-          </button>
-        </div>
-      )}
+    <div className="rounded-lg border border-input bg-card overflow-hidden">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="condition" className="border-0">
+          <AccordionTrigger className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-accent/30 hover:no-underline rounded-lg text-left">
+            <code className="text-2xs font-mono bg-muted/60 text-foreground px-1.5 py-0.5 rounded shrink-0">{conditionKey}</code>
+            <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
+              {summary || <em>No audience profile yet</em>}
+            </span>
+            {c.chronicRelevant && (
+              <span className="text-3xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">chronic</span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="border-t border-input p-3 space-y-3 pb-3">
+            <div>
+              <Label className="text-xs mb-1 block">Condition key</Label>
+              <input
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm font-mono"
+                value={keyDraft}
+                onChange={e => setKeyDraft(e.target.value)}
+                onBlur={() => onRename(keyDraft.trim())}
+                placeholder="e.g. low_back_pain"
+                aria-label="Condition key"
+              />
+              <p className="text-2xs text-muted-foreground mt-1">
+                Lowercase identifier. Bernard matches incoming topics against this key.
+              </p>
+            </div>
+            <ConditionFields condition={c} onChange={onChange} />
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-xs text-destructive hover:underline"
+            >
+              Remove this condition
+            </button>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }
