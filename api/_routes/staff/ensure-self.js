@@ -108,8 +108,6 @@ export default async function handler(req, res) {
   // 'generic' bucket, not 'media' — this is an infrequent provisioning call on
   // workspace load; sharing the media-upload budget could starve it during a
   // burst upload and silently re-strand the user without a staff profile.
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   // Resolve workspace first so we can pass clerk_org_id to requireRole.
   // This is safe: by the time ensure-self fires, OrgGate has already called
   // setActive({ organization }), so the JWT carries org_id for the current
@@ -119,6 +117,8 @@ export default async function handler(req, res) {
 
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const wsFilter = `workspace_id=eq.${ws.id}`
   const userId = auth.userId

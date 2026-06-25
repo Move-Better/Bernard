@@ -413,8 +413,8 @@ function ThemeEditor({ initial, onSave, onCancel, saving }) {
           {/* Name + default */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-2xs font-medium text-muted-foreground block mb-1">Template name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Move Better Dark"
+              <label htmlFor="photo-template-name" className="text-2xs font-medium text-muted-foreground block mb-1">Template name</label>
+              <input id="photo-template-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Move Better Dark"
                 className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <div className="shrink-0">
