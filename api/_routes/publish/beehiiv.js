@@ -52,7 +52,6 @@ async function handler(req, res) {
   if (missing.length) {
     return res.status(400).json({
       error:   'invalid_payload',
-      message: `Missing required field(s): ${missing.join(', ')}`,
     })
   }
 
@@ -151,7 +150,6 @@ async function handler(req, res) {
     console.error(tag, 'publication_not_found')
     return res.status(502).json({
       error:   'publication_not_found',
-      message: `Beehiiv could not find publication ${publicationId}. Check the Publication ID in Settings → Integrations → Beehiiv.`,
     })
   }
   if (upstream.status === 400 || upstream.status === 422) {
