@@ -190,7 +190,9 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
       <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
         {item.brief || item.label}
       </div>
-      <div className="flex items-center justify-between gap-1">
+      {/* Pill and action stack on separate lines — side-by-side overflowed the
+          button out of a narrow day column. */}
+      <div className="flex flex-col items-start gap-1.5">
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-semibold ${state.cls}`}>
           {state.label}
         </span>
@@ -199,7 +201,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
             type="button"
             disabled={drafting}
             onClick={() => onDraft(item)}
-            className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
           >
             {drafting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             Draft
@@ -210,14 +212,14 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
-            className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted"
           >
             <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} /> Review
           </button>
         ) : (showOpen && (
           <Link
             to={drillTo(item)}
-            className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-semibold hover:bg-muted"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted"
           >
             <Eye className="h-3 w-3" /> Open
           </Link>
