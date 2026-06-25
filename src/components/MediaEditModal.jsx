@@ -126,7 +126,7 @@ export default function MediaEditModal({ asset, onClose, onSaved, inline = false
           </p>
         </div>
         {!inline && (
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" aria-hidden="true" /></Button>
         )}
       </div>
 

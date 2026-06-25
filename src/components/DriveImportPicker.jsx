@@ -380,6 +380,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 className="h-7 px-2 rounded border bg-card text-xs"
+                aria-label="Purpose for batch"
               >
                 {PURPOSES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
@@ -391,6 +392,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
                   value={speakerRole}
                   onChange={(e) => setSpeakerRole(e.target.value)}
                   className="h-7 px-2 rounded border bg-card text-xs"
+                  aria-label="Speaker role"
                 >
                   {SPEAKER_ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>

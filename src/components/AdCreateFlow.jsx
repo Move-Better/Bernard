@@ -87,7 +87,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
           <Scissors className="h-4 w-4 text-action" />
           <span className="text-sm font-semibold">Trim clip for ads</span>
           {video?.name && <span className="truncate text-2xs text-muted-foreground">· {video.name}</span>}
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close"><X className="h-4 w-4" aria-hidden="true" /></Button>
         </div>
 
         <div className="overflow-y-auto px-5 py-4">

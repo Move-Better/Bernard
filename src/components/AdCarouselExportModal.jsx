@@ -86,7 +86,7 @@ export default function AdCarouselExportModal({ piece, slides, mediaUrls, brandS
           <Megaphone className="h-4 w-4 text-action" />
           <span className="text-sm font-semibold">Export carousel for ads</span>
           <span className="text-2xs text-muted-foreground">· {cleaned.length} slide{cleaned.length !== 1 ? 's' : ''}</span>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close"><X className="h-4 w-4" aria-hidden="true" /></Button>
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
