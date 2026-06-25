@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   // Any authenticated workspace member can see their own post-call reveal.
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return err(res, auth.reason || 'Unauthorized', auth.reason === 'forbidden' ? 403 : 401)
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // Week navigation (F2): default to the current week, but accept ?week=YYYY-MM-DD
   // to view a past week (read-only, up to 8 weeks back) or a future week (up to 4

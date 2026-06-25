@@ -39,7 +39,7 @@ async function handler(req, res) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   if (!process.env.GOOGLE_DRIVE_CLIENT_ID || !process.env.GOOGLE_DRIVE_CLIENT_SECRET) {
     return res.status(503).json({ error: 'drive-not-configured', message: 'Google Drive OAuth credentials are not set up on this deployment.' })

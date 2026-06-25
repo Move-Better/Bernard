@@ -26,7 +26,7 @@ async function handler(req, res) {
   const capAuth = await requireCapability(req, workspace, [CAP_INTEGRATIONS_CONNECT])
   if (!capAuth.ok) return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   const id = process.env.GOOGLE_SC_CLIENT_ID || process.env.GOOGLE_DRIVE_CLIENT_ID
   if (!id) {

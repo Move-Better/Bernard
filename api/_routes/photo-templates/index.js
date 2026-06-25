@@ -77,7 +77,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'default'))) return
+    if (!(await enforceLimit(req, res, 'default', ws.id))) return
     const { name, is_default, config: templateConfig } = req.body || {}
     if (!name || typeof name !== 'string') return err(res, 'Missing name')
     if (!templateConfig || typeof templateConfig !== 'object') return err(res, 'Missing config')

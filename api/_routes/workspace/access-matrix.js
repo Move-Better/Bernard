@@ -36,7 +36,7 @@ async function handler(req, res) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
 
-  if (!(await enforceLimit(req, res, 'access-matrix'))) return
+  if (!(await enforceLimit(req, res, 'access-matrix', workspace.id))) return
 
   const SUPA = (process.env.SUPABASE_URL || '').replace(/\/$/, '')
   const SROLE = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY

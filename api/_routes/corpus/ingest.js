@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // ── Validate body ───────────────────────────────────────────────────────
   const {
@@ -82,6 +82,10 @@ export default async function handler(req, res) {
   // An explicit staffId may only be supplied by owners/producers (batch scripts,
   // admin import). Other roles always ingest against their own staff row.
   let staffId
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (requestedStaffId && !UUID_RE.test(requestedStaffId)) {
+    return err(res, 'invalid_staff_id', 400)
+  }
   if (requestedStaffId && (auth.role === 'owner' || auth.role === 'producer')) {
     // Verify the supplied staffId belongs to this workspace.
     const checkRes = await fetch(

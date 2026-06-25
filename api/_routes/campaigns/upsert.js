@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   if (!capAuth.ok) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
-  if (!(await enforceLimit(req, res, 'default'))) return
+  if (!(await enforceLimit(req, res, 'default', ws.id))) return
 
   const body = req.body || {}
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

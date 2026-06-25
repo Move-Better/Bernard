@@ -47,7 +47,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    if (!(await enforceLimit(req, res, 'generic'))) return
+    if (!(await enforceLimit(req, res, 'generic', ws.id))) return
     const interviewId = searchParams.get('interview_id')
     if (!interviewId) return err(res, 'Missing interview_id')
     if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interview_id', 400)
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'generic'))) return
+    if (!(await enforceLimit(req, res, 'generic', ws.id))) return
     const id = searchParams.get('id')
     if (!id) return err(res, 'Missing id')
     if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)

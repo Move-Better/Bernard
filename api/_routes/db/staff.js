@@ -106,7 +106,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     const { name, createdByEmail, userId: requestedBindUserId } = req.body || {}
     if (!name?.trim()) return err(res, 'Name required')
@@ -198,7 +198,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
 
@@ -227,7 +227,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
 

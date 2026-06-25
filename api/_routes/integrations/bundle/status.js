@@ -72,7 +72,7 @@ async function handler(req, res) {
   const auth = await requireRole(req, ['admin'], { orgId: workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   if (!process.env.BUNDLE_API_KEY) {
     return res.status(200).json({ connected: false, accounts: [], locations: [] })

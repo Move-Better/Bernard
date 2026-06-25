@@ -991,8 +991,8 @@ export default function PhotoTemplates() {
                     </div>
                   </button>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Duplicate" onClick={() => handleDuplicate(t)} disabled={createTheme.isPending}>
-                      <Copy className="h-3 w-3" />
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" aria-label="Duplicate template" onClick={() => handleDuplicate(t)} disabled={createTheme.isPending}>
+                      <Copy className="h-3 w-3" aria-hidden="true" />
                     </Button>
                     {t.custom && (
                       <>

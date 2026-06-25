@@ -642,9 +642,9 @@ function SlideInspector({
           onClick={onMoveLeft}
           disabled={slideIdx === 0}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-          title="Move slide earlier"
+          aria-label="Move slide earlier"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
         <span className="flex-1 text-center text-xs font-semibold">
           Slide {slideIdx + 1} <span className="font-normal text-muted-foreground">of {totalSlides}</span>
@@ -654,9 +654,9 @@ function SlideInspector({
           onClick={onMoveRight}
           disabled={slideIdx === totalSlides - 1}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-          title="Move slide later"
+          aria-label="Move slide later"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </button>
         <button
           type="button"

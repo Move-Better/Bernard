@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 
-  if (!(await enforceLimit(req, res, 'content-plan-approve'))) return
+  if (!(await enforceLimit(req, res, 'content-plan-approve', ws.id))) return
 
   const wsFilter = `workspace_id=eq.${ws.id}`
   const { piece_id } = req.body || {}

@@ -32,7 +32,7 @@ async function handler(req, res) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   let accessToken
   try {

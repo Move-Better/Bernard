@@ -41,7 +41,7 @@ async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   const developerKey = process.env.GOOGLE_DRIVE_API_KEY
   const appId = process.env.GOOGLE_DRIVE_APP_ID

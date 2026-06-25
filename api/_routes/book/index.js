@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     return res.status(status).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const headers = {
     apikey:        SUPABASE_KEY,

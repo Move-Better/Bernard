@@ -99,7 +99,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
@@ -200,7 +200,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
     if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
@@ -511,7 +511,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
     if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
