@@ -726,8 +726,9 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   // state so subsequent refetches don't blank the page.
   if (isLoading && !mockup) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div role="status" className="p-6 flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     )
   }

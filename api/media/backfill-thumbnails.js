@@ -61,7 +61,8 @@ async function handler(req, res) {
 
   const lookup = await sb(query)
   if (!lookup.ok) {
-    return res.status(500).json({ error: `Lookup failed: ${lookup.status}` })
+    console.error('[backfill-thumbnails] Supabase lookup failed:', lookup.status)
+    return res.status(500).json({ error: 'lookup_failed' })
   }
   const candidates = await lookup.json()
 

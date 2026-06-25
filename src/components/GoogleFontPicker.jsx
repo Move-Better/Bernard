@@ -155,6 +155,7 @@ export function GoogleFontPicker({ value, onChange, sampleText, className }) {
             <Search className="h-3.5 w-3.5 opacity-60" />
             <input
               ref={inputRef}
+              aria-label="Search Google Fonts"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search Google Fonts…"
@@ -212,6 +213,7 @@ export function GoogleFontPicker({ value, onChange, sampleText, className }) {
               <div className="flex items-center gap-1.5">
                 <input
                   ref={customInputRef}
+                  aria-label="Custom font name"
                   value={customDraft}
                   onChange={(e) => setCustomDraft(e.target.value)}
                   onKeyDown={(e) => {

@@ -406,8 +406,9 @@ function OrgGate({ clerkOrgId, children }) {
   if (!isLoaded || (match && (!isActive || !tokenReady)) || noMatchProvisional) {
     if (stuckLevel === 0 && !noMatchProvisional) return null // brief, normal-case — no flash
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div role="status" className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-sm text-center space-y-3 p-8">
+          <span className="sr-only">Loading…</span>
           <div
             className="mx-auto h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin"
             aria-hidden="true"

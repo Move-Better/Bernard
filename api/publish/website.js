@@ -334,10 +334,10 @@ async function publishToWordPress(res, payload, cred) {
   }
   if (postRes.status === 400) {
     console.error(tag, 'invalid_payload on post create:', postData.message, postData.code)
-    return res.status(400).json({ error: 'invalid_payload', message: postData.message || 'WordPress rejected the post as invalid.', code: postData.code })
+    return res.status(400).json({ error: 'invalid_payload' })
   }
   console.error(tag, 'upstream_error on post create:', postRes.status, postData.message)
-  return res.status(502).json({ error: 'upstream_error', message: postData.message || `WordPress returned ${postRes.status}.`, status: postRes.status })
+  return res.status(502).json({ error: 'upstream_error' })
 }
 
 async function uploadMedia(wp, sourceUrl, altText, overrideFilename = null) {

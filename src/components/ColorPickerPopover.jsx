@@ -105,6 +105,7 @@ export function ColorPickerPopover({ value, onChange, swatches = [], swatchClass
         <div className="mt-2 flex items-center gap-2">
           <div className="h-7 w-9 rounded border shrink-0" style={{ background: draft }} />
           <input
+            aria-label="Hex color value"
             value={hexInput}
             onChange={onHexInputChange}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
