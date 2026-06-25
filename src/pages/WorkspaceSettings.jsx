@@ -487,6 +487,7 @@ function DangerZone({ workspace, getToken }) {
               To confirm, type the workspace slug: <code className="text-foreground bg-muted px-1 py-0.5 rounded">{slug}</code>
             </Label>
             <Input
+              aria-label="Workspace slug confirmation"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={slug}

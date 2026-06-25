@@ -323,7 +323,7 @@ export default function NewInterview() {
         <CardContent className="space-y-4 pt-6">
           {/* Staff member — avatar pill picker */}
           <div className="space-y-1.5">
-            <Label>Who&apos;s talking?</Label>
+            <Label htmlFor="staff">Who&apos;s talking?</Label>
             <p className="text-2xs text-muted-foreground">Sets the voice and pulls in what this person has said before.</p>
             {staffLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
