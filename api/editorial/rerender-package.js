@@ -64,8 +64,10 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const { packageId, captionText } = req.body || {}
   if (!packageId) return res.status(400).json({ error: 'packageId_required' })
+  if (!UUID_RE.test(packageId)) return res.status(400).json({ error: 'invalid_packageId' })
 
   // --- Load package ---
   const pkgRes = await sb(

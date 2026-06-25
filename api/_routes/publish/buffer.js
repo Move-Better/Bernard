@@ -394,8 +394,8 @@ async function handleBundlePublish(req, res, workspace) {
   let publisher
   try {
     publisher = new BundlePublisher(workspace)
-  } catch (e) {
-    return res.status(503).json({ error: e?.message || 'bundle.social is not configured for this workspace.' })
+  } catch (_e) {
+    return res.status(503).json({ error: 'bundle_not_configured' })
   }
 
   if (req.method === 'DELETE') {
@@ -409,7 +409,7 @@ async function handleBundlePublish(req, res, workspace) {
       return res.status(200).json({ success: true, ...(r.alreadyGone ? { alreadyGone: true } : {}) })
     } catch (e) {
       console.error('[publish/bundle DELETE] failed:', e?.stack || e?.message)
-      return res.status(e?.status || 502).json({ error: e?.message || 'bundle cancel failed' })
+      return res.status(502).json({ error: 'bundle_cancel_failed' })
     }
   }
 
@@ -446,7 +446,7 @@ async function handleBundlePublish(req, res, workspace) {
       })
     } catch (e) {
       console.error('[publish/bundle gbp] failed:', e?.stack || e?.message)
-      return res.status(e?.status || 502).json({ error: e?.message || 'bundle Google Business post failed' })
+      return res.status(502).json({ error: 'bundle_gbp_post_failed' })
     }
   }
 
@@ -461,7 +461,7 @@ async function handleBundlePublish(req, res, workspace) {
     })
   } catch (e) {
     console.error('[publish/bundle] failed:', e?.stack || e?.message)
-    return res.status(e?.status || 502).json({ error: e?.message || 'bundle post failed' })
+    return res.status(502).json({ error: 'bundle_post_failed' })
   }
 }
 

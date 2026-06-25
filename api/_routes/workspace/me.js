@@ -14,6 +14,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../../_lib/workspaceContext.js'
 import { requireRole, requireCapability } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { resolveCapabilities, CAP_SETTINGS_EDIT } from '../../_lib/capabilities.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { getCadencePrior } from '../../_lib/cadenceDefaults.js'
@@ -502,6 +503,7 @@ async function handler(req, res) {
       const status = auth.reason === 'forbidden' ? 403 : 401
       return res.status(status).json({ error: auth.reason })
     }
+    if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
     // Phase 4 PR 3: capability gate on settings edits.
     const capAuth = await requireCapability(req, workspace, [CAP_SETTINGS_EDIT])

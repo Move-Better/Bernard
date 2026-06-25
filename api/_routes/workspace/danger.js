@@ -22,6 +22,7 @@ export const config = { runtime: 'nodejs' }
 //   - hard delete (cascade across tables + blob storage + Clerk org)
 
 import { requireRole, requireCapability } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { CAP_SETTINGS_EDIT } from '../../_lib/capabilities.js'
 import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../../_lib/workspaceContext.js'
 import { recordAudit, actorFromRequest, ipFromRequest, uaFromRequest } from '../../_lib/audit.js'
@@ -60,6 +61,7 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   // Phase 4 PR1: destructive settings — owner-only de facto via CAP_SETTINGS_EDIT
   // (producer default template lacks this cap).
