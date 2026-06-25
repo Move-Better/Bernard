@@ -177,10 +177,12 @@ async function handleBundleMetrics(res, ws, contentItemId, item, force) {
     const result = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force })
     const metrics = mapBundleMetrics(result?.metrics)
     const fetchedAt = new Date().toISOString()
-    sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ buffer_metrics: metrics, buffer_metrics_fetched_at: fetchedAt }),
-    }).catch((e) => console.error('[buffer-analytics/bundle] cache write failed:', e?.message))
+    waitUntil(
+      sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ buffer_metrics: metrics, buffer_metrics_fetched_at: fetchedAt }),
+      }).catch((e) => console.error('[buffer-analytics/bundle] cache write failed:', e?.message))
+    )
     return res.status(200).json({ metrics, fetchedAt, cached: false })
   } catch (e) {
     console.error('[buffer-analytics/bundle] failed:', e?.stack || e?.message)

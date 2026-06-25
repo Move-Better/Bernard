@@ -444,8 +444,9 @@ export default function ClipFinder({ asset, canEdit }) {
       )}
 
       {isLoading && !data && (
-        <div className="flex justify-center py-2">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <div role="status" className="flex justify-center py-2">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="sr-only">Loading…</span>
         </div>
       )}
     </div>
