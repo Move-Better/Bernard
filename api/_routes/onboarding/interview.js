@@ -82,6 +82,8 @@ export default async function handler(req, res) {
 
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
   if (req.method === 'GET') {
     if (id) {

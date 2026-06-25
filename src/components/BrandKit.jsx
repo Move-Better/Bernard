@@ -142,7 +142,7 @@ function AssetPreview({ asset, size = 'md', backdrop = 'checker' }) {
         style={{ height: `${heightPx}px` }}
       >
         <FileText className="h-8 w-8 text-muted-foreground" />
-        <span className="text-3xs text-rose-700 dark:text-rose-200 font-medium uppercase tracking-wide">PDF</span>
+        <span className="text-3xs text-muted-foreground font-medium uppercase tracking-wide">PDF</span>
       </div>
     )
   }

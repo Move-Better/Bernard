@@ -67,6 +67,7 @@ async function handler(req, res) {
       if (!staffId || !userId) return res.status(400).json({ error: 'Missing staffId or userId' })
       const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'Invalid staffId' })
+      if (!/^user_[A-Za-z0-9]+$/.test(userId)) return res.status(400).json({ error: 'Invalid userId' })
 
       // The claim target must be a real member of this org — never bind a row
       // to an arbitrary Clerk id. If Clerk is unavailable, fail safe (reject).
