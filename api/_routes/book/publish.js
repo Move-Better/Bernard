@@ -168,7 +168,7 @@ async function handler(req, res) {
         message: 'The receiving website hasn\'t been updated to accept the book yet. Update its /api/publish receiver to handle kind:"book", then try again.',
       })
     }
-    return res.status(400).json({ error: 'invalid_payload', message: (data.message || 'Receiver rejected the payload.').slice(0, 200) })
+    return res.status(400).json({ error: 'invalid_payload', message: 'Receiver rejected the payload.' })
   }
   if (upstream.status === 401) {
     return res.status(502).json({
@@ -185,14 +185,14 @@ async function handler(req, res) {
   if (upstream.status >= 500 && upstream.status < 600) {
     return res.status(502).json({
       error:    upstream.status === 502 ? 'github_error' : 'website_misconfigured',
-      message:  (data.message || `Website returned ${upstream.status}.`).slice(0, 200),
+      message:  `Website returned ${upstream.status}.`,
       retriable: upstream.status === 502,
     })
   }
 
   return res.status(502).json({
     error:   'upstream_error',
-    message: (data.message || `Website returned ${upstream.status}.`).slice(0, 200),
+    message: `Website returned ${upstream.status}.`,
     status:  upstream.status,
   })
 }
