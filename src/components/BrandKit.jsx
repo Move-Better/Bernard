@@ -203,7 +203,7 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
   const candidateMap = new Map(candidates.map((c) => [c.role, c.confidence]))
   const assignedTo = Object.entries(roleAssignments).filter(([, id]) => id === asset.id).map(([role]) => role)
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 flex justify-end" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Asset details" className="fixed inset-0 z-40 bg-black/40 flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-background border-l shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -310,7 +310,7 @@ function RolePickerModal({ role, assets, currentAssetId, onPick, onClose }) {
     </button>
   )
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Pick brand asset" className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-background rounded-xl shadow-xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b flex items-start justify-between gap-3">
           <div>

@@ -192,8 +192,8 @@ export default function Synthesis() {
 
   if (roleLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading synthesis…
+      <div role="status" className="flex items-center justify-center min-h-[60vh] text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" /> Loading synthesis…
       </div>
     )
   }

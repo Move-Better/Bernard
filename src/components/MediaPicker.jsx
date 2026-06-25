@@ -228,7 +228,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
   const selectedCount = multi ? selected.size : (selected ? 1 : 0)
 
   return (
-    <div className={`fixed inset-0 z-50 bg-black/60 flex items-center justify-center ${isFullscreen ? 'p-0' : 'p-4'}`}>
+    <div role="dialog" aria-modal="true" aria-label="Select media" className={`fixed inset-0 z-50 bg-black/60 flex items-center justify-center ${isFullscreen ? 'p-0' : 'p-4'}`}>
       <div className={`bg-background shadow-2xl w-full flex flex-col ${isFullscreen ? 'w-screen h-screen' : 'rounded-xl max-w-4xl max-h-[92vh]'}`}>
 
         {/* Header */}
