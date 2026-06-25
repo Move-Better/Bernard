@@ -659,7 +659,12 @@ export default function StoryboardPiece() {
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Change the look</span>
               <span className="text-2xs text-muted-foreground">· just ask, like talking to a designer</span>
-              {restyleLoading && <Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />}
+              {restyleLoading && (
+                <span role="status" className="ml-auto">
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />
+                  <span className="sr-only">Restyling…</span>
+                </span>
+              )}
             </div>
             {/* AI greeting — sets the conversational frame */}
             <div className="flex gap-2 px-4 pt-3 text-xs">

@@ -484,8 +484,8 @@ function GenerationStyleSwitcher({ piece, story }) {
 
   if (regenerate.isPending) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      <div role="status" className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
         Regenerating in the new style — this can take 30–60 seconds…
       </div>
     )
