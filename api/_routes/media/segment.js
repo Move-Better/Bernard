@@ -41,9 +41,9 @@ async function handler(req, res) {
     const pieces = await segmentById(id, scope)
     return res.status(200).json({ count: pieces.length, pieces })
   } catch (e) {
-    const msg = e?.message || 'Segmentation failed'
-    const status = msg === 'Not found' ? 404 : 500
-    return res.status(status).json({ error: msg })
+    console.error('[segment] error:', e?.message)
+    const status = e?.message === 'Not found' ? 404 : 500
+    return res.status(status).json({ error: status === 404 ? 'not_found' : 'segmentation_failed' })
   }
 }
 

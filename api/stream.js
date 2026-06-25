@@ -103,7 +103,7 @@ async function handler(req, res) {
     })
     const payload = JSON.stringify({
       type: 'error',
-      error: { message: message || 'Stream error' },
+      error: { message: 'stream_error' },
     })
     res.write(`data: ${payload}\n\n`)
   }
@@ -119,8 +119,8 @@ async function handler(req, res) {
         })
         res.write(`data: ${payload}\n\n`)
       } else if (part?.type === 'error') {
-        const message = part.error?.message || part.errorText || String(part.error || 'Stream error')
-        sendError(message)
+        console.error('[stream] gateway error part', { error: part.error?.message || part.errorText || String(part.error) })
+        sendError('stream_error')
         break
       }
     }

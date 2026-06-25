@@ -326,7 +326,7 @@ export default function WeeklyRecapPanel({ stories = [] }) {
 
   if (present) {
     return (
-      <div className="fixed inset-0 z-50 bg-background overflow-auto">
+      <div role="dialog" aria-modal="true" aria-label="All-staff recap presentation" className="fixed inset-0 z-50 bg-background overflow-auto">
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-6 py-3 flex items-center gap-3">
           <Presentation className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 className="text-lg font-bold">All-staff recap</h2>

@@ -1402,7 +1402,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   ].join('|')
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 p-6">
+    <div role="dialog" aria-modal="true" aria-label="Slide preview" className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 p-6">
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center gap-3 px-5 py-3">
         <Smartphone className="h-4 w-4 text-white/70" />
