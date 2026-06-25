@@ -166,11 +166,13 @@ export default function SeoOpportunities() {
 
   const assetName = ws?.display_name || 'This asset'
 
-  // Action handlers. P1 navigates to the creation flow carrying the target
-  // query; destination-side seeding (pre-filling the interview/brief with the
-  // query + intent) is wired in P2.
-  const onStartInterview = (opp) => navigate(`/new/interview?seed=${encodeURIComponent(opp.query)}`)
-  const onDraft          = (opp) => navigate(`/new?seed=${encodeURIComponent(opp.query)}`)
+  // Action handlers. Both seed the destination with the target query via the
+  // live `?topic=` seam (same one HomeRightRail uses for suggested topics):
+  //   Start interview → NewInterview reads ?topic= into the interview's topic
+  //                     (→ interviews.topic → interview system prompt).
+  //   Draft content   → NewBrief reads ?topic= into the brief title.
+  const onStartInterview = (opp) => navigate(`/new/interview?topic=${encodeURIComponent(opp.query)}`)
+  const onDraft          = (opp) => navigate(`/new/brief?topic=${encodeURIComponent(opp.query)}`)
   const onDismiss        = (opp) => dismiss.mutate({ query: opp.query }, {
     onError: () => {
       // Surface the failure — the dismiss button re-enables automatically when isPending clears
