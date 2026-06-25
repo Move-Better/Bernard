@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapPin, Instagram, Facebook, Linkedin, Music2, Youtube, FileText, Info, Zap, Mail } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { SaveBar } from '@/components/settings/helpers'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
@@ -42,20 +43,11 @@ function DigestCard({ enabled, onToggle }) {
             <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
             <CardTitle className="text-sm font-medium">Weekly digest email</CardTitle>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
+          <Switch
+            checked={enabled}
+            onCheckedChange={onToggle}
             aria-label="Enable weekly digest email"
-            onClick={() => onToggle(!enabled)}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              enabled ? 'border-primary bg-primary' : 'border-input bg-input'
-            }`}
-          >
-            <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
-              enabled ? 'translate-x-5' : 'translate-x-0'
-            }`} />
-          </button>
+          />
         </div>
         <CardDescription className="text-xs mt-1">
           A Monday-morning summary of published content, queue depth, and engagement. Sent via Bernard to all producer-role users in this workspace. Off by default.
