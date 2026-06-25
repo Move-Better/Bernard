@@ -265,7 +265,7 @@ async function handler(req, res) {
           }
         } catch (e) {
           console.error(`[engagement-digest] resend network error for ${ws.slug} → ${email}:`, e?.message)
-          perRecipientFailures.push({ email, error: e?.message })
+          perRecipientFailures.push({ email, error: 'send_failed' })
         }
       }
 
@@ -315,7 +315,7 @@ async function handler(req, res) {
       })
     } catch (e) {
       console.error(`[engagement-digest] error for workspace ${ws.slug}:`, e?.stack || e?.message || e)
-      results.push({ workspace: ws.slug, sent: false, error: e?.message || 'unknown' })
+      results.push({ workspace: ws.slug, sent: false, error: 'workspace_error' })
     }
   }
 

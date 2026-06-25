@@ -80,7 +80,7 @@ export default function AdCarouselExportModal({ piece, slides, mediaUrls, brandS
   const canRun = complies && !running && cleaned.length > 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div role="dialog" aria-modal="true" aria-label="Export carousel for ads" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-background shadow-2xl">
         <div className="flex items-center gap-2 border-b px-5 py-3">
           <Megaphone className="h-4 w-4 text-action" />

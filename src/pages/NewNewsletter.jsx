@@ -133,7 +133,7 @@ export default function NewNewsletter() {
           <div className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">{error}</div>
         )}
         {loading ? (
-          <div className="rounded-xl border bg-card p-10 flex flex-col items-center gap-4">
+          <div role="status" className="rounded-xl border bg-card p-10 flex flex-col items-center gap-4">
             <Loader2 className="h-7 w-7 text-primary animate-spin" aria-hidden="true" />
             <p className="text-sm text-muted-foreground">Setting up your newsletter&hellip;</p>
           </div>

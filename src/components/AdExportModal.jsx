@@ -93,7 +93,7 @@ export default function AdExportModal({ asset, onClose, treatment, templateId, s
   const fileFor = (aspect) => files?.find((f) => f.aspect === aspect)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div role="dialog" aria-modal="true" aria-label="Export photo for ads" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-background shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-2 border-b px-5 py-3">

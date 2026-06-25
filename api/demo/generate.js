@@ -129,7 +129,7 @@ export default async function handler(req, res) {
     res.write('data: [DONE]\n\n')
   } catch (e) {
     console.error(`[demo/generate] stream error: ${e?.stack || e?.message}`)
-    res.write(`data: ${JSON.stringify({ type: 'error', error: { message: e?.message || 'Stream failed' } })}\n\n`)
+    res.write(`data: ${JSON.stringify({ type: 'error', error: { message: 'stream_error' } })}\n\n`)
   } finally {
     res.end()
   }
