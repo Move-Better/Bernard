@@ -19,6 +19,8 @@
     "lint": "eslint src api middleware.js --max-warnings 0",
     "test": "vitest run",
     "verify-bundles": "node scripts/verify-function-bundles.mjs",
+    "schema:verify": "node scripts/verify-schema-drift.mjs",
+    "schema:snapshot": "node scripts/verify-schema-drift.mjs --write",
     "verify-caption-fidelity": "node scripts/verify-caption-fidelity.mjs",
     "g6-smoke": "node scripts/g6-video-onboarding-smoke.mjs",
     "deploy:prod:preflight": "bash scripts/deploy-prod-preflight.sh",

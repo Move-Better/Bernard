@@ -41,6 +41,14 @@ jobs:
       # below VOICE_FIDELITY_GATE_BASELINE. Skips (exit 2) when the fixture is
       # absent, so first-run PRs aren't blocked. Tunable via env.
       - run: npm run verify-caption-fidelity
+      # Schema-drift guard: fail the PR if any column the code expects (per the
+      # committed supabase/expected-schema.json snapshot) is MISSING from prod —
+      # i.e. a migration was written but not applied (Bernard has no migration
+      # tracker). Skips cleanly if the secret is ever absent. Refresh the
+      # snapshot with `npm run schema:snapshot` after applying a migration.
+      - run: npm run schema:verify
+        env:
+          MULTITENANT_DATABASE_URL: ${{ secrets.MULTITENANT_DATABASE_URL }}
 
   review:
     runs-on: ubuntu-latest
