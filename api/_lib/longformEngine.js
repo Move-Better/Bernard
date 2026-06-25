@@ -241,7 +241,7 @@ export async function runChunkPass({ packageId, baseUrl }) {
     } catch (e) {
       console.error('[longformEngine] stitch failed:', e?.stack || e?.message || e)
       await patchPackageTerminal(packageId, ws.id, {
-        status: 'failed', error_message: `stitch failed: ${e?.message || 'unknown'}`,
+        status: 'failed', error_message: 'stitch_failed',
       })
     }
     return

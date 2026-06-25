@@ -689,6 +689,7 @@ export default function StoryboardPiece() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  aria-label="Describe the restyle look"
                   value={restyleInput}
                   onChange={(e) => setRestyleInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -1119,6 +1120,7 @@ export default function StoryboardPiece() {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
+                    aria-label="Describe the shot to search"
                     value={shotQ}
                     onChange={(e) => setShotQ(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') runShotSearch() }}

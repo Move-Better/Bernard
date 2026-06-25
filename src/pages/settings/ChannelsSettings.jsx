@@ -252,6 +252,7 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
                   <span className="text-2xs text-muted-foreground hidden sm:block">posts/wk</span>
                   <input
                     type="number"
+                    aria-label={`${platformLabel} posts per week target`}
                     min={0}
                     max={14}
                     value={ch.target_per_week}

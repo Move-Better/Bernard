@@ -869,6 +869,7 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               type="text"
+              aria-label="Describe the shot"
               value={shotQ}
               onChange={(e) => setShotQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') runShotSearch() }}
@@ -1099,6 +1100,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
           <div className="flex gap-1.5">
             <input
               type="text"
+              aria-label="Describe the grade or look"
               value={vibePrompt}
               onChange={(e) => setVibePrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') proposeFromText() }}

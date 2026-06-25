@@ -143,6 +143,7 @@ function PlatformRow({ label, override, defaults, onChange }) {
             </div>
             <input
               type="text"
+              aria-label="Draft hours (24-hour, comma-separated)"
               value={draftHoursText}
               onChange={(e) => setDraftHoursText(e.target.value)}
               onBlur={onHoursBlur}

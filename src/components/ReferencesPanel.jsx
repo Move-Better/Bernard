@@ -69,6 +69,7 @@ export default function ReferencesPanel({ topicId, interviewId, compact = false 
       <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-2">
         <Input
           type="url"
+          aria-label="Reference URL"
           placeholder="https://example.com/article"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -76,6 +77,7 @@ export default function ReferencesPanel({ topicId, interviewId, compact = false 
         />
         <Input
           type="text"
+          aria-label="Reference title (optional)"
           placeholder="Title (optional)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
