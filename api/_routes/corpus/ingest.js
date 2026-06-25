@@ -140,8 +140,7 @@ export default async function handler(req, res) {
   // response is sent. The index call MUST be awaited inside the promise — a
   // bare floating promise would be killed the instant the response flushes.
   res.status(201).json({ id: doc.id, title: doc.title, docType, staffId })
-
-  waitUntil((async () => {
+  return waitUntil((async () => {
     try {
       if (docType === 'original_blog') {
         await indexOriginalBlog({

@@ -238,6 +238,7 @@ export default async function handler(req, res) {
     const patch = req.body || {}
 
     if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) return err(res, 'Invalid status', 400)
+    if (patch.locationId && !UUID_RE.test(patch.locationId)) return err(res, 'Invalid locationId', 400)
 
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
     // archive or `null` to restore.
@@ -254,7 +255,7 @@ export default async function handler(req, res) {
       buffer_update_id: patch.bufferUpdateId,
       resolved_url:    patch.resolvedUrl,
       target_locations:   patch.targetLocations,
-      location_id:        patch.locationId,
+      location_id:        patch.locationId !== undefined ? (patch.locationId || null) : undefined,
       location_overrides: patch.locationOverrides,
       performed_well:         patch.performedWell,
       archived_at:            patch.archivedAt,
