@@ -311,6 +311,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                   <select
                     value={collectionId}
                     onChange={e => setCollectionId(e.target.value)}
+                    aria-label="Filter by collection"
                     className="text-xs h-7 px-2 pr-6 rounded-md border bg-background text-foreground cursor-pointer appearance-none"
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'6\'%3E%3Cpath d=\'M0 0l5 6 5-6z\' fill=\'%236b7280\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center' }}
                   >

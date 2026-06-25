@@ -216,14 +216,15 @@ function BlockRow({ block, onChange, onRemove }) {
           <select
             value={block.role}
             onChange={(e) => onChange({ ...block, role: e.target.value })}
+            aria-label="Text block role"
             className={`rounded-full px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
           >
             {BLOCK_ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
             ))}
           </select>
-          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive" title="Delete block">
-            <X className="h-3.5 w-3.5" />
+          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive" aria-label="Delete block">
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
 
@@ -1410,9 +1411,9 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
           type="button"
           onClick={onClose}
           className="ml-auto h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
-          title="Close (Esc)"
+          aria-label="Close preview"
         >
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 

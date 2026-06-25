@@ -506,7 +506,7 @@ function ReconRow({ icon, text, action }) {
 function ReconBtn({ children, onClick, busy, kind }) {
   const cls =
     kind === 'primary'
-      ? 'bg-info text-white hover:bg-info/80'
+      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
       : kind === 'warn'
         ? 'bg-[hsl(var(--owner-accent))] text-white hover:bg-[hsl(var(--owner-accent-muted))]'
         : 'bg-card text-foreground ring-1 ring-border hover:bg-muted/50'

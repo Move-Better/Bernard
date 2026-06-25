@@ -138,7 +138,7 @@ export default function PostCallReveal() {
         <button
           type="button"
           onClick={() => navigate('/week')}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
           <ArrowRight className="h-4 w-4" aria-hidden="true" /> Review this week’s {data.scheduledTotal}
         </button>

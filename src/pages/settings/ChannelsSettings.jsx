@@ -311,6 +311,7 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
             value={timezone}
             disabled={isAuto}
             onChange={e => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), timezone: e.target.value, provenance: 'user' })}
+            aria-label="Timezone for scheduling"
             className="w-full max-w-xs text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
           >
             {TIMEZONE_OPTIONS.map(tz => (

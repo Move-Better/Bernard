@@ -183,7 +183,7 @@ async function handler(req, res) {
     `, { input: { id: bufferUpdateId } })
     if (r.errors) {
       console.error('[publish/buffer DELETE] deletePost error', JSON.stringify(r.errors))
-      return res.status(502).json({ error: r.errors[0]?.message || 'Buffer cancel failed' })
+      return res.status(502).json({ error: 'buffer_cancel_failed' })
     }
     const payload = r.data?.deletePost
     if (payload && payload.__typename !== 'PostActionSuccess') {
@@ -193,7 +193,7 @@ async function handler(req, res) {
         return res.status(200).json({ success: true, alreadyGone: true })
       }
       console.error('[publish/buffer DELETE] deletePost rejected', JSON.stringify(payload))
-      return res.status(502).json({ error: payload.message || `Buffer cancel failed (${payload.__typename})` })
+      return res.status(502).json({ error: 'buffer_cancel_failed' })
     }
     return res.status(200).json({ success: true })
   }
@@ -325,12 +325,12 @@ async function handler(req, res) {
     `, { input })
     if (r.errors) {
       console.error('[publish/buffer] createPost error', JSON.stringify(r.errors))
-      return res.status(502).json({ error: r.errors[0]?.message || 'Buffer post failed' })
+      return res.status(502).json({ error: 'buffer_post_failed' })
     }
     const payload = r.data?.createPost
     if (payload && payload.__typename !== 'PostActionSuccess') {
       console.error('[publish/buffer] createPost rejected', JSON.stringify(payload))
-      return res.status(502).json({ error: payload.message || `Buffer post failed (${payload.__typename})` })
+      return res.status(502).json({ error: 'buffer_post_failed' })
     }
     posts.push(payload?.post)
   }
