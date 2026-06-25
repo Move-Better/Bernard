@@ -321,9 +321,9 @@ function MonthView({ current, today, items, onPrev, onNext }) {
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/30">
-        <Button variant="ghost" size="icon" onClick={onPrev}><ChevronLeft className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Previous month" onClick={onPrev}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></Button>
         <h2 className="font-semibold">{MONTH_NAMES[current.getMonth()]} {current.getFullYear()}</h2>
-        <Button variant="ghost" size="icon" onClick={onNext}><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Next month" onClick={onNext}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
       </div>
       <div className="grid grid-cols-7 border-b">
         {DAY_NAMES.map((d, i) => (
@@ -382,11 +382,11 @@ function WeekView({ anchor, today, items, onPrev, onNext }) {
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/30">
-        <Button variant="ghost" size="icon" onClick={onPrev}><ChevronLeft className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Previous week" onClick={onPrev}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></Button>
         <h2 className="font-semibold">
           Week of {days[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </h2>
-        <Button variant="ghost" size="icon" onClick={onNext}><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Next week" onClick={onNext}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
       </div>
       <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b">
         <div />

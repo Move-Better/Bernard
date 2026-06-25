@@ -9,6 +9,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { CAP_BILLING_VIEW } from '../../_lib/capabilities.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 export const config = { runtime: 'nodejs' }
 
@@ -45,6 +46,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // Phase 4 PR 3: capability gate on top of the legacy role gate. Opt-in
   // per-user (see requireCapability comments).

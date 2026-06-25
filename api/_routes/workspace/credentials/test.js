@@ -24,6 +24,7 @@ export const config = { runtime: 'nodejs' }
 import { requireRole, requireCapability } from '../../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../../_lib/capabilities.js'
 import { workspaceContext } from '../../../_lib/workspaceContext.js'
+import { enforceLimit } from '../../../_lib/ratelimit.js'
 import { getCredential } from '../../../_lib/getCredential.js'
 import { testGA4Access }             from '../../../_lib/ga4.js'
 import { testSearchConsoleAccess }   from '../../../_lib/searchConsole.js'
@@ -189,6 +190,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   // Phase 4 PR1: integrations capability gate.
   const capAuth = await requireCapability(req, workspace, [CAP_INTEGRATIONS_CONNECT])

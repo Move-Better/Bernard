@@ -460,10 +460,10 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             )}
           </h2>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(v => !v)} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+            <Button variant="ghost" size="icon" aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} onClick={() => setIsFullscreen(v => !v)}>
+              {isFullscreen ? <Minimize className="h-4 w-4" aria-hidden="true" /> : <Expand className="h-4 w-4" aria-hidden="true" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}><X className="h-4 w-4" aria-hidden="true" /></Button>
           </div>
         </div>
 
