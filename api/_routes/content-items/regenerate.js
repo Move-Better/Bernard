@@ -138,7 +138,7 @@ export default async function handler(req, res) {
   // this endpoint doesn't apply to them.
   const VIDEO_PLATFORMS = new Set(['youtube', 'youtube_short', 'tiktok', 'reels', 'instagram_reel'])
   if (VIDEO_PLATFORMS.has(item.platform)) {
-    return err(res, `Regeneration is not available for video content (${item.platform})`, 422)
+    return err(res, 'platform_not_supported', 422)
   }
 
   // Default angles per platform — used when no atom row is linked (e.g. legacy
@@ -217,7 +217,7 @@ export default async function handler(req, res) {
       ownHistoryBlock,
     )
     if (!systemPrompt) {
-      return err(res, `No prompt defined for ${atom.platform}/${atom.angle}`, 422)
+      return err(res, 'no_prompt_defined', 422)
     }
 
     // Transcript = primary source; blog = editorial context. Mirrors the

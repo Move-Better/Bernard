@@ -100,10 +100,7 @@ export default async function handler(req, res) {
 
   // Consent gate — enforced server-side, mirrors clip-to-post.
   if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') {
-    return res.status(409).json({
-      error: `consent_${asset.consent_status}`,
-      message: 'Resolve consent before exporting this clip.',
-    })
+    return res.status(409).json({ error: 'consent_blocked' })
   }
 
   // Author name for the lower-third.

@@ -155,10 +155,7 @@ export default async function handler(req, res) {
         .reduce((sum, r) => sum + (Number(r.realtime_voice_seconds) || 0), 0)
       if (totalSec >= capMin * 60) {
         console.warn(`[realtime-session] daily cap reached ws=${ws.slug} used=${totalSec}s cap=${capMin}m`)
-        return res.status(429).json({
-          error: `You've reached today's voice-call limit (${capMin} min). Resets at midnight UTC.`,
-          code: 'daily_cap_reached',
-        })
+        return res.status(429).json({ error: 'daily_cap_reached' })
       }
     } else {
       // Best-effort accounting — log and proceed on lookup failure rather

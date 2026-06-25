@@ -83,7 +83,7 @@ export default async function handler(req, res) {
   const item = itemRows[0]
 
   if (item.platform !== 'blog') {
-    return err(res, `blog-regen-prepare only supports blog pieces (got ${item.platform})`, 422)
+    return err(res, 'platform_not_supported', 422)
   }
   if (!item.interview_id) {
     return err(res, 'Content item has no source interview', 422)

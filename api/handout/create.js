@@ -99,10 +99,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Empty audio body' })
   }
   if (audioBuffer.byteLength > WHISPER_MAX_BYTES) {
-    const mb = Math.round(audioBuffer.byteLength / 1024 / 1024)
-    return res.status(413).json({
-      error: `Recording is ${mb}MB — the 25MB cap is around 90 min at standard quality. Re-record shorter or at a lower bitrate.`,
-    })
+    return res.status(413).json({ error: 'recording_too_large' })
   }
 
   // ── 2. Upload to Blob ───────────────────────────────────────────────────

@@ -60,7 +60,8 @@ async function handler(req, res) {
   const required = ['slug', 'title', 'description', 'pubDate', 'markdown']
   const missing = required.filter((k) => !payload[k] || (typeof payload[k] === 'string' && !payload[k].trim()))
   if (missing.length) {
-    return res.status(400).json({ error: 'invalid_payload', message: `Missing required field(s): ${missing.join(', ')}` })
+    console.error('[publish/website] missing fields:', missing.join(', '))
+    return res.status(400).json({ error: 'invalid_payload' })
   }
 
   // Blog output hygiene gate (see src/lib/blogOutput.js + the 2026-06 SEO
@@ -74,7 +75,6 @@ async function handler(req, res) {
   if (bodyH1s.length) {
     return res.status(400).json({
       error: 'body_has_h1',
-      message: `The article body must not contain a top-level "# " heading (found ${bodyH1s.length}). The title goes in the title field; use "## " for sections so the page has exactly one <h1>.`,
       issues: bodyH1s.map((h) => `line ${h.line}: ${h.text}`),
     })
   }
@@ -236,7 +236,7 @@ async function publishToWordPress(res, payload, cred) {
       const existing = await collisionRes.json()
       if (Array.isArray(existing) && existing.length) {
         console.error(tag, 'slug_taken')
-        return res.status(409).json({ error: 'slug_taken', slug: payload.slug, message: `The slug "${payload.slug}" is already used on the website. Rename and try again.` })
+        return res.status(409).json({ error: 'slug_taken', slug: payload.slug })
       }
     } else if (collisionRes.status === 401 || collisionRes.status === 403) {
       console.error(tag, 'auth_failed on collision check:', collisionRes.status)
