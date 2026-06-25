@@ -52,6 +52,8 @@ async function handler(req, res) {
 
   const collectionId = body.collectionId || searchParams.get('collectionId')
   if (!collectionId) return res.status(400).json({ error: 'collectionId required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(collectionId)) return res.status(400).json({ error: 'invalid_collectionId' })
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })

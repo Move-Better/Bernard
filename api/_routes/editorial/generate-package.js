@@ -89,6 +89,13 @@ export default async function handler(req, res) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const staffId = body.staffId ? String(body.staffId) : null
   if (staffId && !UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staff_id' })
+  // Verify staffId belongs to this workspace — prevents writing a cross-tenant
+  // staff_id FK into story_packages (corrupts staff-scoped analytics pipelines).
+  if (staffId) {
+    const staffChk = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+    const staffRows = staffChk.ok ? await staffChk.json().catch(() => []) : []
+    if (!staffRows.length) return res.status(404).json({ error: 'staff_not_found' })
+  }
   const requestedKind = body.kind && body.kind !== 'any' ? String(body.kind) : null
   // Phase 4 Tentpole PR B: optional campaign tagging.
   const campaignId = body.campaignId ? String(body.campaignId) : null

@@ -394,7 +394,7 @@ async function handler(req, res) {
   // (not a hardcoded trio) so a new tenant's Auto cadence covers exactly what
   // they enabled. provenance stays 'bernard' (Auto), so the Strategist keeps
   // recomputing this live as enabled_outputs change.
-  const cadenceChannels = computeAutoCadenceChannels(enabled_outputs, await getCadencePrior(sb))
+  const cadenceChannels = computeAutoCadenceChannels(enabled_outputs, await getCadencePrior(sb).catch(() => null))
 
   // 3. Insert workspace row.
   const insertBody = [{
