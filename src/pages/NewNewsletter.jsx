@@ -420,7 +420,7 @@ function NewGoalForm({ onCreate, onCancel, pending }) {
             ))}
           </SelectContent>
         </Select>
-        <Input placeholder="CTA — “Nominate a cause”" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
+        <Input aria-label="CTA label" placeholder={'CTA — “Nominate a cause”'} value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
       </div>
       <div className="flex items-center justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>

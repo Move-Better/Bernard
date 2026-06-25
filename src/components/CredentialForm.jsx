@@ -189,6 +189,7 @@ export default function CredentialForm({
         <Label htmlFor="cred-secret" className="text-xs">{service.secretLabel}</Label>
         {service.secretIsTextarea ? (
           <Textarea
+            id="cred-secret"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             rows={4}

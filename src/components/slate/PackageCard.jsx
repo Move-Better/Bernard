@@ -418,6 +418,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
         <div className="flex flex-col gap-2.5 p-3">
           <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wide">Edit caption</p>
           <Textarea
+            aria-label="Caption"
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             rows={4}

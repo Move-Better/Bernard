@@ -244,6 +244,7 @@ export default function CaptureReview() {
               </span>
             </div>
             <Textarea
+              aria-label="Transcript"
               value={transcript ?? ''}
               onChange={(e) => setTranscript(e.target.value)}
               rows={10}

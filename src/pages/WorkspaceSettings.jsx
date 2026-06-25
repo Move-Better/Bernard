@@ -567,10 +567,12 @@ function Field({ label, value, onChange, placeholder, hint, type = 'text', autoC
 }
 
 function Textarea2({ label, value, onChange, rows = 4, hint, mono = false }) {
+  const fieldId = `textarea2-${label.toLowerCase().replace(/\s+/g, '-')}`
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium">{label}</Label>
+      <Label htmlFor={fieldId} className="text-sm font-medium">{label}</Label>
       <Textarea
+        id={fieldId}
         value={value}
         onChange={e => onChange(e.target.value)}
         rows={rows}

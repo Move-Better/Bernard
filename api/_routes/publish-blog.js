@@ -135,8 +135,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
   }
 
-  if (!(await enforceLimit(req, res, 'publish-blog-inbound'))) return
-
   const expectedSecret = process.env.BERNARD_PUBLISH_SECRET
   const ghToken        = process.env.GITHUB_TOKEN_BERNARD_PUBLISH
   if (!expectedSecret || !ghToken) {
@@ -149,6 +147,8 @@ export default async function handler(req, res) {
   if (!timingSafeEqual(provided, expectedSecret)) {
     return res.status(401).json({ error: 'unauthorized' })
   }
+
+  if (!(await enforceLimit(req, res, 'publish-blog-inbound'))) return
 
   const payload = (typeof req.body === 'object' && req.body) ? req.body : null
   if (!payload) {
