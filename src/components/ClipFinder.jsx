@@ -97,6 +97,7 @@ function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview,
           className="shrink-0 relative rounded-md overflow-hidden bg-muted mt-0.5 group"
           style={{ width: 64, height: 64 }}
           title={`Preview: ${mmss(startSec)}–${mmss(endSec)}`}
+          aria-label={`${isActive ? 'Stop preview' : 'Preview clip'}: ${mmss(startSec)}–${mmss(endSec)}`}
           aria-pressed={isActive}
         >
           {asset.thumbnail_url ? (
@@ -116,11 +117,11 @@ function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview,
           }`}>
             {isActive ? (
               <div className="h-6 w-6 rounded-full bg-primary/80 flex items-center justify-center">
-                <ChevronUp className="h-3.5 w-3.5 text-white" />
+                <ChevronUp className="h-3.5 w-3.5 text-white" aria-hidden="true" />
               </div>
             ) : (
               <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
-                <Play className="h-3 w-3 text-white ml-0.5" />
+                <Play className="h-3 w-3 text-white ml-0.5" aria-hidden="true" />
               </div>
             )}
           </div>

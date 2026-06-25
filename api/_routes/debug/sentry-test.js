@@ -3,6 +3,7 @@ export const config = { runtime: 'nodejs' }
 import { withSentry } from '../../_lib/sentry.js'
 import { requireRole } from '../../_lib/auth.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 
 // Throws a synthetic error so we can verify the Sentry pipeline end-to-end:
 // init → wrapper catch → scope tags → flush → Sentry inbox.
@@ -23,6 +24,7 @@ async function handler(req, res) {
     const status = auth.reason === 'forbidden' ? 403 : 401
     return res.status(status).json({ error: auth.reason })
   }
+  if (!(await enforceLimit(req, res, 'generic', workspace?.id))) return
   throw new Error('sentry-test: synthetic error from /api/debug/sentry-test')
 }
 

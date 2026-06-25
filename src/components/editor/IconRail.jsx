@@ -20,7 +20,7 @@ export default function IconRail({ items, active, onPick }) {
             style={{ borderLeft: `2px solid ${on ? 'hsl(var(--primary))' : 'transparent'}`, background: on ? 'hsl(var(--primary)/0.07)' : undefined }}
             title={label}
           >
-            <Icon className="h-4 w-4" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
+            <Icon className="h-4 w-4" aria-hidden="true" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
             <span className="text-3xs" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
           </button>
         )
