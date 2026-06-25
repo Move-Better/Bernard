@@ -63,6 +63,7 @@
     --success: 152 76% 40%;
     --success-foreground: 0 0% 100%;   /* white on emerald-600 passes WCAG AA */
     --warning:  38 92% 50%;
+    --warning-foreground: 222 47% 8%;    /* dark on amber passes WCAG AA */
     --info:    199 95% 40%;
     --info-foreground: 0 0% 100%;      /* white on sky-600 passes WCAG AA */
 
