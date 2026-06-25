@@ -57,10 +57,10 @@ async function handler(req, res) {
     accessToken = await accessTokenForWorkspace(workspace.id)
   } catch (e) {
     if (e instanceof DriveAuthError) {
-      return res.status(412).json({ error: e.code, message: e.message })
+      return res.status(412).json({ error: e.code })
     }
     console.error('[drive/picker-token] failed:', e?.message)
-    return res.status(502).json({ error: 'refresh-failed', message: e?.message })
+    return res.status(502).json({ error: 'refresh-failed' })
   }
 
   // Cache-Control: no-store so the access token never lands in a shared cache.

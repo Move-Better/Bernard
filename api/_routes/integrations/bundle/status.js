@@ -95,7 +95,7 @@ async function handler(req, res) {
     return res.status(200).json({ connected: accounts.length > 0, accounts, locations })
   } catch (e) {
     console.error('[bundle/status] failed:', e?.stack || e?.message)
-    return res.status(502).json({ error: 'bundle-status-failed', message: e?.message })
+    return res.status(502).json({ error: 'bundle-status-failed' })
   }
 }
 

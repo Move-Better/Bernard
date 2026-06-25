@@ -46,8 +46,8 @@ async function handler(req, res) {
   let publisher
   try {
     publisher = new BundlePublisher(workspace)
-  } catch (e) {
-    return res.status(503).json({ error: 'bundle-not-configured', message: e?.message })
+  } catch (_e) {
+    return res.status(503).json({ error: 'bundle-not-configured' })
   }
 
   // Ensure a LIVE bundle brand Team, then return the hosted-portal link.
@@ -73,7 +73,7 @@ async function handler(req, res) {
     return res.status(200).json({ url })
   } catch (e) {
     console.error('[bundle/connect] failed:', e?.stack || e?.message)
-    return res.status(e?.status || 502).json({ error: e?.code || 'portal-link-failed', message: e?.message })
+    return res.status(e?.status || 502).json({ error: e?.code || 'portal-link-failed' })
   }
 }
 

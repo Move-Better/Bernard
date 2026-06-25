@@ -144,7 +144,7 @@ export default async function handler(req, res) {
     text = result.text
   } catch (e) {
     console.error('[topic-backlog/suggest] AI call failed:', e.message)
-    return err(res, e.message || 'AI suggestion failed', 500)
+    return err(res, 'ai_suggestion_failed', 500)
   }
 
   const suggestions = parseSuggestions(text || '')

@@ -76,8 +76,8 @@ async function handler(req, res) {
   let publisher
   try {
     publisher = new BundlePublisher(workspace)
-  } catch (e) {
-    return res.status(503).json({ error: 'bundle-not-configured', message: e?.message })
+  } catch (_e) {
+    return res.status(503).json({ error: 'bundle-not-configured' })
   }
 
   // Ensure a LIVE per-location Team, then return a GBP-only hosted-portal link.
@@ -107,7 +107,7 @@ async function handler(req, res) {
     return res.status(200).json({ url, locationId: location.id })
   } catch (e) {
     console.error('[bundle/connect-location] failed:', e?.stack || e?.message)
-    return res.status(e?.status || 502).json({ error: e?.code || 'portal-link-failed', message: e?.message })
+    return res.status(e?.status || 502).json({ error: e?.code || 'portal-link-failed' })
   }
 }
 

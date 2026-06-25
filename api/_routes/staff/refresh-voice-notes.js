@@ -139,7 +139,7 @@ export default async function handler(req, res) {
     analysisText = (result.text || '').trim()
   } catch (e) {
     console.error('[clinicians/refresh-voice-notes] AI call failed:', e.message)
-    return err(res, e.message || 'AI analysis failed', 500)
+    return err(res, 'ai_analysis_failed', 500)
   }
 
   // "NO CLEAR PATTERN" means the AI found nothing actionable
