@@ -88,6 +88,7 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   if (req.method === 'GET') {
+    if (!(await enforceLimit(req, res, 'generic'))) return
     if (!staffId) return err(res, 'Missing staffId')
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)

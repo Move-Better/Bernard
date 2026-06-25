@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
   // ── Skip / restore the channel's atoms ─────────────────────────────────────
   const atomsRes = await sb(
-    `content_plan_atoms?interview_id=eq.${interviewId}&platform=eq.${platform}&${wsFilter}` +
+    `content_plan_atoms?interview_id=eq.${interviewId}&platform=eq.${encodeURIComponent(platform)}&${wsFilter}` +
     `&select=id,status,content_piece_id,content_piece:content_items!content_piece_id(published_at)`
   )
   if (!atomsRes.ok) return err(res, 'Database error', 500)
