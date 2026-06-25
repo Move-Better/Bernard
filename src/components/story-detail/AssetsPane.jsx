@@ -1160,6 +1160,7 @@ function WhenToPublishCard({
             type="datetime-local"
             value={customAt}
             onChange={(e) => setCustomAt(e.target.value)}
+            aria-label="Schedule date and time"
             min={toLocalDatetimeInput(new Date(Date.now() + 60_000))}
             className="h-8 text-sm w-fit"
           />

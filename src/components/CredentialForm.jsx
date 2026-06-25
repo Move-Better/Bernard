@@ -174,8 +174,9 @@ export default function CredentialForm({
     <div className="space-y-3">
       {(service.fields || []).map((f) => (
         <div className="space-y-1" key={f.key}>
-          <Label className="text-xs">{f.label}</Label>
+          <Label htmlFor={`cred-field-${f.key}`} className="text-xs">{f.label}</Label>
           <Input
+            id={`cred-field-${f.key}`}
             value={config[f.key] ?? ''}
             onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.value }))}
             placeholder={f.placeholder}
@@ -185,7 +186,7 @@ export default function CredentialForm({
         </div>
       ))}
       <div className="space-y-1">
-        <Label className="text-xs">{service.secretLabel}</Label>
+        <Label htmlFor="cred-secret" className="text-xs">{service.secretLabel}</Label>
         {service.secretIsTextarea ? (
           <Textarea
             value={secret}
@@ -197,6 +198,7 @@ export default function CredentialForm({
           />
         ) : (
           <Input
+            id="cred-secret"
             type="password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}

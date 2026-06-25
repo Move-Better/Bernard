@@ -274,6 +274,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                   value={query}
                   onChange={handleQueryChange}
                   placeholder='Search by what&rsquo;s in it — "hip hinge", "sciatica", "front desk"…'
+                  aria-label="Search media"
                   className="pl-8 pr-8 h-8 text-sm"
                 />
                 {query && (

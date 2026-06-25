@@ -184,6 +184,7 @@ export default function CollectionPicker({ assetId, onChange }) {
             <div className="flex gap-2 items-center">
               <input
                 autoFocus
+                aria-label="New collection name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => {

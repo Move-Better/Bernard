@@ -827,6 +827,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
                   placeholder="Add tag (e.g. shoulder, post-op)"
+                  aria-label="Add tag"
                   className="h-8 text-sm"
                 />
                 <Button size="sm" variant="outline" onClick={addTag} disabled={!tagInput.trim()}>
@@ -935,11 +936,11 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Patient pseudonym</label>
-                <Input value={patient} onChange={(e) => setPatient(e.target.value)} placeholder="e.g. R-23, Bella" className="h-8 text-sm" />
+                <Input value={patient} onChange={(e) => setPatient(e.target.value)} placeholder="e.g. R-23, Bella" aria-label="Patient pseudonym" className="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Condition</label>
-                <Input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="e.g. low back, stifle" className="h-8 text-sm" />
+                <Input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="e.g. low back, stifle" aria-label="Condition" className="h-8 text-sm" />
               </div>
             </div>
 
@@ -1010,6 +1011,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                     value={purgeConfirm}
                     onChange={(e) => setPurgeConfirm(e.target.value)}
                     placeholder={asset.filename}
+                    aria-label={`Type ${asset.filename} to confirm deletion`}
                     className="h-8 text-sm bg-card"
                   />
                 </div>

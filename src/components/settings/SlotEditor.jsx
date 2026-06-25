@@ -137,6 +137,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
                 value={slot.label}
                 onChange={(e) => updateCustomSlot(slot.key, { label: e.target.value })}
                 placeholder="Label (e.g. Equine owners)"
+                aria-label="Slot label"
                 maxLength={60}
                 className="h-8 text-xs font-semibold"
               />
@@ -144,6 +145,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
                 value={slot.description}
                 onChange={(e) => updateCustomSlot(slot.key, { description: e.target.value })}
                 placeholder="Short description (shown beneath the label)"
+                aria-label="Slot description"
                 maxLength={120}
                 className="h-8 text-2xs text-muted-foreground"
               />
@@ -176,6 +178,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
                 value={pending.label}
                 onChange={(e) => setPending(p => ({ ...p, label: e.target.value }))}
                 placeholder="Label (e.g. Equine owners)"
+                aria-label="Slot label"
                 maxLength={60}
                 className="h-8 text-xs font-semibold"
                 autoFocus
@@ -185,6 +188,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
                 value={pending.description}
                 onChange={(e) => setPending(p => ({ ...p, description: e.target.value }))}
                 placeholder="Short description (shown beneath the label)"
+                aria-label="Slot description"
                 maxLength={120}
                 className="h-8 text-2xs text-muted-foreground"
                 onKeyDown={(e) => { if (e.key === 'Enter') commitPending(); if (e.key === 'Escape') setPending(null) }}

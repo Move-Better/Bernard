@@ -346,6 +346,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
+                    aria-label="Schedule date and time"
                     className="h-8 text-sm w-fit"
                   />
                 )}

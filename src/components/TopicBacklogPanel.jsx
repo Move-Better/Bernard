@@ -115,6 +115,7 @@ export default function TopicBacklogPanel() {
       <form onSubmit={handleAdd} className="flex gap-2">
         <Input
           placeholder="Add a topic manually (e.g., piriformis syndrome)"
+          aria-label="Add a topic manually"
           value={newTopic}
           onChange={(e) => setNewTopic(e.target.value)}
           className="text-sm"
