@@ -12,6 +12,7 @@ export const config = { runtime: 'nodejs' }
 // from another workspace can't cross-link rows.
 
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
@@ -63,6 +64,8 @@ async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
+  if (!(await enforceLimit(req, res, 'generic'))) return
+
   // Always confirm the collection belongs to this workspace.
   const colCheck = await verifyScope(scope, 'collections', [collectionId])
   if (!colCheck.ok) return res.status(404).json({ error: 'Collection not found' })
@@ -93,6 +96,7 @@ async function handler(req, res) {
 
   // DELETE — single via query, bulk via body.
   const singleAssetId = searchParams.get('assetId')
+  if (singleAssetId && !UUID_RE.test(singleAssetId)) return res.status(400).json({ error: 'invalid_assetId' })
   const assetIds = singleAssetId
     ? [singleAssetId]
     : (Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean) : [])
