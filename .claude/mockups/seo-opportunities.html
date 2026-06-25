@@ -45,29 +45,29 @@
     </div>
   </div>
 
-  <!-- representative-data banner -->
-  <div class="mt-3 mb-5 text-2xs rounded-md bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 inline-flex items-center gap-1.5" style="font-size:11px">
-    <i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>
-    Mockup — numbers are representative Move Better queries. Swap in live GSC data before sign-off.
+  <!-- real-data banner -->
+  <div class="mt-3 mb-5 text-2xs rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 inline-flex items-center gap-1.5" style="font-size:11px">
+    <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+    Live Move Better Search Console data (28d). Decay/cannibalization cards are locked until snapshot history accrues.
   </div>
 
   <!-- summary strip -->
   <div class="grid grid-cols-4 gap-3 mb-6">
     <div class="bg-card border border-app rounded-xl p-4">
-      <div class="text-2xl font-semibold">14</div>
+      <div class="text-2xl font-semibold">5</div>
       <div class="text-xs text-muted mt-0.5">Open opportunities</div>
     </div>
     <div class="bg-card border border-app rounded-xl p-4">
-      <div class="text-2xl font-semibold text-action">6</div>
+      <div class="text-2xl font-semibold text-action">4</div>
       <div class="text-xs text-muted mt-0.5">Striking distance <span class="text-muted">(#8–20)</span></div>
     </div>
     <div class="bg-card border border-app rounded-xl p-4">
-      <div class="text-2xl font-semibold">5</div>
+      <div class="text-2xl font-semibold">4</div>
       <div class="text-xs text-muted mt-0.5">Demand, no content</div>
     </div>
-    <div class="bg-card border border-app rounded-xl p-4">
-      <div class="text-2xl font-semibold text-rose-600">3</div>
-      <div class="text-xs text-muted mt-0.5">Decaying pages</div>
+    <div class="bg-card border border-app rounded-xl p-4 opacity-60">
+      <div class="text-2xl font-semibold text-muted">🔒</div>
+      <div class="text-xs text-muted mt-0.5">Decay — needs history</div>
     </div>
   </div>
 
@@ -98,32 +98,41 @@
 </div>
 
 <script>
+// Live Move Better GSC gaps (28d) read from /analytics on 2026-06-24.
 const OPPS = [
   { type:'striking', tag:'Striking distance', tagcls:'bg-action text-white',
-    query:'chiropractor for sciatica portland', pos:11.4, impr:840, clicks:9, ctr:1.1,
-    why:'You rank #11 — one strong page pushes this to page 1. 840 impressions/mo, almost no clicks.',
-    match:{ has:true, label:'Existing post is thin — improve it', icon:'file-pen' },
-    intent:'Local + condition' },
-  { type:'gap', tag:'Demand, no content', tagcls:'bg-primary text-white',
-    query:'how long does it take to fix forward head posture', pos:18.2, impr:1290, clicks:4, ctr:0.3,
-    why:'1,290 impressions and you have nothing written for it. High-intent question your team answers daily.',
-    match:{ has:false, label:'No matching content', icon:'file-plus' },
-    intent:'Informational · question' },
+    query:'belly breathing vs chest breathing', pos:11.5, impr:27, clicks:0, ctr:0,
+    why:'You rank #11.5 — just off page 1. A short interview clip on breathing mechanics likely lands it top 10.',
+    match:{ has:false, label:'No post yet', icon:'file-plus' },
+    intent:'Informational · comparison' },
   { type:'striking', tag:'Striking distance', tagcls:'bg-action text-white',
-    query:'is walking good for a herniated disc', pos:9.6, impr:610, clicks:14, ctr:2.3,
-    why:'Just off page 1 (#9.6). A focused interview clip + post likely lands top 5.',
-    match:{ has:true, label:'Partial — expand existing piece', icon:'file-pen' },
-    intent:'Informational · yes/no' },
-  { type:'decay', tag:'Decaying', tagcls:'bg-rose-600 text-white',
-    query:'shockwave therapy portland', pos:6.1, impr:430, clicks:21, ctr:4.9, delta:-3.4,
-    why:'Was #2.7 eight weeks ago, now #6.1 and falling. A competitor moved — refresh before it leaves page 1.',
-    match:{ has:true, label:'Refresh the ranking page', icon:'refresh-cw' },
-    intent:'Local + service' },
+    query:'animal chiropractor', pos:10.4, impr:16, clicks:0, ctr:0,
+    why:'#10.4 — edge of page 1. Belongs to the Animals workspace; route there or write a cross-link.',
+    match:{ has:false, label:'No post yet', icon:'file-plus' },
+    intent:'Service · who/what' },
+  { type:'striking', tag:'Striking distance', tagcls:'bg-action text-white',
+    query:'animal chiropractor near me', pos:10.9, impr:15, clicks:0, ctr:0,
+    why:'#10.9, local intent. Same Animals topic — one page can capture both this and "animal chiropractor".',
+    match:{ has:false, label:'No post yet', icon:'file-plus' },
+    intent:'Local · service' },
+  { type:'striking', tag:'Striking distance', tagcls:'bg-action text-white',
+    query:'body tempering near me', pos:10.6, impr:10, clicks:0, ctr:0,
+    why:'#10.6 for a niche modality you offer — low competition, easy page-1 win with a dedicated explainer.',
+    match:{ has:false, label:'No post yet', icon:'file-plus' },
+    intent:'Local · modality' },
   { type:'gap', tag:'Demand, no content', tagcls:'bg-primary text-white',
-    query:'exercises for tech neck', pos:22.0, impr:980, clicks:2, ctr:0.2,
-    why:'Strong, evergreen demand. Perfect for a staff interview → carousel + reel + blog.',
-    match:{ has:false, label:'No matching content', icon:'file-plus' },
-    intent:'Informational · how-to' },
+    query:'back pain treatment portland', pos:53.2, impr:20, clicks:0, ctr:0,
+    why:'High-value local term you barely rank for (#53). Competitive, but a strong pillar page is the long game here.',
+    match:{ has:true, label:'Partial coverage — needs a focused page', icon:'file-pen' },
+    intent:'Local · high-value' },
+];
+
+// Locked types — surfaced once the weekly snapshot cron has accrued history.
+const LOCKED = [
+  { tag:'Decaying', icon:'trending-down', label:'Pages slipping in rank',
+    why:'Compares each query’s position week-over-week to catch rankings that are falling before they leave page 1.' },
+  { tag:'Cannibalization', icon:'split', label:'Two pages competing for one query',
+    why:'Flags when multiple of your pages rank for the same query and split the clicks — consolidate to lift both.' },
 ];
 
 const ICON = { striking:'target', gap:'sparkles', decay:'trending-down' };
@@ -167,7 +176,20 @@ function card(o){
   </div>`;
 }
 
-document.getElementById('feed').innerHTML = OPPS.map(card).join('');
+function lockedCard(l){
+  return `
+  <div class="bg-card border border-dashed border-app rounded-xl p-4 opacity-70">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-2xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted" style="font-size:11px">${l.tag}</span>
+      <span class="text-2xs text-muted inline-flex items-center gap-1" style="font-size:11px"><i data-lucide="lock" class="w-3 h-3"></i> Unlocks as weekly snapshots accrue</span>
+    </div>
+    <div class="font-medium text-[15px] flex items-center gap-2"><i data-lucide="${l.icon}" class="w-4 h-4 text-muted"></i> ${l.label}</div>
+    <p class="text-xs text-muted mt-1.5">${l.why}</p>
+  </div>`;
+}
+
+document.getElementById('feed').innerHTML =
+  OPPS.map(card).join('') + LOCKED.map(lockedCard).join('');
 lucide.createIcons();
 </script>
 </body>
