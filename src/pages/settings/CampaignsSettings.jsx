@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { apiFetch } from '@/lib/api'
 import { useStaffSummaries, useLocations } from '@/lib/queries'
 import { toast } from '@/lib/toast'
@@ -450,20 +451,19 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
           label="Promote location"
           hint="Steer every channel (Instagram, Facebook, blog, email, Google) toward driving people to one clinic — e.g. a newly opened location. Leave on “None” for a brand-wide campaign."
         >
-          <select
-            value={form.target_location_id || ''}
-            onChange={(e) => set('target_location_id', e.target.value)}
-            aria-label="Promote location"
-            className="text-sm border border-border rounded-md px-2 py-2 bg-card w-full"
-          >
-            <option value="">None — brand-wide</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.label || loc.city}
-                {loc.region ? ` (${loc.city}, ${loc.region})` : ''}
-              </option>
-            ))}
-          </select>
+          <Select value={form.target_location_id || ''} onValueChange={(v) => set('target_location_id', v)}>
+            <SelectTrigger className="h-9 text-sm w-full" aria-label="Promote location">
+              <SelectValue placeholder="None — brand-wide" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">None — brand-wide</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.label || loc.city}{loc.region ? ` (${loc.city}, ${loc.region})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
       )}
 
@@ -505,16 +505,16 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
       <div className="border-t border-border pt-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label className="text-xs text-muted-foreground">Status:</Label>
-          <select
-            value={form.status}
-            onChange={(e) => set('status', e.target.value)}
-            aria-label="Campaign status"
-            className="text-sm border border-border rounded-md px-2 py-1.5 bg-card"
-          >
-            <option value="active">Active</option>
-            <option value="complete">Complete</option>
-            <option value="archived">Archived</option>
-          </select>
+          <Select value={form.status} onValueChange={(v) => set('status', v)}>
+            <SelectTrigger className="h-8 text-sm w-auto min-w-[110px]" aria-label="Campaign status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>

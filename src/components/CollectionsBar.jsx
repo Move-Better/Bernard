@@ -3,6 +3,7 @@ import { FolderPlus, Loader2, Plus, X, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import {
   listCollections,
   createCollection,
@@ -221,14 +222,14 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
             placeholder="Collection name (e.g. May 2026 promo)"
             className="h-8 text-sm flex-1 min-w-[220px]"
           />
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            aria-label="Collection type"
-            className="text-2xs h-8 px-2 rounded-md border border-border bg-background text-foreground"
-          >
-            {KIND_OPTIONS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
-          </select>
+          <Select value={kind} onValueChange={setKind}>
+            <SelectTrigger className="h-8 text-2xs w-auto min-w-[100px]" aria-label="Collection type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {KIND_OPTIONS.map((k) => <SelectItem key={k.id} value={k.id}>{k.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button size="sm" onClick={submitCreate} disabled={submitting || !name.trim()}>
             {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
             Create

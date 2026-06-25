@@ -5,6 +5,7 @@ import { X, Loader2, Sparkles, Upload as UploadIcon, Check, Trash2, AlertTriangl
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { updateContentPiece, deleteContentPiece } from '@/lib/contentLib'
 import { uploadMedia, getMediaAsset } from '@/lib/mediaLib'
@@ -256,15 +257,15 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="brief-platform" className="text-xs font-medium text-muted-foreground block mb-1.5">Target platform</label>
-                <select
-                  id="brief-platform"
-                  value={platform}
-                  onChange={(e) => setPlatform(e.target.value)}
-                  className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full"
-                >
-                  <option value="">— choose —</option>
-                  {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <Select value={platform} onValueChange={setPlatform}>
+                  <SelectTrigger id="brief-platform" className="h-8 text-sm w-full">
+                    <SelectValue placeholder="— choose —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">— choose —</SelectItem>
+                    {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">CTA text</label>

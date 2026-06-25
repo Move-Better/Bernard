@@ -9,6 +9,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
@@ -292,17 +293,20 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
 
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">Timezone for scheduling</p>
-          <select
+          <Select
             value={timezone}
             disabled={isAuto}
-            onChange={e => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), timezone: e.target.value, provenance: 'user' })}
-            aria-label="Timezone for scheduling"
-            className="w-full max-w-xs text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
+            onValueChange={(v) => onChange({ ...(cadence || DEFAULT_CADENCE_POLICY), timezone: v, provenance: 'user' })}
           >
-            {TIMEZONE_OPTIONS.map(tz => (
-              <option key={tz.value} value={tz.value}>{tz.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full max-w-xs h-9 text-sm" aria-label="Timezone for scheduling">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIMEZONE_OPTIONS.map(tz => (
+                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </CardContent>
     </Card>

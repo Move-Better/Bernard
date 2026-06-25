@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { getOrCreateStaff, createInterview } from '@/lib/api'
 import MicCheck from '@/components/MicCheck'
 import { useStaff, useCampaigns, useUpsertCampaign } from '@/lib/queries'
@@ -407,16 +408,16 @@ function NewGoalForm({ onCreate, onCancel, pending }) {
         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
       />
       <div className="grid grid-cols-2 gap-2">
-        <select
-          aria-label="Content style"
-          value={contentStyle}
-          onChange={(e) => setContentStyle(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
-        >
-          {CONTENT_STYLES.map((s) => (
-            <option key={s.id} value={s.id}>{s.label} — {s.hint}</option>
-          ))}
-        </select>
+        <Select value={contentStyle} onValueChange={setContentStyle}>
+          <SelectTrigger className="h-10 text-sm" aria-label="Content style">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CONTENT_STYLES.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.label} — {s.hint}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input placeholder="CTA — “Nominate a cause”" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
       </div>
       <div className="flex items-center justify-end gap-2">

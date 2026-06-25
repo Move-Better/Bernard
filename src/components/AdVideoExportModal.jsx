@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Megaphone, ShieldAlert, Download, Loader2, Check, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { renderAdVideo, saveAdCreative } from '@/lib/ads'
 import { useCampaigns } from '@/lib/queries'
 import { downloadBlobFile } from '@/lib/download'
@@ -110,18 +111,17 @@ export default function AdVideoExportModal({ clip, onClose }) {
           {campaigns.length > 0 && (
             <div className="mb-4 flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Group under campaign:</span>
-              <select
-                value={campaignId}
-                onChange={(e) => setCampaignId(e.target.value)}
-                disabled={running}
-                aria-label="Group under campaign"
-                className="flex-1 rounded-lg border bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
-              >
-                <option value="">— none —</option>
-                {campaigns.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <Select value={campaignId} onValueChange={setCampaignId} disabled={running}>
+                <SelectTrigger className="flex-1 h-8 text-xs" aria-label="Group under campaign">
+                  <SelectValue placeholder="— none —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— none —</SelectItem>
+                  {campaigns.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
