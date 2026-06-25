@@ -25,7 +25,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 30 }
 
 import { enforceLimit } from '../_lib/ratelimit.js'
-import { findSlugPrefixCollision, SLUG_MAX } from '../../src/lib/blogOutput.js'
+import { findSlugPrefixCollision, slugifyTitle, SLUG_MAX } from '../../src/lib/blogOutput.js'
 
 const REPO_OWNER = 'Move-Better'
 const REPO_NAME  = 'Bernard'
@@ -163,8 +163,11 @@ export default async function handler(req, res) {
   if (payload.slug && !SLUG_RE.test(payload.slug)) {
     issues.push('slug must be lowercase alphanumeric + hyphens (matches /^[a-z0-9][a-z0-9-]*$/)')
   }
+  // Auto-correct an over-length slug using the same word-boundary cap that the
+  // Studio workspace should apply. This silences rejections when the title is
+  // long — the slug is truncated here rather than surfaced as an error.
   if (payload.slug && payload.slug.length > SLUG_MAX) {
-    issues.push(`slug must be ≤${SLUG_MAX} characters (received ${payload.slug.length}); use slugifyTitle() to derive a capped slug from the title`)
+    payload.slug = slugifyTitle(payload.title)
   }
   if (issues.length) {
     return res.status(400).json({ error: 'invalid_payload', message: 'Validation failed.', issues })
