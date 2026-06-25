@@ -41,7 +41,7 @@ const VIDEO_CHANNELS = [
 function similarityBadge(sim) {
   const pct = Math.round(sim * 100)
   const color =
-    pct >= 80 ? 'bg-green-100 text-green-800' :
+    pct >= 80 ? 'bg-success/10 text-success' :
     pct >= 65 ? 'bg-warning/10 text-warning' :
                 'bg-zinc-100 text-zinc-700'
   return (

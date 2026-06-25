@@ -92,7 +92,8 @@ async function handler(req, res) {
       if (text.includes('foreign key') || text.includes('23503')) {
         return res.status(409).json({ error: 'Asset is assigned to one or more roles — clear the role first.' })
       }
-      return res.status(500).json({ error: 'Database error (delete)', detail: text })
+      console.error('[brand-kit/[id]] supabase delete error:', text.slice(0, 300))
+      return res.status(500).json({ error: 'Database error' })
     }
 
     // Blob deletion is best-effort: row is already gone, and a stale blob is

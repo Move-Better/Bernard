@@ -92,7 +92,8 @@ async function handler(req, res) {
   })
   if (!upRes.ok) {
     const text = await upRes.text()
-    return res.status(500).json({ error: 'Database error', detail: text })
+    console.error('[brand-kit/style] supabase error:', text.slice(0, 300))
+    return res.status(500).json({ error: 'Database error' })
   }
   // Drop the workspace cache so the next GET in this instance reflects the
   // write. Without this the 60s in-process cache serves stale brand_style.

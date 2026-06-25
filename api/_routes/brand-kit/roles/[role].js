@@ -84,7 +84,8 @@ async function handler(req, res) {
     })
     if (!upRes.ok) {
       const text = await upRes.text()
-      return res.status(500).json({ error: 'Database error (upsert)', detail: text })
+      console.error('[brand-kit/roles] supabase upsert error:', text.slice(0, 300))
+      return res.status(500).json({ error: 'Database error' })
     }
     const row = await upRes.json()
 
