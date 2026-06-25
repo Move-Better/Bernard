@@ -185,21 +185,26 @@ async function publishToAstro(res, payload, cred, workspaceSlug) {
     return res.status(200).json({ success: true, slug: data.slug, commitUrl: data.commitUrl, postUrl })
   }
   if (upstream.status === 409) {
-    return res.status(409).json({ error: 'slug_taken', slug: payload.slug, message: data.message || `The slug "${payload.slug}" is already published. Rename and try again — the website never overwrites.` })
+    console.error('[publish/website] slug conflict:', payload.slug)
+    return res.status(409).json({ error: 'slug_taken', slug: payload.slug })
   }
   if (upstream.status === 400) {
-    return res.status(400).json({ error: 'invalid_payload', message: data.message || 'The website rejected the payload as invalid.', issues: data.issues })
+    console.error('[publish/website] invalid payload:', data.issues)
+    return res.status(400).json({ error: 'invalid_payload' })
   }
   if (upstream.status === 401) {
-    return res.status(502).json({ error: 'auth_failed', message: 'The website rejected the bearer token. Re-paste the Astro+GitHub secret in Workspace Settings.' })
+    return res.status(502).json({ error: 'auth_failed' })
   }
   if (upstream.status === 500) {
-    return res.status(502).json({ error: 'website_misconfigured', message: data.message || 'The website is misconfigured (missing GitHub token or env vars). Not retriable from here.' })
+    console.error('[publish/website] website misconfigured:', data.message)
+    return res.status(502).json({ error: 'website_misconfigured' })
   }
   if (upstream.status === 502) {
-    return res.status(502).json({ error: 'github_error', message: data.message || 'The website could not commit to GitHub. Safe to retry shortly.', retriable: true })
+    console.error('[publish/website] github error:', data.message)
+    return res.status(502).json({ error: 'github_error', retriable: true })
   }
-  return res.status(502).json({ error: 'upstream_error', message: data.message || `Website returned ${upstream.status}.`, status: upstream.status })
+  console.error('[publish/website] unexpected upstream status:', upstream.status)
+  return res.status(502).json({ error: 'upstream_error', status: upstream.status })
 }
 
 // ── WordPress mode ────────────────────────────────────────────────────────────
