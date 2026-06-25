@@ -72,18 +72,22 @@ export default function StoryboardPublish() {
   // it's a photo frame ('story') or a video story ('storyvid').
   const archetype = resolveArchetype(piece)
   const isCarousel = archetype === 'carousel'
+  // A single-photo / text post (LinkedIn, Facebook, X, GBP, Pinterest…) is just a
+  // carousel of ONE slide — it opens the SAME SlideEditor as the carousel (same
+  // rail, templates, Grade, canvas), only without "Add slide". No separate photo
+  // editor.
+  const isVisual = archetype === 'visual'
   const isStory = piece.platform === 'instagram_story'
   // Named format + slide-count badge from the shared helper — the header used to
   // count source photos ("1 media attached") next to N slide cards.
   const fmt = postFormat(piece)
   const photoCount = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
 
-  // Carousel → full-bleed dedicated editor. Breaks out of the page's padding
-  // (the Layout `main` adds px/py) and fills the content region so the editor
-  // canvas dominates, matching the approved mockup. Publish/schedule actions
-  // fold into the editor's own top bar (Schedule button → modal). All page
-  // chrome (stepper, breadcrumb, heading) is intentionally dropped here.
-  if (isCarousel) {
+  // Carousel + single visual → the full-bleed SlideEditor. Breaks out of the
+  // page's padding (the Layout `main` adds px/py) and fills the content region so
+  // the editor canvas dominates. Publish/schedule fold into the editor's own top
+  // bar (Schedule button → modal). All page chrome is intentionally dropped here.
+  if (isCarousel || isVisual) {
     const scheduleNode = (
       <div className="space-y-4">
         <ApprovalPanel piece={piece} mode="publish" />
@@ -119,10 +123,12 @@ export default function StoryboardPublish() {
         <SlideEditor
           piece={piece}
           onBack={() => navigate('/publish')}
-          formatLabel={fmt.label}
-          formatSub={`${fmt.count} ${fmt.unit}`}
+          formatLabel={isVisual ? meta.label : fmt.label}
+          formatSub={isVisual ? 'Single photo' : `${fmt.count} ${fmt.unit}`}
           photoCount={photoCount}
           scheduleNode={scheduleNode}
+          singleSlide={isVisual}
+          badgeIcon={isVisual ? Icon : null}
         />
       </div>
     )
@@ -154,9 +160,10 @@ export default function StoryboardPublish() {
     )
   }
 
-  // Everything else — visual (LinkedIn/Facebook/Twitter/GBP…), video posts,
-  // doc (blog/landing), email, text ads, ad creative — flows through the unified
-  // shell editor (full-bleed, same chrome as the carousel/reel editors).
+  // Everything else — video posts, doc (blog/landing), email, text ads, ad
+  // creative — flows through the unified shell editor (full-bleed, same chrome).
+  // (Photo/visual posts route to SlideEditor above; these types have no carousel
+  // analog.)
   return (
     <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
       <UnifiedEditor
