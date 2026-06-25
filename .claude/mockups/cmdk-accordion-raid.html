@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bernard — ⌘K palette & Accordion mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{--background:220 22% 97%;--foreground:222 47% 8%;--card:0 0% 100%;--muted:220 14% 96%;
+    --muted-foreground:215 16% 47%;--border:214 32% 91%;--primary:186 83% 27%;--accent:160 60% 95%;
+    --accent-foreground:160 84% 30%;--success:152 76% 40%;--action:32 95% 44%;--radius:0.625rem;}
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,sans-serif;}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:1rem;}
+  .legend{border:1px dashed hsl(var(--action));background:hsl(var(--action)/.06);border-radius:var(--radius);}
+  .muted{color:hsl(var(--muted-foreground))}
+  .kbd{font-size:.625rem;border:1px solid hsl(var(--border));border-bottom-width:2px;border-radius:.3rem;padding:.05rem .3rem;background:hsl(var(--muted));font-family:ui-monospace,monospace}
+  .row{display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;border-radius:.45rem;font-size:.85rem;cursor:pointer}
+  .row[aria-selected="true"]{background:hsl(var(--accent))}
+  .grp{font-size:.625rem;text-transform:uppercase;letter-spacing:.04em;color:hsl(var(--muted-foreground));padding:.5rem .6rem .2rem}
+  /* accordion animation */
+  .acc-body{overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1)}
+  .chev{transition:transform .2s}
+  .open .chev{transform:rotate(180deg)}
+</style></head>
+<body class="p-6 md:p-10">
+<div class="max-w-5xl mx-auto space-y-12">
+  <header><h1 class="text-2xl font-bold">⌘K palette &amp; Accordion</h1>
+  <p class="text-sm muted">Two candidates. Real Bernard nav + a real settings section. Real tokens.</p></header>
+
+  <!-- ============ COMMAND PALETTE ============ -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide muted">A · Command palette (⌘K) — NEW capability (none exists today)</h2>
+    <p class="text-xs muted">Press ⌘K anywhere → fuzzy-search every page + quick action. Below is the palette open, "stor" typed.</p>
+
+    <!-- simulated app backdrop + palette -->
+    <div class="card overflow-hidden" style="background:hsl(var(--muted))">
+      <div class="relative" style="height:520px">
+        <!-- dim backdrop -->
+        <div class="absolute inset-0" style="background:rgba(15,23,42,.35)"></div>
+        <!-- palette -->
+        <div class="absolute left-1/2 top-12 -translate-x-1/2 w-[34rem] max-w-[92%] card shadow-2xl overflow-hidden">
+          <div class="flex items-center gap-2 px-4 py-3 border-b" style="border-color:hsl(var(--border))">
+            <span data-lucide="search" class="w-4 h-4 muted"></span>
+            <input value="stor" class="flex-1 bg-transparent outline-none text-sm" />
+            <span class="kbd">esc</span>
+          </div>
+          <div class="p-1.5 max-h-72 overflow-auto">
+            <div class="grp">Actions</div>
+            <div class="row"><span data-lucide="plus" class="w-4 h-4" style="color:hsl(var(--primary))"></span> New post <span class="ml-auto kbd">N</span></div>
+            <div class="row"><span data-lucide="mic" class="w-4 h-4" style="color:hsl(var(--primary))"></span> New interview</div>
+            <div class="grp">Go to</div>
+            <div class="row" aria-selected="true"><span data-lucide="newspaper" class="w-4 h-4"></span> <b>Stor</b>ies <span class="ml-auto text-2xs muted">/stories</span></div>
+            <div class="row"><span data-lucide="folder-open" class="w-4 h-4"></span> Library <span class="ml-auto text-2xs muted">/library</span></div>
+            <div class="row"><span data-lucide="calendar-range" class="w-4 h-4"></span> Your week <span class="ml-auto text-2xs muted">/week</span></div>
+            <div class="row"><span data-lucide="pickaxe" class="w-4 h-4"></span> Moments <span class="ml-auto text-2xs muted">/moments</span></div>
+            <div class="grp">Settings</div>
+            <div class="row"><span data-lucide="settings" class="w-4 h-4"></span> Workspace settings <span class="ml-auto text-2xs muted">/settings/workspace</span></div>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-2 border-t text-2xs muted" style="border-color:hsl(var(--border))">
+            <span><span class="kbd">↑</span><span class="kbd">↓</span> navigate</span>
+            <span><span class="kbd">↵</span> open</span>
+            <span class="ml-auto">Jump to any of 13 pages + quick actions</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legend p-3 text-xs"><b>What it is:</b> a global fuzzy launcher (cmdk / originui Command, Radix-backed). Indexes the real nav (Home, Overview, Insights, Your week, Stories, Moments, Ads, Library, Book, Write, Pre-Visit, Settings…) + actions (New post, New interview). Power-user nav without hunting the sidebar. <b>Likely a small dep</b> (<code>cmdk</code>) unless built on the Radix Dialog you already have.</div>
+  </section>
+
+  <!-- ============ ACCORDION ============ -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide muted">B · Accordion / Collapsible — 5 settings editors hand-roll this today</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <!-- TODAY -->
+      <div class="card p-5">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — useState + ▲/▼, instant</span>
+        <div class="mt-3 rounded-lg border" style="border-color:hsl(var(--border))">
+          <div class="flex items-center justify-between px-4 py-3 cursor-pointer text-sm font-semibold" onclick="this.parentElement.querySelector('.t-body').classList.toggle('hidden');this.querySelector('.g').textContent=this.parentElement.querySelector('.t-body').classList.contains('hidden')?'▼':'▲'">
+            Patient archetypes <span class="g text-xs muted">▼</span></div>
+          <div class="t-body hidden px-4 pb-4 text-sm muted border-t" style="border-color:hsl(var(--border))">
+            <p class="pt-3">The runner · the desk-worker · the post-surgical patient…</p>
+          </div>
+        </div>
+        <p class="text-2xs muted mt-3">Snaps open/closed · text glyph · no <code>aria-expanded</code> · repeated in 5 files.</p>
+      </div>
+      <!-- PROPOSED -->
+      <div class="card p-5 ring-2" style="--tw-ring-color:hsl(var(--primary)/.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/.12);color:hsl(var(--success))">PROPOSED — Radix Accordion, animated</span>
+        <div class="mt-3 rounded-lg border open" id="acc" style="border-color:hsl(var(--border))">
+          <div class="flex items-center justify-between px-4 py-3 cursor-pointer text-sm font-semibold" onclick="toggleAcc()">
+            Patient archetypes <span data-lucide="chevron-down" class="chev w-4 h-4 muted"></span></div>
+          <div class="acc-body" id="accbody" style="max-height:120px"><div class="px-4 pb-4 text-sm muted border-t" style="border-color:hsl(var(--border))"><p class="pt-3">The runner · the desk-worker · the post-surgical patient…</p></div></div>
+        </div>
+        <p class="text-2xs muted mt-3">Smooth height animation · chevron rotates · <code>aria-expanded</code> + region · one <code>&lt;Accordion&gt;</code> import.</p>
+      </div>
+    </div>
+    <div class="legend p-3 text-xs"><b>Dep:</b> Radix Accordion/Collapsible — Radix already ships under shadcn, so <b>likely no new package</b>. Replaces the duplicated useState+glyph pattern in PatientArchetypes, ToneCard, ConditionBankEditor, TopicSuggestionsEditor, SchedulePrefsSection.</div>
+  </section>
+  <footer class="text-2xs pb-10 muted">Mockup • real Bernard nav + tokens • dashed = deps note</footer>
+</div>
+<script>
+  lucide.createIcons();
+  function toggleAcc(){var a=document.getElementById('acc'),b=document.getElementById('accbody');
+    if(a.classList.contains('open')){a.classList.remove('open');b.style.maxHeight='0px'}
+    else{a.classList.add('open');b.style.maxHeight='120px'}}
+</script>
+</body></html>

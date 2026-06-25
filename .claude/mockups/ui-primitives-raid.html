@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bernard — UI primitives raid (Tooltip / Confirm / Select / Switch+Progress)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%;--foreground:222 47% 8%;--card:0 0% 100%;
+    --muted:220 14% 96%;--muted-foreground:215 16% 47%;--border:214 32% 91%;
+    --primary:186 83% 27%;--primary-foreground:0 0% 100%;
+    --success:152 76% 40%;--warning:38 92% 50%;--info:199 95% 40%;
+    --destructive:0 84% 60%;--action:32 95% 44%;--radius:0.625rem;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,sans-serif;}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:1rem;}
+  .legend{border:1px dashed hsl(var(--action));background:hsl(var(--action)/.06);border-radius:var(--radius);}
+  .muted{color:hsl(var(--muted-foreground))}
+  /* styled tooltip */
+  .tip{position:relative;display:inline-flex}
+  .tip>.bubble{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) scale(.96);
+    background:hsl(222 47% 12%);color:#fff;font-size:.6875rem;padding:.35rem .55rem;border-radius:.4rem;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;box-shadow:0 6px 20px -8px rgba(0,0,0,.5);z-index:20}
+  .tip>.bubble::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:hsl(222 47% 12%)}
+  .tip:hover>.bubble{opacity:1;transform:translateX(-50%) scale(1)}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;border-radius:var(--radius);font-weight:600;font-size:.8rem;padding:.5rem .8rem;cursor:pointer;border:1px solid transparent}
+</style></head>
+<body class="p-6 md:p-10">
+<div class="max-w-5xl mx-auto space-y-10">
+  <header><h1 class="text-2xl font-bold">UI primitives raid — 4 areas</h1>
+  <p class="text-sm muted">Each TODAY → PROPOSED. Real Bernard tokens. Hover/click the PROPOSED side to feel it.</p></header>
+
+  <!-- 1 TOOLTIP -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide muted">1 · Tooltip — 306 native <code>title=</code> attrs today</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card p-6 flex flex-col items-center gap-3">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — native title</span>
+        <button class="btn" style="background:hsl(var(--muted));color:hsl(var(--foreground))" title="Regenerate this caption from the transcript">
+          <span data-lucide="refresh-cw"></span> Hover me (1s delay)
+        </button>
+        <p class="text-2xs muted text-center">~1s delay · OS-styled · invisible to keyboard & touch users</p>
+      </div>
+      <div class="card p-6 flex flex-col items-center gap-3 ring-2" style="--tw-ring-color:hsl(var(--primary)/.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/.12);color:hsl(var(--success))">PROPOSED — Radix Tooltip</span>
+        <span class="tip"><button class="btn" style="background:hsl(var(--primary));color:#fff"><span data-lucide="refresh-cw"></span> Hover me (instant)</button><span class="bubble">Regenerate this caption from the transcript</span></span>
+        <p class="text-2xs muted text-center">Instant · themed to tokens · keyboard + screen-reader accessible</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 CONFIRM -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide muted">2 · Destructive confirm — 6 native <code>window.confirm()</code> today</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card p-6 flex flex-col items-center gap-3">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — native confirm()</span>
+        <button class="btn" style="background:hsl(var(--destructive)/.1);color:hsl(var(--destructive))" onclick="confirm('Delete this clip? This cannot be undone.')"><span data-lucide="trash-2"></span> Delete clip</button>
+        <p class="text-2xs muted text-center">Grey OS chrome · no brand · jarring</p>
+      </div>
+      <div class="card p-6 flex flex-col items-center gap-3 ring-2" style="--tw-ring-color:hsl(var(--primary)/.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/.12);color:hsl(var(--success))">PROPOSED — existing AlertDialog</span>
+        <button class="btn" style="background:hsl(var(--destructive)/.1);color:hsl(var(--destructive))" onclick="document.getElementById('dlg').style.display='flex'"><span data-lucide="trash-2"></span> Delete clip</button>
+        <p class="text-2xs muted text-center">You already ship <code>ui/alert-dialog.jsx</code> — wiring only, no new dep</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 SELECT -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide muted">3 · Select — 19 raw <code>&lt;select&gt;</code> today</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card p-6 flex flex-col items-center gap-3">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — native &lt;select&gt;</span>
+        <select class="text-sm border rounded-lg px-3 py-2 bg-white" style="border-color:hsl(var(--border))"><option>Reel (9:16)</option><option>Square (1:1)</option><option>Portrait (4:5)</option></select>
+        <p class="text-2xs muted text-center">OS-default chrome · differs per platform · the one unstyled spot</p>
+      </div>
+      <div class="card p-6 flex flex-col items-center gap-3 ring-2" style="--tw-ring-color:hsl(var(--primary)/.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/.12);color:hsl(var(--success))">PROPOSED — Radix Select (click)</span>
+        <div class="relative">
+          <button class="text-sm border rounded-lg px-3 py-2 bg-white flex items-center gap-2 w-44 justify-between" style="border-color:hsl(var(--border))" onclick="var m=document.getElementById('selmenu');m.style.display=m.style.display==='block'?'none':'block'"><span id="selval">Reel (9:16)</span><span data-lucide="chevron-down" class="w-4 h-4"></span></button>
+          <div id="selmenu" style="display:none" class="absolute left-0 mt-1 w-44 rounded-lg border bg-white shadow-lg z-10 p-1" >
+            <div class="text-sm px-2 py-1.5 rounded flex items-center justify-between" style="background:hsl(var(--accent,160 60% 95%))" onclick="pick('Reel (9:16)')">Reel (9:16) <span data-lucide="check" class="w-3.5 h-3.5" style="color:hsl(var(--primary))"></span></div>
+            <div class="text-sm px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onclick="pick('Square (1:1)')">Square (1:1)</div>
+            <div class="text-sm px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onclick="pick('Portrait (4:5)')">Portrait (4:5)</div>
+          </div>
+        </div>
+        <p class="text-2xs muted text-center">Matches inputs/buttons · same on every platform · searchable for long lists</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 SWITCH + PROGRESS -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide muted">4 · Switch &amp; Progress — duplicated hand-rolled markup today</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card p-6 space-y-4">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — re-implemented per file</span>
+        <div class="flex items-center justify-between text-sm"><span>Auto-publish to Instagram</span>
+          <span role="switch" class="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent" style="background:hsl(var(--muted))"><span class="block h-5 w-5 rounded-full bg-white shadow translate-x-0 transition-transform"></span></span></div>
+        <div><div class="flex justify-between text-2xs muted mb-1"><span>Transcoding…</span><span>62%</span></div>
+          <div class="h-2 rounded-full overflow-hidden" style="background:hsl(var(--muted))"><div style="width:62%;background:hsl(var(--primary))" class="h-full rounded-full"></div></div></div>
+        <p class="text-2xs muted">Each of 6 settings files + 5 progress spots writes its own markup.</p>
+      </div>
+      <div class="card p-6 space-y-4 ring-2" style="--tw-ring-color:hsl(var(--primary)/.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/.12);color:hsl(var(--success))">PROPOSED — shared Switch + Progress</span>
+        <div class="flex items-center justify-between text-sm"><span>Auto-publish to Instagram</span>
+          <span id="sw" role="switch" class="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent cursor-pointer transition-colors" style="background:hsl(var(--primary))" onclick="toggleSw()"><span id="swk" class="block h-5 w-5 rounded-full bg-white shadow translate-x-5 transition-transform"></span></span></div>
+        <div><div class="flex justify-between text-2xs muted mb-1"><span>Transcoding…</span><span id="ppct">0%</span></div>
+          <div class="h-2 rounded-full overflow-hidden" style="background:hsl(var(--muted))"><div id="pbar" style="width:0%;background:hsl(var(--primary));transition:width .9s cubic-bezier(.4,0,.2,1)" class="h-full rounded-full"></div></div></div>
+        <p class="text-2xs muted">One <code>&lt;Switch&gt;</code> + one <code>&lt;Progress&gt;</code> import; animated fill (magicui-style).</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="legend p-3 text-xs"><b>Deps:</b> Tooltip / Select / Switch / Progress are Radix primitives (Radix already ships under your shadcn setup) — likely <b>no new package</b>. Destructive-confirm reuses your existing AlertDialog (no dep). magicui's animated-Progress fill is optional CSS, no dep.</div>
+  <footer class="text-2xs pb-10 muted">Mockup • real Bernard tokens • dashed = deps note</footer>
+</div>
+
+<!-- AlertDialog -->
+<div id="dlg" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);align-items:center;justify-content:center;z-index:50">
+  <div class="card p-6 max-w-sm w-full mx-4" style="border-radius:1rem">
+    <h3 class="text-base font-bold">Delete this clip?</h3>
+    <p class="text-sm muted mt-1">This permanently removes the clip and its transcript. This can't be undone.</p>
+    <div class="flex justify-end gap-2 mt-5">
+      <button class="btn" style="background:hsl(var(--muted));color:hsl(var(--foreground))" onclick="document.getElementById('dlg').style.display='none'">Cancel</button>
+      <button class="btn" style="background:hsl(var(--destructive));color:#fff" onclick="document.getElementById('dlg').style.display='none'">Delete clip</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+  function pick(v){document.getElementById('selval').textContent=v;document.getElementById('selmenu').style.display='none'}
+  function toggleSw(){var s=document.getElementById('sw'),k=document.getElementById('swk');var on=k.classList.contains('translate-x-5');
+    if(on){k.classList.remove('translate-x-5');k.classList.add('translate-x-0');s.style.background='hsl(var(--muted))'}
+    else{k.classList.add('translate-x-5');k.classList.remove('translate-x-0');s.style.background='hsl(var(--primary))'}}
+  function runBar(){var b=document.getElementById('pbar'),p=document.getElementById('ppct');setTimeout(function(){b.style.width='62%';p.textContent='62%'},400)}
+  runBar();
+</script>
+</body></html>
