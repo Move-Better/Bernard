@@ -57,7 +57,7 @@ async function handler(req, res) {
     accessToken = await accessTokenForWorkspace(workspace.id)
   } catch (e) {
     if (e instanceof DriveAuthError) {
-      return res.status(412).json({ error: e.code })
+      return res.status(412).json({ error: e.code === 'not_connected' ? 'not_connected' : e.code === 'decrypt_failed' ? 'decrypt_failed' : 'reconnect_required' })
     }
     console.error('[drive/picker-token] failed:', e?.message)
     return res.status(502).json({ error: 'refresh-failed' })

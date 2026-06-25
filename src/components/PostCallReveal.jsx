@@ -44,8 +44,9 @@ export default function PostCallReveal() {
   if (!data?.hasPlan) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-gradient-to-b from-card to-primary/5 p-7 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+        <div role="status" className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+          <span className="sr-only">Loading plan…</span>
         </div>
         <h2 className="text-xl font-bold tracking-tight">Your call is being woven into this week’s plan</h2>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -117,8 +117,8 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
         </button>
 
         {loading ? (
-          <span className="text-2xs text-muted-foreground flex items-center gap-1.5">
-            <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+          <span role="status" className="text-2xs text-muted-foreground flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Loading…
           </span>
         ) : (
           collections.map((c) => {

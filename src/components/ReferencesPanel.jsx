@@ -98,8 +98,9 @@ export default function ReferencesPanel({ topicId, interviewId, compact = false 
       </form>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-3">
-          <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+        <div role="status" className="flex items-center justify-center py-3">
+          <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading…</span>
         </div>
       ) : refs.length === 0 ? (
         <p className="text-xs text-muted-foreground italic py-1">
