@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose,
 } from '@/components/ui/Drawer'
@@ -135,6 +136,7 @@ export default function Layout({ children }) {
   const fullBleed = true
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="min-h-screen bg-background flex">
 
       {/* Global ⌘K command palette (mounted once for the whole authed shell). */}
@@ -377,6 +379,7 @@ export default function Layout({ children }) {
         </DrawerContent>
       </Drawer>
     </div>
+    </TooltipProvider>
   )
 }
 
