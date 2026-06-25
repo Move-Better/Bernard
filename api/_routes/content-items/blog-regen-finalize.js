@@ -59,6 +59,7 @@ export default async function handler(req, res) {
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
   const wsFilter = `workspace_id=eq.${ws.id}`
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   const {
     id,
