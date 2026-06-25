@@ -583,8 +583,8 @@ function SignedInPrompt({ onContinue }) {
 
   if (state.status === 'loading') {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
+      <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Checking your workspaces…
       </div>
     )
@@ -593,8 +593,8 @@ function SignedInPrompt({ onContinue }) {
   if (state.status === 'redirecting') {
     const ws = state.workspaces[0]
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
+      <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Taking you to {ws?.display_name || ws?.slug || 'your workspace'}…
       </div>
     )
@@ -702,9 +702,9 @@ function ScanningIndicator() {
     return () => clearInterval(tick)
   }, [])
   return (
-    <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2.5 space-y-2">
+    <div role="status" className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2.5 space-y-2">
       <div className="flex items-start gap-2">
-        <Loader2 className="h-4 w-4 animate-spin text-primary mt-0.5 shrink-0" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary mt-0.5 shrink-0" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium">{SCAN_STATUS_MESSAGES[idx]}</p>
           <p className="text-2xs text-muted-foreground mt-0.5">

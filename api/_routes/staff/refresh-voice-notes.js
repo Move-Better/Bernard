@@ -122,7 +122,9 @@ export default async function handler(req, res) {
       ok: true,
       edits_analyzed: editPairs.length,
       voice_notes: null,
-      message: `Need at least ${MIN_PAIRS} edited drafts to find a pattern (found ${editPairs.length}). Edit a few more drafts and try again.`,
+      reason: 'insufficient_pairs',
+      pairs_found: editPairs.length,
+      pairs_required: MIN_PAIRS,
     })
   }
 
