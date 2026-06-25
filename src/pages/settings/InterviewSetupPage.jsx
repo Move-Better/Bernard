@@ -232,9 +232,10 @@ function VoiceMemoryRoster({ interviewerName }) {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-2 pl-7">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/40" />
-          <span className="text-xs text-primary/60">Loading staff…</span>
+        <div role="status" className="flex items-center gap-2 py-2 pl-7">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/40" aria-hidden="true" />
+          <span className="text-xs text-primary/60" aria-hidden="true">Loading staff…</span>
+          <span className="sr-only">Loading staff…</span>
         </div>
       ) : staff.length === 0 ? (
         <p className="text-xs text-primary/60 pl-7">No staff yet — add one to start building voice memory.</p>

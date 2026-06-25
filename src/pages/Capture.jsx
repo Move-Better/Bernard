@@ -374,7 +374,12 @@ export default function Capture() {
                               <X className="w-4 h-4" />
                             </button>
                           )}
-                          {p.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                          {p.status === 'uploading' && (
+                            <span role="status">
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" aria-hidden="true" />
+                              <span className="sr-only">Uploading…</span>
+                            </span>
+                          )}
                           {p.status === 'done' && <Check className="w-4 h-4 text-success" />}
                           {p.status === 'failed' && <AlertCircle className="w-4 h-4 text-destructive" />}
                         </div>
