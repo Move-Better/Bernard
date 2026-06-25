@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
@@ -382,9 +383,7 @@ export default function Capture() {
                         {bytesLabel(p.file.size)} · {p.file.type || 'unknown type'}
                       </div>
                       {p.status === 'uploading' && (
-                        <div className="w-full bg-muted rounded h-1.5 overflow-hidden">
-                          <div className="bg-primary h-1.5 transition-all" style={{ width: `${p.progress}%` }} />
-                        </div>
+                        <Progress value={p.progress} className="h-1.5" />
                       )}
                       {p.status === 'failed' && p.error && (
                         <div className="text-xs text-destructive mt-1">{p.error}</div>

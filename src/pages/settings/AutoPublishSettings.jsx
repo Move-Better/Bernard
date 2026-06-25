@@ -172,21 +172,12 @@ export default function AutoPublishSettings() {
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={ch.enabled}
+                <Switch
+                  checked={ch.enabled}
+                  onCheckedChange={(v) => isLive && setChannel(id, { enabled: v })}
                   disabled={!isLive}
-                  onClick={() => isLive && setChannel(id, { enabled: !ch.enabled })}
-                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                    ch.enabled ? 'border-primary bg-primary' : 'border-input bg-input'
-                  } ${!isLive ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                   aria-label={`Enable auto-publish for ${label}`}
-                >
-                  <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
-                    ch.enabled ? 'translate-x-5' : 'translate-x-0'
-                  }`} />
-                </button>
+                />
               </div>
               {description && (
                 <CardDescription className="text-xs mt-1">{description}</CardDescription>

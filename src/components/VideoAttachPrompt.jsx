@@ -16,6 +16,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { Video, Upload, SkipForward, CheckCircle2, AlertCircle, X } from 'lucide-react'
 import { uploadMedia } from '@/lib/mediaLib'
 import { apiFetch } from '@/lib/api'
@@ -127,12 +128,7 @@ export default function VideoAttachPrompt({ interviewId, staffName, onDone }) {
           <p className="text-sm font-medium mb-2">
             Uploading {file?.name ?? 'video'}…
           </p>
-          <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
+          <Progress value={uploadProgress} className="w-full" />
           <p className="text-xs text-muted-foreground mt-1">{uploadProgress}%</p>
         </div>
         <Button variant="ghost" size="sm" onClick={handleCancel}>
