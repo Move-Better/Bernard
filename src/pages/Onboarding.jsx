@@ -742,6 +742,7 @@ function ScanScreen({ form, setField, scanState, runScan, onContinue }) {
       <FieldRow label="Your website" hint="We read your home, services, about, and a few blog pages.">
         <div className="flex gap-2">
           <Input
+            aria-label="Your website"
             type="url"
             value={form.website}
             onChange={e => setField('website')(e.target.value)}

@@ -118,7 +118,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'campaign_not_found' })
     }
     if (campaign.status !== 'active') {
-      return res.status(409).json({ error: 'campaign_not_active', status: campaign.status })
+      return res.status(409).json({ error: 'campaign_not_active' })
     }
   }
 

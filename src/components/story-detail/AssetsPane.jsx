@@ -116,8 +116,8 @@ function CommentThread({ pieceId }) {
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Comments</p>
 
       {isLoading && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+        <div role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" /> Loading…
         </div>
       )}
 
