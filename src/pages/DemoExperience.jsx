@@ -544,11 +544,12 @@ export default function DemoExperience() {
                   )}
 
                   {voicePhase === 'requesting' && (
-                    <>
+                    <div role="status">
                       <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" aria-hidden="true" />
-                      <p className="text-sm font-medium text-foreground">Opening your microphone…</p>
+                      <span className="sr-only">Opening your microphone…</span>
+                      <p className="text-sm font-medium text-foreground" aria-hidden="true">Opening your microphone…</p>
                       <p className="mt-1 text-xs text-muted-foreground">Allow access when prompted</p>
-                    </>
+                    </div>
                   )}
 
                   {voicePhase === 'recording' && (
@@ -577,11 +578,12 @@ export default function DemoExperience() {
                   )}
 
                   {voicePhase === 'transcribing' && (
-                    <>
+                    <div role="status">
                       <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" aria-hidden="true" />
-                      <p className="text-sm font-medium text-foreground">Transcribing your answer…</p>
+                      <span className="sr-only">Transcribing your answer…</span>
+                      <p className="text-sm font-medium text-foreground" aria-hidden="true">Transcribing your answer…</p>
                       <p className="mt-1 text-xs text-muted-foreground">Then Bernard writes — no click needed</p>
-                    </>
+                    </div>
                   )}
                 </div>
               )}

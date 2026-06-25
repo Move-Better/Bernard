@@ -326,8 +326,10 @@ export default function NewInterview() {
             <Label htmlFor="staff">Who&apos;s talking?</Label>
             <p className="text-2xs text-muted-foreground">Sets the voice and pulls in what this person has said before.</p>
             {staffLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Loading staff…
+              <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                <span className="sr-only">Loading staff…</span>
+                <span aria-hidden="true">Loading staff…</span>
               </div>
             ) : staffForSuggestions.length > 0 ? (
               <div className="flex flex-wrap gap-2 items-center">
@@ -513,9 +515,10 @@ export default function NewInterview() {
           {/* Topic suggestions — collapsed under a heading so they don't
               dominate the page now that the lever section is bigger. */}
           {suggestionsLoading ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 border-t pt-4">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Loading topic suggestions…
+            <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground py-2 border-t pt-4">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              <span className="sr-only">Loading topic suggestions…</span>
+              <span aria-hidden="true">Loading topic suggestions…</span>
             </div>
           ) : (uncovered.length > 0 || underrepresented.length > 0 || allHighPriority.length > 0) && (
             <div className="space-y-3 border-t pt-4">

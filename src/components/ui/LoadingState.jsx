@@ -11,7 +11,7 @@ const LoadingState = React.forwardRef(({ className, label = 'Loading…', ...pro
     className={cn('flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground', className)}
     {...props}
   >
-    <Icon as={Loader2} size="xl" className="animate-spin" />
+    <Icon as={Loader2} size="xl" className="animate-spin" aria-hidden="true" />
     {label ? <span className="text-sm">{label}</span> : null}
   </div>
 ))

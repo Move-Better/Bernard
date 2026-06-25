@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'bad_request', message: 'text is required.' })
   }
   if (text.length > MAX_TEXT_CHARS) {
-    return res.status(400).json({ error: 'too_long', message: `Text must be ${MAX_TEXT_CHARS} characters or fewer.` })
+    return res.status(400).json({ error: 'too_long' })
   }
 
   if (!process.env.AI_GATEWAY_API_KEY) {
@@ -120,9 +120,8 @@ export default async function handler(req, res) {
         })
         res.write(`data: ${payload}\n\n`)
       } else if (part?.type === 'error') {
-        const msg = part.error?.message || String(part.error || 'Stream error')
-        console.error(`[demo/generate] mid-stream error: ${msg}`)
-        res.write(`data: ${JSON.stringify({ type: 'error', error: { message: msg } })}\n\n`)
+        console.error('[demo/generate] mid-stream error:', part.error?.message || part.error)
+        res.write(`data: ${JSON.stringify({ type: 'error', error: 'stream_error' })}\n\n`)
         break
       }
     }

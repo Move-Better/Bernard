@@ -380,7 +380,7 @@ function MomentsInspector({ ctx }) {
   return (
     <InspectorShell icon={Scissors} title="Moments" right={proposals.length ? `${proposals.length}` : ''}>
       {loading ? (
-        <div className="flex items-center gap-2 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><Loader2 className="h-3.5 w-3.5 animate-spin" />Finding moments…</div>
+        <div role="status" className="flex items-center gap-2 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /><span className="sr-only">Finding moments…</span><span aria-hidden="true">Finding moments…</span></div>
       ) : proposals.length === 0 ? (
         <>
           <p className="mb-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No AI moments yet — find the standalone clips in this source.</p>
