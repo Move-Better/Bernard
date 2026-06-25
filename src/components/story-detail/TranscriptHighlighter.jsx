@@ -132,7 +132,7 @@ export default function TranscriptHighlighter({ story, children }) {
       label: '→ Social post',
       icon: Instagram,
       onClick: handleSocial,
-      color: 'text-pink-600 hover:bg-pink-50',
+      color: 'text-primary hover:bg-primary/10',
     },
     {
       key: 'gbp',

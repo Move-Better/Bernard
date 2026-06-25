@@ -107,6 +107,8 @@ export default async function handler(req, res) {
     if (!topic?.trim()) return err(res, 'Topic required')
     if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
     if (campaignId && !UUID_RE.test(campaignId)) return err(res, 'Invalid campaignId', 400)
+    if (prototypeId && !UUID_RE.test(prototypeId)) return err(res, 'Invalid prototypeId', 400)
+    if (locationId && !UUID_RE.test(locationId)) return err(res, 'Invalid locationId', 400)
 
     const staffCheck = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id`)
     if (!staffCheck.ok || !(await staffCheck.json()).length) return err(res, 'Staff not found', 404)
@@ -114,6 +116,11 @@ export default async function handler(req, res) {
     if (campaignId) {
       const campCheck = await sb(`campaigns?id=eq.${campaignId}&workspace_id=eq.${ws.id}&select=id`)
       if (!campCheck.ok || !(await campCheck.json()).length) return err(res, 'Campaign not found in workspace', 422)
+    }
+
+    if (locationId) {
+      const locCheck = await sb(`workspace_locations?id=eq.${locationId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+      if (!locCheck.ok || !(await locCheck.json()).length) return err(res, 'Location not found in workspace', 404)
     }
 
     // owner_id comes from the verified Clerk token, never the request body.

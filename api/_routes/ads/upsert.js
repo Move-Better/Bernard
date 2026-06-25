@@ -56,6 +56,15 @@ export default async function handler(req, res) {
   const sourceAssetId = b.sourceAssetId && UUID_RE.test(b.sourceAssetId) ? b.sourceAssetId : null
   const sourcePieceId = b.sourcePieceId && UUID_RE.test(b.sourcePieceId) ? b.sourcePieceId : null
 
+  if (sourceAssetId) {
+    const chk = await sb(`media_assets?id=eq.${sourceAssetId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+    if (!chk.ok || !(await chk.json()).length) return res.status(404).json({ error: 'source_asset_not_found' })
+  }
+  if (sourcePieceId) {
+    const chk = await sb(`content_items?id=eq.${sourcePieceId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+    if (!chk.ok || !(await chk.json()).length) return res.status(404).json({ error: 'source_piece_not_found' })
+  }
+
   const fields = {
     campaign_id: campaignId,
     source_asset_id: sourceAssetId,
