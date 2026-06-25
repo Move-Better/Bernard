@@ -24,6 +24,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { applyLocationOverlay } from '@/lib/locationOverlay'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import MicCheck from '@/components/MicCheck'
 import VideoAttachPrompt from '@/components/VideoAttachPrompt'
 import { createTtsPlayer, primeAudioPlayback, onAudioPlaybackFailure } from '@/lib/tts'
@@ -1698,17 +1699,21 @@ export default function InterviewSession() {
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePause}
-                title="Save and pause — you can resume later"
-                aria-label="Save and pause interview — you can resume later"
-                className="gap-1 text-muted-foreground hover:text-foreground px-2"
-              >
-                <PauseCircle className="h-4 w-4" />
-                <span className="text-xs">Pause</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePause}
+                    aria-label="Save and pause interview — you can resume later"
+                    className="gap-1 text-muted-foreground hover:text-foreground px-2"
+                  >
+                    <PauseCircle className="h-4 w-4" />
+                    <span className="text-xs">Pause</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save and pause — you can resume later</TooltipContent>
+              </Tooltip>
             </div>
           )
         }
@@ -2157,18 +2162,22 @@ function InterviewVoiceDock({
       {/* Main row: Pause (mobile) | Waveform+Mic | Finish (mobile) */}
       <div className="flex items-center justify-between md:justify-center gap-3">
         {/* Pause — mobile only; desktop has it in the header */}
-        <button
-          type="button"
-          onClick={onPause}
-          aria-label="Save and pause interview — you can resume later"
-          title="Save and pause — you can resume later"
-          className="md:hidden flex flex-col items-center gap-0.5 text-muted-foreground w-14 shrink-0"
-        >
-          <span className="h-10 w-10 rounded-full border border-border flex items-center justify-center">
-            <PauseCircle className="h-4 w-4" />
-          </span>
-          <span className="text-3xs">Pause</span>
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onPause}
+              aria-label="Save and pause interview — you can resume later"
+              className="md:hidden flex flex-col items-center gap-0.5 text-muted-foreground w-14 shrink-0"
+            >
+              <span className="h-10 w-10 rounded-full border border-border flex items-center justify-center">
+                <PauseCircle className="h-4 w-4" />
+              </span>
+              <span className="text-3xs">Pause</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Save and pause — you can resume later</TooltipContent>
+        </Tooltip>
 
         {/* Center: waveform bars + mic button */}
         <div className="relative flex items-center justify-center" style={{ width: 160, height: 88 }}>
@@ -2258,16 +2267,20 @@ function InterviewVoiceDock({
 
         {/* Finish — mobile only; desktop has it in the header */}
         <div className="md:hidden flex flex-col items-center gap-0.5 w-14 shrink-0">
-          <button
-            type="button"
-            onClick={onFinish}
-            disabled={!canFinish}
-            title={canFinish ? 'Finish interview' : finishHelper || undefined}
-            aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
-            className="h-10 w-10 rounded-full border border-border flex items-center justify-center text-muted-foreground disabled:opacity-30 hover:bg-muted transition-colors"
-          >
-            <Sparkles className="h-4 w-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onFinish}
+                disabled={!canFinish}
+                aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+                className="h-10 w-10 rounded-full border border-border flex items-center justify-center text-muted-foreground disabled:opacity-30 hover:bg-muted transition-colors"
+              >
+                <Sparkles className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}</TooltipContent>
+          </Tooltip>
           <span className="text-3xs text-muted-foreground">Finish</span>
           {!canFinish && finishHelper && (
             <span className="text-3xs text-muted-foreground text-center leading-tight px-1 max-w-[3.5rem]">
@@ -2345,17 +2358,21 @@ function InterviewTypedDock({
           >
             {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" aria-hidden="true" />Send</>}
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onFinish}
-            disabled={!canFinish || isStreaming}
-            title={canFinish ? 'Finish interview' : finishHelper || undefined}
-            aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
-            className="h-11 w-11"
-          >
-            <Sparkles className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onFinish}
+                disabled={!canFinish || isStreaming}
+                aria-label={canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}
+                className="h-11 w-11"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{canFinish ? 'Finish interview' : finishHelper || 'Finish interview'}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
