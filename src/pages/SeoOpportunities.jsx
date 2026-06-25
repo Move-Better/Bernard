@@ -92,6 +92,7 @@ function OpportunityCard({ opp, onStartInterview, onDraft, onDismiss, dismissing
           aria-busy={dismissing}
           className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1.5 disabled:opacity-50 aria-busy:cursor-wait"
           title="Dismiss this opportunity"
+          aria-label="Dismiss this opportunity"
         >
           <X className="w-3.5 h-3.5" /> {dismissing ? 'Dismissing…' : 'Dismiss'}
         </button>

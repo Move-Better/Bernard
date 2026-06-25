@@ -333,6 +333,7 @@ export default function ClipFinder({ asset, canEdit }) {
             disabled={finding || detecting}
             className="h-7 gap-1.5 text-2xs"
             title="Transcribe this video and propose standalone clip moments"
+            aria-label="Transcribe this video and propose standalone clip moments"
           >
             {(finding || detecting)
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -494,6 +494,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
             onClick={handleRefreshContext}
             disabled={refreshingContext}
             title="Re-run RAG retrieval to incorporate new interviews and content"
+            aria-label="Re-run RAG retrieval to incorporate new interviews and content"
           >
             {refreshingContext
               ? <Loader2 className="h-2.5 w-2.5 animate-spin" />

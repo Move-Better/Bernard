@@ -141,16 +141,13 @@ export default async function handler(req, res) {
   const ghToken        = process.env.GITHUB_TOKEN_BERNARD_PUBLISH
   if (!expectedSecret || !ghToken) {
     console.error('[publish-blog] env missing:', { hasSecret: !!expectedSecret, hasToken: !!ghToken })
-    return res.status(500).json({
-      error: 'misconfigured',
-      message: 'withbernard.ai publish webhook is missing env vars (BERNARD_PUBLISH_SECRET and/or GITHUB_TOKEN_BERNARD_PUBLISH). Not retriable from the client.',
-    })
+    return res.status(500).json({ error: 'misconfigured' })
   }
 
   const authHeader = req.headers['authorization'] || ''
   const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
   if (!timingSafeEqual(provided, expectedSecret)) {
-    return res.status(401).json({ error: 'unauthorized', message: 'Bearer token did not match the configured shared secret.' })
+    return res.status(401).json({ error: 'unauthorized' })
   }
 
   const payload = (typeof req.body === 'object' && req.body) ? req.body : null

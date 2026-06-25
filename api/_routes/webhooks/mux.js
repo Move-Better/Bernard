@@ -97,7 +97,7 @@ export default async function handler(req, res) {
   const secret = process.env.MUX_WEBHOOK_SECRET
   if (!secret) {
     console.error('[mux/webhook] MUX_WEBHOOK_SECRET not set; rejecting all events')
-    return res.status(500).json({ error: 'misconfigured', message: 'Webhook secret not configured' })
+    return res.status(500).json({ error: 'misconfigured' })
   }
 
   // Every route runs inside the api/index Express app, whose express.json()
