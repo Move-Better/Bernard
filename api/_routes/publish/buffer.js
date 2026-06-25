@@ -246,8 +246,8 @@ async function handler(req, res) {
       const errMsg = acct.errors?.[0]?.message || `Buffer account query returned ${acct.status}`
       const hint = acct.status === 401 || acct.status === 403
         ? 'Buffer access token rejected (401/403). Regenerate the token in Workspace Settings → Publishing credentials.'
-        : errMsg
-      console.error('[publish/buffer] account query failed', acct.status, JSON.stringify(acct.errors))
+        : 'buffer_account_query_failed'
+      console.error('[publish/buffer] account query failed', acct.status, errMsg, JSON.stringify(acct.errors))
       return res.status(502).json({ error: hint })
     }
     const organizationId = acct.data?.account?.organizations?.[0]?.id

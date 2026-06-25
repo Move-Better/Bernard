@@ -89,11 +89,12 @@ export default function PrivacyPolicy() {
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
+                <caption className="sr-only">Third-party sub-processors and their data locations</caption>
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 pr-4 font-medium">Provider</th>
-                    <th className="text-left py-2 pr-4 font-medium">Purpose</th>
-                    <th className="text-left py-2 font-medium">Location</th>
+                    <th scope="col" className="text-left py-2 pr-4 font-medium">Provider</th>
+                    <th scope="col" className="text-left py-2 pr-4 font-medium">Purpose</th>
+                    <th scope="col" className="text-left py-2 font-medium">Location</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
