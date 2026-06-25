@@ -22,17 +22,19 @@ const PLATFORM_SHORT = {
   email:         'Email',
 }
 
-// Platform chip colors (dot accent).
+// Platform chip colors (dot accent). Uses semantic tokens where possible;
+// platform-specific brand colors (Instagram pink, TikTok fuchsia, GBP green)
+// use raw Tailwind only where no matching token exists.
 const PLATFORM_DOT = {
   blog:          'bg-muted-foreground/60',
   instagram:     'bg-pink-500',
-  facebook:      'bg-blue-500',
+  facebook:      'bg-info',
   linkedin:      'bg-info',
   gbp:           'bg-green-600',
-  google_ads:    'bg-yellow-500',
-  instagram_ads: 'bg-rose-500',
+  google_ads:    'bg-warning',
+  instagram_ads: 'bg-pink-400',
   landing_page:  'bg-primary',
-  youtube:       'bg-red-500',
+  youtube:       'bg-destructive',
   tiktok:        'bg-fuchsia-500',
   email:         'bg-info',
 }

@@ -59,6 +59,7 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   if (req.method === 'GET') {
+    if (!(await enforceLimit(req, res, 'generic'))) return
     const { searchParams } = new URL(req.url, 'http://localhost')
     const itemId = searchParams.get('itemId')
     if (!itemId) return err(res, 'Missing itemId')
