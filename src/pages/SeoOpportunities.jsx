@@ -4,6 +4,7 @@ import {
   TrendingUp, Target, Sparkles, TrendingDown, GitBranch, Mic, PenLine, X,
   FilePlus2, FilePen, Wrench, Search, Lock, Plug,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -64,38 +65,33 @@ function OpportunityCard({ opp, onStartInterview, onDraft, onDismiss, dismissing
             <span className="truncate">{opp.query}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{opp.why}</p>
-          <div className={`text-2xs mt-2 inline-flex items-center gap-1 ${opp.match?.has ? 'text-accent-foreground' : 'text-action'}`}>
+          <div className={`text-2xs mt-2 inline-flex items-center gap-1 ${opp.match?.has ? 'text-muted-foreground' : 'text-action'}`}>
             <MatchIcon className="w-3.5 h-3.5" aria-hidden="true" /> {opp.match?.label}
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-lg font-semibold tabular-nums">#{opp.position}</div>
+          <div className="text-sm font-semibold tabular-nums text-muted-foreground">#{opp.position}</div>
           <div className="text-2xs text-muted-foreground">{opp.impressions.toLocaleString()} impr · {opp.ctr}% ctr</div>
         </div>
       </div>
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-        <button
-          onClick={() => onStartInterview(opp)}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-primary text-primary-foreground inline-flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-        >
+        <Button size="sm" onClick={() => onStartInterview(opp)}>
           <Mic className="w-3.5 h-3.5" /> Start interview
-        </button>
-        <button
-          onClick={() => onDraft(opp)}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-card border border-border inline-flex items-center gap-1.5 hover:bg-accent/20 transition-colors"
-        >
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onDraft(opp)}>
           <PenLine className="w-3.5 h-3.5" /> Draft content
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm" variant="ghost"
           onClick={() => onDismiss(opp)}
           disabled={dismissing}
           aria-busy={dismissing}
-          className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1.5 disabled:opacity-50 aria-busy:cursor-wait"
           title="Dismiss this opportunity"
           aria-label="Dismiss this opportunity"
+          className="ml-auto text-muted-foreground"
         >
           <X className="w-3.5 h-3.5" /> {dismissing ? 'Dismissing…' : 'Dismiss'}
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -291,7 +287,7 @@ export default function SeoOpportunities() {
           </div>
 
           {/* Recommended website updates (advisory) */}
-          <div className="flex items-center gap-2 mt-9 mb-1">
+          <div className="flex items-center gap-2 mt-8 mb-1">
             <Wrench className="w-4 h-4 text-primary" aria-hidden="true" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recommended website updates</h2>
           </div>
