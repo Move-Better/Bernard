@@ -71,8 +71,8 @@ async function handler(req, res) {
       messages,
       maxOutputTokens: cap,
     })
-  } catch (e) {
-    res.status(500).json({ error: e?.message || 'Stream init failed' })
+  } catch (_e) {
+    res.status(500).json({ error: 'stream_init_failed' })
     return
   }
 
@@ -123,8 +123,8 @@ async function handler(req, res) {
       }
     }
     if (!errored) res.write('data: [DONE]\n\n')
-  } catch (e) {
-    sendError(e?.message)
+  } catch (_e) {
+    sendError('stream_error')
   } finally {
     res.end()
   }

@@ -60,6 +60,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ opener })
   } catch (e) {
     console.error('[voice-preview]', e?.message || e)
-    return res.status(500).json({ error: e?.message || 'Preview failed' })
+    return res.status(500).json({ error: 'preview_failed' })
   }
 }

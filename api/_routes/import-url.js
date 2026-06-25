@@ -144,7 +144,7 @@ export default async function handler(req, res) {
     if (!extractedText) throw new Error('Page appears to be empty after extraction.')
   } catch (e) {
     console.error(`[import-url] fetch failed for ${cleanUrl}: ${e?.message}`)
-    return res.status(502).json({ error: e?.message || 'Could not fetch that URL.' })
+    return res.status(502).json({ error: 'fetch_failed' })
   }
 
   // ── Find or create Self-clinician ─────────────────────────────────────────

@@ -126,6 +126,8 @@ export default async function handler(req, res) {
   const body = req.body || {}
   const assetId = String(body.assetId || '').trim()
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_asset_id' })
   const maxSegments = Math.min(
     Math.max(parseInt(body.maxSegments || String(MAX_SEGMENTS_DEFAULT), 10) || MAX_SEGMENTS_DEFAULT, 1),
     MAX_SEGMENTS_CAP,
@@ -154,7 +156,7 @@ export default async function handler(req, res) {
     campaignId = await upsertRepurchaseCampaign({ ws, asset, userId: auth.userId })
   } catch (e) {
     console.error('[repurpose-video] campaign upsert failed:', e?.message || e)
-    return res.status(500).json({ error: e?.message || 'campaign_failed' })
+    return res.status(500).json({ error: 'campaign_failed' })
   }
 
   // Origin for chunk engine self-continuation (Node runtime headers).
@@ -167,7 +169,7 @@ export default async function handler(req, res) {
     masterResult = await kickLongformRender({ ws, asset, baseUrl, campaignId })
   } catch (e) {
     console.error('[repurpose-video] kickLongformRender failed:', e?.message || e)
-    return res.status(500).json({ error: e?.message || 'master_render_failed' })
+    return res.status(500).json({ error: 'master_render_failed' })
   }
 
   // Kick clip detection (tagged to campaign). Mirrors find-clips.js logic:
