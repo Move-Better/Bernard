@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Check, ImageIcon, Loader2, MessageCircle, Plus, Send, Type, Video, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ArrowRight, Check, Crop, ImageIcon, Loader2, MessageCircle, Palette, Plus, Send, Type, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
@@ -9,8 +10,9 @@ import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import OverlayTextEditor from '@/components/story-detail/OverlayTextEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
-import { useUpdateContentItem, useMediaSuggestions } from '@/lib/queries'
-import { clipToMediaEntry, mediaEntryKey, photoSourceUrl } from '@/lib/mediaEntry'
+import { useUpdateContentItem, useMediaSuggestions, queryKeys } from '@/lib/queries'
+import { apiFetch } from '@/lib/api'
+import { clipToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
 import { PLATFORM_META } from '@/lib/contentMeta'
 
@@ -33,7 +35,14 @@ const RAIL_META = {
   media: { icon: ImageIcon, label: 'Media' },
   photo: { icon: ImageIcon, label: 'Media' },
   text: { icon: Type, label: 'Text' },
+  grade: { icon: Palette, label: 'Grade' },
 }
+
+const ASPECTS = ['1:1', '4:5', '16:9']
+
+// Does this post have at least one photo (non-video media entry with a source)?
+const hasPhotoEntry = (media) =>
+  Array.isArray(media) && media.some((m) => m && !isVideoEntry(m) && (m.url || m.sourceUrl || m.thumbnailUrl))
 
 // Caption editor — mirrors SlideEditor's CaptionPanel (textarea + onBlur save).
 function WordsPanel({ piece, updateItem }) {
@@ -114,7 +123,7 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 // post. Suggestions come from the same suggest-media brain the carousel and
 // Storyboard use; attach goes through clipToMediaEntry so the stored entry has
 // the correct {url,type,mediaAssetId,…} shape (never a raw clip → url:null).
-function MediaPanel({ piece, updateItem }) {
+function MediaPanel({ piece, updateItem, aspect, setAspect }) {
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
   const optional = mediaTierFor(piece) === MEDIA_TIER.OPTIONAL
   const { data: sugg, isLoading } = useMediaSuggestions(piece.id, { kind: 'photo', k: 12 })
@@ -187,6 +196,32 @@ function MediaPanel({ piece, updateItem }) {
           </div>
         )}
 
+        {/* Reframe — output aspect (parity with the carousel's Photo reframe). */}
+        {hasPhotoEntry(media) && setAspect && (
+          <div>
+            <p className="mb-1.5 flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Crop className="h-3 w-3" /> Reframe
+            </p>
+            <div className="flex overflow-hidden rounded-md border border-border">
+              {ASPECTS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAspect(a)}
+                  className={`flex-1 px-2 py-1 text-2xs font-medium transition-colors ${
+                    aspect === a
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-3xs text-muted-foreground/70">Sets the crop used when you bake a brand look in Grade.</p>
+          </div>
+        )}
+
         {/* Suggestions */}
         <div>
           <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -233,6 +268,228 @@ function TextPanel({ piece }) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         <OverlayTextEditor piece={piece} />
+      </div>
+    </div>
+  )
+}
+
+const GRADE_TEMPLATES = [
+  ['editorial', 'Editorial'],
+  ['dark-claim', 'Dark claim'],
+  ['light-claim', 'Light claim'],
+  ['dark-badge', 'Dark badge'],
+  ['light-badge', 'Light badge'],
+  ['dark-split', 'Dark split'],
+  ['light-split', 'Light split'],
+]
+
+// Grade inspector — the brand-look bake. Same server compositor the carousel and
+// the old Storyboard editor use (`/api/editorial/compose-photo`): it bakes a
+// brand treatment (template + headline + accent + grade + scrim) onto the photo
+// and writes the composite back into media_urls (preview == publish). After a
+// bake we invalidate the piece so the canvas re-renders the composite.
+function GradePanel({ piece, aspect }) {
+  const qc = useQueryClient()
+  const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
+  const t0 = piece?.photo_treatment && typeof piece.photo_treatment === 'object' ? piece.photo_treatment : {}
+  const [treatment, setTreatment] = useState(() => ({
+    templateId: t0.templateId || 'editorial',
+    headline: t0.headline || '',
+    headlineSize: t0.headlineSize || 'm',
+    grade: typeof t0.grade === 'number' ? t0.grade : 40,
+    scrim: t0.scrim || 'navy',
+    label: t0.label || '',
+    accentText: t0.accentText || '',
+    figure: t0.figure || '',
+    figureUnit: t0.figureUnit || '',
+  }))
+  const [composing, setComposing] = useState(false)
+  const composed = media.some((m) => m?.composed)
+  const isBadge = String(treatment.templateId || '').includes('badge')
+
+  async function compose(patch) {
+    const next = { ...treatment, ...(patch || {}), aspect: aspect || '4:5' }
+    if (!next.headline) {
+      next.headline = String(piece?.content || '').split(/(?<=[.!?])\s/)[0]?.slice(0, 140) || ''
+    }
+    setTreatment(next)
+    setComposing(true)
+    try {
+      const r = await apiFetch('/api/editorial/compose-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pieceId: piece.id, treatment: next, imageIndex: 0 }),
+      })
+      if (r?.url) {
+        await qc.invalidateQueries({ queryKey: queryKeys.contentItems.detail(piece.id) })
+        toast.success(composed ? 'Re-baked' : 'Baked to image')
+      }
+      return r
+    } catch (e) {
+      toast.error('Could not bake the image', { description: e?.message })
+      return null
+    } finally {
+      setComposing(false)
+    }
+  }
+
+  if (!hasPhotoEntry(media)) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b px-3 py-2">
+          <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Brand look</span>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-5 text-center">
+          <p className="text-2xs text-muted-foreground">
+            Add a photo in the <span className="font-semibold text-foreground">Media</span> tab first — Grade bakes your
+            brand headline + treatment onto it.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b px-3 py-2">
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Brand look</span>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-xs">
+        {/* Template — selecting a non-badge template bakes immediately. */}
+        <div>
+          <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Template</span>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {GRADE_TEMPLATES.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                disabled={composing}
+                onClick={() => {
+                  if (String(id).includes('badge')) setTreatment((t) => ({ ...t, templateId: id }))
+                  else compose({ templateId: id })
+                }}
+                className={`rounded border px-2 py-1 text-2xs disabled:opacity-50 ${
+                  (treatment.templateId || 'editorial') === id
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Headline</span>
+          <textarea
+            rows={2}
+            value={treatment.headline}
+            onChange={(e) => setTreatment((t) => ({ ...t, headline: e.target.value }))}
+            placeholder="Defaults to your caption's first line…"
+            className="resize-none rounded border border-border bg-background px-2 py-1.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Highlight word(s)</span>
+          <input
+            value={treatment.accentText}
+            onChange={(e) => setTreatment((t) => ({ ...t, accentText: e.target.value }))}
+            placeholder="word(s) to accent — e.g. “isn't tight”"
+            className="rounded border border-border bg-background px-2 py-1.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Label (optional)</span>
+          <input
+            value={treatment.label}
+            onChange={(e) => setTreatment((t) => ({ ...t, label: e.target.value }))}
+            placeholder="THE SCIENCE"
+            className="rounded border border-border bg-background px-2 py-1.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
+          />
+        </label>
+
+        {isBadge && (
+          <div className="flex items-center gap-2">
+            <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Badge</span>
+            <input
+              value={treatment.figure}
+              onChange={(e) => setTreatment((t) => ({ ...t, figure: e.target.value }))}
+              placeholder="2"
+              className="w-12 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary"
+            />
+            <input
+              value={treatment.figureUnit}
+              onChange={(e) => setTreatment((t) => ({ ...t, figureUnit: e.target.value }))}
+              placeholder="min"
+              className="w-16 rounded border border-border bg-background px-2 py-1 text-center outline-none focus:border-primary"
+            />
+          </div>
+        )}
+
+        <div>
+          <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Light &amp; color</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={treatment.grade}
+            onChange={(e) => setTreatment((t) => ({ ...t, grade: Number(e.target.value) }))}
+            className="mt-1 w-full accent-primary"
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Scrim</span>
+            <div className="flex overflow-hidden rounded-md border border-border">
+              {[['navy', 'Navy'], ['brand', 'Brand']].map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setTreatment((t) => ({ ...t, scrim: v }))}
+                  className={`px-2 py-1 text-2xs font-medium ${
+                    treatment.scrim === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Headline size</span>
+            <div className="flex overflow-hidden rounded-md border border-border">
+              {[['s', 'S'], ['m', 'M'], ['l', 'L']].map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setTreatment((t) => ({ ...t, headlineSize: v }))}
+                  className={`px-2.5 py-1 text-2xs font-medium ${
+                    treatment.headlineSize === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={composing}
+          onClick={() => compose()}
+          className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-action px-3 py-2 text-xs font-semibold text-action-foreground transition-colors hover:bg-action/90 disabled:opacity-50"
+        >
+          {composing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Palette className="h-3.5 w-3.5" />}
+          {composed ? 'Re-bake to image' : 'Bake to image'}
+        </button>
+        <p className="text-3xs text-muted-foreground/70">
+          Bakes server-side at the {aspect || '4:5'} crop — the baked image is exactly what publishes.
+        </p>
       </div>
     </div>
   )
@@ -287,6 +544,10 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
 
   const archetype = resolveArchetype(piece)
   const cfg = ARCHETYPES[archetype] || ARCHETYPES.visual
+  // Output aspect for the photo bake (the carousel's "reframe"). Seeded from a
+  // prior bake's treatment, else the archetype default.
+  const [aspect, setAspect] = useState(() => piece?.photo_treatment?.aspect || cfg.aspect || '1:1')
+  const aspectOptions = Array.isArray(cfg.aspects) && cfg.aspects.length ? cfg.aspects : ASPECTS
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—', icon: undefined }
   const isReel = piece.platform === 'instagram' && archetype === 'vvideo'
   const count = Number.isFinite(photoCount) ? photoCount : null
@@ -318,6 +579,7 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
         title={piece?.topic || 'Untitled draft'}
         badge={{ icon: meta.icon, label: formatLabel || meta.label, sub: formatSub || cfg.label }}
         note={count != null ? (count === 0 ? 'no media' : `${count} ${count === 1 ? 'item' : 'items'}`) : null}
+        aspect={!noMedia && cfg.canvas === 'visual' ? { value: aspect, options: aspectOptions, onChange: setAspect } : null}
       />
 
       {/* ── WORK AREA: rail | inspector | canvas ─────────────────────────── */}
@@ -329,9 +591,11 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
           {activeKey === 'words' ? (
             <WordsPanel piece={piece} updateItem={updateItem} />
           ) : activeKey === 'media' || activeKey === 'photo' ? (
-            <MediaPanel piece={piece} updateItem={updateItem} />
+            <MediaPanel piece={piece} updateItem={updateItem} aspect={aspect} setAspect={setAspect} />
           ) : activeKey === 'text' ? (
             <TextPanel piece={piece} />
+          ) : activeKey === 'grade' ? (
+            <GradePanel piece={piece} aspect={aspect} />
           ) : (
             <PublishPanel piece={piece} remainingNeedsMedia={remainingNeedsMedia} isReel={isReel} />
           )}
