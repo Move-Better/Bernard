@@ -43,9 +43,12 @@ export default async function handler(req, res) {
   }
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
+  if (!(await enforceLimit(req, res, 'generic'))) return
+
   if (req.method === 'POST') {
     const slug = (req.body?.chapter_slug || '').trim()
     if (!slug) return res.status(400).json({ error: 'chapter_slug required' })
+    if (!/^[a-z0-9_-]{1,100}$/i.test(slug)) return res.status(400).json({ error: 'invalid_chapter_slug' })
 
     // Look up the current chapter content from workspace_books.chapters jsonb.
     const bookRes = await sb(`workspace_books?workspace_id=eq.${ws.id}&select=chapters`)
@@ -79,6 +82,7 @@ export default async function handler(req, res) {
     const { searchParams } = new URL(req.url, 'http://localhost')
     const slug = (searchParams.get('chapter_slug') || '').trim()
     if (!slug) return res.status(400).json({ error: 'chapter_slug required' })
+    if (!/^[a-z0-9_-]{1,100}$/i.test(slug)) return res.status(400).json({ error: 'invalid_chapter_slug' })
 
     const r = await sb(
       `book_pinned_chapters?workspace_id=eq.${ws.id}&chapter_slug=eq.${encodeURIComponent(slug)}`,

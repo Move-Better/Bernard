@@ -102,6 +102,8 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'media', ws.id))) return
     const body = req.body || {}
     if (!body.staffId) return err(res, 'Missing staffId')
+    const UUID_RE_POST = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE_POST.test(body.staffId)) return err(res, 'Invalid staffId', 400)
     if (!body.name?.trim())  return err(res, 'Name required')
 
     // Ownership check: the client-supplied staffId must belong to the
@@ -136,6 +138,8 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     if (!(await enforceLimit(req, res, 'media', ws.id))) return
     if (!id) return err(res, 'Missing id')
+    const UUID_RE_PATCH = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE_PATCH.test(id)) return err(res, 'Invalid id', 400)
 
     const body = req.body || {}
     const patch = { updated_at: new Date().toISOString() }
