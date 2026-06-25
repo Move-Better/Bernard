@@ -158,7 +158,7 @@ export function GoogleFontPicker({ value, onChange, sampleText, className }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search Google Fonts…"
-              className="h-7 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              className="h-7 w-full bg-transparent text-xs outline-none focus-visible:outline-none placeholder:text-muted-foreground"
             />
             {value && (
               <button

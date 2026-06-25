@@ -636,6 +636,7 @@ export default function StaffProfile() {
               <p className="text-2xs text-muted-foreground mt-0.5">All history moves to the chosen member — nothing is lost.</p>
             </div>
             <select
+              aria-label="Select staff member to merge into"
               value={mergeTargetId}
               onChange={(e) => setMergeTargetId(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -1235,20 +1236,20 @@ function RecipeRow({ recipe, workspace, voiceModes, onSetDefault, onDelete, busy
             type="button"
             onClick={onSetDefault}
             disabled={busy}
-            title="Make default"
+            aria-label="Make default"
             className="p-1.5 rounded text-muted-foreground hover:text-action hover:bg-action/10 disabled:opacity-50"
           >
-            <Star className="h-3.5 w-3.5" />
+            <Star className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         )}
         <button
           type="button"
           onClick={onDelete}
           disabled={busy}
-          title="Delete recipe"
+          aria-label="Delete recipe"
           className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

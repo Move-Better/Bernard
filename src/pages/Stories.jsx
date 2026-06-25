@@ -250,6 +250,7 @@ export default function Stories() {
           </button>
         ) : (
           <select
+            aria-label="Filter by real moments"
             value=""
             onChange={(e) => setParam('capture', e.target.value)}
             className={SELECT_CLS}
@@ -272,6 +273,7 @@ export default function Stories() {
           </button>
         ) : selectableCampaigns.length > 0 ? (
           <select
+            aria-label="Filter by campaign"
             value=""
             onChange={(e) => setParam('campaign', e.target.value)}
             className={SELECT_CLS}
@@ -296,6 +298,7 @@ export default function Stories() {
           </button>
         ) : staffAll.length > 1 ? (
           <select
+            aria-label="Filter by author"
             value=""
             onChange={(e) => setParam('staff', e.target.value)}
             className={SELECT_CLS}
@@ -309,6 +312,7 @@ export default function Stories() {
 
         {/* Platform */}
         <select
+          aria-label="Filter by platform"
           value={platformFilter}
           onChange={(e) => setParam('platform', e.target.value)}
           className={SELECT_CLS}
@@ -322,6 +326,7 @@ export default function Stories() {
         {/* Location — only when workspace has multiple */}
         {showLocations ? (
           <select
+            aria-label="Filter by location"
             value={locationFilter}
             onChange={(e) => setParam('location', e.target.value)}
             className={SELECT_CLS}
@@ -336,6 +341,7 @@ export default function Stories() {
         {/* Archetype — only when workspace has defined prototypes */}
         {showArchetypes ? (
           <select
+            aria-label="Filter by archetype"
             value={searchParams.get('archetype') || ''}
             onChange={(e) => setParam('archetype', e.target.value)}
             className={SELECT_CLS}
