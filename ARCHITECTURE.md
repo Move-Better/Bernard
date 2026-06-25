@@ -73,6 +73,19 @@ Reference: `api/editorial/render-clip.js` and `api/ads/render-video.js` (both im
 file requires regenerating the manifest (`node scripts/build-api-manifest.mjs`, also run in
 prebuild); a standalone physical file needs no manifest change.
 
+**Webhook signature verification: read `req.rawBody`, never re-read the stream.** Because every
+`_routes` handler runs inside the `api/index.js` Express app, its `express.json({ verify: (req,_res,buf)
+=> { req.rawBody = buf } })` middleware has ALREADY consumed the request stream before the handler
+runs and stashed the exact signed bytes on `req.rawBody` (the Stripe-webhook pattern). A webhook that
+re-reads the body itself (`req.on('data')`/`'end'`, a local `readRawBody(req)` helper, or `await
+req.json()`) waits on a stream that has already emitted `'end'` — the promise never resolves, the
+function hangs to the 300s limit, and every POST returns **504**. Verify the HMAC against `req.rawBody`
+(it's the raw `Buffer` signature functions expect) and guard an empty/missing body → `400`. This bit
+both publish-status webhooks: `api/_routes/webhooks/bundle.js` (#1685) and `api/_routes/webhooks/mux.js`
+(#1686), each fixed by swapping `readRawBody(req)` → `req.rawBody`. Probe tell: GET→405 fast +
+POST→504 = a stream-read hang (not "unconfigured", which is a fast 503); after the fix an unsigned
+POST returns 401/400 in well under a second.
+
 ### Edge runtime
 ```js
 export const config = { runtime: 'edge' }
