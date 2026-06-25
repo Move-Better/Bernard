@@ -71,8 +71,8 @@ async function handler(req, res) {
 
   const r = await sb('content_pieces', { method: 'POST', body: JSON.stringify(row) })
   if (!r.ok) {
-    const text = await r.text()
-    return res.status(500).json({ error: 'Insert failed', detail: text })
+    console.error('[create.js] db error:', r.status)
+    return res.status(500).json({ error: 'Insert failed'})
   }
   const data = await r.json()
   return res.status(200).json(data[0] ?? null)

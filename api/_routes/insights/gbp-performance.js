@@ -64,8 +64,8 @@ export default async function handler(req, res) {
   let accessToken
   try {
     accessToken = await refreshGbpToken(refreshToken)
-  } catch (e) {
-    return res.status(200).json({ connected: true, error: 'token_refresh_failed', detail: e?.message })
+  } catch (_e) {
+    return res.status(200).json({ connected: true, error: 'token_refresh_failed'})
   }
 
   // Build the list of locations to fetch — use config.locations[] when present
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     )
   } catch (e) {
     console.error('[insights/gbp-performance]', e?.message)
-    return res.status(200).json({ connected: true, error: 'gbp_fetch_failed', detail: e?.message?.slice(0, 300) })
+    return res.status(200).json({ connected: true, error: 'gbp_fetch_failed'})
   }
 
   // Merge daily series across locations by summing numeric fields per date

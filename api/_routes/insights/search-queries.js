@@ -97,7 +97,7 @@ export default async function handler(req, res) {
     queries = await fetchSearchQueries({ credential, siteUrl: ws.gsc_site_url })
   } catch (e) {
     console.error('[insights/search-queries]', e?.message)
-    return res.status(200).json({ connected: true, error: 'gsc_fetch_failed', detail: e?.message })
+    return res.status(200).json({ connected: true, error: 'gsc_fetch_failed'})
   }
 
   const topQueries = queries.slice(0, TOP_QUERIES).map((q) => ({

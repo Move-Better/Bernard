@@ -107,7 +107,7 @@ export default async function handler(req, res) {
     ])
   } catch (e) {
     console.error('[insights/website-ga4]', e?.message)
-    return res.status(200).json({ connected: true, error: 'ga4_fetch_failed', detail: e?.message })
+    return res.status(200).json({ connected: true, error: 'ga4_fetch_failed'})
   }
 
   // Landing pages: prefer our published pages; fall back to all property landing

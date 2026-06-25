@@ -97,8 +97,8 @@ async function handler(req, res) {
       body: JSON.stringify(body),
     })
     if (!r.ok) {
-      const text = await r.text()
-      return res.status(500).json({ error: 'Update failed', detail: text })
+      console.error('[[id].js] db error:', r.status)
+      return res.status(500).json({ error: 'Update failed'})
     }
     const data = await r.json()
     return res.status(200).json(data[0] ?? null)

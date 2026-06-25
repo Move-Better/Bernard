@@ -83,7 +83,7 @@ async function handler(req, res) {
       })
       if (portal.error) {
         console.error('[billing/checkout] portal redirect error:', portal.error)
-        return res.status(500).json({ error: 'stripe-error', detail: portal.error.message })
+        return res.status(500).json({ error: 'stripe-error'})
       }
       return res.status(200).json({ url: portal.url })
     } catch (e) {
@@ -119,7 +119,7 @@ async function handler(req, res) {
     const session = await stripePost('/checkout/sessions', sessionParams)
     if (session.error) {
       console.error('[billing/checkout] Stripe error:', session.error)
-      return res.status(500).json({ error: 'stripe-error', detail: session.error.message })
+      return res.status(500).json({ error: 'stripe-error'})
     }
 
     return res.status(200).json({ url: session.url })

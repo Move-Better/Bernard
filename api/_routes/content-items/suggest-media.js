@@ -115,7 +115,7 @@ export default async function handler(req, res) {
     clips = await searchClips({ query, workspaceId: ws.id, k, kind, minScore })
   } catch (e) {
     console.error('[content-items/suggest-media] search failed:', e?.message)
-    return res.status(500).json({ error: 'search_failed', detail: e?.message })
+    return res.status(500).json({ error: 'search_failed'})
   }
 
   return res.status(200).json({

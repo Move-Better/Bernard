@@ -69,7 +69,7 @@ async function handler(req, res) {
     })
     if (session.error) {
       console.error('[billing/portal] Stripe error:', session.error)
-      return res.status(500).json({ error: 'stripe-error', detail: session.error.message })
+      return res.status(500).json({ error: 'stripe-error'})
     }
 
     return res.status(200).json({ url: session.url })
