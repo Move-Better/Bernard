@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'insights-website-health'))) return
+  if (!(await enforceLimit(req, res, 'insights-website-health', ws.id))) return
 
   // Published website/blog posts for THIS workspace that have a live URL.
   const sel =

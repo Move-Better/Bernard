@@ -190,11 +190,12 @@ export async function runCampaignSpin(campaignId, workspaceId) {
   }
 
   const aiTunedAt = new Date().toISOString()
+  const { _error: _ignored, ...safeState } = tuneState || {}
   return {
-    campaign_id:  campaignId,
-    ai_tune_state: tuneState,
-    ai_tuned_at:  aiTunedAt,
-    explanation:  tuneState?.explanation ?? '',
+    campaign_id:   campaignId,
+    ai_tune_state: safeState,
+    ai_tuned_at:   aiTunedAt,
+    explanation:   tuneState?.explanation ?? '',
   }
 }
 
@@ -212,7 +213,7 @@ async function handler(req, res) {
     return res.status(status).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'campaign-spin'))) return
+  if (!(await enforceLimit(req, res, 'campaign-spin', ws.id))) return
 
   const { campaign_id } = req.body || {}
   if (!campaign_id) return res.status(400).json({ error: 'campaign_id is required' })

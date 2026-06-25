@@ -156,9 +156,8 @@ async function handler(req, res) {
     })
   }
   if (upstream.status === 400 || upstream.status === 422) {
-    const msg = beehiivErrorMessage(data) || 'Beehiiv rejected the payload as invalid.'
-    console.error(tag, 'invalid_payload:', msg)
-    return res.status(400).json({ error: 'invalid_payload', message: msg })
+    console.error(tag, 'invalid_payload:', beehiivErrorMessage(data))
+    return res.status(400).json({ error: 'invalid_payload' })
   }
   if (upstream.status === 429) {
     console.error(tag, 'rate_limited')
@@ -168,12 +167,8 @@ async function handler(req, res) {
       retriable: true,
     })
   }
-  console.error(tag, 'upstream_error:', upstream.status, data?.errors || data?.message)
-  return res.status(502).json({
-    error:   'upstream_error',
-    message: beehiivErrorMessage(data) || `Beehiiv returned ${upstream.status}.`,
-    status:  upstream.status,
-  })
+  console.error(tag, 'upstream_error:', upstream.status, beehiivErrorMessage(data))
+  return res.status(502).json({ error: 'upstream_error' })
 }
 
 // Beehiiv returns errors as either { errors: [{ message }] } or { message }
