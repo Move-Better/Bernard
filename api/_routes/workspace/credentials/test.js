@@ -52,16 +52,17 @@ async function testBuffer(secret) {
     const bodyText = await r.text().catch(() => '')
     console.error('[credentials/test] buffer rejected', r.status, bodyText)
     if (r.status === 401 || r.status === 403) return { ok: false, error: 'Token rejected by Buffer (401/403). Generate a fresh Personal Key at buffer.com/api and try again.' }
-    return { ok: false, error: `Buffer responded ${r.status}` }
+    return { ok: false, error: 'buffer_error' }
   }
   const body = await r.json().catch(() => ({}))
   if (body.errors) {
     const msg = body.errors[0]?.message || 'GraphQL error'
     console.error('[credentials/test] buffer graphql error', JSON.stringify(body.errors))
     if (msg.toLowerCase().includes('auth') || msg.toLowerCase().includes('token')) {
-      return { ok: false, error: `Token rejected by Buffer: ${msg}` }
+      return { ok: false, error: 'buffer_auth_error' }
     }
-    return { ok: false, error: msg }
+    console.error('[credentials/test] buffer graphql error msg:', msg)
+    return { ok: false, error: 'buffer_graphql_error' }
   }
   const acct = body.data?.account
   return {
@@ -83,7 +84,8 @@ async function testWordPress({ config, secret }) {
   const r = await fetchWithTimeout(url, { headers: { Authorization: `Basic ${basic}` } })
   if (!r.ok) {
     if (r.status === 401 || r.status === 403) return { ok: false, error: 'WordPress rejected the credentials (401/403). Check the username and application password.' }
-    return { ok: false, error: `WordPress responded ${r.status}` }
+    console.error('[credentials/test] wordpress error', r.status)
+    return { ok: false, error: 'wordpress_error' }
   }
   return { ok: true, info: { endpoint: base } }
 }
@@ -108,7 +110,8 @@ async function testBearerEndpoint({ config, secret }) {
   if (!r.ok && r.status !== 400) {
     // 400 is acceptable — the endpoint received our test ping and chose to
     // reject the payload shape. That still proves the credential reached it.
-    return { ok: false, error: `Endpoint responded ${r.status}` }
+    console.error('[credentials/test] endpoint error', r.status)
+    return { ok: false, error: 'endpoint_error' }
   }
   return { ok: true, info: { endpoint: url } }
 }
@@ -126,7 +129,8 @@ async function testBeehiiv({ config, secret }) {
     return { ok: false, error: 'Beehiiv rejected the API key (401/403). Regenerate at Beehiiv → Settings → Integrations → API and paste again.' }
   }
   if (r.status === 404) {
-    return { ok: false, error: `Beehiiv could not find publication "${publicationId}". Check the Publication ID — it should look like "pub_xxxxxxxx" (UUID with the pub_ prefix).` }
+    console.error('[credentials/test] beehiiv not found:', publicationId)
+    return { ok: false, error: 'beehiiv_not_found' }
   }
   if (!r.ok) {
     // Bubble Beehiiv's own error message — for 400 in particular, the body
@@ -136,7 +140,8 @@ async function testBeehiiv({ config, secret }) {
     let parsed = null
     try { parsed = JSON.parse(body) } catch { /* keep as text */ }
     const detail = parsed?.errors?.[0]?.message || parsed?.message || body.slice(0, 200) || ''
-    return { ok: false, error: `Beehiiv responded ${r.status}${detail ? `: ${detail}` : ''}` }
+    console.error('[credentials/test] beehiiv error', r.status, detail)
+    return { ok: false, error: 'beehiiv_error' }
   }
   const body = await r.json().catch(() => ({}))
   const name = body?.data?.name || body?.name || publicationId

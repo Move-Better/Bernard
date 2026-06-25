@@ -116,7 +116,7 @@ export default async function handler(req, res) {
     return err(res, 'parts must be 2, 3, or 4')
   }
   if (bodyLengthPreset != null && !VALID_LENGTH_PRESETS.has(bodyLengthPreset)) {
-    return err(res, `Invalid length_preset: ${bodyLengthPreset}`)
+    return err(res, 'invalid_length_preset')
   }
 
   // Load the source content_item (must be a blog) under workspace scope.
