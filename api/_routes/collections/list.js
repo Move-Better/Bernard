@@ -35,10 +35,16 @@ async function handler(req, res) {
 
   const { searchParams } = new URL(req.url, 'http://localhost')
   const status  = searchParams.get('status')   // active (default) | archived | all
-  const kind    = searchParams.get('kind')     // campaign | series | session | adhoc
+  const rawKind = searchParams.get('kind')     // campaign | series | session | adhoc
   const assetId = searchParams.get('assetId')  // limit to collections containing this asset
   const limit   = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500)
   const offset  = parseInt(searchParams.get('offset') || '0', 10)
+
+  const VALID_KINDS = new Set(['campaign', 'series', 'session', 'adhoc'])
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (rawKind && !VALID_KINDS.has(rawKind)) return res.status(400).json({ error: 'invalid_kind' })
+  if (assetId && !UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_asset_id' })
+  const kind = rawKind
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
