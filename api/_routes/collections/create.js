@@ -70,9 +70,9 @@ async function handler(req, res) {
     const text = await r.text()
     // 23505 = unique violation on (brand, slug).
     if (text.includes('23505')) {
-      return res.status(409).json({ error: 'A collection with that slug already exists', detail: text })
+      return res.status(409).json({ error: 'A collection with that slug already exists'})
     }
-    return res.status(500).json({ error: 'Insert failed', detail: text })
+    return res.status(500).json({ error: 'Insert failed'})
   }
   const data = await r.json()
   return res.status(200).json(data[0] ?? null)

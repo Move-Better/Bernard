@@ -277,7 +277,7 @@ export default async function handler(req, res) {
   if (!publishPatchRes.ok) {
     const txt = await publishPatchRes.text().catch(() => '')
     console.error('[approve-package] status patch failed:', publishPatchRes.status, txt)
-    return res.status(500).json({ error: 'status_patch_failed', detail: txt })
+    return res.status(500).json({ error: 'status_patch_failed'})
   }
 
   return res.status(200).json({

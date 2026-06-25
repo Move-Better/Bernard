@@ -82,8 +82,8 @@ async function handler(req, res) {
 
     const r = await sb('collection_items', { method: 'POST', body: JSON.stringify(rows) })
     if (!r.ok) {
-      const text = await r.text()
-      return res.status(500).json({ error: 'Insert failed', detail: text })
+      console.error('[items.js] db error:', r.status)
+      return res.status(500).json({ error: 'Insert failed'})
     }
     const data = await r.json()
     return res.status(200).json({ added: data.length, items: data })
@@ -113,8 +113,8 @@ async function handler(req, res) {
     method: 'DELETE',
   })
   if (!r.ok) {
-    const text = await r.text()
-    return res.status(500).json({ error: 'Delete failed', detail: text })
+    console.error('[items.js] db error:', r.status)
+    return res.status(500).json({ error: 'Delete failed'})
   }
   // sb() sets Prefer: return=representation, so the body is the rows actually
   // deleted — report that, not the requested count (an asset valid for the

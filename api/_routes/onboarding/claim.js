@@ -379,7 +379,7 @@ async function handler(req, res) {
       })
     } catch (e) {
       console.error('[claim] createOrganization failed:', e?.message)
-      return res.status(500).json({ error: 'org-create-failed', detail: e?.message })
+      return res.status(500).json({ error: 'org-create-failed'})
     }
   }
 

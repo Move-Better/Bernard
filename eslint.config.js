@@ -9,6 +9,7 @@ import noArbitraryTextSize from './eslint/rules/no-arbitrary-text-size.js'
 import noRawApiFetch from './eslint/rules/no-raw-api-fetch.js'
 import noHardcodedBrandColor from './eslint/rules/no-hardcoded-brand-color.js'
 import requireWorkspaceScope from './eslint/rules/require-workspace-scope.js'
+import noDetailInErrorResponse from './eslint/rules/no-detail-in-error-response.js'
 
 export default [
   { ignores: ['dist/**', 'node_modules/**', 'playwright-report/**', 'api/_routes/_manifest.generated.js'] },
@@ -55,6 +56,7 @@ export default [
         rules: {
           'api-handler-shape': apiHandlerShape,
           'require-workspace-scope': requireWorkspaceScope,
+          'no-detail-in-error-response': noDetailInErrorResponse,
         },
       },
     },
@@ -64,6 +66,9 @@ export default [
       // workspaceContext, workspaceScope, or workspaceById — the tenant filter
       // must be in scope. Suppression requires an inline reason comment.
       'bernard/require-workspace-scope': 'error',
+      // Ban `detail:` fields in res.json() — log server-side, return only the opaque key.
+      // 26 audit rounds traced back to this copy-paste pattern from one reference handler.
+      'bernard/no-detail-in-error-response': 'error',
     },
   },
   // Local rules for client code (src/**):

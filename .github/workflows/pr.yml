@@ -58,5 +58,16 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: "Review this PR for bugs, security issues, and correctness. Focus on logic errors, missing validation, race conditions, and API contract violations. Post findings as a PR review comment."
+          prompt: |
+            Review this PR for bugs, security issues, and correctness. Focus on logic errors, missing validation, race conditions, and API contract violations.
+
+            Also explicitly check for these five recurring patterns that have caused 26+ audit rounds in this codebase:
+
+            1. **`detail:` in error responses** — any `res.status(NNN).json({ ..., detail: ... })` leaks server internals. The field must be absent; log with console.error instead.
+            2. **Missing UUID_RE validation** — any route param or body field that ends up in a PostgREST URL filter (e.g. `?id=eq.${id}`) must be validated with `/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i` before interpolation.
+            3. **`enforceLimit` before auth** — `enforceLimit(req, res, bucket)` must be called AFTER `workspaceContext` + `requireRole`, never before. Rate-limiting an unauthenticated caller with a workspace bucket is incorrect and wastes quota.
+            4. **String equality for HMAC** — OAuth state/signature comparisons must use `crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))`, not `===` or `!==`.
+            5. **Bare fire-and-forget in Node handlers** — any `Promise` kicked off after `res.json()` (cache writes, indexing, enrichment) must be wrapped in `waitUntil()` from `@vercel/functions`, or it will be killed when the response sends.
+
+            Post findings as a PR review comment. Flag any instance of these five patterns as a blocking issue.
           allowed_tools: "Bash,Read,Glob,Grep"

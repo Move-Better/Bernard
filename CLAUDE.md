@@ -1,5 +1,40 @@
 # Bernard — Project Notes
 
+## API handler checklist — 5 rules every new route must follow
+
+These five patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt explicitly checks all five. But check them manually before opening a PR:
+
+1. **No `detail:` in error responses.** `res.status(NNN).json({ error: 'key', detail: text })` leaks server internals to callers. Always: `console.error('[handler] msg:', e?.message)` + `res.status(500).json({ error: 'opaque_key' })`. The `bernard/no-detail-in-error-response` lint rule enforces this automatically.
+
+2. **UUID_RE on every param that lands in a PostgREST filter.** Before any `?id=eq.${id}` or `?staff_id=eq.${sid}`, validate:
+   ```js
+   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+   if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
+   ```
+   Applies to path params, query params, and body fields alike.
+
+3. **`enforceLimit` comes AFTER `workspaceContext` + `requireRole`.** Always in this order:
+   ```js
+   const ws = await workspaceContext(req)
+   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
+   const auth = await requireRole(req, ROLES, { orgId: ws.clerk_org_id })
+   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+   if (!(await enforceLimit(req, res, 'bucket'))) return
+   ```
+
+4. **`timingSafeEqual` for HMAC comparisons.** OAuth/webhook signature checks must use:
+   ```js
+   import { timingSafeEqual } from 'node:crypto'
+   if (expected.length !== sig.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) return null
+   ```
+   Never `===` or `!==` on secret strings.
+
+5. **`waitUntil()` for any post-response async work.** Any Promise kicked off after `res.json()` (cache writes, indexing, enrichment) is killed when the response sends unless wrapped:
+   ```js
+   import { waitUntil } from '@vercel/functions'
+   waitUntil(someCacheWrite().catch((e) => console.error('[handler] cache write failed:', e?.message)))
+   ```
+
 ## Verifying authed pages — use Q's logged-in Chrome (on PROD), don't stop at the Clerk lock
 
 Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (`mcp__Claude_in_Chrome__*`): `list_connected_browsers` → `select_browser` (device "DrQ") → `tabs_context_mcp` → `navigate` to the real page on `https://*.withbernard.ai` → `computer` screenshot / `read_page`. That session is already past the Clerk gate, so any authed surface (Slate, Library, Storyboard, Settings, …) can be visually verified directly against prod data. Default to this for "does this UI change look right?" instead of declaring it blocked by auth.

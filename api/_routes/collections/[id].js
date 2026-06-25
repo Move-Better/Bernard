@@ -63,8 +63,8 @@ async function handler(req, res) {
   if (req.method === 'GET') {
     const r = await sb(`collections?${where}&select=${SELECT}`)
     if (!r.ok) {
-      const text = await r.text()
-      return res.status(500).json({ error: 'Database error', detail: text })
+      console.error('[[id].js] db error:', r.status)
+      return res.status(500).json({ error: 'Database error'})
     }
     const rows = await r.json()
     const row  = rows[0]
@@ -124,8 +124,8 @@ async function handler(req, res) {
   if (req.method === 'DELETE') {
     const r = await sb(`collections?${where}`, { method: 'DELETE' })
     if (!r.ok) {
-      const text = await r.text()
-      return res.status(500).json({ error: 'Delete failed', detail: text })
+      console.error('[[id].js] db error:', r.status)
+      return res.status(500).json({ error: 'Delete failed'})
     }
     return res.status(200).json({ deleted: true })
   }

@@ -80,8 +80,8 @@ async function handler(req, res) {
 
   const r = await sb(qs)
   if (!r.ok) {
-    const text = await r.text()
-    return res.status(500).json({ error: 'Database error', detail: text })
+    console.error('[list.js] db error:', r.status)
+    return res.status(500).json({ error: 'Database error'})
   }
   const rows = await r.json()
   // Flatten the embedded count for cleaner client consumption.

@@ -125,7 +125,7 @@ export default async function handler(req, res) {
   if (!claimRes.ok) {
     const text = await claimRes.text().catch(() => '')
     console.error('[rerender-package] claim patch failed:', claimRes.status, text)
-    return res.status(500).json({ error: 'db_patch_failed', detail: text })
+    return res.status(500).json({ error: 'db_patch_failed'})
   }
 
   // --- Render off the request path ---

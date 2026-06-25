@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       })
     }
     console.error('[extract-brand-visual] analysis failed:', e.message)
-    return res.status(500).json({ error: 'analysis_failed', detail: e.message })
+    return res.status(500).json({ error: 'analysis_failed'})
   }
 
   // Persist to workspace row
