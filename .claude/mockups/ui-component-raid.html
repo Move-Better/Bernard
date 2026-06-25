@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — UI Component Raid (originui / magicui)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 8%;
+    --primary: 186 83% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 12%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --accent-foreground: 160 84% 30%;
+    --border: 214 32% 91%;
+    --radius: 0.625rem;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --info: 199 95% 40%;
+    --action: 32 95% 44%;
+    --scheduled: 262 83% 58%;
+  }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); }
+  .legend { border: 1px dashed hsl(var(--action)); background: hsl(var(--action) / 0.06); border-radius: var(--radius); }
+
+  /* ---- magicui NumberTicker (count-up) ---- */
+  /* ---- shimmer skeleton ---- */
+  .shimmer { position: relative; overflow: hidden; background: hsl(var(--muted)); }
+  .shimmer::after {
+    content: ""; position: absolute; inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.55), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+  @keyframes shimmer { 100% { transform: translateX(100%); } }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="p-6 md:p-10">
+<div class="max-w-5xl mx-auto space-y-10">
+
+  <header class="space-y-1">
+    <h1 class="text-2xl font-bold flex items-center gap-2">
+      <i data-lucide="sparkles" class="w-6 h-6" style="color:hsl(var(--primary))"></i>
+      UI Component Raid — originui / magicui
+    </h1>
+    <p class="text-sm" style="color:hsl(var(--muted-foreground))">
+      Three proposed changes, each TODAY → PROPOSED. All colors use Bernard's real tokens. Click the buttons to see motion.
+    </p>
+  </header>
+
+  <!-- ============ 1. NUMBER TICKER ============ -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">1 · Recap stats — magicui NumberTicker</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <!-- TODAY -->
+      <div class="card p-5 space-y-4">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — static</span>
+        <div class="grid grid-cols-2 gap-4">
+          <div><p class="text-3xl font-extrabold" style="color:hsl(var(--success))">128</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">posts published</p></div>
+          <div><p class="text-3xl font-extrabold" style="color:hsl(var(--info))">342</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">stories captured</p></div>
+          <div><p class="text-3xl font-extrabold" style="color:hsl(var(--info))">7</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">teammates contributing</p></div>
+          <div><p class="text-3xl font-extrabold" style="color:hsl(var(--foreground))">≈ $214</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">total run cost · est.</p></div>
+        </div>
+        <p class="text-2xs" style="color:hsl(var(--muted-foreground))">Numbers just appear on load.</p>
+      </div>
+
+      <!-- PROPOSED -->
+      <div class="card p-5 space-y-4 ring-2" style="--tw-ring-color:hsl(var(--primary) / 0.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--accent));color:hsl(var(--accent-foreground))">PROPOSED — counts up</span>
+        <div class="grid grid-cols-2 gap-4">
+          <div><p class="text-3xl font-extrabold ticker" data-to="128" data-prefix="" style="color:hsl(var(--success))">0</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">posts published</p></div>
+          <div><p class="text-3xl font-extrabold ticker" data-to="342" style="color:hsl(var(--info))">0</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">stories captured</p></div>
+          <div><p class="text-3xl font-extrabold ticker" data-to="7" style="color:hsl(var(--info))">0</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">teammates contributing</p></div>
+          <div><p class="text-3xl font-extrabold ticker" data-to="214" data-prefix="≈ $" style="color:hsl(var(--foreground))">0</p><p class="text-xs mt-0.5" style="color:hsl(var(--muted-foreground))">total run cost · est.</p></div>
+        </div>
+        <button onclick="runTickers()" class="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style="background:hsl(var(--primary))">▶ Replay count-up</button>
+      </div>
+    </div>
+    <div class="legend p-3 text-xs"><b>What changed:</b> static <code>&lt;p&gt;{value}&lt;/p&gt;</code> in <code>WeeklyRecapPanel.jsx</code> Stat/AllTimeStat → <code>&lt;NumberTicker value={n}/&gt;</code>. Adds <code>motion</code> dep. Tokens unchanged.</div>
+  </section>
+
+  <!-- ============ 2. SKELETON ============ -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">2 · Loading state — originui Skeleton (content-shaped)</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <!-- TODAY: spinner -->
+      <div class="card p-5">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — centered spinner</span>
+        <div class="flex flex-col items-center justify-center py-14 gap-2" style="color:hsl(var(--muted-foreground))">
+          <i data-lucide="loader-2" class="w-8 h-8 spin"></i>
+          <span class="text-sm">Loading…</span>
+        </div>
+        <p class="text-2xs text-center" style="color:hsl(var(--muted-foreground))">No hint of what's coming. Reads as "frozen."</p>
+      </div>
+
+      <!-- PROPOSED: skeleton grid -->
+      <div class="card p-5 ring-2" style="--tw-ring-color:hsl(var(--primary) / 0.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--accent));color:hsl(var(--accent-foreground))">PROPOSED — media-grid shaped</span>
+        <div class="grid grid-cols-3 gap-3 mt-3">
+          <div class="space-y-2"><div class="shimmer aspect-square rounded-lg"></div><div class="shimmer h-2.5 rounded w-3/4"></div><div class="shimmer h-2 rounded w-1/2"></div></div>
+          <div class="space-y-2"><div class="shimmer aspect-square rounded-lg"></div><div class="shimmer h-2.5 rounded w-2/3"></div><div class="shimmer h-2 rounded w-1/2"></div></div>
+          <div class="space-y-2"><div class="shimmer aspect-square rounded-lg"></div><div class="shimmer h-2.5 rounded w-3/4"></div><div class="shimmer h-2 rounded w-1/3"></div></div>
+        </div>
+        <p class="text-2xs text-center mt-3" style="color:hsl(var(--muted-foreground))">Shows the shape of the library while it loads.</p>
+      </div>
+    </div>
+    <div class="legend p-3 text-xs"><b>What changed:</b> <code>LoadingState.jsx</code> spinner → an <code>&lt;ContentSkeleton/&gt;</code> matched to each surface (media grid, story list). Pure copy-paste, <b>no new dep</b>. Uses <code>--muted</code> + brand radius.</div>
+  </section>
+
+  <!-- ============ 3. TABLE ============ -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">3 · Analytics lists — originui Table (sortable)</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <!-- TODAY: flex rows -->
+      <div class="card p-5 space-y-2">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — hand-rolled flex rows</span>
+        <div class="space-y-1.5 mt-2">
+          <div class="flex items-center gap-2 text-sm"><span class="flex-1 truncate">/sciatica-relief</span><span class="text-2xs tabular-nums" style="color:hsl(var(--muted-foreground))">1,204 sessions</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--warning)/0.1);color:hsl(var(--warning))">68% bounce</span></div>
+          <div class="flex items-center gap-2 text-sm"><span class="flex-1 truncate">/shoulder-pain</span><span class="text-2xs tabular-nums" style="color:hsl(var(--muted-foreground))">892 sessions</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--warning)/0.1);color:hsl(var(--warning))">54% bounce</span></div>
+          <div class="flex items-center gap-2 text-sm"><span class="flex-1 truncate">/knee-rehab</span><span class="text-2xs tabular-nums" style="color:hsl(var(--muted-foreground))">631 sessions</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--warning)/0.1);color:hsl(var(--warning))">41% bounce</span></div>
+        </div>
+        <p class="text-2xs" style="color:hsl(var(--muted-foreground))">No sort, no header, misaligns when values vary in width.</p>
+      </div>
+
+      <!-- PROPOSED: table -->
+      <div class="card p-0 overflow-hidden ring-2" style="--tw-ring-color:hsl(var(--primary) / 0.25)">
+        <div class="px-5 pt-5"><span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--accent));color:hsl(var(--accent-foreground))">PROPOSED — aligned, sortable</span></div>
+        <table class="w-full text-sm mt-3">
+          <thead><tr class="border-b text-left" style="border-color:hsl(var(--border))">
+            <th class="px-5 py-2 text-2xs font-semibold uppercase tracking-wide cursor-pointer" style="color:hsl(var(--muted-foreground))">Page <i data-lucide="chevron-down" class="inline w-3 h-3"></i></th>
+            <th class="px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-right cursor-pointer" style="color:hsl(var(--muted-foreground))">Sessions ↓</th>
+            <th class="px-5 py-2 text-2xs font-semibold uppercase tracking-wide text-right cursor-pointer" style="color:hsl(var(--muted-foreground))">Bounce</th>
+          </tr></thead>
+          <tbody>
+            <tr class="border-b" style="border-color:hsl(var(--border))"><td class="px-5 py-2.5">/sciatica-relief</td><td class="px-3 py-2.5 text-right tabular-nums">1,204</td><td class="px-5 py-2.5 text-right"><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--warning)/0.1);color:hsl(var(--warning))">68%</span></td></tr>
+            <tr class="border-b" style="border-color:hsl(var(--border))"><td class="px-5 py-2.5">/shoulder-pain</td><td class="px-3 py-2.5 text-right tabular-nums">892</td><td class="px-5 py-2.5 text-right"><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--warning)/0.1);color:hsl(var(--warning))">54%</span></td></tr>
+            <tr><td class="px-5 py-2.5">/knee-rehab</td><td class="px-3 py-2.5 text-right tabular-nums">631</td><td class="px-5 py-2.5 text-right"><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--success)/0.1);color:hsl(var(--success))">41%</span></td></tr>
+          </tbody>
+        </table>
+        <p class="text-2xs px-5 py-3" style="color:hsl(var(--muted-foreground))">Click a header to sort. Columns align regardless of value width.</p>
+      </div>
+    </div>
+    <div class="legend p-3 text-xs"><b>What changed:</b> flex-row lists in <code>Analytics.jsx</code> (+ Members / AccessMatrix) → originui <code>&lt;Table&gt;</code> on the TanStack you already ship. <b>No new dep.</b> Tokens for borders/badges unchanged.</div>
+  </section>
+
+  <footer class="text-2xs pt-4 pb-10" style="color:hsl(var(--muted-foreground))">
+    Mockup • Bernard real tokens • <span style="color:hsl(var(--action))">dashed = what changed</span> • Recommend: ship #2 (Skeleton, no dep) first → then #1 (NumberTicker, decide on <code>motion</code>) → #3 when Analytics next gets touched.
+  </footer>
+</div>
+
+<script>
+  lucide.createIcons();
+  function runTickers(){
+    document.querySelectorAll('.ticker').forEach(el=>{
+      const to = parseFloat(el.dataset.to), prefix = el.dataset.prefix||'';
+      const dur = 1100, start = performance.now();
+      function step(now){
+        const t = Math.min(1,(now-start)/dur);
+        const eased = 1-Math.pow(1-t,3);
+        const val = Math.round(to*eased);
+        el.textContent = prefix + val.toLocaleString();
+        if(t<1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  setTimeout(runTickers, 350);
+</script>
+</body>
+</html>

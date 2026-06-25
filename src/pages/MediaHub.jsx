@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
 import EmptyState from '@/components/EmptyState'
+import { MediaGridSkeleton } from '@/components/ui/skeleton'
 import MediaUploader from '@/components/MediaUploader'
 import DriveImportPicker from '@/components/DriveImportPicker'
 import MediaGrid from '@/components/MediaGrid'
@@ -663,9 +664,7 @@ export default function MediaHub() {
         </div>
       )}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <MediaGridSkeleton />
       ) : error && assets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <AlertCircle className="h-8 w-8 text-destructive/60 mb-3" />
