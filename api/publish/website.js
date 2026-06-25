@@ -171,8 +171,8 @@ async function publishToAstro(res, payload, cred, workspaceSlug) {
       headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     })
-  } catch (e) {
-    return res.status(502).json({ error: 'network_error', message: `Could not reach the website: ${e.message}` })
+  } catch (_e) {
+    return res.status(502).json({ error: 'network_error' })
   }
 
   let data = {}
@@ -241,7 +241,7 @@ async function publishToWordPress(res, payload, cred) {
     }
   } catch (e) {
     console.error(tag, 'network_error on collision check:', e.message)
-    return res.status(502).json({ error: 'network_error', message: `Could not reach WordPress: ${e.message}` })
+    return res.status(502).json({ error: 'network_error' })
   }
 
   // 2. Hero image — fetch the source URL, upload binary to /media, capture
@@ -253,7 +253,7 @@ async function publishToWordPress(res, payload, cred) {
       featuredMediaId = media.id
     } catch (e) {
       console.error(tag, 'media_upload_failed (hero):', e.message)
-      return res.status(502).json({ error: 'media_upload_failed', message: `Hero image upload failed: ${e.message}` })
+      return res.status(502).json({ error: 'media_upload_failed' })
     }
   }
 
@@ -264,7 +264,7 @@ async function publishToWordPress(res, payload, cred) {
       tagIds = await resolveTags(wp, payload.tags)
     } catch (e) {
       console.error(tag, 'tag_resolve_failed:', e.message)
-      return res.status(502).json({ error: 'tag_resolve_failed', message: `Tag resolution failed: ${e.message}` })
+      return res.status(502).json({ error: 'tag_resolve_failed' })
     }
   }
 
@@ -283,7 +283,7 @@ async function publishToWordPress(res, payload, cred) {
         if (wpMediaUrl) urlMap[img.url] = wpMediaUrl
       } catch (e) {
         console.error(tag, 'media_upload_failed (inline):', img.url, e.message)
-        return res.status(502).json({ error: 'media_upload_failed', message: `Inline image upload failed for ${img.url}: ${e.message}` })
+        return res.status(502).json({ error: 'media_upload_failed' })
       }
     }
     mirroredMarkdown = rewriteMarkdownImageUrls(payload.markdown, urlMap)
@@ -311,7 +311,7 @@ async function publishToWordPress(res, payload, cred) {
     })
   } catch (e) {
     console.error(tag, 'network_error on post create:', e.message)
-    return res.status(502).json({ error: 'network_error', message: `Could not reach WordPress: ${e.message}` })
+    return res.status(502).json({ error: 'network_error' })
   }
 
   let postData = {}

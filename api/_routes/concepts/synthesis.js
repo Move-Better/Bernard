@@ -13,6 +13,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole }      from '../../_lib/auth.js'
+import { enforceLimit }    from '../../_lib/ratelimit.js'
 import { requirePlan }      from '../../_lib/planGate.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
 
   const auth = await requireRole(req, ['admin'], { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   const planGate = requirePlan(res, ws, 'cross_staff_synthesis')
   if (planGate) return planGate

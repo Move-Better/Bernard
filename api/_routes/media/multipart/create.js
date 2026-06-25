@@ -94,8 +94,7 @@ async function handler(req, res) {
       contentType,
       addRandomSuffix: false,
     })
-  } catch (e) {
-    return res.status(500).json({ error: `createMultipartUpload failed: ${e.message}` })
+  } catch (_e) {res.status(500).json({ error: 'multipart_create_failed' })
   }
 
   // The opaque tokenPayload baked into the client token — used by the SDK to
@@ -131,8 +130,7 @@ async function handler(req, res) {
       addRandomSuffix: false,
       tokenPayload: tokenPayloadServer,
     })
-  } catch (e) {
-    return res.status(500).json({ error: `client token mint failed: ${e.message}` })
+  } catch (_e) {res.status(500).json({ error: 'token_mint_failed' })
   }
 
   return res.status(200).json({

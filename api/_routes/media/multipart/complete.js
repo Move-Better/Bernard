@@ -81,8 +81,8 @@ async function handler(req, res) {
       uploadId,
       key,
     })
-  } catch (e) {
-    return res.status(500).json({ error: `completeMultipartUpload failed: ${e.message}` })
+  } catch (_e) {
+    return res.status(500).json({ error: 'multipart_complete_failed' })
   }
 
   const inserted = await recordUploadedAsset({

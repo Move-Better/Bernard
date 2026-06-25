@@ -107,6 +107,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ url })
   } catch (e) {
     console.error('[editorial/upload-slide] blob put failed:', e.stack || e.message)
-    return res.status(502).json({ error: 'upload_failed', message: `Slide upload failed: ${e.message}` })
+    return res.status(502).json({ error: 'upload_failed' })
   }
 }
