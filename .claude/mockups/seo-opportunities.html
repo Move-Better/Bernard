@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — SEO Opportunities (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --border:214 32% 91%; --success:152 76% 40%; --warning:38 92% 50%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .bg-card{background:hsl(var(--card))}
+  .bg-primary{background:hsl(var(--primary))} .text-primary{color:hsl(var(--primary))}
+  .bg-action{background:hsl(var(--action))} .text-action{color:hsl(var(--action))}
+  .text-muted{color:hsl(var(--muted-foreground))}
+  .bg-accent{background:hsl(var(--accent))} .text-accent{color:hsl(var(--accent-foreground))}
+  .border-app{border-color:hsl(var(--border))}
+  .ring-primary{box-shadow:0 0 0 2px hsl(var(--primary)/.15)}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-5xl mx-auto px-6 py-8">
+
+  <!-- header -->
+  <div class="flex items-start justify-between mb-1">
+    <div>
+      <div class="flex items-center gap-2">
+        <i data-lucide="trending-up" class="w-5 h-5 text-primary"></i>
+        <h1 class="text-2xl font-semibold tracking-tight">SEO Opportunities</h1>
+      </div>
+      <p class="text-muted text-sm mt-1">Search demand you can already see in Google — turned into things to write about. <span class="text-primary font-medium">Move Better · Portland</span></p>
+    </div>
+    <div class="text-right text-xs text-muted">
+      <div>Search Console · last 28 days</div>
+      <div class="mt-0.5">Updated 2h ago</div>
+    </div>
+  </div>
+
+  <!-- representative-data banner -->
+  <div class="mt-3 mb-5 text-2xs rounded-md bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 inline-flex items-center gap-1.5" style="font-size:11px">
+    <i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>
+    Mockup — numbers are representative Move Better queries. Swap in live GSC data before sign-off.
+  </div>
+
+  <!-- summary strip -->
+  <div class="grid grid-cols-4 gap-3 mb-6">
+    <div class="bg-card border border-app rounded-xl p-4">
+      <div class="text-2xl font-semibold">14</div>
+      <div class="text-xs text-muted mt-0.5">Open opportunities</div>
+    </div>
+    <div class="bg-card border border-app rounded-xl p-4">
+      <div class="text-2xl font-semibold text-action">6</div>
+      <div class="text-xs text-muted mt-0.5">Striking distance <span class="text-muted">(#8–20)</span></div>
+    </div>
+    <div class="bg-card border border-app rounded-xl p-4">
+      <div class="text-2xl font-semibold">5</div>
+      <div class="text-xs text-muted mt-0.5">Demand, no content</div>
+    </div>
+    <div class="bg-card border border-app rounded-xl p-4">
+      <div class="text-2xl font-semibold text-rose-600">3</div>
+      <div class="text-xs text-muted mt-0.5">Decaying pages</div>
+    </div>
+  </div>
+
+  <!-- filter row -->
+  <div class="flex items-center gap-2 mb-4 overflow-x-auto">
+    <button class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-white">All</button>
+    <button class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-card border border-app text-muted">Striking distance</button>
+    <button class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-card border border-app text-muted">Demand, no content</button>
+    <button class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-card border border-app text-muted">Decaying</button>
+    <button class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-card border border-app text-muted">Cannibalization</button>
+  </div>
+
+  <!-- opportunity cards -->
+  <div class="space-y-3" id="feed"></div>
+
+  <!-- legend -->
+  <div class="mt-8 border border-dashed border-app rounded-xl p-4 bg-card/50">
+    <div class="text-xs font-semibold text-muted mb-2 flex items-center gap-1.5">
+      <i data-lucide="info" class="w-3.5 h-3.5"></i> What changed here
+    </div>
+    <ul class="text-xs text-muted space-y-1 list-disc pl-4">
+      <li><b>New surface.</b> Sibling to Moment Miner — ranked feed, each card a one-click action into the existing interview/Storyboard flow.</li>
+      <li><b>Opportunity types</b> extend the gap engine already in <code>search-queries.js</code>: striking-distance (#8–20), demand-without-content, decay, cannibalization.</li>
+      <li><b>Actions close the loop:</b> "Start interview" seeds a staff interview targeting the query; "Draft" pre-fills a brief with the keyword + intent.</li>
+      <li><b>Decay & measurement</b> (rose cards + the delta chips) need the new snapshot table + weekly cron — not derivable from today's live-only data.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const OPPS = [
+  { type:'striking', tag:'Striking distance', tagcls:'bg-action text-white',
+    query:'chiropractor for sciatica portland', pos:11.4, impr:840, clicks:9, ctr:1.1,
+    why:'You rank #11 — one strong page pushes this to page 1. 840 impressions/mo, almost no clicks.',
+    match:{ has:true, label:'Existing post is thin — improve it', icon:'file-pen' },
+    intent:'Local + condition' },
+  { type:'gap', tag:'Demand, no content', tagcls:'bg-primary text-white',
+    query:'how long does it take to fix forward head posture', pos:18.2, impr:1290, clicks:4, ctr:0.3,
+    why:'1,290 impressions and you have nothing written for it. High-intent question your team answers daily.',
+    match:{ has:false, label:'No matching content', icon:'file-plus' },
+    intent:'Informational · question' },
+  { type:'striking', tag:'Striking distance', tagcls:'bg-action text-white',
+    query:'is walking good for a herniated disc', pos:9.6, impr:610, clicks:14, ctr:2.3,
+    why:'Just off page 1 (#9.6). A focused interview clip + post likely lands top 5.',
+    match:{ has:true, label:'Partial — expand existing piece', icon:'file-pen' },
+    intent:'Informational · yes/no' },
+  { type:'decay', tag:'Decaying', tagcls:'bg-rose-600 text-white',
+    query:'shockwave therapy portland', pos:6.1, impr:430, clicks:21, ctr:4.9, delta:-3.4,
+    why:'Was #2.7 eight weeks ago, now #6.1 and falling. A competitor moved — refresh before it leaves page 1.',
+    match:{ has:true, label:'Refresh the ranking page', icon:'refresh-cw' },
+    intent:'Local + service' },
+  { type:'gap', tag:'Demand, no content', tagcls:'bg-primary text-white',
+    query:'exercises for tech neck', pos:22.0, impr:980, clicks:2, ctr:0.2,
+    why:'Strong, evergreen demand. Perfect for a staff interview → carousel + reel + blog.',
+    match:{ has:false, label:'No matching content', icon:'file-plus' },
+    intent:'Informational · how-to' },
+];
+
+const ICON = { striking:'target', gap:'sparkles', decay:'trending-down' };
+
+function card(o){
+  const deltaChip = o.delta ? `<span class="ml-2 text-2xs font-semibold text-rose-600 inline-flex items-center gap-0.5" style="font-size:11px"><i data-lucide="arrow-down" class="w-3 h-3"></i>${Math.abs(o.delta)} pos / 8wk</span>` : '';
+  return `
+  <div class="bg-card border border-app rounded-xl p-4 hover:ring-primary transition">
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-2xs font-semibold px-2 py-0.5 rounded-full ${o.tagcls}" style="font-size:11px">${o.tag}</span>
+          <span class="text-2xs text-muted" style="font-size:11px">${o.intent}</span>
+          ${deltaChip}
+        </div>
+        <div class="font-medium text-[15px] leading-snug flex items-center gap-2">
+          <i data-lucide="${ICON[o.type]}" class="w-4 h-4 text-muted shrink-0"></i>
+          <span class="truncate">${o.query}</span>
+        </div>
+        <p class="text-xs text-muted mt-1.5 leading-relaxed">${o.why}</p>
+        <div class="text-2xs mt-2 inline-flex items-center gap-1 ${o.match.has?'text-accent':'text-action'}" style="font-size:11px">
+          <i data-lucide="${o.match.icon}" class="w-3.5 h-3.5"></i> ${o.match.label}
+        </div>
+      </div>
+      <div class="shrink-0 text-right">
+        <div class="text-lg font-semibold tabular-nums">#${o.pos}</div>
+        <div class="text-2xs text-muted" style="font-size:11px">${o.impr.toLocaleString()} impr · ${o.ctr}% ctr</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 mt-3 pt-3 border-t border-app">
+      <button class="text-xs font-medium px-3 py-1.5 rounded-lg bg-primary text-white inline-flex items-center gap-1.5">
+        <i data-lucide="mic" class="w-3.5 h-3.5"></i> Start interview
+      </button>
+      <button class="text-xs font-medium px-3 py-1.5 rounded-lg bg-card border border-app inline-flex items-center gap-1.5">
+        <i data-lucide="pen-line" class="w-3.5 h-3.5"></i> Draft content
+      </button>
+      <button class="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted hover:bg-muted ml-auto inline-flex items-center gap-1.5">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i> Dismiss
+      </button>
+    </div>
+  </div>`;
+}
+
+document.getElementById('feed').innerHTML = OPPS.map(card).join('');
+lucide.createIcons();
+</script>
+</body>
+</html>

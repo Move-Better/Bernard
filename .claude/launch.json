@@ -20,6 +20,12 @@
       "port": 8742
     },
     {
+      "name": "seo-mock",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8743", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/sharp-rosalind-b050ad/.claude/mockups"],
+      "port": 8743
+    },
+    {
       "name": "bernard-public",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8090", "--directory", "/Users/qbook/Claude Projects/Bernard/public"],
