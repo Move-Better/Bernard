@@ -1701,7 +1701,7 @@ export default function InterviewSession() {
                 size="sm"
                 onClick={handlePause}
                 title="Save and pause — you can resume later"
-                aria-label="Pause interview"
+                aria-label="Save and pause interview — you can resume later"
                 className="gap-1 text-muted-foreground hover:text-foreground px-2"
               >
                 <PauseCircle className="h-4 w-4" />
@@ -2158,7 +2158,7 @@ function InterviewVoiceDock({
         <button
           type="button"
           onClick={onPause}
-          aria-label="Pause interview"
+          aria-label="Save and pause interview — you can resume later"
           title="Save and pause — you can resume later"
           className="md:hidden flex flex-col items-center gap-0.5 text-muted-foreground w-14 shrink-0"
         >

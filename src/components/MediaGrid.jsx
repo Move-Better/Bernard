@@ -214,7 +214,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
         )}
         {asset._lifecycle === 'in_pipeline' && firstStoryId && (
           <button
-            className="text-3xs bg-success text-white px-1.5 py-0.5 rounded-full leading-none hover:bg-success/90 transition-colors"
+            className="text-3xs bg-success text-success-foreground px-1.5 py-0.5 rounded-full leading-none hover:bg-success/90 transition-colors"
             title={usageCount === 1 ? 'In 1 active post — click to open' : `In ${usageCount} active posts — click to open the first`}
             onClick={(e) => {
               e.stopPropagation()
@@ -226,7 +226,7 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
         )}
         {asset._lifecycle === 'shipped' && firstStoryId && (
           <button
-            className="text-3xs bg-success/80 text-white px-1.5 py-0.5 rounded-full leading-none hover:bg-success transition-colors"
+            className="text-3xs bg-success/80 text-success-foreground px-1.5 py-0.5 rounded-full leading-none hover:bg-success transition-colors"
             title="Already published — click to open the post"
             onClick={(e) => {
               e.stopPropagation()

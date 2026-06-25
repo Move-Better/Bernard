@@ -43,7 +43,7 @@ export const SaveButton = forwardRef(function SaveButton(
       type="submit"
       disabled={disabled || saving || saved}
       className={cn(
-        saved && 'bg-success hover:bg-success text-white',
+        saved && 'bg-success hover:bg-success text-success-foreground',
         className,
       )}
       aria-live="polite"

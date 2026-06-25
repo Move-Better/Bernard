@@ -52,10 +52,12 @@ async function handler(req, res) {
   // more expensive tiers at the billing account's cost.
   const ALLOWED_MODELS = new Set(['claude-haiku-4-5', 'claude-sonnet-4-6'])
   const requested = model || 'claude-sonnet-4-6'
+  if (requested.includes('/') && !requested.startsWith('anthropic/')) {
+    return res.status(400).json({ error: 'model_not_allowed' })
+  }
   const bareModel = requested.includes('/') ? requested.split('/').pop() : requested
   if (!ALLOWED_MODELS.has(bareModel)) {
-    res.status(400).json({ error: `Model not allowed: ${bareModel}` })
-    return
+    return res.status(400).json({ error: 'model_not_allowed' })
   }
   const gatewayModel = requested.includes('/') ? requested : `anthropic/${requested}`
 
