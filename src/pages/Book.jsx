@@ -360,7 +360,7 @@ function ChapterView({ chapter, isAdmin, proseClasses, onRefetch }) {
                 ? 'text-primary bg-primary/10 hover:bg-primary/15'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/30 opacity-0 group-hover:opacity-100 focus:opacity-100'
             }`}
-            title={chapter.pinned ? 'Unpin this chapter (lets regen rewrite it)' : 'Pin this chapter (preserve verbatim across regenerations)'}
+            aria-label={chapter.pinned ? 'Unpin this chapter (lets regen rewrite it)' : 'Pin this chapter (preserve verbatim across regenerations)'}
           >
             {chapter.pinned ? (
               <>

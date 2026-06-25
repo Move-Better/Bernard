@@ -42,7 +42,7 @@ export default async function handler(req, res) {
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
 
-  if (!(await enforceLimit(req, res, 'insights-gbp-performance'))) return
+  if (!(await enforceLimit(req, res, 'insights-gbp-performance', ws.id))) return
 
   if (!ws.gbp_location_name) return res.status(200).json({ connected: false })
 

@@ -453,6 +453,7 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
           <select
             value={form.target_location_id || ''}
             onChange={(e) => set('target_location_id', e.target.value)}
+            aria-label="Promote location"
             className="text-sm border border-border rounded-md px-2 py-2 bg-card w-full"
           >
             <option value="">None — brand-wide</option>
@@ -507,6 +508,7 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
           <select
             value={form.status}
             onChange={(e) => set('status', e.target.value)}
+            aria-label="Campaign status"
             className="text-sm border border-border rounded-md px-2 py-1.5 bg-card"
           >
             <option value="active">Active</option>

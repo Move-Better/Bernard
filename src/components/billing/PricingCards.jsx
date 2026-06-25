@@ -120,7 +120,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
               }`}
             >
               {isActive && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-action px-3 py-0.5 text-2xs font-semibold text-white uppercase tracking-wide">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-action px-3 py-0.5 text-2xs font-semibold text-action-foreground uppercase tracking-wide">
                   Current plan
                 </span>
               )}
@@ -158,7 +158,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
                   </Button>
                 ) : isUpgrade ? (
                   <Button
-                    className="w-full bg-action hover:bg-action/90 text-white"
+                    className="w-full bg-action hover:bg-action/90 text-action-foreground"
                     onClick={() => handleUpgrade(plan.priceId, plan.id)}
                     disabled={!!actionLoading}
                   >
@@ -178,7 +178,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
                 ) : (
                   // trial → any plan
                   <Button
-                    className="w-full bg-action hover:bg-action/90 text-white"
+                    className="w-full bg-action hover:bg-action/90 text-action-foreground"
                     onClick={() => handleUpgrade(plan.priceId, plan.id)}
                     disabled={!!actionLoading}
                   >

@@ -68,7 +68,7 @@ export default function UsageGate({ feature, plan, currentPlan, children }) {
       </p>
       <Link
         to="/settings/workspace/billing"
-        className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-action px-4 py-2 text-sm font-medium text-white hover:bg-action/90 transition-colors"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-action px-4 py-2 text-sm font-medium text-action-foreground hover:bg-action/90 transition-colors"
       >
         View plans →
       </Link>

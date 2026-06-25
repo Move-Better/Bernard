@@ -288,7 +288,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
               ? 'bg-primary text-primary-foreground hover:bg-primary/90'
               : 'bg-muted text-muted-foreground cursor-not-allowed'
           }`}
-          title={!ok ? 'Resolve consent before cutting clips' : undefined}
+          aria-label={!ok ? 'Resolve consent before cutting clips' : 'Cut a clip'}
         >
           {proposals !== null && proposals > 0
             ? <><Sparkles className="h-3.5 w-3.5" />Review {proposals} clip{proposals !== 1 ? 's' : ''}</>

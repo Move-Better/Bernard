@@ -168,7 +168,7 @@ export default function Stories() {
         </div>
 
         {/* Quick-filter pill row — All / Draft / Ready to Distribute / Published / Mine */}
-        <div className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div role="tablist" aria-label="Filter stories" className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {QUICK_FILTERS.map((qf) => {
             const isActive = qf.key === ''
               ? !stageFilter && !mineOnly
@@ -179,6 +179,8 @@ export default function Stories() {
               <button
                 key={qf.key}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => {
                   if (qf.key === '') {
                     setSearchParams((prev) => {
@@ -204,6 +206,8 @@ export default function Stories() {
           {/* Mine toggle */}
           <button
             type="button"
+            role="tab"
+            aria-selected={mineOnly}
             onClick={() => mineOnly ? clearOwner() : setParam('owner', 'me')}
             className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
               mineOnly
