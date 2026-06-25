@@ -278,8 +278,8 @@ export default function CaptureReview() {
       {/* Generating / saving with no text yet */}
       {isGenerating && !streamingText && (
         <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <CardContent role="status" className="p-6 flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
             <p className="text-sm font-medium">
               {isTextImport ? 'Saving your keystone…' : 'Generating content…'}
             </p>

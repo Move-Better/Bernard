@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useId } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
   Loader2, Target, Calendar, Plus, Pencil, X, Save,
@@ -529,11 +529,12 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
 }
 
 function Field({ label, hint, children }) {
+  const id = useId()
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-sm font-semibold">{label}</Label>
+      <Label htmlFor={id} className="text-sm font-semibold">{label}</Label>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
-      {children}
+      {React.isValidElement(children) ? React.cloneElement(children, { id }) : children}
     </div>
   )
 }

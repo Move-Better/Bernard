@@ -380,10 +380,10 @@ function GeneratingView({ channels }) {
       </div>
 
       <Card>
-        <CardContent className="p-5 divide-y divide-border">
+        <CardContent role="status" className="p-5 divide-y divide-border">
           {channels.map((ch) => (
             <div key={ch.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" />
+              <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" aria-hidden="true" />
               <span className="text-sm">
                 {CHANNEL_ICON[ch.id] || '📄'} {ch.label}
               </span>

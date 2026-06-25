@@ -397,6 +397,7 @@ function LocationFields({ draft, setDraft }) {
           value={draft.visit_url}
           onChange={e => set('visit_url')(e.target.value)}
           placeholder="https://yourpractice.com/visit/portland"
+          aria-label="Visit URL"
           className="text-sm"
           autoComplete="off"
         />

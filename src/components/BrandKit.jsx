@@ -1367,6 +1367,7 @@ function BrandBookReference() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
+            aria-label="Brand book URL"
             className="h-8 text-xs mt-1"
           />
           <p className="text-2xs text-muted-foreground mt-1">
