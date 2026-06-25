@@ -133,7 +133,7 @@ export default function PreVisitMessage() {
               </div>
               {appointmentTypeKey === 'custom' && (
                 <Input
-                  id="appointment-type"
+                  aria-label="Custom appointment type"
                   type="text"
                   placeholder="e.g. sports injury assessment"
                   value={customType}

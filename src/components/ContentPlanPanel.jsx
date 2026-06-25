@@ -23,8 +23,9 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <IconPrim as={Loader2} size="lg" className="text-muted-foreground animate-spin" />
+      <div role="status" className="flex items-center justify-center py-10">
+        <IconPrim as={Loader2} size="lg" className="text-muted-foreground animate-spin" aria-hidden="true" />
+        <span className="sr-only">Loading content plan…</span>
       </div>
     )
   }

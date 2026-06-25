@@ -94,8 +94,8 @@ export default function ContentBriefList({ refreshKey, expandedDefault = true })
           {/* List */}
           {error && <div className="text-sm text-destructive bg-destructive/10 m-3 rounded p-2">{error}</div>}
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…
+            <div role="status" className="flex items-center justify-center py-8 text-muted-foreground text-xs">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden="true" /> Loading…
             </div>
           ) : visible.length === 0 ? (
             <div className="text-center text-xs text-muted-foreground py-8">

@@ -156,8 +156,9 @@ export default function TopicBacklogPanel() {
 
       {/* List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+        <div role="status" className="flex items-center justify-center py-8">
+          <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading topics…</span>
         </div>
       ) : topics.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">
