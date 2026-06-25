@@ -23,37 +23,37 @@ const STYLE_WRITE_ROLES = EDITOR_ROLES
 const HEX_RE = /^#[0-9a-fA-F]{6}$/
 
 function validate(patch) {
-  if (typeof patch !== 'object' || !patch) return { ok: false, error: 'body must be an object' }
+  if (typeof patch !== 'object' || !patch) return { ok: false, error: 'invalid_body' }
   const allowed = ['accent_color', 'secondary_colors', 'heading_font', 'body_font', 'grade']
   for (const k of Object.keys(patch)) {
-    if (!allowed.includes(k)) return { ok: false, error: `unknown field: ${k}` }
+    if (!allowed.includes(k)) return { ok: false, error: 'invalid_field' }
   }
   // grade — the workspace "Brand look" colorist preset (canonical params). Read by
   // the video/photo editors as the Brand vibe. Validate the shape so a malformed
   // value can't reach the render path.
   if (patch.grade != null) {
     const g = patch.grade
-    if (typeof g !== 'object' || Array.isArray(g)) return { ok: false, error: 'grade must be an object' }
+    if (typeof g !== 'object' || Array.isArray(g)) return { ok: false, error: 'invalid_grade' }
     const gradeKeys = ['exposure', 'contrast', 'saturation', 'warmth', 'tint', 'depth']
     for (const k of Object.keys(g)) {
-      if (!gradeKeys.includes(k)) return { ok: false, error: `grade.${k} not allowed` }
+      if (!gradeKeys.includes(k)) return { ok: false, error: 'invalid_grade_field' }
       if (typeof g[k] !== 'number' || !Number.isFinite(g[k]) || g[k] < -100 || g[k] > 100) {
-        return { ok: false, error: `grade.${k} must be a number between -100 and 100` }
+        return { ok: false, error: 'invalid_grade_value' }
       }
     }
   }
   if (patch.accent_color != null && !HEX_RE.test(patch.accent_color)) {
-    return { ok: false, error: 'accent_color must be #RRGGBB' }
+    return { ok: false, error: 'invalid_hex_color' }
   }
   if (patch.secondary_colors != null) {
-    if (!Array.isArray(patch.secondary_colors)) return { ok: false, error: 'secondary_colors must be an array' }
+    if (!Array.isArray(patch.secondary_colors)) return { ok: false, error: 'invalid_secondary_colors' }
     for (const c of patch.secondary_colors) {
-      if (typeof c !== 'string' || !HEX_RE.test(c)) return { ok: false, error: 'secondary_colors entries must be #RRGGBB' }
+      if (typeof c !== 'string' || !HEX_RE.test(c)) return { ok: false, error: 'invalid_hex_color' }
     }
   }
   for (const fontKey of ['heading_font', 'body_font']) {
     if (patch[fontKey] != null && (typeof patch[fontKey] !== 'string' || patch[fontKey].length > 80)) {
-      return { ok: false, error: `${fontKey} must be a string ≤80 chars` }
+      return { ok: false, error: 'invalid_font_value' }
     }
   }
   return { ok: true }

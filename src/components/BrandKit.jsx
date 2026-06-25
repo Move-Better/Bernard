@@ -846,15 +846,16 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
             In preview/mockup mode the upload is a no-op so the visual reads
             "clickable" without writing anything. */}
         <div
+          role={uploading ? 'status' : undefined}
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           className="rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/20 transition-colors p-8 text-center cursor-pointer"
         >
           {uploading ? (
-            <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
+            <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" aria-hidden="true" />
           ) : (
-            <Upload className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+            <Upload className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" aria-hidden="true" />
           )}
           <p className="text-sm font-medium mb-0.5">
             {uploading

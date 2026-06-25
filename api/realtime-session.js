@@ -240,9 +240,7 @@ export default async function handler(req, res) {
   if (!openaiRes.ok) {
     const errBody = await openaiRes.text().catch(() => '')
     console.error(`[realtime-session] mint failed ${openaiRes.status} ws=${ws.slug} iv=${interviewId}: ${errBody.slice(0, 300)}`)
-    return res.status(502).json({
-      error: `Realtime mint failed (${openaiRes.status})`,
-    })
+    return res.status(502).json({ error: 'upstream_error' })
   }
 
   const data = await openaiRes.json().catch(() => null)
