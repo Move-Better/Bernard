@@ -10,6 +10,7 @@ import {
   deriveWeekRecap, computeStreak, classifyMember, sortTeam, platformLabels,
 } from '@/lib/recapDerive'
 import { buildCostView, estimateWindow, fmtUsd, fmtMinutes } from '@/lib/costEstimate'
+import { NumberTicker } from '@/components/ui/number-ticker'
 
 // The Overview "This week" recap — a workspace-wide snapshot pinned above the
 // lens toggle, built to be screen-shared in the weekly all-staff meeting.
@@ -34,7 +35,9 @@ function dateTimeLabel(iso) {
 function Stat({ value, label, color }) {
   return (
     <div className="p-4 text-center">
-      <p className="text-3xl font-extrabold" style={{ color }}>{value}</p>
+      <p className="text-3xl font-extrabold" style={{ color }}>
+        <NumberTicker value={value} />
+      </p>
       <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
     </div>
   )
@@ -186,10 +189,12 @@ function MemberCard({ m }) {
 }
 
 // ── Block 1.5: all-time summary — the lifetime counterpart to "this week" ─────
-function AllTimeStat({ value, label, color }) {
+function AllTimeStat({ value, label, color, format }) {
   return (
     <div className="p-4 text-center">
-      <p className="text-3xl font-extrabold" style={{ color }}>{value}</p>
+      <p className="text-3xl font-extrabold" style={{ color }}>
+        <NumberTicker value={value} format={format} />
+      </p>
       <p className="text-xs opacity-70 mt-0.5">{label}</p>
     </div>
   )
@@ -209,10 +214,10 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
-        <AllTimeStat value={published.toLocaleString()} label="posts published" color="hsl(var(--success))" />
-        <AllTimeStat value={captured.toLocaleString()} label="stories captured" color="hsl(var(--info))" />
-        <AllTimeStat value={contributors.toLocaleString()} label="teammates contributing" color="hsl(var(--info))" />
-        <AllTimeStat value={`≈ ${fmtUsd(costTotal)}`} label="total run cost · est." color="#ffffff" />
+        <AllTimeStat value={published} label="posts published" color="hsl(var(--success))" />
+        <AllTimeStat value={captured} label="stories captured" color="hsl(var(--info))" />
+        <AllTimeStat value={contributors} label="teammates contributing" color="hsl(var(--info))" />
+        <AllTimeStat value={costTotal} format={(v) => `≈ ${fmtUsd(v)}`} label="total run cost · est." color="#ffffff" />
       </div>
     </div>
   )
