@@ -161,7 +161,7 @@ export default async function handler(req, res) {
     text = result.text
   } catch (e) {
     console.error('[interviews/cleanup-transcript] AI call failed:', e?.message)
-    return err(res, e?.message || 'AI cleanup failed', 500)
+    return err(res, 'AI cleanup failed', 500)
   }
 
   const parsed = parseCleaned(text || '')

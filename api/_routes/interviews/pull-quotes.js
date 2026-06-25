@@ -108,7 +108,7 @@ export default async function handler(req, res) {
     text = result.text
   } catch (e) {
     console.error('[interviews/pull-quotes] AI call failed:', e?.message)
-    return err(res, e?.message || 'AI extraction failed', 500)
+    return err(res, 'AI extraction failed', 500)
   }
 
   const raw = parseQuotes(text || '')

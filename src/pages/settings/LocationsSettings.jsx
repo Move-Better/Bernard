@@ -36,8 +36,9 @@ export default function LocationsSettings() {
 
   if (roleLoading || ws === undefined) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center py-24" role="status">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     )
   }
@@ -133,7 +134,7 @@ function LocationsPanel({ getToken }) {
   if (locations === null) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading locations…
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> <span role="status">Loading locations…</span>
       </div>
     )
   }

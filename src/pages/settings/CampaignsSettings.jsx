@@ -127,7 +127,7 @@ export default function CampaignsSettings() {
   }), [campaigns])
 
   if (roleLoading) {
-    return <div className="flex justify-center py-24"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+    return <div className="flex justify-center py-24" role="status"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading…</span></div>
   }
   // Phase 4 PR 4: capability gate. Producer has CAP_CAMPAIGNS_EDIT by default
   // template — admins also pass (owner template has all caps). Non-admin
@@ -182,7 +182,7 @@ export default function CampaignsSettings() {
       )}
 
       {campaigns === null && !error && (
-        <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        <div className="flex justify-center py-12" role="status"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading…</span></div>
       )}
 
       {campaigns && campaigns.length === 0 && !editing && (

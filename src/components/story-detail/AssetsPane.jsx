@@ -149,6 +149,7 @@ function CommentThread({ pieceId }) {
 
       <form onSubmit={handleSubmit} className="flex gap-2 pt-1">
         <textarea
+          aria-label="Add a comment"
           className="flex-1 text-xs rounded border border-border bg-background px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 min-h-[56px]"
           placeholder="Add a comment…"
           value={draft}
@@ -159,9 +160,10 @@ function CommentThread({ pieceId }) {
           size="sm"
           variant="outline"
           disabled={!draft.trim() || addComment.isPending}
+          aria-label={addComment.isPending ? 'Submitting comment…' : 'Submit comment'}
           className="self-end"
         >
-          {addComment.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageSquare className="h-3 w-3" />}
+          {addComment.isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <MessageSquare className="h-3 w-3" aria-hidden="true" />}
         </Button>
       </form>
     </div>
@@ -1845,6 +1847,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       {!isPublish && changeRequestOpen && (
         <form onSubmit={handleRequestChanges} className="space-y-2">
           <textarea
+            aria-label="Describe what needs to change"
             className="w-full text-xs rounded border border-warning/30 bg-warning/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-warning/50 min-h-[72px]"
             placeholder="Describe what needs to change…"
             value={changeRequestBody}

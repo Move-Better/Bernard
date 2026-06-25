@@ -412,6 +412,6 @@ export default async function handler(req, res) {
     // is currently archived with no series to show for it — un-claim so
     // they can retry or just keep working with their original draft.
     await unclaimSource('exception')
-    return err(res, e?.message || 'Series generation failed', 500)
+    return err(res, 'Series generation failed', 500)
   }
 }

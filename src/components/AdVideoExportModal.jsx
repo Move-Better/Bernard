@@ -96,7 +96,7 @@ export default function AdVideoExportModal({ clip, onClose }) {
   const canRender = complies && selected.size > 0 && !running
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label="Export clip for ads">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-background shadow-2xl">
         <div className="flex items-center gap-2 border-b px-5 py-3">
           <Megaphone className="h-4 w-4 text-action" />

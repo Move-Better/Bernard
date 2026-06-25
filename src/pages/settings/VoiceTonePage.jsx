@@ -121,8 +121,9 @@ export default function VoiceTonePage() {
 
   if (roleLoading || ws === undefined) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center py-24" role="status">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     )
   }

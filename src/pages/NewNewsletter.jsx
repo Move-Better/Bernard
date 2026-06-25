@@ -399,6 +399,7 @@ function NewGoalForm({ onCreate, onCancel, pending }) {
     <div className="mt-2 rounded-lg border bg-card p-3 space-y-3">
       <Input placeholder="Goal name — e.g. &quot;Community outreach — sponsor patients' causes&quot;" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       <textarea
+        aria-label="Campaign goal description"
         rows={2}
         placeholder="What's it about? (woven into the conversation + the copy)"
         value={about}
