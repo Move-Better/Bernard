@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Analytics card polish</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --background: 220 22% 97%; --foreground: 222 47% 8%; --card: 0 0% 100%;
+    --muted: 220 14% 96%; --muted-foreground: 215 16% 47%;
+    --border: 214 32% 91%; --radius: 0.625rem; --primary: 186 83% 27%;
+    --success: 152 76% 40%; --warning: 38 92% 50%; --info: 199 95% 40%; --action: 32 95% 44%;
+  }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: ui-sans-serif, system-ui, sans-serif; }
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 1rem; }
+  .legend { border: 1px dashed hsl(var(--action)); background: hsl(var(--action) / 0.06); border-radius: var(--radius); }
+  .tnum { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="p-6 md:p-10">
+<div class="max-w-5xl mx-auto space-y-10">
+  <header>
+    <h1 class="text-2xl font-bold">Analytics cards — alignment polish</h1>
+    <p class="text-sm" style="color:hsl(var(--muted-foreground))">Keep the coaching cards; just make the metric columns scannable. TODAY → PROPOSED.</p>
+  </header>
+
+  <!-- ===== Top landing pages ===== -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Top landing pages</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <!-- TODAY -->
+      <div class="card p-5">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY — justify-between (ripples)</span>
+        <ul class="mt-3 space-y-2.5">
+          <li class="flex items-center justify-between gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">5 stretches for sciatica relief</span><div class="flex items-center gap-2 shrink-0"><span class="text-2xs tnum" style="color:hsl(var(--muted-foreground))">1,204 sessions</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">72% engaged</span></div></li>
+          <li class="flex items-center justify-between gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">Shoulder pain</span><div class="flex items-center gap-2 shrink-0"><span class="text-2xs tnum" style="color:hsl(var(--muted-foreground))">892 sessions</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">54% engaged</span></div></li>
+          <li class="flex items-center justify-between gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">Is my knee pain serious?</span><div class="flex items-center gap-2 shrink-0"><span class="text-2xs tnum" style="color:hsl(var(--muted-foreground))">63 sessions</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full" style="background:hsl(var(--warning)/0.12);color:hsl(var(--warning))">38% engaged</span></div></li>
+        </ul>
+        <p class="text-2xs mt-3" style="color:hsl(var(--muted-foreground))">Session counts + pills sit at different x-positions each row.</p>
+      </div>
+      <!-- PROPOSED -->
+      <div class="card p-5 ring-2" style="--tw-ring-color:hsl(var(--primary) / 0.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">PROPOSED — aligned columns</span>
+        <ul class="mt-3 space-y-2">
+          <li class="grid grid-cols-[1fr_auto_4.5rem] items-center gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">5 stretches for sciatica relief</span><span class="text-2xs tnum text-right" style="color:hsl(var(--muted-foreground))">1,204</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full text-center" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">72%</span></li>
+          <li class="grid grid-cols-[1fr_auto_4.5rem] items-center gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">Shoulder pain</span><span class="text-2xs tnum text-right" style="color:hsl(var(--muted-foreground))">892</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full text-center" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">54%</span></li>
+          <li class="grid grid-cols-[1fr_auto_4.5rem] items-center gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">Is my knee pain serious?</span><span class="text-2xs tnum text-right" style="color:hsl(var(--muted-foreground))">63</span><span class="text-2xs font-medium px-1.5 py-0.5 rounded-full text-center" style="background:hsl(var(--warning)/0.12);color:hsl(var(--warning))">38%</span></li>
+        </ul>
+        <div class="grid grid-cols-[1fr_auto_4.5rem] gap-3 text-3xs mt-2 pt-2 border-t" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))"><span>page</span><span class="text-right">sessions</span><span class="text-center">engaged</span></div>
+        <p class="text-2xs mt-2" style="color:hsl(var(--muted-foreground))">Numbers right-align; pills share one fixed column → eye scans straight down.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Search queries ===== -->
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide" style="color:hsl(var(--muted-foreground))">Search queries (impressions + position)</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card p-5">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">TODAY</span>
+        <ul class="mt-3 space-y-1.5">
+          <li class="flex items-center justify-between gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">chiropractor near me</span><div class="flex items-center gap-3 shrink-0"><span class="text-2xs tnum" style="color:hsl(var(--muted-foreground))">3,402 impressions</span><span class="text-2xs tnum">#4</span></div></li>
+          <li class="flex items-center justify-between gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">sciatica stretches</span><div class="flex items-center gap-3 shrink-0"><span class="text-2xs tnum" style="color:hsl(var(--muted-foreground))">812 impressions</span><span class="text-2xs tnum">#11</span></div></li>
+        </ul>
+      </div>
+      <div class="card p-5 ring-2" style="--tw-ring-color:hsl(var(--primary) / 0.25)">
+        <span class="text-2xs font-bold px-2 py-0.5 rounded-full" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">PROPOSED</span>
+        <ul class="mt-3 space-y-1.5">
+          <li class="grid grid-cols-[1fr_auto_2.5rem] items-center gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">chiropractor near me</span><span class="text-2xs tnum text-right" style="color:hsl(var(--muted-foreground))">3,402</span><span class="text-2xs tnum text-right">#4</span></li>
+          <li class="grid grid-cols-[1fr_auto_2.5rem] items-center gap-3 text-sm"><span class="truncate min-w-0" style="color:hsl(var(--muted-foreground))">sciatica stretches</span><span class="text-2xs tnum text-right" style="color:hsl(var(--muted-foreground))">812</span><span class="text-2xs tnum text-right">#11</span></li>
+        </ul>
+        <div class="grid grid-cols-[1fr_auto_2.5rem] gap-3 text-3xs mt-2 pt-2 border-t" style="border-color:hsl(var(--border));color:hsl(var(--muted-foreground))"><span>query</span><span class="text-right">impr.</span><span class="text-right">pos.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="legend p-3 text-xs"><b>What changed:</b> the per-row right cluster (<code>flex justify-between</code> + <code>flex gap</code>) becomes a fixed 3-column <code>grid</code> so numbers right-align and pills share one column. Same data, same pills, same coaching prose/footers — only column alignment. No new component, no new dep.</div>
+
+  <footer class="text-2xs pb-10" style="color:hsl(var(--muted-foreground))">Mockup • real Bernard tokens • applies to Top landing pages, Pages leaking traffic, Search queries.</footer>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

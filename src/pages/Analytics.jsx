@@ -97,9 +97,14 @@ function PendingRead({ icon: Icon, badge, children }) {
 function EngagementPill({ rate }) {
   const pct  = Math.round((rate || 0) * 100)
   const good = pct >= 55
+  // Compact (% only) — the "engaged" label lives in the card's column-header
+  // footer so the pill stays inside its fixed alignment column.
   return (
-    <span className={`text-2xs font-medium px-1.5 py-0.5 rounded-full ${good ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-      {pct}% engaged
+    <span
+      title={`${pct}% engaged`}
+      className={`text-2xs font-medium px-1.5 py-0.5 rounded-full tabular-nums text-center ${good ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}
+    >
+      {pct}%
     </span>
   )
 }
@@ -146,22 +151,26 @@ function LandingPageRead({ data }) {
           <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
             GA4 · Top landing pages (30d)
           </span>
-          <ul className="mt-3 space-y-2.5">
+          <ul className="mt-3 space-y-2">
             {data.landingPages.map((p) => (
-              <li key={p.path} className="flex items-center justify-between gap-3 text-sm">
+              <li key={p.path} className="grid grid-cols-[minmax(0,1fr)_4rem_3.5rem_auto] items-center gap-3 text-sm">
                 <span className="truncate text-muted-foreground min-w-0">{p.topic || p.path}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-2xs text-muted-foreground tabular-nums">{(p.sessions || 0).toLocaleString()} sessions</span>
-                  <EngagementPill rate={p.engagementRate} />
-                  {p.keyEvents > 0 && (
-                    <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                      {p.keyEvents} {data.hasKeyEvents ? 'conversions' : ''}
-                    </span>
-                  )}
-                </div>
+                <span className="text-2xs text-muted-foreground tabular-nums text-right">{(p.sessions || 0).toLocaleString()}</span>
+                <EngagementPill rate={p.engagementRate} />
+                {p.keyEvents > 0 ? (
+                  <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary tabular-nums whitespace-nowrap">
+                    {p.keyEvents}{data.hasKeyEvents ? ' conv.' : ''}
+                  </span>
+                ) : <span />}
               </li>
             ))}
           </ul>
+          <div className="grid grid-cols-[minmax(0,1fr)_4rem_3.5rem_auto] gap-3 text-3xs text-muted-foreground mt-2 pt-2 border-t border-border">
+            <span>page</span>
+            <span className="text-right">sessions</span>
+            <span>engaged</span>
+            <span />
+          </div>
           {fix && (
             <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
               <span className="font-medium text-foreground">To improve:</span> {fix}
@@ -225,16 +234,19 @@ function ExitAnalysisRead({ data }) {
             {data.exitRisks.map((p) => {
               const pct = Math.round((p.bounceRate || 0) * 100)
               return (
-                <li key={p.path} className="text-sm rounded-lg border border-border bg-background px-3 py-2 flex items-center justify-between gap-3">
+                <li key={p.path} className="grid grid-cols-[minmax(0,1fr)_4rem_3.5rem] items-center gap-3 text-sm rounded-lg border border-border bg-background px-3 py-2">
                   <span className="truncate font-medium min-w-0">{p.topic || p.path}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-2xs text-muted-foreground tabular-nums">{(p.sessions || 0).toLocaleString()} sessions</span>
-                    <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">{pct}% bounce</span>
-                  </div>
+                  <span className="text-2xs text-muted-foreground tabular-nums text-right">{(p.sessions || 0).toLocaleString()}</span>
+                  <span title={`${pct}% bounce`} className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning text-center tabular-nums">{pct}%</span>
                 </li>
               )
             })}
           </ul>
+          <div className="grid grid-cols-[minmax(0,1fr)_4rem_3.5rem] gap-3 text-3xs text-muted-foreground mt-2 px-3">
+            <span>page</span>
+            <span className="text-right">sessions</span>
+            <span className="text-center">bounce</span>
+          </div>
           <p className="text-xs text-muted-foreground mt-3">
             Fix: a clear hook in the first paragraph, a visible CTA, and ensuring the page loads fast on mobile.
           </p>
@@ -284,15 +296,18 @@ function SearchQueriesRead({ data }) {
               <p className="text-sm font-medium mt-3 mb-2">What people search to find you</p>
               <ul className="space-y-1.5">
                 {data.topQueries.slice(0, 5).map((q) => (
-                  <li key={q.query} className="flex items-center justify-between gap-3 text-sm">
+                  <li key={q.query} className="grid grid-cols-[minmax(0,1fr)_4rem_2.5rem] items-center gap-3 text-sm">
                     <span className="truncate text-muted-foreground min-w-0">{q.query}</span>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-2xs text-muted-foreground tabular-nums">{q.impressions.toLocaleString()} impressions</span>
-                      <span className="text-2xs tabular-nums">#{Math.round(q.position)}</span>
-                    </div>
+                    <span className="text-2xs text-muted-foreground tabular-nums text-right">{q.impressions.toLocaleString()}</span>
+                    <span className="text-2xs tabular-nums text-right">#{Math.round(q.position)}</span>
                   </li>
                 ))}
               </ul>
+              <div className="grid grid-cols-[minmax(0,1fr)_4rem_2.5rem] gap-3 text-3xs text-muted-foreground mt-2 pt-2 border-t border-border">
+                <span>query</span>
+                <span className="text-right">impr.</span>
+                <span className="text-right">pos.</span>
+              </div>
             </>
           )}
 
