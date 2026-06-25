@@ -80,8 +80,23 @@
     <button class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-card border border-app text-muted">Cannibalization</button>
   </div>
 
+  <!-- section: write about this -->
+  <div class="flex items-center gap-2 mb-3">
+    <i data-lucide="pen-line" class="w-4 h-4 text-primary"></i>
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-muted">Write about this</h2>
+    <span class="text-2xs text-muted" style="font-size:11px">— search demand → content Bernard makes with you</span>
+  </div>
+
   <!-- opportunity cards -->
   <div class="space-y-3" id="feed"></div>
+
+  <!-- section: recommended website updates (advisory) -->
+  <div class="flex items-center gap-2 mt-9 mb-1">
+    <i data-lucide="wrench" class="w-4 h-4 text-primary"></i>
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-muted">Recommended website updates</h2>
+  </div>
+  <p class="text-xs text-muted mb-3">Changes to the site itself — not content. <span class="font-medium text-foreground">Bernard spots them; you or your web person make them.</span> Suggestions only — Bernard never edits your site.</p>
+  <div class="space-y-2.5" id="site-updates"></div>
 
   <!-- legend -->
   <div class="mt-8 border border-dashed border-app rounded-xl p-4 bg-card/50">
@@ -93,6 +108,7 @@
       <li><b>Opportunity types</b> extend the gap engine already in <code>search-queries.js</code>: striking-distance (#8–20), demand-without-content, decay, cannibalization.</li>
       <li><b>Actions close the loop:</b> "Start interview" seeds a staff interview targeting the query; "Draft" pre-fills a brief with the keyword + intent.</li>
       <li><b>Decay & measurement</b> (rose cards + the delta chips) need the new snapshot table + weekly cron — not derivable from today's live-only data.</li>
+      <li><b>Recommended website updates</b> are <i>advisory only</i> — no action buttons. Derived from an on-page fetch of the live site + GSC low-CTR pages + the existing website-health crawl. Bernard never edits the site; the tenant (or their web person) makes the change. Runs for every tenant against their own site.</li>
     </ul>
   </div>
 </div>
@@ -176,6 +192,43 @@ function card(o){
   </div>`;
 }
 
+// Recommended website updates — ADVISORY ONLY (no actions). Real Move Better
+// findings: on-page fetch of movebetter.co + GSC + website-health crawl.
+const SITE = [
+  { sev:'high', sevcls:'bg-action/15 text-action', source:'Schema · movebetter.co',
+    title:'Add opening hours + map coordinates to your business schema',
+    why:'Your Chiropractor schema has address, phone and social links but no openingHours or geo coordinates. Both feed the Google Maps / local pack — adding them helps you show up for "near me" searches.' },
+  { sev:'med', sevcls:'bg-primary/10 text-primary', source:'Meta · homepage',
+    title:'Lengthen the homepage meta description (123 → ~155 chars)',
+    why:'Your description is shorter than Google will show. Using the full space — with a reason to click and a location — earns more clicks for the same ranking.' },
+  { sev:'med', sevcls:'bg-primary/10 text-primary', source:'Search Console',
+    title:'Rewrite the title/meta on the page ranking for "move better"',
+    why:'You rank #7 for "move better" (193 impressions) but get very few clicks. A clearer, benefit-led title on that page lifts click-through without needing a higher rank.' },
+  { sev:'low', sevcls:'bg-muted text-muted', source:'Meta · homepage',
+    title:'Trim the homepage title to ~55 characters',
+    why:'At 61 characters your title may get cut off in search results. Tightening it keeps the full message visible.' },
+  { sev:'low', sevcls:'bg-muted text-muted', source:'Internal links',
+    title:'Link new blog posts to your booking & services pages',
+    why:'Posts that link to "book an appointment" and key service pages pass authority to the pages that convert — and give readers an obvious next step.' },
+];
+const SEVLABEL = { high:'Worth doing', med:'Nice lift', low:'Minor' };
+
+function siteCard(s){
+  return `
+  <div class="bg-card border border-app rounded-xl p-4">
+    <div class="flex items-start gap-3">
+      <span class="shrink-0 mt-0.5 text-2xs font-semibold px-2 py-0.5 rounded-full ${s.sevcls}" style="font-size:11px">${SEVLABEL[s.sev]}</span>
+      <div class="min-w-0">
+        <div class="font-medium text-[15px] leading-snug">${s.title}</div>
+        <p class="text-xs text-muted mt-1 leading-relaxed">${s.why}</p>
+        <div class="text-2xs text-muted mt-1.5 inline-flex items-center gap-1" style="font-size:11px">
+          <i data-lucide="search" class="w-3 h-3"></i> ${s.source}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function lockedCard(l){
   return `
   <div class="bg-card border border-dashed border-app rounded-xl p-4 opacity-70">
@@ -190,6 +243,7 @@ function lockedCard(l){
 
 document.getElementById('feed').innerHTML =
   OPPS.map(card).join('') + LOCKED.map(lockedCard).join('');
+document.getElementById('site-updates').innerHTML = SITE.map(siteCard).join('');
 lucide.createIcons();
 </script>
 </body>
