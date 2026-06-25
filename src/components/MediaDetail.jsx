@@ -804,18 +804,18 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                     <button
                       type="button"
                       onClick={() => promoteAiTag(t)}
-                      title="Add to your tags"
+                      aria-label={`Add tag: ${t}`}
                       className="-mr-0.5 rounded-full p-0.5 hover:bg-accent transition-colors"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-3 w-3" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
                       onClick={() => removeAiTag(t)}
-                      title="Dismiss this suggestion"
+                      aria-label={`Dismiss suggestion: ${t}`}
                       className="-mr-0.5 rounded-full p-0.5 hover:bg-accent transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </Badge>
                 ))}
