@@ -48,6 +48,8 @@ async function handler(req, res) {
   if (!targetId || typeof targetId !== 'string') {
     return res.status(400).json({ error: 'Missing staff id' })
   }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(targetId)) return res.status(400).json({ error: 'Invalid staff id' })
   if (typeof overrides !== 'object' || overrides === null || Array.isArray(overrides)) {
     return res.status(400).json({ error: 'overrides must be an object' })
   }

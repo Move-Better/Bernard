@@ -145,6 +145,8 @@ export default async function handler(req, res) {
 
   const { id, founderName, dryRun } = req.body || {}
   if (!id) return err(res, 'Missing id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return err(res, 'Invalid id')
   // Dry-run mode runs the LLM and returns the synthesis result but performs
   // NO writes — no workspace PATCH, no voice_phrases insert, no interview
   // status flip. Used during P5 prompt-tuning so we can iterate without

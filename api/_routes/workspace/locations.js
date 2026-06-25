@@ -174,6 +174,8 @@ async function handler(req, res) {
   if (req.method === 'PATCH') {
     const id = req.query?.id
     if (!id) return res.status(400).json({ error: 'missing-id' })
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid-id' })
 
     const body = req.body || {}
     const patch = {}
@@ -216,6 +218,8 @@ async function handler(req, res) {
   if (req.method === 'DELETE') {
     const id = req.query?.id
     if (!id) return res.status(400).json({ error: 'missing-id' })
+    const UUID_RE_DEL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE_DEL.test(id)) return res.status(400).json({ error: 'invalid-id' })
 
     // Don't allow archiving the primary — admin must promote a different
     // location first. Avoids leaving a workspace with no primary.
