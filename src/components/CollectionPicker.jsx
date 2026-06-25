@@ -103,8 +103,8 @@ export default function CollectionPicker({ assetId, onChange }) {
       </label>
       <div className="flex flex-wrap gap-1.5 items-center">
         {loading ? (
-          <span className="text-2xs text-muted-foreground flex items-center gap-1.5">
-            <Icon as={Loader2} size="xs" className="animate-spin" /> Loading…
+          <span role="status" className="text-2xs text-muted-foreground flex items-center gap-1.5">
+            <Icon as={Loader2} size="xs" className="animate-spin" aria-hidden="true" /> Loading…
           </span>
         ) : memberships.length === 0 ? (
           <span className="text-2xs text-muted-foreground italic">Not in any collection</span>
@@ -119,8 +119,8 @@ export default function CollectionPicker({ assetId, onChange }) {
             >
               {c.name}
               {canEdit && (busy === c.id
-                ? <Icon as={Loader2} size="xs" className="animate-spin" />
-                : <Icon as={X} size="xs" />)}
+                ? <Icon as={Loader2} size="xs" className="animate-spin" aria-hidden="true" />
+                : <Icon as={X} size="xs" aria-hidden="true" />)}
             </Badge>
           ))
         )}

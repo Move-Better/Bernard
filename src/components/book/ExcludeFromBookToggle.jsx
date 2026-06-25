@@ -70,8 +70,9 @@ function HeaderVariant({ isExcluded, isLoading, pending, regenPending, onToggle,
 
   if (isLoading) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      <span role="status" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </span>
     )
   }
