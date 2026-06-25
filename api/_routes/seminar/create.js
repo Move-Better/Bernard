@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   // ── Validate body ─────────────────────────────────────────────────────────
   const body = req.body || {}

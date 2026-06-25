@@ -60,7 +60,7 @@ async function handler(req, res) {
 
   // ── POST ─────────────────────────────────────────────────────────────────
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     const { title, body, eventAt, location, ctaUrl, ctaLabel, mediaUrl, selectedOutputs, status } = req.body || {}
     if (!title || !body) return err(res, 'title and body are required')
     if (status != null && !BRIEF_VALID_STATUSES.has(status)) return err(res, 'invalid_status')

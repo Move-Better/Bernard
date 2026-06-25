@@ -90,7 +90,7 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   if (req.method === 'GET') {
-    if (!(await enforceLimit(req, res, 'generic'))) return
+    if (!(await enforceLimit(req, res, 'generic', ws.id))) return
     if (!staffId) return err(res, 'Missing staffId')
     if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
     const r = await sb(`staff_recipes?${wsFilter}&staff_id=eq.${staffId}&select=${RECIPE_FIELDS}&order=is_default.desc,created_at.asc`)
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     const body = req.body || {}
     if (!body.staffId) return err(res, 'Missing staffId')
     if (!body.name?.trim())  return err(res, 'Name required')
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     if (!id) return err(res, 'Missing id')
 
     const body = req.body || {}
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     if (!id) return err(res, 'Missing id')
     const r = await sb(`staff_recipes?id=eq.${id}&${wsFilter}`, { method: 'DELETE' })
     if (!r.ok) return dbErr(res, r, 'Delete failed')

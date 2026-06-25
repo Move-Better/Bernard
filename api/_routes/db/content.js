@@ -155,7 +155,7 @@ export default async function handler(req, res) {
 
   // ── POST (bulk create from interview outputs) ────────────────────────────
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     const body = req.body
 
@@ -232,7 +232,7 @@ export default async function handler(req, res) {
 
   // ── PATCH ────────────────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
     const patch = req.body || {}
@@ -334,7 +334,7 @@ export default async function handler(req, res) {
 
   // ── DELETE ───────────────────────────────────────────────────────────────
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
     const r = await sb(`content_items?id=eq.${id}&${wsFilter}`, { method: 'DELETE' })

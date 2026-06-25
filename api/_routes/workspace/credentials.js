@@ -73,7 +73,7 @@ async function handler(req, res) {
   }
 
   if (req.method === 'PUT' || req.method === 'POST' || req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'default'))) return
+    if (!(await enforceLimit(req, res, 'default', workspace.id))) return
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {

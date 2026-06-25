@@ -47,7 +47,7 @@ async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', scope.workspace.id))) return
 
   // Verify the source belongs to this workspace before linking a brief to it.
   const lookup = await sb(`media_assets?id=eq.${sourceAssetId}&${scope.column}=eq.${scope.id}&select=id`)

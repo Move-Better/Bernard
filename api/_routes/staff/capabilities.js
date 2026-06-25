@@ -40,7 +40,7 @@ async function handler(req, res) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
 
-  if (!(await enforceLimit(req, res, 'staff-capabilities'))) return
+  if (!(await enforceLimit(req, res, 'staff-capabilities', workspace.id))) return
 
   const body = req.body || {}
   const targetId = body.id

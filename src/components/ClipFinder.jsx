@@ -163,10 +163,10 @@ function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview,
               <button
                 type="button"
                 onClick={() => onDiscard(s.id)}
-                title="Discard this suggestion"
+                aria-label="Discard this suggestion"
                 className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </>
           )}

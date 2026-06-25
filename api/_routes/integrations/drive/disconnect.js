@@ -37,7 +37,7 @@ async function handler(req, res) {
     return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   // Try to grab a fresh access token so we can revoke at Google. Revoking the
   // access token also invalidates its parent refresh token. We swallow errors

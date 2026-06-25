@@ -991,17 +991,17 @@ export default function PhotoTemplates() {
                     </div>
                   </button>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Duplicate" onClick={() => handleDuplicate(t)} disabled={createTheme.isPending}>
-                      <Copy className="h-3 w-3" />
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" aria-label="Duplicate template" onClick={() => handleDuplicate(t)} disabled={createTheme.isPending}>
+                      <Copy className="h-3 w-3" aria-hidden="true" />
                     </Button>
                     {t.custom && (
                       <>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Edit" onClick={() => setEditing({ theme: t })}>
-                          <Pencil className="h-3 w-3" />
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" aria-label="Edit template" onClick={() => setEditing({ theme: t })}>
+                          <Pencil className="h-3 w-3" aria-hidden="true" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" title="Delete"
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" aria-label="Delete template"
                           onClick={() => handleDelete(t)}>
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3" aria-hidden="true" />
                         </Button>
                       </>
                     )}

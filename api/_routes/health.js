@@ -67,9 +67,8 @@ export default async function handler(req, res) {
       dbError = `HTTP ${r.status}`
     }
   } catch (e) {
-    dbError = e.name === 'TimeoutError'
-      ? `timed out after ${DB_TIMEOUT_MS}ms`
-      : (e.message || String(e))
+    console.error('[health] db check failed:', e?.message)
+    dbError = e.name === 'TimeoutError' ? `timed out after ${DB_TIMEOUT_MS}ms` : 'db_unreachable'
   }
 
   const ms = Date.now() - start

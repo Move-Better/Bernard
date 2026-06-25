@@ -563,7 +563,7 @@ function AtomRow({ atom, interviewId, slotLabel, dateHint, isDrafting, error, on
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground"
-              title="Skip"
+              aria-label="Skip"
               onClick={onSkip}
             >
               <IconPrim as={SkipForward} size="sm" />

@@ -165,9 +165,9 @@ export function GoogleFontPicker({ value, onChange, sampleText, className }) {
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onChange(''); setOpen(false) }}
                 className="text-muted-foreground hover:text-foreground"
-                title="Clear"
+                aria-label="Clear font selection"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             )}
           </div>
