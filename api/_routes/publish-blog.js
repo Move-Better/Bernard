@@ -202,7 +202,7 @@ export default async function handler(req, res) {
   if (existsResp.status !== 404) {
     const body = await existsResp.text().catch(() => '')
     console.error(tag, `github existence-check ${existsResp.status}:`, body.slice(0, 500))
-    return res.status(502).json({ error: 'github_error', message: `GitHub returned ${existsResp.status} on existence check.`, retriable: true })
+    return res.status(502).json({ error: 'github_error', retriable: true })
   }
 
   // 1b. Prefix-collision guard — halt for human review when this slug is a
@@ -249,7 +249,7 @@ export default async function handler(req, res) {
     if (putResp.status === 422) {
       return res.status(409).json({ error: 'slug_taken', slug, message: 'GitHub rejected the file — likely a race condition with another publish. Try again.' })
     }
-    return res.status(502).json({ error: 'github_error', message: `GitHub returned ${putResp.status}.`, retriable: true })
+    return res.status(502).json({ error: 'github_error', retriable: true })
   }
 
   return res.status(200).json({
