@@ -108,7 +108,7 @@ export default async function handler(req, res) {
   if (!insertRes.ok) {
     const text = await insertRes.text().catch(() => '')
     console.error('[clip-to-post] content_items insert failed:', insertRes.status, text)
-    return res.status(500).json({ error: 'insert_failed', detail: text })
+    return res.status(500).json({ error: 'insert_failed' })
   }
   const items = await insertRes.json()
   const contentItemId = items?.[0]?.id

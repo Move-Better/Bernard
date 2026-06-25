@@ -175,7 +175,7 @@ export default async function handler(req, res) {
       })
     } catch (e) {
       console.error('[approve-package] saveSlateBroll failed:', e.message)
-      return res.status(500).json({ error: 'media_assets_insert_failed', detail: e.message })
+      return res.status(500).json({ error: 'media_assets_insert_failed' })
     }
 
     const libraryPatchRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
@@ -185,7 +185,7 @@ export default async function handler(req, res) {
     if (!libraryPatchRes.ok) {
       const txt = await libraryPatchRes.text().catch(() => '')
       console.error('[approve-package] status patch failed:', libraryPatchRes.status, txt)
-      return res.status(500).json({ error: 'status_patch_failed', detail: txt })
+      return res.status(500).json({ error: 'status_patch_failed' })
     }
 
     return res.status(200).json({
@@ -253,7 +253,7 @@ export default async function handler(req, res) {
       if (!fixPatch.ok) {
         const txt = await fixPatch.text().catch(() => '')
         console.error('[approve-package] status patch failed (retry):', fixPatch.status, txt)
-        return res.status(500).json({ error: 'status_patch_failed', detail: txt })
+        return res.status(500).json({ error: 'status_patch_failed' })
       }
       return res.status(200).json({ packageId, destination: 'publish', contentItems: existingItems, platformCount: existingItems.length })
     }
@@ -266,7 +266,7 @@ export default async function handler(req, res) {
   if (!insertRes.ok) {
     const text = await insertRes.text().catch(() => '')
     console.error('[approve-package] content_items insert failed:', insertRes.status, text)
-    return res.status(500).json({ error: 'content_items_insert_failed', detail: text })
+    return res.status(500).json({ error: 'content_items_insert_failed' })
   }
   const contentItems = await insertRes.json()
 

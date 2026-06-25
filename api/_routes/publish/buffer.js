@@ -158,15 +158,14 @@ async function handler(req, res) {
     }
     // Verify the scheduled post belongs to this workspace before cancelling —
     // prevents a member of workspace A from cancelling workspace B's posts.
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      const ownerCheck = await fetch(
-        `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(bufferUpdateId)}&workspace_id=eq.${workspaceId}&select=id`,
-        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
-      )
-      if (ownerCheck.ok) {
-        const rows = await ownerCheck.json()
-        if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
-      }
+    if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })
+    const ownerCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(bufferUpdateId)}&workspace_id=eq.${workspaceId}&select=id`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    )
+    if (ownerCheck.ok) {
+      const rows = await ownerCheck.json()
+      if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
     }
     const r = await gql(BUFFER_TOKEN, `
       mutation DeletePost($input: DeletePostInput!) {
@@ -209,15 +208,14 @@ async function handler(req, res) {
   // without the piece having gone through the approval workflow.
   if (contentItemId) {
     if (!UUID_RE.test(contentItemId)) return res.status(400).json({ error: 'Invalid contentItemId' })
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      const ciCheck = await fetch(
-        `${SUPABASE_URL}/rest/v1/content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}&select=id`,
-        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
-      )
-      if (ciCheck.ok) {
-        const rows = await ciCheck.json()
-        if (!rows.length) return res.status(403).json({ error: 'Content item not found in this workspace' })
-      }
+    if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })
+    const ciCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}&select=id`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    )
+    if (ciCheck.ok) {
+      const rows = await ciCheck.json()
+      if (!rows.length) return res.status(403).json({ error: 'Content item not found in this workspace' })
     }
   }
 

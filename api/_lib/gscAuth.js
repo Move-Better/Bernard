@@ -12,7 +12,7 @@
 // Register https://withbernard.ai/api/integrations/gsc/callback in the
 // Google Cloud Console OAuth client's Authorized redirect URIs.
 
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { encryptSecret } from './credentialCrypto.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -57,7 +57,7 @@ export function verifyOAuthState(state) {
   const [body, sig] = state.split('.')
   if (!body || !sig) return null
   const expected = b64url(createHmac('sha256', getStateKey()).update(body).digest())
-  if (expected !== sig) return null
+  if (expected.length !== sig.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) return null
   let payload
   try { payload = JSON.parse(b64urlDecode(body).toString('utf8')) } catch { return null }
   if (!payload?.w || !payload?.s || !payload?.e) return null
