@@ -58,6 +58,8 @@ async function handler(req, res) {
   if (req.method === 'PUT') {
     const { assetId } = req.body || {}
     if (!assetId) return res.status(400).json({ error: 'assetId required' })
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
 
     // Defense-in-depth: verify the asset belongs to this workspace before
     // pointing the role at it. The FK on brand_kit_roles.asset_id only
