@@ -8,6 +8,7 @@
 // Node runtime required: imports ratelimit.js → @clerk/backend → node:crypto.
 export const config = { runtime: 'nodejs', maxDuration: 60 }
 
+import { waitUntil } from '@vercel/functions'
 import { generateText } from 'ai'
 import { workspaceContext, invalidateWorkspaceCacheById } from '../_lib/workspaceContext.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
@@ -247,8 +248,8 @@ export default async function handler(req, res) {
     return err(res, 'AI returned no suggestions — try again', 500)
   }
 
-  // Save to cache (fire-and-forget — don't block the response)
-  saveCache(ws.id, suggestions).catch(() => {})
+  // Save to cache (best-effort, non-blocking)
+  waitUntil(saveCache(ws.id, suggestions).catch(() => {}))
 
   return ok(res, {
     suggestions,

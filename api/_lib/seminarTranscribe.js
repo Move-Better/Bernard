@@ -187,15 +187,8 @@ async function transcribeAll(segmentPaths) {
  * @returns {Promise<{ ok: boolean, chars?: number, segments?: number, error?: string }>}
  */
 export async function transcribeSeminar({ interviewId }) {
-  if (!OPENAI_KEY) {
-    await setStatus(interviewId, 'failed')
-    return { ok: false, error: 'OPENAI_API_KEY not set' }
-  }
-
-  // Resolve the audio URL AND the row's workspace_id. We capture workspace_id
-  // here and scope every subsequent write by it — interviewId comes from the
-  // worker request body, so per the tenant-isolation rule no DB op trusts it
-  // alone (CRON_SECRET-gated today, but every tenant-table query stays scoped).
+  // Resolve the audio URL AND the row's workspace_id before any early-exit
+  // setStatus call — every write must be scoped by workspace_id.
   let audioUrl
   let workspaceId
   try {
@@ -204,13 +197,18 @@ export async function transcribeSeminar({ interviewId }) {
     audioUrl = rows[0]?.source_audio_url
     workspaceId = rows[0]?.workspace_id
   } catch (e) {
-    await setStatus(interviewId, 'failed')
+    console.error(`[seminarTranscribe] interview read failed for ${interviewId}: ${e?.message}`)
     return { ok: false, error: `interview read failed: ${e?.message}` }
   }
   if (!workspaceId) {
     // Row not found (or no workspace) — nothing safe to scope a write to.
-    await setStatus(interviewId, 'failed')
+    console.error(`[seminarTranscribe] interview not found or missing workspace: ${interviewId}`)
     return { ok: false, error: 'interview not found' }
+  }
+
+  if (!OPENAI_KEY) {
+    await setStatus(interviewId, 'failed', {}, { workspaceId, onlyIfProcessing: true })
+    return { ok: false, error: 'OPENAI_API_KEY not set' }
   }
   if (!audioUrl) {
     await setStatus(interviewId, 'failed', {}, { workspaceId, onlyIfProcessing: true })

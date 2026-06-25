@@ -13,6 +13,7 @@
 // Node; the function will silently hang until the 300s timeout.
 export const config = { runtime: 'nodejs' }
 
+import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { getCredential } from '../_lib/getCredential.js'
@@ -136,11 +137,13 @@ export default async function handler(req, res) {
   const metrics = extractMetrics(result.post.statistics || {})
   const fetchedAt = new Date().toISOString()
 
-  // Cache the result on the content item row (fire-and-forget — don't block response)
-  sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ buffer_metrics: metrics, buffer_metrics_fetched_at: fetchedAt }),
-  }).catch((e) => console.error('[buffer-analytics] cache write failed:', e?.message))
+  // Cache the result on the content item row (best-effort, non-blocking)
+  waitUntil(
+    sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ buffer_metrics: metrics, buffer_metrics_fetched_at: fetchedAt }),
+    }).catch((e) => console.error('[buffer-analytics] cache write failed:', e?.message))
+  )
 
   return res.status(200).json({ metrics, fetchedAt, cached: false })
 }

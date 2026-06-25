@@ -49,6 +49,8 @@ export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
   if (!id) return err(res, 'Missing id')
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return err(res, 'Invalid id')
 
   const chk = await sb(
     `workspace_photo_templates?id=eq.${id}&workspace_id=eq.${ws.id}&select=id`
