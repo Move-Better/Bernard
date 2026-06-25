@@ -137,7 +137,7 @@ async function importOne({ workspaceId, item, createdBy }) {
     meta = await getDriveFile({ workspaceId, fileId: driveId, fields: 'id,name,mimeType,size,createdTime' })
   } catch (e) {
     if (e instanceof DriveAuthError) throw e
-    return { id: null, status: 'failed', reason: `drive-meta: ${e?.message || e?.status}`, driveId }
+    return { id: null, status: 'failed', reason: 'drive_meta_failed', driveId }
   }
 
   const kind = kindFromMime(meta.mimeType)
@@ -173,7 +173,7 @@ async function importOne({ workspaceId, item, createdBy }) {
   } catch (e) {
     await unlink(localPath).catch(() => {})
     if (e instanceof DriveAuthError) throw e
-    return { id: null, status: 'failed', reason: `download: ${e?.message}`, driveId }
+    return { id: null, status: 'failed', reason: 'download_failed', driveId }
   }
 
   // Probe dimensions before uploading so the row carries width/height on
@@ -198,9 +198,9 @@ async function importOne({ workspaceId, item, createdBy }) {
       // ~10 MB the overhead isn't worth it.
       multipart: downloadSize > 10 * 1024 * 1024,
     })
-  } catch (e) {
+  } catch (_e) {
     await unlink(localPath).catch(() => {})
-    return { id: null, status: 'failed', reason: `blob-put: ${e?.message}`, driveId }
+    return { id: null, status: 'failed', reason: 'blob_put_failed', driveId }
   } finally {
     await unlink(localPath).catch(() => {})
   }
@@ -410,7 +410,7 @@ async function handler(req, res) {
         })
       }
       console.error('[drive/import] item exception:', e?.message)
-      results.push({ status: 'failed', driveId: item.id, reason: e?.message || 'unknown' })
+      results.push({ status: 'failed', driveId: item.id, reason: 'item_failed' })
     }
   }
 
