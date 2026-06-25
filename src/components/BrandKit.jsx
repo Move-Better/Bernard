@@ -922,6 +922,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search by filename or tag…"
+                  aria-label="Search brand assets"
                   className="pl-7 h-8 text-xs"
                 />
               </div>
@@ -1286,6 +1287,7 @@ function ColorBucket({ label, colors, suggestions, isAdding, draft, onDraftChang
               value={draft}
               onChange={(e) => onDraftChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && isValid) { e.preventDefault(); commit(normalized) } }}
+              aria-label={`${label} hex value`}
               className="h-7 w-24 text-xs font-mono"
               placeholder="#000000"
             />
@@ -1367,6 +1369,7 @@ function BrandBookReference() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
+            aria-label="Brand book URL"
             className="h-8 text-xs mt-1"
           />
           <p className="text-2xs text-muted-foreground mt-1">

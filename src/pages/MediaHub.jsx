@@ -430,6 +430,7 @@ export default function MediaHub() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, staff, notes…"
+              aria-label="Search media"
               className="pl-8 pr-8 h-8 text-sm"
             />
             {search && (

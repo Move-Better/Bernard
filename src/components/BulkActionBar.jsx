@@ -369,6 +369,7 @@ export default function BulkActionBar({
             <div className="flex gap-2 items-center">
               <input
                 autoFocus
+                aria-label="New collection name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => {
@@ -555,10 +556,11 @@ export default function BulkActionBar({
             </DialogDescription>
           </DialogHeader>
           <div>
-            <label className="text-xs font-medium block mb-1.5">
+            <label htmlFor="bulk-purge-confirm" className="text-xs font-medium block mb-1.5">
               Type <span className="font-mono bg-muted px-1 py-0.5 rounded">DELETE</span> to confirm:
             </label>
             <input
+              id="bulk-purge-confirm"
               autoFocus
               value={purgeConfirm}
               onChange={(e) => setPurgeConfirm(e.target.value)}

@@ -888,6 +888,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
                 value={val}
                 onChange={e => setHandle(platform, e.target.value)}
                 placeholder={meta.ph}
+                aria-label={`${meta.label} handle`}
                 className="flex-1 min-w-0 bg-transparent text-xs outline-none"
                 autoCapitalize="off"
                 autoCorrect="off"
@@ -1254,6 +1255,7 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
             value={form.slug}
             onChange={e => setField('slug')(e.target.value.toLowerCase())}
             placeholder="acme-movement"
+            aria-label="Workspace address"
             className="flex-1 px-3 py-2 text-sm bg-transparent outline-none"
             autoCapitalize="off"
             autoCorrect="off"

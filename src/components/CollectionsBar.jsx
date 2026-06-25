@@ -134,6 +134,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
                       if (e.key === 'Escape') setEditing(null)
                     }}
                     autoFocus
+                    aria-label="Collection name"
                     className="h-7 w-36 text-2xs px-2"
                   />
                   <Button size="sm" variant="ghost" className="h-7 px-2" onClick={submitRename} disabled={submitting}>
@@ -212,6 +213,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
         <div className="flex flex-wrap items-center gap-2 p-2 rounded-md border bg-muted/40">
           <Input
             autoFocus
+            aria-label="New collection name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {

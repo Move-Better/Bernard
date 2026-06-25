@@ -223,6 +223,7 @@ export default function NewNewsletter() {
                 {!matchesExistingStaff && (
                   <Input
                     placeholder="Other name…"
+                    aria-label="Staff name"
                     value={staffName}
                     onChange={(e) => setStaffName(e.target.value)}
                     autoComplete="name"
@@ -242,6 +243,7 @@ export default function NewNewsletter() {
             ) : (
               <Input
                 placeholder="e.g. Dr. Quasney"
+                aria-label="Staff name"
                 value={staffName}
                 onChange={(e) => setStaffName(e.target.value)}
                 autoComplete="name"
