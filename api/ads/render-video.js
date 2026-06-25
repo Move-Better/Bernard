@@ -24,6 +24,7 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 import { randomUUID } from 'node:crypto'
 import { put as blobPut } from '@vercel/blob'
 import { requireRole } from '../_lib/auth.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
@@ -66,6 +67,8 @@ export default async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   if (!ws.video_pipeline_enabled) {
     return res.status(403).json({ error: 'video_pipeline_disabled' })

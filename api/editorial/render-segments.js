@@ -31,6 +31,7 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
@@ -161,6 +162,8 @@ export default async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const body = req.body || {}
