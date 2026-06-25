@@ -86,7 +86,7 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('[clip-to-broll] saveSlateBroll failed:', e.message)
-    return res.status(500).json({ error: 'insert_failed', detail: e.message })
+    return res.status(500).json({ error: 'insert_failed' })
   }
 
   return res.status(200).json({ assetId: savedAssets[0]?.id })

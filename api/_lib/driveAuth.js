@@ -13,7 +13,7 @@
 // fixed label) so a leaked state can't be cross-protocol-replayed against
 // the credential cipher.
 
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { encryptSecret, decryptSecret } from './credentialCrypto.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -75,11 +75,7 @@ export function verifyOAuthState(state) {
   const [body, sig] = state.split('.')
   if (!body || !sig) return null
   const expected = b64url(createHmac('sha256', getStateKey()).update(body).digest())
-  // Constant-time compare via length check + timingSafeEqual would be ideal,
-  // but the strings are equal-length when valid; a regular === here is fine
-  // because state is short-lived and signed (no oracle is exposed beyond a
-  // 400 response either way).
-  if (expected !== sig) return null
+  if (expected.length !== sig.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) return null
   let payload
   try {
     payload = JSON.parse(b64urlDecode(body).toString('utf8'))

@@ -92,6 +92,7 @@ export default async function handler(req, res) {
   const requestedKind = body.kind && body.kind !== 'any' ? String(body.kind) : null
   // Phase 4 Tentpole PR B: optional campaign tagging.
   const campaignId = body.campaignId ? String(body.campaignId) : null
+  if (campaignId && !UUID_RE.test(campaignId)) return res.status(400).json({ error: 'invalid_campaignId' })
 
   // Resolve the campaign row up-front so caption gen + status check + insert
   // all see the same snapshot. Workspace-scoped lookup so a stale or
@@ -170,7 +171,7 @@ export default async function handler(req, res) {
       })
     } catch (e) {
       console.error('[generate-package] clip search failed:', e.message)
-      return res.status(500).json({ error: 'clip_search_failed', detail: e.message })
+      return res.status(500).json({ error: 'clip_search_failed' })
     }
   }
 
@@ -236,7 +237,8 @@ export default async function handler(req, res) {
       brollPackageId = inserted?.[0]?.id
       if (!brollPackageId) return res.status(500).json({ error: 'insert_no_id' })
     } catch (e) {
-      return res.status(500).json({ error: 'db_error', detail: e.message })
+      console.error('[generate-package] db error:', e?.message)
+    return res.status(500).json({ error: 'db_error' })
     }
 
     // Resolve clinician name for render overlays (best-effort).
@@ -367,7 +369,8 @@ export default async function handler(req, res) {
     packageId = inserted?.[0]?.id
     if (!packageId) return res.status(500).json({ error: 'insert_no_id' })
   } catch (e) {
-    return res.status(500).json({ error: 'db_error', detail: e.message })
+    console.error('[generate-package] db error:', e?.message)
+    return res.status(500).json({ error: 'db_error' })
   }
 
   // --- 5. Render off the request path ──────────────────────────────────────
