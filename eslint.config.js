@@ -10,6 +10,7 @@ import noRawApiFetch from './eslint/rules/no-raw-api-fetch.js'
 import noHardcodedBrandColor from './eslint/rules/no-hardcoded-brand-color.js'
 import requireWorkspaceScope from './eslint/rules/require-workspace-scope.js'
 import noDetailInErrorResponse from './eslint/rules/no-detail-in-error-response.js'
+import noTemperatureOnOpus from './eslint/rules/no-temperature-on-opus.js'
 
 export default [
   { ignores: ['dist/**', 'node_modules/**', 'playwright-report/**', 'api/_routes/_manifest.generated.js'] },
@@ -57,11 +58,14 @@ export default [
           'api-handler-shape': apiHandlerShape,
           'require-workspace-scope': requireWorkspaceScope,
           'no-detail-in-error-response': noDetailInErrorResponse,
+          'no-temperature-on-opus': noTemperatureOnOpus,
         },
       },
     },
     rules: {
       'bernard/api-handler-shape': 'error',
+      // temperature/top_p/top_k 400 on Opus 4.7+ — flag them next to an Opus model.
+      'bernard/no-temperature-on-opus': 'error',
       // Any handler that defines a local sb() PostgREST wrapper must import
       // workspaceContext, workspaceScope, or workspaceById — the tenant filter
       // must be in scope. Suppression requires an inline reason comment.
@@ -93,15 +97,34 @@ export default [
           'no-arbitrary-text-size': noArbitraryTextSize,
           'no-raw-api-fetch': noRawApiFetch,
           'no-hardcoded-brand-color': noHardcodedBrandColor,
+          'no-temperature-on-opus': noTemperatureOnOpus,
         },
       },
     },
     rules: {
       'bernard/no-raw-use-mutation': 'error',
+      // temperature/top_p/top_k 400 on Opus 4.7+ (InterviewSession/CaptureReview call Opus).
+      'bernard/no-temperature-on-opus': 'error',
       // Ban text-[Npx] arbitrary sizes — use text-3xs/text-2xs/Tailwind scale.
       'bernard/no-arbitrary-text-size': 'error',
       'bernard/no-raw-api-fetch': 'error',
       'bernard/no-hardcoded-brand-color': 'error',
+    },
+  },
+  // no-temperature-on-opus is also registered in the api/** and src/** blocks
+  // above. This extra block covers api/_lib/** (Opus callers like
+  // bookSynthesis.js), which the api/** block deliberately ignores. Scoped to
+  // api/_lib only so it never overlaps another block that defines `bernard`
+  // (flat config forbids redefining a plugin for the same file).
+  {
+    files: ['api/_lib/**/*.js'],
+    plugins: {
+      bernard: {
+        rules: { 'no-temperature-on-opus': noTemperatureOnOpus },
+      },
+    },
+    rules: {
+      'bernard/no-temperature-on-opus': 'error',
     },
   },
 ]
