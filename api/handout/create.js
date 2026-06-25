@@ -144,7 +144,7 @@ export default async function handler(req, res) {
     if (!transcript) throw new Error('Whisper returned an empty transcript')
   } catch (e) {
     console.error(`[handout] transcription error ws=${ws.slug}: ${e?.message}`)
-    return res.status(502).json({ error: `Transcription failed: ${e?.message}` })
+    return res.status(502).json({ error: 'transcription_failed' })
   }
 
   // ── 4. Find/create Self-clinician (mirrors voice-memo pattern) ─────────
