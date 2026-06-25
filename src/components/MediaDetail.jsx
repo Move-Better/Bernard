@@ -734,6 +734,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 value={staffId}
                 onChange={(e) => setStaffId(e.target.value)}
                 disabled={!canEdit}
+                aria-label="Attribute to staff member"
                 className="text-sm h-8 px-2 rounded-md border border-border bg-background text-foreground w-full sm:max-w-xs"
               >
                 <option value="">(unattributed)</option>

@@ -66,7 +66,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     const { itemId, body, aiGenerated } = req.body || {}
     if (!itemId) return err(res, 'Missing itemId')
     if (!UUID_RE.test(itemId)) return err(res, 'Invalid itemId', 400)

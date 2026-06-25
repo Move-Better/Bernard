@@ -398,6 +398,7 @@ function AliasRow({ keyword, target, conditionKeys, onChange, onRemove }) {
         className="flex-1 h-7 rounded-md border border-input bg-background px-2 text-xs font-mono"
         value={target}
         onChange={e => onChange(keyword, e.target.value)}
+        aria-label="Map to condition"
       >
         <option value="">(none)</option>
         {conditionKeys.map(k => (

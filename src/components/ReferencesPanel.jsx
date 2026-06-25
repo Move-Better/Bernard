@@ -150,9 +150,9 @@ export default function ReferencesPanel({ topicId, interviewId, compact = false 
                 type="button"
                 onClick={() => handleDelete(ref)}
                 className="shrink-0 p-1 text-muted-foreground hover:text-destructive"
-                title="Remove"
+                aria-label="Remove reference"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </li>
           ))}

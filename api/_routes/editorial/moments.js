@@ -52,7 +52,7 @@ export default async function handler(req, res) {
   if (!ws) return res.status(404).json({ error: 'no_workspace' })
   const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
-  if (!(await enforceLimit(req, res, 'ai'))) return
+  if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   // 1. All proposed segments for the workspace.
   const segRes = await sb(

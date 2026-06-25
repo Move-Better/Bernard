@@ -59,7 +59,7 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   if (req.method === 'GET') {
-    if (!(await enforceLimit(req, res, 'generic'))) return
+    if (!(await enforceLimit(req, res, 'generic', ws.id))) return
     const { searchParams } = new URL(req.url, 'http://localhost')
     const itemId = searchParams.get('itemId')
     if (!itemId) return err(res, 'Missing itemId')
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     const { itemId, body, kind } = req.body || {}
     if (!itemId) return err(res, 'Missing itemId')
     if (!UUID_RE.test(itemId)) return err(res, 'Invalid itemId', 400)

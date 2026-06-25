@@ -273,10 +273,10 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
           size="sm"
           variant="ghost"
           className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-          title="Delete"
+          aria-label="Delete topic"
           onClick={() => onDelete(topic)}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
       </div>
     </div>

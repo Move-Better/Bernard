@@ -662,9 +662,9 @@ function SlideInspector({
           type="button"
           onClick={onRemove}
           className="ml-1 rounded p-0.5 text-muted-foreground hover:text-destructive"
-          title="Delete slide"
+          aria-label="Delete slide"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
 

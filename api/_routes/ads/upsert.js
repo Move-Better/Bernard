@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
   const auth = await requireRole(req, EDITOR_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   const b = req.body || {}
   const sizes = Array.isArray(b.sizes) ? b.sizes : null
