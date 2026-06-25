@@ -15,6 +15,7 @@
 export const config = { runtime: 'nodejs' }
 
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 
@@ -113,6 +114,7 @@ export default async function handler(req, res) {
 
   const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) return res.status(401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const { original, edited, staff_id, piece_id } = req.body ?? {}
 

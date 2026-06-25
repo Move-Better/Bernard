@@ -16,6 +16,7 @@ export const config = { runtime: 'nodejs' }
 import { getCredential } from '../../_lib/getCredential.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { BundlePublisher } from '../../_lib/social/index.js'
 
@@ -125,6 +126,7 @@ async function handler(req, res) {
   if (!scope) return res.status(404).json({ error: 'no_workspace' })
   const auth = await requireRole(req, null, { orgId: scope.workspace.clerk_org_id })
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
+  if (!(await enforceLimit(req, res, 'publish', scope.workspace.id))) return
 
   // Provider routing: a workspace set to publish_provider='bundle' posts through
   // the bundle.social adapter. Buffer (the default) falls through to the

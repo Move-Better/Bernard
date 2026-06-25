@@ -56,11 +56,14 @@ async function handler(req, res) {
     return ok(res, await r.json())
   }
 
+  const BRIEF_VALID_STATUSES = new Set(['done', 'draft', 'archived'])
+
   // ── POST ─────────────────────────────────────────────────────────────────
   if (req.method === 'POST') {
     if (!(await enforceLimit(req, res, 'media'))) return
     const { title, body, eventAt, location, ctaUrl, ctaLabel, mediaUrl, selectedOutputs, status } = req.body || {}
     if (!title || !body) return err(res, 'title and body are required')
+    if (status != null && !BRIEF_VALID_STATUSES.has(status)) return err(res, 'invalid_status')
     const row = {
       workspace_id:     ws.id,
       title,
@@ -92,7 +95,7 @@ async function handler(req, res) {
       cta_label:        patch.ctaLabel,
       media_url:        patch.mediaUrl,
       selected_outputs: patch.selectedOutputs,
-      status:           patch.status,
+      ...(patch.status != null && BRIEF_VALID_STATUSES.has(patch.status) ? { status: patch.status } : {}),
     }
     const update = Object.fromEntries(Object.entries(allowed).filter(([, v]) => v !== undefined))
     if (!Object.keys(update).length) return err(res, 'Nothing to update')

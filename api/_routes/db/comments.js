@@ -3,6 +3,7 @@
 export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { requireRole } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
   // Auth — any signed-in user may read/write; only admin can delete others'
   const auth = await requireRole(req, null, { orgId: ws.clerk_org_id })
   if (!auth.ok) return err(res, 'Unauthorized', 401)
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
   const { userId, role } = auth
 
   // Derive user_email from Clerk — auth.user.id only; fetch email from req header
