@@ -80,15 +80,11 @@ export default async function handler(req, res) {
 
   // ── Resolve staff row ───────────────────────────────────────────────────
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  if (requestedStaffId && !UUID_RE.test(requestedStaffId)) return err(res, 'Invalid staffId', 400)
+  if (requestedStaffId && !UUID_RE.test(requestedStaffId)) return err(res, 'invalid_staff_id', 400)
 
   // An explicit staffId may only be supplied by owners/producers (batch scripts,
   // admin import). Other roles always ingest against their own staff row.
   let staffId
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  if (requestedStaffId && !UUID_RE.test(requestedStaffId)) {
-    return err(res, 'invalid_staff_id', 400)
-  }
   if (requestedStaffId && (auth.role === 'owner' || auth.role === 'producer')) {
     // Verify the supplied staffId belongs to this workspace.
     const checkRes = await fetch(
