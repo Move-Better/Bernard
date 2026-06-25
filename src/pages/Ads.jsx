@@ -65,10 +65,10 @@ function CreativeCard({ creative, onDelete, deleting }) {
           type="button"
           onClick={() => onDelete(creative.id)}
           disabled={deleting}
+          aria-label="Remove from Ads"
           className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-black/50 text-white transition-colors hover:bg-destructive disabled:opacity-50"
-          title="Remove from Ads"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3 w-3" aria-hidden="true" />
         </button>
       </div>
       <div className="p-2">
@@ -80,10 +80,10 @@ function CreativeCard({ creative, onDelete, deleting }) {
               key={it.key}
               type="button"
               onClick={() => downloadBlobFile(it.url, it.filename)}
+              aria-label={`Download ${it.label} version`}
               className="flex items-center gap-0.5 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-3xs font-semibold text-action hover:bg-action/20"
-              title={`Download ${it.label}`}
             >
-              <Download className="h-2.5 w-2.5" /> {it.label}
+              <Download className="h-2.5 w-2.5" aria-hidden="true" /> {it.label}
             </button>
           ))}
         </div>

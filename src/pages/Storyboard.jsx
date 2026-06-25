@@ -65,7 +65,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
       {readyCount > 0 && (
         <Link
           to="/publish#ready"
-          className="shrink-0 inline-flex items-center gap-1.5 bg-action text-white text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+          className="shrink-0 inline-flex items-center gap-1.5 bg-action text-action-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
         >
           <Send className="h-3.5 w-3.5" />
           Review &amp; publish

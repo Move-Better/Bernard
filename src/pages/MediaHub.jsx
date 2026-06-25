@@ -513,7 +513,7 @@ export default function MediaHub() {
               key={k.id || 'all-kind'}
               onClick={() => setKind(k.id)}
               className={`text-2xs px-2.5 py-1 rounded-full border transition-colors inline-flex items-center gap-1 ${
-                kind === k.id ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                kind === k.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
               {k.icon && <span>{k.icon}</span>}
@@ -537,7 +537,7 @@ export default function MediaHub() {
                     onClick={() => setStaffFilter(uid === staffFilter ? '' : uid)}
                     title={name ? `${name} · ${uid}` : uid}
                     className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
-                      staffFilter === uid ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                      staffFilter === uid ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                     } ${name ? '' : 'font-mono'}`}
                   >
                     {label}

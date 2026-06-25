@@ -89,7 +89,8 @@ function OpportunityCard({ opp, onStartInterview, onDraft, onDismiss, dismissing
         <button
           onClick={() => onDismiss(opp)}
           disabled={dismissing}
-          className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1.5 disabled:opacity-50 aria-[busy=true]:cursor-wait"
+          aria-busy={dismissing}
+          className="text-xs font-medium px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1.5 disabled:opacity-50 aria-busy:cursor-wait"
           title="Dismiss this opportunity"
         >
           <X className="w-3.5 h-3.5" /> {dismissing ? 'Dismissing…' : 'Dismiss'}
@@ -239,6 +240,7 @@ export default function SeoOpportunities() {
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
+                aria-pressed={filter === f.key}
                 className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
                   filter === f.key ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-accent/20'
                 }`}

@@ -109,7 +109,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
         <button
           onClick={() => onSelect?.(null)}
           className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
-            !selectedId ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+            !selectedId ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
           }`}
         >
           All
@@ -150,7 +150,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
                 <button
                   onClick={() => onSelect?.(c.id)}
                   className={`text-2xs pl-2.5 pr-2 py-1 rounded-l-full border-l border-y transition-colors flex items-center gap-1.5 ${
-                    active ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                    active ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                   }`}
                   title={c.description || c.name}
                 >

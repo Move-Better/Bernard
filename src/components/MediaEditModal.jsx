@@ -161,7 +161,7 @@ export default function MediaEditModal({ asset, onClose, onSaved, inline = false
                   onClick={() => handleAspect(p.id)}
                   className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
                     aspect === p.id
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >

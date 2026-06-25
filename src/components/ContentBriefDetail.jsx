@@ -331,11 +331,11 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setPublishMode('now')}
-                      className={`text-2xs px-2.5 py-1 rounded-full border ${publishMode === 'now' ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border'}`}
+                      className={`text-2xs px-2.5 py-1 rounded-full border ${publishMode === 'now' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border'}`}
                     >Now</button>
                     <button
                       onClick={() => setPublishMode('schedule')}
-                      className={`text-2xs px-2.5 py-1 rounded-full border ${publishMode === 'schedule' ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border'}`}
+                      className={`text-2xs px-2.5 py-1 rounded-full border ${publishMode === 'schedule' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border'}`}
                     >Schedule</button>
                   </div>
                 </div>

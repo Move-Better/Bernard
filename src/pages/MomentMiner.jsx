@@ -120,7 +120,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           <button
             type="button"
             onClick={() => onReview(m)}
-            className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90"
+            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90"
           >
             <Scissors className="h-4 w-4" />Review &amp; trim
           </button>
@@ -170,7 +170,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
             type="button"
             onClick={() => setMomentType(f.key)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-              momentType === f.key ? 'border-primary bg-primary text-white' : 'border-border bg-card hover:bg-muted'
+              momentType === f.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted'
             }`}
           >
             {f.label}
@@ -533,13 +533,15 @@ export default function MomentMiner() {
           act-now amber so the eye lands where the AI finished its homework.
           On mobile: tabs scroll horizontally, search drops below. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2 text-xs overflow-x-auto pb-0.5">
+        <div role="tablist" aria-label="View" className="flex items-center gap-2 text-xs overflow-x-auto pb-0.5">
           <button
             type="button"
+            role="tab"
+            aria-selected={view === 'clips_to_review'}
             onClick={() => setView('clips_to_review')}
             className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
               view === 'clips_to_review'
-                ? 'bg-action text-white border-action'
+                ? 'bg-action text-action-foreground border-action'
                 : allMoments.length > 0
                   ? 'bg-action/10 border-action/40 text-foreground hover:border-action hover:bg-action/20'
                   : 'bg-card border-border text-muted-foreground hover:text-foreground'
@@ -561,6 +563,8 @@ export default function MomentMiner() {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={view === 'needs_cutting'}
             onClick={() => setView('needs_cutting')}
             className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               view === 'needs_cutting'
@@ -575,6 +579,8 @@ export default function MomentMiner() {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={view === 'in_progress'}
             onClick={() => setView('in_progress')}
             className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               view === 'in_progress'
@@ -589,6 +595,8 @@ export default function MomentMiner() {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={view === 'coverage'}
             onClick={() => setView('coverage')}
             className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
               view === 'coverage'
