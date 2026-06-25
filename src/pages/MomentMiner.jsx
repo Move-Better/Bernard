@@ -180,7 +180,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>
+        <div role="status" className="flex justify-center py-12"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading moments…</span></div>
       ) : moments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center rounded-xl border-2 border-dashed border-border">
           <Sparkles className="h-8 w-8 text-muted-foreground" />
@@ -615,6 +615,7 @@ export default function MomentMiner() {
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <input
               type="search"
+              aria-label="Search videos"
               placeholder="Search videos…"
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}

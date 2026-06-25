@@ -854,7 +854,7 @@ export default function VideoEditor() {
     findMoments: () => findMomentsMutation.mutate(), findingMoments: findMomentsMutation.isPending, segDetecting: segData?.status === 'detecting',
   }
 
-  if (isLoading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+  if (isLoading) return <div role="status" className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading video…</span></div>
   if (error || !asset) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">

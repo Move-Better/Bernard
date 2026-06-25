@@ -152,10 +152,11 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <label htmlFor="sticker-label-input" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
               <Link2 className="h-3.5 w-3.5 text-muted-foreground" /> Link sticker label
             </label>
             <input
+              id="sticker-label-input"
               type="text"
               value={sticker}
               onChange={(e) => setSticker(e.target.value)}

@@ -1,6 +1,7 @@
 // Shared layout primitives used by WorkspaceSettings and all sub-pages.
 // These are intentionally thin — no state, no side effects.
 
+import { useId } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,10 +21,12 @@ export function Section({ title, description, children, className = '' }) {
 }
 
 export function Field({ label, value, onChange, placeholder, hint, type = 'text', autoComplete }) {
+  const id = useId()
   return (
     <div className="space-y-1 max-w-xl">
-      <Label className="text-xs">{label}</Label>
+      <Label htmlFor={id} className="text-xs">{label}</Label>
       <Input
+        id={id}
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -37,10 +40,12 @@ export function Field({ label, value, onChange, placeholder, hint, type = 'text'
 }
 
 export function Textarea2({ label, value, onChange, rows = 4, hint, mono = false }) {
+  const id = useId()
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+      <Label htmlFor={id} className="text-xs">{label}</Label>
       <Textarea
+        id={id}
         value={value}
         onChange={e => onChange(e.target.value)}
         rows={rows}

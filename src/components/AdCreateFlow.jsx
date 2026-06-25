@@ -157,10 +157,11 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
 
           {/* Optional burn-in caption */}
           <div className="mt-4">
-            <label className="mb-1 block text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <label htmlFor="ad-caption-input" className="mb-1 block text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
               Caption (optional — burned into the clip)
             </label>
             <input
+              id="ad-caption-input"
               type="text"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
