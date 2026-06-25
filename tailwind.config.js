@@ -83,6 +83,18 @@ export default {
         '3xs': ['0.625rem', { lineHeight: '1rem' }],
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
       },
+      keyframes: {
+        // Left-to-right sweep for content-shaped loading skeletons (originui).
+        // Animates background-position over a 200%-wide gradient so it lives on
+        // a single element — no pseudo-element required.
+        shimmer: {
+          '0%':   { backgroundPosition: '200% 0' },
+          '100%': { backgroundPosition: '-200% 0' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 1.6s ease-in-out infinite',
+      },
     },
   },
   plugins: [typography],
