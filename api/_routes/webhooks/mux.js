@@ -13,7 +13,10 @@
 // public and a forged payload could mark an asset 'ready' before transcode
 // actually finishes, leaving the player serving a broken stream.
 
-export const config = { runtime: 'nodejs', bodyParser: false }
+// Mounted inside the api/index Express app (per the route manifest), so this
+// per-file config is informational — body handling is governed by api/index's
+// express.json() middleware, which exposes the raw bytes on req.rawBody.
+export const config = { runtime: 'nodejs' }
 
 import { verifyWebhookSignature, mintPlaybackToken, muxSignedConfigured, getAssetDimensions } from '../../_lib/muxClient.js'
 import { put as blobPut } from '@vercel/blob'
@@ -86,15 +89,6 @@ function sb(path, init = {}) {
   })
 }
 
-async function readRawBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = []
-    req.on('data', (chunk) => chunks.push(chunk))
-    req.on('end', () => resolve(Buffer.concat(chunks)))
-    req.on('error', reject)
-  })
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
@@ -106,8 +100,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'misconfigured', message: 'Webhook secret not configured' })
   }
 
-  const rawBody = await readRawBody(req)
+  // Every route runs inside the api/index Express app, whose express.json()
+  // middleware has already consumed the request stream and stashed the exact
+  // bytes on req.rawBody (the Stripe-webhook pattern documented in api/index.js).
+  // Re-reading the stream here (req.on('data')) hangs the function — req has
+  // already emitted 'end' — so verify the signature against req.rawBody.
+  const rawBody = req.rawBody
   const signature = req.headers['mux-signature'] || req.headers['Mux-Signature']
+  if (!rawBody || !rawBody.length) {
+    return res.status(400).json({ error: 'no_raw_body' })
+  }
   if (!verifyWebhookSignature(rawBody, signature, secret)) {
     return res.status(401).json({ error: 'invalid_signature' })
   }
