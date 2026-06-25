@@ -9,6 +9,7 @@ import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
+  TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,6 +44,9 @@ const NAV_SECTIONS = [
         requiresEditor: true },
       // Analytics — per-asset performance dashboard. Editor-gated like Overview.
       { to: '/analytics', label: 'Insights', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
+        requiresEditor: true },
+      // SEO Opportunities — search demand → content + advisory site fixes. Editor-gated.
+      { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp,
         requiresEditor: true },
     ],
   },

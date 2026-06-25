@@ -112,6 +112,7 @@ export const queryKeys = {
   websiteHealth:    ['website-health'],
   websiteGA4:       ['website-ga4'],
   searchQueries:    ['search-queries'],
+  seoOpportunities: ['seo-opportunities'],
   gbpPerformance:   ['gbp-performance'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
@@ -784,6 +785,51 @@ export function useSearchQueries() {
       apiFetch('/api/insights/search-queries').catch(() => ({ connected: false })),
     staleTime: 1000 * 60 * 60, // 1h
     refetchOnWindowFocus: false,
+  })
+}
+
+// ── SEO Opportunities (/seo) ──────────────────────────────────────────────────
+//
+// Returns { connected, opportunities, summary, websiteSuggestions, locked,
+// snapshotWeeks } from /api/seo/opportunities. Cached 1h — built on Search
+// Console data which refreshes daily, plus a best-effort on-page homepage audit.
+export function useSeoOpportunities() {
+  return useQuery({
+    queryKey: queryKeys.seoOpportunities,
+    queryFn: () =>
+      apiFetch('/api/seo/opportunities').catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 60, // 1h
+    refetchOnWindowFocus: false,
+  })
+}
+
+// Dismiss a content opportunity (persists per workspace+query so it won't
+// reappear). Optimistically removes the card, then refetches.
+export function useDismissSeoOpportunity() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't dismiss this opportunity",
+    mutationFn: ({ query }) =>
+      apiFetch('/api/seo/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      }),
+    onMutate: async ({ query }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.seoOpportunities })
+      const prev = qc.getQueryData(queryKeys.seoOpportunities)
+      if (prev?.opportunities) {
+        qc.setQueryData(queryKeys.seoOpportunities, {
+          ...prev,
+          opportunities: prev.opportunities.filter((o) => o.query !== query),
+        })
+      }
+      return { prev }
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.seoOpportunities, ctx.prev)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.seoOpportunities }),
   })
 }
 

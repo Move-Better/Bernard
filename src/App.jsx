@@ -52,6 +52,7 @@ const Stories = lazy(() => import('@/pages/Stories'))
 const YourWeek = lazy(() => import('@/pages/YourWeek'))
 const Overview = lazy(() => import('@/pages/Overview'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
+const SeoOpportunities = lazy(() => import('@/pages/SeoOpportunities'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const StoryboardPublish = lazy(() => import('@/pages/StoryboardPublish'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
@@ -615,6 +616,9 @@ function AppRoutes() {
             {/* Analytics — per-asset performance dashboard (website / bookings /
                 social / content). Self-guards to editors; clinicians redirect home. */}
             <Route path="/analytics" element={guarded(<AnalyticsPage />)} />
+            {/* SEO Opportunities — GSC demand → content + advisory site fixes.
+                Self-guards to editors; clinicians redirect home. */}
+            <Route path="/seo" element={guarded(<SeoOpportunities />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
             <Route path="/synthesis" element={guarded(<Synthesis />)} />
             <Route path="/write" element={guarded(<AuthorMode />)} />
