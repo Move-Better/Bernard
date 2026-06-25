@@ -20,7 +20,10 @@
 // the endpoint is registered + the secret set, this returns 503 (no webhooks
 // arrive yet), so it is inert rather than insecure.
 
-export const config = { runtime: 'nodejs', bodyParser: false }
+// Mounted inside the api/index Express app (per the route manifest), so this
+// per-file config is informational — body handling is governed by api/index's
+// express.json() middleware, which exposes the raw bytes on req.rawBody.
+export const config = { runtime: 'nodejs' }
 
 import { Bundlesocial } from 'bundlesocial'
 import { bundleErrorText } from '../../_lib/social/bundlePublisher.js'
@@ -43,15 +46,6 @@ function sb(path, init = {}) {
   })
 }
 
-async function readRawBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = []
-    req.on('data', (chunk) => chunks.push(chunk))
-    req.on('end', () => resolve(Buffer.concat(chunks)))
-    req.on('error', reject)
-  })
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
@@ -67,8 +61,16 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'supabase_not_configured' })
   }
 
-  const rawBody = await readRawBody(req)
-  const signature = req.headers['x-signature'] || req.headers['X-Signature']
+  // Every route runs inside the api/index Express app, whose express.json()
+  // middleware has already consumed the request stream and stashed the exact
+  // bytes on req.rawBody (the Stripe-webhook pattern documented in api/index.js).
+  // Re-reading the stream here (req.on('data')) hangs the function — req has
+  // already emitted 'end' — so verify the signature against req.rawBody.
+  const rawBody = req.rawBody
+  const signature = req.headers['x-signature']
+  if (!rawBody || !rawBody.length) {
+    return res.status(400).json({ error: 'no_raw_body' })
+  }
 
   let event
   try {
