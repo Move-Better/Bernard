@@ -68,7 +68,7 @@ async function handler(req, res) {
   if (!colCheck.ok) return res.status(404).json({ error: 'Collection not found' })
 
   if (req.method === 'POST') {
-    const assetIds = Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean) : []
+    const assetIds = (Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean) : []).filter(id => UUID_RE.test(String(id)))
     if (!assetIds.length) return res.status(400).json({ error: 'assetIds[] required' })
 
     const assetCheck = await verifyScope(scope, 'media_assets', assetIds)
