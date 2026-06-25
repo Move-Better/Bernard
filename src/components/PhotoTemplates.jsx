@@ -327,7 +327,7 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
             swatchClassName="h-7 w-7"
             ariaLabel="Pick text color"
           />
-          <input type="text" value={c.color || '#ffffff'} onChange={(e) => set('color', e.target.value)}
+          <input aria-label="Text color hex value" type="text" value={c.color || '#ffffff'} onChange={(e) => set('color', e.target.value)}
             className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary" />
         </div>
       </div>
@@ -358,7 +358,7 @@ function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches
               swatchClassName="h-7 w-7"
               ariaLabel="Pick background color"
             />
-            <input type="text" value={c.bgColor || ''} placeholder="null = brand accent"
+            <input aria-label="Background color hex value" type="text" value={c.bgColor || ''} placeholder="null = brand accent"
               onChange={(e) => set('bgColor', e.target.value || null)}
               className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary" />
           </div>

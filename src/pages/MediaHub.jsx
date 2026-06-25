@@ -474,6 +474,7 @@ export default function MediaHub() {
                 }}
                 className="h-7 gap-1.5 text-2xs rounded-full"
                 title="Select multiple media for bulk actions"
+                aria-label="Select multiple media for bulk actions"
               >
                 <CheckSquare className="h-3.5 w-3.5" />
                 {multiSelectMode ? 'Exit select' : 'Select'}

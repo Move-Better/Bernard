@@ -457,6 +457,7 @@ export default function BulkActionBar({
                 onClick={tagAll}
                 disabled={busy === 'tag'}
                 title="Re-run vision + transcription tagging (slow)"
+                aria-label="AI tags — re-run vision and transcription tagging"
               >
                 {busy === 'tag'
                   ? <Icon as={Loader2} size="sm" className="animate-spin inline mr-0.5" />
