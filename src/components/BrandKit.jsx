@@ -5,6 +5,7 @@ import {
   FileText, Image as ImageIcon, Tag as TagIcon, RotateCcw, Loader2, Trash2, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -262,25 +263,29 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
 
         {onDelete && (
           <div className="px-4 py-3 border-t mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs h-7 text-destructive hover:bg-destructive/10"
-              disabled={assignedTo.length > 0}
-              onClick={async () => {
-                // The server already enforces this with a 409 on FK violation,
-                // but disabling the button locally avoids a round trip + toast
-                // for the obvious "still assigned to a role" case.
-                if (assignedTo.length > 0) return
-                if (!window.confirm(`Delete ${asset.filename}? The file is removed from storage too.`)) return
-                await onDelete(asset.id)
-                onClose()
-              }}
-              title={assignedTo.length > 0 ? 'Clear all role assignments first' : 'Delete asset + blob'}
-            >
-              <Trash2 className="h-3 w-3 mr-1.5" />
-              {assignedTo.length > 0 ? 'Clear role assignments first' : 'Delete asset'}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 text-destructive hover:bg-destructive/10"
+                  disabled={assignedTo.length > 0}
+                  onClick={async () => {
+                    // The server already enforces this with a 409 on FK violation,
+                    // but disabling the button locally avoids a round trip + toast
+                    // for the obvious "still assigned to a role" case.
+                    if (assignedTo.length > 0) return
+                    if (!window.confirm(`Delete ${asset.filename}? The file is removed from storage too.`)) return
+                    await onDelete(asset.id)
+                    onClose()
+                  }}
+                >
+                  <Trash2 className="h-3 w-3 mr-1.5" />
+                  {assignedTo.length > 0 ? 'Clear role assignments first' : 'Delete asset'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{assignedTo.length > 0 ? 'Clear all role assignments first' : 'Delete asset + blob'}</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -810,34 +815,38 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Library</h2>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{filtered.length} of {assets.length} assets</span>
-              <Button
-                size="sm" variant="ghost" className="text-xs h-7 text-muted-foreground"
-                disabled={reclassifying}
-                onClick={async () => {
-                  setReclassifying(true)
-                  try {
-                    const token = await window.Clerk?.session?.getToken?.()
-                    const r = await fetch('/api/brand-kit/reclassify', {
-                      method: 'POST',
-                      headers: token ? { Authorization: `Bearer ${token}` } : {},
-                    })
-                    const data = await r.json()
-                    if (r.ok) {
-                      toast.success(`Re-tagged ${data.updated} of ${data.total} assets`)
-                      qc.invalidateQueries({ queryKey: ['brandKit'] })
-                    } else {
-                      toast.error(data.error || 'Re-classify failed')
-                    }
-                  } catch (err) {
-                    toast.error('Re-classify failed', { description: err.message })
-                  } finally {
-                    setReclassifying(false)
-                  }
-                }}
-                title="Re-run AI classifier on all assets"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" /> Re-tag
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm" variant="ghost" className="text-xs h-7 text-muted-foreground"
+                    disabled={reclassifying}
+                    onClick={async () => {
+                      setReclassifying(true)
+                      try {
+                        const token = await window.Clerk?.session?.getToken?.()
+                        const r = await fetch('/api/brand-kit/reclassify', {
+                          method: 'POST',
+                          headers: token ? { Authorization: `Bearer ${token}` } : {},
+                        })
+                        const data = await r.json()
+                        if (r.ok) {
+                          toast.success(`Re-tagged ${data.updated} of ${data.total} assets`)
+                          qc.invalidateQueries({ queryKey: ['brandKit'] })
+                        } else {
+                          toast.error(data.error || 'Re-classify failed')
+                        }
+                      } catch (err) {
+                        toast.error('Re-classify failed', { description: err.message })
+                      } finally {
+                        setReclassifying(false)
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" /> Re-tag
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Re-run AI classifier on all assets</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         )}
@@ -1253,15 +1262,18 @@ function ColorBucket({ label, colors, suggestions, isAdding, draft, onDraftChang
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
           <span className="text-3xs text-muted-foreground shrink-0">From brand book:</span>
           {suggestions.map((c) => (
-            <button
-              key={c}
-              title={`Add ${c}`}
-              onClick={() => onAdd(c)}
-              className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 hover:border-primary/60 hover:bg-accent/30 transition-colors text-2xs font-mono"
-            >
-              <div className="w-3.5 h-3.5 rounded-sm shrink-0" style={{ background: c }} />
-              {c}
-            </button>
+            <Tooltip key={c}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onAdd(c)}
+                  className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 hover:border-primary/60 hover:bg-accent/30 transition-colors text-2xs font-mono"
+                >
+                  <div className="w-3.5 h-3.5 rounded-sm shrink-0" style={{ background: c }} />
+                  {c}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{`Add ${c}`}</TooltipContent>
+            </Tooltip>
           ))}
         </div>
       )}

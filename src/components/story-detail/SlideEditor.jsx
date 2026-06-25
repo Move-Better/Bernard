@@ -25,6 +25,7 @@ import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 // Role label + chip colors. Mirrors the mockup palette.
 const ROLE_META = {
@@ -550,17 +551,21 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
           className="min-h-[120px] flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
         />
         <div className="flex shrink-0 items-center justify-between">
-          <button
-            type="button"
-            onClick={() => {
-              const firstLine = (draft || '').split('\n')[0].trim()
-              if (firstLine) onUseAsHook(firstLine)
-            }}
-            title="Copy the first line of the caption into slide 1&apos;s hook text block"
-            className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-          >
-            ↑ Use as slide hook
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  const firstLine = (draft || '').split('\n')[0].trim()
+                  if (firstLine) onUseAsHook(firstLine)
+                }}
+                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+              >
+                ↑ Use as slide hook
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Copy the first line of the caption into slide 1&apos;s hook text block</TooltipContent>
+          </Tooltip>
           <span className="text-3xs text-muted-foreground">{draft.length} chars</span>
         </div>
       </div>
@@ -600,28 +605,32 @@ function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onC
   const resolved = resolveTheme(t.id, customThemes)
   const selected = slide.template_id === t.id
   return (
-    <button
-      type="button"
-      onClick={() => onChange({ ...slide, template_id: t.id })}
-      className={`group relative overflow-hidden rounded-md border text-left transition-all ${
-        selected ? 'border-verbatim-accent ring-1 ring-verbatim-accent/40' : 'border-border hover:border-primary/40'
-      }`}
-      title={`${t.name}${selected ? ' (this slide only)' : ''}`}
-    >
-      <div className="aspect-[4/5] w-full bg-muted">
-        <MiniSlideCanvas
-          renderSlide={slide}
-          photoUrl={photoUrl}
-          brandStyle={brandStyle}
-          theme={resolved}
-          renderKey={`${t.id}|${thumbSig}`}
-        />
-      </div>
-      <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">{t.name}</div>
-      {selected && (
-        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
-      )}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onChange({ ...slide, template_id: t.id })}
+          className={`group relative overflow-hidden rounded-md border text-left transition-all ${
+            selected ? 'border-verbatim-accent ring-1 ring-verbatim-accent/40' : 'border-border hover:border-primary/40'
+          }`}
+        >
+          <div className="aspect-[4/5] w-full bg-muted">
+            <MiniSlideCanvas
+              renderSlide={slide}
+              photoUrl={photoUrl}
+              brandStyle={brandStyle}
+              theme={resolved}
+              renderKey={`${t.id}|${thumbSig}`}
+            />
+          </div>
+          <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">{t.name}</div>
+          {selected && (
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{`${t.name}${selected ? ' (this slide only)' : ''}`}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -761,23 +770,27 @@ function SlideInspector({
 function SuggestionThumb({ clip, attached, attaching, onAttach }) {
   const thumb = clip.thumbnailUrl || clip.blobUrl || clip.url
   return (
-    <button
-      type="button"
-      disabled={attaching}
-      onClick={onAttach}
-      title={attached ? 'Already in this post — click to use it on this slide' : 'Use this photo'}
-      className={`group relative aspect-square overflow-hidden rounded-md border transition-all ${
-        attached ? 'border-primary' : 'border-border hover:border-primary'
-      }`}
-    >
-      {thumb
-        ? <img src={thumb} alt="" className="h-full w-full object-cover" />
-        : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>}
-      <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
-      <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-        {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : attached ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-      </span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          disabled={attaching}
+          onClick={onAttach}
+          className={`group relative aspect-square overflow-hidden rounded-md border transition-all ${
+            attached ? 'border-primary' : 'border-border hover:border-primary'
+          }`}
+        >
+          {thumb
+            ? <img src={thumb} alt="" className="h-full w-full object-cover" />
+            : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>}
+          <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
+          <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+            {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : attached ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          </span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{attached ? 'Already in this post — click to use it on this slide' : 'Use this photo'}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -1223,10 +1236,15 @@ function TextStyleControls({ block, onSet }) {
       <div>
         <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Colour</p>
         <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button" onClick={() => onSet('color', null)} title="Auto (theme)"
-            className={`h-6 rounded px-1.5 text-3xs font-medium ${!block.color ? 'bg-primary/10 text-primary ring-1 ring-primary' : 'bg-muted text-muted-foreground'}`}
-          >Auto</button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button" onClick={() => onSet('color', null)}
+                className={`h-6 rounded px-1.5 text-3xs font-medium ${!block.color ? 'bg-primary/10 text-primary ring-1 ring-primary' : 'bg-muted text-muted-foreground'}`}
+              >Auto</button>
+            </TooltipTrigger>
+            <TooltipContent>Auto (theme)</TooltipContent>
+          </Tooltip>
           {TEXT_COLORS.map((c) => (
             <button
               key={c.value} type="button" onClick={() => onSet('color', c.value)} aria-label={c.label}
@@ -1862,25 +1880,33 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           : null}
         aspect={{ value: aspect, options: ['1:1', '4:5', '9:16'], onChange: setAspect }}
       >
-        <button
-          type="button"
-          onClick={() => setFullPreviewOpen(true)}
-          className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          title="Preview as Instagram"
-        >
-          <Smartphone className="mr-1 inline h-3.5 w-3.5" />
-          Preview
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setFullPreviewOpen(true)}
+              className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <Smartphone className="mr-1 inline h-3.5 w-3.5" />
+              Preview
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Preview as Instagram</TooltipContent>
+        </Tooltip>
         {hasMedia && (
-          <button
-            type="button"
-            onClick={() => setAdExportOpen(true)}
-            className="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action hover:bg-action/10 transition-colors"
-            title="Render into ad sizes"
-          >
-            <Megaphone className="mr-1 inline h-3.5 w-3.5" />
-            Ads
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setAdExportOpen(true)}
+                className="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action hover:bg-action/10 transition-colors"
+              >
+                <Megaphone className="mr-1 inline h-3.5 w-3.5" />
+                Ads
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Render into ad sizes</TooltipContent>
+          </Tooltip>
         )}
         {dirty && (
           <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
