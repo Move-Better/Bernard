@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   TrendingUp, Target, Sparkles, TrendingDown, GitBranch, Mic, PenLine, X,
-  FilePlus2, FilePen, Wrench, Search, Lock, Plug,
+  FilePlus2, FilePen, Wrench, Search, Lock, Plug, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -103,7 +104,7 @@ function LockedCard({ tag, icon: Icon, label, why }) {
       <div className="flex items-center gap-2 mb-1">
         <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{tag}</span>
         <span className="text-2xs text-muted-foreground inline-flex items-center gap-1">
-          <Lock className="w-3 h-3" /> Unlocks as weekly snapshots accrue
+          <Lock className="w-3 h-3" /> Snapshots run Mondays — needs 2 weeks of history
         </span>
       </div>
       <div className="font-medium text-sm flex items-center gap-2">
@@ -153,9 +154,15 @@ export default function SeoOpportunities() {
   const ws = useWorkspace()
   const navigate = useNavigate()
   const { isEditor, isLoading: roleLoading } = useUserRole()
-  const { data, isLoading } = useSeoOpportunities()
+  const qc = useQueryClient()
+  const { data, isLoading, isFetching, dataUpdatedAt } = useSeoOpportunities()
   const dismiss = useDismissSeoOpportunity()
   const [filter, setFilter] = useState('all')
+
+  const handleRefresh = () => qc.invalidateQueries({ queryKey: ['seo-opportunities'] })
+  const updatedLabel = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null
 
   // Editor surface — same gate as Insights/Overview.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
@@ -199,8 +206,20 @@ export default function SeoOpportunities() {
             <span className="text-primary font-medium"> {assetName}</span>
           </p>
         </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <div>Search Console · last 28 days</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="text-right">
+            <div>Search Console · last 28 days</div>
+            {updatedLabel && <div className="mt-0.5">Fetched at {updatedLabel}</div>}
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isFetching}
+            aria-label="Refresh SEO data"
+            title="Refresh"
+            className="p-1.5 rounded-lg hover:bg-accent/20 disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />
+          </button>
         </div>
       </div>
 
