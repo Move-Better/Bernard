@@ -360,6 +360,7 @@ export default function NewInterview() {
                 {/* Text input appears only when staffName doesn't match an existing row */}
                 {!staffForSuggestions.some((s) => s.name.trim().toLowerCase() === staffName.trim().toLowerCase()) && (
                   <Input
+                    aria-label="Staff name"
                     placeholder="Other name…"
                     value={staffName}
                     onChange={(e) => setStaffName(e.target.value)}

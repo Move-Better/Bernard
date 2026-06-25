@@ -1144,6 +1144,7 @@ function TypedDock({ typedAnswer, streaming, isSpeaking, onChange, onSubmit, onK
       </div>
       <div className="flex items-end gap-2">
         <Textarea
+          aria-label="Your answer"
           value={typedAnswer}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
