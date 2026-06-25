@@ -302,7 +302,6 @@ async function handler(req, res) {
   if (items.length > MAX_ITEMS_PER_REQUEST) {
     return res.status(400).json({
       error: 'too-many-items',
-      message: `Import at most ${MAX_ITEMS_PER_REQUEST} files per request (chunk client-side).`,
     })
   }
 
