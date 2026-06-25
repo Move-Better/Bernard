@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { useConfirm } from '@/lib/useConfirm'
 import {
   usePhotoTemplates,
   useCreatePhotoTemplate,
@@ -742,6 +743,7 @@ export default function PhotoTemplates() {
   const brandAccent  = useBrandAccent()
   const workspace    = useWorkspace()
   const brandStyle   = workspace?.brand_style || {}
+  const confirm      = useConfirm()
 
   // 'browse' = the built-in/custom rail + form editor; 'chat' = Design with AI.
   const [mode, setMode] = useState('browse')
@@ -798,7 +800,11 @@ export default function PhotoTemplates() {
   }
 
   async function handleDelete(theme) {
-    if (!window.confirm(`Delete "${theme.name}"? Stories using it will fall back to the workspace default.`)) return
+    if (!(await confirm({
+      title: `Delete "${theme.name}"?`,
+      description: 'Stories using it will fall back to the workspace default.',
+      confirmLabel: 'Delete',
+    }))) return
     try {
       await deleteTheme.mutateAsync(theme.id)
       toast.success('Template deleted')

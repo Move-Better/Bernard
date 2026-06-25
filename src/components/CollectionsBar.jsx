@@ -9,6 +9,7 @@ import {
   updateCollection,
 } from '@/lib/collectionsLib'
 import { useUserRole } from '@/lib/useUserRole'
+import { useConfirm } from '@/lib/useConfirm'
 
 const KIND_OPTIONS = [
   { id: 'campaign', label: 'Campaign' },
@@ -32,6 +33,7 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
   const [kind, setKind] = useState('campaign')
   const [editing, setEditing] = useState(null)
   const [editName, setEditName] = useState('')
+  const confirm = useConfirm()
 
   const refresh = useCallback(async () => {
     setLoading(true); setError('')
@@ -80,7 +82,11 @@ export default function CollectionsBar({ selectedId, onSelect, refreshKey = 0 })
   }
 
   async function archiveCollection(c) {
-    if (!confirm(`Archive "${c.name}"? Members stay in the library; the collection is hidden until restored.`)) return
+    if (!(await confirm({
+      title: `Archive "${c.name}"?`,
+      description: 'Members stay in the library; the collection is hidden until restored.',
+      confirmLabel: 'Archive',
+    }))) return
     setSubmitting(true); setError('')
     try {
       await updateCollection(c.id, { status: 'archived' })

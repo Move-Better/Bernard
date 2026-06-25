@@ -9,6 +9,7 @@ import {
   useDeleteReference,
 } from '@/lib/queries'
 import { toast } from '@/lib/toast'
+import { useConfirm } from '@/lib/useConfirm'
 
 /**
  * ReferencesPanel — attach external article URLs to either a topic_backlog row
@@ -29,6 +30,7 @@ export default function ReferencesPanel({ topicId, interviewId, compact = false 
 
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
+  const confirm = useConfirm()
 
   async function handleAdd(e) {
     e?.preventDefault?.()
@@ -48,8 +50,8 @@ export default function ReferencesPanel({ topicId, interviewId, compact = false 
     }
   }
 
-  function handleDelete(ref) {
-    if (!confirm(`Remove reference "${ref.title || ref.url}"?`)) return
+  async function handleDelete(ref) {
+    if (!(await confirm({ title: `Remove reference "${ref.title || ref.url}"?`, confirmLabel: 'Remove' }))) return
     deleteMutation.mutate(ref.id, {
       onError: (e) => toast.error(e.message || 'Could not delete'),
     })

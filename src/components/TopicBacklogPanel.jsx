@@ -13,6 +13,7 @@ import {
 } from '@/lib/queries'
 import { toast } from '@/lib/toast'
 import ReferencesPanel from '@/components/ReferencesPanel'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Strategic topic backlog. Sits inside the Strategy page and gives the clinic
 // a prioritized queue of "what to interview about next" — either AI-suggested
@@ -28,6 +29,7 @@ export default function TopicBacklogPanel() {
 
   const [newTopic, setNewTopic] = useState('')
   const [error, setError]       = useState('')
+  const confirm = useConfirm()
 
   async function handleAdd(e) {
     e?.preventDefault?.()
@@ -72,8 +74,8 @@ export default function TopicBacklogPanel() {
     updateMutation.mutate({ id: topic.id, patch: { status: 'pending' } }, { onError: onMutateError })
   }
 
-  function handleDelete(topic) {
-    if (!confirm(`Delete "${topic.topic}" from the backlog?`)) return
+  async function handleDelete(topic) {
+    if (!(await confirm({ title: `Delete "${topic.topic}" from the backlog?`, confirmLabel: 'Delete' }))) return
     deleteMutation.mutate(topic.id, { onError: onMutateError })
   }
 

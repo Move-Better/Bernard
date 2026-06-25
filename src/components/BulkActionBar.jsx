@@ -22,6 +22,7 @@ import {
   tagMediaAsset,
 } from '@/lib/mediaLib'
 import { useUserRole } from '@/lib/useUserRole'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Separator between pill action groups.
 function Sep() {
@@ -98,6 +99,7 @@ export default function BulkActionBar({
   onRefresh,
 }) {
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
+  const confirm = useConfirm()
   const [panel, setPanel]             = useState(null) // 'collection' | 'status' | null
   const [collections, setCollections] = useState([])
   const [loadingList, setLoadingList] = useState(false)
@@ -192,7 +194,11 @@ export default function BulkActionBar({
 
   async function removeFromCurrentCollection() {
     if (!count || !currentCollectionId) return
-    if (!confirm(`Remove ${count} item${count === 1 ? '' : 's'} from this collection? They stay in the library.`)) return
+    if (!(await confirm({
+      title: `Remove ${count} item${count === 1 ? '' : 's'} from this collection?`,
+      description: 'They stay in the library — only the collection link is removed.',
+      confirmLabel: 'Remove',
+    }))) return
     setBusy('remove-collection'); setError('')
     try {
       await removeAssetsFromCollection(currentCollectionId, selectedIds)
@@ -223,7 +229,11 @@ export default function BulkActionBar({
 
   async function archiveAll() {
     if (!count) return
-    if (!confirm(`Archive ${count} item${count === 1 ? '' : 's'}? They'll move to the trash bin and can be restored.`)) return
+    if (!(await confirm({
+      title: `Archive ${count} item${count === 1 ? '' : 's'}?`,
+      description: "They'll move to the trash bin and can be restored.",
+      confirmLabel: 'Archive',
+    }))) return
     setBusy('archive'); setError('')
     try {
       const results = await pMap(selectedIds, (id) => archiveMediaAsset(id), 8)

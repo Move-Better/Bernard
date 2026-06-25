@@ -16,6 +16,7 @@ import { apiFetch } from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queries'
 import { toast } from '@/lib/toast'
+import { useConfirm } from '@/lib/useConfirm'
 
 function fmtDate(iso) {
   if (!iso) return ''
@@ -26,6 +27,7 @@ function fmtDate(iso) {
 export default function VoiceCloneCard({ staffMember }) {
   const queryClient = useQueryClient()
   const [revoking, setRevoking] = useState(false)
+  const confirm = useConfirm()
 
   const hasClone = !!staffMember?.eleven_voice_id && !staffMember?.voice_clone_revoked_at
   const hadClone = !!staffMember?.voice_clone_revoked_at && !staffMember?.eleven_voice_id
@@ -33,9 +35,11 @@ export default function VoiceCloneCard({ staffMember }) {
 
   const onRevoke = async () => {
     if (!staffMember?.id) return
-    if (!confirm('Revoke this voice clone? The voice will be deleted from ElevenLabs and content will stop using it.')) {
-      return
-    }
+    if (!(await confirm({
+      title: 'Revoke this voice clone?',
+      description: 'The voice will be deleted from ElevenLabs and content will stop using it.',
+      confirmLabel: 'Revoke',
+    }))) return
     setRevoking(true)
     try {
       await apiFetch('/api/voice-clone/revoke', {

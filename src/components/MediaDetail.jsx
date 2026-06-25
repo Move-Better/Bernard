@@ -27,6 +27,7 @@ import MediaEditModal from './MediaEditModal'
 import MediaVideoPlayer from './MediaVideoPlayer'
 import AdExportModal from './AdExportModal'
 import { downloadFromUrl } from '@/lib/download'
+import { useConfirm } from '@/lib/useConfirm'
 
 const STATUSES = ['raw', 'tagged', 'rendered', 'approved', 'archived']
 // Purpose is the primary fork (see MediaUploader for the source of truth).
@@ -88,6 +89,7 @@ function originalExt(url) {
 // `asset` is the row, `onClose` dismisses, `onChange` is called after save/delete.
 export default function MediaDetail({ asset, onClose, onChange }) {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [tags, setTags]         = useState(asset.tags || [])
   const [tagInput, setTagInput] = useState('')
   const [notes, setNotes]       = useState(asset.notes || '')
@@ -359,7 +361,11 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   }
 
   async function handleArchive() {
-    if (!confirm(`Move "${asset.filename}" to archive? It will be hidden from the library but kept in storage. You can restore it any time.`)) return
+    if (!(await confirm({
+      title: `Move "${asset.filename}" to archive?`,
+      description: 'It will be hidden from the library but kept in storage. You can restore it any time.',
+      confirmLabel: 'Archive',
+    }))) return
     setArchiving(true); setError('')
     try {
       await archiveMediaAsset(asset.id)
