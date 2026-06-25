@@ -243,13 +243,15 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b px-5 shrink-0">
+        <div role="tablist" aria-label="Media source" className="flex border-b px-5 shrink-0">
           {[
             { id: 'library', label: 'Library', icon: Library },
             { id: 'upload',  label: 'Upload',  icon: Upload },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              role="tab"
+              aria-selected={tab === id}
               onClick={() => setTab(id)}
               className={`flex items-center gap-1.5 px-3 py-3 text-sm border-b-2 transition-colors -mb-px ${
                 tab === id
@@ -257,7 +259,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />{label}
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />{label}
             </button>
           ))}
         </div>
