@@ -50,6 +50,8 @@ export default async function handler(req, res) {
 
   const { staffId, sampleUrl } = req.body || {}
   if (!staffId) return res.status(400).json({ error: 'staffId required' })
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staffId' })
   if (!sampleUrl || typeof sampleUrl !== 'string') {
     return res.status(400).json({ error: 'sampleUrl required' })
   }

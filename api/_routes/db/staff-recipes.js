@@ -89,6 +89,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     if (!staffId) return err(res, 'Missing staffId')
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
     const r = await sb(`staff_recipes?${wsFilter}&staff_id=eq.${staffId}&select=${RECIPE_FIELDS}&order=is_default.desc,created_at.asc`)
     if (!r.ok) return dbErr(res, r)
     return ok(res, await r.json())

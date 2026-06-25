@@ -239,6 +239,10 @@ export default async function handler(req, res) {
 
     if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) return err(res, 'Invalid status', 400)
     if (patch.locationId && !UUID_RE.test(patch.locationId)) return err(res, 'Invalid locationId', 400)
+    if (patch.locationId) {
+      const locChk = await sb(`workspace_locations?id=eq.${patch.locationId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+      if (!locChk.ok || !(await locChk.json()).length) return err(res, 'Location not found in workspace', 404)
+    }
 
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
     // archive or `null` to restore.

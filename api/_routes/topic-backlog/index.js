@@ -100,6 +100,10 @@ export default async function handler(req, res) {
     if (patch.rationale !== undefined) allowed.rationale = patch.rationale
     if (patch.interview_id !== undefined) {
       if (patch.interview_id !== null && !UUID_RE.test(patch.interview_id)) return err(res, 'invalid_interview_id')
+      if (patch.interview_id !== null) {
+        const ivwChk = await sb(`interviews?id=eq.${patch.interview_id}&${wsFilter}&select=id&limit=1`)
+        if (!ivwChk.ok || !(await ivwChk.json()).length) return err(res, 'interview_not_found', 404)
+      }
       allowed.interview_id = patch.interview_id || null
     }
     if (Object.keys(allowed).length === 0) return err(res, 'No editable fields supplied')
