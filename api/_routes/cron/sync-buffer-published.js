@@ -15,6 +15,7 @@ import { getCredential } from '../../_lib/getCredential.js'
 import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -112,9 +113,7 @@ async function markFailed(id, workspaceId, reason) {
 }
 
 export default async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  if (req.headers?.authorization !== `Bearer ${cronSecret}`) {
+    if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
   if (!SUPABASE_URL || !SUPABASE_KEY) {

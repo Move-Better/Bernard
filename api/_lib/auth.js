@@ -25,6 +25,18 @@
 //                          .json({ error: auth.reason })
 
 import { createClerkClient, verifyToken } from '@clerk/backend'
+import { timingSafeEqual } from 'node:crypto'
+
+// Verify a CRON_SECRET bearer token in constant time. Returns true if valid.
+// Use instead of `req.headers.authorization !== \`Bearer \${secret}\`` in cron
+// handlers to prevent timing-oracle attacks on the secret value.
+export function verifyCronSecret(req) {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false
+  const expected = Buffer.from(`Bearer ${secret}`)
+  const provided = Buffer.from(req.headers?.authorization || '')
+  return expected.length === provided.length && timingSafeEqual(expected, provided)
+}
 
 const CLERK_SECRET = process.env.CLERK_SECRET_KEY
 

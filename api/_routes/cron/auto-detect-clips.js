@@ -25,6 +25,7 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 import { waitUntil } from '@vercel/functions'
 import { workspaceById } from '../../_lib/workspaceContext.js'
 import { detectSegmentsForAsset } from '../../_lib/segmentDetect.js'
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -59,9 +60,7 @@ function sb(path, init = {}) {
 }
 
 export default async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  if (req.headers?.authorization !== `Bearer ${cronSecret}`) {
+    if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'unauthorized' })
   }
   if (!SUPABASE_URL || !SUPABASE_KEY) {

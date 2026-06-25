@@ -22,6 +22,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { synthesizeBook } from '../../_lib/bookSynthesis.js'
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -105,10 +106,7 @@ async function regenOne(workspace, started) {
 }
 
 export default async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  const auth = req.headers?.authorization || req.headers?.Authorization
-  if (auth !== `Bearer ${cronSecret}`) {
+    if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

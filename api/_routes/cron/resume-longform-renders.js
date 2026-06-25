@@ -15,6 +15,7 @@
 // Auth: Bearer CRON_SECRET (same as the other cron handlers).
 
 export const config = { runtime: 'nodejs' }
+import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -37,9 +38,7 @@ function sb(path, init = {}) {
 }
 
 export default async function handler(req, res) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return res.status(503).json({ error: 'CRON_SECRET not configured' })
-  if (req.headers?.authorization !== `Bearer ${cronSecret}`) {
+    if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'unauthorized' })
   }
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -100,7 +99,7 @@ export default async function handler(req, res) {
     try {
       await fetch(`${baseUrl}/api/editorial/render-longform-worker`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${cronSecret}` },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
         body: JSON.stringify({ packageId }),
       })
       resumed += 1
