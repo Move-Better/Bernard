@@ -169,7 +169,7 @@ async function handler(req, res) {
         message: 'The receiving website hasn\'t been updated to accept the book yet. Update its /api/publish receiver to handle kind:"book", then try again.',
       })
     }
-    return res.status(400).json({ error: 'invalid_payload', message: data.message || 'Receiver rejected the payload.' })
+    return res.status(400).json({ error: 'invalid_payload', message: (data.message || 'Receiver rejected the payload.').slice(0, 200) })
   }
   if (upstream.status === 401) {
     return res.status(502).json({
