@@ -126,7 +126,6 @@ async function handler(req, res) {
     console.error(tag, 'network_error:', e.message)
     return res.status(502).json({
       error:   'network_error',
-      message: `Could not reach Beehiiv: ${e.message}`,
     })
   }
 

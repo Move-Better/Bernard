@@ -142,7 +142,6 @@ async function handler(req, res) {
     console.error('[book/publish] receiver network error:', e?.message)
     return res.status(502).json({
       error:   'network_error',
-      message: `Could not reach the website: ${e?.message || 'unknown'}`,
     })
   }
 
