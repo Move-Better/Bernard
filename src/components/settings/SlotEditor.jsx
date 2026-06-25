@@ -156,7 +156,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
               className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
               aria-label="Remove custom slot"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         ))}
@@ -208,7 +208,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
                 className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                 aria-label="Cancel"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>

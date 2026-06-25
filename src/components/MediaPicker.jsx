@@ -284,9 +284,10 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                       setPage(0)
                       loadLibrary({ kindFilter: kind, colId: collectionId, pageNum: 0 })
                     }}
+                    aria-label="Clear search"
                     className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
               </div>

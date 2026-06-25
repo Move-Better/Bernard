@@ -157,7 +157,7 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
           title="Edit title"
           aria-label="Edit title"
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       )}
     </h1>
@@ -388,7 +388,7 @@ export default function StoryDetail() {
                 title="Delete interview"
                 aria-label="Delete interview"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
               </Button>
             )}
           </div>

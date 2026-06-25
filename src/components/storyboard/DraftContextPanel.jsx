@@ -69,7 +69,7 @@ export default function DraftContextPanel({ piece, onRemoveMedia, removingKey })
                     title="Remove"
                     aria-label="Remove attached media"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3 w-3" aria-hidden="true" />
                   </button>
                 </div>
               )
