@@ -29,6 +29,7 @@
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { requireRole } from '../_lib/auth.js'
+import { enforceLimit } from '../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { kickLongformRender } from '../_lib/kickLongformRender.js'
@@ -64,6 +65,8 @@ export default async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   const body = req.body || {}
   const assetId = body.assetId ? String(body.assetId) : ''
