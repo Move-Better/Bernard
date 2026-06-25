@@ -2,6 +2,7 @@
 // Uses Express-style (req, res) handler; never returns new Response().
 export const config = { runtime: 'nodejs' }
 
+import { createClerkClient } from '@clerk/backend'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { requireRole } from '../../_lib/auth.js'
@@ -20,6 +21,12 @@ function sb(path, init = {}) {
       ...init.headers,
     },
   })
+}
+
+let _clerk = null
+function clerkClient() {
+  if (!_clerk) _clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+  return _clerk
 }
 
 const ok  = (res, data, status = 200) => res.status(status).json(data)
@@ -47,13 +54,14 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
   const { userId, role } = auth
 
-  // Derive user_email from Clerk — auth.user.id only; fetch email from req header
-  // The Clerk JWT doesn't include email by default, so we read it from the
-  // x-clerk-user-email header that the frontend sends, or fall back to the userId.
-  const userEmail =
-    req.headers['x-clerk-user-email'] ||
-    req.headers['x-user-email'] ||
-    userId
+  // Derive user_email from Clerk (verified, not client-supplied).
+  let userEmail = null
+  try {
+    const user = await clerkClient().users.getUser(userId)
+    userEmail = user?.primaryEmailAddress?.emailAddress || null
+  } catch {
+    userEmail = null
+  }
 
   // ── GET — list comments for a content item ─────────────────────────────────
   if (req.method === 'GET') {

@@ -6,6 +6,7 @@ import { withSentry } from '../../_lib/sentry.js'
 // "always-have-a-backdoor" override path. Brand-scoped.
 
 import { requireRole } from '../../_lib/auth.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 
@@ -45,6 +46,8 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic'))) return
 
   // Verify the source belongs to this workspace before linking a brief to it.
   const lookup = await sb(`media_assets?id=eq.${sourceAssetId}&${scope.column}=eq.${scope.id}&select=id`)
