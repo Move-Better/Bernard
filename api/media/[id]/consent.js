@@ -48,6 +48,8 @@ export default async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const segments = url.pathname.split('/').filter(Boolean)
   const id = segments[segments.length - 2]
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
   if (!id || id === 'media') {
     return res.status(400).json({ error: 'missing_id' })
   }
