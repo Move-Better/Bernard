@@ -11,6 +11,7 @@ import EmptyState from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { StaffChip } from '@/components/StaffChip'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -1082,26 +1083,16 @@ function BlogReviewCard({ staffMember }) {
             When enabled, blog drafts for this clinician start in <span className="font-medium">In review</span> status so they can personally sign off before publishing.
           </p>
         </div>
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => setEnabled((v) => !v)}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              enabled ? 'bg-primary' : 'bg-input'
-            }`}
-          >
-            <span
-              className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform ${
-                enabled ? 'translate-x-4' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={enabled}
+            onCheckedChange={setEnabled}
+            aria-label="Blog draft review"
+          />
           <span className="text-sm text-foreground">
             {enabled ? 'Receives blog drafts for review' : 'Blog drafts go straight to ready'}
           </span>
-        </label>
+        </div>
         <div className="flex items-center gap-3 pt-1">
           <Button
             size="sm"

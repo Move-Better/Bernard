@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
@@ -205,20 +206,11 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs text-muted-foreground">{isAuto ? 'Auto' : 'Manual'}</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isAuto}
+            <Switch
+              checked={isAuto}
+              onCheckedChange={toggleAuto}
               aria-label="Let Bernard manage cadence automatically"
-              onClick={toggleAuto}
-              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                isAuto ? 'border-primary bg-primary' : 'border-input bg-input'
-              }`}
-            >
-              <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
-                isAuto ? 'translate-x-5' : 'translate-x-0'
-              }`} />
-            </button>
+            />
           </div>
         </div>
         {isAuto && (
@@ -261,20 +253,12 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
                     onChange={e => !isAuto && setChannel(id, { target_per_week: Math.max(0, Math.min(14, parseInt(e.target.value, 10) || 0)) })}
                     className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring"
                   />
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={ch.enabled}
+                  <Switch
+                    checked={ch.enabled}
+                    onCheckedChange={(v) => !isAuto && setChannel(id, { enabled: v })}
+                    disabled={isAuto}
                     aria-label={`Enable ${platformLabel}`}
-                    onClick={() => !isAuto && setChannel(id, { enabled: !ch.enabled })}
-                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                      ch.enabled ? 'border-primary bg-primary' : 'border-input bg-input'
-                    } ${isAuto ? 'cursor-default' : 'cursor-pointer'}`}
-                  >
-                    <span className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform ${
-                      ch.enabled ? 'translate-x-4' : 'translate-x-0'
-                    }`} />
-                  </button>
+                  />
                 </div>
               </div>
             )
