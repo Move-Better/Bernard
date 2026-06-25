@@ -244,7 +244,7 @@ export default function MicCheck({ onContinue, ttsSettings }) {
           <p className="text-muted-foreground text-sm mt-1">{subhead}</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-6 flex flex-col items-center gap-5">
+        <div role="status" className="rounded-xl border bg-card p-6 flex flex-col items-center gap-5">
           {status === 'requesting' && (
             <>
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
