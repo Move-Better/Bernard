@@ -135,7 +135,8 @@ export default async function handler(req, res) {
       : await renderEditorialPhoto({ photoUrl: sourceUrl, treatment: fullTreatment, workspace: ws, staffName })
   } catch (e) {
     console.error('[compose-photo] render failed:', e?.stack || e?.message || e)
-    return res.status(500).json({ error: 'render_failed', message: e?.message || 'unknown' })
+    console.error('[handler] render_failed:', e?.message)
+    return res.status(500).json({ error: 'render_failed' })
   }
 
   // Upload — ws.id (immutable) namespace; timestamp suffix busts the CDN cache
@@ -151,7 +152,8 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('[compose-photo] blob upload failed:', e?.stack || e?.message || e)
-    return res.status(500).json({ error: 'upload_failed', message: e?.message || 'unknown' })
+    console.error('[handler] upload_failed:', e?.message)
+    return res.status(500).json({ error: 'upload_failed' })
   }
 
   // Write the composite back into media_urls (preserve the original source) so

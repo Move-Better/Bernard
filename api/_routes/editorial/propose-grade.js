@@ -69,6 +69,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ params })
   } catch (e) {
     console.error('[propose-grade] model call failed:', e?.stack || e?.message || e)
-    return res.status(502).json({ error: 'propose_failed', message: e?.message || 'unknown' })
+    console.error('[handler] propose_failed:', e?.message)
+    return res.status(502).json({ error: 'propose_failed' })
   }
 }

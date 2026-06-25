@@ -311,6 +311,7 @@ export default async function handler(req, res) {
 
   } catch (e) {
     console.error('[restyle] error:', e?.stack || e?.message || e)
-    return res.status(500).json({ error: 'restyle_failed', message: e?.message || 'unknown' })
+    console.error('[handler] restyle_failed:', e?.message)
+    return res.status(500).json({ error: 'restyle_failed' })
   }
 }
