@@ -71,13 +71,18 @@ export default async function handler(req, res) {
   const staffRes = await sb(
     `staff?id=eq.${encodeURIComponent(staffId)}` +
     `&workspace_id=eq.${ws.id}` +
-    `&select=id,name,eleven_voice_id,voice_clone_revoked_at&limit=1`
+    `&select=id,name,eleven_voice_id,voice_clone_revoked_at,voice_clone_opt_out&limit=1`
   )
   if (!staffRes.ok) {
     return res.status(502).json({ error: 'Could not look up staff member' })
   }
   const [staffMember] = await staffRes.json()
   if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
+  // Hard prohibition: refuse to resume a clone for a staff member who has
+  // locked voice cloning (e.g. a stash from before they opted out).
+  if (staffMember.voice_clone_opt_out) {
+    return res.status(403).json({ error: 'voice_cloning_opted_out' })
+  }
 
   // Verify the blob is actually reachable before we call ElevenLabs — fail
   // fast with a clear message so the client clears its stash instead of

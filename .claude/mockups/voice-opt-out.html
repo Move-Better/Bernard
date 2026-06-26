@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voice cloning opt-out — mockup</title>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%; --destructive-foreground:0 0% 100%;
+    --border:214 32% 91%; --input:214 32% 91%;
+    --warning:38 92% 50%; --action:32 95% 44%; --action-foreground:0 0% 100%;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:32px 24px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:20px;font-weight:700;margin:0 0 4px}
+  .sub{font-size:13px;color:hsl(var(--muted-foreground));margin:0 0 28px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+  @media(max-width:900px){.cols{grid-template-columns:1fr}}
+  .col-h{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.08em;margin:0 0 12px}
+  .tag-today{color:hsl(var(--muted-foreground))}
+  .tag-change{color:hsl(var(--primary))}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  /* card */
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));
+    border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .card.dashed{border-style:dashed;border-color:hsl(var(--primary)/.5)}
+  .pad{padding:20px}
+  .row{display:flex;align-items:flex-start;gap:12px}
+  .avatar{height:40px;width:40px;border-radius:9999px;display:flex;align-items:center;
+    justify-content:center;flex:0 0 auto}
+  .av-on{background:hsl(var(--primary)/.10);color:hsl(var(--primary))}
+  .av-off{background:hsl(var(--muted));color:hsl(var(--muted-foreground))}
+  .av-lock{background:hsl(var(--destructive)/.10);color:hsl(var(--destructive))}
+  .title{font-size:15px;font-weight:600;line-height:1.2}
+  .desc{font-size:13px;color:hsl(var(--muted-foreground));margin-top:2px;line-height:1.45}
+  .meta{font-size:11px;color:hsl(var(--muted-foreground));padding-left:52px;margin-top:8px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:14px}
+  .btn{font-size:13px;font-weight:500;border-radius:8px;padding:7px 12px;
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid transparent;line-height:1}
+  .btn-primary{background:hsl(var(--primary));color:hsl(var(--primary-foreground))}
+  .btn-outline{background:transparent;border-color:hsl(var(--border));color:hsl(var(--foreground))}
+  .btn-ghost-danger{background:transparent;color:hsl(var(--destructive))}
+  .ico{width:15px;height:15px;flex:0 0 auto}
+  /* opt-out footer control */
+  .optfoot{margin-top:16px;padding-top:14px;border-top:1px solid hsl(var(--border));
+    display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .optfoot .lbl{font-size:12.5px;color:hsl(var(--muted-foreground));line-height:1.4}
+  .optfoot .lbl b{color:hsl(var(--foreground));font-weight:600}
+  /* switch */
+  .sw{position:relative;width:38px;height:22px;border-radius:9999px;background:hsl(var(--input));
+    flex:0 0 auto;transition:.15s}
+  .sw.on{background:hsl(var(--primary))}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:.15s}
+  .sw.on::after{transform:translateX(16px)}
+  /* locked notice */
+  .locknote{margin-top:12px;font-size:12.5px;color:hsl(var(--muted-foreground));
+    background:hsl(var(--muted)/.6);border:1px solid hsl(var(--border));border-radius:10px;
+    padding:10px 12px;line-height:1.5}
+  /* legend */
+  .legend{margin-top:10px;border:1px dashed hsl(var(--primary)/.45);border-radius:10px;
+    background:hsl(var(--primary)/.04);padding:12px 14px;font-size:12px;color:hsl(var(--foreground));line-height:1.55}
+  .legend b{color:hsl(var(--primary))}
+  .legend ul{margin:6px 0 0;padding-left:18px}
+  .legend li{margin:3px 0}
+  /* dialog mock */
+  .dlg-scrim{margin-top:14px;background:rgba(16,24,40,.06);border-radius:14px;padding:20px;
+    border:1px solid hsl(var(--border))}
+  .dlg{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;
+    max-width:420px;margin:0 auto;box-shadow:0 12px 40px rgba(16,24,40,.18);padding:20px}
+  .dlg h3{margin:0 0 6px;font-size:16px;font-weight:600}
+  .dlg p{margin:0;font-size:13px;color:hsl(var(--muted-foreground));line-height:1.5}
+  .dlg .ft{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+  .btn-destructive{background:hsl(var(--destructive));color:hsl(var(--destructive-foreground))}
+  .scn{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    color:hsl(var(--muted-foreground));margin:24px 0 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Voice cloning opt-out — “Your voice clone” card</h1>
+  <p class="sub">Self-view → Profile → <b>Voice model</b> tab. TODAY = what ships now. CHANGE = the hard-prohibition lock. Left/right are the same card; the lock control is added at the bottom.</p>
+
+  <div class="cols">
+    <!-- TODAY -->
+    <div>
+      <div class="col-h tag-today">● TODAY</div>
+      <div class="stack">
+        <!-- active -->
+        <div class="card"><div class="pad">
+          <div class="row">
+            <div class="avatar av-on">✨</div>
+            <div>
+              <div class="title">Your voice clone</div>
+              <div class="desc">Active. Bernard can narrate content in your voice.</div>
+            </div>
+          </div>
+          <div class="meta">Created Jun 14, 2026.</div>
+          <div class="actions">
+            <span class="btn btn-outline">Re-train</span>
+            <span class="btn btn-ghost-danger">🛡 Revoke</span>
+          </div>
+        </div></div>
+        <!-- never -->
+        <div class="card"><div class="pad">
+          <div class="row">
+            <div class="avatar av-off">🎙</div>
+            <div>
+              <div class="title">Your voice clone</div>
+              <div class="desc">Not trained yet. Read a short passage and Bernard can speak in your voice.</div>
+            </div>
+          </div>
+          <div class="actions">
+            <span class="btn btn-primary">✨ Train my voice</span>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- CHANGE -->
+    <div>
+      <div class="col-h tag-change">◆ CHANGE — opt-out lock added</div>
+      <div class="stack">
+        <!-- active + opt-out footer -->
+        <div class="card dashed"><div class="pad">
+          <div class="row">
+            <div class="avatar av-on">✨</div>
+            <div>
+              <div class="title">Your voice clone</div>
+              <div class="desc">Active. Bernard can narrate content in your voice.</div>
+            </div>
+          </div>
+          <div class="meta">Created Jun 14, 2026.</div>
+          <div class="actions">
+            <span class="btn btn-outline">Re-train</span>
+            <span class="btn btn-ghost-danger">🛡 Revoke</span>
+          </div>
+          <div class="optfoot">
+            <div class="lbl"><b>Allow voice cloning</b><br>Let Bernard create &amp; use a clone of your voice.</div>
+            <div class="sw on" title="ON = cloning allowed"></div>
+          </div>
+        </div></div>
+
+        <!-- LOCKED / opted-out state -->
+        <div class="card dashed"><div class="pad">
+          <div class="row">
+            <div class="avatar av-lock">🛡</div>
+            <div>
+              <div class="title">Voice cloning is off</div>
+              <div class="desc">You’ve turned off voice cloning for your account. Bernard can’t create or use a clone of your voice.</div>
+            </div>
+          </div>
+          <div class="locknote">Training is disabled while this is off. Turn it back on any time to train a new clone — your past content keeps the written voice model; only the audio clone is affected.</div>
+          <div class="optfoot">
+            <div class="lbl"><b>Allow voice cloning</b><br>Currently off.</div>
+            <div class="sw" title="OFF = locked"></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="legend">
+        <b>What changed here</b>
+        <ul>
+          <li>New <b>Allow voice cloning</b> switch at the bottom of the card (default ON).</li>
+          <li>Switching OFF = a durable <b>“do not clone my voice”</b> lock on your staff row.</li>
+          <li>If a clone exists, turning OFF <b>auto-deletes it</b> at ElevenLabs (confirm dialog below).</li>
+          <li>While OFF: the Train/Re-train buttons disappear and the training page is blocked.</li>
+          <li>Reversible — switch back ON to train again. Audit timestamps are preserved.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- confirm dialog -->
+  <div class="scn">Confirm dialog — shown only when a trained clone exists and you switch OFF</div>
+  <div class="dlg-scrim">
+    <div class="dlg">
+      <h3>Turn off voice cloning?</h3>
+      <p>This deletes your trained voice from ElevenLabs and stops any content from using it. You can train a new clone later if you turn this back on.</p>
+      <div class="ft">
+        <span class="btn btn-outline">Cancel</span>
+        <span class="btn btn-destructive">Turn off &amp; delete</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

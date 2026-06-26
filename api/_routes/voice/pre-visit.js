@@ -71,11 +71,13 @@ export default async function handler(req, res) {
   try {
     const clRes = await sb(
       `staff?workspace_id=eq.${ws.id}&user_id=eq.${auth.userId}` +
-      `&select=id,name,eleven_voice_id&limit=1`,
+      `&select=id,name,eleven_voice_id,voice_clone_opt_out&limit=1`,
     )
     if (clRes.ok) {
       const rows = await clRes.json()
-      if (rows[0]?.eleven_voice_id) voiceId = rows[0].eleven_voice_id
+      // Respect the voice-cloning lock: fall back to the default voice if the
+      // staff member has opted out (defense in depth — opt-out also nulls the id).
+      if (rows[0]?.eleven_voice_id && !rows[0]?.voice_clone_opt_out) voiceId = rows[0].eleven_voice_id
       if (rows[0]?.name) staffName = rows[0].name
     }
   } catch (e) {

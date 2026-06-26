@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
-import { ArrowLeft, Mic, Square, Trash2, Loader2, Play, Pause, Sparkles } from 'lucide-react'
+import { ArrowLeft, Mic, Square, Trash2, Loader2, Play, Pause, Sparkles, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
 import { useSelfStaffId } from '@/lib/useSelfStaffId'
+import { useStaffMember } from '@/lib/queries'
 
 // Reading script for the IVC sample — diverse phonemes, conversational
 // pacing, clinical context. ~3.5 min when read at natural pace.
@@ -82,6 +83,8 @@ export default function VoiceTraining() {
   const navigate = useNavigate()
   const { getToken } = useAuth()
   const staffId = useSelfStaffId()
+  const { data: selfStaff } = useStaffMember(staffId)
+  const optedOut = !!selfStaff?.voice_clone_opt_out
 
   // idle | requesting | recording | recorded | uploading
   const [state, setState] = useState('idle')
@@ -314,6 +317,40 @@ export default function VoiceTraining() {
   const uploading = state === 'uploading'
   const requesting = state === 'requesting'
   const meetsMin = elapsed >= MIN_DURATION_SEC
+
+  // Hard lock: a staff member who has turned off voice cloning can't train here.
+  // The create/resume endpoints also reject (403), but show a clear locked state
+  // instead of letting them record into a guaranteed failure.
+  if (optedOut) {
+    return (
+      <div className="py-6 space-y-6">
+        <Link
+          to={staffId ? `/staff/${staffId}?tab=voice` : '/'}
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
+        </Link>
+        <Card>
+          <CardContent className="p-6 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+                <ShieldOff className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold">Voice cloning is off</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  You&apos;ve turned off voice cloning for your account, so training is disabled. Turn it back on from your profile&apos;s Voice tab to train a clone.
+                </p>
+              </div>
+            </div>
+            <Button asChild size="sm">
+              <Link to={staffId ? `/staff/${staffId}?tab=voice` : '/'}>Go to Voice settings</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="py-6 space-y-6">
