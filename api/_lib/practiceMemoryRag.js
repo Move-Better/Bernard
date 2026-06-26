@@ -101,7 +101,7 @@ async function extractTopicTags(text) {
     if (!preview) return []
     const { text: raw } = await generateText({
       model: 'anthropic/claude-haiku-4-5',
-      system: 'You extract topic tags from clinical content. Output only a JSON array of 2-4 lowercase strings. No prose, no markdown, just the array.',
+      instructions: 'You extract topic tags from clinical content. Output only a JSON array of 2-4 lowercase strings. No prose, no markdown, just the array.',
       messages: [{
         role: 'user',
         content: `Extract 2-4 topic tags for this clinical content chunk as a JSON array of lowercase strings.\n\nChunk: ${preview}`,

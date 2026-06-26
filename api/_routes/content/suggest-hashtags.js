@@ -147,7 +147,7 @@ export default async function handler(req, res) {
   try {
     const result = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: prompt,
+      instructions: prompt,
       messages: [{ role: 'user', content: 'Suggest hashtags now.' }],
       maxOutputTokens: 800,
     })

@@ -205,7 +205,7 @@ export default async function handler(req, res) {
     // Call the AI — first attempt
     const { text: rawText1 } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: aiMessages,
       maxOutputTokens: 1000,
     })
@@ -234,7 +234,7 @@ export default async function handler(req, res) {
         staffName, workspaceName: ws.name || ws.slug || 'practice',
       })
       const { text: evalRaw1 } = await generateText({
-        model: HAIKU, system: ep1.system,
+        model: HAIKU, instructions: ep1.system,
         messages: [{ role: 'user', content: ep1.user }],
         maxOutputTokens: 240,
       })
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
       try {
         const { text: rawText2 } = await generateText({
           model: 'anthropic/claude-sonnet-4-6',
-          system: systemPrompt,
+          instructions: systemPrompt,
           messages: [
             ...aiMessages,
             { role: 'assistant', content: rawText1.trim() },
@@ -271,7 +271,7 @@ export default async function handler(req, res) {
             staffName, workspaceName: ws.name || ws.slug || 'practice',
           })
           const { text: evalRaw2 } = await generateText({
-            model: HAIKU, system: ep2.system,
+            model: HAIKU, instructions: ep2.system,
             messages: [{ role: 'user', content: ep2.user }],
             maxOutputTokens: 240,
           })
@@ -417,7 +417,7 @@ export default async function handler(req, res) {
               if (!locPrompt) return null
               const { text: locText } = await generateText({
                 model: 'anthropic/claude-sonnet-4-6',
-                system: locPrompt,
+                instructions: locPrompt,
                 messages: aiMessages,
                 maxOutputTokens: 1000,
               })

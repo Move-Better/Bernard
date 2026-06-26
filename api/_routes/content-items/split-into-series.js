@@ -276,7 +276,7 @@ export default async function handler(req, res) {
     const transcriptMessages = turns.map((m) => ({ role: m.role, content: m.content }))
     const { text: clusterRaw } = await generateText({
       model: 'anthropic/claude-opus-4-7',
-      system: clusterSystem,
+      instructions: clusterSystem,
       messages: [
         ...transcriptMessages,
         { role: 'user', content: `Please return the ${partCount}-part series plan as JSON now.` },
@@ -335,7 +335,7 @@ export default async function handler(req, res) {
 
       const { text } = await generateText({
         model: 'anthropic/claude-opus-4-7',
-        system: partSystem,
+        instructions: partSystem,
         messages: [
           ...transcriptMessages,
           {

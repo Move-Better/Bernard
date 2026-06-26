@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     const { object } = await generateObject({
       model: MODEL,
       schema: gradeSchema,
-      system: SYSTEM,
+      instructions: SYSTEM,
       messages: [{ role: 'user', content: `Look to translate: "${prompt}"` }],
       temperature: 0.2,
     })

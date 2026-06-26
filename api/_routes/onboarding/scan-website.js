@@ -482,7 +482,7 @@ async function handler(req, res) {
     const result = await generateObject({
       model: MODEL,
       schema: ScanSchema,
-      system: SYSTEM,
+      instructions: SYSTEM,
       messages: [{
         role: 'user',
         content: `Read the following website content from ${u.origin} and produce starter brand-voice context.\n\n${corpus.join('\n\n---\n\n')}`,

@@ -251,7 +251,7 @@ export default async function handler(req, res) {
   try {
     const { text } = await generateText({
       model: `anthropic/${MODEL_ID}`,
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 4096,
     })

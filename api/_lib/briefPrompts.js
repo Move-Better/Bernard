@@ -51,7 +51,7 @@ export function getBriefChannelPrompt(brief, platform, workspace) {
     case 'instagram':
     case 'instagram_post':
       return {
-        system: `You are writing a single Instagram caption for ${wsName}.
+        instructions: `You are writing a single Instagram caption for ${wsName}.
 ${VOICE_RULE}
 PLAIN TEXT ONLY: no markdown, no asterisks, no headers.`,
         user: `Write an Instagram caption (~150 words) based on this brief.
@@ -64,7 +64,7 @@ Output ONLY the caption and hashtags.`,
 
     case 'instagram_story':
       return {
-        system: `You are writing overlay text for a single Instagram Story frame for ${wsName}.
+        instructions: `You are writing overlay text for a single Instagram Story frame for ${wsName}.
 ${VOICE_RULE}`,
         user: `Write overlay text for an Instagram Story based on this brief.
 ${ctx}
@@ -80,7 +80,7 @@ Output ONLY those two lines. Nothing else.`,
 
     case 'facebook':
       return {
-        system: `You are writing a Facebook post for ${wsName}.
+        instructions: `You are writing a Facebook post for ${wsName}.
 ${VOICE_RULE}
 PLAIN TEXT ONLY: no markdown, no asterisks.`,
         user: `Write a Facebook post (~200 words) based on this brief.
@@ -94,7 +94,7 @@ Output ONLY the post body.`,
 
     case 'linkedin':
       return {
-        system: `You are writing a LinkedIn post for ${wsName}.
+        instructions: `You are writing a LinkedIn post for ${wsName}.
 ${VOICE_RULE}
 PLAIN TEXT ONLY: no markdown, no asterisks.`,
         user: `Write a LinkedIn post (~200 words) based on this brief.
@@ -107,7 +107,7 @@ Output ONLY the post body.`,
 
     case 'gbp':
       return {
-        system: `You are writing a Google Business Profile post for ${wsName}.
+        instructions: `You are writing a Google Business Profile post for ${wsName}.
 ${VOICE_RULE}`,
         user: `Write a Google Business Profile post (150–300 characters) based on this brief.
 ${ctx}
@@ -118,7 +118,7 @@ Output ONLY the post text.`,
 
     case 'twitter':
       return {
-        system: `You are writing an X / Twitter post for ${wsName}.
+        instructions: `You are writing an X / Twitter post for ${wsName}.
 ${VOICE_RULE}`,
         user: `Write a tweet (max 280 characters including the URL) based on this brief.
 ${ctx}
@@ -130,7 +130,7 @@ Output ONLY the tweet text.`,
 
     case 'threads':
       return {
-        system: `You are writing a Threads post for ${wsName}.
+        instructions: `You are writing a Threads post for ${wsName}.
 ${VOICE_RULE}`,
         user: `Write a Threads post (max 500 characters) based on this brief.
 ${ctx}

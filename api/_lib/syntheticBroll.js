@@ -70,7 +70,7 @@ async function generateBrollPrompt({ topic, workspace }) {
 
   const { text } = await generateText({
     model: 'anthropic/claude-haiku-4-5',
-    system: [
+    instructions: [
       'You write text-to-video prompts for Runway Gen-3.',
       'The footage is b-roll — no people speaking directly to camera, no text overlays, no title cards.',
       'Describe 5 seconds of cinematic, professionally-lit clinical footage.',
