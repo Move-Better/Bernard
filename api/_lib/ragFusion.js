@@ -165,7 +165,7 @@ async function composeVisualQuery(topic, practiceChunks) {
 
   const { text } = await generateText({
     model: 'anthropic/claude-haiku-4-5',
-    system: `You rewrite a visual content search query for a clinical practitioner.
+    instructions: `You rewrite a visual content search query for a clinical practitioner.
 Given the topic and the practitioner's prior thinking, write a 1-3 sentence expanded
 query that captures their specific clinical framing. Output only the expanded query —
 no preamble, no labels, no markdown.`,

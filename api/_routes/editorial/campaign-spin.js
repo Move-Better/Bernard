@@ -157,7 +157,7 @@ export async function runCampaignSpin(campaignId, workspaceId) {
   try {
     const { text } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       maxOutputTokens: 400,
     })

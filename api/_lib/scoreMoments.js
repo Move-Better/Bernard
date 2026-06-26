@@ -93,7 +93,7 @@ export async function scoreSegments(segments, workspace) {
     const { object } = await generateObject({
       model: MODEL,
       schema: resultSchema,
-      system: buildSystem(workspace),
+      instructions: buildSystem(workspace),
       messages: [{ role: 'user', content: buildUser(segments) }],
       temperature: 0.2,
       maxOutputTokens: 1500,

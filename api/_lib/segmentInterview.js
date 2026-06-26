@@ -182,7 +182,7 @@ async function callModel(asset, scope) {
   const { object } = await generateObject({
     model: MODEL,
     schema: segmenterOutput,
-    system: buildSystemPrompt(speakerRole, scope),
+    instructions: buildSystemPrompt(speakerRole, scope),
     messages: [{ role: 'user', content: buildUserMessage(asset) }],
     temperature: 0.4,
   })

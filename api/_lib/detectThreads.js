@@ -147,7 +147,7 @@ export async function detectInterviewThreads(ws, contentItemId) {
     const { object } = await generateObject({
       model: MODEL,
       schema: detectionSchema,
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: [{ role: 'user', content: `TRANSCRIPT (${staffName}'s verbatim words):\n\n${transcript}` }],
       temperature: 0.1,
     })

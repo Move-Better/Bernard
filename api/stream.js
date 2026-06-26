@@ -69,7 +69,7 @@ async function handler(req, res) {
   try {
     result = streamText({
       model: gatewayModel,
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages,
       maxOutputTokens: cap,
     })
@@ -85,7 +85,7 @@ async function handler(req, res) {
   res.setHeader('X-Accel-Buffering', 'no')
   res.flushHeaders?.()
 
-  // Iterate fullStream rather than textStream so we can see error parts.
+  // Iterate stream rather than textStream so we can see error parts.
   // textStream silently filters them out, which meant an upstream auth /
   // model failure surfaced to the client as an empty assistant turn — see
   // PR #249.
@@ -109,7 +109,7 @@ async function handler(req, res) {
   }
 
   try {
-    for await (const part of result.fullStream) {
+    for await (const part of result.stream) {
       if (part?.type === 'text-delta') {
         const text = part.text ?? part.delta
         if (!text) continue

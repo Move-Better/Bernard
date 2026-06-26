@@ -149,7 +149,7 @@ export default async function handler(req, res) {
   try {
     const result = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: prompt,
+      instructions: prompt,
       messages: [{ role: 'user', content: 'Clean the transcript now.' }],
       // Sonnet 4.6 max output is 64k. 16k gives headroom for a fully-loaded
       // 25-message interview (~6k output tokens) plus JSON wrapping. The

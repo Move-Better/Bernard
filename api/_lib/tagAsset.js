@@ -228,7 +228,7 @@ async function callModel(asset, scope) {
   const { object } = await generateObject({
     model: MODEL,
     schema: isVideo ? videoSchema : photoSchema,
-    system: buildSystemPrompt(asset, scope),
+    instructions: buildSystemPrompt(asset, scope),
     messages: [{ role: 'user', content: userParts }],
     temperature: 0.2,
   })

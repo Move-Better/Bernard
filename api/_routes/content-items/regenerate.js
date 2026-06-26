@@ -238,7 +238,7 @@ export default async function handler(req, res) {
 
     const { text } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: aiMessages,
       maxOutputTokens: 1500,
     })

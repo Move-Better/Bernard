@@ -63,7 +63,7 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
   try {
     const { text } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: EXTRACTION_PROMPT,
+      instructions: EXTRACTION_PROMPT,
       messages: [{ role: 'user', content: `BRAND BOOK TEXT:\n\n${pdfText}` }],
       temperature: 0.1,
       maxOutputTokens: 400,

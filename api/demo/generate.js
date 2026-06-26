@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   try {
     result = streamText({
       model: 'anthropic/claude-sonnet-4-6',
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: [
         {
           role: 'user',
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
   res.flushHeaders?.()
 
   try {
-    for await (const part of result.fullStream) {
+    for await (const part of result.stream) {
       if (part?.type === 'text-delta') {
         const text = part.text ?? part.delta
         if (!text) continue

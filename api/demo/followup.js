@@ -63,7 +63,7 @@ export default async function handler(req, res) {
   try {
     const { text } = await generateText({
       model: 'anthropic/claude-haiku-4-5',
-      system: BERNARD_SYSTEM,
+      instructions: BERNARD_SYSTEM,
       messages: [
         {
           role: 'user',

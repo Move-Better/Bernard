@@ -174,7 +174,7 @@ export async function auditContentItem(ws, contentItemId) {
     const { object } = await generateObject({
       model: MODEL,
       schema: auditSchema,
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
       temperature: 0.2,
     })

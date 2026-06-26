@@ -272,7 +272,7 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
     const { object } = await generateObject({
       model: MODEL,
       schema: detectorOutput,
-      system: buildSystemPrompt(ws, maxSegments),
+      instructions: buildSystemPrompt(ws, maxSegments),
       messages: [{ role: 'user', content: buildUserMessage(cues, durationSec) }],
       temperature: 0.4,
       abortSignal: AbortSignal.timeout(180_000),

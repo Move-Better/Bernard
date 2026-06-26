@@ -140,7 +140,7 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
     // that scores ~7.3 voice fidelity — captions are the highest-volume text the
     // pipeline emits and ride every clip, so they earn the better model.
     model: 'anthropic/claude-sonnet-4-6',
-    system: systemLines.join('\n'),
+    instructions: systemLines.join('\n'),
     messages: [{
       role: 'user',
       content: `Topic: ${topic}

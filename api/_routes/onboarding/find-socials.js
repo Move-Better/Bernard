@@ -135,7 +135,7 @@ async function handler(req, res) {
   try {
     const result = await generateText({
       model: SEARCH_MODEL,
-      system: `You find the OFFICIAL social media profiles of a specific local business. For each requested platform, report the profile as a full https URL written inline in your answer. Prefer profiles whose name, location, and niche match the business exactly; be skeptical of similarly-named accounts in other cities or industries — it is far better to report none for a platform than to guess wrong. If you can't confidently find a platform, say so.`,
+      instructions: `You find the OFFICIAL social media profiles of a specific local business. For each requested platform, report the profile as a full https URL written inline in your answer. Prefer profiles whose name, location, and niche match the business exactly; be skeptical of similarly-named accounts in other cities or industries — it is far better to report none for a platform than to guess wrong. If you can't confidently find a platform, say so.`,
       prompt: `Find the official social profiles for this business and list each profile's full URL inline:\n\n${facts}`,
     })
     const sourceUrls = Array.isArray(result.sources)
@@ -156,7 +156,7 @@ async function handler(req, res) {
     const result = await generateObject({
       model: MODEL,
       schema: CandidateSchema,
-      system: `Extract official social profiles for the business from the research notes. Only include a profile when the URL is clearly on the right platform and the account plausibly belongs to THIS business. Assign an honest confidence. Do not invent profiles. Only include platforms from this set: ${missing.join(', ')}.`,
+      instructions: `Extract official social profiles for the business from the research notes. Only include a profile when the URL is clearly on the right platform and the account plausibly belongs to THIS business. Assign an honest confidence. Do not invent profiles. Only include platforms from this set: ${missing.join(', ')}.`,
       messages: [{
         role: 'user',
         content: `Business:\n${facts}\n\nResearch notes:\n${research}`,

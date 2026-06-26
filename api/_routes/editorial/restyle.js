@@ -163,7 +163,7 @@ async function aiClassify(instruction) {
 
   const { text } = await generateText({
     model: 'anthropic/claude-sonnet-4-6',
-    system: systemLines.join('\n'),
+    instructions: systemLines.join('\n'),
     messages: [{ role: 'user', content: `Instruction: "${instruction}"` }],
     maxOutputTokens: 80,
   })
@@ -198,7 +198,7 @@ async function aiRewriteText(instruction, content, transcript) {
 
   const { text } = await generateText({
     model: 'anthropic/claude-sonnet-4-6',
-    system: systemLines.join('\n'),
+    instructions: systemLines.join('\n'),
     messages: [{ role: 'user', content: instruction }],
     maxOutputTokens: 200,
   })

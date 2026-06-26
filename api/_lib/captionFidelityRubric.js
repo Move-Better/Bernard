@@ -52,7 +52,7 @@ export function buildFidelityPrompt({ topic, caption, transcript = '', phrases =
   const hasPhrases = phraseExamples.length > 0
 
   return {
-    system:
+    instructions:
 `You are a precise evaluator of SHORT social-distribution copy (a thumbnail title +
 caption) for a real person's clinical practice. You judge two things above all:
 (1) FAITHFULNESS — does the caption reflect what the person ACTUALLY said in this

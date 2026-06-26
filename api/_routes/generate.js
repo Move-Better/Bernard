@@ -64,7 +64,7 @@ async function handler(req, res) {
   try {
     const { text } = await generateText({
       model: gatewayModel,
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages,
       maxOutputTokens: 4096,
     })
