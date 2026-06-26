@@ -87,13 +87,18 @@ export default async function handler(req, res) {
   const staffRes = await sb(
     `staff?id=eq.${encodeURIComponent(staffId)}` +
     `&workspace_id=eq.${ws.id}` +
-    `&select=id,name,eleven_voice_id,voice_clone_revoked_at&limit=1`
+    `&select=id,name,eleven_voice_id,voice_clone_revoked_at,voice_clone_opt_out&limit=1`
   )
   if (!staffRes.ok) {
     return res.status(502).json({ error: 'Could not look up staff member' })
   }
   const [staffMember] = await staffRes.json()
   if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
+  // Hard prohibition: a staff member who has locked voice cloning can never be
+  // cloned, even if the client reaches this endpoint directly.
+  if (staffMember.voice_clone_opt_out) {
+    return res.status(403).json({ error: 'voice_cloning_opted_out' })
+  }
 
   // ── Buffer audio ────────────────────────────────────────────────────────────
   let audioBuffer

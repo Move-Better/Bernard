@@ -67,6 +67,7 @@ export default async function handler(req, res) {
         `?id=eq.${encodeURIComponent(staffId)}` +
         `&workspace_id=eq.${ws.id}` +
         `&voice_clone_revoked_at=is.null` +
+        `&voice_clone_opt_out=is.false` +
         `&eleven_voice_id=not.is.null` +
         `&select=eleven_voice_id&limit=1`,
         {
