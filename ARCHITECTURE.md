@@ -383,6 +383,16 @@ useEffect(() => {
 ```
 Reference: `src/pages/InterviewSession.jsx`.
 
+**3. Gate post-completion synthesis on the PERSISTED status, not local state.** Interview pages
+that auto-fire a synthesize POST when the interview completes must wait for the `status:'completed'`
+PATCH to *land* first — firing off the local `completed` flag races the write, and the synthesize
+handler loads the row still `in_progress` and 409s (`interview_not_synthesizable`). Set a separate
+`synthReady` flag only AFTER `await persist(..., 'completed')` resolves, and trigger synthesis off
+that. Belt-and-suspenders: on a 409, re-assert `completed` and retry the POST once. This bit the
+brand-discovery interview (#1828); the onboarding interview shares the shape and only avoids it by
+timing luck. Also invalidate `queryKeys.workspace.me` after synthesis writes to the workspace, or
+the Settings surface shows stale (empty) data until a hard reload. Reference: `src/pages/BrandInterview.jsx`.
+
 ---
 
 ## Server-side image compositing
