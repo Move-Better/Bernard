@@ -16,6 +16,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import BrandBriefView from '@/components/BrandBriefView'
+import BrandAnchorsEditor from '@/components/BrandAnchorsEditor'
 
 function formatDate(iso) {
   if (!iso) return null
@@ -77,7 +78,11 @@ export default function BrandIdentitySettings() {
           </Button>
         </div>
 
-        <BrandBriefView brief={brief} />
+        <BrandBriefView brief={brief} hideVisualAnchors />
+
+        <div className="mt-3">
+          <BrandAnchorsEditor anchors={Array.isArray(brief.visualAnchors) ? brief.visualAnchors : []} />
+        </div>
 
         {/* What this now powers — the "what changed" signal Q asked for. */}
         <div className="mt-4 rounded-xl border border-border bg-card p-4">

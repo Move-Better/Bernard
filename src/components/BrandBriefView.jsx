@@ -12,11 +12,11 @@ function SectionLabel({ children }) {
   )
 }
 
-export default function BrandBriefView({ brief }) {
+export default function BrandBriefView({ brief, hideVisualAnchors = false }) {
   if (!brief || typeof brief !== 'object') return null
   const territory = Array.isArray(brief.territory) ? brief.territory : []
   const notThis = Array.isArray(brief.notThis) ? brief.notThis : []
-  const visualAnchors = Array.isArray(brief.visualAnchors) ? brief.visualAnchors : []
+  const visualAnchors = (!hideVisualAnchors && Array.isArray(brief.visualAnchors)) ? brief.visualAnchors : []
 
   return (
     <div className="space-y-3 text-left">
