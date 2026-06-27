@@ -157,11 +157,11 @@ function cardState(item) {
     return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open' }
   }
   if (cis === 'approved') {
-    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule' }
+    return { label: 'Approved', cls: 'bg-primary/10 text-primary', action: 'schedule' }
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
-  return { label: 'in review', cls: 'bg-muted text-muted-foreground', action: 'open', reviewable: true }
+  return { label: 'In review', cls: 'bg-muted text-muted-foreground', action: 'open', reviewable: true }
 }
 
 function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
@@ -530,7 +530,7 @@ export default function YourWeek() {
         </div>
       )}
       {isFuture && data?.hasPlan && (
-        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-2xs text-primary">
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-2xs text-primary">
           <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span><b>Planned ahead.</b> Review &amp; approve these now — they sit ready until {weekRangeLabel(weekOffset)}. Nothing publishes without your yes.</span>
         </div>
@@ -680,7 +680,7 @@ export default function YourWeek() {
               </div>
 
               {data.digest && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+                <div className="rounded-xl border border-primary/20 bg-primary/10 p-3.5">
                   <div className="mb-1.5 flex items-center gap-2">
                     <Mail className="h-4 w-4 text-primary" aria-hidden="true" />
                     <span className="text-sm font-bold">Newsletter — assembling</span>
@@ -693,7 +693,7 @@ export default function YourWeek() {
 
               {/* Batch schedule status summary */}
               {!isPast && approvedSchedulable.length > 0 && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+                <div className="rounded-xl border border-primary/20 bg-primary/10 p-3.5">
                   <div className="mb-1.5 flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" aria-hidden="true" />
                     <span className="text-sm font-bold">{approvedSchedulable.length} ready to schedule</span>

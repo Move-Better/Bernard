@@ -27,7 +27,7 @@ const TYPE_META = {
 }
 
 const SEV_META = {
-  high: { label: 'Worth doing', cls: 'bg-action/15 text-action' },
+  high: { label: 'Worth doing', cls: 'bg-action/20 text-action' },
   med:  { label: 'Nice lift',   cls: 'bg-primary/10 text-primary' },
   low:  { label: 'Minor',       cls: 'bg-muted text-muted-foreground' },
 }

@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
-import { CheckCircle, Inbox, Building2, Shield, CalendarDays, Flag } from 'lucide-react'
+import { CheckCircle, Inbox, Building2, Shield, CalendarDays, Flag, ChevronRight } from 'lucide-react'
 import { useStories, useCampaigns } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermissionTier } from '@/lib/usePermissionTier'
@@ -73,7 +73,7 @@ export default function Overview() {
             to="/publish"
             className="shrink-0 inline-flex items-center gap-1.5 bg-action text-action-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
-            Review &amp; publish →
+            Review &amp; publish <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       )}
@@ -93,7 +93,7 @@ export default function Overview() {
             to="/stories?stage=review"
             className="shrink-0 inline-flex items-center gap-1.5 bg-action text-action-foreground text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
-            Review your drafts →
+            Review your drafts <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       )}

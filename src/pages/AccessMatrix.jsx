@@ -20,7 +20,7 @@ import {
 
 const TIER_PILL = {
   owner:     'bg-[hsl(var(--owner-accent-bg))] text-[hsl(var(--owner-accent))] ring-1 ring-[hsl(var(--owner-accent-border))]',
-  producer:  'bg-scheduled/8 text-scheduled',
+  producer:  'bg-scheduled/10 text-scheduled',
   clinician: 'bg-info/10 text-info',
   viewer:    'bg-muted text-muted-foreground',
 }

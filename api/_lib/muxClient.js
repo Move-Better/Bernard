@@ -67,6 +67,7 @@ export async function createAsset({ inputUrl, playbackPolicy = 'signed', passthr
 
   const res = await fetch(`${MUX_API_BASE}/video/v1/assets`, {
     method:  'POST',
+    signal:  AbortSignal.timeout(30_000),
     headers: {
       Authorization:  basicAuthHeader(),
       'Content-Type': 'application/json',
@@ -97,6 +98,7 @@ export async function createAsset({ inputUrl, playbackPolicy = 'signed', passthr
 export async function getAssetDimensions(assetId) {
   if (!assetId) throw new Error('getAssetDimensions: assetId required')
   const res = await fetch(`${MUX_API_BASE}/video/v1/assets/${encodeURIComponent(assetId)}`, {
+    signal:  AbortSignal.timeout(30_000),
     headers: { Authorization: basicAuthHeader() },
   })
   const text = await res.text()

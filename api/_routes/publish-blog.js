@@ -70,10 +70,7 @@ function buildMarkdownFile(data) {
   }
   if (typeof data.draft === 'boolean') fm.push(`draft: ${data.draft}`)
   if (data.topic) fm.push(`topic: ${yamlQuote(data.topic)}`)
-  // Escape bare `---` lines in the body — they would terminate the YAML
-  // frontmatter block early, causing tags/draft/topic to land as plain text.
-  const safeBody = String(data.markdown).trimEnd().replace(/^---$/gm, '\\-\\-\\-')
-  return `---\n${fm.join('\n')}\n---\n\n${safeBody}\n`
+  return `---\n${fm.join('\n')}\n---\n\n${String(data.markdown).trimEnd()}\n`
 }
 
 function timingSafeEqual(a, b) {

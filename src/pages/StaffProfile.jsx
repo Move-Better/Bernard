@@ -410,7 +410,7 @@ export default function StaffProfile() {
                         <div>
                           <p className="text-2xs font-semibold uppercase tracking-wider text-white/40 mb-2">Voice memory</p>
                           <div
-                            className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/65 bg-white/[0.06] border border-white/[0.09]"
+                            className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/65 bg-white/5 border border-white/10"
                           >
                             {staffMember.voice_notes}
                           </div>
@@ -450,7 +450,7 @@ export default function StaffProfile() {
                       {topPhrases.map((p, i) => (
                         <div
                           key={i}
-                          className={`text-sm italic px-3 py-2 rounded-lg leading-snug ${i < 2 ? 'bg-action/15 border border-action/40 text-action-foreground' : 'bg-white/[0.07] border border-white/10 text-white/80'}`}
+                          className={`text-sm italic px-3 py-2 rounded-lg leading-snug ${i < 2 ? 'bg-action/20 border border-action/40 text-action-foreground' : 'bg-white/[0.07] border border-white/10 text-white/80'}`}
                         >
                           &ldquo;{p.phrase}&rdquo;
                         </div>
