@@ -149,12 +149,11 @@ export default function Ads() {
       {isLoading ? (
         <div role="status" className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          <span className="sr-only">Loading…</span>
           <span aria-hidden="true">Loading…</span>
         </div>
       ) : creatives.length === 0 ? (
         <div className="rounded-xl border border-dashed py-16 text-center">
-          <Megaphone className="mx-auto h-8 w-8 text-muted-foreground/50" />
+          <Megaphone className="mx-auto h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
           <p className="mt-2 text-sm font-medium">No ad creative yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Hit <span className="font-semibold text-action">New ad creative</span> to pick a photo or clip, or export from any photo in the Library or clip in Moment Miner.

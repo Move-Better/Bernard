@@ -21,6 +21,7 @@ async function stripePost(path, params) {
   const body = new URLSearchParams(params)
   const r = await fetch(`${STRIPE_API}${path}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${STRIPE_SECRET}`,
       'Content-Type': 'application/x-www-form-urlencoded',

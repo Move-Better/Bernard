@@ -331,7 +331,7 @@ export default function WeeklyRecapPanel({ stories = [] }) {
             <X className="h-4 w-4" aria-hidden="true" /> Exit present mode
           </button>
         </div>
-        <div className="max-w-5xl mx-auto px-6 py-8 text-[1.06rem]">{blocks}</div>
+        <div className="max-w-5xl mx-auto px-6 py-8 text-base">{blocks}</div>
       </div>
     )
   }

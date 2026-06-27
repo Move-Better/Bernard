@@ -482,7 +482,7 @@ export default function MediaHub() {
 
         {/* Status chips — wrapping row so they scale to any screen width. */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
           {STATUS_FILTERS.map((s) => (
             <button
               key={s.id || 'all-status'}
@@ -557,7 +557,7 @@ export default function MediaHub() {
         >
           <div className="flex items-center gap-2 text-xs">
                           <span className="nx-rail" aria-hidden="true" />
-            {collectionsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            {collectionsOpen ? <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
             <span className="text-base font-bold tracking-tight text-foreground">Collections</span>
             {collectionId && (
               <span className="text-2xs text-primary font-semibold">· filtered</span>

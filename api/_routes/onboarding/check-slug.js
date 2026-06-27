@@ -35,7 +35,7 @@ async function handler(req, res) {
   try {
     r = await fetch(
       `${SUPABASE_URL}/rest/v1/workspaces?slug=eq.${encodeURIComponent(v.slug)}&status=eq.active&select=id&limit=1`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      { signal: AbortSignal.timeout(8_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
     )
   } catch (e) {
     console.error('[check-slug] network error:', e?.message)

@@ -28,6 +28,7 @@ export default async function handler(req, res) {
 
   const r = await fetch(`${SUPABASE_URL}/rest/v1/seo_opportunity_dismissals`, {
     method: 'POST',
+    signal: AbortSignal.timeout(8_000),
     headers: {
       apikey:        SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,

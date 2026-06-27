@@ -238,7 +238,7 @@ export default function Home() {
           className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 hover:brightness-[0.98] transition"
         >
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           </span>
           <span className="text-sm font-medium text-foreground">
             {failedPieces.length} {failedPieces.length === 1 ? 'post' : 'posts'} failed to publish

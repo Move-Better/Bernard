@@ -27,6 +27,7 @@ const FETCH_TIMEOUT = 7000
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(10_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,

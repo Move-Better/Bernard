@@ -82,7 +82,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
   return (
     <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
       <div
-        className="w-[78px] shrink-0 rounded-lg overflow-hidden bg-foreground/80 relative grid place-items-center"
+        className="w-20 shrink-0 rounded-lg overflow-hidden bg-foreground/80 relative grid place-items-center"
         style={{ aspectRatio: m.width && m.height ? `${m.width} / ${m.height}` : '9 / 16' }}
       >
         {m.thumbnailUrl
@@ -558,7 +558,7 @@ export default function MomentMiner() {
                 className={
                   view === 'clips_to_review'
                     ? 'opacity-80'
-                    : 'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-action text-action-foreground text-3xs font-bold'
+                    : 'inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-action text-action-foreground text-3xs font-bold'
                 }
               >
                 {allMoments.length}
@@ -638,7 +638,7 @@ export default function MomentMiner() {
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-          <AlertCircle className="h-8 w-8 text-destructive" />
+          <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
           <p className="text-sm text-destructive font-medium">Failed to load videos</p>
           <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
         </div>

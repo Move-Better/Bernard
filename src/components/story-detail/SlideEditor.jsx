@@ -1320,17 +1320,17 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
     updateBlock({ ...block, position: { x: h ? 0.5 : cur.x, y: v ? 0.5 : cur.y } })
     onCenter?.()
   }
-  const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary'
+  const alignBtnCls = 'flex h-7 items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary'
   return (
     <div className="space-y-3 p-3">
       <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/10">
         <Type className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">Text layer</span>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" onClick={() => alignBlock(true, false)} title="Center horizontally" className={`${alignBtnCls} w-[26px]`} aria-label="Center horizontally">
+          <button type="button" onClick={() => alignBlock(true, false)} title="Center horizontally" className={`${alignBtnCls} w-7`} aria-label="Center horizontally">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="2" y="5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
-          <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-[26px]`} aria-label="Center vertically">
+          <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-7`} aria-label="Center vertically">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
           <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary border-primary/30 bg-primary/10`} aria-label="Center on canvas">
