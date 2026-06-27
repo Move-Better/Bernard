@@ -642,7 +642,7 @@ export default function StoryboardPiece() {
                 rows={3}
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                className="w-full resize-none bg-transparent text-xs leading-snug text-foreground/85 outline-none"
+                className="w-full resize-none bg-transparent text-xs leading-snug text-foreground/80 outline-none"
                 placeholder="Caption will appear here once you've approved the blog post…"
               />
             </div>

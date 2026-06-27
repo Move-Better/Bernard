@@ -561,8 +561,8 @@ export default function DemoExperience() {
                           type="button"
                           onClick={stopRecording}
                           className={cn(
-                            'relative h-20 w-20 rounded-full border-2 border-destructive/60 bg-destructive/15 flex items-center justify-center',
-                            'hover:bg-destructive/25 active:scale-95 transition-all duration-150',
+                            'relative h-20 w-20 rounded-full border-2 border-destructive/60 bg-destructive/20 flex items-center justify-center',
+                            'hover:bg-destructive/30 active:scale-95 transition-all duration-150',
                             'focus:outline-none focus-visible:ring-4 focus-visible:ring-destructive/30'
                           )}
                           aria-label="Stop recording"

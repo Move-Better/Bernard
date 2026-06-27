@@ -2050,7 +2050,7 @@ export default function InterviewSession() {
           <button
             type="button"
             onClick={handleRestoreAudio}
-            className="w-full rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left hover:bg-warning/15 active:bg-warning/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/50"
+            className="w-full rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left hover:bg-warning/20 active:bg-warning/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/50"
             aria-label="Audio interrupted. Tap to restore audio and replay the last question."
           >
             <div className="flex items-center gap-3">

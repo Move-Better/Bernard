@@ -31,7 +31,7 @@ export default function CampaignProgressStrip({ campaign, staff = [] }) {
           Active campaign
         </span>
         <span className="font-semibold text-sm">{campaign.name}</span>
-        <span className="text-xs text-white/85">No staff targeted yet</span>
+        <span className="text-xs text-white/80">No staff targeted yet</span>
       </div>
     )
   }

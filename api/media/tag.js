@@ -36,7 +36,7 @@ async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', scope.id))) return
 
   try {
     const row = await tagById(id, scope)

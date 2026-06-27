@@ -199,7 +199,7 @@ export default function WorkspaceSettings() {
   return (
     <div className="space-y-6 pb-16">
       {/* Sticky header / save bar */}
-      <div className="md:sticky md:top-0 z-20 py-4 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60 flex items-start justify-between gap-4">
+      <div className="md:sticky md:top-0 z-20 py-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
             <span className="nx-rail" aria-hidden="true" />

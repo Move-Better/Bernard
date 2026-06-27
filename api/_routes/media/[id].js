@@ -95,6 +95,12 @@ async function handler(req, res) {
       }
     }
 
+    if (patch.contentItemIds !== undefined && patch.contentItemIds !== null) {
+      if (!Array.isArray(patch.contentItemIds) || !patch.contentItemIds.every((v) => UUID_RE.test(v))) {
+        return res.status(400).json({ error: 'invalid_content_item_ids' })
+      }
+    }
+
     const allowed = {
       status:            patch.status,
       tags:              patch.tags,

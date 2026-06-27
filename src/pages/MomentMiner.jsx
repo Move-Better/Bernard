@@ -246,7 +246,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
           <PlayCircle className="h-9 w-9 text-muted-foreground/40" />
         )}
         {durationLabel && (
-          <span className="absolute bottom-1.5 right-1.5 text-3xs text-white/85 bg-black/40 rounded px-1.5 py-0.5">
+          <span className="absolute bottom-1.5 right-1.5 text-3xs text-white/80 bg-black/40 rounded px-1.5 py-0.5">
             {durationLabel}
           </span>
         )}
