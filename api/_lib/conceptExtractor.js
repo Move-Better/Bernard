@@ -148,8 +148,9 @@ async function upsertConcept(workspaceId, kind, label, existingConcepts) {
     const body = await r.text().catch(() => '')
     // 23505 = unique violation — race with another extractor run; safe to ignore
     if (body.includes('23505')) {
+      const escapedLabel = normalLabel.replace(/%/g, '\\%').replace(/_/g, '\\_')
       const existing2Res = await sb(
-        `workspace_concepts?workspace_id=eq.${workspaceId}&kind=eq.${kind}&label=ilike.${encodeURIComponent(normalLabel)}&select=id&limit=1`
+        `workspace_concepts?workspace_id=eq.${workspaceId}&kind=eq.${kind}&label=ilike.${encodeURIComponent(escapedLabel)}&select=id&limit=1`
       )
       if (existing2Res.ok) {
         const rows = await existing2Res.json()

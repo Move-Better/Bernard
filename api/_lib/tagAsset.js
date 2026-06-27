@@ -169,7 +169,7 @@ async function transcodeProxy(blobUrl) {
   const inPath  = join(dir, 'in.bin')
   const outPath = join(dir, 'out.mp4')
   try {
-    const res = await fetch(blobUrl)
+    const res = await fetch(blobUrl, { signal: AbortSignal.timeout(120_000) })
     if (!res.ok) throw new Error(`Proxy download failed: ${res.status}`)
     // Stream to disk instead of buffering — videos can be 500MB+ and
     // arrayBuffer() materializes the whole file in RAM, OOMing the function.

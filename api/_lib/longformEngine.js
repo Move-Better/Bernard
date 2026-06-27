@@ -80,6 +80,7 @@ async function postWorker(baseUrl, packageId) {
   try {
     await fetch(`${baseUrl}/api/editorial/render-longform-worker`, {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${process.env.CRON_SECRET}`,

@@ -40,8 +40,10 @@ async function fetchTopConcepts(workspaceId, topicKeyword, limit = 12) {
   // This is a lightweight ilike filter; richer embedding-based retrieval
   // can be added in a later phase when the graph is large enough to benefit.
   if (topicKeyword?.trim()) {
-    const kw = encodeURIComponent(`%${topicKeyword.trim().slice(0, 40)}%`)
-    qs += `&or=(label.ilike.${kw},aliases.cs.{${encodeURIComponent(topicKeyword.trim())}})`
+    const raw = topicKeyword.trim().slice(0, 40)
+    const escaped = raw.replace(/%/g, '\\%').replace(/_/g, '\\_')
+    const kw = encodeURIComponent(`%${escaped}%`)
+    qs += `&or=(label.ilike.${kw},aliases.cs.{${encodeURIComponent(raw)}})`
   }
 
   try {

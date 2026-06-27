@@ -215,7 +215,7 @@ export async function generateAndPersistThumbnail(asset, scope) {
   const dir    = await mkdtemp(join(tmpdir(), 'thumb-'))
   const inPath = join(dir, 'in.bin')
   try {
-    const res = await fetch(asset.blob_url)
+    const res = await fetch(asset.blob_url, { signal: AbortSignal.timeout(120_000) })
     if (!res.ok) throw new Error(`Source download failed: ${res.status}`)
     // Stream to disk instead of buffering — videos can be 500MB+ and
     // arrayBuffer() materializes the whole file in RAM, OOMing the function.

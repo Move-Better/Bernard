@@ -149,7 +149,7 @@ export default async function handler(req, res) {
 
     const { text } = await generateText({
       model: 'anthropic/claude-haiku-4-5',
-      system,
+      instructions: system,
       messages: [{ role: 'user', content: `Topics needing capture:\n${topicList}\n\nReturn the JSON array:` }],
       maxOutputTokens: 600,
     })

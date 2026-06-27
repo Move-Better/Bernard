@@ -27,7 +27,7 @@ const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
 // Greeting ribbon — depends only on user + workspace (not the stories/staff
 // queries), so it renders immediately, including during load.
-function GreetingRibbon({ greeting, callFirst }) {
+function GreetingRibbon({ greeting, callFirst, hasResume }) {
   return (
     <div className="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
       <div className="min-w-0">
@@ -38,7 +38,7 @@ function GreetingRibbon({ greeting, callFirst }) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <PageHelp pageKey="home" variant="onGradient" />
-        {!callFirst && (
+        {!callFirst && !hasResume && (
           <Link
             to="/new"
             className="inline-flex items-center gap-2 bg-background text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-muted text-sm"
@@ -226,7 +226,7 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-6">
       {/* Greeting ribbon — personality + single interview CTA */}
-      <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      <GreetingRibbon greeting={greeting} callFirst={callFirst} hasResume={resumeInterviews.length > 0} />
 
       {/* Call-first hero — only for realtime-voice workspaces. */}
       {callFirst && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}

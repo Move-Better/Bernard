@@ -180,6 +180,16 @@
     padding: 12px 18px;
   }
 
+  /* Recap panel headers — WeeklyRecapPanel block backgrounds. */
+  .nx-grad-recap-header {
+    background: linear-gradient(100deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.75) 100%);
+    color: hsl(var(--primary-foreground));
+  }
+  /* All-time block — dark foreground→deep-primary gradient for the night-mode narrative card. */
+  .nx-grad-alltime {
+    background: linear-gradient(120deg, hsl(var(--foreground)) 0%, hsl(186 68% 14%) 100%);
+  }
+
   /* Cards — depth without heaviness. .nx-card-hi is the warm-tint variant
      used to flag the "do this next" surface (Drafts stat on Home, Review
      column on Stories). */

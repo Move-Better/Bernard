@@ -181,7 +181,8 @@ export default async function handler(req, res) {
 
   // 3. Claim a matching proxy row by NAME (legacy fallback for proxies recorded
   //    before created_by_email was captured, or with no email on file).
-  const byNameRes = await sb(`staff?${wsFilter}&user_id=is.null&name=ilike.${encodeURIComponent(name)}&select=${CLINICIAN_FIELDS}`)
+  const escapedName = name.replace(/%/g, '\\%').replace(/_/g, '\\_')
+  const byNameRes = await sb(`staff?${wsFilter}&user_id=is.null&name=ilike.${encodeURIComponent(escapedName)}&select=${CLINICIAN_FIELDS}`)
   if (byNameRes.ok) {
     const byName = await byNameRes.json()
     if (byName.length > 0) {
