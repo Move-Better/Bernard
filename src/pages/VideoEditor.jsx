@@ -69,7 +69,7 @@ function groupLines(words) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap } = ctx
+  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, alignGuidesOn } = ctx
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const clipSelRing = sel === 'clip' || sel === 'grade'
@@ -192,6 +192,17 @@ function Canvas({ ctx }) {
               <div className="absolute inset-x-0 bottom-0" style={{ height: '18%', background: 'rgba(255,80,80,.10)' }} />
             </div>
           )}
+
+          {/* Alignment guide lines — flash ~800ms when overlay is centered */}
+          <div
+            className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+            style={{ opacity: alignGuidesOn ? 1 : 0 }}
+            aria-hidden="true"
+          >
+            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px" style={{ background: 'hsl(var(--primary)/0.7)' }} />
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px" style={{ background: 'hsl(var(--primary)/0.7)' }} />
+            <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 0 2px white' }} />
+          </div>
 
           {/* center play/pause indicator — click anywhere on the video to toggle.
               Visible when paused; fades out while playing unless you hover. */}
@@ -346,11 +357,34 @@ function CaptionInspector({ ctx }) {
 }
 
 function OverlayInspector({ ctx }) {
-  const { curOverlay, setOverlay, setOverlayTime, delOverlay, durationSec } = ctx
+  const { curOverlay, setOverlay, setOverlayTime, delOverlay, durationSec, flashAlignGuides } = ctx
   const o = curOverlay
   if (!o) return null
+  function alignOverlay(h, v) {
+    if (h) setOverlay('x', 0.5)
+    if (v) setOverlay('y', 0.5)
+    flashAlignGuides?.()
+  }
+  const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border transition-colors'
   return (
-    <InspectorShell icon={Type} title="Text overlay" right="manual">
+    <InspectorShell icon={Type} title="Text overlay" right={
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={() => alignOverlay(true, false)} title="Center horizontally" aria-label="Center horizontally"
+          className={`${alignBtnCls} w-[26px]`} style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="2" y="5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
+        </button>
+        <button type="button" onClick={() => alignOverlay(false, true)} title="Center vertically" aria-label="Center vertically"
+          className={`${alignBtnCls} w-[26px]`} style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
+        </button>
+        <button type="button" onClick={() => alignOverlay(true, true)} title="Center on frame" aria-label="Center on frame"
+          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold`}
+          style={{ borderColor: 'hsl(var(--primary)/0.35)', background: 'hsl(var(--primary)/0.06)', color: 'hsl(var(--primary))' }}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
+          Center
+        </button>
+      </div>
+    }>
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Text</p>
       <textarea rows={2} aria-label="Overlay text content" value={o.text} onChange={(e) => setOverlay('text', e.target.value)} className="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm leading-snug outline-none focus:ring-1 focus:ring-primary/50" style={{ borderColor: 'hsl(var(--border))' }} />
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Role</p>
@@ -838,6 +872,13 @@ export default function VideoEditor() {
   })
 
   const [editingCap, setEditingCap] = useState(false)
+  const [alignGuidesOn, setAlignGuidesOn] = useState(false)
+  const alignGuideTimerRef = useRef(null)
+  function flashAlignGuides() {
+    if (alignGuideTimerRef.current) clearTimeout(alignGuideTimerRef.current)
+    setAlignGuidesOn(true)
+    alignGuideTimerRef.current = setTimeout(() => setAlignGuidesOn(false), 800)
+  }
   const busy = exportMutation.isPending || wholeMutation.isPending
   const anyDest = dest.post || dest.broll || dest.ad
 
@@ -851,6 +892,7 @@ export default function VideoEditor() {
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
     editingCap, setEditingCap,
+    alignGuidesOn, flashAlignGuides,
     proposals, selectedSegmentId, applySegment, discardSegment,
     findMoments: () => findMomentsMutation.mutate(), findingMoments: findMomentsMutation.isPending, segDetecting: segData?.status === 'detecting',
   }

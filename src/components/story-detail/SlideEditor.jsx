@@ -1296,7 +1296,7 @@ function TextStyleControls({ block, onSet }) {
   )
 }
 
-function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
+function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
   const block = slide.blocks[blockIdx]
   if (!block) return null
   function updateBlock(next) {
@@ -1316,11 +1316,29 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved }) {
     onChange({ ...slide, blocks })
     if (onRemoved) onRemoved()
   }
+  function alignBlock(h, v) {
+    const cur = (typeof block.position === 'object' && block.position) ? block.position : { x: 0.5, y: 0.5 }
+    updateBlock({ ...block, position: { x: h ? 0.5 : cur.x, y: v ? 0.5 : cur.y } })
+    onCenter?.()
+  }
+  const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary'
   return (
     <div className="space-y-3 p-3">
       <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
         <Type className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">Text layer</span>
+        <div className="ml-auto flex items-center gap-1">
+          <button type="button" onClick={() => alignBlock(true, false)} title="Center horizontally" className={`${alignBtnCls} w-[26px]`} aria-label="Center horizontally">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="2" y="5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
+          </button>
+          <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-[26px]`} aria-label="Center vertically">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
+          </button>
+          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary`} style={{ borderColor: 'hsl(var(--primary)/.35)', background: 'hsl(var(--primary)/.06)' }} aria-label="Center on canvas">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
+            Center
+          </button>
+        </div>
       </div>
       <BlockRow
         block={block}
@@ -1537,6 +1555,13 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   )
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [safeZones, setSafeZones] = useState(true)
+  const [guidesOn, setGuidesOn] = useState(false)
+  const guidesTimerRef = useRef(null)
+  function flashGuides() {
+    if (guidesTimerRef.current) clearTimeout(guidesTimerRef.current)
+    setGuidesOn(true)
+    guidesTimerRef.current = setTimeout(() => setGuidesOn(false), 800)
+  }
 
   // Seed: stored slides if any, else one empty cover slide bound to photo 0.
   function seedSlides() {
@@ -2053,6 +2078,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                           photoUrl={activePhotoUrl}
                           onChange={(next) => updateSlide(activeSlideIdx, next)}
                           onRemoved={() => setSelection({ type: null })}
+                          onCenter={flashGuides}
                         />
                       </div>
                     )}
@@ -2117,6 +2143,16 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                   blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, position: pos } : b)),
                 })}
               />
+              {/* Alignment guide lines — flash for ~800ms when Center is clicked */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-xl transition-opacity duration-300"
+                style={{ opacity: guidesOn ? 1 : 0 }}
+                aria-hidden="true"
+              >
+                <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70" />
+                <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70" />
+                <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" style={{ boxShadow: '0 0 0 2px white' }} />
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No slides yet</p>
