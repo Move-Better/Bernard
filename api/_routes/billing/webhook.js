@@ -148,6 +148,23 @@ async function handler(req, res) {
         const customerId = session.customer
         const subscriptionId = session.subscription
 
+        // Cross-validate: if the workspace already has a stripe_customer_id,
+        // it must match the event's customer. On a first checkout the column is
+        // null (allowed). This guards against metadata manipulation at checkout time.
+        if (customerId) {
+          const wsr = await fetch(
+            `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}&select=stripe_customer_id`,
+            { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(8_000) }
+          )
+          if (wsr.ok) {
+            const [wsRow] = await wsr.json()
+            if (wsRow?.stripe_customer_id && wsRow.stripe_customer_id !== customerId) {
+              console.error(`[billing/webhook] checkout.session.completed: customer mismatch workspace=${workspaceId} expected=${wsRow.stripe_customer_id} got=${customerId}`)
+              break
+            }
+          }
+        }
+
         // Fetch the subscription to get the price ID.
         let priceId = null
         let planConfig = null
@@ -173,10 +190,6 @@ async function handler(req, res) {
           plan_seats: planConfig?.seats || 3,
           trial_ends_at: null, // Clear trial on activation
         }
-        // Don't pass customerId as cross-validation filter here: on first checkout
-        // the workspace row has stripe_customer_id=NULL, so the filter would match
-        // 0 rows and silently skip activation. The workspace ID + HMAC-verified event
-        // is the guard; the customer ID is written by the patch itself.
         await updateWorkspace(workspaceId, patch, null)
         console.info(`[billing/webhook] activated workspace ${workspaceId} on plan ${patch.plan}`)
         break

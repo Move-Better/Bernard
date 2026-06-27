@@ -237,7 +237,7 @@ export default function Stories() {
 
         {/* Advanced filter bar — horizontal scroll on mobile so chips do not wrap
             into 3+ rows and crowd the sticky header. */}
-        <div className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div role="group" aria-label="Advanced filters" className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Owner — "Mine only" active chip. No selector form because the only
             two states are "all" and "me"; non-me staff filtering is
             handled by the existing /staff/:id page. */}

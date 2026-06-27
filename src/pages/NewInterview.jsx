@@ -283,7 +283,7 @@ export default function NewInterview() {
               onClick={() => { setStep('form'); pendingStartRef.current = null }}
               className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to setup
             </button>
             <MicCheck onContinue={createAndStart} ttsSettings={resolvedStaff?.tts_settings} />
@@ -503,7 +503,7 @@ export default function NewInterview() {
             ) : (
               <>
                 Start interview
-                <ArrowRight className="h-4 w-4 ml-1.5" />
+                <ArrowRight className="h-4 w-4 ml-1.5" aria-hidden="true" />
               </>
             )}
           </Button>
@@ -626,7 +626,7 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
               <Star className="h-3.5 w-3.5 text-action fill-action shrink-0" />
             )}
           </span>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
         {open && (
           <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-md py-1">

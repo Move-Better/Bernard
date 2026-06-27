@@ -138,7 +138,7 @@ export default function Ads() {
           <Megaphone className="h-6 w-6 text-action" aria-hidden="true" /> Ads
         </h1>
         <Button size="sm" className="mb-0.5 ml-auto gap-1.5" onClick={() => setCreating(true)}>
-          <Plus className="h-3.5 w-3.5" /> New ad creative
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New ad creative
         </Button>
       </div>
 
@@ -159,7 +159,7 @@ export default function Ads() {
             Hit <span className="font-semibold text-action">New ad creative</span> to pick a photo or clip, or export from any photo in the Library or clip in Moment Miner.
           </p>
           <Button size="sm" className="mt-3 gap-1.5" onClick={() => setCreating(true)}>
-            <Plus className="h-3.5 w-3.5" /> New ad creative
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New ad creative
           </Button>
         </div>
       ) : (

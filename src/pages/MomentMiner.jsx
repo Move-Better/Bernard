@@ -132,7 +132,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
               onClick={() => onSave(m)}
               className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Looks good — save
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}Looks good — save
             </button>
           </div>
           <button
@@ -167,12 +167,13 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
           </Select>
         </div>
       )}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div role="group" aria-label="Filter by moment type" className="flex items-center gap-2 flex-wrap">
         {MOMENT_FILTERS.map((f) => (
           <button
             key={f.key}
             type="button"
             onClick={() => setMomentType(f.key)}
+            aria-pressed={momentType === f.key}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               momentType === f.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted'
             }`}

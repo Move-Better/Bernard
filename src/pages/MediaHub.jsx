@@ -444,7 +444,7 @@ export default function MediaHub() {
                 onClick={() => setUploadOpen(true)}
                 className="h-7 gap-1.5 text-2xs rounded-full"
               >
-                <UploadIcon className="h-3.5 w-3.5" />
+                <UploadIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 Upload
               </Button>
             )}
@@ -456,7 +456,7 @@ export default function MediaHub() {
                 onClick={() => setDriveImportOpen(true)}
                 className="h-7 gap-1.5 text-2xs rounded-full"
               >
-                <HardDrive className="h-3.5 w-3.5" />
+                <HardDrive className="h-3.5 w-3.5" aria-hidden="true" />
                 Import from Drive
               </Button>
             )}
@@ -473,7 +473,7 @@ export default function MediaHub() {
                 title="Select multiple media for bulk actions"
                 aria-label="Select multiple media for bulk actions"
               >
-                <CheckSquare className="h-3.5 w-3.5" />
+                <CheckSquare className="h-3.5 w-3.5" aria-hidden="true" />
                 {multiSelectMode ? 'Exit select' : 'Select'}
               </Button>
             )}
@@ -481,13 +481,14 @@ export default function MediaHub() {
         </div>
 
         {/* Status chips — wrapping row so they scale to any screen width. */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div role="group" aria-label="Filter by status" className="flex flex-wrap items-center gap-1.5">
           <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
           {STATUS_FILTERS.map((s) => (
             <button
               key={s.id || 'all-status'}
               type="button"
               onClick={() => setStatus(s.id)}
+              aria-pressed={status === s.id}
               className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 status === s.id
                   ? 'bg-primary text-primary-foreground'
@@ -501,7 +502,7 @@ export default function MediaHub() {
 
         {/* Consolidated chip strip: kind · clinician. Auto-tagging + search
             replaced the old "purpose" filter (B-roll / interview / brand). */}
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+        <div role="group" aria-label="Filter by media type" className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
           {[
             { id: '',      label: 'All',      icon: null,  count: counts.total, group: 'kind' },
             { id: 'video', label: 'Video',    icon: '🎬',  count: counts.video, group: 'kind' },
@@ -510,6 +511,7 @@ export default function MediaHub() {
             <button
               key={k.id || 'all-kind'}
               onClick={() => setKind(k.id)}
+              aria-pressed={kind === k.id}
               className={`text-2xs px-2.5 py-1 rounded-full border transition-colors inline-flex items-center gap-1 ${
                 kind === k.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
@@ -711,7 +713,7 @@ export default function MediaHub() {
               action={
                 canUpload
                   ? <Button size="sm" onClick={() => setUploadOpen(true)}>
-                      <UploadIcon className="h-4 w-4 mr-1.5" />
+                      <UploadIcon className="h-4 w-4 mr-1.5" aria-hidden="true" />
                       Upload your first asset
                     </Button>
                   : null

@@ -211,9 +211,9 @@ export default function HandoutCapture() {
               aria-label={recording ? 'Stop recording' : 'Start recording'}
               className={`h-20 w-20 rounded-full p-0 ${recording ? 'bg-destructive hover:bg-destructive/90' : ''}`}
             >
-              {requesting ? <Loader2 className="h-7 w-7 animate-spin" />
-                : recording ? <Square className="h-7 w-7" fill="currentColor" />
-                : <Mic className="h-7 w-7" />}
+              {requesting ? <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
+                : recording ? <Square className="h-7 w-7" fill="currentColor" aria-hidden="true" />
+                : <Mic className="h-7 w-7" aria-hidden="true" />}
             </Button>
             <div className="text-3xl font-mono tabular-nums">{formatTime(elapsed)}</div>
             <div className="text-xs text-muted-foreground">
@@ -232,7 +232,7 @@ export default function HandoutCapture() {
                 </Button>
                 <Button type="button" className="ml-auto" onClick={submit} disabled={uploading}>
                   {uploading ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating handout…</>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" /> Generating handout…</>
                   ) : (
                     'Generate handout'
                   )}

@@ -269,7 +269,7 @@ export default function Home() {
                     to={part.to}
                     className={`font-medium transition-colors inline-flex items-center gap-0.5 ${part.urgent ? 'text-destructive hover:text-destructive/80' : 'text-primary hover:text-primary/80'}`}
                   >
-                    {part.label} <ChevronRight className="h-3 w-3" />
+                    {part.label} <ChevronRight className="h-3 w-3" aria-hidden="true" />
                   </Link>
                 </span>
               ))}
@@ -301,7 +301,7 @@ export default function Home() {
           to="/week"
           className="flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-3 hover:bg-muted/80 transition-colors"
         >
-          <BookOpen className="h-4 w-4 text-action shrink-0" />
+          <BookOpen className="h-4 w-4 text-action shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
               {yourReview.length === 1
@@ -313,7 +313,7 @@ export default function Home() {
               {yourReview.length > 1 ? ` +${yourReview.length - 1} more` : ''}
             </p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
         </Link>
       )}
 
