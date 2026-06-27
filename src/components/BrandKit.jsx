@@ -66,8 +66,9 @@ function sanitizeSvg(markup) {
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     // Strip event handlers with any quoting style (quoted, unquoted, or backtick).
     .replace(/\son[a-z][a-z0-9]*\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|[^\s>]*)/gi, '')
-    // Strip javascript: URIs in href / xlink:href to prevent code execution via <use>.
-    .replace(/(href|xlink:href)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^']*javascript:[^']*'|javascript:[^\s>]*)/gi, '')
+    // Strip href / xlink:href that aren't fragment-only (#anchor) — prevents javascript: URIs,
+    // external-document <use> fetches, and data: URI exfiltration via cross-origin SVG use.
+    .replace(/(href|xlink:href)\s*=\s*(?:"(?!#)[^"]*"|'(?!#)[^']*'|(?!#)\S+)/gi, '')
 }
 
 // Fetches an SVG, inlines it, then rewrites the viewBox to the actual

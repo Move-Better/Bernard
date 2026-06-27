@@ -320,7 +320,7 @@ export async function persistDriveCredential({ workspaceId, refreshToken, accoun
   // we mirror the workaround documented there.
   const check = await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.drive&select=id`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { signal: AbortSignal.timeout(10_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   const existing = check.ok ? (await check.json().catch(() => []))?.[0] : null
 
@@ -328,6 +328,7 @@ export async function persistDriveCredential({ workspaceId, refreshToken, accoun
   if (existing?.id) {
     r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}&workspace_id=eq.${workspaceId}`, {
       method: 'PATCH',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -338,6 +339,7 @@ export async function persistDriveCredential({ workspaceId, refreshToken, accoun
   } else {
     r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials`, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -360,6 +362,7 @@ export async function deleteDriveCredential(workspaceId) {
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.drive`,
     {
       method: 'DELETE',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
     },
   )

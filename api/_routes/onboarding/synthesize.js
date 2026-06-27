@@ -229,7 +229,7 @@ export default async function handler(req, res) {
 
   // Load the founder's clinician row + the current workspace patient_context
   // so we can merge additively. One round-trip; both lookups are cheap.
-  const fname = (founderName || '').trim() || 'Founder'
+  const fname = (founderName || '').trim().slice(0, 100) || 'Founder'
   const [clinR, wsR] = await Promise.all([
     interview.staff_id
       ? sb(`staff?id=eq.${interview.staff_id}&workspace_id=eq.${ws.id}&select=id,name`)
