@@ -26,6 +26,7 @@ export async function sendEmail({ to, subject, text, html }) {
 
   try {
     const r = await fetch(RESEND_ENDPOINT, {
+      signal: AbortSignal.timeout(10_000),
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

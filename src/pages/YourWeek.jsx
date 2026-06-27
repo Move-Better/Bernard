@@ -180,7 +180,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
     : (state.action === 'open' || state.action === 'schedule')
 
   return (
-    <div className="rounded-lg border border-l-4 border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm">
+    <div className="rounded-lg border border-l-4 border-l-primary bg-card p-2 transition-all hover:border-primary/50 hover:shadow-sm">
       {/* Platform label at text-2xs (legibility, esp. on the narrow mobile day
           columns); the scheduled time moves to a hover/title so the always-on
           label row stays uncluttered. The state pill below carries status. */}

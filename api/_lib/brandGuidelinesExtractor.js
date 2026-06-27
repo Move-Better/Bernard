@@ -44,7 +44,7 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
 
   let pdfText = ''
   try {
-    const res = await fetch(pdfBlobUrl, { signal: AbortSignal.timeout(20_000) })
+    const res = await fetch(pdfBlobUrl, { signal: AbortSignal.timeout(20_000), headers: { Range: 'bytes=0-10485759' } })
     if (!res.ok) throw new Error(`PDF fetch failed: ${res.status}`)
     const clRaw = parseInt(res.headers.get('content-length') || '', 10)
     if (!isNaN(clRaw) && clRaw > 10 * 1024 * 1024) throw new Error(`PDF too large: ${clRaw} bytes`)

@@ -340,7 +340,7 @@ export default function StaffProfile() {
             {/* Subtle waveform texture at bottom */}
             <div
               aria-hidden
-              className="absolute bottom-0 left-0 right-0 h-10 opacity-[0.12]"
+              className="absolute bottom-0 left-0 right-0 h-10 opacity-10"
               style={{
                 background: 'repeating-linear-gradient(90deg, hsl(var(--action)/.4) 0, hsl(var(--action)/.4) 2px, transparent 2px, transparent 22px)',
                 maskImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 40'%3E%3Cpath d='M0 28 Q15 6 30 22 Q45 38 60 14 Q75 3 90 26 Q105 40 120 16 Q135 5 150 30 Q165 42 180 18 Q195 6 210 28 Q225 42 240 16 Q255 5 270 30 Q285 44 300 20 L300 40 L0 40Z' fill='white'/%3E%3C/svg%3E\")",

@@ -87,7 +87,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
       >
         {m.thumbnailUrl
           ? <img src={m.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-          : <PlayCircle className="h-6 w-6 text-white/60" />}
+          : <PlayCircle className="h-6 w-6 text-white/60" aria-hidden="true" />}
         {dur && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-3xs px-1 rounded">{dur}</span>}
       </div>
       <div className="min-w-0 flex-1">
@@ -122,7 +122,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
             <button
               type="button"
               onClick={() => onReview(m)}
-              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90"
+              className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium flex items-center gap-1.5 hover:bg-primary/10"
             >
               <Scissors className="h-4 w-4" />Review &amp; trim
             </button>
@@ -130,7 +130,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
               type="button"
               disabled={saving}
               onClick={() => onSave(m)}
-              className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Looks good — save
             </button>

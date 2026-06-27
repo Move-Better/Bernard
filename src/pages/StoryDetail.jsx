@@ -45,12 +45,12 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
   // they read as quiet "add later" chips and don't compete for attention.
   const unsetCls = demoteUnset
     ? 'text-muted-foreground bg-muted/40 border border-dashed border-border hover:bg-muted active:bg-muted px-2 py-1.5'
-    : 'text-primary bg-primary/10 border border-dashed border-primary/40 hover:bg-primary/20 hover:border-primary/60 active:bg-primary/20 font-medium px-2 py-1.5'
+    : 'text-primary bg-primary/10 border border-dashed border-primary/40 hover:bg-primary/20 hover:border-primary/50 active:bg-primary/20 font-medium px-2 py-1.5'
   return (
     <label
       className={`relative inline-flex items-center gap-1 text-xs rounded-full transition-colors ${
         selected
-          ? 'text-muted-foreground bg-muted/60 hover:bg-muted active:bg-muted px-2 py-1.5'
+          ? 'text-muted-foreground bg-muted/50 hover:bg-muted active:bg-muted px-2 py-1.5'
           : unsetCls
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
@@ -137,7 +137,7 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
           }}
           disabled={saving || disabled}
           maxLength={300}
-          className="flex-1 min-w-0 bg-transparent border-b border-primary/60 focus:outline-none focus:border-primary text-2xl font-bold tracking-tight"
+          className="flex-1 min-w-0 bg-transparent border-b border-primary/50 focus:outline-none focus:border-primary text-2xl font-bold tracking-tight"
           aria-label="Story title"
         />
       </h1>
@@ -152,7 +152,7 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="ml-2 inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground hover:bg-muted/60 transition"
+          className="ml-2 inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground hover:bg-muted/50 transition"
           title="Edit title"
           aria-label="Edit title"
         >
@@ -369,7 +369,7 @@ export default function StoryDetail() {
                     />
                   )}
                   {cleanupSlot && (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
                       <span className="text-2xs">{cleanupSlot.emoji}</span>
                       <span>{cleanupSlot.label}</span>
                     </span>

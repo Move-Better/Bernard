@@ -55,6 +55,7 @@ export async function addProjectDomain(name) {
   let r
   try {
     r = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
@@ -102,6 +103,7 @@ async function fetchDomainProjects(name) {
   let r
   try {
     r = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
     })
   } catch {
@@ -126,6 +128,7 @@ export async function removeProjectDomain(name) {
   const url = `${VERCEL_API}/v9/projects/${encodeURIComponent(process.env.VERCEL_PROJECT_ID)}/domains/${encodeURIComponent(name)}${teamQuery()}`
   try {
     await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       method: 'DELETE',
       headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
     })

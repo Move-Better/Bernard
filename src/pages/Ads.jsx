@@ -50,7 +50,7 @@ function CreativeCard({ creative, onDelete, deleting }) {
       <div className="relative aspect-[4/5] bg-muted">
         {isVideo ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
-            <Film className="h-6 w-6" />
+            <Film className="h-6 w-6" aria-hidden="true" />
             <span className="text-3xs">video</span>
           </div>
         ) : preview ? (

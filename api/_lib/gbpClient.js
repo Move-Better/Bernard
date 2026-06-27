@@ -44,7 +44,7 @@ export async function fetchLocationMetrics(accessToken, locationName, days = 30)
   params.set('dailyRange.endDate.day',     String(e.day))
 
   const url = `https://businessprofileperformance.googleapis.com/v1/${locationName}:getMultiDailyMetricsTimeSeries?${params.toString()}`
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const r = await fetch(url, { signal: AbortSignal.timeout(30_000), headers: { Authorization: `Bearer ${accessToken}` } })
   if (!r.ok) {
     const text = await r.text().catch(() => '')
     throw new Error(`GBP Performance API ${r.status}: ${text.slice(0, 300)}`)
@@ -101,7 +101,7 @@ export async function fetchLocationMetrics(accessToken, locationName, days = 30)
 // Returns array of { name, summary, state, createTime, updateTime }
 export async function listLocalPosts(accessToken, v4LocationName, maxResults = 50) {
   const url = `https://mybusiness.googleapis.com/v4/${v4LocationName}/localPosts?pageSize=${maxResults}`
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const r = await fetch(url, { signal: AbortSignal.timeout(30_000), headers: { Authorization: `Bearer ${accessToken}` } })
   if (!r.ok) {
     const text = await r.text().catch(() => '')
     throw new Error(`GBP localPosts list ${r.status}: ${text.slice(0, 300)}`)
@@ -137,7 +137,7 @@ export async function fetchPostViewInsights(accessToken, v4LocationName, localPo
     })
     const r = await fetch(
       `https://mybusiness.googleapis.com/v4/${v4LocationName}/localPosts:reportInsights`,
-      { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body },
+      { signal: AbortSignal.timeout(30_000), method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body },
     )
     if (!r.ok) {
       const text = await r.text().catch(() => '')

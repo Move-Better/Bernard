@@ -74,7 +74,7 @@ async function probeVideoSize(inPath) {
 }
 
 async function transcodeVideoIfNeeded(url) {
-  const r = await fetch(url)
+  const r = await fetch(url, { signal: AbortSignal.timeout(120_000) })
   if (!r.ok) throw new Error(`download failed: ${r.status}`)
 
   const dir    = await mkdtemp(join(tmpdir(), 'buf-vid-'))

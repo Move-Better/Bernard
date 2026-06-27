@@ -17,7 +17,7 @@ export default function IconRail({ items, active, onPick }) {
             key={key}
             aria-label={label}
             onClick={() => onPick(key)}
-            className={`flex w-full flex-col items-center gap-1 border-l-2 py-2.5 ${on ? 'border-primary bg-primary/7' : 'border-transparent'}`}
+            className={`flex w-full flex-col items-center gap-1 border-l-2 py-2.5 ${on ? 'border-primary bg-primary/10' : 'border-transparent'}`}
             title={label}
           >
             <Icon className={`h-4 w-4 ${on ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
