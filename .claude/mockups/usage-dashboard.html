@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — Usage Dashboards (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%; --secondary-foreground:222 47% 12%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%;
+    --border:214 32% 91%; --ring:160 84% 39%;
+    --success:152 76% 40%; --warning:38 92% 50%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;}
+  .muted{color:hsl(var(--muted-foreground));}
+  .chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;}
+  .legend{border:1px dashed hsl(var(--action));background:hsl(var(--action)/.06);border-radius:10px;}
+  .bar{background:hsl(var(--primary));border-radius:3px 3px 0 0;}
+  .bar2{background:hsl(var(--primary)/.45);border-radius:3px 3px 0 0;}
+  .bar3{background:hsl(var(--action)/.7);border-radius:3px 3px 0 0;}
+  .tabbtn[data-active="true"]{background:hsl(var(--primary));color:#fff;}
+  .tabbtn[data-active="false"]{background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));}
+  .dot{width:8px;height:8px;border-radius:999px;display:inline-block;}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- top switcher -->
+<div class="sticky top-0 z-10 border-b" style="background:hsl(var(--card));border-color:hsl(var(--border))">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg grid place-items-center text-white text-sm font-bold" style="background:hsl(var(--primary))">B</div>
+      <span class="font-semibold">Bernard · Usage (mockup)</span>
+    </div>
+    <div class="ml-auto flex gap-2">
+      <button onclick="show('tenant')" id="t-tenant" class="tabbtn text-sm font-medium px-3 py-1.5 rounded-lg" data-active="true">Clinic view · /usage</button>
+      <button onclick="show('admin')" id="t-admin" class="tabbtn text-sm font-medium px-3 py-1.5 rounded-lg" data-active="false">Global view · /admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ TENANT /usage ============================ -->
+<div id="tenant" class="max-w-6xl mx-auto px-6 py-6">
+  <div class="flex items-end justify-between mb-1">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">Move Better — Usage</h1>
+      <p class="muted text-sm mt-0.5">How much your clinic is putting Bernard to work · last active <b class="text-[hsl(var(--foreground))]">2 hours ago</b></p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="chip" style="background:hsl(var(--accent));color:hsl(var(--accent-foreground))">Plan · Practice</span>
+      <select class="text-sm border rounded-lg px-2 py-1.5" style="border-color:hsl(var(--border))">
+        <option>Last 12 weeks</option><option>Last 4 weeks</option><option>Year to date</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="legend text-xs muted px-3 py-2 my-3">
+    <b>What changed here:</b> brand-new page. All numbers come from existing timestamps (interviews, content_items, media_assets) — no new tracking. "Active day" = a day with any capture, draft, publish, or media upload.
+  </div>
+
+  <!-- top stat row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <div class="card p-4">
+      <div class="muted text-xs font-medium uppercase tracking-wide">Active days</div>
+      <div class="text-3xl font-bold mt-1">5<span class="muted text-base font-medium">/7</span></div>
+      <div class="text-xs mt-1" style="color:hsl(var(--success))">▲ +1 vs last week</div>
+    </div>
+    <div class="card p-4">
+      <div class="muted text-xs font-medium uppercase tracking-wide">Captures</div>
+      <div class="text-3xl font-bold mt-1">11</div>
+      <div class="text-xs mt-1" style="color:hsl(var(--success))">▲ +3 vs last week</div>
+    </div>
+    <div class="card p-4">
+      <div class="muted text-xs font-medium uppercase tracking-wide">Published</div>
+      <div class="text-3xl font-bold mt-1">8</div>
+      <div class="text-xs mt-1 muted">— same as last week</div>
+    </div>
+    <div class="card p-4">
+      <div class="muted text-xs font-medium uppercase tracking-wide">Media added</div>
+      <div class="text-3xl font-bold mt-1">24</div>
+      <div class="text-xs mt-1" style="color:hsl(var(--destructive))">▼ −6 vs last week</div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-4">
+    <!-- activity over time -->
+    <div class="card p-4 md:col-span-2">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold">Activity over time</h3>
+        <div class="flex items-center gap-3 text-xs muted">
+          <span class="flex items-center gap-1"><span class="dot" style="background:hsl(var(--primary))"></span>Captures</span>
+          <span class="flex items-center gap-1"><span class="dot" style="background:hsl(var(--primary)/.45)"></span>Published</span>
+          <span class="flex items-center gap-1"><span class="dot" style="background:hsl(var(--action)/.7)"></span>Media</span>
+        </div>
+      </div>
+      <div id="chart" class="flex items-end gap-2 h-40"></div>
+      <div id="chartx" class="flex gap-2 mt-1 text-[10px] muted"></div>
+    </div>
+
+    <!-- stickiness -->
+    <div class="card p-4">
+      <h3 class="font-semibold mb-3">Stickiness</h3>
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between"><span class="muted">Active days / wk (avg)</span><b>4.2</b></div>
+        <div class="flex justify-between"><span class="muted">Weekly active staff</span><b>6 / 7</b></div>
+        <div class="flex justify-between"><span class="muted">Current active-week streak</span><b>9 wks</b></div>
+        <div class="flex justify-between"><span class="muted">Longest streak</span><b>14 wks</b></div>
+      </div>
+      <div class="mt-3 pt-3 border-t" style="border-color:hsl(var(--border))">
+        <div class="muted text-xs mb-1">Active days, last 12 weeks</div>
+        <div id="spark" class="flex items-end gap-1 h-10"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- funnel -->
+  <div class="card p-4 mt-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">Capture → Publish funnel <span class="muted font-normal text-xs">(last 12 weeks)</span></h3>
+      <span class="text-xs muted">Avg time capture→publish: <b class="text-[hsl(var(--foreground))]">3.1 days</b></span>
+    </div>
+    <div class="grid grid-cols-4 gap-2">
+      <div class="rounded-lg p-3" style="background:hsl(var(--primary)/.10)">
+        <div class="text-2xl font-bold">128</div><div class="muted text-xs">Captured</div>
+      </div>
+      <div class="rounded-lg p-3" style="background:hsl(var(--primary)/.10)">
+        <div class="text-2xl font-bold">112</div><div class="muted text-xs">Drafted <span style="color:hsl(var(--success))">88%</span></div>
+      </div>
+      <div class="rounded-lg p-3" style="background:hsl(var(--primary)/.10)">
+        <div class="text-2xl font-bold">79</div><div class="muted text-xs">Scheduled <span style="color:hsl(var(--warning))">71%</span></div>
+      </div>
+      <div class="rounded-lg p-3" style="background:hsl(var(--primary)/.10)">
+        <div class="text-2xl font-bold">74</div><div class="muted text-xs">Published <span style="color:hsl(var(--success))">94%</span></div>
+      </div>
+    </div>
+    <p class="text-xs muted mt-2">↳ Biggest drop-off: <b>Drafted → Scheduled (29% never get scheduled)</b> — drafts piling up unreviewed.</p>
+  </div>
+
+  <!-- per staff -->
+  <div class="card p-4 mt-4">
+    <h3 class="font-semibold mb-3">By team member</h3>
+    <table class="w-full text-sm">
+      <thead class="muted text-xs uppercase tracking-wide text-left"><tr>
+        <th class="pb-2 font-medium">Staff</th><th class="pb-2 font-medium">Last active</th>
+        <th class="pb-2 font-medium text-right">Captures (4wk)</th><th class="pb-2 font-medium text-right">Published (4wk)</th>
+        <th class="pb-2 font-medium">Consistency (12 wk)</th>
+      </tr></thead>
+      <tbody id="staffrows"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================ GLOBAL /admin ============================ -->
+<div id="admin" class="max-w-6xl mx-auto px-6 py-6 hidden">
+  <div class="flex items-end justify-between mb-1">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">All tenants — Usage</h1>
+      <p class="muted text-sm mt-0.5">Platform-wide adoption across every workspace</p>
+    </div>
+    <span class="chip" style="background:hsl(var(--destructive)/.12);color:hsl(var(--destructive))">🔒 Super-admin only</span>
+  </div>
+
+  <div class="legend text-xs muted px-3 py-2 my-3">
+    <b>What changed here:</b> brand-new route, gated by a Clerk <i>user-level</i> role (you only) — distinct from per-workspace org roles. Same DB-aggregate source as the clinic view, run across all workspaces.
+  </div>
+
+  <!-- topline -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+    <div class="card p-4"><div class="muted text-xs uppercase tracking-wide">Workspaces</div><div class="text-3xl font-bold mt-1">14</div></div>
+    <div class="card p-4"><div class="muted text-xs uppercase tracking-wide">Active this wk</div><div class="text-3xl font-bold mt-1">9</div><div class="text-xs muted mt-1">64%</div></div>
+    <div class="card p-4"><div class="muted text-xs uppercase tracking-wide">Captures (wk)</div><div class="text-3xl font-bold mt-1">73</div><div class="text-xs mt-1" style="color:hsl(var(--success))">▲ +12</div></div>
+    <div class="card p-4"><div class="muted text-xs uppercase tracking-wide">Published (wk)</div><div class="text-3xl font-bold mt-1">61</div><div class="text-xs mt-1" style="color:hsl(var(--success))">▲ +5</div></div>
+    <div class="card p-4"><div class="muted text-xs uppercase tracking-wide">At-risk / idle</div><div class="text-3xl font-bold mt-1" style="color:hsl(var(--destructive))">3</div><div class="text-xs muted mt-1">no activity 14d+</div></div>
+  </div>
+
+  <div class="card p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">Workspaces</h3>
+      <div class="flex gap-2 text-xs">
+        <button class="chip" style="background:hsl(var(--primary));color:#fff">Sort: activity</button>
+        <button class="chip" style="background:hsl(var(--secondary))">Only at-risk</button>
+      </div>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="muted text-xs uppercase tracking-wide text-left"><tr>
+        <th class="pb-2 font-medium">Workspace</th><th class="pb-2 font-medium">Plan</th>
+        <th class="pb-2 font-medium">Status</th><th class="pb-2 font-medium">Last active</th>
+        <th class="pb-2 font-medium text-right">Active days (28d)</th>
+        <th class="pb-2 font-medium text-right">Captures</th><th class="pb-2 font-medium text-right">Published</th>
+        <th class="pb-2 font-medium">Trend</th>
+      </tr></thead>
+      <tbody id="wsrows"></tbody>
+    </table>
+  </div>
+  <p class="text-xs muted mt-3">Upgrade path: swap the active-days proxy for true logins/feature-touch by reading PostHog (already workspace-grouped) — keeps this same layout.</p>
+</div>
+
+<script>
+  function show(which){
+    document.getElementById('tenant').classList.toggle('hidden', which!=='tenant');
+    document.getElementById('admin').classList.toggle('hidden', which!=='admin');
+    document.getElementById('t-tenant').dataset.active = which==='tenant';
+    document.getElementById('t-admin').dataset.active = which==='admin';
+  }
+
+  // stacked activity chart
+  const weeks = ['Apr 7','14','21','28','May 5','12','19','26','Jun 2','9','16','23'];
+  const cap=[6,8,5,9,7,11,8,10,9,12,10,11], pub=[4,5,6,5,7,6,8,7,6,8,7,8], med=[12,18,9,20,14,22,16,19,24,21,18,24];
+  const chart=document.getElementById('chart'), chartx=document.getElementById('chartx');
+  const maxv=Math.max(...cap.map((c,i)=>c+pub[i]+med[i]/3));
+  weeks.forEach((w,i)=>{
+    const total=cap[i]+pub[i]+med[i]/3; const h=(total/maxv)*100;
+    const col=document.createElement('div'); col.className='flex-1 flex flex-col justify-end'; col.style.height='100%';
+    col.innerHTML=`<div class="bar3" style="height:${(med[i]/3/total)*h}%"></div><div class="bar2" style="height:${(pub[i]/total)*h}%"></div><div class="bar" style="height:${(cap[i]/total)*h}%"></div>`;
+    chart.appendChild(col);
+    const x=document.createElement('div'); x.className='flex-1 text-center'; x.textContent=w; chartx.appendChild(x);
+  });
+
+  // sparkline (active days/wk)
+  const days=[3,4,2,5,4,5,3,4,6,5,4,5]; const spark=document.getElementById('spark');
+  days.forEach(d=>{const b=document.createElement('div');b.className='bar flex-1';b.style.height=(d/7*100)+'%';spark.appendChild(b);});
+
+  // staff rows
+  const staff=[
+    ['Dr. Quasney','2h ago',7,6,[5,4,5,3,4,5,6,5,4,5,5,6]],
+    ['Dr. Lee','1d ago',5,4,[3,4,2,4,3,5,4,3,4,4,3,4]],
+    ['Maya R.','3d ago',2,3,[1,2,3,1,2,2,1,2,2,1,0,1]],
+    ['Front desk','5h ago',4,2,[4,3,4,5,4,3,4,4,5,4,4,3]],
+    ['Jordan P.','12d ago',0,0,[2,1,1,0,1,0,0,0,0,0,0,0]],
+  ];
+  const sr=document.getElementById('staffrows');
+  staff.forEach(([n,la,c,p,sp])=>{
+    const idle = la.includes('12d');
+    const spbars = sp.map(d=>`<span class="bar" style="display:inline-block;width:5px;height:${Math.max(d/7*22,2)}px;${d===0?'background:hsl(var(--border))':''}"></span>`).join('');
+    sr.innerHTML+=`<tr class="border-t" style="border-color:hsl(var(--border))">
+      <td class="py-2 font-medium">${n}</td>
+      <td class="py-2 ${idle?'':'muted'}" ${idle?'style="color:hsl(var(--destructive))"':''}>${la}</td>
+      <td class="py-2 text-right">${c}</td><td class="py-2 text-right">${p}</td>
+      <td class="py-2"><span class="inline-flex items-end gap-0.5">${spbars}</span></td></tr>`;
+  });
+
+  // global ws rows
+  const ws=[
+    ['Move Better','Practice','active','2h',24,11,8],
+    ['Cascade PT','Practice','active','6h',21,9,7],
+    ['Summit Chiro','Starter','active','1d',16,6,5],
+    ['Harbor Wellness','Practice','active','1d',19,8,6],
+    ['Riverside Rehab','Starter','at-risk','9d',4,1,1],
+    ['Apex Sports Med','Practice','active','3h',22,10,9],
+    ['Lakeside Clinic','Starter','idle','21d',0,0,0],
+    ['Northgate Health','Practice','active','5h',18,7,6],
+    ['Oakwood Spine','Starter','at-risk','12d',3,1,0],
+  ];
+  const wr=document.getElementById('wsrows');
+  const stcolor={active:'var(--success)','at-risk':'var(--warning)',idle:'var(--destructive)'};
+  ws.forEach(([n,pl,st,la,ad,c,p])=>{
+    const idle = st!=='active';
+    const trend = Array.from({length:8},(_,i)=> st==='idle'? (i<3?2:0) : st==='at-risk'? Math.max(4-i,0): Math.floor(Math.random()*5)+2);
+    const tb = trend.map(d=>`<span style="display:inline-block;width:4px;height:${Math.max(d/6*20,2)}px;background:hsl(${d===0?'var(--border)':'var(--primary)'});border-radius:2px"></span>`).join('');
+    wr.innerHTML+=`<tr class="border-t" style="border-color:hsl(var(--border))">
+      <td class="py-2 font-medium">${n}</td><td class="py-2 muted">${pl}</td>
+      <td class="py-2"><span class="chip" style="background:hsl(${stcolor[st]}/.14);color:hsl(${stcolor[st]})"><span class="dot mr-1" style="background:hsl(${stcolor[st]})"></span>${st}</span></td>
+      <td class="py-2 ${idle?'':'muted'}" ${idle?'style="color:hsl(var(--destructive))"':''}>${la} ago</td>
+      <td class="py-2 text-right">${ad}</td><td class="py-2 text-right">${c}</td><td class="py-2 text-right">${p}</td>
+      <td class="py-2"><span class="inline-flex items-end gap-0.5">${tb}</span></td></tr>`;
+  });
+  lucide.createIcons();
+</script>
+</body>
+</html>

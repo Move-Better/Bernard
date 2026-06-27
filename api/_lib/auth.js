@@ -166,6 +166,58 @@ export async function requireRole(req, allowedRoles = null, { orgId = null } = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Platform-admin gate — the cross-tenant /admin surface (global usage).
+// ─────────────────────────────────────────────────────────────────────────────
+// This is a USER-level role, NOT an org/workspace role: it grants visibility
+// across every workspace, so it must never be conferred by org membership or
+// the internal-plan bypass. The flag lives on the Clerk user's publicMetadata
+// (`platform_admin: true`), set by hand in the Clerk dashboard for the small
+// set of platform operators. No orgId is checked — the surface is global.
+//
+// Usage:
+//   const auth = await requirePlatformAdmin(req)
+//   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401)
+//                          .json({ error: auth.reason })
+export async function requirePlatformAdmin(req) {
+  if (!CLERK_SECRET) {
+    console.error('[auth] CLERK_SECRET_KEY is not set; refusing request')
+    return { ok: false, reason: 'server-misconfigured' }
+  }
+
+  const header = req.headers?.authorization || req.headers?.Authorization || ''
+  const token  = header.startsWith('Bearer ') ? header.slice(7).trim() : null
+  if (!token) return { ok: false, reason: 'no-token' }
+
+  let payload
+  try {
+    payload = await verifyToken(token, { secretKey: CLERK_SECRET })
+  } catch (e) {
+    console.error('[auth] verifyToken failed:', e?.message)
+    return { ok: false, reason: 'invalid-token' }
+  }
+
+  const userId = payload.sub
+  if (!userId) return { ok: false, reason: 'no-user' }
+
+  let user = getCachedUser(userId)
+  if (!user) {
+    try {
+      user = await clerk().users.getUser(userId)
+      if (user) setCachedUser(userId, user)
+    } catch (e) {
+      console.error('[auth] getUser failed:', e?.message)
+      return { ok: false, reason: 'no-user' }
+    }
+  }
+  if (!user) return { ok: false, reason: 'no-user' }
+
+  if (user.publicMetadata?.platform_admin !== true) {
+    return { ok: false, reason: 'forbidden', userId }
+  }
+  return { ok: true, userId }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Phase 4: per-workspace permission_tier gate.
 // ─────────────────────────────────────────────────────────────────────────────
 // requireTier looks up clinicians.permission_tier for the calling user in the

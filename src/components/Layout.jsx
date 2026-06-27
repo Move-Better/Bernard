@@ -9,7 +9,7 @@ import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
-  TrendingUp,
+  TrendingUp, Gauge, Globe,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -20,6 +20,7 @@ import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { workspace as STATIC_WORKSPACE } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
+import { usePlatformAdmin } from '@/lib/usePlatformAdmin'
 import { usePermission } from '@/lib/usePermission'
 import {
   CAP_SETTINGS_VIEW, CAP_SETTINGS_EDIT, CAP_INTEGRATIONS_CONNECT,
@@ -49,6 +50,9 @@ const NAV_SECTIONS = [
       // SEO Opportunities — search demand → content + advisory site fixes. Editor-gated.
       { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp,
         requiresEditor: true },
+      // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
+      { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge,
+        requiresAdmin: true },
     ],
   },
   {
@@ -87,6 +91,15 @@ const NAV_SECTIONS = [
         requiresCapability: CAP_INTERVIEW_START },
     ],
   },
+  {
+    label: 'Platform',
+    items: [
+      // Admin — cross-tenant global usage. Visible only to platform operators
+      // (Clerk publicMetadata.platform_admin), distinct from per-workspace admin.
+      { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe,
+        requiresPlatformAdmin: true },
+    ],
+  },
 ]
 
 function readCollapsed() {
@@ -96,6 +109,7 @@ function readCollapsed() {
 export default function Layout({ children }) {
   const location = useLocation()
   const { role, isEditor } = useUserRole()
+  const { isPlatformAdmin } = usePlatformAdmin()
   const { has: hasCapability } = usePermission()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(readCollapsed)
@@ -114,6 +128,8 @@ export default function Layout({ children }) {
   function itemVisible(it) {
     if (it.requiresCapability && !hasCapability(it.requiresCapability)) return false
     if (it.requiresEditor && !isEditor) return false
+    if (it.requiresAdmin && role !== 'admin') return false
+    if (it.requiresPlatformAdmin && !isPlatformAdmin) return false
     if (it.hideWhenBookMode && ws?.book_mode === it.hideWhenBookMode) return false
     if (it.showWhen && !it.showWhen(ws)) return false
     return true

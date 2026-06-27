@@ -91,6 +91,11 @@ export const queryKeys = {
     all: ['recap'],
     workspace: () => ['recap', 'workspace'],
   },
+  usage: {
+    all: ['usage'],
+    workspace: (weeks = 12) => ['usage', 'workspace', weeks],
+    platform: () => ['usage', 'platform'],
+  },
   media: {
     all:  ['media'],
     list: (filters = {}) => ['media', 'list', filters],
@@ -161,6 +166,49 @@ export function useWorkspaceRecap(options = {}) {
     queryKey: queryKeys.recap.workspace(),
     queryFn: () =>
       apiFetch('/api/db/workspace-recap').catch(() => ({ team: [], team_all_time_total: 0, cost: {} })),
+    staleTime: 1000 * 60 * 5,
+    ...options,
+  })
+}
+
+// Per-workspace usage summary (activity volume, stickiness, capture→publish
+// funnel, per-staff). Admin-gated surface. Tolerant default so a transient
+// failure renders an empty dashboard rather than blanking the page.
+const EMPTY_USAGE = {
+  stats: {
+    active_days: { this_week: 0, prev_week: 0 },
+    captures: { this_week: 0, prev_week: 0 },
+    published: { this_week: 0, prev_week: 0 },
+    media: { this_week: 0, prev_week: 0 },
+  },
+  activity: [],
+  stickiness: {
+    avg_active_days_per_week: 0, weekly_active_staff: 0, total_staff: 0,
+    current_streak: 0, longest_streak: 0, active_days_by_week: [],
+  },
+  funnel: { captured: 0, drafted: 0, scheduled: 0, published: 0, avg_days_to_publish: null },
+  staff: [],
+}
+
+export function useWorkspaceUsage(weeks = 12, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.usage.workspace(weeks),
+    queryFn: () =>
+      apiFetch(`/api/db/workspace-usage?weeks=${weeks}`).catch(() => EMPTY_USAGE),
+    staleTime: 1000 * 60 * 5,
+    ...options,
+  })
+}
+
+// Cross-tenant platform usage (super-admin /admin page).
+export function usePlatformUsage(options = {}) {
+  return useQuery({
+    queryKey: queryKeys.usage.platform(),
+    queryFn: () =>
+      apiFetch('/api/admin/platform-usage').catch(() => ({
+        topline: { workspaces: 0, active_this_week: 0, captures_week: 0, published_week: 0, at_risk: 0 },
+        workspaces: [],
+      })),
     staleTime: 1000 * 60 * 5,
     ...options,
   })
