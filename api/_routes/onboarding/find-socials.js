@@ -97,7 +97,7 @@ async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method-not-allowed' })
   }
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'socials-search'))) return
   if (!process.env.AI_GATEWAY_API_KEY) {
     console.error('[find-socials] AI_GATEWAY_API_KEY not set')
     return res.status(500).json({ error: 'ai-not-configured' })

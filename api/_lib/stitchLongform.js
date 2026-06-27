@@ -70,7 +70,7 @@ export async function stitchLongform({ workspace, packageId, sourceAssetId, file
   try {
     // 1. Stream each piece to /tmp (never arrayBuffer — pieces can be large).
     for (let i = 0; i < ordered.length; i++) {
-      const r = await fetch(ordered[i].blob_url)
+      const r = await fetch(ordered[i].blob_url, { signal: AbortSignal.timeout(120_000) })
       if (!r.ok || !r.body) throw new Error(`piece ${ordered[i].idx} download failed: ${r.status}`)
       await pipeline(Readable.fromWeb(r.body), createWriteStream(localPaths[i]))
     }

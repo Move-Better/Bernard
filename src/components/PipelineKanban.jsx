@@ -18,11 +18,11 @@ import { getContentStatusToken } from '@/lib/contentStatusTokens'
 // becomes a drag-to-transition board for the REVIEW lanes only — see MOVABLE.
 // Per-lane accent rail color aligns with contentStatusTokens hues.
 const LANES = [
-  { id: 'draft',     icon: FileText,     publisherInbox: false, rail: 'hsl(var(--muted-foreground))' },
-  { id: 'in_review', icon: Clock,        publisherInbox: false, rail: 'hsl(var(--action))' /* act-now — matches approved lane */ },
-  { id: 'approved',  icon: CheckCircle2, publisherInbox: true,  rail: 'hsl(var(--action))' /* act-now */ },
-  { id: 'scheduled', icon: CalendarDays, publisherInbox: false, rail: 'hsl(var(--scheduled))' },
-  { id: 'published', icon: Send,         publisherInbox: false, rail: 'hsl(var(--success))' },
+  { id: 'draft',     icon: FileText,     publisherInbox: false, railCls: 'bg-muted-foreground' },
+  { id: 'in_review', icon: Clock,        publisherInbox: false, railCls: 'bg-action' /* act-now — matches approved lane */ },
+  { id: 'approved',  icon: CheckCircle2, publisherInbox: true,  railCls: 'bg-action' /* act-now */ },
+  { id: 'scheduled', icon: CalendarDays, publisherInbox: false, railCls: 'bg-scheduled' },
+  { id: 'published', icon: Send,         publisherInbox: false, railCls: 'bg-success' },
 ]
 
 // Statuses a card can be dragged between. draft/in_review/approved are pure
@@ -139,7 +139,7 @@ function LaneColumn({ lane, items, isPublisherInbox, interactive }) {
     <div ref={interactive ? setNodeRef : undefined} className={`rounded-2xl border p-3 transition-shadow ${surface} ${dropRing}`}>
       <div className="flex items-center justify-between gap-2 mb-3 px-1">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: lane.rail }} aria-hidden="true" />
+          <span className={`inline-block w-1 h-5 rounded-full shrink-0 ${lane.railCls}`} aria-hidden="true" />
           <Icon className={`h-3.5 w-3.5 ${isPublisherInbox ? 'text-primary' : 'text-muted-foreground'}`} />
           <span className={`text-sm font-bold tracking-tight ${isPublisherInbox ? 'text-primary' : 'text-foreground'}`}>
             {token.label}

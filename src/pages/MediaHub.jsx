@@ -360,11 +360,7 @@ export default function MediaHub() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span
-              className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-              style={{ background: 'hsl(var(--primary))' }}
-              aria-hidden="true"
-            />
+            <span className="nx-rail" aria-hidden="true" />
             Library
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -560,11 +556,7 @@ export default function MediaHub() {
           className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors rounded-t-2xl"
         >
           <div className="flex items-center gap-2 text-xs">
-            <span
-              className="inline-block w-1 h-5 rounded-full shrink-0"
-              style={{ background: 'hsl(var(--primary))' }}
-              aria-hidden="true"
-            />
+                          <span className="nx-rail" aria-hidden="true" />
             {collectionsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             <span className="text-base font-bold tracking-tight text-foreground">Collections</span>
             {collectionId && (

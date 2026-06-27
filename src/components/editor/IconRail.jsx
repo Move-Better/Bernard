@@ -9,19 +9,19 @@
 // onPick: (key) => void
 export default function IconRail({ items, active, onPick }) {
   return (
-    <aside className="flex w-[58px] shrink-0 flex-col border-r bg-card py-1" style={{ borderColor: 'hsl(var(--border))' }}>
+    <aside className="flex w-[58px] shrink-0 flex-col border-r border-border bg-card py-1">
       {items.map(({ key, icon: Icon, label }) => {
         const on = active === key
         return (
           <button
             key={key}
+            aria-label={label}
             onClick={() => onPick(key)}
-            className="flex w-full flex-col items-center gap-1 py-2.5"
-            style={{ borderLeft: `2px solid ${on ? 'hsl(var(--primary))' : 'transparent'}`, background: on ? 'hsl(var(--primary)/0.07)' : undefined }}
+            className={`flex w-full flex-col items-center gap-1 border-l-2 py-2.5 ${on ? 'border-primary bg-primary/7' : 'border-transparent'}`}
             title={label}
           >
-            <Icon className="h-4 w-4" aria-hidden="true" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
-            <span className="text-3xs" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
+            <Icon className={`h-4 w-4 ${on ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
+            <span className={`text-3xs ${on ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
           </button>
         )
       })}

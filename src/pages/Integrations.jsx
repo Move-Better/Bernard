@@ -207,11 +207,7 @@ export default function Integrations() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center">
-          <span
-            className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-            style={{ background: 'hsl(var(--scheduled))' }}
-            aria-hidden="true"
-          />
+          <span className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5 bg-scheduled" aria-hidden="true" />
           Integrations
         </h1>
         <p className="text-muted-foreground text-sm mt-1">

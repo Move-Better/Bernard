@@ -101,6 +101,7 @@ export async function exchangeCodeForTokens({ code, redirectUri }) {
   if (!id || !secret) throw new Error('GBP OAuth client not configured')
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ code, client_id: id, client_secret: secret, redirect_uri: redirectUri, grant_type: 'authorization_code' }),
   })
@@ -125,6 +126,7 @@ export async function refreshGbpToken(refreshToken) {
   if (!id || !secret) throw new Error('GBP OAuth client not configured')
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ refresh_token: refreshToken, client_id: id, client_secret: secret, grant_type: 'refresh_token' }),
   })

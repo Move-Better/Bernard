@@ -175,7 +175,9 @@ export default async function handler(req, res) {
 
   const slug = payload.slug
   const filePath = `${CONTENT_PATH_PREFIX}/${slug}.md`
-  const tag = `[publish-blog slug=${slug}]`
+  const callerIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown'
+  const callerWorkspace = typeof payload.workspace_id === 'string' ? payload.workspace_id : 'unset'
+  const tag = `[publish-blog slug=${slug} workspace=${callerWorkspace} ip=${callerIp}]`
 
   // 1. Existence check — never overwrite.
   let existsResp

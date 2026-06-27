@@ -530,11 +530,7 @@ export default function ChannelsSettings() {
       <div className="md:sticky md:top-0 z-20 py-4 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span
-              className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-              style={{ background: 'hsl(var(--primary))' }}
-              aria-hidden="true"
-            />
+            <span className="nx-rail" aria-hidden="true" />
             Channels
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -555,11 +551,7 @@ export default function ChannelsSettings() {
         <Card key={group.label} className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
-              <span
-                className="inline-block w-1 h-5 rounded-full shrink-0"
-                style={{ background: 'hsl(var(--primary))' }}
-                aria-hidden="true"
-              />
+                              <span className="nx-rail" aria-hidden="true" />
               <CardTitle className="text-lg font-bold">{group.label}</CardTitle>
             </div>
             <CardDescription className="text-xs">

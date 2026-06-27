@@ -26,7 +26,7 @@ import { join } from 'node:path'
 // or the request fails (callers must treat null as "unknown", not "empty").
 export async function probeContentLength(url) {
   try {
-    const r = await fetch(url, { method: 'HEAD' })
+    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5_000) })
     if (!r.ok) return null
     const n = Number(r.headers.get('content-length'))
     return Number.isFinite(n) && n > 0 ? n : null
@@ -51,7 +51,7 @@ export async function downloadImageCapped(url, maxBytes) {
   }
   if (probed != null) {
     // Size known and within budget — safe to buffer directly.
-    const r = await fetch(url)
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) })
     if (!r.ok) throw new Error(`download failed: ${r.status}`)
     const buffer = Buffer.from(await r.arrayBuffer())
     return { buffer, size: buffer.length }
@@ -61,7 +61,7 @@ export async function downloadImageCapped(url, maxBytes) {
   const dir = await mkdtemp(join(tmpdir(), 'imgcap-'))
   const path = join(dir, 'in.bin')
   try {
-    const r = await fetch(url)
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) })
     if (!r.ok) throw new Error(`download failed: ${r.status}`)
     await pipeline(Readable.fromWeb(r.body), createWriteStream(path))
     const { size } = await stat(path)
@@ -87,7 +87,7 @@ export async function downloadImageToTemp(url, prefix = 'img-') {
   const path = join(dir, 'in.bin')
   const cleanup = () => rm(dir, { recursive: true, force: true }).catch(() => {})
   try {
-    const r = await fetch(url)
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) })
     if (!r.ok) throw new Error(`download failed: ${r.status}`)
     await pipeline(Readable.fromWeb(r.body), createWriteStream(path))
     return { path, cleanup }

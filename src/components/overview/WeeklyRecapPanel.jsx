@@ -32,10 +32,10 @@ function dateTimeLabel(iso) {
     new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
-function Stat({ value, label, color }) {
+function Stat({ value, label, cls = 'text-foreground' }) {
   return (
     <div className="p-4 text-center">
-      <p className="text-3xl font-extrabold" style={{ color }}>
+      <p className={`text-3xl font-extrabold ${cls}`}>
         <NumberTicker value={value} />
       </p>
       <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
@@ -60,10 +60,10 @@ function RecapBlock({ recap }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border border-b border-border">
-        <Stat value={stats.wentLive} label="published" color="hsl(var(--success))" />
-        <Stat value={stats.scheduled} label="scheduled to go out" color="hsl(var(--scheduled))" />
-        <Stat value={stats.waiting} label="in review" color="hsl(var(--primary))" />
-        <Stat value={stats.captured} label="captured by the team" color="hsl(var(--primary))" />
+        <Stat value={stats.wentLive} label="published" cls="text-success" />
+        <Stat value={stats.scheduled} label="scheduled to go out" cls="text-scheduled" />
+        <Stat value={stats.waiting} label="in review" cls="text-primary" />
+        <Stat value={stats.captured} label="captured by the team" cls="text-primary" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
@@ -189,10 +189,10 @@ function MemberCard({ m }) {
 }
 
 // ── Block 1.5: all-time summary — the lifetime counterpart to "this week" ─────
-function AllTimeStat({ value, label, color, format }) {
+function AllTimeStat({ value, label, cls = 'text-white', format }) {
   return (
     <div className="p-4 text-center">
-      <p className="text-3xl font-extrabold" style={{ color }}>
+      <p className={`text-3xl font-extrabold ${cls}`}>
         <NumberTicker value={value} format={format} />
       </p>
       <p className="text-xs opacity-70 mt-0.5">{label}</p>
@@ -204,7 +204,7 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
   return (
     <div
       className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)]"
-      style={{ background: 'linear-gradient(120deg, hsl(222 47% 12%) 0%, hsl(215 28% 22%) 100%)' }}
+      style={{ background: 'linear-gradient(120deg, hsl(var(--foreground)) 0%, color-mix(in oklch, hsl(var(--foreground)) 75%, hsl(var(--primary))) 100%)' }}
     >
       <div className="px-6 py-3.5 flex items-center gap-3 text-white border-b border-white/10">
         <InfinityIcon className="h-5 w-5 opacity-90" aria-hidden="true" />
@@ -214,10 +214,10 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
-        <AllTimeStat value={published} label="posts published" color="hsl(var(--success))" />
-        <AllTimeStat value={captured} label="stories captured" color="hsl(var(--info))" />
-        <AllTimeStat value={contributors} label="teammates contributing" color="hsl(var(--info))" />
-        <AllTimeStat value={costTotal} format={(v) => `≈ ${fmtUsd(v)}`} label="total run cost · est." color="#ffffff" />
+        <AllTimeStat value={published} label="posts published" cls="text-success" />
+        <AllTimeStat value={captured} label="stories captured" cls="text-info" />
+        <AllTimeStat value={contributors} label="teammates contributing" cls="text-info" />
+        <AllTimeStat value={costTotal} format={(v) => `≈ ${fmtUsd(v)}`} label="total run cost · est." cls="text-white" />
       </div>
     </div>
   )

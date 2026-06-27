@@ -201,6 +201,7 @@ export default async function handler(req, res) {
     if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     if (!id) return err(res, 'Missing id')
+    if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
 
     const PATCHABLE = new Set(['default_audience', 'default_story_type', 'default_tone', 'default_voice_mode', 'voice_notes', 'preferred_length', 'tts_settings', 'blog_review_enabled'])
     const body = req.body || {}

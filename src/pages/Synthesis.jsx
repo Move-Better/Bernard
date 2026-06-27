@@ -71,9 +71,7 @@ function ConceptRow({ concept, totalStaff, onDraft }) {
   return (
     <div className="group flex items-start gap-3 py-3 border-b last:border-b-0">
       {/* Weight indicator */}
-      <div className="shrink-0 mt-0.5 w-1.5 rounded-full self-stretch min-h-[2rem]"
-        style={{ backgroundColor: agreed >= 2 ? 'hsl(var(--success))' : agreed === 1 ? 'hsl(var(--warning))' : 'hsl(var(--border))' }}
-      />
+      <div className={`shrink-0 mt-0.5 w-1.5 rounded-full self-stretch min-h-[2rem] ${agreed >= 2 ? 'bg-success' : agreed === 1 ? 'bg-warning' : 'bg-border'}`} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
@@ -260,11 +258,7 @@ export default function Synthesis() {
             <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span
-              className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-              style={{ background: 'hsl(var(--primary))' }}
-              aria-hidden="true"
-            />
+            <span className="nx-rail" aria-hidden="true" />
             Knowledge synthesis
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

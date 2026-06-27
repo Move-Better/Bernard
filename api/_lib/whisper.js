@@ -25,6 +25,7 @@ function apiKey() {
 async function whisper(form) {
   const res = await fetch(WHISPER_URL, {
     method:  'POST',
+    signal:  AbortSignal.timeout(240_000),
     headers: { Authorization: `Bearer ${apiKey()}` },
     body:    form,
   })
