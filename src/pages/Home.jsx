@@ -172,7 +172,7 @@ export default function Home() {
     if (readyForContent.length > 0) parts.push({ label: `${readyForContent.length} to draft`, to: '/stories?stage=drafting' })
     if (reviewCount > 0) parts.push({ label: `${reviewCount} to review`, to: '/stories?stage=review' })
     if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
-    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new' })
+    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new', urgent: true })
     return parts
   }, [readyForContent, reviewCount, readyToDistribute, overdueCount])
 
@@ -272,7 +272,7 @@ export default function Home() {
                   <span aria-hidden="true">·</span>
                   <Link
                     to={part.to}
-                    className="font-medium text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-0.5"
+                    className={`font-medium transition-colors inline-flex items-center gap-0.5 ${part.urgent ? 'text-destructive hover:text-destructive/80' : 'text-primary hover:text-primary/80'}`}
                   >
                     {part.label} <ChevronRight className="h-3 w-3" />
                   </Link>

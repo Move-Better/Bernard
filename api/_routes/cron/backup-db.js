@@ -65,7 +65,12 @@ async function handler(req, res) {
 
       // Quote identifier safely.
       const quoted = '"' + name.replace(/"/g, '""') + '"'
-      const dataRes = await pool.query(`SELECT * FROM ${quoted}`)
+      const ROW_CAP = 100_000
+      const dataRes = await pool.query(`SELECT * FROM ${quoted} LIMIT ${ROW_CAP + 1}`)
+      if (dataRes.rows.length > ROW_CAP) {
+        console.warn(`[backup-db] Table ${name} exceeded ${ROW_CAP} rows — backup truncated for this table`)
+        dataRes.rows.splice(ROW_CAP)
+      }
       tables[name] = { columns, rows: dataRes.rows }
       rowCountTotal += dataRes.rows.length
     }

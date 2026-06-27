@@ -378,8 +378,7 @@ function OverlayInspector({ ctx }) {
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(true, true)} title="Center on frame" aria-label="Center on frame"
-          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold`}
-          style={{ borderColor: 'hsl(var(--primary)/0.35)', background: 'hsl(var(--primary)/0.06)', color: 'hsl(var(--primary))' }}>
+          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold border-primary/35 bg-primary/6 text-primary`}>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
           Center
         </button>
@@ -418,7 +417,7 @@ function MomentsInspector({ ctx }) {
       ) : proposals.length === 0 ? (
         <>
           <p className="mb-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No AI moments yet — find the standalone clips in this source.</p>
-          <button onClick={findMoments} className="flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs" style={{ borderColor: 'hsl(var(--primary))', color: 'hsl(var(--primary))' }}><Scissors className="h-3.5 w-3.5" />Find clips</button>
+          <button onClick={findMoments} className="flex w-full items-center justify-center gap-1.5 rounded-md border border-primary py-2 text-2xs text-primary"><Scissors className="h-3.5 w-3.5" />Find clips</button>
         </>
       ) : (
         <>
@@ -426,9 +425,9 @@ function MomentsInspector({ ctx }) {
             const on = s.id === selectedSegmentId
             const dur = Math.max(0, (Number(s.end_sec) || 0) - (Number(s.start_sec) || 0))
             return (
-              <div key={s.id} className="mb-1.5 rounded-md border p-2" style={{ borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', background: on ? 'hsl(var(--primary)/0.06)' : undefined }}>
+              <div key={s.id} className={`mb-1.5 rounded-md border p-2 ${on ? 'border-primary bg-primary/6' : ''}`}>
                 <button onClick={() => applySegment(s)} className="block w-full text-left">
-                  <span className="block text-2xs font-medium" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>{s.hook || 'Moment'}</span>
+                  <span className={`block text-2xs font-medium ${on ? 'text-primary' : ''}`}>{s.hook || 'Moment'}</span>
                   <span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(Number(s.start_sec) || 0)} · {Math.round(dur)}s</span>
                 </button>
                 <button onClick={() => discardSegment(s.id)} className="mt-1 text-3xs" style={{ color: 'hsl(0 60% 50%)' }}>Discard</button>
