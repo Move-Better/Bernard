@@ -120,6 +120,11 @@
   a:not([class]):hover {
     @apply underline underline-offset-2;
   }
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────

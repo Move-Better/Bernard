@@ -104,7 +104,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           <div className="flex items-start gap-2">
             <p className="text-sm font-semibold leading-snug flex-1">&ldquo;{m.quote}&rdquo;</p>
             {m.score != null && (
-              <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10" title="Quotability score">
+              <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10" aria-label={`Quotability score: ${m.score}`}>
                 <Gem className="h-2.5 w-2.5" aria-hidden="true" />{m.score}
               </span>
             )}

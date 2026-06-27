@@ -61,7 +61,7 @@ const STATUS_FILTERS = [
   { id: '',         label: 'Any active' },
   { id: 'raw',      label: 'Just uploaded' },
   { id: 'tagged',   label: 'Tagged — ready to use' },
-  { id: 'rendered', label: 'Used in a draft' },
+  { id: 'rendered', label: 'Used in content' },
   { id: 'approved', label: 'Approved — cleared to publish' },
   { id: 'archived', label: 'Archived' },
 ]

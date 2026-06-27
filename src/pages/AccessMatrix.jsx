@@ -219,7 +219,7 @@ export default function AccessMatrix() {
             <thead className="sticky top-0 z-10">
               {/* group row */}
               <tr>
-                <th scope="col" className="sticky left-0 z-20 bg-card border-b border-border min-w-[220px]" />
+                <th scope="col" aria-label="Team member" className="sticky left-0 z-20 bg-card border-b border-border min-w-[220px]" />
                 {CAPABILITY_GROUPS.map((g) => (
                   <th
                     key={g.label}
@@ -233,7 +233,7 @@ export default function AccessMatrix() {
               </tr>
               {/* capability header row */}
               <tr>
-                <th scope="col" className="sticky left-0 z-20 bg-card border-b-2 border-border border-r-2 border-r-border min-w-[220px]" />
+                <th scope="col" aria-label="Team member" className="sticky left-0 z-20 bg-card border-b-2 border-border border-r-2 border-r-border min-w-[220px]" />
                 {CAPABILITY_GROUPS.map((g) =>
                   g.caps.map((cap, i) => (
                     <th

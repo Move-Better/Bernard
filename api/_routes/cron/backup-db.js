@@ -1,4 +1,5 @@
 import { withSentry } from '../../_lib/sentry.js'
+import { waitUntil } from '@vercel/functions'
 export const config = { runtime: 'nodejs' }
 // Nightly cloud backup of the shared bernard Supabase DB to Vercel Blob.
 //
@@ -128,7 +129,7 @@ async function handler(req, res) {
     } while (cursor)
 
     const pingUrl = process.env.HC_PING_BACKUP_DB
-    if (pingUrl) fetch(pingUrl).catch(() => {})
+    if (pingUrl) waitUntil(fetch(pingUrl, { signal: AbortSignal.timeout(5_000) }).catch(() => {}))
 
     return res.status(200).json({
       ok: true,

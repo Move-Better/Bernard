@@ -13,6 +13,7 @@ export const config = { runtime: 'nodejs' }
 //
 // Auth: Bearer CRON_SECRET (same as backup-db and refresh-engagement).
 
+import { waitUntil } from '@vercel/functions'
 import { evaluate } from '../../_lib/autoPublishGate.js'
 import { getCredential } from '../../_lib/getCredential.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
@@ -438,7 +439,7 @@ export default async function handler(req, res) {
   summary.finishedAt = new Date().toISOString()
 
   const pingUrl = process.env.HC_PING_AUTO_PUBLISH
-  if (pingUrl) fetch(pingUrl).catch(() => {})
+  if (pingUrl) waitUntil(fetch(pingUrl, { signal: AbortSignal.timeout(5_000) }).catch(() => {}))
 
   return res.status(200).json(summary)
 }

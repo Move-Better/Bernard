@@ -38,6 +38,7 @@ import { fetchStaffMemberArc, apiFetch } from '@/lib/api'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { TONES, getVoiceModes } from '@/lib/prompts'
+import { useSelfStaffId } from '@/lib/useSelfStaffId'
 
 
 
@@ -58,9 +59,10 @@ export default function StaffProfile() {
   const { role, canPurge } = useUserRole()
   const { data: staffMember, isLoading: loading, error: loadError } = useStaffMember(staffId)
   const { data: staffList = [] } = useStaffSummaries()
+  const selfStaffId = useSelfStaffId()
   // Self-view (reached via the "My profile" nav) titles the tab to match;
   // viewing another teammate's profile keeps the generic "Staff profile".
-  const isSelfProfile = staffMember?.created_by_id === user?.id
+  const isSelfProfile = staffId === selfStaffId
   useDocumentTitle(isSelfProfile ? 'My profile' : 'Staff profile')
 
   // Initial tab can be deep-linked via ?tab=voice|settings|activity. Used by
@@ -90,12 +92,12 @@ export default function StaffProfile() {
 
   useEffect(() => {
     if (!staffMember) return
-    const isOwner = staffMember.created_by_id === user?.id
+    const isOwner = staffId === selfStaffId
     if (!isOwner && role !== 'admin') return
     fetchStaffMemberArc(staffId, staffMember.interviews || [])
       .then(setArc)
       .catch(() => {})
-  }, [staffMember, staffId, user?.id, role])
+  }, [staffMember, staffId, selfStaffId, role])
 
   // Fetch voice-phrases for the hero ring + phrase preview.
   useEffect(() => {
@@ -138,7 +140,7 @@ export default function StaffProfile() {
   const interviews = staffMember.interviews || []
   const completed = interviews.filter((i) => i.status === 'completed')
   const inProgress = interviews.filter((i) => i.status === 'in_progress')
-  const isMyStaffProfile = staffMember.created_by_id === user?.id
+  const isMyStaffProfile = staffId === selfStaffId
   const showArc = isMyStaffProfile || role === 'admin'
 
   // Voice hero data

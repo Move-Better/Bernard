@@ -630,6 +630,15 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
         </button>
         {open && (
           <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-md py-1">
+            <button
+              type="button"
+              onClick={() => { onSelect(null); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/30 transition-colors text-muted-foreground"
+            >
+              <span className="text-base">⚙️</span>
+              <span className="flex-1 truncate">Custom (no recipe)</span>
+              {!selectedId && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+            </button>
             {recipes.map((r) => (
               <button
                 key={r.id}

@@ -218,11 +218,12 @@ export async function deleteGscCredential(workspaceId) {
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase env not configured')
   await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.searchconsole`,
-    { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { method: 'DELETE', signal: AbortSignal.timeout(10_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   await fetch(`${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}`, {
     method: 'PATCH',
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ gsc_site_url: null }),
-  }).catch(() => {})
+  }).catch(e => console.error('[gscAuth] gsc_site_url clear failed:', e?.message))
 }
