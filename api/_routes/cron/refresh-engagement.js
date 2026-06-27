@@ -78,7 +78,7 @@ function median(nums) {
 
 async function getCredSecret(workspaceId, service) {
   const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.${service}&status=eq.active&select=secret_ciphertext&order=created_at.desc&limit=1`
-  const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } })
+  const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) })
   if (!r.ok) return null
   const rows = await r.json().catch(() => null)
   const ct = rows?.[0]?.secret_ciphertext
@@ -91,7 +91,7 @@ async function getBufferToken(workspaceId) {
   // service-side and skipping the helper avoids any future ambient-env
   // fallback that would mask a missing per-workspace token).
   const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.buffer&status=eq.active&select=secret_ciphertext&order=created_at.desc&limit=1`
-  const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } })
+  const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) })
   if (!r.ok) return null
   const rows = await r.json().catch(() => null)
   const ct = rows?.[0]?.secret_ciphertext
@@ -485,7 +485,7 @@ async function processWorkspaceGBP(ws, summary) {
   // Fetch the GBP analytics credential row (includes config.v4_location_name).
   const credRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${ws.id}&service=eq.gbp_analytics&status=eq.active&select=secret_ciphertext,config&order=created_at.desc&limit=1`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) }
   )
   if (!credRes.ok) {
     summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'gbp', error: `cred fetch ${credRes.status}` })
@@ -636,7 +636,7 @@ async function handler(req, res) {
   // Enumerate active workspaces.
   const wsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,ga4_property_id,publish_provider,bundle_team_id,gbp_location_name`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(15_000) }
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json()

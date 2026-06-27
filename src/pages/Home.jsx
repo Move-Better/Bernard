@@ -31,7 +31,7 @@ function GreetingRibbon({ greeting, callFirst, hasResume }) {
   return (
     <div className="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
       <div className="min-w-0">
-        <p className="text-2xs font-bold uppercase tracking-widest opacity-85">
+        <p className="text-2xs font-bold uppercase tracking-widest opacity-[0.85]">
           Welcome back
         </p>
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{greeting}</h1>

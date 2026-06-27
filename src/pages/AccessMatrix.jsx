@@ -337,7 +337,7 @@ export default function AccessMatrix() {
 function Legend({ swatch, icon, label }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className={`inline-flex items-center justify-center rounded-full ${swatch}`} style={{ width: 20, height: 20 }}>{icon}</span>
+      <span className={`inline-flex items-center justify-center rounded-full w-5 h-5 ${swatch}`}>{icon}</span>
       {label}
     </span>
   )
@@ -345,13 +345,12 @@ function Legend({ swatch, icon, label }) {
 
 function Cell({ person, st, onClick }) {
   if (person.pending) {
-    return <span className="inline-flex items-center justify-center rounded-full bg-muted/30 text-muted-foreground/30" style={{ width: 30, height: 30 }} title="Not yet accepted invite"><Minus className="h-3.5 w-3.5" /></span>
+    return <span className="inline-flex items-center justify-center rounded-full bg-muted/30 text-muted-foreground/30 w-[30px] h-[30px]" title="Not yet accepted invite"><Minus className="h-3.5 w-3.5" /></span>
   }
   if (st.locked) {
     return (
       <span
-        className="inline-flex items-center justify-center rounded-full bg-card ring-1 ring-border text-muted-foreground"
-        style={{ width: 30, height: 30 }}
+        className="inline-flex items-center justify-center rounded-full bg-card ring-1 ring-border text-muted-foreground w-[30px] h-[30px]"
         title={st.isOwner ? 'Owner always has access' : 'Owner-only — cannot be granted to other tiers'}
       >
         <Lock className="h-3 w-3" />
@@ -373,8 +372,7 @@ function Cell({ person, st, onClick }) {
     <button
       onClick={onClick}
       disabled={!st.clickable}
-      className={`relative inline-flex items-center justify-center rounded-full transition ${cls} ${st.clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
-      style={{ width: 30, height: 30 }}
+      className={`relative inline-flex items-center justify-center rounded-full transition w-[30px] h-[30px] ${cls} ${st.clickable ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
       title={ariaLabel}
       aria-label={ariaLabel}
     >

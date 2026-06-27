@@ -115,7 +115,7 @@ async function handler(req, res) {
 
   const wsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&gsc_site_url=not.is.null&select=id,slug,gsc_site_url`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(15_000) }
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json().catch(() => [])

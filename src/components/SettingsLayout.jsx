@@ -148,7 +148,7 @@ function MobileNavRail({ visibleItems }) {
               key={item.to}
               to={item.to}
               ref={isActive ? activeRef : undefined}
-              className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
+              className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors h-9 ${
                 isActive
                   ? 'border-primary/20 bg-primary/10 text-primary'
                   : 'border-border bg-card text-muted-foreground active:bg-accent/40 hover:text-foreground hover:border-primary/30'

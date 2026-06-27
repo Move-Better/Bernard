@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useConfirm } from '@/lib/useConfirm'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
@@ -669,6 +670,7 @@ const DRIVE_ERROR_COPY = {
 }
 
 function GoogleDriveCard({ row, loading, disabled, onChange }) {
+  const confirm = useConfirm()
   const [open, setOpen] = useState(!row)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -717,7 +719,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
   }
 
   async function handleDisconnect() {
-    if (!window.confirm('Disconnect Google Drive for this workspace? Previously imported assets will remain in the Library, but new imports will require reconnecting.')) {
+    if (!(await confirm({ title: 'Disconnect Google Drive?', description: 'Previously imported assets will remain in the Library, but new imports will require reconnecting.', confirmLabel: 'Disconnect', variant: 'destructive' }))) {
       return
     }
     setDisconnecting(true)
@@ -888,6 +890,7 @@ const GSC_ERROR_COPY = {
 }
 
 function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
+  const confirm = useConfirm()
   const [open, setOpen] = useState(!row)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -935,7 +938,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
   }
 
   async function handleDisconnect() {
-    if (!window.confirm('Disconnect Google Search Console for this workspace?')) return
+    if (!(await confirm({ title: 'Disconnect Google Search Console?', description: 'This workspace will stop syncing search analytics data.', confirmLabel: 'Disconnect', variant: 'destructive' }))) return
     setDisconnecting(true)
     try {
       await apiFetchResponse('/api/integrations/gsc/disconnect', { method: 'DELETE' })
@@ -1054,6 +1057,7 @@ const GBP_ERROR_COPY = {
 }
 
 function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
+  const confirm = useConfirm()
   const [open, setOpen] = useState(!row)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -1100,7 +1104,7 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
   }
 
   async function handleDisconnect() {
-    if (!window.confirm('Disconnect Google Business Profile analytics for this workspace?')) return
+    if (!(await confirm({ title: 'Disconnect Google Business Profile?', description: 'Analytics data will stop syncing for this workspace.', confirmLabel: 'Disconnect', variant: 'destructive' }))) return
     setDisconnecting(true)
     try {
       await apiFetchResponse('/api/integrations/gbp/disconnect', { method: 'DELETE' })

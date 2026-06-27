@@ -14,6 +14,7 @@ import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { uploadBrandAsset } from '@/lib/brandKitLib'
 import { listMedia } from '@/lib/mediaLib'
 import { apiFetch } from '@/lib/api'
+import { useConfirm } from '@/lib/useConfirm'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   useBrandKit,
@@ -199,6 +200,7 @@ function LibraryTile({ asset, onOpen, roleAssignments }) {
 // Side-panel that opens when you click a tile. Shows metadata + a "Use as…"
 // list of every role with its candidate confidence (if any).
 function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
+  const confirm = useConfirm()
   if (!asset) return null
   const candidates = asset.ai_classification?.role_candidates || []
   const candidateMap = new Map(candidates.map((c) => [c.role, c.confidence]))
@@ -275,7 +277,7 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
                     // but disabling the button locally avoids a round trip + toast
                     // for the obvious "still assigned to a role" case.
                     if (assignedTo.length > 0) return
-                    if (!window.confirm(`Delete ${asset.filename}? The file is removed from storage too.`)) return
+                    if (!(await confirm({ title: `Delete ${asset.filename}?`, description: 'The file is removed from storage too.', confirmLabel: 'Delete', variant: 'destructive' }))) return
                     await onDelete(asset.id)
                     onClose()
                   }}

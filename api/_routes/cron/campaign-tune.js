@@ -40,7 +40,7 @@ async function handler(req, res) {
   // Fetch workspaces that have at least one active campaign.
   const wsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(15_000) },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json().catch(() => [])

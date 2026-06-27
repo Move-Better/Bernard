@@ -73,6 +73,7 @@ async function resolveGbpChannelIds(workspaceId, locationIds) {
   }
   const r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_locations?${params.toString()}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    signal: AbortSignal.timeout(10_000),
   })
   if (!r.ok) return []
   const rows = await r.json().catch(() => [])
@@ -362,6 +363,7 @@ async function resolveBundleGbpTargets(workspaceId, locationIds) {
   }
   const r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_locations?${params.toString()}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    signal: AbortSignal.timeout(10_000),
   })
   if (!r.ok) return []
   const rows = await r.json().catch(() => [])

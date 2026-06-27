@@ -101,6 +101,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
         body: JSON.stringify({ packageId }),
+        signal: AbortSignal.timeout(30_000),
       })
       resumed += 1
     } catch (e) {
