@@ -243,7 +243,7 @@ export async function refreshGbpLocations(workspaceId) {
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase env not configured')
   const credRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.gbp_analytics&status=eq.active&select=id,secret_ciphertext,config&limit=1`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { signal: AbortSignal.timeout(10_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!credRes.ok) throw new Error(`credential fetch failed: ${credRes.status}`)
   const row = (await credRes.json().catch(() => []))?.[0]
@@ -268,6 +268,7 @@ export async function refreshGbpLocations(workspaceId) {
     `${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${row.id}`,
     {
       method: 'PATCH',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ config: newConfig }),
     },
@@ -276,6 +277,7 @@ export async function refreshGbpLocations(workspaceId) {
 
   await fetch(`${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}`, {
     method: 'PATCH',
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ gbp_location_name: locationInfo.location_name }),
   }).catch(e => console.warn('[gbpAuth] gbp_location_name mirror failed:', e?.message))
@@ -344,10 +346,11 @@ export async function deleteGbpCredential(workspaceId) {
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase env not configured')
   await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.gbp_analytics`,
-    { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { method: 'DELETE', signal: AbortSignal.timeout(10_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   await fetch(`${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}`, {
     method: 'PATCH',
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ gbp_location_name: null }),
   }).catch(() => {})

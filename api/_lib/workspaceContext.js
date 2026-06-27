@@ -74,22 +74,13 @@ function readHostHeader(req) {
   return headers.host || headers.Host || null
 }
 
-// Non-prod-only fallback for Playwright preview-smoke tests. Vercel preview
-// URLs (bernard-git-*.vercel.app) have no .withbernard.ai subdomain to
-// resolve, so we accept ?workspace=<slug> as an explicit override.
-// Production runs short-circuit before this is read.
-function extractSlugFromQuery(req) {
-  if (process.env.VERCEL_ENV === 'production') return null
-  const raw = req?.url
-  if (!raw) return null
-  let url
-  try {
-    url = typeof raw === 'string' ? new URL(raw, 'http://localhost') : raw
-  } catch {
-    return null
-  }
-  const slug = url?.searchParams?.get?.('workspace')
-  return slug || null
+// The ?workspace= query-param override was removed (2026-06-27) — it enabled
+// cross-tenant reads on preview deployments for any authenticated Clerk user,
+// since requireRole(req, null) endpoints would resolve the tenant from the
+// override rather than from the Host header. No test or script was using this
+// path (confirmed by grep of tests/ and scripts/).
+function extractSlugFromQuery(_req) {
+  return null
 }
 
 // Look up a workspace by primary key. Used by background paths (e.g. the

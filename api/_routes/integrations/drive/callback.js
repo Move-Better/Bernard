@@ -1,3 +1,4 @@
+import { verifyToken } from '@clerk/backend'
 import { withSentry } from '../../../_lib/sentry.js'
 import {
   driveRedirectUri,
@@ -88,6 +89,26 @@ async function handler(req, res) {
   } catch (e) {
     console.error('[drive/callback] exchange failed:', e?.message)
     return redirectBack(res, parsed.slug, { drive: 'error', reason: 'exchange_failed' })
+  }
+
+  // Verify the Clerk session matches the user who initiated the flow.
+  if (parsed.userId) {
+    const cookies = req.headers.cookie || ''
+    const match = cookies.match(/(?:^|;\s*)__session=([^;]+)/)
+    const sessionToken = match ? decodeURIComponent(match[1]) : null
+    if (!sessionToken) {
+      return renderApexError(res, 'Session expired. Please sign in and try connecting again.')
+    }
+    try {
+      const claims = await verifyToken(sessionToken, { secretKey: process.env.CLERK_SECRET_KEY })
+      if (claims.sub !== parsed.userId) {
+        console.error('[drive/callback] user_id mismatch — possible state replay', { state_uid: parsed.userId, session_uid: claims.sub })
+        return renderApexError(res, 'Authentication mismatch. Please try connecting again from your workspace settings.')
+      }
+    } catch (e) {
+      console.error('[drive/callback] session verification failed:', e?.message)
+      return renderApexError(res, 'Session expired. Please sign in and try connecting again.')
+    }
   }
 
   const accountEmail = await fetchAccountEmail(tokens.access_token)
