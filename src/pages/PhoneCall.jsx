@@ -360,11 +360,14 @@ export default function PhoneCall() {
 
       // 4. Mint the realtime ephemeral. The server validates workspace flag
       //    + tenant ownership of interviewId before calling OpenAI.
+      //    A4: send the full system prompt so the server sets it at mint time —
+      //    OpenAI caches identical instruction strings so the session benefits
+      //    from caching from token zero rather than after session.update lands.
       const mint = /** @type {{ clientSecret: string, model: string }} */ (
         await apiFetch('/api/realtime-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ interviewId: interview.id }),
+          body: JSON.stringify({ interviewId: interview.id, systemPrompt: fullPrompt }),
         })
       )
 

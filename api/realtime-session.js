@@ -53,15 +53,22 @@ const REALTIME_VOICE = 'ballad'
 // re-mint mid-stream.
 const TOKEN_TTL_SEC = 600
 
-// Bootstrap instructions. These are intentionally generic — the FULL system
-// prompt arrives from the browser via session.update once the data channel
-// opens, which lets us reuse `getInterviewSystemPrompt()` exactly as the
-// chat-interview path does. This bootstrap just keeps the model from blurting
-// nonsense if the user starts talking before session.update lands.
+// Bootstrap instructions used when the browser cannot send the full prompt at
+// mint time (e.g. very old clients). Keeps the model silent until a follow-up
+// session.update lands. Normal flow now sends the real prompt at mint time via
+// the `systemPrompt` body field — see A4 note in the Flow comment at the top.
 const BOOTSTRAP_INSTRUCTIONS = [
   'Wait silently for the session to be configured before speaking.',
   'Once configured, you will receive detailed instructions about a clinical interview to conduct.',
 ].join(' ')
+
+// A4: prompt-caching floor. The browser builds the full system prompt before
+// minting and sends it here so we can set it in sessionConfig.instructions.
+// OpenAI caches identical instruction strings across sessions — setting it at
+// mint time (rather than only via browser-side session.update) means every
+// conversation turn benefits from cached input from token zero.
+// Clamp: 100 chars minimum (sanity), 32 KB maximum (generous for any prompt).
+const MAX_PROMPT_BYTES = 32768
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -118,6 +125,16 @@ export default async function handler(req, res) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!UUID_RE.test(interviewId)) return res.status(400).json({ error: 'invalid_interviewId' })
 
+  // A4: accept the pre-built system prompt from the browser so we can set it
+  // in sessionConfig at mint time for better OpenAI prompt caching.
+  const rawSystemPrompt = body.systemPrompt
+  const mintInstructions =
+    typeof rawSystemPrompt === 'string' &&
+    rawSystemPrompt.length >= 100 &&
+    Buffer.byteLength(rawSystemPrompt, 'utf8') <= MAX_PROMPT_BYTES
+      ? rawSystemPrompt
+      : BOOTSTRAP_INSTRUCTIONS
+
   const ivRes = await sb(
     `interviews?id=eq.${encodeURIComponent(interviewId)}&workspace_id=eq.${ws.id}&select=id,topic&limit=1`,
   )
@@ -168,7 +185,7 @@ export default async function handler(req, res) {
   const sessionConfig = {
     type: 'realtime',
     model: REALTIME_MODEL,
-    instructions: BOOTSTRAP_INSTRUCTIONS,
+    instructions: mintInstructions,
     audio: {
       output: { voice: REALTIME_VOICE },
       input: {
