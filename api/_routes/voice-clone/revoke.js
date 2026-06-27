@@ -55,11 +55,22 @@ export default async function handler(req, res) {
   const lookupRes = await sb(
     `staff?id=eq.${encodeURIComponent(staffId)}` +
     `&workspace_id=eq.${ws.id}` +
-    `&select=id,eleven_voice_id&limit=1`
+    `&select=id,eleven_voice_id,user_id&limit=1`
   )
   if (!lookupRes.ok) return res.status(502).json({ error: 'Could not look up staff member' })
   const [staffMember] = await lookupRes.json()
   if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
+
+  // Authorization: revoking DELETES the voice clone at ElevenLabs (irreversible).
+  // requireRole(req, null) above only authenticates the caller as a workspace
+  // member — it does NOT scope to this staff row. Without this gate any member
+  // could destroy a colleague's clone. Allow only the staff member themselves
+  // (matched by user_id, the canonical self link — see useSelfStaffId /
+  // capture/token.js) or a workspace admin.
+  const isSelf = staffMember.user_id && staffMember.user_id === auth.userId
+  if (!isSelf && auth.role !== 'admin') {
+    return res.status(403).json({ error: 'forbidden' })
+  }
 
   if (staffMember.eleven_voice_id) {
     try {

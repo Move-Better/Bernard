@@ -87,13 +87,24 @@ export default async function handler(req, res) {
   const staffRes = await sb(
     `staff?id=eq.${encodeURIComponent(staffId)}` +
     `&workspace_id=eq.${ws.id}` +
-    `&select=id,name,eleven_voice_id,voice_clone_revoked_at,voice_clone_opt_out&limit=1`
+    `&select=id,name,eleven_voice_id,voice_clone_revoked_at,voice_clone_opt_out,user_id&limit=1`
   )
   if (!staffRes.ok) {
     return res.status(502).json({ error: 'Could not look up staff member' })
   }
   const [staffMember] = await staffRes.json()
   if (!staffMember) return res.status(404).json({ error: 'Staff member not found in this workspace' })
+
+  // Authorization: training clones a person's voice (consent-bearing + billable).
+  // requireRole(req, null) above only authenticates the caller as a workspace
+  // member — it does NOT scope to this staff row. Allow only the staff member
+  // themselves (matched by user_id, the canonical self link — see useSelfStaffId /
+  // capture/token.js) or a workspace admin to train a voice for this staff row.
+  const isSelf = staffMember.user_id && staffMember.user_id === auth.userId
+  if (!isSelf && auth.role !== 'admin') {
+    return res.status(403).json({ error: 'forbidden' })
+  }
+
   // Hard prohibition: a staff member who has locked voice cloning can never be
   // cloned, even if the client reaches this endpoint directly.
   if (staffMember.voice_clone_opt_out) {
