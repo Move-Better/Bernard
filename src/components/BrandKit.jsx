@@ -836,8 +836,8 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
                         } else {
                           toast.error(data.error || 'Re-classify failed')
                         }
-                      } catch (err) {
-                        toast.error('Re-classify failed', { description: err.message })
+                      } catch (_err) {
+                        toast.error('Re-classify failed')
                       } finally {
                         setReclassifying(false)
                       }

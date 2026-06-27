@@ -186,7 +186,7 @@ export default function Stories() {
         </div>
 
         {/* Quick-filter pill row — All / Draft / Ready to Distribute / Published / Mine */}
-        <div role="tablist" aria-label="Filter stories" className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div role="group" aria-label="Filter stories" className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {QUICK_FILTERS.map((qf) => {
             const isActive = qf.key === ''
               ? !stageFilter && !mineOnly
@@ -197,8 +197,7 @@ export default function Stories() {
               <button
                 key={qf.key}
                 type="button"
-                role="tab"
-                aria-selected={isActive}
+                aria-pressed={isActive}
                 onClick={() => {
                   if (qf.key === '') {
                     setSearchParams((prev) => {

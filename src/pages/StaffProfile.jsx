@@ -204,7 +204,7 @@ export default function StaffProfile() {
 
           {/* Tab bar */}
           <div className="flex" role="tablist" aria-label="Staff profile sections">
-            <ProfileTab active={activeTab === 'activity'} onClick={() => setActiveTab('activity')}>
+            <ProfileTab id="tab-activity" active={activeTab === 'activity'} onClick={() => setActiveTab('activity')}>
               Activity
               {inProgress.length > 0 && (
                 <span className="ml-1.5 text-3xs font-bold px-1.5 py-px rounded-full bg-primary text-primary-foreground leading-none">
@@ -213,7 +213,7 @@ export default function StaffProfile() {
               )}
             </ProfileTab>
 
-            <ProfileTab active={activeTab === 'voice'} onClick={() => setActiveTab('voice')}>
+            <ProfileTab id="tab-voice" active={activeTab === 'voice'} onClick={() => setActiveTab('voice')}>
               {/* Mini ring reflecting voice strength */}
               <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 -ml-0.5" aria-hidden>
                 <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
@@ -236,7 +236,7 @@ export default function StaffProfile() {
               )}
             </ProfileTab>
 
-            <ProfileTab active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
+            <ProfileTab id="tab-settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
               Settings
             </ProfileTab>
           </div>
@@ -245,7 +245,7 @@ export default function StaffProfile() {
 
       {/* ── Activity tab ──────────────────────────────────────────── */}
       {activeTab === 'activity' && (
-        <div className="px-6 py-6 space-y-8">
+        <div role="tabpanel" aria-labelledby="tab-activity" className="px-6 py-6 space-y-8">
           {interviews.length === 0 ? (
             <EmptyState
               icon={<MessageSquare className="h-5 w-5" />}
@@ -331,11 +331,11 @@ export default function StaffProfile() {
 
       {/* ── Voice tab ─────────────────────────────────────────────── */}
       {activeTab === 'voice' && (
-        <div>
+        <div role="tabpanel" aria-labelledby="tab-voice">
           {/* Dark hero — full bleed across container */}
           <div
             className="relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1e1a16 0%, #2c1e0f 55%, #1a1510 100%)' }}
+            style={{ background: 'linear-gradient(135deg, hsl(30 15% 10%) 0%, hsl(30 47% 11%) 55%, hsl(28 20% 9%) 100%)' }}
           >
             {/* Subtle waveform texture at bottom */}
             <div
@@ -489,7 +489,7 @@ export default function StaffProfile() {
 
       {/* ── Settings tab ──────────────────────────────────────────── */}
       {activeTab === 'settings' && (
-        <div className="px-6 py-6 space-y-4 max-w-2xl">
+        <div role="tabpanel" aria-labelledby="tab-settings" className="px-6 py-6 space-y-4 max-w-2xl">
           {isMyStaffProfile && <DisplayNameCard />}
           {(isMyStaffProfile || role === 'admin') && (
             <DefaultToneCard staffMember={staffMember} />
@@ -688,10 +688,11 @@ export default function StaffProfile() {
 
 // ── Tab button ─────────────────────────────────────────────────────────────────
 
-function ProfileTab({ active, onClick, children }) {
+function ProfileTab({ active, onClick, children, id }) {
   return (
     <button
       type="button"
+      id={id}
       role="tab"
       aria-selected={active}
       onClick={onClick}

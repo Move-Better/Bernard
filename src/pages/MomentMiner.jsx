@@ -98,14 +98,14 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
         <div className="min-w-0 flex-1">
           {m.why && (
             <p className="text-xs font-medium text-foreground/80 mb-1.5 flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />{m.why}
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />{m.why}
             </p>
           )}
           <div className="flex items-start gap-2">
             <p className="text-sm font-semibold leading-snug flex-1">&ldquo;{m.quote}&rdquo;</p>
             {m.score != null && (
               <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10" title="Quotability score">
-                <Gem className="h-2.5 w-2.5" />{m.score}
+                <Gem className="h-2.5 w-2.5" aria-hidden="true" />{m.score}
               </span>
             )}
           </div>
@@ -273,11 +273,11 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
           {staffName && <span>{staffName}</span>}
           {ok ? (
             <span className="ml-auto flex items-center gap-1 text-success">
-              <ShieldCheck className="h-3 w-3" />consent ok
+              <ShieldCheck className="h-3 w-3" aria-hidden="true" />consent ok
             </span>
           ) : (
             <span className="ml-auto flex items-center gap-1 text-destructive">
-              <ShieldAlert className="h-3 w-3" />consent pending
+              <ShieldAlert className="h-3 w-3" aria-hidden="true" />consent pending
             </span>
           )}
         </div>

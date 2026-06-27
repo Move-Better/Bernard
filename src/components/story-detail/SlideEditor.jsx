@@ -496,7 +496,7 @@ function RealQuotesSection({ pieceId, onInsertQuote }) {
               key={q.id}
               type="button"
               onClick={() => onInsertQuote?.(q.quote)}
-              className="w-full text-left rounded-md border border-l-[3px] border-l-verbatim-accent bg-card px-2.5 py-2 text-2xs leading-snug text-foreground hover:bg-verbatim-accent/10 transition-colors"
+              className="w-full text-left rounded-md border border-l-4 border-l-verbatim-accent bg-card px-2.5 py-2 text-2xs leading-snug text-foreground hover:bg-verbatim-accent/10 transition-colors"
             >
               <span className="text-3xs font-bold uppercase tracking-wide text-verbatim-accent block mb-0.5">● verbatim</span>
               &ldquo;{q.quote}&rdquo;

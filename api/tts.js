@@ -4,14 +4,17 @@
 // browser. Used by InterviewSession to replace the browser's robotic
 // speechSynthesis with a neural voice for the interviewer.
 //
-// Request body: { text: string, voiceId?: string, staffId?: string }
+// Request body: { text: string, staffId?: string }
 // Response: audio/mpeg stream
 //
 // Voice resolution order (Phase 5 Feature 3):
 //   1. staffId → live (non-revoked) clone on clinicians.eleven_voice_id
-//   2. explicit voiceId param
-//   3. TTS_DEFAULT_VOICE_ID env
-//   4. DEFAULT_VOICE_ID constant (Adam — Bernard's voice)
+//   2. TTS_DEFAULT_VOICE_ID env
+//   3. DEFAULT_VOICE_ID constant (Adam — Bernard's voice)
+//
+// The voiceId body param is intentionally NOT forwarded — it bypassed workspace
+// isolation (any auth'd user could enumerate external ElevenLabs voice IDs).
+// Callers must use staffId to select a cloned voice.
 //
 // Falls back gracefully — if ELEVENLABS_API_KEY is missing or the upstream
 // call fails, returns a non-2xx and the client falls back to speechSynthesis.
@@ -49,7 +52,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.ELEVENLABS_API_KEY
   if (!apiKey) return res.status(503).json({ error: 'TTS not configured' })
 
-  const { text, voiceId, staffId, speed: bodySpeed } = req.body || {}
+  const { text, staffId, speed: bodySpeed } = req.body || {}
   if (!text || typeof text !== 'string') return res.status(400).json({ error: 'Missing text' })
   const trimmed = text.trim().slice(0, MAX_TEXT_LENGTH)
   if (!trimmed) return res.status(400).json({ error: 'Empty text' })
@@ -89,7 +92,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const voice = cloneVoiceId || voiceId || process.env.TTS_DEFAULT_VOICE_ID || DEFAULT_VOICE_ID
+  const voice = cloneVoiceId || process.env.TTS_DEFAULT_VOICE_ID || DEFAULT_VOICE_ID
   const model = process.env.TTS_DEFAULT_MODEL_ID || DEFAULT_MODEL_ID
 
   // Playback speed — ElevenLabs accepts 0.7 (slower) … 1.2 (faster), default 1.0.

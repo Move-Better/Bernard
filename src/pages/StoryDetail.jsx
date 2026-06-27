@@ -145,21 +145,23 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
   }
 
   return (
-    <h1 className="group text-2xl font-bold tracking-tight text-foreground leading-snug flex items-center min-w-0">
-      {accent}
-      <span className="truncate">{value || 'Untitled interview'}</span>
+    <div className="group flex items-center min-w-0">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground leading-snug flex items-center min-w-0 flex-1">
+        {accent}
+        <span className="truncate">{value || 'Untitled interview'}</span>
+      </h1>
       {canEdit && (
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="ml-2 inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground hover:bg-muted/50 transition"
+          className="ml-2 inline-flex shrink-0 items-center justify-center h-7 w-7 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground hover:bg-muted/50 transition"
           title="Edit title"
           aria-label="Edit title"
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       )}
-    </h1>
+    </div>
   )
 }
 

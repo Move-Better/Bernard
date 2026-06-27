@@ -361,16 +361,16 @@ function OverlayInspector({ ctx }) {
     if (v) setOverlay('y', 0.5)
     flashAlignGuides?.()
   }
-  const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border transition-colors'
+  const alignBtnCls = 'flex h-7 items-center justify-center rounded border transition-colors'
   return (
     <InspectorShell icon={Type} title="Text overlay" right={
       <div className="flex items-center gap-1">
         <button type="button" onClick={() => alignOverlay(true, false)} title="Center horizontally" aria-label="Center horizontally"
-          className={`${alignBtnCls} w-[26px] border-border text-muted-foreground`}>
+          className={`${alignBtnCls} w-7 border-border text-muted-foreground`}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="2" y="5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(false, true)} title="Center vertically" aria-label="Center vertically"
-          className={`${alignBtnCls} w-[26px] border-border text-muted-foreground`}>
+          className={`${alignBtnCls} w-7 border-border text-muted-foreground`}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(true, true)} title="Center on frame" aria-label="Center on frame"
@@ -535,9 +535,9 @@ function VerticalTimeline({ ctx }) {
             const isSel = typeof sel === 'object' && sel.id === o.id
             return (
               <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-x-0 cursor-grab overflow-hidden rounded-md" style={{ top: `${f(startSec + o.in)}%`, height: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
-                <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize h-[9px]" />
+                <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize h-2.5" />
                 <div className="flex h-full items-center justify-center"><Type className="h-3 w-3 text-action-foreground" /></div>
-                <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize h-[9px]" />
+                <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize h-2.5" />
               </div>
             )
           }) : <span className="absolute inset-x-0 top-2 text-center text-3xs text-muted-foreground">+ Text</span>}

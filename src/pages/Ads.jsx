@@ -135,7 +135,7 @@ export default function Ads() {
     <div className="flex flex-col gap-4">
       <div className="mt-1 flex items-end gap-2">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Megaphone className="h-6 w-6 text-action" /> Ads
+          <Megaphone className="h-6 w-6 text-action" aria-hidden="true" /> Ads
         </h1>
         <Button size="sm" className="mb-0.5 ml-auto gap-1.5" onClick={() => setCreating(true)}>
           <Plus className="h-3.5 w-3.5" /> New ad creative
