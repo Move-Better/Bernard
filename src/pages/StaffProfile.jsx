@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
 import EmptyState from '@/components/EmptyState'
+import ErrorState from '@/components/ErrorState'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -133,7 +134,7 @@ export default function StaffProfile() {
   }
 
   if (loading) return <LoadingState />
-  if (!staffMember) return null
+  if (!staffMember) return <ErrorState message="Staff member not found." />
 
   const interviews = staffMember.interviews || []
   const completed = interviews.filter((i) => i.status === 'completed')
