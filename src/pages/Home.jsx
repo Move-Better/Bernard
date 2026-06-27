@@ -238,8 +238,7 @@ export default function Home() {
       {failedPieces.length > 0 && (
         <Link
           to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories'}
-          className="flex items-center gap-3 rounded-xl px-4 py-3 hover:brightness-[0.98] transition"
-          style={{ background: 'hsl(var(--destructive) / 0.07)', border: '1px solid hsl(var(--destructive) / 0.28)' }}
+          className="flex items-center gap-3 rounded-xl border border-destructive/28 bg-destructive/7 px-4 py-3 hover:brightness-[0.98] transition"
         >
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">
             <AlertTriangle className="h-4 w-4" />
@@ -258,8 +257,7 @@ export default function Home() {
           cards below. Detail lives in Overview; this is just the count + a link. */}
       {attentionTotal > 0 && (
         <div
-          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3 flex-wrap"
-          style={{ background: 'hsl(var(--action) / 0.08)', border: '1px solid hsl(var(--action) / 0.25)' }}
+          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl border border-action/25 bg-action/8 px-4 py-3 flex-wrap"
         >
           <span className="h-2 w-2 rounded-full bg-action shrink-0" />
           <span className="text-sm font-medium text-foreground">

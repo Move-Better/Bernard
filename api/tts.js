@@ -103,6 +103,7 @@ export default async function handler(req, res) {
   try {
     upstream = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         'xi-api-key': apiKey,
         'content-type': 'application/json',

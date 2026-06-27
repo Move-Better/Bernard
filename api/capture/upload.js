@@ -173,7 +173,7 @@ export default async function handler(req, res) {
       captured_at: capturedAt,
       // asset_purpose is CHECK-constrained to interview|broll|photo|brand.
       asset_purpose: kind === 'video' ? 'broll' : 'photo',
-      notes: caption,
+      notes: (caption || '').slice(0, 500) || null,
       tags: locationHint ? [locationHint] : [],
       created_by: auth.staffMember.user_id || null,
     }),

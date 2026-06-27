@@ -186,7 +186,7 @@ export default async function handler(req, res) {
   if (!kicked) {
     // The row exists with transcribe_status='processing'; without a worker it
     // would poll forever. Mark it failed so the UI surfaces a retry instead.
-    await sb(`interviews?id=eq.${interview.id}`, {
+    await sb(`interviews?id=eq.${interview.id}&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ transcribe_status: 'failed' }),
     }).catch(() => {})
