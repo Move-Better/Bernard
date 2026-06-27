@@ -41,12 +41,15 @@ function clerk() {
 async function uploadDefaultOrgLogo(orgId, userId) {
   try {
     const logoUrl = 'https://withbernard.ai/brand/bernard-icon-512.png'
-    const r = await fetch(logoUrl)
+    const r = await fetch(logoUrl, { signal: AbortSignal.timeout(10_000) })
     if (!r.ok) {
       console.warn(`[claim] default-logo fetch ${r.status} for org=${orgId}`)
       return
     }
+    const contentLen = parseInt(r.headers.get('content-length') || '0', 10)
+    if (contentLen > 1_048_576) { console.warn(`[claim] logo too large: ${contentLen}`); return }
     const ab = await r.arrayBuffer()
+    if (ab.byteLength > 1_048_576) { console.warn(`[claim] logo too large after fetch: ${ab.byteLength}`); return }
     const file = new Blob([ab], { type: 'image/png' })
     await clerk().organizations.updateOrganizationLogo({
       organizationId:  orgId,

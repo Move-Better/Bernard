@@ -92,6 +92,7 @@ export default async function handler(req, res) {
   let extractedPublishedAt = null
   try {
     const jinaRes = await fetch(`${JINA_BASE}${encodeURIComponent(cleanUrl)}`, {
+      signal: AbortSignal.timeout(25_000),
       headers: {
         'Accept': 'text/plain',
         'X-Return-Format': 'markdown',

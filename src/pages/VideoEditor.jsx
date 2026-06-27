@@ -246,20 +246,20 @@ function ClipInspector({ ctx }) {
   return (
     <InspectorShell icon={Film} title="Clip & reframe" right={formatDim}>
       <div className="mb-3 flex items-center gap-2 text-2xs">
-        <span className="flex-1 rounded-md border px-2 py-1.5 text-center font-mono" style={{ borderColor: 'hsl(var(--border))' }}>{fmt(startSec)}</span>
-        <span style={{ color: 'hsl(var(--muted-foreground))' }}>→</span>
-        <span className="flex-1 rounded-md border px-2 py-1.5 text-center font-mono" style={{ borderColor: 'hsl(var(--border))' }}>{fmt(endSec)}</span>
-        <span className="text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>({fmt(durationSec)})</span>
+        <span className="flex-1 rounded-md border border-border px-2 py-1.5 text-center font-mono">{fmt(startSec)}</span>
+        <span className="text-muted-foreground">→</span>
+        <span className="flex-1 rounded-md border border-border px-2 py-1.5 text-center font-mono">{fmt(endSec)}</span>
+        <span className="text-3xs text-muted-foreground">({fmt(durationSec)})</span>
       </div>
-      <p className="mb-3 rounded-md px-2 py-1 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Trim with the <b>Clip bar</b> on the right timeline.</p>
-      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Reframe · position in {formatDim}</p>
+      <p className="mb-3 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Trim with the <b>Clip bar</b> on the right timeline.</p>
+      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Reframe · position in {formatDim}</p>
       {[['zoom', 'Zoom', 100, 220], ['x', 'Horizontal', 0, 100], ['y', 'Vertical', 0, 100]].map(([k, lbl, lo, hi]) => (
         <div key={k} className="mb-2">
-          <div className="mb-1 flex justify-between text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><span>{lbl}</span><span>{reframe[k]}{k === 'zoom' ? '%' : ''}</span></div>
+          <div className="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{lbl}</span><span>{reframe[k]}{k === 'zoom' ? '%' : ''}</span></div>
           <input aria-label={lbl} type="range" min={lo} max={hi} value={reframe[k]} onChange={(e) => setReframe(k, +e.target.value)} className="w-full" />
         </div>
       ))}
-      <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Motion</p>
+      <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Motion</p>
       <div className="mb-2 grid grid-cols-3 gap-1.5">
         {[['none', 'None'], ['push_in', 'Push in'], ['pull_out', 'Pull out'], ['pan_left', 'Pan ←'], ['pan_right', 'Pan →']].map(([m, l]) => (
           <button key={m} onClick={() => setKenBurns('motion', m)} className="rounded-md border py-1.5 text-3xs" style={segBtn(kbMotion === m)}>{l}</button>
@@ -267,20 +267,20 @@ function ClipInspector({ ctx }) {
       </div>
       {kbMotion !== 'none' && (
         <div className="mb-1">
-          <div className="mb-1 flex justify-between text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><span>Intensity</span><span>{kenBurns.intensity}</span></div>
+          <div className="mb-1 flex justify-between text-2xs text-muted-foreground"><span>Intensity</span><span>{kenBurns.intensity}</span></div>
           <input aria-label="Motion intensity" type="range" min={0} max={100} value={kenBurns.intensity} onChange={(e) => setKenBurns('intensity', +e.target.value)} className="w-full" />
         </div>
       )}
-      <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Speed</p>
+      <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Speed</p>
       <div className="mb-3 flex gap-1.5">
         {[0.5, 1, 1.5, 2].map((s) => (
           <button key={s} onClick={() => setSpeed(s)} className="flex-1 rounded-md border py-1.5 text-2xs" style={segBtn(speed === s)}>{s}×</button>
         ))}
       </div>
-      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Captions</p>
-      <button onClick={() => selectKey('caption')} className="flex w-full items-center justify-between rounded-md border px-2 py-2 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
+      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Captions</p>
+      <button onClick={() => selectKey('caption')} className="flex w-full items-center justify-between rounded-md border border-border px-2 py-2 text-2xs">
         <span><Captions className="mr-1 inline h-3.5 w-3.5" />{caption.preset === 'off' ? 'Captions off' : `Karaoke · ${caption.position} · ${caption.size}`}</span>
-        <span style={{ color: 'hsl(var(--muted-foreground))' }}>›</span>
+        <span className="text-muted-foreground">›</span>
       </button>
     </InspectorShell>
   )
@@ -290,30 +290,29 @@ function GradeInspector({ ctx }) {
   const { grade, setGradeKey, applyVibe, resetGrade, brandGrade, saveBrandGrade, savingBrand } = ctx
   return (
     <InspectorShell icon={Sparkles} title="AI Colorist — Frame grade" right="whole clip">
-      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Vibe presets</p>
+      <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Vibe presets</p>
       <div className="mb-3 flex flex-wrap gap-1.5">
         <button
           onClick={() => brandGrade && applyVibe(brandGrade)}
           disabled={!brandGrade}
-          title={brandGrade ? 'Your saved brand look' : 'Dial in a grade, then “Save as Brand look” below'}
-          className="rounded-full border px-2.5 py-1 text-2xs font-medium disabled:opacity-50"
-          style={{ borderColor: 'hsl(var(--action))', color: 'hsl(var(--action))', background: 'hsl(var(--action)/0.08)' }}
+          title={brandGrade ? 'Your saved brand look' : 'Dial in a grade, then "Save as Brand look" below'}
+          className="rounded-full border border-action px-2.5 py-1 text-2xs font-medium text-action bg-action/8 disabled:opacity-50"
         >★ Brand</button>
         {GRADE_VIBES.map((v) => (
-          <button key={v.id} onClick={() => applyVibe(v.params)} className="rounded-full border px-2.5 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>{v.label}</button>
+          <button key={v.id} onClick={() => applyVibe(v.params)} className="rounded-full border border-border px-2.5 py-1 text-2xs text-muted-foreground">{v.label}</button>
         ))}
       </div>
-      <p className="mb-2 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Fine-tune</p>
+      <p className="mb-2 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Fine-tune</p>
       {GRADE_SLIDERS.map((s) => (
         <div key={s.key} className="mb-2">
-          <div className="mb-1 flex justify-between text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><span>{s.label}</span><span>{grade[s.key] > 0 ? '+' : ''}{grade[s.key]}</span></div>
+          <div className="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{s.label}</span><span>{grade[s.key] > 0 ? '+' : ''}{grade[s.key]}</span></div>
           <input aria-label={s.label} type="range" min={-50} max={50} value={grade[s.key] || 0} onChange={(e) => setGradeKey(s.key, +e.target.value)} className="w-full" />
         </div>
       ))}
-      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(var(--action))' }}>
+      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-action py-2 text-2xs text-action bg-action/6 disabled:opacity-60">
         {savingBrand ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>★</span>}Save as Brand look
       </button>
-      <button onClick={resetGrade} className="mt-1 w-full rounded-md py-1.5 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Reset adjustments</button>
+      <button onClick={resetGrade} className="mt-1 w-full rounded-md py-1.5 text-2xs text-muted-foreground">Reset adjustments</button>
     </InspectorShell>
   )
 }
@@ -322,7 +321,7 @@ function CaptionInspector({ ctx }) {
   const { caption, setCaption, lines, genCaptions, genCaptionsPending } = ctx
   const seg = (label, opts, key) => (
     <div className="mb-3">
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>{label}</p>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="flex gap-1.5">
         {opts.map((o) => <button key={o} onClick={() => setCaption(key, o)} className="flex-1 rounded-md border py-1.5 text-2xs" style={segBtn(caption[key] === o)}>{o[0].toUpperCase() + o.slice(1)}</button>)}
       </div>
@@ -868,7 +867,7 @@ export default function VideoEditor() {
       await updateBrandStyle({ grade })  // merges grade into brand_style (brand kit)
       queryClient.invalidateQueries({ queryKey: ['media-asset', assetId] })
     },
-    onSuccess: () => toast('Saved as your Brand look — it’s now a vibe preset.'),
+    onSuccess: () => toast("Saved as your Brand look — it's now a vibe preset."),
   })
 
   const [editingCap, setEditingCap] = useState(false)
