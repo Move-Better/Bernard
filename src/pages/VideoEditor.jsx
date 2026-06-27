@@ -199,9 +199,9 @@ function Canvas({ ctx }) {
             style={{ opacity: alignGuidesOn ? 1 : 0 }}
             aria-hidden="true"
           >
-            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px" style={{ background: 'hsl(var(--primary)/0.7)' }} />
-            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px" style={{ background: 'hsl(var(--primary)/0.7)' }} />
-            <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 0 2px white' }} />
+            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70" />
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70" />
+            <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" style={{ boxShadow: '0 0 0 2px white' }} />
           </div>
 
           {/* center play/pause indicator — click anywhere on the video to toggle.
@@ -499,12 +499,12 @@ function VerticalTimeline({ ctx }) {
     window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
   }
   return (
-    <aside className="flex w-[120px] shrink-0 flex-col border-l bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
-      <div className="flex items-center justify-between px-2.5 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
-        <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5" style={{ color: 'hsl(var(--primary))' }}><Plus className="h-3 w-3" />Text</button>
+    <aside className="flex w-[120px] shrink-0 flex-col border-l border-border bg-card">
+      <div className="flex items-center justify-between px-2.5 pt-2 text-3xs font-semibold uppercase text-muted-foreground">
+        <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
       </div>
       <div className="relative flex flex-1 gap-2 p-2.5">
-        <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
+        <div ref={clipColRef} className="relative flex-1 rounded-md bg-muted">
           <div onClick={() => selectKey('clip')} className="absolute inset-x-0 cursor-pointer rounded-md" style={{ top: `${f(startSec)}%`, height: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(180deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
           <div
             role="slider"
@@ -515,8 +515,8 @@ function VerticalTimeline({ ctx }) {
             aria-valuenow={Math.round(startSec)}
             onMouseDown={trim('in')}
             onKeyDown={(e) => { if (e.key === 'ArrowUp') setStartSec((s) => clamp(s - 0.5, 0, endSec - 1)); else if (e.key === 'ArrowDown') setStartSec((s) => clamp(s + 0.5, 0, endSec - 1)) }}
-            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11, background: 'hsl(var(--primary))' }}
+            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm bg-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11 }}
           />
           <div
             role="slider"
@@ -527,23 +527,23 @@ function VerticalTimeline({ ctx }) {
             aria-valuenow={Math.round(endSec)}
             onMouseDown={trim('out')}
             onKeyDown={(e) => { if (e.key === 'ArrowUp') setEndSec((s) => clamp(s - 0.5, startSec + 1, span)); else if (e.key === 'ArrowDown') setEndSec((s) => clamp(s + 0.5, startSec + 1, span)) }}
-            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11, background: 'hsl(var(--primary))' }}
+            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm bg-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11 }}
           />
         </div>
-        <div ref={ovColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
+        <div ref={ovColRef} className="relative flex-1 rounded-md bg-muted">
           {overlays.length ? overlays.map((o) => {
             const isSel = typeof sel === 'object' && sel.id === o.id
             return (
               <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-x-0 cursor-grab overflow-hidden rounded-md" style={{ top: `${f(startSec + o.in)}%`, height: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
                 <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
-                <div className="flex h-full items-center justify-center"><Type className="h-3 w-3" style={{ color: 'hsl(var(--action-foreground))' }} /></div>
+                <div className="flex h-full items-center justify-center"><Type className="h-3 w-3 text-action-foreground" /></div>
                 <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
               </div>
             )
-          }) : <span className="absolute inset-x-0 top-2 text-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
+          }) : <span className="absolute inset-x-0 top-2 text-center text-3xs text-muted-foreground">+ Text</span>}
         </div>
-        <div className="pointer-events-none absolute inset-x-2.5 z-20" style={{ top: `calc(10px + ${f(startSec + playClipT)}% * (100% - 20px) / 100)`, height: 2, background: 'hsl(0 80% 55%)' }} />
+        <div className="pointer-events-none absolute inset-x-2.5 z-20 bg-destructive" style={{ top: `calc(10px + ${f(startSec + playClipT)}% * (100% - 20px) / 100)`, height: 2 }} />
       </div>
     </aside>
   )
@@ -916,16 +916,16 @@ export default function VideoEditor() {
         badge={{ icon: Film, label: (FORMATS[format] || FORMATS.reel).label, sub: (FORMATS[format] || FORMATS.reel).dim }}
       >
         {/* Transport */}
-        <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
+        <div className="flex items-center gap-2 rounded-lg border border-border px-2 py-1 text-2xs">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} aria-label={playing ? 'Pause' : 'Play'}>
+              <button onClick={togglePlay} className="rounded p-0.5 text-primary hover:opacity-70" aria-label={playing ? 'Pause' : 'Play'}>
                 {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
               </button>
             </TooltipTrigger>
             <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
           </Tooltip>
-          <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
+          <span className="font-mono tabular-nums text-muted-foreground">{fmt(playClipT)} / {fmt(durationSec)}</span>
         </div>
         {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
         <div className="flex gap-1" role="group" aria-label="Output format">
@@ -946,14 +946,14 @@ export default function VideoEditor() {
         </div>
         {/* Export — one render, multiple destinations (pick any). */}
         <div className="relative">
-          <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center" style={{ background: 'hsl(var(--action))', color: 'hsl(var(--action-foreground))' }}>
+          <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center bg-action text-action-foreground">
             {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
           </Button>
           {exportOpen && (
             <>
               <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setExportOpen(false)} />
-              <div role="menu" aria-label="Export destination" className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
-                <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Send this clip to — pick any</p>
+              <div role="menu" aria-label="Export destination" className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border border-border bg-card p-2 shadow-lg">
+                <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Send this clip to — pick any</p>
                 {[
                   { k: 'post', icon: CalendarClock, label: 'Schedule a post', sub: 'Pick channels & schedule on Publish' },
                   { k: 'broll', icon: FolderOpen, label: 'Save to Library', sub: 'Reusable b-roll clip' },
@@ -961,15 +961,15 @@ export default function VideoEditor() {
                 ].map((o) => (
                   <label key={o.k} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
                     <input type="checkbox" checked={dest[o.k]} onChange={() => toggleDest(o.k)} />
-                    <o.icon className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                    <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{o.sub}</span></span>
+                    <o.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0"><span className="block text-xs font-medium">{o.label}</span><span className="block text-3xs text-muted-foreground">{o.sub}</span></span>
                   </label>
                 ))}
-                <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center" style={{ background: 'hsl(var(--action))', color: 'hsl(var(--action-foreground))' }}>
+                <Button size="sm" disabled={busy || !anyDest} onClick={() => exportMutation.mutate()} className="mt-1.5 w-full justify-center bg-action text-action-foreground">
                   {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Render &amp; send →
                 </Button>
-                <div className="my-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }} />
-                <button disabled={busy} onClick={() => { setExportOpen(false); wholeMutation.mutate() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-3xs hover:bg-muted disabled:opacity-50" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                <div className="my-1.5 border-t border-border" />
+                <button disabled={busy} onClick={() => { setExportOpen(false); wholeMutation.mutate() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-3xs text-muted-foreground hover:bg-muted disabled:opacity-50">
                   <Film className="h-3.5 w-3.5 shrink-0" />Render the whole untrimmed video instead
                 </button>
               </div>
@@ -980,7 +980,7 @@ export default function VideoEditor() {
       {/* WORK AREA: rail | inspector | canvas | timeline */}
       <div className="flex min-h-0 flex-1">
         <IconRail ctx={ctx} />
-        <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+        <aside className="flex w-[272px] shrink-0 flex-col border-r border-border bg-card">
           <div className="min-h-0 flex-1 overflow-auto p-3">
             {sel === 'moments' && <MomentsInspector ctx={ctx} />}
             {sel === 'clip' && <ClipInspector ctx={ctx} />}

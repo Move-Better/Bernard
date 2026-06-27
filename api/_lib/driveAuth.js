@@ -115,6 +115,7 @@ export async function exchangeCodeForTokens({ code, redirectUri }) {
 
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
@@ -154,6 +155,7 @@ export async function refreshAccessToken(refreshToken) {
 
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       refresh_token: refreshToken,
@@ -186,6 +188,7 @@ export async function revokeToken(token) {
   try {
     await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
   } catch (e) {
@@ -200,6 +203,7 @@ export async function revokeToken(token) {
 export async function fetchAccountEmail(accessToken) {
   try {
     const r = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress,displayName)', {
+      signal: AbortSignal.timeout(10_000),
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (!r.ok) return null

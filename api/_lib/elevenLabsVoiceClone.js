@@ -30,7 +30,7 @@ export async function createInstantVoice({ name, sampleUrl, description }) {
 
   // Pull the sample from blob storage into memory. IVC samples are typically
   // 3–5 MB at conversational quality — well under any function memory cap.
-  const sampleRes = await fetch(sampleUrl)
+  const sampleRes = await fetch(sampleUrl, { signal: AbortSignal.timeout(30_000) })
   if (!sampleRes.ok) {
     throw new Error(`[elevenLabsVoiceClone] sample fetch ${sampleRes.status} ${sampleUrl}`)
   }
@@ -46,6 +46,7 @@ export async function createInstantVoice({ name, sampleUrl, description }) {
 
   const r = await fetch(`${ELEVENLABS_BASE}/v1/voices/add`, {
     method: 'POST',
+    signal: AbortSignal.timeout(60_000),
     headers: { 'xi-api-key': apiKey },
     body: form,
   })
@@ -72,6 +73,7 @@ export async function deleteVoice(voiceId) {
 
   const r = await fetch(`${ELEVENLABS_BASE}/v1/voices/${encodeURIComponent(voiceId)}`, {
     method: 'DELETE',
+    signal: AbortSignal.timeout(15_000),
     headers: { 'xi-api-key': apiKey },
   })
   // 404 from the upstream — voice already gone — is fine; treat as success

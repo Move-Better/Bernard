@@ -15,7 +15,6 @@ import MediaPicker from '@/components/MediaPicker'
 import AdExportModal from '@/components/AdExportModal'
 import TextPostStudio from '@/components/TextPostStudio'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { BERNARD_EMERALD } from '@/lib/brand'
 import CandidateCard from '@/components/storyboard/CandidateCard'
 import MediaPreviewDialog from '@/components/storyboard/MediaPreviewDialog'
 import {
@@ -539,7 +538,7 @@ export default function StoryboardPiece() {
                       <>
                         <div
                           className="pointer-events-none absolute inset-0"
-                          style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || 'hsl(var(--primary))') : 'hsl(var(--primary))')}e0 100%)` }}
+                          style={{ background: `linear-gradient(to bottom, transparent 42%, ${(treatment.scrim === 'brand' ? (brandStyle?.accent_color || 'hsl(var(--primary))') : 'hsl(var(--primary) / 0.88)')} 100%)` }}
                         />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
                           <div
@@ -554,7 +553,7 @@ export default function StoryboardPiece() {
                             {treatment.headline || String(caption || '').split(/(?<=[.!?])\s/)[0] || 'Your headline appears here'}
                           </div>
                           <div className="mt-2 flex items-center gap-2">
-                            <span className="h-[3px] w-7 rounded-full" style={{ background: brandStyle?.accent_color || BERNARD_EMERALD }} />
+                            <span className="h-[3px] w-7 rounded-full" style={{ background: brandStyle?.accent_color || 'hsl(var(--primary))' }} />
                             <span className="text-xs font-semibold text-white/95">{piece.staff_name || workspaceName}</span>
                           </div>
                         </div>
