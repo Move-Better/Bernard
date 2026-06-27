@@ -130,12 +130,14 @@ async function packageStatus(packageId, workspaceId) {
  * @param {string} p.packageId
  * @param {string} [p.baseUrl]  — origin for the self-continuation POST (e.g. https://slug.withbernard.ai)
  */
-export async function runChunkPass({ packageId, baseUrl }) {
+export async function runChunkPass({ packageId, baseUrl, workspaceId: callerWorkspaceId }) {
   const startedAt = Date.now()
 
   // ── 1. Load the package; bail if it's no longer in flight ────────────────
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const wsFilter = callerWorkspaceId && UUID_RE.test(callerWorkspaceId) ? `&workspace_id=eq.${callerWorkspaceId}` : ''
   const pkgRows = await getJson(await sb(
-    `story_packages?id=eq.${packageId}` +
+    `story_packages?id=eq.${packageId}${wsFilter}` +
       `&select=id,workspace_id,staff_id,source_asset_id,topic,caption_text,channels,status&limit=1`,
   ))
   const pkg = pkgRows?.[0]

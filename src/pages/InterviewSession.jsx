@@ -1739,21 +1739,27 @@ export default function InterviewSession() {
       </div>
 
       <div className="flex items-center gap-1.5 pb-3 -mt-1 shrink-0 flex-wrap">
-        <Badge variant="outline" className="hidden sm:inline-flex text-xs gap-1 text-foreground/70">
-          {toneObj.emoji} {toneObj.label}
-        </Badge>
-        <Badge variant="outline" className="hidden sm:inline-flex text-xs gap-1 text-foreground/70">
-          {voiceObj.emoji} {voiceObj.label}
-        </Badge>
-        {prototypeObj && (
-          <Badge variant="outline" className="hidden sm:inline-flex text-xs gap-1 text-foreground/70">
-            {prototypeObj.emoji} {prototypeObj.label}
-          </Badge>
+        {/* Hide session config badges once the interview is underway — they are
+            read-only metadata that adds noise during active recording. */}
+        {userMessageCount === 0 && (
+          <>
+            <Badge variant="outline" className="hidden sm:inline-flex text-xs gap-1 text-foreground/70">
+              {toneObj.emoji} {toneObj.label}
+            </Badge>
+            <Badge variant="outline" className="hidden sm:inline-flex text-xs gap-1 text-foreground/70">
+              {voiceObj.emoji} {voiceObj.label}
+            </Badge>
+            {prototypeObj && (
+              <Badge variant="outline" className="hidden sm:inline-flex text-xs gap-1 text-foreground/70">
+                {prototypeObj.emoji} {prototypeObj.label}
+              </Badge>
+            )}
+            {/* Mobile: compact emoji-only summary so the row doesn't eat ~40px of viewport */}
+            <span className="sm:hidden text-xs text-muted-foreground" aria-label={`Tone ${toneObj.label}, voice ${voiceObj.label}`}>
+              {toneObj.emoji} {voiceObj.emoji}{prototypeObj ? ` ${prototypeObj.emoji}` : ''}
+            </span>
+          </>
         )}
-        {/* Mobile: compact emoji-only summary so the row doesn't eat ~40px of viewport */}
-        <span className="sm:hidden text-xs text-muted-foreground" aria-label={`Tone ${toneObj.label}, voice ${voiceObj.label}`}>
-          {toneObj.emoji} {voiceObj.emoji}{prototypeObj ? ` ${prototypeObj.emoji}` : ''}
-        </span>
         {!interviewComplete && userMessageCount > 0 && (
           <InterviewProgress count={userMessageCount} />
         )}

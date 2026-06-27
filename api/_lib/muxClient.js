@@ -146,7 +146,7 @@ export function verifyWebhookSignature(rawBody, header, secret, { toleranceSec =
 
   if (expected.length !== sig.length) return false
   try {
-    return timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(sig, 'utf8'))
+    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(sig, 'hex'))
   } catch {
     return false
   }

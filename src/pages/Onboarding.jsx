@@ -252,7 +252,7 @@ export default function Onboarding() {
             form={form}
             submitting={submitting}
             submitError={submitError}
-            onBack={() => setStep('channels')}
+            onBack={() => setStep('capture')}
             onSubmit={async (token) => {
               setSubmitting(true)
               setSubmitError(null)

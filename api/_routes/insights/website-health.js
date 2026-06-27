@@ -38,9 +38,29 @@ function sb(path, init = {}) {
   })
 }
 
+// SSRF guard: block RFC-1918, loopback, and link-local addresses so a
+// workspace-editable resolved_url can't reach internal services.
+function isPrivateAddr(urlStr) {
+  try {
+    const { hostname } = new URL(urlStr)
+    return (
+      /^localhost$/i.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^::1$/.test(hostname) ||
+      /^fc00:/i.test(hostname) ||
+      /^fd[0-9a-f]{2}:/i.test(hostname)
+    )
+  } catch { return false }
+}
+
 // Fetch one page and classify it. Returns { ok, status, reason }.
 // `ok` true = the page loads for a reader; false = a real problem to surface.
 async function checkPage(url) {
+  if (isPrivateAddr(url)) return { ok: false, status: 0, reason: 'blocked' }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
   try {

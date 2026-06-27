@@ -110,8 +110,16 @@ export default async function handler(req, res) {
   const ctSuggestion = gscClickThroughSuggestion(queries)
   if (ctSuggestion) websiteSuggestions.push(ctSuggestion)
   try {
-    const audit = await fetchAndAuditHomepage(ws.gsc_site_url)
-    if (audit.suggestions?.length) websiteSuggestions.push(...audit.suggestions)
+    // SSRF guard: gsc_site_url is admin-set; block RFC-1918/loopback addresses.
+    const { hostname: seoHost } = new URL(ws.gsc_site_url)
+    const isPrivate =
+      /^localhost$/i.test(seoHost) || /^127\./.test(seoHost) || /^10\./.test(seoHost) ||
+      /^192\.168\./.test(seoHost) || /^172\.(1[6-9]|2\d|3[01])\./.test(seoHost) ||
+      /^169\.254\./.test(seoHost) || /^::1$/.test(seoHost)
+    if (!isPrivate) {
+      const audit = await fetchAndAuditHomepage(ws.gsc_site_url)
+      if (audit.suggestions?.length) websiteSuggestions.push(...audit.suggestions)
+    }
   } catch (e) {
     console.error('[seo/opportunities] on-page audit failed:', e?.message)
   }

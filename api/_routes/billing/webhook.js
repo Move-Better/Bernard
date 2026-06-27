@@ -248,6 +248,21 @@ async function handler(req, res) {
           break
         }
         const deletedCustomerId = sub.customer || null
+        // Cross-validate: confirm the workspace's stripe_customer_id matches the event's customer,
+        // matching the same guard applied on checkout.session.completed and subscription.updated.
+        if (deletedCustomerId) {
+          const wsCheckRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}&select=stripe_customer_id`,
+            { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+          ).catch(() => null)
+          if (wsCheckRes?.ok) {
+            const [wsCheck] = await wsCheckRes.json().catch(() => [])
+            if (wsCheck?.stripe_customer_id && wsCheck.stripe_customer_id !== deletedCustomerId) {
+              console.error(`[billing/webhook] subscription.deleted: customer mismatch workspace=${workspaceId} expected=${wsCheck.stripe_customer_id} got=${deletedCustomerId}`)
+              break
+            }
+          }
+        }
         // Revert to trial with 45-day window.
         const trialEndsAt = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString()
         // Null out customer_id too so a stray late invoice.payment_failed for
