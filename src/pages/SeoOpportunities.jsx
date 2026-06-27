@@ -303,7 +303,7 @@ export default function SeoOpportunities() {
                 No open opportunities in this view right now. New ones surface as your Search Console data updates.
               </div>
             )}
-            {showLocked && (
+            {showLocked && filter === 'all' && (
               <>
                 <LockedCard
                   tag="Decaying" icon={TrendingDown} label="Pages slipping in rank"

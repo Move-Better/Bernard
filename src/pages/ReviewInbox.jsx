@@ -263,7 +263,7 @@ export default function ReviewInbox() {
       </div>
 
       {total === 0 ? (
-        <div role="status" className="rounded-lg border bg-muted/20 py-12 text-center">
+        <div className="rounded-lg border bg-muted/20 py-12 text-center">
           <Check className="mx-auto h-8 w-8 text-success" />
           <p className="mt-2 text-sm font-medium text-foreground">Your inbox is clear 🎉</p>
           <p className="text-xs text-muted-foreground">

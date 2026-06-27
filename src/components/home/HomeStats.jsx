@@ -63,7 +63,7 @@ export default function HomeStats({ stories = [] }) {
   }, [stories])
 
   return (
-    <div className="flex items-stretch gap-0 flex-wrap sm:flex-nowrap">
+    <div className="flex items-stretch gap-3 sm:gap-0 flex-wrap sm:flex-nowrap">
       {/* This week — input to the pipeline */}
       <div className="flex-1 min-w-[140px] rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Last 7 days</div>
