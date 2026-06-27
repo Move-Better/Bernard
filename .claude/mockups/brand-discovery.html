@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Brand Discovery — mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%; --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%; --border:214 32% 91%;
+    --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%;
+    --action:32 95% 44%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial}
+  .tok-card{background:hsl(var(--card));border:1px solid hsl(var(--border))}
+  .tok-muted{color:hsl(var(--muted-foreground))}
+  .tok-primary{color:hsl(var(--primary))}
+  .bg-primary{background:hsl(var(--primary))}
+  .bg-primary-soft{background:hsl(var(--primary)/0.10)}
+  .ring-primary-soft{box-shadow:0 0 0 1px hsl(var(--primary)/0.20)}
+  .legend{background:repeating-linear-gradient(45deg,hsl(var(--warning)/0.06),hsl(var(--warning)/0.06) 8px,transparent 8px,transparent 16px);border:1px dashed hsl(var(--warning)/0.5)}
+  .screen{display:none}
+  .screen.active{display:block}
+  .navbtn.active{background:hsl(var(--primary));color:#fff}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- screen switcher -->
+<div class="sticky top-0 z-50 border-b" style="background:hsl(var(--card)/0.95);border-color:hsl(var(--border));backdrop-filter:blur(6px)">
+  <div class="max-w-5xl mx-auto px-5 py-3 flex flex-wrap items-center gap-2">
+    <span class="text-sm font-bold mr-2">Brand Discovery — mockup</span>
+    <button class="navbtn active text-xs font-semibold rounded-full border px-3 py-1.5" style="border-color:hsl(var(--border))" data-screen="empty">1 · Settings → empty</button>
+    <button class="navbtn text-xs font-semibold rounded-full border px-3 py-1.5" style="border-color:hsl(var(--border))" data-screen="reveal">2 · Brief reveal (post-interview)</button>
+    <button class="navbtn text-xs font-semibold rounded-full border px-3 py-1.5" style="border-color:hsl(var(--border))" data-screen="done">3 · Settings → with brief</button>
+  </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-5 py-6">
+
+<!-- ============ SCREEN 1: SETTINGS → BRAND IDENTITY (EMPTY) ============ -->
+<section class="screen active" data-screen="empty">
+  <div class="legend rounded-lg px-4 py-2.5 mb-5 text-xs">
+    <b>What changed here.</b> NEW Settings page “Brand identity”, sibling to “Brand kit” (which stays = logos/colors/fonts).
+    Empty state = a primer + one CTA that launches the voice interview. Same primer tone as the onboarding interview.
+  </div>
+
+  <div class="flex gap-8">
+    <!-- fake sidebar -->
+    <aside class="hidden md:block w-44 shrink-0 text-sm">
+      <div class="font-bold mb-3">Settings</div>
+      <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-1">Workspace</div>
+      <div class="space-y-0.5">
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">General</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Your voice</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Locations</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Channels</div>
+        <div class="px-2.5 py-1.5 rounded-md bg-primary-soft tok-primary font-semibold ring-primary-soft">Brand identity</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Brand kit</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Photo templates</div>
+      </div>
+    </aside>
+
+    <main class="flex-1 min-w-0">
+      <div class="mb-5">
+        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <i data-lucide="compass" class="tok-primary" style="width:22px;height:22px"></i> Brand identity
+        </h1>
+        <p class="tok-muted text-sm mt-1">What Move Better feels like — derived from a short conversation, then used to keep every image and post on-brand.</p>
+      </div>
+
+      <div class="tok-card rounded-2xl p-6 text-center" style="background:linear-gradient(180deg,#fff,hsl(var(--primary)/0.05))">
+        <div class="h-12 w-12 rounded-full bg-primary-soft mx-auto flex items-center justify-center mb-3">
+          <i data-lucide="sparkles" class="tok-primary" style="width:22px;height:22px"></i>
+        </div>
+        <h2 class="text-lg font-semibold">Let’s find your brand’s voice — out loud</h2>
+        <p class="tok-muted text-sm max-w-md mx-auto mt-1.5">
+          A ~10-minute spoken conversation. Bernard asks 7 questions about how Move Better should feel —
+          what’s true, what would feel wrong, who your patients really are. You just talk.
+        </p>
+
+        <div class="grid sm:grid-cols-3 gap-3 max-w-2xl mx-auto mt-5 text-left">
+          <div class="rounded-xl border p-3" style="border-color:hsl(var(--border))">
+            <i data-lucide="mic" class="tok-primary mb-1.5" style="width:18px;height:18px"></i>
+            <p class="text-sm font-medium">Spoken, not typed</p>
+            <p class="text-xs tok-muted">Your real words surface the brand. Type fallback if needed.</p>
+          </div>
+          <div class="rounded-xl border p-3" style="border-color:hsl(var(--border))">
+            <i data-lucide="pause-circle" class="tok-primary mb-1.5" style="width:18px;height:18px"></i>
+            <p class="text-sm font-medium">Pause anytime</p>
+            <p class="text-xs tok-muted">Resume right where you left off. Nothing’s published.</p>
+          </div>
+          <div class="rounded-xl border p-3" style="border-color:hsl(var(--border))">
+            <i data-lucide="file-check-2" class="tok-primary mb-1.5" style="width:18px;height:18px"></i>
+            <p class="text-sm font-medium">Get a brand brief</p>
+            <p class="text-xs tok-muted">Territory, what it’s NOT, the promise, the tension, references.</p>
+          </div>
+        </div>
+
+        <button class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary text-white px-5 py-2.5 text-sm font-semibold">
+          <i data-lucide="mic" style="width:16px;height:16px"></i> Start brand discovery
+        </button>
+        <p class="text-xs tok-muted mt-2.5">Next: a quick mic & speaker check.</p>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============ SCREEN 2: BRIEF REVEAL (post-interview, on the interview page) ============ -->
+<section class="screen" data-screen="reveal">
+  <div class="legend rounded-lg px-4 py-2.5 mb-5 text-xs">
+    <b>What changed here.</b> Mirrors the onboarding interview’s completion card, but synthesizes a <b>brand brief</b> instead of voice/topics.
+    Shows the moment synthesis finishes. Same success styling. “Back to Brand identity” returns to screen 3.
+  </div>
+
+  <div class="max-w-2xl mx-auto">
+    <div class="rounded-2xl p-6" style="border:1px solid hsl(var(--success)/0.4);background:hsl(var(--success)/0.05)">
+      <div class="text-center">
+        <i data-lucide="check-circle-2" class="mx-auto" style="width:34px;height:34px;color:hsl(var(--success))"></i>
+        <h2 class="font-semibold mt-2">Done — here’s how Move Better feels.</h2>
+        <p class="tok-muted text-sm mt-1">From here on, Bernard uses this brief to keep images and posts on-brand. You can refine it anytime in Settings.</p>
+      </div>
+
+      <div class="mt-5 space-y-3 text-left">
+        <!-- territory -->
+        <div class="tok-card rounded-xl p-4">
+          <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-2">Territory</div>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-sm font-semibold rounded-full px-3 py-1" style="background:hsl(var(--primary)/0.10);color:hsl(var(--primary))">Grounded</span>
+            <span class="text-sm font-semibold rounded-full px-3 py-1" style="background:hsl(var(--primary)/0.10);color:hsl(var(--primary))">Unhurried</span>
+            <span class="text-sm font-semibold rounded-full px-3 py-1" style="background:hsl(var(--primary)/0.10);color:hsl(var(--primary))">Quietly expert</span>
+          </div>
+        </div>
+        <!-- NOT this -->
+        <div class="tok-card rounded-xl p-4">
+          <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-2">Not this</div>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-sm font-medium rounded-full px-3 py-1 inline-flex items-center gap-1" style="background:hsl(var(--destructive)/0.08);color:hsl(var(--destructive))"><i data-lucide="x" style="width:13px;height:13px"></i>Hustle/“crush it”</span>
+            <span class="text-sm font-medium rounded-full px-3 py-1 inline-flex items-center gap-1" style="background:hsl(var(--destructive)/0.08);color:hsl(var(--destructive))"><i data-lucide="x" style="width:13px;height:13px"></i>Clinical/sterile</span>
+            <span class="text-sm font-medium rounded-full px-3 py-1 inline-flex items-center gap-1" style="background:hsl(var(--destructive)/0.08);color:hsl(var(--destructive))"><i data-lucide="x" style="width:13px;height:13px"></i>Influencer-glossy</span>
+          </div>
+        </div>
+        <!-- promise + tension -->
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div class="tok-card rounded-xl p-4">
+            <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-1.5">Emotional promise</div>
+            <p class="text-sm">“You’re in capable hands and there’s no rush — we’ll actually fix the thing.”</p>
+          </div>
+          <div class="tok-card rounded-xl p-4">
+            <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-1.5">The tension</div>
+            <p class="text-sm">Serious clinical depth, delivered like a calm friend — never cold, never hype.</p>
+          </div>
+        </div>
+        <!-- visual anchors -->
+        <div class="tok-card rounded-xl p-4">
+          <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-2">Visual anchors</div>
+          <ul class="space-y-1.5 text-sm">
+            <li class="flex gap-2"><i data-lucide="bookmark" class="tok-primary shrink-0 mt-0.5" style="width:15px;height:15px"></i><span><b>@huckberry</b> — warm, earthy, real people mid-activity, never staged.</span></li>
+            <li class="flex gap-2"><i data-lucide="bookmark" class="tok-primary shrink-0 mt-0.5" style="width:15px;height:15px"></i><span><b>A local coffee roaster’s feed</b> — craft + patience, muted palette.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-center mt-5">
+        <button class="rounded-lg border px-4 py-2 text-sm font-medium" style="border-color:hsl(var(--border))">Redo interview</button>
+        <button class="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold">Back to Brand identity</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 3: SETTINGS → BRAND IDENTITY (WITH BRIEF) ============ -->
+<section class="screen" data-screen="done">
+  <div class="legend rounded-lg px-4 py-2.5 mb-5 text-xs">
+    <b>What changed here.</b> Once a brief exists, the Settings page shows it (same blocks as the reveal, calmer styling)
+    with edit affordances + a “Retake” option. This is the durable home for the brand brief.
+  </div>
+
+  <div class="flex gap-8">
+    <aside class="hidden md:block w-44 shrink-0 text-sm">
+      <div class="font-bold mb-3">Settings</div>
+      <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-1">Workspace</div>
+      <div class="space-y-0.5">
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">General</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Your voice</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Locations</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Channels</div>
+        <div class="px-2.5 py-1.5 rounded-md bg-primary-soft tok-primary font-semibold ring-primary-soft">Brand identity</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Brand kit</div>
+        <div class="px-2.5 py-1.5 rounded-md tok-muted">Photo templates</div>
+      </div>
+    </aside>
+
+    <main class="flex-1 min-w-0">
+      <div class="flex items-start justify-between gap-3 mb-5">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <i data-lucide="compass" class="tok-primary" style="width:22px;height:22px"></i> Brand identity
+          </h1>
+          <p class="tok-muted text-sm mt-1 flex items-center gap-1.5">
+            <i data-lucide="check-circle-2" style="width:14px;height:14px;color:hsl(var(--success))"></i>
+            Defined from your interview · <span class="italic">last updated Jun 27, 2026</span>
+          </p>
+        </div>
+        <button class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium" style="border-color:hsl(var(--border))">
+          <i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Retake interview
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="tok-card rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-2xs font-semibold uppercase tracking-widest tok-muted">Territory <span class="font-normal normal-case">· 3 adjectives</span></div>
+            <button class="text-xs tok-primary font-medium inline-flex items-center gap-1"><i data-lucide="pencil" style="width:12px;height:12px"></i>Edit</button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-sm font-semibold rounded-full px-3 py-1" style="background:hsl(var(--primary)/0.10);color:hsl(var(--primary))">Grounded</span>
+            <span class="text-sm font-semibold rounded-full px-3 py-1" style="background:hsl(var(--primary)/0.10);color:hsl(var(--primary))">Unhurried</span>
+            <span class="text-sm font-semibold rounded-full px-3 py-1" style="background:hsl(var(--primary)/0.10);color:hsl(var(--primary))">Quietly expert</span>
+          </div>
+        </div>
+
+        <div class="tok-card rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-2xs font-semibold uppercase tracking-widest tok-muted">Not this <span class="font-normal normal-case">· the guardrails</span></div>
+            <button class="text-xs tok-primary font-medium inline-flex items-center gap-1"><i data-lucide="pencil" style="width:12px;height:12px"></i>Edit</button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-sm font-medium rounded-full px-3 py-1 inline-flex items-center gap-1" style="background:hsl(var(--destructive)/0.08);color:hsl(var(--destructive))"><i data-lucide="x" style="width:13px;height:13px"></i>Hustle/“crush it”</span>
+            <span class="text-sm font-medium rounded-full px-3 py-1 inline-flex items-center gap-1" style="background:hsl(var(--destructive)/0.08);color:hsl(var(--destructive))"><i data-lucide="x" style="width:13px;height:13px"></i>Clinical/sterile</span>
+            <span class="text-sm font-medium rounded-full px-3 py-1 inline-flex items-center gap-1" style="background:hsl(var(--destructive)/0.08);color:hsl(var(--destructive))"><i data-lucide="x" style="width:13px;height:13px"></i>Influencer-glossy</span>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div class="tok-card rounded-xl p-4">
+            <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-1.5">Emotional promise</div>
+            <p class="text-sm">“You’re in capable hands and there’s no rush — we’ll actually fix the thing.”</p>
+          </div>
+          <div class="tok-card rounded-xl p-4">
+            <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-1.5">The tension</div>
+            <p class="text-sm">Serious clinical depth, delivered like a calm friend — never cold, never hype.</p>
+          </div>
+        </div>
+
+        <div class="tok-card rounded-xl p-4">
+          <div class="text-2xs font-semibold uppercase tracking-widest tok-muted mb-2">Visual anchors</div>
+          <ul class="space-y-1.5 text-sm">
+            <li class="flex gap-2"><i data-lucide="bookmark" class="tok-primary shrink-0 mt-0.5" style="width:15px;height:15px"></i><span><b>@huckberry</b> — warm, earthy, real people mid-activity, never staged.</span></li>
+            <li class="flex gap-2"><i data-lucide="bookmark" class="tok-primary shrink-0 mt-0.5" style="width:15px;height:15px"></i><span><b>A local coffee roaster’s feed</b> — craft + patience, muted palette.</span></li>
+          </ul>
+        </div>
+
+        <div class="rounded-xl p-3 text-xs tok-muted flex items-center gap-2" style="background:hsl(var(--info)/0.06);border:1px solid hsl(var(--info)/0.25)">
+          <i data-lucide="info" style="width:15px;height:15px;color:hsl(var(--info))"></i>
+          Next step (later): a “Find brand moments” session uses this brief to surface frames from your own videos.
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+</div>
+
+<script>
+  lucide.createIcons();
+  document.querySelectorAll('.navbtn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const t=b.dataset.screen;
+      document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x===b));
+      document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.dataset.screen===t));
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+</script>
+</body>
+</html>

@@ -58,6 +58,20 @@
     "width",
     "workspace_id"
   ],
+  "brand_discovery_interviews": [
+    "completed_at",
+    "created_at",
+    "id",
+    "messages",
+    "owner_id",
+    "session_state",
+    "staff_id",
+    "status",
+    "synthesis_result",
+    "synthesized_at",
+    "updated_at",
+    "workspace_id"
+  ],
   "brand_kit_roles": [
     "asset_id",
     "assigned_at",
@@ -659,6 +673,7 @@
     "auto_publish_settings",
     "book_mode",
     "booking_url",
+    "brand_brief",
     "brand_guidelines",
     "brand_hashtag",
     "brand_style",

@@ -28,6 +28,7 @@ const ImportUrl = lazy(() => import('@/pages/ImportUrl'))
 const NewBrief  = lazy(() => import('@/pages/NewBrief'))
 const InterviewSession = lazy(() => import('@/pages/InterviewSession'))
 const OnboardingInterview = lazy(() => import('@/pages/OnboardingInterview'))
+const BrandInterview = lazy(() => import('@/pages/BrandInterview'))
 const StaffProfile = lazy(() => import('@/pages/StaffProfile'))
 const MediaHub = lazy(() => import('@/pages/MediaHub'))
 const Integrations = lazy(() => import('@/pages/Integrations'))
@@ -40,6 +41,7 @@ const BillingSettings = lazy(() => import('@/pages/settings/BillingSettings'))
 const BrandKitPreview = lazy(() => import('@/pages/BrandKitPreview'))
 const BrandKitSettings = lazy(() => import('@/pages/BrandKitSettings'))
 const PhotoTemplatesSettings  = lazy(() => import('@/pages/settings/PhotoTemplatesSettings'))
+const BrandIdentitySettings = lazy(() => import('@/pages/settings/BrandIdentitySettings'))
 const CampaignsSettings = lazy(() => import('@/pages/settings/CampaignsSettings'))
 const AutoPublishSettings = lazy(() => import('@/pages/settings/AutoPublishSettings'))
 import SettingsLayout from '@/components/SettingsLayout'
@@ -597,6 +599,7 @@ function AppRoutes() {
             <Route path="/capture/:staffId/:interviewId/review" element={guarded(<CaptureReview />)} />
             <Route path="/interview/:staffId/:interviewId" element={guarded(<InterviewSession />)} />
             <Route path="/onboard/interview" element={guarded(<OnboardingInterview />)} />
+            <Route path="/brand-discovery" element={guarded(<BrandInterview />)} />
             {/* Legacy paths — both now redirect to /stories/:interviewId */}
             <Route path="/interview/:staffId/:interviewId/output" element={<LegacyOutputRedirect />} />
             <Route path="/output/:staffId/:interviewId" element={<LegacyOutputRedirect />} />
@@ -667,6 +670,7 @@ function AppRoutes() {
               <Route path="/settings/workspace/channels" element={guarded(<ChannelsSettings />)} />
               <Route path="/settings/workspace/billing" element={guarded(<BillingSettings />)} />
               <Route path="/settings/integrations" element={guarded(<Integrations />)} />
+              <Route path="/settings/brand-identity" element={guarded(<BrandIdentitySettings />)} />
               <Route path="/settings/brand-kit" element={guarded(<BrandKitSettings />)} />
               <Route path="/settings/brand-kit-preview" element={guarded(<BrandKitPreview />)} />
               <Route path="/settings/photo-templates" element={guarded(<PhotoTemplatesSettings />)} />
