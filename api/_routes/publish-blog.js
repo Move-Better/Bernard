@@ -77,8 +77,15 @@ function timingSafeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false
   const ba = Buffer.from(a)
   const bb = Buffer.from(b)
-  if (ba.length !== bb.length) return false
-  return cryptoTimingSafeEqual(ba, bb)
+  // Pad the shorter buffer so both branches take constant time regardless of
+  // input length, eliminating the timing side-channel from an early-exit on
+  // length mismatch. cryptoTimingSafeEqual requires equal-length buffers.
+  const len = Math.max(ba.length, bb.length)
+  const pa = Buffer.alloc(len); ba.copy(pa)
+  const pb = Buffer.alloc(len); bb.copy(pb)
+  // XOR the padding sentinel into the result so a length mismatch still fails.
+  const lengthMatch = ba.length === bb.length
+  return cryptoTimingSafeEqual(pa, pb) && lengthMatch
 }
 
 const GH_HEADERS_BASE = {

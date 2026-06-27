@@ -52,6 +52,7 @@ const CLINICIAN_FIELDS = 'id,workspace_id,name,user_id,permission_tier,created_a
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,

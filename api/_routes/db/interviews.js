@@ -26,6 +26,7 @@ const VALID_INTERVIEW_STATUSES = new Set(['in_progress', 'completed', 'abandoned
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,

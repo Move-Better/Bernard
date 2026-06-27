@@ -48,6 +48,7 @@ const MAX_BRAND_ASSET_BYTES = 25 * 1024 * 1024
 
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,

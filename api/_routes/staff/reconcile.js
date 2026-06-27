@@ -125,7 +125,7 @@ async function handler(req, res) {
       // re-checks, but fail fast with a clear message and never leak the RPC's
       // existence of cross-tenant ids).
       const bothRes = await sb(
-        `staff?id=in.(${encodeURIComponent(sourceId)},${encodeURIComponent(targetId)})` +
+        `staff?id=in.(${sourceId},${targetId})` +
           `&workspace_id=eq.${workspace.id}&select=id`
       )
       if (!bothRes.ok) {

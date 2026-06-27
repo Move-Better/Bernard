@@ -37,6 +37,7 @@ const ALLOWED_PHOTO_MIME = new Set([
 // eslint-disable-next-line bernard/require-workspace-scope -- Capture token auth — workspace resolved from clinicians.workspace_id via capture token, not Host header
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,

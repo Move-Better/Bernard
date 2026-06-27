@@ -22,6 +22,7 @@ const LIMIT = 5
 
 function sb(path) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     headers: {
       apikey:        SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,

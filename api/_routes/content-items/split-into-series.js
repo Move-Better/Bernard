@@ -48,6 +48,7 @@ const VALID_LENGTH_PRESETS = new Set(LENGTH_PRESETS.map((p) => p.id))
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey:        SUPABASE_KEY,

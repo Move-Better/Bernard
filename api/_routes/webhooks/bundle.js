@@ -35,6 +35,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // eslint-disable-next-line bernard/require-workspace-scope -- bundle webhook — workspace resolved from content_items.workspace_id via the (org-global) bundle post id, not the Host header
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey:         SUPABASE_KEY,

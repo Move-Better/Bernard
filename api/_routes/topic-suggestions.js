@@ -21,6 +21,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey:          SUPABASE_KEY,
