@@ -64,6 +64,10 @@ function backdropStyleFor(backdrop) {
 function sanitizeSvg(markup) {
   return markup
     .replace(/<script[\s\S]*?<\/script>/gi, '')
+    // Strip <foreignObject> — can embed arbitrary HTML (onclick etc.) in SVG context.
+    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    // Strip <style> blocks — can reference external resources (url()) for data exfiltration.
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
     // Strip event handlers with any quoting style (quoted, unquoted, or backtick).
     .replace(/\son[a-z][a-z0-9]*\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|[^\s>]*)/gi, '')
     // Strip href / xlink:href that aren't fragment-only (#anchor) — prevents javascript: URIs,
