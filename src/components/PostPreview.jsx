@@ -26,7 +26,6 @@ const MB_HANDLE   = workspace.social.instagram
 const MB_NAME     = workspace.name
 const MB_LOCATION = workspace.location
 const MB_INITIALS = workspace.socialAvatarInitials
-const MB_BLURB    = workspace.linkPreviewBlurb
 const MB_HOSTNAME = workspace.websiteHostname
 const MB_INDUSTRY = workspace.linkedInIndustry
 const MB_BOOKING  = workspace.prompt.bookingUrl
@@ -292,16 +291,20 @@ function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplat
 
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
-      {/* Header */}
+      {/* Header — IG story ring around avatar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b">
-        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
-          {MB_INITIALS}
+        <div className="shrink-0 rounded-full p-[2px]" style={{ background: 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)' }}>
+          <div className="rounded-full p-[1.5px] bg-white">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-2xs font-bold">
+              {MB_INITIALS}
+            </div>
+          </div>
         </div>
         <div>
           <p className="text-xs font-semibold">{MB_HANDLE}</p>
           <p className="text-3xs text-muted-foreground">{MB_LOCATION}</p>
         </div>
-        <button className="ml-auto text-xs font-semibold text-info">Follow</button>
+        <button className="ml-auto text-xs font-semibold text-[#0095f6]">Follow</button>
       </div>
 
       {/* Reel (video) takes precedence over the photo carousel. */}
@@ -345,24 +348,26 @@ function FacebookPreview({ content, mediaUrls = [] }) {
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
       <div className="px-4 pt-4 pb-3">
-        {/* Author */}
+        {/* Author — FB blue avatar */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
-            MB
+          <div className="h-10 w-10 rounded-full bg-[#1877f2] flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {MB_INITIALS}
           </div>
-          <div>
-            <p className="text-sm font-semibold">{MB_NAME}</p>
-            <div className="flex items-center gap-1 text-3xs text-muted-foreground">
-              <Globe className="h-3 w-3" /> Public · Just now
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900">{MB_NAME}</p>
+            <div className="flex items-center gap-1 text-3xs text-[#65676b]">
+              <Globe className="h-3 w-3" />
+              <span>{MB_NAME} · Just now · 🌐</span>
             </div>
           </div>
+          <button className="text-[#65676b] text-lg leading-none shrink-0">···</button>
         </div>
 
         {/* Content */}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800">
           <SocialText text={showFull ? content : preview} />
           {!showFull && hasMore && (
-            <button onClick={() => setShowFull(true)} className="text-info ml-1 text-sm">See more</button>
+            <button onClick={() => setShowFull(true)} className="text-[#1877f2] ml-1 text-sm font-medium">See more</button>
           )}
         </p>
       </div>
@@ -372,18 +377,17 @@ function FacebookPreview({ content, mediaUrls = [] }) {
         <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-video" />
       )}
 
-      {/* Link preview */}
-      <div className="border-t bg-slate-50 px-4 py-3">
-        <p className="text-3xs text-muted-foreground uppercase tracking-wide">{MB_HOSTNAME}</p>
-        <p className="text-xs font-semibold mt-0.5">{MB_NAME} · {MB_LOCATION}</p>
-        <p className="text-2xs text-muted-foreground mt-0.5">{MB_BLURB}</p>
-      </div>
-
-      {/* Reactions bar */}
-      <div className="px-4 py-2 border-t flex items-center gap-4 text-xs text-muted-foreground">
-        <button className="flex items-center gap-1.5 hover:text-info"><ThumbsUp className="h-4 w-4" /> Like</button>
-        <button className="flex items-center gap-1.5 hover:text-info"><MessageCircle className="h-4 w-4" /> Comment</button>
-        <button className="flex items-center gap-1.5 hover:text-info"><Repeat2 className="h-4 w-4" /> Share</button>
+      {/* Reactions bar — FB style */}
+      <div className="px-4 py-1.5 border-t border-slate-100 flex items-center text-xs text-[#65676b] font-semibold">
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-3 py-2 flex-1 justify-center">
+          <ThumbsUp className="h-4 w-4" /> Like
+        </button>
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-3 py-2 flex-1 justify-center">
+          <MessageCircle className="h-4 w-4" /> Comment
+        </button>
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-3 py-2 flex-1 justify-center">
+          <Repeat2 className="h-4 w-4" /> Share
+        </button>
       </div>
     </div>
   )
@@ -397,33 +401,43 @@ function LinkedInPreview({ content }) {
   const hasMore = lines.length > 5
 
   return (
-    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
-      <div className="px-4 pt-4 pb-3">
+    // LI uses #f3f2ef grey app background
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden shadow-sm font-sans" style={{ background: '#f3f2ef' }}>
+      <div className="bg-white border-b border-slate-200 px-4 pt-4 pb-3">
         <div className="flex items-start gap-3 mb-3">
-          <div className="h-12 w-12 rounded-sm bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
-            MB
+          {/* LI uses square-ish avatar with rounded corners */}
+          <div className="h-12 w-12 rounded bg-[#0a66c2] flex items-center justify-center text-white text-sm font-bold shrink-0">
+            {MB_INITIALS}
           </div>
-          <div>
-            <p className="text-sm font-semibold">{MB_NAME}</p>
-            <p className="text-2xs text-muted-foreground">{MB_INDUSTRY} · {MB_LOCATION}</p>
-            <p className="text-3xs text-muted-foreground">Just now · 🌐</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900">{MB_NAME}</p>
+            <p className="text-2xs text-slate-500">{MB_INDUSTRY} · {MB_LOCATION}</p>
+            <p className="text-3xs text-slate-400">3h · 🌐</p>
           </div>
-          <button className="ml-auto text-xs font-semibold text-info border border-info rounded-full px-3 py-1">+ Follow</button>
+          <button className="ml-auto text-xs font-semibold text-[#0a66c2] border border-[#0a66c2] rounded-full px-3 py-1 shrink-0">+ Follow</button>
         </div>
 
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800">
           <SocialText text={showFull ? content : preview} />
           {!showFull && hasMore && (
-            <button onClick={() => setShowFull(true)} className="text-muted-foreground ml-1">…more</button>
+            <button onClick={() => setShowFull(true)} className="text-slate-500 ml-1">…more</button>
           )}
         </p>
       </div>
 
-      <div className="px-4 py-2 border-t flex items-center gap-4 text-xs text-muted-foreground">
-        <button className="flex items-center gap-1.5 hover:text-info"><ThumbsUp className="h-4 w-4" /> Like</button>
-        <button className="flex items-center gap-1.5 hover:text-info"><MessageCircle className="h-4 w-4" /> Comment</button>
-        <button className="flex items-center gap-1.5 hover:text-info"><Repeat2 className="h-4 w-4" /> Repost</button>
-        <button className="flex items-center gap-1.5 hover:text-info"><Send className="h-4 w-4" /> Send</button>
+      <div className="bg-white px-4 py-1.5 flex items-center text-xs text-slate-500 font-semibold">
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-2 py-2 flex-1 justify-center">
+          <ThumbsUp className="h-4 w-4" /> Like
+        </button>
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-2 py-2 flex-1 justify-center">
+          <MessageCircle className="h-4 w-4" /> Comment
+        </button>
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-2 py-2 flex-1 justify-center">
+          <Repeat2 className="h-4 w-4" /> Repost
+        </button>
+        <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-2 py-2 flex-1 justify-center">
+          <Send className="h-4 w-4" /> Send
+        </button>
       </div>
     </div>
   )
@@ -679,42 +693,261 @@ function PlainPreview({ content }) {
   )
 }
 
-// ── Generic short-form social (X / Threads / Bluesky / Mastodon) ──────────────
-// Media-optional post card: caption + optional media. Replaces the raw
-// PlainPreview dump for the text-first networks that share the "single visual"
-// archetype.
-const NETWORK_META = {
-  twitter: 'X', threads: 'Threads', bluesky: 'Bluesky', mastodon: 'Mastodon',
-}
-function SimpleSocialPreview({ content, mediaUrls = [], platform }) {
-  const label = NETWORK_META[platform] || 'Post'
+// ── X / Twitter ───────────────────────────────────────────────────────────────
+function XPreview({ content, mediaUrls = [] }) {
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
       <div className="px-4 pt-4 pb-3">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-action to-primary flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">{MB_NAME}</p>
-            <p className="text-3xs text-muted-foreground">{MB_HANDLE} · {label}</p>
+        <div className="flex gap-3">
+          <div className="h-10 w-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <span className="text-sm font-bold text-slate-900">{MB_NAME}</span>
+              {/* X blue checkmark */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#1d9bf0" aria-hidden="true"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91-1.01-1.01-2.52-1.27-3.91-.81-.67-1.31-1.91-2.19-3.34-2.19-1.43 0-2.67.88-3.34 2.19-1.39-.46-2.9-.2-3.91.81-1.01 1.01-1.27 2.52-.81 3.91-1.31.67-2.19 1.91-2.19 3.34 0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91 1.01 1.01 2.52 1.27 3.91.81.67 1.31 1.91 2.19 3.34 2.19 1.43 0 2.67-.88 3.34-2.19 1.39.46 2.9.2 3.91-.81 1.01-1.01 1.27-2.52.81-3.91 1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2-3.79-3.79 1.41-1.41 2.38 2.38 5.38-5.38 1.41 1.41z"/></svg>
+              <span className="text-3xs text-slate-500">{MB_HANDLE} · 2h</span>
+            </div>
+            <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            {/* X action row */}
+            <div className="mt-3 flex items-center justify-between text-slate-500">
+              <button className="flex items-center gap-1 text-2xs hover:text-[#1d9bf0]"><MessageCircle className="h-4 w-4" /> 42</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#00ba7c]"><Repeat2 className="h-4 w-4" /> 8</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#f91880]"><Heart className="h-4 w-4" /> 147</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#1d9bf0]"><Send className="h-4 w-4" /></button>
+            </div>
           </div>
         </div>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
       </div>
-      {media.length > 0 && <div className="border-t"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
     </div>
   )
 }
 
-// ── Video channels (TikTok / YouTube / YouTube Short) ─────────────────────────
-function VideoChannelPreview({ content, mediaUrls = [] }) {
+// ── Threads ───────────────────────────────────────────────────────────────────
+function ThreadsPreview({ content, mediaUrls = [] }) {
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  return (
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <div className="h-10 w-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
+            <div className="w-px flex-1 bg-slate-200 mt-1 min-h-[32px]" aria-hidden="true" />
+          </div>
+          <div className="flex-1 min-w-0 pb-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm font-bold text-slate-900">{MB_HANDLE}</span>
+              <span className="text-3xs text-slate-400">· 3h</span>
+            </div>
+            <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            <div className="mt-3 flex items-center gap-4 text-slate-500">
+              <button className="hover:text-slate-900"><Heart className="h-4.5 w-4.5" /></button>
+              <button className="hover:text-slate-900"><MessageCircle className="h-4.5 w-4.5" /></button>
+              <button className="hover:text-slate-900"><Repeat2 className="h-4.5 w-4.5" /></button>
+              <button className="hover:text-slate-900 ml-auto"><Send className="h-4.5 w-4.5" /></button>
+            </div>
+          </div>
+        </div>
+        {/* Reply input row */}
+        <div className="flex gap-3 items-center">
+          <div className="h-7 w-7 rounded-full bg-slate-200 shrink-0" aria-hidden="true" />
+          <button className="flex-1 text-sm text-slate-400 text-left">Reply to {MB_HANDLE}…</button>
+        </div>
+      </div>
+      <div className="border-t border-slate-100 px-4 py-2 flex items-center gap-2 text-3xs text-slate-400">
+        <span>147 likes</span><span>·</span><span>42 replies</span>
+      </div>
+    </div>
+  )
+}
+
+// ── Bluesky ───────────────────────────────────────────────────────────────────
+function BlueskyPreview({ content, mediaUrls = [] }) {
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  return (
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
+      {/* Bluesky blue header bar */}
+      <div className="bg-[#0085ff] px-4 py-2 flex items-center gap-2">
+        <svg width="18" height="14" viewBox="0 0 18 14" fill="white" aria-hidden="true">
+          <path d="M9 3C7 0 3 0 1.5 2S1 8 4 9c.5.2 1 .3 1.5.3C4 12 3 13 1 14h4c1 0 2-.5 4-3 2 2.5 3 3 4 3h4c-2-1-3-2-4.5-5 .5 0 1-.1 1.5-.3 3-1 3.5-5 2-7S11 0 9 3z"/>
+        </svg>
+        <span className="text-white font-bold text-sm">Bluesky</span>
+      </div>
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex gap-3">
+          <div className="h-10 w-10 rounded-full bg-[#0085ff] flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm font-bold text-slate-900">{MB_NAME}</span>
+              <span className="text-3xs text-slate-400">{MB_HANDLE} · 2h</span>
+            </div>
+            <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            <div className="mt-3 flex items-center gap-5 text-slate-500">
+              <button className="flex items-center gap-1 text-2xs hover:text-[#0085ff]"><MessageCircle className="h-4 w-4" /> 42</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#00ba7c]"><Repeat2 className="h-4 w-4" /> 8</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#f91880]"><Heart className="h-4 w-4" /> 147</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Mastodon ──────────────────────────────────────────────────────────────────
+function MastodonPreview({ content, mediaUrls = [] }) {
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  return (
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
+      {/* Mastodon purple header */}
+      <div className="bg-[#563acc] px-4 py-2 flex items-center gap-2">
+        <svg width="16" height="18" viewBox="0 0 16 18" fill="white" aria-hidden="true">
+          <path d="M8 0C3.6 0 0 3.6 0 8v4c0 3.3 2.7 6 6 6h4c3.3 0 6-2.7 6-6V8C16 3.6 12.4 0 8 0zm3.5 11.5c-.4.8-1.5 1-2.4.5L8 11.2l-1.1.8c-.9.5-2 .3-2.4-.5-.2-.4-.1-.9.3-1.2l1.4-1-1.4-1c-.4-.3-.5-.8-.3-1.2.4-.8 1.5-1 2.4-.5L8 7.4l1.1-.8c.9-.5 2-.3 2.4.5.2.4.1.9-.3 1.2L9.8 9.3l1.4 1c.4.3.5.8.3 1.2z"/>
+        </svg>
+        <span className="text-white font-bold text-sm">Mastodon</span>
+      </div>
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex gap-3">
+          <div className="h-10 w-10 rounded-lg bg-[#563acc] flex items-center justify-center text-white text-xs font-bold shrink-0">{MB_INITIALS}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm font-bold text-slate-900">{MB_NAME}</span>
+              <span className="text-3xs text-slate-400">{MB_HANDLE}@mastodon.social · 2h</span>
+            </div>
+            <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            <div className="mt-3 flex items-center gap-5 text-slate-500">
+              <button className="flex items-center gap-1 text-2xs hover:text-[#563acc]"><MessageCircle className="h-4 w-4" /> 12</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#00ba7c]"><Repeat2 className="h-4 w-4" /> 5</button>
+              <button className="flex items-center gap-1 text-2xs hover:text-[#f91880]"><Heart className="h-4 w-4" /> 89</button>
+              <button className="flex items-center gap-1 text-2xs ml-auto hover:text-slate-700"><Bookmark className="h-4 w-4" /></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── TikTok ────────────────────────────────────────────────────────────────────
+function TikTokPreview({ content, mediaUrls = [] }) {
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   const video = media.find(isVideoEntry) || null
   return (
-    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
-      {video ? <ReelPreview video={video} /> : <MediaCarousel mediaUrls={media} aspectClass="aspect-[9/16]" />}
-      <div className="px-4 py-3">
-        <p className="text-xs leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden shadow-sm font-sans" style={{ background: '#000' }}>
+      {/* 9:16 dark video frame */}
+      <div className="relative overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '480px', background: '#111' }}>
+        {video
+          ? <ReelPreview video={video} />
+          : <div className="absolute inset-0 flex items-center justify-center text-slate-600 text-sm">Video</div>
+        }
+        {/* Right action column */}
+        <div className="absolute right-3 bottom-16 flex flex-col items-center gap-4 z-10">
+          <div className="h-9 w-9 rounded-full bg-white flex items-center justify-center text-black text-2xs font-bold border border-slate-300">{MB_INITIALS}</div>
+          <div className="flex flex-col items-center text-white">
+            <Heart className="h-7 w-7" fill="white" />
+            <span className="text-3xs mt-0.5">4.2k</span>
+          </div>
+          <div className="flex flex-col items-center text-white">
+            <MessageCircle className="h-7 w-7" fill="white" stroke="none" />
+            <span className="text-3xs mt-0.5">89</span>
+          </div>
+          <div className="flex flex-col items-center text-white">
+            <Send className="h-6 w-6" />
+            <span className="text-3xs mt-0.5">Share</span>
+          </div>
+        </div>
+        {/* Bottom caption */}
+        <div className="absolute left-3 right-16 bottom-16 z-10">
+          <p className="text-white font-semibold text-xs mb-1">@{MB_HANDLE}</p>
+          <p className="text-white text-xs leading-relaxed opacity-90 line-clamp-3"><SocialText text={content} /></p>
+        </div>
+        {/* Progress bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-700 z-10">
+          <div className="h-full bg-[#fe2c55]" style={{ width: '35%' }} />
+        </div>
+      </div>
+      {/* TikTok bottom nav chrome */}
+      <div className="flex items-center justify-around px-4 py-2 border-t border-slate-800">
+        {[
+          { label: 'Home', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="#888"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> },
+          { label: 'Discover', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },
+          { label: '', icon: <div className="w-8 h-6 bg-[#fe2c55] rounded flex items-center justify-center text-white text-lg font-bold leading-none">+</div> },
+          { label: 'Inbox', icon: <MessageCircle className="h-4.5 w-4.5 text-slate-500" /> },
+          { label: 'Profile', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ].map(({ label, icon }) => (
+          <button key={label} className="flex flex-col items-center text-3xs text-slate-500 gap-0.5">
+            {icon}
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── YouTube / YouTube Short ───────────────────────────────────────────────────
+function YouTubePreview({ content, mediaUrls = [], short = false }) {
+  const media = Array.isArray(mediaUrls) ? mediaUrls : []
+  const video = media.find(isVideoEntry) || null
+  const titleLine = (content || '').split('\n')[0] || 'Untitled'
+
+  return (
+    <div className="max-w-sm mx-auto border rounded-xl overflow-hidden shadow-sm font-sans" style={{ background: '#0f0f0f' }}>
+      {/* YouTube top chrome */}
+      <div className="px-4 py-2.5 flex items-center gap-2 border-b border-slate-800">
+        <svg width="22" height="16" viewBox="0 0 22 16" fill="none" aria-hidden="true">
+          <rect width="22" height="16" rx="3" fill="#ff0000"/>
+          <polygon points="9,3 9,13 17,8" fill="white"/>
+        </svg>
+        <span className="text-white font-bold text-sm tracking-tight">YouTube{short ? ' Shorts' : ''}</span>
+      </div>
+
+      {/* Video thumbnail */}
+      <div className={`relative overflow-hidden bg-slate-900 flex items-center justify-center ${short ? 'aspect-[9/16] max-h-[360px]' : 'aspect-video'}`}>
+        {video ? (
+          <img
+            src={video.thumbnailUrl || mediaSrc(video)}
+            alt={video.name || ''}
+            className="absolute inset-0 w-full h-full object-cover opacity-80"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        ) : (
+          <span className="text-slate-600 text-sm">{short ? '9:16 video' : '16:9 video'}</span>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-14 w-14 bg-[#ff0000] rounded-full flex items-center justify-center opacity-90">
+            <Play className="h-6 w-6 text-white ml-1" />
+          </div>
+        </div>
+        <span className="absolute bottom-2 right-2 bg-black/80 text-white text-3xs font-bold px-1.5 py-0.5 rounded">2:34</span>
+      </div>
+
+      {/* Video meta */}
+      <div className="px-4 pt-3 pb-2 flex gap-3">
+        <div className="h-9 w-9 rounded-full bg-[#cc0000] flex items-center justify-center text-white text-2xs font-bold shrink-0">{MB_INITIALS}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-xs font-semibold leading-snug line-clamp-2">{titleLine}</p>
+          <p className="text-slate-400 text-3xs mt-1">Move Better · 4.2k views · 3 hours ago</p>
+        </div>
+      </div>
+
+      {/* Action row */}
+      <div className="mx-4 mb-3 flex items-center bg-slate-800 rounded-full overflow-hidden text-2xs font-semibold">
+        <button className="flex items-center gap-1.5 text-white px-4 py-2 hover:bg-slate-700 border-r border-slate-700 flex-1 justify-center">
+          <ThumbsUp className="h-3.5 w-3.5" /> 147
+        </button>
+        <button className="flex items-center gap-1.5 text-white px-4 py-2 hover:bg-slate-700 border-r border-slate-700 flex-1 justify-center">
+          <MessageCircle className="h-3.5 w-3.5" /> Comment
+        </button>
+        <button className="flex items-center gap-1.5 text-white px-4 py-2 hover:bg-slate-700 flex-1 justify-center">
+          <Send className="h-3.5 w-3.5" /> Share
+        </button>
       </div>
     </div>
   )
@@ -996,13 +1229,13 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
     case 'email':       return <EmailPreview     content={content} mediaUrls={mediaUrls} />
     case 'instagram_ads': return <InstagramAdsPreview content={content} mediaUrls={mediaUrls} />
     case 'google_ads':  return <TextAdPreview    content={content} />
-    case 'twitter':
-    case 'threads':
-    case 'bluesky':
-    case 'mastodon':    return <SimpleSocialPreview content={content} mediaUrls={mediaUrls} platform={platform} />
-    case 'tiktok':
-    case 'youtube':
-    case 'youtube_short': return <VideoChannelPreview content={content} mediaUrls={mediaUrls} />
+    case 'twitter':     return <XPreview        content={content} mediaUrls={mediaUrls} />
+    case 'threads':     return <ThreadsPreview  content={content} mediaUrls={mediaUrls} />
+    case 'bluesky':     return <BlueskyPreview  content={content} mediaUrls={mediaUrls} />
+    case 'mastodon':    return <MastodonPreview content={content} mediaUrls={mediaUrls} />
+    case 'tiktok':      return <TikTokPreview   content={content} mediaUrls={mediaUrls} />
+    case 'youtube':     return <YouTubePreview  content={content} mediaUrls={mediaUrls} />
+    case 'youtube_short': return <YouTubePreview content={content} mediaUrls={mediaUrls} short={true} />
     default:            return <PlainPreview     content={content} />
   }
 }
