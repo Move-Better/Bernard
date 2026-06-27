@@ -52,6 +52,7 @@ export default function VoiceCloneCard({ staffMember }) {
     try {
       await apiFetch('/api/voice-clone/revoke', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staffId: staffMember.id }),
       })
       // Invalidate the staff cache so the card flips state.
@@ -82,6 +83,7 @@ export default function VoiceCloneCard({ staffMember }) {
     try {
       await apiFetch('/api/voice-clone/opt-out', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staffId: staffMember.id, optOut }),
       })
       queryClient.invalidateQueries({ queryKey: queryKeys.staff.all })

@@ -260,11 +260,7 @@ export default function Synthesis() {
             <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
           <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span
-              className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-              style={{ background: 'hsl(var(--primary))' }}
-              aria-hidden="true"
-            />
+            <span className="nx-rail shrink-0" aria-hidden="true" />
             Knowledge synthesis
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
