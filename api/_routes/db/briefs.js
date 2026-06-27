@@ -50,7 +50,7 @@ async function handler(req, res) {
       if (!rows.length) return res.status(404).json({ error: 'Not found' })
       return ok(res, rows[0])
     }
-    const limit = Math.min(parseInt(req.query.limit || '50', 10), 200)
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 50, 200))
     const r = await sb(`briefs?${wsFilter}&select=*&order=created_at.desc&limit=${limit}`)
     if (!r.ok) return dbErr(res, r, 'Fetch failed')
     return ok(res, await r.json())

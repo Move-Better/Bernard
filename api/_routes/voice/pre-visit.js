@@ -148,7 +148,17 @@ export default async function handler(req, res) {
       console.error('[voice/pre-visit] ElevenLabs error', ttsRes.status, detail.slice(0, 500))
       return err(res, 'TTS synthesis failed', 502)
     }
+    const MAX_TTS_BYTES = 20 * 1024 * 1024 // 20 MB — typical ElevenLabs TTS is <5 MB
+    const contentLength = parseInt(ttsRes.headers.get('content-length') || '0', 10)
+    if (contentLength > MAX_TTS_BYTES) {
+      console.error('[voice/pre-visit] ElevenLabs response too large:', contentLength)
+      return err(res, 'TTS audio too large', 502)
+    }
     const arrayBuf = await ttsRes.arrayBuffer()
+    if (arrayBuf.byteLength > MAX_TTS_BYTES) {
+      console.error('[voice/pre-visit] ElevenLabs buffer too large:', arrayBuf.byteLength)
+      return err(res, 'TTS audio too large', 502)
+    }
     audioBuffer = Buffer.from(arrayBuf)
   } catch (e) {
     console.error('[voice/pre-visit] ElevenLabs fetch failed:', e?.message)

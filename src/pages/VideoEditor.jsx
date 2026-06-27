@@ -223,10 +223,10 @@ function Canvas({ ctx }) {
 function InspectorShell({ icon: Icon, title, right, children }) {
   return (
     <>
-      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/0.08)' }}>
-        <Icon className="h-4 w-4" style={{ color: 'hsl(var(--primary))' }} />
-        <span className="text-xs font-semibold" style={{ color: 'hsl(var(--primary))' }}>{title}</span>
-        {right ? <span className="ml-auto text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{right}</span> : null}
+      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/8">
+        <Icon className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-primary">{title}</span>
+        {right ? <span className="ml-auto text-3xs text-muted-foreground">{right}</span> : null}
       </div>
       {children}
     </>
@@ -505,7 +505,7 @@ function VerticalTimeline({ ctx }) {
   return (
     <aside className="flex w-[120px] shrink-0 flex-col border-l bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
       <div className="flex items-center justify-between px-2.5 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
-        <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5" style={{ color: 'hsl(var(--primary))' }}><Plus className="h-3 w-3" />Text</button>
+        <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
       </div>
       <div className="relative flex flex-1 gap-2 p-2.5">
         <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
@@ -923,7 +923,7 @@ export default function VideoEditor() {
         <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70" style={{ color: 'hsl(var(--primary))' }} aria-label={playing ? 'Pause' : 'Play'}>
+              <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70 text-primary" aria-label={playing ? 'Pause' : 'Play'}>
                 {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
               </button>
             </TooltipTrigger>
