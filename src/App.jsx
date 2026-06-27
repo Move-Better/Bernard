@@ -75,6 +75,7 @@ import { ConfirmProvider, useConfirm } from '@/lib/useConfirm'
 import UploadTray from '@/components/UploadTray'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary'
+import PageSkeleton from '@/components/PageSkeleton'
 import { setSentryUser, setSentryWorkspace } from '@/lib/sentry'
 import { initPosthog, posthogIdentify, posthogGroup, posthogPageview } from '@/lib/posthog'
 import { FeedbackWidget } from '@/components/FeedbackWidget'
@@ -582,7 +583,10 @@ function AppRoutes() {
   return (
     <WelcomeGate>
       <Layout>
-        <Suspense fallback={null}>
+        {/* Skeleton (not blank) while a page's lazy code chunk loads, so in-app
+            navigation shows a content-shaped placeholder → data skeleton →
+            content, with no blank flash between pages. */}
+        <Suspense fallback={<PageSkeleton />}>
           <Routes>
             <Route path="/" element={guarded(<Home />)} />
             <Route path="/new" element={guarded(<CapturePicker />)} />
