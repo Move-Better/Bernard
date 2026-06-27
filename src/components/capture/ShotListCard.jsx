@@ -33,7 +33,7 @@ export default function ShotListCard({ onPick }) {
   if (directives.length === 0) return null
 
   return (
-    <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 p-4">
+    <div className="mb-6 rounded-lg border border-primary/30 bg-primary/10 p-4">
       <div className="flex items-center gap-2 mb-1">
         <Clapperboard className="w-4 h-4 text-primary shrink-0" />
         <h2 className="text-sm font-semibold text-primary">What to capture next</h2>
@@ -47,7 +47,7 @@ export default function ShotListCard({ onPick }) {
             key={`${d.topic}-${i}`}
             type="button"
             onClick={() => onPick?.(d)}
-            className="flex items-start gap-3 text-left rounded-md border border-border bg-card p-3 hover:border-primary hover:bg-primary/5 transition"
+            className="flex items-start gap-3 text-left rounded-md border border-border bg-card p-3 hover:border-primary hover:bg-primary/10 transition"
           >
             <span className="shrink-0 mt-0.5 text-primary">
               {d.format === 'photo' ? <ImageIcon className="w-4 h-4" /> : <Video className="w-4 h-4" />}

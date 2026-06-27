@@ -306,7 +306,7 @@ function BriefAndPreviewCard({ form, interviewerName }) {
   }
 
   return (
-    <div className="rounded-lg border border-action/30 bg-action/5 px-4 py-3.5">
+    <div className="rounded-lg border border-action/30 bg-action/10 px-4 py-3.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-2xs font-semibold uppercase tracking-widest text-action">
           {interviewerName}&apos;s brief, as he reads it

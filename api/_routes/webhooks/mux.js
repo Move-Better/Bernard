@@ -91,7 +91,7 @@ function sb(path, init = {}) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
+    return res.status(405).json({ error: 'method_not_allowed' })
   }
 
   const secret = process.env.MUX_WEBHOOK_SECRET
@@ -136,8 +136,9 @@ export default async function handler(req, res) {
   // at create time (which is the media_assets row id). Passthrough is the
   // more reliable join because Mux occasionally re-issues asset ids during
   // certain failure-and-retry flows, but normally either works.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const filterByAsset = `mux_asset_id=eq.${encodeURIComponent(assetId)}`
-  const filterByPass  = passthrough ? `id=eq.${encodeURIComponent(passthrough)}` : null
+  const filterByPass  = passthrough && UUID_RE.test(passthrough) ? `id=eq.${encodeURIComponent(passthrough)}` : null
 
   // Resolve the owning workspace_id BEFORE mutating so every PATCH is
   // workspace-scoped. The HMAC gate already proves the event came from Mux

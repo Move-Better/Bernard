@@ -66,7 +66,7 @@ export default function PageHelp({ pageKey, variant = 'default' }) {
 
             <div className="flex-1 overflow-y-auto p-5 space-y-5 text-sm">
               {/* Recall hint — surfaced first so it's seen before users scroll. */}
-              <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 flex items-start gap-2.5">
+              <div className="rounded-md border-2 border-primary/40 bg-primary/10 p-3 flex items-start gap-2.5">
                 <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs">
                   <p className="font-semibold text-foreground">You can come back to this guide anytime.</p>

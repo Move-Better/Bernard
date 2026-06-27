@@ -453,7 +453,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                   </div>
                   <button
                     type="button" disabled={!isAdmin || busy} onClick={openPortal}
-                    className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
+                    className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/10 inline-flex items-center gap-1.5 shrink-0"
                   >
                     {busy ? 'Opening…' : (status?.connected ? 'Manage' : 'Connect')}
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -513,7 +513,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                           </span>
                           <button
                             type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
-                            className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
+                            className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/10 inline-flex items-center gap-1.5 shrink-0"
                           >
                             Manage <ExternalLink className="h-3.5 w-3.5" />
                           </button>
@@ -528,7 +528,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                       ) : (
                         <button
                           type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
-                          className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
+                          className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/10 inline-flex items-center gap-1.5 shrink-0"
                         >
                           {locBusy ? 'Opening…' : 'Connect'}
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -857,7 +857,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
                 <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
                   testResult.ok
                     ? 'border-success/30 bg-success/10 text-success'
-                    : 'border-destructive/30 bg-destructive/5 text-destructive'
+                    : 'border-destructive/30 bg-destructive/10 text-destructive'
                 }`}>
                   {testResult.ok ? (
                     <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
@@ -1036,7 +1036,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
                 <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
                   testResult.ok
                     ? 'border-success/30 bg-success/10 text-success'
-                    : 'border-destructive/30 bg-destructive/5 text-destructive'
+                    : 'border-destructive/30 bg-destructive/10 text-destructive'
                 }`}>
                   {testResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
                   <span>{testResult.message}</span>

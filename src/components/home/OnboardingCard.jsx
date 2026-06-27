@@ -119,7 +119,7 @@ export default function OnboardingCard() {
   // `isStarting` is the implicit else branch — no row yet, or zero answers in.
 
   return (
-    <Card className="border-primary/30 bg-primary/5">
+    <Card className="border-primary/30 bg-primary/10">
       <CardContent className="pt-5 pb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
         {/* Icon + text group — fills full width on mobile so text can wrap */}
         <div className="flex items-start gap-4 flex-1 min-w-0">

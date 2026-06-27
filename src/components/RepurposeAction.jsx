@@ -43,7 +43,7 @@ export default function RepurposeAction({ asset, canEdit }) {
   }
 
   return (
-    <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+    <div className="rounded-md border border-primary/30 bg-primary/10 p-3 space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <div className="text-xs font-medium flex items-center gap-1.5">

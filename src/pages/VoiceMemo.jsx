@@ -413,7 +413,7 @@ export default function VoiceMemo() {
           tab was backgrounded/killed mid-record on a phone). Surfaced from
           IndexedDB on mount so the audio is never silently lost. */}
       {recoverable.length > 0 && !recording && !recorded && !uploading && (
-        <Card className="border-warning/40 bg-warning/5">
+        <Card className="border-warning/40 bg-warning/10">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start gap-2">
               <RotateCcw className="h-4 w-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />

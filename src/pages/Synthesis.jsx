@@ -292,7 +292,7 @@ export default function Synthesis() {
 
       {/* Top gaps callout */}
       {topGaps.length > 0 && (
-        <div className="rounded-xl border border-action/20 bg-action/5 p-4 space-y-2">
+        <div className="rounded-xl border border-action/20 bg-action/10 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Circle className="h-4 w-4 text-action" />
             <span className="text-sm font-medium text-action">Coverage gaps to close</span>

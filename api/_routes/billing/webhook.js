@@ -167,11 +167,11 @@ async function handler(req, res) {
           plan_seats: planConfig?.seats || 3,
           trial_ends_at: null, // Clear trial on activation
         }
-        // Pass customerId as 3rd arg so updateWorkspace adds a stripe_customer_id
-        // filter — consistent with subscription.updated / invoice.paid paths which
-        // all pass the customer ID to prevent a crafted event from activating an
-        // unrelated workspace. Without this, signature verification is the only guard.
-        await updateWorkspace(workspaceId, patch, customerId || null)
+        // Don't pass customerId as cross-validation filter here: on first checkout
+        // the workspace row has stripe_customer_id=NULL, so the filter would match
+        // 0 rows and silently skip activation. The workspace ID + HMAC-verified event
+        // is the guard; the customer ID is written by the patch itself.
+        await updateWorkspace(workspaceId, patch, null)
         console.info(`[billing/webhook] activated workspace ${workspaceId} on plan ${patch.plan}`)
         break
       }

@@ -40,7 +40,7 @@ const READ_ICONS = {
 
 const TONE = {
   good: { ring: 'bg-success/10', icon: 'text-success', card: 'border-border bg-card' },
-  warn: { ring: 'bg-warning/15', icon: 'text-warning', card: 'border-warning/25 bg-warning/10' },
+  warn: { ring: 'bg-warning/20', icon: 'text-warning', card: 'border-warning/30 bg-warning/10' },
   muted: { ring: 'bg-muted', icon: 'text-muted-foreground', card: 'border-border bg-card' },
 }
 
@@ -219,7 +219,7 @@ function ExitAnalysisRead({ data }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+        <div className="h-9 w-9 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
           <TimerOff className="h-4 w-4 text-warning" />
         </div>
         <div className="flex-1 min-w-0">
@@ -628,9 +628,9 @@ export default function Analytics() {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-warning/25 bg-warning/10 p-5">
+            <div className="rounded-2xl border border-warning/30 bg-warning/10 p-5">
               <div className="flex items-start gap-3">
-                <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+                <div className="h-9 w-9 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
                   <AlertTriangle className="h-4 w-4 text-warning" />
                 </div>
                 <div className="flex-1 min-w-0">

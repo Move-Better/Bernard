@@ -556,7 +556,7 @@ export default function YourWeek() {
           </div>
         ) : isPast ? (
           <div className="rounded-lg border bg-muted/20 py-12 text-center">
-            <Moon className="mx-auto h-8 w-8 text-muted-foreground/60" aria-hidden="true" />
+            <Moon className="mx-auto h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium text-foreground">Nothing ran the week of {weekRangeLabel(weekOffset)}</p>
             <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
               No content was planned for this past week.

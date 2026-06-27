@@ -189,7 +189,7 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
             })}
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-center">
+          <div className="rounded-md border border-dashed border-primary/40 bg-primary/10 p-3 text-center">
             <p className="text-2xs font-semibold text-primary">+ Add a photo or video</p>
             {optional && (
               <p className="mt-1 text-3xs text-muted-foreground">Text-only is a valid post on this channel.</p>

@@ -296,7 +296,7 @@ export default function Capture() {
         <button
           type="button"
           onClick={handleInstall}
-          className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-lg border border-primary/30 bg-primary/5 text-left hover:bg-primary/10 transition"
+          className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-lg border border-primary/30 bg-primary/10 text-left hover:bg-primary/20 transition"
         >
           <Smartphone className="w-5 h-5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
@@ -317,7 +317,7 @@ export default function Capture() {
           <button
             type="button"
             onClick={() => cameraInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-2 h-32 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition"
+            className="flex flex-col items-center justify-center gap-2 h-32 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/10 transition"
           >
             <Camera className="w-8 h-8 text-primary" />
             <span className="font-medium">Take photo or video</span>
@@ -335,7 +335,7 @@ export default function Capture() {
           <button
             type="button"
             onClick={() => filePickerRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-2 h-32 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition"
+            className="flex flex-col items-center justify-center gap-2 h-32 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/10 transition"
           >
             <FolderOpen className="w-8 h-8 text-primary" />
             <span className="font-medium">Pick existing files</span>

@@ -374,7 +374,7 @@ function OverlayInspector({ ctx }) {
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(true, true)} title="Center on frame" aria-label="Center on frame"
-          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold border-primary/35 bg-primary/[0.06] text-primary`}>
+          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold border-primary/30 bg-primary/10 text-primary`}>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
           Center
         </button>
@@ -421,7 +421,7 @@ function MomentsInspector({ ctx }) {
             const on = s.id === selectedSegmentId
             const dur = Math.max(0, (Number(s.end_sec) || 0) - (Number(s.start_sec) || 0))
             return (
-              <div key={s.id} className={`mb-1.5 rounded-md border p-2 ${on ? 'border-primary bg-primary/[0.06]' : 'border-border'}`}>
+              <div key={s.id} className={`mb-1.5 rounded-md border p-2 ${on ? 'border-primary bg-primary/10' : 'border-border'}`}>
                 <button onClick={() => applySegment(s)} className="block w-full text-left">
                   <span className={`block text-2xs font-medium ${on ? 'text-primary' : 'text-foreground'}`}>{s.hook || 'Moment'}</span>
                   <span className="block text-3xs text-muted-foreground">{fmt(Number(s.start_sec) || 0)} · {Math.round(dur)}s</span>

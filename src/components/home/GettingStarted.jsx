@@ -127,7 +127,7 @@ export default function GettingStarted() {
           <li key={item.key}>
             <Link
               to={item.href}
-              className="flex items-start gap-3 rounded-lg p-2.5 -m-2.5 hover:bg-primary/5 transition-colors group"
+              className="flex items-start gap-3 rounded-lg p-2.5 -m-2.5 hover:bg-primary/10 transition-colors group"
             >
               {item.done ? (
                 <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />

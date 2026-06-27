@@ -509,7 +509,7 @@ export default function StaffProfile() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/5"
+                  className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
                   onClick={() => setDeleteTarget({ type: 'staff' })}
                 >
                   <Trash2 className="h-4 w-4 mr-1.5" />
@@ -651,7 +651,7 @@ export default function StaffProfile() {
           </div>
 
           {/* Option B: Force delete */}
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 space-y-3">
             <div>
               <p className="text-sm font-medium text-destructive">Permanently delete everything</p>
               <p className="text-2xs text-muted-foreground mt-0.5">

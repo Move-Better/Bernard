@@ -45,7 +45,7 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
   // they read as quiet "add later" chips and don't compete for attention.
   const unsetCls = demoteUnset
     ? 'text-muted-foreground bg-muted/40 border border-dashed border-border hover:bg-muted active:bg-muted px-2 py-1.5'
-    : 'text-primary bg-primary/5 border border-dashed border-primary/40 hover:bg-primary/10 hover:border-primary/60 active:bg-primary/10 font-medium px-2 py-1.5'
+    : 'text-primary bg-primary/10 border border-dashed border-primary/40 hover:bg-primary/20 hover:border-primary/60 active:bg-primary/20 font-medium px-2 py-1.5'
   return (
     <label
       className={`relative inline-flex items-center gap-1 text-xs rounded-full transition-colors ${
@@ -56,7 +56,7 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
     >
       {selected ? (
         <>
-          {label && <span className="text-muted-foreground/60">{label} ·</span>}
+          {label && <span className="text-muted-foreground/40">{label} ·</span>}
           {selected.emoji && <span className="text-2xs">{selected.emoji}</span>}
           <span>{selected.label}</span>
           <ChevronDown className="h-3 w-3 opacity-50" />
@@ -401,7 +401,7 @@ export default function StoryDetail() {
           on outputs.coveredSummary. Reappears here so the clinician sees the
           mirror of what they said alongside the resulting content. */}
       {story?.outputs?.coveredSummary && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3">
           <p className="text-2xs font-bold uppercase tracking-widest text-primary mb-1.5">
             What you covered
           </p>

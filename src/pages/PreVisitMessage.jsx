@@ -184,7 +184,7 @@ export default function PreVisitMessage() {
 
       {/* Result */}
       {result && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-primary/30 bg-primary/10">
           <CardContent className="p-6 space-y-4">
             <h2 className="text-sm font-semibold text-foreground">Generated message</h2>
 

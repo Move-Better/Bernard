@@ -452,7 +452,7 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
             onPointerDown={(e) => startDrag(e, idx, f)}
             title="Drag to place"
             className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move items-center justify-center rounded ${
-              sel ? 'border-2 border-dashed border-primary bg-primary/5' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
+              sel ? 'border-2 border-dashed border-primary bg-primary/10' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
             }`}
             style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, width: `${w * 100}%`, minHeight: '8%' }}
           >
@@ -558,7 +558,7 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
                   const firstLine = (draft || '').split('\n')[0].trim()
                   if (firstLine) onUseAsHook(firstLine)
                 }}
-                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/20 transition-colors"
               >
                 ↑ Use as slide hook
               </button>
@@ -728,7 +728,7 @@ function SlideInspector({
           <button
             type="button"
             onClick={() => setAddOpen((o) => !o)}
-            className="w-full rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-1.5 text-2xs font-semibold text-primary hover:bg-primary/10"
+            className="w-full rounded-md border border-dashed border-primary/60 bg-primary/10 px-2 py-1.5 text-2xs font-semibold text-primary hover:bg-primary/20"
           >
             <Plus className="inline h-3 w-3 -mt-0.5 mr-0.5" />
             Add text block
@@ -933,7 +933,7 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-3 text-2xs font-semibold text-primary hover:bg-primary/10"
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/60 bg-primary/10 px-2 py-3 text-2xs font-semibold text-primary hover:bg-primary/20"
           >
             <Upload className="h-3.5 w-3.5" />
             Browse library / upload
@@ -1046,7 +1046,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
           </div>
         </div>
       ) : (
-        <div className="rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-4 text-center">
+        <div className="rounded-md border border-dashed border-primary/50 bg-primary/10 px-3 py-4 text-center">
           <ImagePlus className="mx-auto mb-1 h-5 w-5 text-primary" />
           <p className="text-2xs font-semibold text-primary">Add a photo to this slide</p>
           <p className="mt-0.5 text-3xs text-muted-foreground">Pick from AI picks, your library, or upload — it lands straight on the slide.</p>
@@ -2051,7 +2051,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                             key={i}
                             type="button"
                             onClick={() => setSelection({ type: 'text', idx: i })}
-                            className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
+                            className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${on ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}
                           >
                             <span className={`shrink-0 text-3xs font-semibold uppercase tracking-wide ${on ? 'text-primary' : 'text-muted-foreground'}`}>{meta.label}</span>
                             <span className="min-w-0 flex-1 truncate text-xs text-foreground">{snippet || 'Empty'}{snippet && b.text.trim().length > 22 ? '…' : ''}</span>

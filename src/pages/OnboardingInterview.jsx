@@ -1245,7 +1245,7 @@ function PrimerCard({ icon, title, body }) {
 function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, onHome }) {
   if (status === 'running') {
     return (
-      <Card className="border-primary/40 bg-primary/5">
+      <Card className="border-primary/40 bg-primary/10">
         <CardContent role="status" className="pt-6 text-center space-y-3">
           <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" aria-hidden="true" />
           <div className="space-y-1">
@@ -1265,7 +1265,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
 
   if (status === 'error') {
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
+      <Card className="border-destructive/40 bg-destructive/10">
         <CardContent className="pt-6 text-center space-y-3">
           <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
           <div className="space-y-1">
@@ -1297,7 +1297,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
       : 'Your workspace voice was already synthesized. Visit Settings → Voice to review or refine.'
   const verb = dryRun ? 'Would write' : 'Wrote'
   return (
-    <Card className={dryRun ? 'border-warning/40 bg-warning/5' : 'border-success/40 bg-success/5'}>
+    <Card className={dryRun ? 'border-warning/40 bg-warning/10' : 'border-success/40 bg-success/10'}>
       <CardContent className="pt-6 text-center space-y-3">
         {dryRun
           ? <FlaskConical className="h-8 w-8 mx-auto text-warning" />

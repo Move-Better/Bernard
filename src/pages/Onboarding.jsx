@@ -769,7 +769,7 @@ function ScanScreen({ form, setField, scanState, runScan, onContinue }) {
       {isScanning && <ScanningIndicator />}
 
       {scanState.status === 'error' && (
-        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
+        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
           <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
             {scanState.error === 'fetch-failed' || scanState.error === 'invalid-url'
@@ -996,7 +996,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
         : "A few basics — we use these to set up your workspace and make your content sound like it's genuinely from your practice, not generic AI. Nothing here is locked in; you can edit all of it later in settings."}
     >
       {scanned && (
-        <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-xs text-success">
+        <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           <span>Read {scanState.sources.length} page{scanState.sources.length === 1 ? '' : 's'} from your site and pre-filled the fields below.</span>
         </div>

@@ -119,7 +119,7 @@ function RegeneratingState() {
 
 function ErrorState({ error, isAdmin, onRegenerate, isRegenerating }) {
   return (
-    <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-8 py-12 flex flex-col items-center gap-3 text-center">
+    <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-8 py-12 flex flex-col items-center gap-3 text-center">
       <AlertTriangle className="h-7 w-7 text-destructive" />
       <div className="max-w-md flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-foreground">Last regeneration failed</h2>

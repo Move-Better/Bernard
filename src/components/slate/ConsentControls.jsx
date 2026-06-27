@@ -74,7 +74,7 @@ export default function ConsentControls({ sourceAssetId, consentStatus = 'not_re
   const bgCls =
     status === 'pending'  ? 'bg-warning/10 border-warning/30'         :
     status === 'obtained' ? 'bg-success/10 border-success/30'     :
-    status === 'revoked'  ? 'bg-destructive/5 border-destructive/30' :
+    status === 'revoked'  ? 'bg-destructive/10 border-destructive/30' :
                             'bg-muted/30 border-border'
 
   return (

@@ -1079,7 +1079,7 @@ function CopyButton({ value }) {
     <button
       onClick={copy}
       className={`shrink-0 text-2xs px-2 py-1 rounded border transition-colors ${
-        copied ? 'border-success text-success bg-success/5' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+        copied ? 'border-success text-success bg-success/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
       }`}
     >
       {copied ? '✓ Copied' : 'Copy'}

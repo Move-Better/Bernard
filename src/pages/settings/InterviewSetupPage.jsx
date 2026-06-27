@@ -214,7 +214,7 @@ function VoiceMemoryRoster({ interviewerName }) {
   const { data: staff = [], isLoading } = useStaff()
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-4">
+    <div className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-4">
       <div className="flex items-start gap-3 mb-3">
         <Mic className="h-4 w-4 mt-0.5 text-primary/70 shrink-0" />
         <div className="flex-1 min-w-0">

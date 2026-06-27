@@ -305,7 +305,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                 onClick={() => setPurpose(p.id)}
                 className={`text-left rounded-lg border-2 p-2.5 transition-colors ${
                   active
-                    ? 'border-primary bg-primary/5'
+                    ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-primary/40'
                 }`}
               >
@@ -574,7 +574,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       {rejected.length > 0 && (
         <div className="mt-3 space-y-1.5">
           {rejected.map((r) => (
-            <div key={r.id} className="flex items-start gap-2 text-xs px-2.5 py-1.5 rounded-md bg-destructive/5 border border-destructive/20">
+            <div key={r.id} className="flex items-start gap-2 text-xs px-2.5 py-1.5 rounded-md bg-destructive/10 border border-destructive/20">
               <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium" title={r.name}>{r.name}</div>

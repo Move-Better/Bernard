@@ -273,13 +273,13 @@ export default function DriveImportPicker({ onComplete, onClose }) {
       {/* Top zone — either intro/error or thumbnail strip after selection */}
       <div className="flex-1 overflow-y-auto py-2 min-h-[260px]">
         {pickerLoadError && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 flex items-start gap-2 mb-3">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 flex items-start gap-2 mb-3">
             <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <div className="text-sm text-destructive flex-1">{pickerLoadError}</div>
           </div>
         )}
         {openError && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 flex items-start gap-2 mb-3">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 flex items-start gap-2 mb-3">
             <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <div className="text-sm text-destructive flex-1">{openError}</div>
           </div>

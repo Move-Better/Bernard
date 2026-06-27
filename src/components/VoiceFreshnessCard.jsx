@@ -68,7 +68,7 @@ export default function VoiceFreshnessCard({ staffId, staffName }) {
   }
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-2.5">
+    <div className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 space-y-2.5">
       <div className="flex items-center gap-2">
         <Icon as={Mic} size="md" className="text-primary shrink-0" />
         <p className="text-sm font-medium text-foreground">

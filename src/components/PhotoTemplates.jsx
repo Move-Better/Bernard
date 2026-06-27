@@ -411,7 +411,7 @@ function ThemeEditor({ initial, onSave, onCancel, saving }) {
   const previewTheme = { blocks: config.blocks }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
+    <form onSubmit={handleSubmit} className="rounded-xl border border-primary/30 bg-primary/10 p-5 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <h3 className="text-sm font-bold text-foreground">{initial ? 'Edit template' : 'New template'}</h3>
         <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
@@ -597,7 +597,7 @@ function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, sa
             <button
               type="button"
               onClick={() => inputRef.current?.focus()}
-              className="flex-1 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary text-left hover:bg-primary/10 transition-colors"
+              className="flex-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary text-left hover:bg-primary/20 transition-colors"
             >
               Scratch — describe it and I&apos;ll design it
             </button>
@@ -989,7 +989,7 @@ export default function PhotoTemplates() {
                 <div
                   key={t.id}
                   className={`group flex items-center gap-2.5 w-full rounded-lg border p-1.5 transition-colors ${
-                    sel ? 'border-primary bg-primary/5' : 'border-transparent hover:border-primary/20 hover:bg-muted/40'
+                    sel ? 'border-primary bg-primary/10' : 'border-transparent hover:border-primary/20 hover:bg-muted/40'
                   }`}
                 >
                   <button
@@ -1035,7 +1035,7 @@ export default function PhotoTemplates() {
               type="button"
               onClick={handleGenerate}
               disabled={generateThemes.isPending}
-              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
             >
               <Sparkles className="h-3.5 w-3.5" />
               {generateThemes.isPending ? 'Generating…' : 'Generate from my brand'}

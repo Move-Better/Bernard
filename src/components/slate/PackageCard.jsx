@@ -596,7 +596,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
       {isFailed && (
         <>
           {pkg.error_message && (
-            <div className="px-3 py-2 bg-destructive/5">
+            <div className="px-3 py-2 bg-destructive/10">
               <p className="text-3xs text-destructive line-clamp-2" title={pkg.error_message}>
                 {pkg.error_message}
               </p>

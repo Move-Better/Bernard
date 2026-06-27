@@ -307,7 +307,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece,
   const actionLabel = isPublished ? 'View post' : 'View draft'
 
   return (
-    <div className={`rounded-xl border border-primary/30 bg-primary/5 overflow-hidden ${act1 ? 'shadow-[0_12px_32px_-8px_hsl(var(--primary)/0.18)]' : 'shadow-[0_8px_24px_-12px_rgba(12,117,128,0.25)]'}`}>
+    <div className={`rounded-xl border border-primary/30 bg-primary/10 overflow-hidden ${act1 ? 'shadow-[0_12px_32px_-8px_hsl(var(--primary)/0.18)]' : 'shadow-[0_8px_24px_-12px_rgba(12,117,128,0.25)]'}`}>
       {/* Header band */}
       <div className="px-5 pt-4 pb-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">

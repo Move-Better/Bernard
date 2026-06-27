@@ -207,7 +207,7 @@ export default function NewNewsletter() {
                       type="button"
                       onClick={() => setStaffName(s.name)}
                       className={`inline-flex items-center gap-2 rounded-full border-2 pl-1 pr-3 py-1 transition-all ${
-                        isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                        isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40'
                       }`}
                     >
                       <span className={`h-6 w-6 rounded-full text-2xs flex items-center justify-center font-semibold shrink-0 ${
@@ -283,7 +283,7 @@ export default function NewNewsletter() {
                       type="button"
                       onClick={() => setSelectedGoalId(g.id)}
                       className={`text-left rounded-lg border p-3 transition-all ${
-                        isSel ? 'border-primary ring-1 ring-primary bg-primary/5' : 'border-input hover:border-primary/40'
+                        isSel ? 'border-primary ring-1 ring-primary bg-primary/10' : 'border-input hover:border-primary/40'
                       }`}
                     >
                       <div className="flex items-start gap-2">
@@ -351,7 +351,7 @@ export default function NewNewsletter() {
                   type="button"
                   onClick={() => setVoiceMode(opt.id)}
                   className={`flex items-start gap-2 rounded-lg border p-2.5 text-left transition-all ${
-                    voiceMode === opt.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-input hover:border-primary/40 hover:bg-accent/30'
+                    voiceMode === opt.id ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-input hover:border-primary/40 hover:bg-accent/30'
                   }`}
                 >
                   <span className="text-base shrink-0 mt-0.5">{opt.emoji}</span>

@@ -177,7 +177,7 @@ export default function CampaignsSettings() {
       )}
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 text-destructive px-4 py-3 text-sm">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 text-destructive px-4 py-3 text-sm">
           {error} <button className="underline" onClick={load}>Retry</button>
         </div>
       )}
@@ -425,7 +425,7 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
               key={opt.value}
               className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                 form.content_style === opt.value
-                  ? 'border-primary bg-primary/5'
+                  ? 'border-primary bg-primary/10'
                   : 'border-border hover:border-primary/40'
               }`}
             >
@@ -570,7 +570,7 @@ function StaffTargetPicker({ selected, onChange }) {
           <label
             className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
               selected.length === 0
-                ? 'border-primary bg-primary/5'
+                ? 'border-primary bg-primary/10'
                 : 'border-border hover:border-primary/40'
             }`}
             onClick={(e) => { e.preventDefault(); onChange([]) }}
@@ -587,7 +587,7 @@ function StaffTargetPicker({ selected, onChange }) {
                 key={s.id}
                 className={`flex items-center gap-2 px-2.5 py-2 rounded-md border text-sm cursor-pointer transition-colors ${
                   selectedSet.has(s.id)
-                    ? 'border-primary bg-primary/5'
+                    ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-primary/40'
                 }`}
               >

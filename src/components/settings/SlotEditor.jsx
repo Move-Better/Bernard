@@ -86,7 +86,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
                 disabled={disabled}
                 className={`flex items-start gap-2 rounded-lg border p-2.5 text-left transition-all ${
                   selected
-                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    ? 'border-primary bg-primary/10 ring-1 ring-primary'
                     : disabled
                     ? 'border-input opacity-40 cursor-not-allowed'
                     : 'border-input hover:border-primary/40 hover:bg-accent/30'
@@ -165,7 +165,7 @@ export function SlotEditor({ label, description, catalog, value, onChange }) {
 
         {/* Pending (uncommitted) row */}
         {pending && (
-          <div className="flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/5 p-2.5">
+          <div className="flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/10 p-2.5">
             <Input
               value={pending.emoji}
               onChange={(e) => setPending(p => ({ ...p, emoji: e.target.value.slice(0, 4) }))}

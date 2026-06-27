@@ -30,8 +30,9 @@ export default function PostCallReveal() {
   const pollStartRef = useRef(Date.now())
 
   const { data } = useQuery({
-    queryKey: ['week-summary'],
+    queryKey: ['week-summary', 'post-call'],
     queryFn: () => apiFetch('/api/content-plan/week-summary'),
+    staleTime: 0,
     refetchInterval: (q) => {
       if (q.state.data?.hasPlan) return false
       if (Date.now() - pollStartRef.current > 60_000) return false // hard cap — no infinite poll

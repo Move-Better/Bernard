@@ -189,7 +189,7 @@ export default function WorkspaceSettings() {
   if (!ws) {
     return (
       <div className="p-6">
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Settings could not load. You may be signed into the wrong organisation — try signing out and back in.
         </div>
       </div>
@@ -462,7 +462,7 @@ function DangerZone({ workspace, getToken }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-4 space-y-3">
+        <div className="rounded-lg border-2 border-destructive/30 bg-destructive/10 p-4 space-y-3">
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
             <div>

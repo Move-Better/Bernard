@@ -592,7 +592,7 @@ export default function StoryboardPiece() {
                     <button
                       type="button"
                       onClick={() => setStudioOpen(true)}
-                      className="rounded-lg border-2 border-primary bg-primary/5 p-2"
+                      className="rounded-lg border-2 border-primary bg-primary/10 p-2"
                     >
                       <div className="mb-1 flex aspect-square items-center justify-center rounded bg-primary/10 text-accent-foreground">
                         <Pen className="h-4 w-4" />
@@ -654,7 +654,7 @@ export default function StoryboardPiece() {
 
           {/* Change the look — AI conversation (Phase 4) */}
           <div className="overflow-hidden rounded-xl border border-primary/40 bg-card">
-            <div className="flex items-center gap-2 border-b bg-primary/5 px-4 py-2.5">
+            <div className="flex items-center gap-2 border-b bg-primary/10 px-4 py-2.5">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Change the look</span>
               <span className="text-2xs text-muted-foreground">· just ask, like talking to a designer</span>
@@ -912,7 +912,7 @@ export default function StoryboardPiece() {
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/5"
+                    className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/10"
                   >
                     <Repeat className="h-3 w-3" /> Change / swap
                   </button>
@@ -997,7 +997,7 @@ export default function StoryboardPiece() {
                 <button
                   type="button"
                   onClick={() => setPickerOpen(true)}
-                  className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/5"
+                  className="flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-2xs font-medium text-primary hover:bg-primary/10"
                 >
                   <Repeat className="h-3 w-3" /> Change / swap
                 </button>

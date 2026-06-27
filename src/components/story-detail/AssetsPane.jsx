@@ -1667,7 +1667,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           time (or unapprove). Only valid for Buffer-dispatched platforms; blog
           publishes don't go through this state. */}
       {isPublish && piece.status === 'scheduled' && canReview && piece.platform !== 'blog' && (
-        <div className="rounded-lg border bg-primary/5 border-primary/20 p-3 space-y-2.5">
+        <div className="rounded-lg border bg-primary/10 border-primary/20 p-3 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
             <Calendar className="h-3.5 w-3.5" />
             Scheduled on Buffer
@@ -2028,7 +2028,7 @@ export default function AssetsPane({
                 title={title}
                 className={`flex items-center gap-1.5 shrink-0 px-3 py-2 text-xs rounded-t border-b-2 transition-colors ${
                   isActive
-                    ? 'border-primary text-primary font-medium bg-primary/5'
+                    ? 'border-primary text-primary font-medium bg-primary/10'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >

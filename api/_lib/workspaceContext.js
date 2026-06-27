@@ -108,6 +108,7 @@ export async function workspaceById(id) {
   let r
   try {
     r = await fetch(url, {
+      signal: AbortSignal.timeout(10_000),
       headers: {
         apikey: supabaseKey,
         Authorization: `Bearer ${supabaseKey}`,

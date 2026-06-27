@@ -376,7 +376,7 @@ export default function VoiceTraining() {
       </div>
 
       {pendingStash && !recorded && !uploading && (
-        <Card className="border-primary/40 bg-primary/5">
+        <Card className="border-primary/40 bg-primary/10">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start gap-3">
               <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />

@@ -286,7 +286,7 @@ export default function Stories() {
           <button
             type="button"
             onClick={clearCampaign}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/10 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
           >
             <Target className="h-3 w-3" aria-hidden="true" />
             Campaign: {activeCampaignObj.name}
@@ -310,7 +310,7 @@ export default function Stories() {
           <button
             type="button"
             onClick={clearStaff}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/10 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
           >
             <User className="h-3 w-3" aria-hidden="true" />
             {activeStaffObj.name}
