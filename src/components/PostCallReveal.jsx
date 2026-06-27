@@ -27,7 +27,7 @@ function dayLabel(iso) {
 
 export default function PostCallReveal() {
   const navigate = useNavigate()
-  const pollStartRef = useRef(Date.now())
+  const pollStartRef = useRef({ at: 0 })
 
   const { data } = useQuery({
     queryKey: ['week-summary', 'post-call'],
@@ -35,7 +35,8 @@ export default function PostCallReveal() {
     staleTime: 0,
     refetchInterval: (q) => {
       if (q.state.data?.hasPlan) return false
-      if (Date.now() - pollStartRef.current > 60_000) return false // hard cap — no infinite poll
+      if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
+      if (Date.now() - pollStartRef.current.at > 60_000) return false // hard cap — no infinite poll
       return 3000
     },
     refetchOnWindowFocus: false,

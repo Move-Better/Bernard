@@ -57,7 +57,8 @@ async function fetchPlaybackToken(assetId) {
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`playback-token ${res.status}: ${text.slice(0, 200)}`)
+    console.error('[MediaVideoPlayer] playback-token failed:', res.status, text.slice(0, 200))
+    throw new Error(`playback-token ${res.status}`)
   }
   return res.json()
 }

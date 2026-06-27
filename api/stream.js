@@ -79,7 +79,7 @@ async function handler(req, res) {
   }
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
-  res.setHeader('Cache-Control', 'private, no-cache, no-transform')
+  res.setHeader('Cache-Control', 'private, no-store, no-transform')
   res.setHeader('Connection', 'keep-alive')
   // Tell upstream proxies (Vercel edge / nginx-style) not to buffer the stream.
   res.setHeader('X-Accel-Buffering', 'no')
