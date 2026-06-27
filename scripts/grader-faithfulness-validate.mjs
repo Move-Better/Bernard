@@ -78,7 +78,7 @@ async function avgScore(buildFn, parseFn, args) {
   const runs = []
   for (let i = 0; i < SAMPLES; i++) {
     const p = buildFn(args)
-    const { text } = await generateText({ model: EVAL_MODEL, system: p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
+    const { text } = await generateText({ model: EVAL_MODEL, instructions: p.instructions, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
     const parsed = parseFn(text)
     if (parsed?.overall != null) runs.push(parsed)
   }

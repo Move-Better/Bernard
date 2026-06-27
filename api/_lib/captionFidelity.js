@@ -109,7 +109,7 @@ export async function scoreCaptionFidelity({
   try {
     const res = await generateText({
       model: EVAL_MODEL,
-      instructions: prompt.system,
+      instructions: prompt.instructions,
       messages: [{ role: 'user', content: prompt.user }],
       maxOutputTokens: 240,
     })

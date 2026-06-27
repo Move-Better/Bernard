@@ -234,7 +234,7 @@ export default async function handler(req, res) {
         staffName, workspaceName: ws.name || ws.slug || 'practice',
       })
       const { text: evalRaw1 } = await generateText({
-        model: HAIKU, instructions: ep1.system,
+        model: HAIKU, instructions: ep1.instructions,
         messages: [{ role: 'user', content: ep1.user }],
         maxOutputTokens: 240,
       })
@@ -271,7 +271,7 @@ export default async function handler(req, res) {
             staffName, workspaceName: ws.name || ws.slug || 'practice',
           })
           const { text: evalRaw2 } = await generateText({
-            model: HAIKU, instructions: ep2.system,
+            model: HAIKU, instructions: ep2.instructions,
             messages: [{ role: 'user', content: ep2.user }],
             maxOutputTokens: 240,
           })

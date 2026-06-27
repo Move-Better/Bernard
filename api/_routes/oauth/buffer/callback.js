@@ -6,8 +6,10 @@ export const config = { runtime: 'nodejs' }
 // settings/integrations page.
 
 import crypto from 'node:crypto'
+import { verifyToken } from '@clerk/backend'
 import { encryptSecret } from '../../../_lib/credentialCrypto.js'
 
+const CLERK_SECRET = process.env.CLERK_SECRET_KEY
 const CLIENT_ID = process.env.BUFFER_CLIENT_ID
 const CLIENT_SECRET = process.env.BUFFER_CLIENT_SECRET
 const REDIRECT_URI = 'https://withbernard.ai/api/oauth/buffer/callback'
@@ -38,6 +40,15 @@ function redirectTo(res, url) {
   res.end()
 }
 
+// Extract the Clerk session token from the __session cookie (set on
+// .withbernard.ai by the Clerk SDK). Used to verify the callback caller
+// is the same user who initiated the OAuth flow.
+function extractSessionToken(req) {
+  const cookies = req.headers.cookie || ''
+  const match = cookies.match(/(?:^|;\s*)__session=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const code = url.searchParams.get('code')
@@ -51,15 +62,33 @@ async function handler(req, res) {
     return redirectTo(res, '/settings/integrations?buffer_error=missing_params')
   }
 
-  // workspace_id comes from the HMAC-signed state param, not from the Host
-  // header. workspaceContext cannot be used here — Buffer redirects to the
-  // apex domain, not a workspace subdomain. The CLIENT_SECRET HMAC is the
-  // isolation mechanism: a forged workspace_id would require breaking the
-  // signature. The redirect-back step below confirms the workspace is still
-  // active before completing the credential write.
+  // workspace_id and user_id come from the HMAC-signed state param. The HMAC
+  // prevents forging a new state (which would require knowing CLIENT_SECRET).
+  // We also verify the current Clerk session matches the initiating user_id,
+  // preventing replay of a legitimately-issued state token by a different user.
   const payload = verifyState(state)
   if (!payload?.workspace_id) {
     return redirectTo(res, '/settings/integrations?buffer_error=invalid_state')
+  }
+
+  // Verify the caller's Clerk session matches the user who started the flow.
+  // If CLERK_SECRET is missing (misconfiguration) or the session is absent,
+  // we reject rather than falling back — state replay is a real attack here.
+  if (payload.user_id) {
+    const sessionToken = extractSessionToken(req)
+    if (!sessionToken) {
+      return redirectTo(res, '/settings/integrations?buffer_error=auth_required')
+    }
+    try {
+      const claims = await verifyToken(sessionToken, { secretKey: CLERK_SECRET })
+      if (claims.sub !== payload.user_id) {
+        console.error('[oauth/buffer/callback] user_id mismatch — possible state replay', { state_uid: payload.user_id, session_uid: claims.sub })
+        return redirectTo(res, '/settings/integrations?buffer_error=auth_mismatch')
+      }
+    } catch (e) {
+      console.error('[oauth/buffer/callback] session verification failed:', e?.message)
+      return redirectTo(res, '/settings/integrations?buffer_error=auth_required')
+    }
   }
 
   // Exchange code for access token

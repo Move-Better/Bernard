@@ -46,7 +46,7 @@ async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   const nonce = crypto.randomBytes(16).toString('hex')
-  const state = signState({ workspace_id: workspace.id, nonce })
+  const state = signState({ workspace_id: workspace.id, user_id: auth.userId, nonce })
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID,

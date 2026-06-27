@@ -88,7 +88,7 @@ async function handler(req, res) {
 
       const { text } = await generateText({
         model:    'anthropic/claude-haiku-4-5-20251001',
-        instructions:   prompts.system,
+        instructions:   prompts.instructions,
         messages: [{ role: 'user', content: prompts.user }],
         maxOutputTokens: 600,
       })
