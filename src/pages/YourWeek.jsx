@@ -181,10 +181,16 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
 
   return (
     <div className="rounded-lg border border-l-[3px] border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm">
+      {/* Platform label at text-2xs (legibility, esp. on the narrow mobile day
+          columns); the scheduled time moves to a hover/title so the always-on
+          label row stays uncluttered. The state pill below carries status. */}
       <div className="mb-1 flex items-center gap-1.5">
-        {Icon && <Icon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
-        <span className="text-3xs font-bold uppercase tracking-wide text-muted-foreground">
-          {meta.label}{time ? ` · ${time}` : ''}
+        {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
+        <span
+          className="text-2xs font-bold uppercase tracking-wide text-muted-foreground"
+          title={time ? `${meta.label} · scheduled ${time}` : meta.label}
+        >
+          {meta.label}
         </span>
       </div>
       <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
