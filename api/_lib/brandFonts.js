@@ -116,6 +116,7 @@ async function fetchGoogleFontTtf(family, weight = 700) {
     throw new Error(`Font TTF fetch ${ttfRes.status} for "${family}"`)
   }
   const buffer = Buffer.from(await ttfRes.arrayBuffer())
+  if (buffer.length > 5 * 1024 * 1024) throw new Error(`Font too large for "${family}": ${buffer.length} bytes`)
 
   // Sanity check: TTF files are at least a few KB. Anything smaller is suspect.
   if (buffer.length < 1024) {

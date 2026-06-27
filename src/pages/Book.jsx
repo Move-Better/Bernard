@@ -358,7 +358,7 @@ function ChapterView({ chapter, isAdmin, proseClasses, onRefetch }) {
             disabled={pinMutation.isPending}
             className={`shrink-0 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
               chapter.pinned
-                ? 'text-primary bg-primary/10 hover:bg-primary/15'
+                ? 'text-primary bg-primary/10 hover:bg-primary/20'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/30 opacity-0 group-hover:opacity-100 focus:opacity-100'
             }`}
             aria-label={chapter.pinned ? 'Unpin this chapter (lets regen rewrite it)' : 'Pin this chapter (preserve verbatim across regenerations)'}

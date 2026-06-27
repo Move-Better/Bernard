@@ -136,9 +136,16 @@ async function fetchPhotoBuffer(photoUrl) {
   if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
   const clRaw = parseInt(response.headers.get('content-length') || '', 10)
   if (!isNaN(clRaw) && clRaw > 50 * 1024 * 1024) throw new Error(`Source too large: ${clRaw} bytes`)
-  const arrayBuf = await response.arrayBuffer()
-  if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
-  return Buffer.from(arrayBuf)
+  // Stream chunks with a running size guard so a chunked response (no Content-Length)
+  // never materialises the full body in RAM before the cap check.
+  const chunks = []
+  let total = 0
+  for await (const chunk of response.body) {
+    total += chunk.length
+    if (total > 50 * 1024 * 1024) throw new Error(`Source too large: ${total} bytes`)
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks)
 }
 
 async function processPhoto(buf, w, h, mode) {

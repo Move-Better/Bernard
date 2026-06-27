@@ -151,7 +151,7 @@ function cardState(item) {
     return { label: 'Needs words', cls: 'bg-action/10 text-action', action: 'draft' }
   }
   if (item.status === 'drafting') {
-    return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }
+    return { label: 'Drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }
   }
   if (cis === 'scheduled' || cis === 'published') {
     return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open' }

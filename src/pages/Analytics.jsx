@@ -634,7 +634,7 @@ export default function Analytics() {
                   <AlertTriangle className="h-4 w-4 text-warning" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-2xs uppercase tracking-wide bg-success/15 text-success px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-2xs uppercase tracking-wide bg-success/20 text-success px-2 py-0.5 rounded-full font-medium">
                     Live now · no GA4 needed
                   </span>
                   <p className="text-sm leading-relaxed mt-2">

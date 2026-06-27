@@ -1311,7 +1311,7 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
 function IntentOption({ selected, title, body, onClick, icon: Icon, badge }) {
   const base = `rounded-lg border p-3 text-left transition ${
     selected
-      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+      ? 'border-primary bg-primary/10 ring-1 ring-primary'
       : 'border-input hover:border-primary/40 hover:bg-accent/30'
   }`
   const titleRow = (

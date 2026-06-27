@@ -222,7 +222,7 @@ function Canvas({ ctx }) {
 function InspectorShell({ icon: Icon, title, right, children }) {
   return (
     <>
-      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/8">
+      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/10">
         <Icon className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">{title}</span>
         {right ? <span className="ml-auto text-3xs text-muted-foreground">{right}</span> : null}
@@ -232,7 +232,7 @@ function InspectorShell({ icon: Icon, title, right, children }) {
   )
 }
 
-const segBtn = (on) => on ? 'border-primary bg-primary/8 text-primary' : 'border-border'
+const segBtn = (on) => on ? 'border-primary bg-primary/10 text-primary' : 'border-border'
 
 // Source-relative trim: drag the in/out handles across the WHOLE source span to
 // recut the clip window (clamped to a ≤60s window). Distinct from the bottom
@@ -293,7 +293,7 @@ function GradeInspector({ ctx }) {
           onClick={() => brandGrade && applyVibe(brandGrade)}
           disabled={!brandGrade}
           title={brandGrade ? 'Your saved brand look' : 'Dial in a grade, then "Save as Brand look" below'}
-          className="rounded-full border border-action px-2.5 py-1 text-2xs font-medium text-action bg-action/8 disabled:opacity-50"
+          className="rounded-full border border-action px-2.5 py-1 text-2xs font-medium text-action bg-action/10 disabled:opacity-50"
         >★ Brand</button>
         {GRADE_VIBES.map((v) => (
           <button key={v.id} onClick={() => applyVibe(v.params)} className="rounded-full border border-border px-2.5 py-1 text-2xs text-muted-foreground">{v.label}</button>
@@ -535,9 +535,9 @@ function VerticalTimeline({ ctx }) {
             const isSel = typeof sel === 'object' && sel.id === o.id
             return (
               <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-x-0 cursor-grab overflow-hidden rounded-md" style={{ top: `${f(startSec + o.in)}%`, height: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
-                <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
+                <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize h-[9px]" />
                 <div className="flex h-full items-center justify-center"><Type className="h-3 w-3 text-action-foreground" /></div>
-                <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
+                <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize h-[9px]" />
               </div>
             )
           }) : <span className="absolute inset-x-0 top-2 text-center text-3xs text-muted-foreground">+ Text</span>}

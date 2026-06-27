@@ -121,7 +121,7 @@ export default function PostCallReveal() {
       {/* Digest contribution */}
       {data.digest && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-action/30 bg-gradient-to-b from-card to-action/5 p-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-action/15 text-action">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-action/20 text-action">
             <Mail className="h-4.5 w-4.5" aria-hidden="true" />
           </div>
           <div className="flex-1">

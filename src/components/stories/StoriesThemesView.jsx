@@ -267,7 +267,7 @@ function ThemeCard({ topic, stories, workspace }) {
       <button
         type="button"
         onClick={() => navigate(`/new?topic=${encodeURIComponent(topic)}`)}
-        className="mt-auto w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-primary/10 hover:bg-primary/15 text-primary text-sm font-medium transition-colors"
+        className="mt-auto w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium transition-colors"
       >
         Build content from this theme
         <ArrowRight size={14} />

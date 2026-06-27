@@ -617,7 +617,7 @@ function ChannelTile({ channel, checked, onToggle }) {
     <label
       className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
         checked
-          ? 'border-primary/30 bg-primary/10 hover:bg-primary/15'
+          ? 'border-primary/30 bg-primary/10 hover:bg-primary/20'
           : 'border-input hover:bg-accent/30'
       }`}
     >
@@ -628,7 +628,7 @@ function ChannelTile({ channel, checked, onToggle }) {
         className="h-4 w-4 shrink-0"
       />
       <div className={`flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${
-        checked ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+        checked ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
       }`}>
         <Icon className="h-4 w-4" />
       </div>

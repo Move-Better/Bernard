@@ -177,7 +177,7 @@ export async function persistGscCredential({ workspaceId, refreshToken, accessTo
 
   const check = await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.searchconsole&select=id`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { signal: AbortSignal.timeout(10_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   const existing = check.ok ? (await check.json().catch(() => []))?.[0] : null
 
@@ -185,12 +185,14 @@ export async function persistGscCredential({ workspaceId, refreshToken, accessTo
   if (existing?.id) {
     r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}`, {
       method: 'PATCH',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ config, secret_ciphertext, status: 'active' }),
     })
   } else {
     r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials`, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ workspace_id: workspaceId, service: 'searchconsole', config, secret_ciphertext, status: 'active' }),
     })
@@ -203,6 +205,7 @@ export async function persistGscCredential({ workspaceId, refreshToken, accessTo
   if (siteUrl) {
     await fetch(`${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}`, {
       method: 'PATCH',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ gsc_site_url: siteUrl }),
     }).catch(e => console.warn('[gscAuth] gsc_site_url mirror failed:', e?.message))

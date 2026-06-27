@@ -186,7 +186,7 @@ function LibraryTile({ asset, onOpen, roleAssignments }) {
         {assignedTo.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-1 border-t border-border/60">
             {assignedTo.map((r) => (
-              <span key={r} className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded-full bg-success/15 text-success dark:bg-success/20 dark:text-success">
+              <span key={r} className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded-full bg-success/20 text-success">
                 <Check className="h-2.5 w-2.5" /> {ROLE_DEFS.find((d) => d.id === r)?.label || r}
               </span>
             ))}
@@ -247,7 +247,7 @@ function AssetDetail({ asset, roleAssignments, onAssign, onDelete, onClose }) {
                     onClick={() => onAssign(r.id, isAssigned ? null : asset.id)}
                     className={`flex-1 text-left px-2.5 py-1.5 rounded-md border transition-colors ${
                       isAssigned
-                        ? 'border-success/40 bg-success/10 dark:bg-success/15'
+                        ? 'border-success/40 bg-success/10 dark:bg-success/20'
                         : 'border-border hover:border-primary/50'
                     }`}
                   >

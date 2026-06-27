@@ -889,7 +889,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 shows AI-proposed moments, can find more, repurpose, or keep
                 the whole video. Shelf stores & finds; desks create. */}
             {asset.kind === 'video' && (
-              <div className="rounded-lg border-2 border-primary/35 bg-primary/5 p-3 space-y-2">
+              <div className="rounded-lg border-2 border-primary/30 bg-primary/10 p-3 space-y-2">
                 <div className="text-3xs uppercase tracking-wide font-bold text-primary">Work with this video</div>
                 {canEdit ? (
                   <Button size="sm" className="w-full gap-1.5" onClick={() => navigate(`/moments/clip/${asset.id}`)}>

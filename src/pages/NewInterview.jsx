@@ -340,7 +340,7 @@ export default function NewInterview() {
                       onClick={() => setStaffName(s.name)}
                       className={`inline-flex items-center gap-2 rounded-full border-2 pl-1 pr-3 py-1 transition-all ${
                         isSelected
-                          ? 'border-primary bg-primary/5'
+                          ? 'border-primary bg-primary/10'
                           : 'border-border hover:border-primary/40'
                       }`}
                     >
@@ -809,7 +809,7 @@ function SimpleSlotPicker({ label, options, value, onChange, idKey = 'id' }) {
             onClick={() => onChange(opt[idKey])}
             className={`flex items-start gap-2 rounded-lg border p-2.5 text-left transition-all ${
               value === opt[idKey]
-                ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                ? 'border-primary bg-primary/10 ring-1 ring-primary'
                 : 'border-input hover:border-primary/40 hover:bg-accent/30'
             }`}
           >

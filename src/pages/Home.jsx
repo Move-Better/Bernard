@@ -237,7 +237,7 @@ export default function Home() {
           to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories'}
           className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 hover:brightness-[0.98] transition"
         >
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0">
             <AlertTriangle className="h-4 w-4" />
           </span>
           <span className="text-sm font-medium text-foreground">

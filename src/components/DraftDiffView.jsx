@@ -146,7 +146,7 @@ function ChangeChip({ segment, accepted, onToggle }) {
       onClick={onToggle}
       className={`inline align-baseline cursor-pointer rounded px-1 -mx-0.5 transition-colors border ${
         accepted
-          ? 'bg-success/10 border-success/30 hover:bg-success/15'
+          ? 'bg-success/10 border-success/30 hover:bg-success/20'
           : 'bg-destructive/5 border-destructive/20 hover:bg-destructive/10'
       }`}
       title={accepted ? 'Accepted — click to reject' : 'Rejected — click to accept'}

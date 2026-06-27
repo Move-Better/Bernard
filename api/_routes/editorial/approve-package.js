@@ -177,7 +177,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'media_assets_insert_failed' })
     }
 
-    const libraryPatchRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
+    const libraryPatchRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}&status=eq.complete`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'approved', updated_at: now }),
     })
@@ -185,6 +185,10 @@ export default async function handler(req, res) {
       const txt = await libraryPatchRes.text().catch(() => '')
       console.error('[approve-package] status patch failed:', libraryPatchRes.status, txt)
       return res.status(500).json({ error: 'status_patch_failed' })
+    }
+    const patchedLib = await libraryPatchRes.json().catch(() => [])
+    if (!patchedLib?.length) {
+      return res.status(409).json({ error: 'already_approved', message: 'Package was approved concurrently.' })
     }
 
     return res.status(200).json({
@@ -269,7 +273,7 @@ export default async function handler(req, res) {
   }
   const contentItems = await insertRes.json()
 
-  const publishPatchRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
+  const publishPatchRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}&status=eq.complete`, {
     method: 'PATCH',
     body: JSON.stringify({ status: 'approved', updated_at: now }),
   })
@@ -277,6 +281,10 @@ export default async function handler(req, res) {
     const txt = await publishPatchRes.text().catch(() => '')
     console.error('[approve-package] status patch failed:', publishPatchRes.status, txt)
     return res.status(500).json({ error: 'status_patch_failed'})
+  }
+  const patchedPub = await publishPatchRes.json().catch(() => [])
+  if (!patchedPub?.length) {
+    return res.status(409).json({ error: 'already_approved', message: 'Package was approved concurrently.' })
   }
 
   return res.status(200).json({

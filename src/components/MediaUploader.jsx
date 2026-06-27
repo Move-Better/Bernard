@@ -547,7 +547,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                       type mismatch
                     </span>
                   ) : (
-                    <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded bg-success/15 text-success font-medium">
+                    <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded bg-success/20 text-success font-medium">
                       {purposeMeta.label.toLowerCase()}
                     </span>
                   )}

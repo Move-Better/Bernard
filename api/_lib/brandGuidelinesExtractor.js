@@ -46,7 +46,11 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
   try {
     const res = await fetch(pdfBlobUrl, { signal: AbortSignal.timeout(20_000) })
     if (!res.ok) throw new Error(`PDF fetch failed: ${res.status}`)
-    const buf = new Uint8Array(await res.arrayBuffer())
+    const clRaw = parseInt(res.headers.get('content-length') || '', 10)
+    if (!isNaN(clRaw) && clRaw > 10 * 1024 * 1024) throw new Error(`PDF too large: ${clRaw} bytes`)
+    const rawBuf = await res.arrayBuffer()
+    if (rawBuf.byteLength > 10 * 1024 * 1024) throw new Error(`PDF too large: ${rawBuf.byteLength} bytes`)
+    const buf = new Uint8Array(rawBuf)
     const pdf = await getDocumentProxy(buf)
     const { text: rawText } = await extractText(pdf, { mergePages: true })
     pdfText = (rawText || '').slice(0, MAX_PDF_CHARS).trim()

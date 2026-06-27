@@ -521,7 +521,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                       ) : loc.hasTeam ? (
                         <button
                           type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
-                          className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-action/40 text-action font-medium disabled:opacity-60 hover:bg-action/5 shrink-0"
+                          className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-action/40 text-action font-medium disabled:opacity-60 hover:bg-action/10 shrink-0"
                         >
                           <AlertTriangle className="h-3.5 w-3.5" />Reconnect
                         </button>
@@ -817,7 +817,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
                   personal account exposes that account's whole media library
                   to the team. Dedicated/limited account is the safer default
                   and matches how most clinics actually organize source files. */}
-              <div className="rounded-lg border border-action/30 bg-action/5 px-3.5 py-2.5 flex items-start gap-2.5">
+              <div className="rounded-lg border border-action/30 bg-action/10 px-3.5 py-2.5 flex items-start gap-2.5">
                 <Lightbulb className="h-4 w-4 text-action shrink-0 mt-0.5" />
                 <div className="text-xs text-foreground leading-relaxed">
                   <span className="font-semibold">Tip — connect with a dedicated account.</span>{' '}
@@ -1187,7 +1187,7 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
           ) : (
             <div className="space-y-3">
               {locationDetectFailed && (
-                <div className="rounded-lg bg-action/5 border border-action/30 px-3 py-2 text-sm text-foreground">
+                <div className="rounded-lg bg-action/10 border border-action/30 px-3 py-2 text-sm text-foreground">
                   <p className="font-medium mb-1">Location data not loaded yet</p>
                   <p className="text-xs text-muted-foreground">The Google API rate-limited the location lookup during connect. Click below to retry — it only takes a second.</p>
                   <Button size="sm" className="mt-2" onClick={handleRetryLocations} disabled={retrying || disabled}>

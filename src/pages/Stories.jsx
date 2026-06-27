@@ -21,7 +21,7 @@ const PLATFORMS = Object.keys(PLATFORM_META)
 const QUICK_FILTERS = [
   { key: '',            label: 'All' },
   { key: 'needs_words', label: 'Needs words',          stages: ['drafting', 'capture'] },
-  { key: 'ready',       label: 'In Review',             stages: ['review'] },
+  { key: 'ready',       label: 'In review',             stages: ['review'] },
   { key: 'published',   label: 'Published',             stages: ['published'] },
 ]
 

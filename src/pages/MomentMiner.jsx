@@ -129,7 +129,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
             type="button"
             disabled={saving}
             onClick={() => onSave(m)}
-            className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/5 disabled:opacity-50 flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Looks good — save
           </button>
@@ -309,7 +309,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
               type="button"
               onClick={() => ok && onFind(asset.id)}
               disabled={!ok}
-              className="w-full px-3 py-1.5 rounded-lg text-3xs font-semibold text-primary bg-primary/10 hover:bg-primary/15 flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
+              className="w-full px-3 py-1.5 rounded-lg text-3xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
             >
               <Sparkles className="h-3 w-3" />Find moments
             </button>

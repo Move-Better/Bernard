@@ -32,7 +32,7 @@ export default function PipelineStepper({ current, className = '' }) {
         const badge = active
           ? 'bg-white/25 text-primary-foreground'
           : done
-            ? 'bg-primary/15 text-primary'
+            ? 'bg-primary/20 text-primary'
             : 'bg-muted-foreground/15 text-muted-foreground'
 
         return (

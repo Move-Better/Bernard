@@ -304,7 +304,7 @@ export async function persistGbpCredential({ workspaceId, refreshToken, accessTo
 
   const check = await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.gbp_analytics&select=id`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { signal: AbortSignal.timeout(10_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   const existing = check.ok ? (await check.json().catch(() => []))?.[0] : null
 
@@ -312,12 +312,14 @@ export async function persistGbpCredential({ workspaceId, refreshToken, accessTo
   if (existing?.id) {
     r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${existing.id}&workspace_id=eq.${workspaceId}`, {
       method: 'PATCH',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ config, secret_ciphertext, status: 'active' }),
     })
   } else {
     r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials`, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ workspace_id: workspaceId, service: 'gbp_analytics', config, secret_ciphertext, status: 'active' }),
     })
