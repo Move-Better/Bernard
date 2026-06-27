@@ -76,7 +76,7 @@ function ActivityChart({ activity }) {
           const pubH = content ? (w.published / content) * ch : 0
           const mediaH = ((w.media || 0) / maxMedia) * 100
           return (
-            <div key={w.week} className="flex flex-1 items-end gap-1" title={`Week of ${fmt(w.week)} · ${w.captures} captures · ${w.published} published · ${w.media} media`}>
+            <div key={w.week} className="flex h-full flex-1 items-end gap-1" title={`Week of ${fmt(w.week)} · ${w.captures} captures · ${w.published} published · ${w.media} media`}>
               <div className="flex h-full flex-1 flex-col justify-end">
                 <div className="rounded-t-sm bg-primary/45" style={{ height: `${pubH}%` }} />
                 <div className="bg-primary" style={{ height: `${capH}%`, borderRadius: pubH ? 0 : '3px 3px 0 0' }} />
