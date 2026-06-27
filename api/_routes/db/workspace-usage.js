@@ -20,6 +20,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const EMPTY = {
+  period: null,
   stats: {
     active_days: { this_week: 0, prev_week: 0 },
     captures: { this_week: 0, prev_week: 0 },
@@ -61,12 +62,15 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
-  const weeksRaw = parseInt(new URL(req.url, 'http://localhost').searchParams.get('weeks'), 10)
+  const params = new URL(req.url, 'http://localhost').searchParams
+  const weeksRaw = parseInt(params.get('weeks'), 10)
   const n_weeks = Number.isFinite(weeksRaw) ? Math.min(Math.max(weeksRaw, 4), 26) : 12
+  const offsetRaw = parseInt(params.get('week_offset'), 10)
+  const week_offset = Number.isFinite(offsetRaw) ? Math.min(Math.max(offsetRaw, 0), 51) : 0
 
   const r = await sb('rpc/workspace_usage', {
     method: 'POST',
-    body: JSON.stringify({ ws_id: ws.id, n_weeks }),
+    body: JSON.stringify({ ws_id: ws.id, n_weeks, week_offset }),
   })
   if (!r.ok) {
     const body = await r.text().catch(() => '')

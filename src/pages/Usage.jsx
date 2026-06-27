@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { BarChart3, ArrowUp, ArrowDown, Flame, Users, Shield } from 'lucide-react'
+import { BarChart3, ArrowUp, ArrowDown, Flame, Users, Shield, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useWorkspaceUsage } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -35,14 +35,50 @@ function pct(num, den) {
 // ── delta chip ───────────────────────────────────────────────────────────────
 function Delta({ now, prev, unit = '' }) {
   const d = (now ?? 0) - (prev ?? 0)
-  if (d === 0) return <span className="text-2xs text-muted-foreground">— same as last week</span>
+  if (d === 0) return <span className="text-2xs text-muted-foreground">— same as prior week</span>
   const up = d > 0
   const Icon = up ? ArrowUp : ArrowDown
   return (
     <span className={`inline-flex items-center gap-0.5 text-2xs font-medium ${up ? 'text-success' : 'text-destructive'}`}>
       <Icon className="h-3 w-3" aria-hidden="true" />
-      {up ? '+' : ''}{d}{unit} vs last week
+      {up ? '+' : ''}{d}{unit} vs prior week
     </span>
+  )
+}
+
+// ── week stepper ───────────────────────────────────────────────────────────────
+function weekLabel(period, offset) {
+  if (!period?.week_start) return offset === 0 ? 'This week' : `${offset} weeks ago`
+  const s = new Date(period.week_start + 'T00:00:00Z')
+  const e = new Date(period.week_end + 'T00:00:00Z')
+  const sM = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const eM = e.getUTCMonth() === s.getUTCMonth()
+    ? e.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' })
+    : e.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  return `${sM} – ${eM}`
+}
+
+function WeekStepper({ period, offset, onChange }) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-lg border bg-card p-0.5">
+      <button
+        onClick={() => onChange(offset + 1)}
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        aria-label="Previous week">
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <div className="min-w-[112px] text-center text-sm font-semibold tabular-nums">
+        {weekLabel(period, offset)}
+        {offset === 0 && <span className="ml-1 text-2xs font-normal text-muted-foreground">(this week)</span>}
+      </div>
+      <button
+        onClick={() => onChange(Math.max(offset - 1, 0))}
+        disabled={offset === 0}
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+        aria-label="Next week">
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
   )
 }
 
@@ -124,8 +160,8 @@ function StaffRow({ s }) {
     <tr className="border-t">
       <td className="py-2 font-medium">{s.name}</td>
       <td className={`py-2 ${idle ? 'text-destructive' : 'text-muted-foreground'}`}>{relTime(s.last_active_at)}</td>
-      <td className="py-2 text-right tabular-nums">{s.captures_4wk}</td>
-      <td className="py-2 text-right tabular-nums">{s.published_4wk}</td>
+      <td className="py-2 text-right tabular-nums">{s.captures_wk}</td>
+      <td className="py-2 text-right tabular-nums">{s.published_wk}</td>
       <td className="py-2">
         <span className="inline-flex items-end gap-0.5">
           {(s.weeks || []).map((a, i) => (
@@ -147,11 +183,13 @@ export default function Usage() {
   const ws = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
   const [weeks] = useState(12)
-  const { data = {}, isLoading } = useWorkspaceUsage(weeks)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const { data = {}, isLoading } = useWorkspaceUsage(weeks, weekOffset)
 
   // Admin/owner only — the per-staff breakdown is mildly sensitive.
   if (!roleLoading && role !== 'admin') return <Navigate to="/" replace />
 
+  const period = data.period || null
   const stats = data.stats || {}
   const activity = data.activity || []
   const stick = data.stickiness || {}
@@ -173,6 +211,7 @@ export default function Usage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <WeekStepper period={period} offset={weekOffset} onChange={setWeekOffset} />
           <PageHelp pageKey="usage" variant="default" />
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
             <Shield className="h-3 w-3" aria-hidden="true" />
@@ -252,8 +291,8 @@ export default function Usage() {
               <tr className="text-left text-2xs uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2 font-medium">Staff</th>
                 <th className="pb-2 font-medium">Last active</th>
-                <th className="pb-2 text-right font-medium">Captures (4wk)</th>
-                <th className="pb-2 text-right font-medium">Published (4wk)</th>
+                <th className="pb-2 text-right font-medium">Captures (wk)</th>
+                <th className="pb-2 text-right font-medium">Published (wk)</th>
                 <th className="pb-2 font-medium">Consistency ({weeks} wk)</th>
               </tr>
             </thead>
