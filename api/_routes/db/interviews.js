@@ -231,7 +231,10 @@ export default async function handler(req, res) {
       if (body.locationId && !UUID_RE.test(body.locationId)) return err(res, 'Invalid locationId', 400)
       patch.location_id = body.locationId || null
     }
-    if (body.pullQuoteSelectedId !== undefined) patch.pull_quote_selected_id = body.pullQuoteSelectedId || null
+    if (body.pullQuoteSelectedId !== undefined) {
+      if (body.pullQuoteSelectedId && !UUID_RE.test(body.pullQuoteSelectedId)) return err(res, 'Invalid pullQuoteSelectedId', 400)
+      patch.pull_quote_selected_id = body.pullQuoteSelectedId || null
+    }
     if (body.verbatimFlags !== undefined) patch.verbatim_flags = body.verbatimFlags
     if (body.generationStyle !== undefined) patch.generation_style = body.generationStyle === 'minimal_edits' ? 'minimal_edits' : 'blog_post'
     // audience / story_type — slot keys, nullable. Both are also set at

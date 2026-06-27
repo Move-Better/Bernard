@@ -174,6 +174,7 @@ async function handler(req, res) {
               headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
               signal: AbortSignal.timeout(15_000),
             })
+            if (!subRes.ok) throw new Error(`Stripe ${subRes.status}`)
             const sub = await subRes.json()
             priceId = sub?.items?.data?.[0]?.price?.id || null
             planConfig = priceId ? PRICE_PLAN_MAP[priceId] : null
@@ -352,6 +353,7 @@ async function handler(req, res) {
               headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
               signal: AbortSignal.timeout(15_000),
             })
+            if (!subRes.ok) throw new Error(`Stripe ${subRes.status}`)
             const sub = await subRes.json()
             priceId = sub?.items?.data?.[0]?.price?.id || null
             planConfig = priceId ? PRICE_PLAN_MAP[priceId] : null

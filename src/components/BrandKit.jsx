@@ -64,8 +64,10 @@ function backdropStyleFor(backdrop) {
 function sanitizeSvg(markup) {
   return markup
     .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+    // Strip event handlers with any quoting style (quoted, unquoted, or backtick).
+    .replace(/\son[a-z][a-z0-9]*\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|[^\s>]*)/gi, '')
+    // Strip javascript: URIs in href / xlink:href to prevent code execution via <use>.
+    .replace(/(href|xlink:href)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^']*javascript:[^']*'|javascript:[^\s>]*)/gi, '')
 }
 
 // Fetches an SVG, inlines it, then rewrites the viewBox to the actual
@@ -77,7 +79,7 @@ function CroppedSvg({ url, label }) {
   const hostRef = useRef(null)
   useEffect(() => {
     let alive = true
-    fetch(url)
+    fetch(url, { signal: AbortSignal.timeout(10_000) })
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
       .then((txt) => { if (alive) setMarkup(sanitizeSvg(txt)) })
       .catch(() => { if (alive) setMarkup('') })
