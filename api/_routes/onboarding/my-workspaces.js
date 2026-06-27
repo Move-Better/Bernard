@@ -74,8 +74,11 @@ async function handler(req, res) {
       .map(m => m?.organization?.id)
       .filter(Boolean)
     const primaryId = user?.primaryEmailAddressId
-    const primary = user?.emailAddresses?.find(e => e.id === primaryId)
-      || user?.emailAddresses?.[0]
+    // Only use verified email addresses for domain matching — an unverified
+    // secondary email at a target domain must not expose other tenants' slugs.
+    const primary = user?.emailAddresses?.find(e => e.id === primaryId && e.verification?.status === 'verified')
+      || user?.emailAddresses?.find(e => e.verification?.status === 'verified')
+      || null
     const addr = primary?.emailAddress || ''
     const at = addr.lastIndexOf('@')
     if (at > 0) emailDomain = normalizeDomain(addr.slice(at + 1))
@@ -105,7 +108,10 @@ async function handler(req, res) {
   //    URL on file.
   let suggested = []
   if (emailDomain && !PUBLIC_EMAIL_DOMAINS.has(emailDomain)) {
-    const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&website_hostname=ilike.${encodeURIComponent('%' + emailDomain)}&select=slug,display_name,website_hostname,clerk_org_id&limit=50`
+    // Escape PostgREST ilike wildcards so a domain containing % or _ can't
+    // widen the match and expose other tenants.
+    const safeDomain = emailDomain.replace(/%/g, '\\%').replace(/_/g, '\\_')
+    const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&website_hostname=ilike.${encodeURIComponent('%' + safeDomain)}&select=slug,display_name,website_hostname,clerk_org_id&limit=50`
     const rows = await sbGet(url)
     if (rows != null) {
       const myOrgSet = new Set(orgIds)

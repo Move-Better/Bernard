@@ -34,7 +34,7 @@ function GreetingRibbon({ greeting, callFirst }) {
         <p className="text-2xs font-bold uppercase tracking-widest opacity-85">
           Welcome back
         </p>
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{greeting}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight leading-tight">{greeting}</h1>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <PageHelp pageKey="home" variant="onGradient" />
@@ -238,8 +238,7 @@ export default function Home() {
       {failedPieces.length > 0 && (
         <Link
           to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories'}
-          className="flex items-center gap-3 rounded-xl px-4 py-3 hover:brightness-[0.98] transition"
-          style={{ background: 'hsl(var(--destructive) / 0.07)', border: '1px solid hsl(var(--destructive) / 0.28)' }}
+          className="flex items-center gap-3 rounded-xl px-4 py-3 hover:brightness-[0.98] transition bg-destructive/7 border border-destructive/30"
         >
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">
             <AlertTriangle className="h-4 w-4" />
@@ -258,8 +257,7 @@ export default function Home() {
           cards below. Detail lives in Overview; this is just the count + a link. */}
       {attentionTotal > 0 && (
         <div
-          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3 flex-wrap"
-          style={{ background: 'hsl(var(--action) / 0.08)', border: '1px solid hsl(var(--action) / 0.25)' }}
+          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl px-4 py-3 flex-wrap bg-action/8 border border-action/25"
         >
           <span className="h-2 w-2 rounded-full bg-action shrink-0" />
           <span className="text-sm font-medium text-foreground">

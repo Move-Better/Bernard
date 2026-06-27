@@ -101,8 +101,7 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
 
   const accent = (
     <span
-      className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5"
-      style={{ background: 'hsl(var(--primary))' }}
+      className="nx-rail shrink-0 mr-2.5"
       aria-hidden="true"
     />
   )

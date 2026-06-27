@@ -112,12 +112,13 @@ async function handler(req, res) {
       console.error('[billing/webhook] signature verification failed')
       return res.status(400).json({ error: 'invalid-signature' })
     }
-  } else if (process.env.VERCEL_ENV === 'production') {
-    // Fail closed in production — never accept unsigned webhooks here.
-    console.error('[billing/webhook] STRIPE_WEBHOOK_SECRET not configured in production — refusing request')
+  } else if (process.env.VERCEL_ENV) {
+    // Fail closed on any deployed env (production or preview) — never accept
+    // unsigned webhooks there; fabricated Stripe events could upgrade accounts.
+    console.error(`[billing/webhook] STRIPE_WEBHOOK_SECRET not configured in ${process.env.VERCEL_ENV} — refusing request`)
     return res.status(503).json({ error: 'webhook-secret-not-configured' })
   } else {
-    console.warn('[billing/webhook] STRIPE_WEBHOOK_SECRET not set — skipping signature verification (dev only)')
+    console.warn('[billing/webhook] STRIPE_WEBHOOK_SECRET not set — skipping signature verification (local dev only)')
   }
 
   let event

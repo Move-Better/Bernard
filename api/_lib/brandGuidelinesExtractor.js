@@ -46,6 +46,10 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
   try {
     const res = await fetch(pdfBlobUrl)
     if (!res.ok) throw new Error(`PDF fetch failed: ${res.status}`)
+    // Reject before materializing the body — a 50MB brand book OOMs the function.
+    const contentLength = parseInt(res.headers.get('content-length') || '0', 10)
+    const PDF_SIZE_LIMIT = 20 * 1024 * 1024 // 20 MB
+    if (contentLength > PDF_SIZE_LIMIT) throw new Error(`PDF too large: ${contentLength} bytes`)
     const buf = new Uint8Array(await res.arrayBuffer())
     const pdf = await getDocumentProxy(buf)
     const { text: rawText } = await extractText(pdf, { mergePages: true })

@@ -98,7 +98,18 @@ function Canvas({ ctx }) {
   return (
     <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-muted p-4">
       <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-card/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
-        <label className="flex cursor-pointer items-center gap-1"><input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} /> safe zones</label>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={safeZones}
+          onClick={() => setSafeZones((v) => !v)}
+          className={`flex cursor-pointer items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${safeZones ? 'text-foreground' : 'text-muted-foreground/60'}`}
+        >
+          <span className={`inline-flex h-3.5 w-6 rounded-full border transition-colors ${safeZones ? 'bg-primary border-primary' : 'bg-muted border-border'}`}>
+            <span className={`m-px inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${safeZones ? 'translate-x-2.5' : 'translate-x-0'}`} />
+          </span>
+          safe zones
+        </button>
       </div>
       <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>
         <div

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { posthogCapture } from '@/lib/posthog'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
@@ -238,7 +238,10 @@ export default function InterviewSession() {
   const conversationRef = useRef(null)
 
   const topRef = useRef(null)
-  const hasStarted = useRef(false)
+  // sessionStorage guard persists across remounts (e.g. React StrictMode double-invoke,
+  // navigation forward/back). Without this, hasStarted.current resets on remount and
+  // sendToAI fires a second time, producing a duplicate opening message.
+  const hasStarted = useRef(typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem(`interview-started-${interviewId}`))
   // Last assistant turn's input, so the inline "Try again" button can re-run it
   // in place after a transient stream failure (no full page reload).
   const lastTurnRef = useRef(null)
@@ -865,6 +868,7 @@ export default function InterviewSession() {
   useEffect(() => {
     if (!staffMember || !interview || hasStarted.current || showInstructions || !micCheckPassed) return
     hasStarted.current = true
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(`interview-started-${interviewId}`, '1')
     // Start recording the clinician's mic for voice clone training.
     // Non-blocking + non-fatal — interview continues even if capture fails.
     // Pass interviewId so a killed take is recoverable + re-uploadable (P3).
@@ -1570,8 +1574,8 @@ export default function InterviewSession() {
     return (
       <div className="py-4">
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" asChild aria-label="Back">
-            <Link to="/new"><ArrowLeft className="h-4 w-4" aria-hidden="true" /></Link>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
           <div>
             <p className="font-medium text-sm">{staffMember.name}</p>

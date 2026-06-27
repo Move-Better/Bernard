@@ -254,24 +254,32 @@ export default function SeoOpportunities() {
 
           {/* Filters */}
           <div className="flex items-center gap-2 mb-4 overflow-x-auto">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                aria-pressed={filter === f.key}
-                className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-                  filter === f.key ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-accent/20'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+            {FILTERS.map((f) => {
+              const isLocked = f.key === 'decaying' || f.key === 'cannibal'
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  aria-pressed={filter === f.key}
+                  className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+                    filter === f.key
+                      ? 'bg-primary text-primary-foreground'
+                      : isLocked
+                        ? 'bg-card border border-dashed border-border text-muted-foreground/50 cursor-default'
+                        : 'bg-card border border-border text-muted-foreground hover:bg-accent/20'
+                  }`}
+                >
+                  {isLocked && <Lock className="inline w-2.5 h-2.5 mr-1 -mt-px" aria-hidden="true" />}
+                  {f.label}
+                </button>
+              )
+            })}
           </div>
 
           {/* Write about this */}
           <div className="flex items-center gap-2 mb-3">
             <PenLine className="w-4 h-4 text-primary" aria-hidden="true" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Write about this</h2>
+            <h2 className="nx-eyebrow">Write about this</h2>
             <span className="text-2xs text-muted-foreground">— search demand → content Bernard makes with you</span>
           </div>
 
@@ -320,7 +328,7 @@ export default function SeoOpportunities() {
           {/* Recommended website updates (advisory) */}
           <div className="flex items-center gap-2 mt-8 mb-1">
             <Wrench className="w-4 h-4 text-primary" aria-hidden="true" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recommended website updates</h2>
+            <h2 className="nx-eyebrow">Recommended website updates</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             Changes to the site itself — not content. <span className="font-medium text-foreground">Bernard spots them; you or your web person make them.</span> Suggestions only — Bernard never edits your site.

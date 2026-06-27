@@ -99,12 +99,14 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media', ws.id))) return
+    // Validate body presence before consuming rate-limit budget — an empty body
+    // should not exhaust the caller's quota.
     const body = req.body || {}
     if (!body.staffId) return err(res, 'Missing staffId')
     const UUID_RE_POST = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!UUID_RE_POST.test(body.staffId)) return err(res, 'Invalid staffId', 400)
-    if (!body.name?.trim())  return err(res, 'Name required')
+    if (!body.name?.trim()) return err(res, 'Name required')
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     // Ownership check: the client-supplied staffId must belong to the
     // current workspace. Without this, a logged-in user from tenant A could

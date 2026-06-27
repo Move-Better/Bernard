@@ -220,6 +220,23 @@ async function handler(req, res) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!UUID_RE.test(campaign_id)) return res.status(400).json({ error: 'invalid campaign_id' })
 
+  // Debounce concurrent spin requests — if the campaign was spun within the
+  // last 60 seconds, return the cached state rather than firing a second AI call.
+  const existing = await loadCampaign(campaign_id, ws.id)
+  if (!existing) return res.status(404).json({ error: 'Campaign not found' })
+  if (existing.ai_tuned_at) {
+    const ageMs = Date.now() - new Date(existing.ai_tuned_at).getTime()
+    if (ageMs < 60_000) {
+      const { _error: _ignored, ...safeState } = existing.ai_tune_state || {}
+      return res.status(200).json({
+        campaign_id,
+        ai_tune_state: safeState,
+        ai_tuned_at: existing.ai_tuned_at,
+        explanation: existing.ai_tune_state?.explanation ?? '',
+      })
+    }
+  }
+
   const result = await runCampaignSpin(campaign_id, ws.id)
   if (!result) return res.status(404).json({ error: 'Campaign not found' })
 

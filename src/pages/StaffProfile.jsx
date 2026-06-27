@@ -339,7 +339,7 @@ export default function StaffProfile() {
           {/* Dark hero — full bleed across container */}
           <div
             className="relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1e1a16 0%, #2c1e0f 55%, #1a1510 100%)' }}
+            style={{ background: 'var(--voice-hero-bg)' }}
           >
             {/* Subtle waveform texture at bottom */}
             <div
