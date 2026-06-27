@@ -540,6 +540,7 @@ export default function MomentMiner() {
         <div role="tablist" aria-label="View" className="flex items-center gap-2 text-xs overflow-x-auto pb-0.5">
           <button
             type="button"
+            id="tab-clips-to-review"
             role="tab"
             aria-selected={view === 'clips_to_review'}
             onClick={() => setView('clips_to_review')}
@@ -557,7 +558,7 @@ export default function MomentMiner() {
               <span
                 className={
                   view === 'clips_to_review'
-                    ? 'opacity-80'
+                    ? 'text-action-foreground/80'
                     : 'inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-action text-action-foreground text-3xs font-bold'
                 }
               >
@@ -567,6 +568,7 @@ export default function MomentMiner() {
           </button>
           <button
             type="button"
+            id="tab-needs-cutting"
             role="tab"
             aria-selected={view === 'needs_cutting'}
             onClick={() => setView('needs_cutting')}
@@ -578,11 +580,12 @@ export default function MomentMiner() {
           >
             Uncut footage{' '}
             {!isLoading && (
-              <span className="opacity-70">{needsCuttingVideos.length}</span>
+              <span className="text-foreground/50">{needsCuttingVideos.length}</span>
             )}
           </button>
           <button
             type="button"
+            id="tab-in-progress"
             role="tab"
             aria-selected={view === 'in_progress'}
             onClick={() => setView('in_progress')}
@@ -594,11 +597,12 @@ export default function MomentMiner() {
           >
             Has clips{' '}
             {!isLoading && (
-              <span className="opacity-70">{inProgressVideos.length}</span>
+              <span className="text-foreground/50">{inProgressVideos.length}</span>
             )}
           </button>
           <button
             type="button"
+            id="tab-coverage"
             role="tab"
             aria-selected={view === 'coverage'}
             onClick={() => setView('coverage')}
@@ -629,6 +633,10 @@ export default function MomentMiner() {
       </div>
 
       {/* Content area */}
+      <div
+        role="tabpanel"
+        aria-labelledby={`tab-${view === 'clips_to_review' ? 'clips-to-review' : view === 'needs_cutting' ? 'needs-cutting' : view === 'in_progress' ? 'in-progress' : 'coverage'}`}
+      >
       {view === 'coverage' ? (
         <CoveragePanel />
       ) : isLoading ? (
@@ -692,6 +700,7 @@ export default function MomentMiner() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

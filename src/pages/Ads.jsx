@@ -149,7 +149,7 @@ export default function Ads() {
       {isLoading ? (
         <div role="status" className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          <span aria-hidden="true">Loading…</span>
+          <span>Loading…</span>
         </div>
       ) : creatives.length === 0 ? (
         <div className="rounded-xl border border-dashed py-16 text-center">

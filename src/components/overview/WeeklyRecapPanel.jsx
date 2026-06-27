@@ -52,7 +52,7 @@ function RecapBlock({ recap }) {
         <div className="text-2xl" aria-hidden="true">🎉</div>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-extrabold leading-tight">This week at the clinic</h2>
-          <p className="text-xs opacity-90">{weekRangeLabel()} · for your all-staff meeting</p>
+          <p className="text-xs text-white/90">{weekRangeLabel()} · for your all-staff meeting</p>
         </div>
       </div>
 
@@ -192,7 +192,7 @@ function AllTimeStat({ value, label, cls = 'text-white', format }) {
       <p className={`text-3xl font-extrabold ${cls}`}>
         <NumberTicker value={value} format={format} />
       </p>
-      <p className="text-xs opacity-70 mt-0.5">{label}</p>
+      <p className="text-xs text-white/70 mt-0.5">{label}</p>
     </div>
   )
 }
@@ -204,7 +204,7 @@ function AllTimeBlock({ published, captured, contributors, costTotal }) {
         <InfinityIcon className="h-5 w-5 opacity-90" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-extrabold leading-tight">All time</h2>
-          <p className="text-2xs opacity-70">the whole story so far</p>
+          <p className="text-2xs text-white/70">the whole story so far</p>
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">

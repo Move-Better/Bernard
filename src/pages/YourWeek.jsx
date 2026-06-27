@@ -76,6 +76,7 @@ function WeekNav({ offset, onPrev, onNext, onToday }) {
         type="button"
         onClick={onPrev}
         disabled={offset <= -NAV_BACK}
+        aria-label={`Previous week (${weekRangeLabel(offset - 1)})`}
         className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Prev
@@ -90,7 +91,7 @@ function WeekNav({ offset, onPrev, onNext, onToday }) {
           <button
             type="button"
             onClick={onToday}
-            className="ml-1 rounded-md border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
+            className="ml-1 rounded-md border px-2 py-0.5 text-2xs font-semibold text-muted-foreground hover:bg-muted"
           >
             Back to this week
           </button>
@@ -100,6 +101,7 @@ function WeekNav({ offset, onPrev, onNext, onToday }) {
         type="button"
         onClick={onNext}
         disabled={offset >= NAV_FWD}
+        aria-label={`Next week (${weekRangeLabel(offset + 1)})`}
         className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
       >
         Next <ChevronRight className="h-4 w-4" aria-hidden="true" />

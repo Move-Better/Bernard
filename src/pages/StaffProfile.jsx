@@ -215,7 +215,7 @@ export default function StaffProfile() {
 
             <ProfileTab id="tab-voice" active={activeTab === 'voice'} onClick={() => setActiveTab('voice')}>
               {/* Mini ring reflecting voice strength */}
-              <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 -ml-0.5" aria-hidden>
+              <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 -ml-0.5" aria-hidden="true">
                 <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
                 {ringPct > 0 && (
                   <circle
