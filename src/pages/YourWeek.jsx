@@ -209,7 +209,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
             type="button"
             disabled={drafting}
             onClick={() => onDraft(item)}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
           >
             {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
             Draft
@@ -220,14 +220,14 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-3xs font-semibold hover:bg-muted"
           >
             <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} /> Review
           </button>
         ) : (showOpen && (
           <Link
             to={drillTo(item)}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-3xs font-semibold hover:bg-muted"
           >
             <Eye className="h-3 w-3" /> Open
           </Link>

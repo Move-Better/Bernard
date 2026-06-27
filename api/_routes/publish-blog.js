@@ -196,10 +196,8 @@ export default async function handler(req, res) {
   }
   if (existsResp.status === 401 || existsResp.status === 403) {
     console.error(tag, `github auth ${existsResp.status} on existence check`)
-    return res.status(500).json({
-      error: 'misconfigured',
-      message: 'The GitHub token lacks contents access on Move-Better/Bernard. Regenerate the PAT with `Contents: read+write` and re-paste in Vercel env.',
-    })
+    console.error(tag, 'GitHub token lacks contents access — regenerate PAT with Contents: read+write and update Vercel env')
+    return res.status(500).json({ error: 'misconfigured' })
   }
   if (existsResp.status !== 404) {
     const body = await existsResp.text().catch(() => '')

@@ -77,7 +77,7 @@ async function setStatus(interviewId, transcribe_status, extra = {}, opts = {}) 
 // Stream the remote audio to a local file. Streaming (not arrayBuffer) keeps
 // peak memory bounded by the stream buffer regardless of source size.
 async function downloadToFile(url, destPath) {
-  const r = await fetch(url)
+  const r = await fetch(url, { signal: AbortSignal.timeout(180_000) })
   if (!r.ok || !r.body) throw new Error(`audio download failed: ${r.status}`)
   await pipeline(Readable.fromWeb(r.body), createWriteStream(destPath))
 }

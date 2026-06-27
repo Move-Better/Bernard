@@ -263,11 +263,11 @@ export default function ReviewInbox() {
       </div>
 
       {total === 0 ? (
-        <div className="rounded-lg border bg-muted/20 py-12 text-center">
+        <div role="status" className="rounded-lg border bg-muted/20 py-12 text-center">
           <Check className="mx-auto h-8 w-8 text-success" />
           <p className="mt-2 text-sm font-medium text-foreground">Your inbox is clear 🎉</p>
           <p className="text-xs text-muted-foreground">
-            New pieces show up here when they’re sent for review or approved.
+            New pieces show up here when they&apos;re sent for review or approved.
           </p>
         </div>
       ) : (
@@ -465,7 +465,7 @@ function InboxRow({ piece, group, checked, onToggle, onApprove, busy }) {
           <Check className="h-3.5 w-3.5" /> Approve
         </button>
       )}
-      {group === 'ready' && (
+      {group === 'ready' && mediaCount > 0 && (
         <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground shrink-0">
           <ImageIcon className="h-3 w-3" /> {mediaCount}
         </span>
