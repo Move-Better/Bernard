@@ -8,7 +8,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Compass, Sparkles, Mic, PauseCircle, FileCheck2, CheckCircle2,
-  RefreshCw, Info, AlertCircle,
+  RefreshCw, Info, AlertCircle, ImageIcon, Megaphone, Wand2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -79,6 +79,18 @@ export default function BrandIdentitySettings() {
 
         <BrandBriefView brief={brief} />
 
+        {/* What this now powers — the "what changed" signal Q asked for. */}
+        <div className="mt-4 rounded-xl border border-border bg-card p-4">
+          <div className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            What this powers now
+          </div>
+          <ul className="space-y-1.5 text-sm">
+            <li className="flex gap-2"><Wand2 className="h-4 w-4 shrink-0 mt-0.5 text-primary" aria-hidden="true" /><span>Steers AI image generation toward your territory and away from the &ldquo;not this&rdquo; list — instead of generic stock-healthcare looks.</span></li>
+            <li className="flex gap-2"><Megaphone className="h-4 w-4 shrink-0 mt-0.5 text-primary" aria-hidden="true" /><span>Sets the emotional register Bernard writes and styles posts in.</span></li>
+            <li className="flex gap-2"><ImageIcon className="h-4 w-4 shrink-0 mt-0.5 text-primary" aria-hidden="true" /><span>Your visual anchors become the reference points for on-brand imagery.</span></li>
+          </ul>
+        </div>
+
         <div className="mt-3 rounded-xl p-3 text-xs text-muted-foreground flex items-center gap-2"
              style={{ background: 'hsl(var(--info) / 0.06)', border: '1px solid hsl(var(--info) / 0.25)' }}>
           <Info className="h-3.5 w-3.5 shrink-0" style={{ color: 'hsl(var(--info))' }} aria-hidden="true" />
@@ -99,6 +111,20 @@ export default function BrandIdentitySettings() {
         <p className="text-sm text-muted-foreground mt-1">
           What {displayName} feels like — derived from a short conversation, then used to keep every image and post on-brand.
         </p>
+      </div>
+
+      {/* Why do this — made obvious BEFORE starting (Q's request). */}
+      <div className="rounded-xl p-4 mb-4 flex gap-3"
+           style={{ background: 'hsl(var(--primary) / 0.06)', border: '1px solid hsl(var(--primary) / 0.20)' }}>
+        <Wand2 className="h-5 w-5 shrink-0 text-primary mt-0.5" aria-hidden="true" />
+        <div className="text-sm">
+          <p className="font-semibold mb-0.5">Why do this?</p>
+          <p className="text-muted-foreground">
+            Without a brand brief, AI-generated images and posts default to generic, stock-healthcare looks.
+            This ~10-minute conversation is what makes everything Bernard creates look unmistakably like {displayName} —
+            and gives image generation real rails instead of guesses.
+          </p>
+        </div>
       </div>
 
       <div

@@ -8,12 +8,13 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
 import {
   Loader2, Send, CheckCircle2, AlertCircle, Sparkles, FlaskConical,
   Mic, MicOff, Volume2, RefreshCw, Keyboard,
-  Clock, PauseCircle, MessagesSquare, Lightbulb, Coffee, Compass,
+  Clock, PauseCircle, MessagesSquare, Lightbulb, Coffee, Compass, Undo2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,6 +23,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch } from '@/lib/api'
+import { queryKeys } from '@/lib/queries'
 import { streamMessage } from '@/lib/claude'
 import { getBrandInterviewSystemPrompt } from '@/lib/prompts'
 import MicCheck from '@/components/MicCheck'
@@ -76,6 +78,7 @@ function detectStageTag(raw) {
 export default function BrandInterview() {
   useDocumentTitle('Brand discovery')
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const workspace = useWorkspace()
   const { user } = useUser()
   const { role } = useUserRole()
@@ -92,6 +95,10 @@ export default function BrandInterview() {
   const [synthesisStatus, setSynthesisStatus] = useState('idle')
   const [synthesisError, setSynthesisError] = useState(null)
   const [brief, setBrief] = useState(null)
+  // Gates synthesis on the 'completed' status PATCH having LANDED — auto-synth
+  // must not race the completion write or the server sees 'in_progress' and
+  // 409s with interview_not_synthesizable.
+  const [synthReady, setSynthReady] = useState(false)
 
   const [currentStage, setCurrentStage] = useState(1)
   const [retryCount, setRetryCount] = useState(0)
@@ -170,6 +177,10 @@ export default function BrandInterview() {
           setPrimerSeen(true)
           setMicCheckPassed(true)
         }
+        // A resumed 'completed' row never got synthesized — kick it (its status
+        // PATCH already landed, so no race). 'synthesizing' = a prior attempt
+        // crashed mid-flight; the self-heal re-asserts 'completed' then retries.
+        if (row?.status === 'completed' || row?.status === 'synthesizing') setSynthReady(true)
         if (row?.status === 'synthesized') {
           setSynthesisStatus('already')
           if (row?.synthesis_result) setBrief(row.synthesis_result)
@@ -295,8 +306,11 @@ export default function BrandInterview() {
     setStreaming(false)
 
     if (hasCompleteMarker) {
-      setCompleted(true)
+      // Persist 'completed' BEFORE flagging ready, so synthesis can't beat the
+      // status write (the interview_not_synthesizable 409 race).
       await persist(nextMessages, 'completed')
+      setCompleted(true)
+      setSynthReady(true)
     } else {
       await persist(nextMessages)
       speak(finalText)
@@ -518,9 +532,39 @@ export default function BrandInterview() {
     try { recognitionRef.current?.stop() } catch { /* ignore */ }
     setIsSpeaking(false)
     setIsListening(false)
-    setCompleted(true)
+    // Persist 'completed' BEFORE flagging ready (see token-completion path).
     await persist(messages, 'completed')
+    setCompleted(true)
+    setSynthReady(true)
   }, [completed, streaming, canFinish, messages, persist])
+
+  // Go back one question — drop the trailing assistant turn(s) and the user
+  // answer before them, so the previous question becomes current and can be
+  // re-answered. (Q: "a question was skipped too quick and I wanted to redo it.")
+  const canBack = userTurnCount >= 1 && !streaming && !completed
+  const handleBack = useCallback(async () => {
+    if (streaming || completed) return
+    try { ttsRef.current?.cancel() } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
+    userAnswerActiveRef.current = false
+    clearTimeout(restartTimerRef.current)
+    try { recognitionRef.current?.stop() } catch { /* ignore */ }
+    setIsSpeaking(false)
+    setIsListening(false)
+    setTranscript('')
+    transcriptRef.current = ''
+    finalTranscriptRef.current = ''
+    setTypedAnswer('')
+
+    const next = [...messages]
+    while (next.length && next[next.length - 1].role === 'assistant') next.pop()
+    if (next.length && next[next.length - 1].role === 'user') next.pop()
+    if (!next.length || next[next.length - 1].role !== 'assistant') return
+    setMessages(next)
+    await persist(next)
+    // Re-speak the now-current question so the user hears it again.
+    speak(next[next.length - 1].content)
+  }, [messages, streaming, completed, persist, speak])
 
   const handlePause = useCallback(async () => {
     try { ttsRef.current?.cancel() } catch { /* ignore */ }
@@ -556,26 +600,46 @@ export default function BrandInterview() {
     if (!interviewId) return
     setSynthesisStatus('running')
     setSynthesisError(null)
+    const post = () => apiFetch('/api/brand-discovery/synthesize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: interviewId, founderName, dryRun }),
+    })
     try {
-      const result = await apiFetch('/api/brand-discovery/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: interviewId, founderName, dryRun }),
-      })
+      let result
+      try {
+        result = await post()
+      } catch (e) {
+        // Self-heal the completion race: if the status PATCH hadn't landed when
+        // we posted, re-assert 'completed' and retry once.
+        if (!dryRun && /not_synthesizable|in flight|already/i.test(e?.message || '')) {
+          await apiFetch(`/api/brand-discovery/interview?id=${encodeURIComponent(interviewId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'completed', completedAt: new Date().toISOString() }),
+          }).catch(() => {})
+          result = await post()
+        } else {
+          throw e
+        }
+      }
       if (result?.brief) setBrief(result.brief)
+      // Brief now lives on the workspace — refetch so Settings (and anything
+      // reading useWorkspace) sees brand_brief without a hard reload.
+      if (!dryRun) qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
       setSynthesisStatus('success')
     } catch (e) {
       console.error('[BrandInterview] synthesis failed', e)
       setSynthesisError(e?.message || 'Synthesis failed')
       setSynthesisStatus('error')
     }
-  }, [interviewId, founderName, dryRun])
+  }, [interviewId, founderName, dryRun, qc])
 
   useEffect(() => {
-    if (!completed || !interviewId) return
+    if (!synthReady || !interviewId) return
     if (synthesisStatus !== 'idle') return
     runSynthesis()
-  }, [completed, interviewId, synthesisStatus, runSynthesis])
+  }, [synthReady, interviewId, synthesisStatus, runSynthesis])
 
   useEffect(() => () => {
     ttsRef.current?.cancel()
@@ -856,6 +920,8 @@ export default function BrandInterview() {
               finishHelper={finishHelper}
               interviewerName={interviewerName}
               waveformRef={waveformRef}
+              canBack={canBack}
+              onBack={handleBack}
               onMicClick={() => isListening ? stopListening() : startListening()}
               onFinish={handleFinish}
               onPause={handlePause}
@@ -875,6 +941,8 @@ export default function BrandInterview() {
               }}
               canFinish={canFinish}
               finishHelper={finishHelper}
+              canBack={canBack}
+              onBack={handleBack}
               onFinish={handleFinish}
             />
           )}
@@ -888,10 +956,22 @@ export default function BrandInterview() {
 function VoiceDock({
   streaming, isSpeaking, isListening, transcript,
   canFinish, finishHelper, interviewerName,
-  waveformRef, onMicClick, onFinish, onPause,
+  waveformRef, canBack, onBack, onMicClick, onFinish, onPause,
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card shadow-lg px-4 py-4">
+      {canBack && (
+        <div className="flex justify-center mb-2">
+          <button
+            onClick={onBack}
+            disabled={streaming}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+            title="Go back and redo the previous question"
+          >
+            <Undo2 className="h-3.5 w-3.5" /> Redo previous question
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-center gap-2 mb-3 min-h-[20px]" role="status" aria-live="polite">
         {streaming ? (
           <>
@@ -1018,9 +1098,21 @@ function VoiceDock({
 }
 
 // ── TypedDock — fallback for iOS Safari (no SpeechRecognition) ───────────────
-function TypedDock({ typedAnswer, streaming, isSpeaking, onChange, onSubmit, onKeyDown, canFinish, finishHelper, onFinish }) {
+function TypedDock({ typedAnswer, streaming, isSpeaking, onChange, onSubmit, onKeyDown, canFinish, finishHelper, canBack, onBack, onFinish }) {
   return (
     <div className="rounded-2xl border border-border bg-card shadow-lg px-4 py-4">
+      {canBack && (
+        <div className="flex justify-center mb-2">
+          <button
+            onClick={onBack}
+            disabled={streaming}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+            title="Go back and redo the previous question"
+          >
+            <Undo2 className="h-3.5 w-3.5" /> Redo previous question
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-center gap-2 mb-3 min-h-[20px]" role="status" aria-live="polite">
         {streaming ? (
           <>
