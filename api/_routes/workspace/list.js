@@ -64,7 +64,13 @@ async function handler(req, res) {
     return res.status(200).json([])
   }
 
-  const inList = orgIds.map(id => `"${id}"`).join(',')
+  const CLERK_ORG_RE = /^org_[a-zA-Z0-9]+$/
+  const safeOrgIds = orgIds.filter(id => CLERK_ORG_RE.test(id))
+  if (safeOrgIds.length === 0) {
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(200).json([])
+  }
+  const inList = safeOrgIds.map(id => `"${id}"`).join(',')
   const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&clerk_org_id=in.(${inList})&select=id,slug,display_name,clerk_org_id&order=display_name.asc`
 
   let r

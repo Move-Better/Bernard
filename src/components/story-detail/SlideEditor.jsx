@@ -97,12 +97,17 @@ function escapeHtml(s) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// Allowlist CSS color values before injecting into innerHTML style attributes.
+const CSS_COLOR_RE = /^(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*\)|hsl\([^)]{1,80}\)|[a-z]{2,30})$/i
+
 // Convert block.runs → innerHTML for the contenteditable field.
 function runsToHTML(runs, text) {
   if (!Array.isArray(runs) || !runs.some((r) => r.color)) return escapeHtml(text || '')
   return runs.map((r) => {
     const t = escapeHtml(r.text)
-    return r.color ? `<span style="color:${r.color}">${t}</span>` : t
+    if (!r.color) return t
+    const safeColor = CSS_COLOR_RE.test(String(r.color).trim()) ? r.color : null
+    return safeColor ? `<span style="color:${safeColor}">${t}</span>` : t
   }).join('')
 }
 

@@ -69,7 +69,8 @@ async function handler(req, res) {
     .map((p) => ({ partNumber: Number(p.partNumber), etag: String(p.etag || '') }))
     .filter((p) => Number.isInteger(p.partNumber) && p.partNumber >= 1 && p.etag)
     .sort((a, b) => a.partNumber - b.partNumber)
-  if (cleanParts.length !== parts.length) {
+  const uniquePartNums = new Set(cleanParts.map((p) => p.partNumber))
+  if (cleanParts.length !== parts.length || uniquePartNums.size !== cleanParts.length) {
     return res.status(400).json({ error: 'invalid parts[]' })
   }
 
