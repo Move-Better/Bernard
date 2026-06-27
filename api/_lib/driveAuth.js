@@ -239,6 +239,7 @@ async function loadDriveCredentialRow(workspaceId) {
     `&service=eq.drive&status=eq.active` +
     `&select=id,config,secret_ciphertext&limit=1`
   const r = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
   if (!r.ok) return null
