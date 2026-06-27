@@ -139,6 +139,44 @@ is NOT an HTTP status. Filter on this to find crashes; read the `logs` array for
 Always log `e.stack` (not just `e.message`) in catch blocks — Sharp/ffmpeg/native module
 crashes often have empty `.message`.
 
+### `AbortSignal.timeout()` on every external fetch — mandatory
+
+Every `fetch()` call that reaches Supabase REST, an external API (ElevenLabs, Mux, Runway,
+Google OAuth, OpenAI Whisper, Buffer, Resend, Stripe, etc.), or any other network resource
+**must** carry `AbortSignal.timeout(N)`. Without it, a slow or unresponsive upstream holds the
+Vercel function slot open until the 300s wall — burning a slot that could serve other requests.
+
+**Canonical `sb()` pattern** (copy-paste for any new Supabase REST helper):
+```js
+function sb(path, init = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...init.headers,
+    },
+  })
+}
+```
+
+**Timeout budgets by call type:**
+- Supabase REST reads/writes: 8s (fast, same region)
+- `workspaceContext()` cache-miss fetch: 10s (critical path — affects every request)
+- `workspaceById()` background fetch: 10s
+- Google OAuth token exchange/refresh: 15s
+- ElevenLabs, OpenAI Whisper, standard external APIs: 15–30s
+- Runway video submit: 30s; poll: 15s; large download: 120s
+- Jina AI, import-url fetches: 25s
+
+**The footgun:** the `...init` spread in `sb()` must come BEFORE `headers:`, and `signal:` must
+be BEFORE `...init` — otherwise a caller-supplied `signal` or `headers` in `init` can override
+the timeout. The pattern above is correct. A 58-round `/auditfull` loop (2026-06-27) found ~25
+files missing this timeout; the fix is tracked in PR #1824.
+
 ### Background work: `waitUntil()`
 A bare floating promise dispatched from a Node handler (no `await`, no `waitUntil`) is not
 guaranteed to run. Vercel freezes the instance the moment the HTTP response is sent. Any async
