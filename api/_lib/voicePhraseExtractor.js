@@ -37,6 +37,7 @@ const EMOJI_HEAVY_RE  = /^[\p{Emoji}\s]{1,10}$/u
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey:        SUPABASE_KEY,

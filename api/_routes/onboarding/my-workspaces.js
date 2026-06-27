@@ -88,7 +88,7 @@ async function handler(req, res) {
   let workspaces = []
   if (orgIds.length > 0) {
     const inList = orgIds.map(id => `"${id}"`).join(',')
-    const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&clerk_org_id=in.(${encodeURIComponent(inList)})&select=slug,display_name,clerk_org_id`
+    const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&clerk_org_id=in.(${inList})&select=slug,display_name,clerk_org_id`
     const rows = await sbGet(url)
     if (rows == null) return res.status(500).json({ error: 'db-error' })
     workspaces = rows.map(row => ({

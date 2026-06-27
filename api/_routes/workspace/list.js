@@ -65,7 +65,7 @@ async function handler(req, res) {
   }
 
   const inList = orgIds.map(id => `"${id}"`).join(',')
-  const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&clerk_org_id=in.(${encodeURIComponent(inList)})&select=id,slug,display_name,clerk_org_id&order=display_name.asc`
+  const url = `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&clerk_org_id=in.(${inList})&select=id,slug,display_name,clerk_org_id&order=display_name.asc`
 
   let r
   try {

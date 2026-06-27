@@ -83,6 +83,7 @@ export default async function handler(req, res) {
 
         return {
           allowedContentTypes: ALLOWED_AUDIO_MIME,
+          allowedPathPrefixes: [`interviews/audio/${interviewId}.`],
           tokenPayload:        JSON.stringify({ interviewId, workspaceId: ws.id }),
         }
       },

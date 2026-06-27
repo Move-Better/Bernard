@@ -33,6 +33,7 @@ const LONGFORM_CHANNELS = ['youtube', 'linkedin_native']
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(10_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,

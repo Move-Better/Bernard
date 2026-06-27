@@ -110,8 +110,12 @@ export async function listConfiguredServices(workspaceId) {
     `&status=eq.active` +
     `&select=service,config,updated_at`
   const r = await fetch(url, {
+    signal: AbortSignal.timeout(8_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
-  if (!r.ok) return []
+  if (!r.ok) {
+    console.error('[getCredential] listConfiguredServices failed:', r.status)
+    return []
+  }
   return (await r.json().catch(() => [])) || []
 }

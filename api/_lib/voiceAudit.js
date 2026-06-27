@@ -25,6 +25,7 @@ const MODEL = 'anthropic/claude-sonnet-4-6'
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey:        SUPABASE_KEY,
