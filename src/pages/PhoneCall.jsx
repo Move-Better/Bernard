@@ -19,6 +19,8 @@ import {
 } from '@/lib/api'
 import { getInterviewSystemPrompt } from '@/lib/prompts'
 import { saveLocalMessages } from '@/lib/interviewLocalBackup'
+import { useStories } from '@/lib/queries'
+import { getSuggestedTopics } from '@/lib/topicSuggestions'
 
 const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 
@@ -76,12 +78,14 @@ Only emit INTERVIEW_COMPLETE on its own line when the clinician clearly signals 
  * only needs the bootstrap "wait for instructions" stub during the mint.
  */
 export default function PhoneCall() {
-  useDocumentTitle('Live Interview (Beta)')
+  useDocumentTitle('Live Interview')
 
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useUser()
   const workspace = useWorkspace()
+  const { data: stories = [] } = useStories()
+  const existingTopics = useMemo(() => stories.map((s) => s.topic), [stories])
 
   /** UI phase: setup | starting | in_call | completing | error */
   const [phase, setPhase] = useState('setup')
@@ -243,11 +247,15 @@ export default function PhoneCall() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => () => hangUp(), [])
 
-  // ── Topic suggestions (lightweight, just the workspace's curated list) ──
+  // ── Topic suggestions — same prioritised gap list the home screen shows ──
+  // Uses getSuggestedTopics so uncovered/high-priority topics surface first,
+  // matching the "What to talk about next" order on the home screen.
   const suggestions = useMemo(() => {
-    const list = Array.isArray(workspace?.topic_suggestions) ? workspace.topic_suggestions : []
-    return list.slice(0, 6).map((s) => (typeof s === 'string' ? s : s?.topic)).filter(Boolean)
-  }, [workspace])
+    return getSuggestedTopics(workspace, existingTopics)
+      .slice(0, 6)
+      .map((s) => s.topic)
+      .filter(Boolean)
+  }, [workspace, existingTopics])
 
   // ────────────────────────────────────────────────────────────────────────
   // Setup → Live call transition
