@@ -62,8 +62,10 @@ async function handler(req, res) {
   const platform    = searchParams.get('platform')      // target_platform filter
   const sourceId    = searchParams.get('sourceId')      // limit to one source asset
   const assignedTo  = searchParams.get('assignedTo')    // email
-  const limit       = Math.min(parseInt(searchParams.get('limit') || '60', 10), 200)
-  const offset      = parseInt(searchParams.get('offset') || '0', 10)
+  // `|| N` after parseInt coerces a non-numeric param (NaN → literal "NaN" in the
+  // PostgREST query → 400) back to the default.
+  const limit       = Math.min(Math.max(parseInt(searchParams.get('limit') || '60', 10) || 60, 1), 200)
+  const offset      = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0)
 
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: 'invalid_status' })

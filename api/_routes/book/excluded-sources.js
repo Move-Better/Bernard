@@ -51,8 +51,6 @@ export default async function handler(req, res) {
   }
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   if (req.method === 'GET') {
     const r = await sb(
       `book_excluded_sources?workspace_id=eq.${ws.id}` +

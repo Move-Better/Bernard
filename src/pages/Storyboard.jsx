@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send, Trash2 } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
 import { Badge } from '@/components/ui/badge'
@@ -122,10 +122,20 @@ export default function Storyboard() {
 
   const nothingToShow = rows.length === 0 && ready.length === 0
 
+  // Deep-link from the publisher-inbox banner: /publish#ready should scroll to
+  // the "Ready to distribute" section. React Router doesn't scroll-to-hash on
+  // client nav, so do it once the list has rendered.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash === '#ready' && !isLoading && ready.length > 0) {
+      document.getElementById('ready')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [hash, isLoading, ready.length])
+
   return (
     <div className="space-y-6 py-6">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
           <GalleryHorizontalEnd className="h-5 w-5 text-primary" />
           Publish
         </h1>

@@ -480,7 +480,7 @@ export default function Analytics() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
             {assetName} — Insights
           </h1>

@@ -154,7 +154,7 @@ function cardState(item) {
     return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }
   }
   if (cis === 'scheduled' || cis === 'published') {
-    return { label: cis, cls: 'bg-success/10 text-success', action: 'open' }
+    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open' }
   }
   if (cis === 'approved') {
     return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule' }
@@ -468,7 +468,7 @@ export default function YourWeek() {
     <div className="space-y-5 py-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <CalendarRange className="h-5 w-5 text-primary" aria-hidden="true" />
             Your week
           </h1>
