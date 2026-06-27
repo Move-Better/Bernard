@@ -181,10 +181,12 @@ export default function PhoneCall() {
     }
     let prev = { lost: 0, received: 0 }
     let cancelled = false
+    const pollStart = Date.now()
 
     async function poll() {
       const pc = pcRef.current
       if (!pc || cancelled) return
+      if (Date.now() - pollStart > 120_000) { clearInterval(handle); return }
       let stats
       try {
         stats = await pc.getStats(null)

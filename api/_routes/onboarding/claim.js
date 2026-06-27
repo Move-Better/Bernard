@@ -102,6 +102,7 @@ async function findReusableOrg(userId, displayName) {
 // eslint-disable-next-line bernard/require-workspace-scope -- Onboarding — creates the workspace row itself; no workspace exists yet to scope by
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(10_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,
@@ -126,7 +127,11 @@ async function authUserId(req) {
 }
 
 async function externalCount() {
-  const r = await sb('workspaces?status=eq.active&select=slug')
+  // Use count=exact so PostgREST returns the true row count via Content-Range
+  // rather than fetching rows — avoids the 1000-row default page-size cap.
+  const r = await sb('workspaces?status=eq.active&select=slug', {
+    headers: { Prefer: 'count=exact' },
+  })
   if (!r.ok) throw new Error(`capacity check failed: ${r.status}`)
   const rows = await r.json()
   if (!Array.isArray(rows)) throw new Error('capacity check returned non-array')
@@ -325,7 +330,7 @@ async function handler(req, res) {
     const userDomain = at > 0 ? addr.slice(at + 1).trim().toLowerCase().replace(/^www\./, '') : null
     if (userDomain && !PUBLIC_EMAIL_DOMAINS.has(userDomain)) {
       const escapedDomain = userDomain.replace(/%/g, '\\%').replace(/_/g, '\\_')
-      const existsRes = await sb(`workspaces?status=eq.active&website_hostname=ilike.${encodeURIComponent(escapedDomain)}&select=slug,display_name,website_hostname`)
+      const existsRes = await sb(`workspaces?status=eq.active&website_hostname=ilike.${encodeURIComponent('%' + escapedDomain)}&select=slug,display_name,website_hostname`)
       if (existsRes.ok) {
         const rows = await existsRes.json().catch(() => null)
         if (Array.isArray(rows)) {

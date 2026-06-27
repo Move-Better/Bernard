@@ -110,7 +110,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
             )}
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-accent text-accent-foreground">{m.momentTypeLabel || 'Moment'}</span>
+            <span className="px-2 py-0.5 rounded-full text-3xs font-semibold bg-muted text-muted-foreground">{m.momentTypeLabel || 'Moment'}</span>
             {m.staffName && <span className="text-2xs font-medium text-foreground">{m.staffName}</span>}
           </div>
           <p className="text-3xs text-muted-foreground mt-0.5 truncate" title={`${m.filename} · @ ${fmtClock(m.startSec)}–${fmtClock(m.endSec)}`}>
@@ -138,7 +138,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           <button
             type="button"
             onClick={() => onDismiss(m)}
-            className="px-2.5 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted shrink-0"
+            className="px-2.5 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted shrink-0"
           >
             Not this one
           </button>

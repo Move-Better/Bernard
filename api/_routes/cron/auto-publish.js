@@ -34,6 +34,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; each DB query is scoped by workspace_id from the workspace list
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     ...init,
     headers: {
       apikey: SUPABASE_KEY,
@@ -229,7 +230,12 @@ async function processWorkspace(ws, summary) {
   let gbpChannels = []
   let bundleGbpTargets = []
   if (isBundle) {
-    if (settings.gbp?.enabled) bundleGbpTargets = await resolveBundleGbpTargets(ws.id)
+    if (settings.gbp?.enabled) {
+      bundleGbpTargets = await resolveBundleGbpTargets(ws.id)
+      if (!bundleGbpTargets.length) {
+        console.warn(`[cron/auto-publish] bundle GBP enabled for ${ws.slug} but no locations configured — packages will be skipped`)
+      }
+    }
   } else {
     cred = await getCredential(ws.id, 'buffer')
     if (!cred?.secret) {
