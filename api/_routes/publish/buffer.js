@@ -170,10 +170,12 @@ async function handler(req, res) {
       `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(bufferUpdateId)}&workspace_id=eq.${workspaceId}&select=id`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) },
     )
-    if (ownerCheck.ok) {
-      const rows = await ownerCheck.json()
-      if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
+    if (!ownerCheck.ok) {
+      console.error('[publish/buffer] ownership check failed:', ownerCheck.status)
+      return res.status(503).json({ error: 'ownership_check_failed' })
     }
+    const rows = await ownerCheck.json()
+    if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
     const r = await gql(BUFFER_TOKEN, `
       mutation DeletePost($input: DeletePostInput!) {
         deletePost(input: $input) {
