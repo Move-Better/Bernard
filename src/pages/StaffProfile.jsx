@@ -216,26 +216,22 @@ export default function StaffProfile() {
 
             <ProfileTab active={activeTab === 'voice'} onClick={() => setActiveTab('voice')}>
               {/* Mini ring reflecting voice strength */}
-              <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 -ml-0.5" aria-hidden>
-                <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
+              <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0 -ml-0.5" role="img" aria-label="Voice model strength">
+                <circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2.5" />
                 {ringPct > 0 && (
                   <circle
-                    cx="7" cy="7" r="5" fill="none"
+                    cx="9" cy="9" r="7" fill="none"
                     stroke="hsl(var(--action))"
-                    strokeWidth="2"
-                    strokeDasharray={`${31.4 * ringPct} 31.4`}
+                    strokeWidth="2.5"
+                    strokeDasharray={`${43.98 * ringPct} 43.98`}
                     strokeLinecap="round"
-                    transform="rotate(-90 7 7)"
+                    transform="rotate(-90 9 9)"
                   />
                 )}
               </svg>
               Voice model
               {strength && (
-                <span className={`ml-1 text-3xs font-semibold px-1.5 py-px rounded-full leading-none ${
-                  activeTab === 'voice'
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-primary/10 text-primary'
-                }`}>
+                <span className="ml-1 text-3xs font-semibold px-1.5 py-px rounded-full leading-none bg-primary/10 text-primary">
                   {strength}
                 </span>
               )}

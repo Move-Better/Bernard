@@ -44,9 +44,14 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
 
   let pdfText = ''
   try {
-    const res = await fetch(pdfBlobUrl)
+    const MAX_PDF_BYTES = 20 * 1024 * 1024
+    const res = await fetch(pdfBlobUrl, { signal: AbortSignal.timeout(30_000) })
     if (!res.ok) throw new Error(`PDF fetch failed: ${res.status}`)
-    const buf = new Uint8Array(await res.arrayBuffer())
+    const contentLength = parseInt(res.headers.get('content-length') || '0', 10)
+    if (contentLength > MAX_PDF_BYTES) throw new Error(`PDF too large: ${contentLength}`)
+    const arrayBuf = await res.arrayBuffer()
+    if (arrayBuf.byteLength > MAX_PDF_BYTES) throw new Error(`PDF too large: ${arrayBuf.byteLength}`)
+    const buf = new Uint8Array(arrayBuf)
     const pdf = await getDocumentProxy(buf)
     const { text: rawText } = await extractText(pdf, { mergePages: true })
     pdfText = (rawText || '').slice(0, MAX_PDF_CHARS).trim()

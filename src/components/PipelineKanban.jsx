@@ -19,7 +19,7 @@ import { getContentStatusToken } from '@/lib/contentStatusTokens'
 // Per-lane accent rail color aligns with contentStatusTokens hues.
 const LANES = [
   { id: 'draft',     icon: FileText,     publisherInbox: false, rail: 'hsl(var(--muted-foreground))' },
-  { id: 'in_review', icon: Clock,        publisherInbox: false, rail: 'hsl(var(--action))' /* act-now — matches approved lane */ },
+  { id: 'in_review', icon: Clock,        publisherInbox: false, rail: 'hsl(var(--muted-foreground))' },
   { id: 'approved',  icon: CheckCircle2, publisherInbox: true,  rail: 'hsl(var(--action))' /* act-now */ },
   { id: 'scheduled', icon: CalendarDays, publisherInbox: false, rail: 'hsl(var(--scheduled))' },
   { id: 'published', icon: Send,         publisherInbox: false, rail: 'hsl(var(--success))' },

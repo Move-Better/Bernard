@@ -504,8 +504,11 @@ export default function YourWeek() {
           <div className="flex items-center gap-2 text-xs">
             {LADDER.map(([s, lbl], i) => (
               <span key={s} className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${i <= stageIdx ? 'bg-primary' : 'bg-border'}`} />
-                <span className={i === stageIdx ? 'font-bold' : 'text-muted-foreground'}>{lbl}</span>
+                {i === stageIdx ? (
+                  <span className="rounded-md bg-primary/10 text-primary px-2 py-0.5 font-semibold">{lbl}</span>
+                ) : (
+                  <span className="text-muted-foreground/60">{lbl}</span>
+                )}
                 {i < LADDER.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
               </span>
             ))}
