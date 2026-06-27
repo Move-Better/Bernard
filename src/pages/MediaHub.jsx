@@ -651,6 +651,12 @@ export default function MediaHub() {
       )}
 
       {/* Results */}
+      {status === 'archived' && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>You&apos;re viewing <strong className="font-medium text-foreground">archived</strong> media. These assets are hidden from the main library but not deleted.</span>
+        </div>
+      )}
       {/* Pagination error — only shown when some assets are already visible so the
           message doesn't collide with the centered error state below. */}
       {error && assets.length > 0 && (

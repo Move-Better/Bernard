@@ -83,7 +83,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
     <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
       <div
         className="w-20 shrink-0 rounded-lg overflow-hidden bg-foreground/80 relative grid place-items-center"
-        style={{ aspectRatio: m.width && m.height ? `${m.width} / ${m.height}` : '9 / 16' }}
+        style={{ aspectRatio: m.width && m.height ? `${Math.min(m.width / m.height, 16 / 9)}` : '9 / 16' }}
       >
         {m.thumbnailUrl
           ? <img src={m.thumbnailUrl} alt="" className="w-full h-full object-cover" />

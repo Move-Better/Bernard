@@ -118,6 +118,13 @@ export default async function handler(req, res) {
   const claimed = []
   for (const asset of candidates) {
     if (!asset.blob_url) continue
+
+    // Verify the workspace still exists before claiming the asset — an orphaned
+    // asset that passes the PATCH but then has no workspace would get stuck
+    // in `segment_status: 'detecting'` forever with no processor to advance it.
+    const ws = await workspaceById(asset.workspace_id)
+    if (!ws) continue
+
     // Re-assert the prior status in the filter so two overlapping cron runs can't
     // both claim the same row (null uses `is.`, a value uses `eq.`).
     const priorFilter = asset.segment_status === null ? 'segment_status=is.null' : 'segment_status=eq.detecting'
@@ -129,9 +136,6 @@ export default async function handler(req, res) {
     if (!patch || !patch.ok) continue
     const rows = await patch.json().catch(() => [])
     if (!Array.isArray(rows) || rows.length === 0) continue
-
-    const ws = await workspaceById(asset.workspace_id)
-    if (!ws) continue
 
     waitUntil(
       detectSegmentsForAsset({ workspace: ws, asset, maxSegments: MAX_SEGMENTS })
