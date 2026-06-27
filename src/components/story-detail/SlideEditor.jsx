@@ -1562,6 +1562,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setGuidesOn(true)
     guidesTimerRef.current = setTimeout(() => setGuidesOn(false), 800)
   }
+  // Clear the flash timer on unmount so it can't fire setGuidesOn after teardown.
+  useEffect(() => () => { if (guidesTimerRef.current) clearTimeout(guidesTimerRef.current) }, [])
 
   // Seed: stored slides if any, else one empty cover slide bound to photo 0.
   function seedSlides() {

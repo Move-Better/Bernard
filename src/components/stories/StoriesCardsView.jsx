@@ -1,5 +1,5 @@
 import { useSearchParams, Link } from 'react-router-dom'
-import { Mic } from 'lucide-react'
+import { Mic, SearchX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import StoryCard from './StoryCard'
 import EmptyState from '@/components/EmptyState'
@@ -60,24 +60,23 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
 
   if (filtered.length === 0) {
     if (filtersActive) {
+      const clearFilters = () => setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('platform')
+        next.delete('stage')
+        next.delete('campaign')
+        next.delete('archetype')
+        next.delete('location')
+        return next
+      }, { replace: true })
       return (
-        <div className="py-16 text-center text-muted-foreground">
-          <p className="text-sm font-medium">No stories match your filters</p>
-          <button
-            type="button"
-            onClick={() => setSearchParams((prev) => {
-              const next = new URLSearchParams(prev)
-              next.delete('platform')
-              next.delete('stage')
-              next.delete('campaign')
-              next.delete('archetype')
-              next.delete('location')
-              return next
-            }, { replace: true })}
-            className="mt-2 text-xs text-primary hover:underline"
-          >
-            Clear filters
-          </button>
+        <div className="py-16 text-center text-muted-foreground flex flex-col items-center">
+          <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center mb-3">
+            <SearchX className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-medium text-foreground">No stories match your filters</p>
+          <p className="text-xs mt-1 mb-3">Try widening or clearing them to see more.</p>
+          <Button size="sm" variant="outline" onClick={clearFilters}>Clear filters</Button>
         </div>
       )
     }

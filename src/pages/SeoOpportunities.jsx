@@ -197,7 +197,7 @@ export default function SeoOpportunities() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
         <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" aria-hidden="true" />
             SEO Opportunities
           </h1>
@@ -276,6 +276,18 @@ export default function SeoOpportunities() {
           </div>
 
           <div className="space-y-3">
+            {(filter === 'decaying' || filter === 'cannibal') && (
+              <div className="bg-muted/40 border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground flex items-start gap-2.5">
+                <Lock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+                <span>
+                  <span className="font-medium text-foreground">
+                    {filter === 'decaying' ? 'Decaying pages' : 'Cannibalization'}
+                  </span>{' '}
+                  isn&apos;t ready yet — it needs about 2 weeks of Search Console history to compare
+                  rankings week-over-week. Snapshots run Mondays; check back once a couple have accrued.
+                </span>
+              </div>
+            )}
             {filteredOpps.map((opp) => (
               <OpportunityCard
                 key={opp.query}

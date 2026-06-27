@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Mic, Target, User, X } from 'lucide-react'
+import { Mic, Target, User, X, ChevronDown } from 'lucide-react'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -25,10 +25,28 @@ const QUICK_FILTERS = [
   { key: 'published',   label: 'Published',             stages: ['published'] },
 ]
 
+// Filter selects keep the native <select> (best mobile UX + free keyboard
+// support) but drop the OS dropdown chrome (appearance-none) and draw our own
+// chevron, so they share the rounded-pill visual register of the active-filter
+// chips instead of looking like raw browser controls.
 const SELECT_CLS =
-  'shrink-0 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground ' +
+  'appearance-none w-full rounded-full border border-border bg-background pl-3 pr-7 py-1.5 text-xs font-medium text-foreground ' +
   'cursor-pointer hover:border-primary/30 hover:bg-muted transition-colors ' +
   'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
+
+function FilterSelect({ ariaLabel, value, onChange, children }) {
+  return (
+    <div className="relative shrink-0">
+      <select aria-label={ariaLabel} value={value} onChange={onChange} className={SELECT_CLS}>
+        {children}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground"
+        aria-hidden="true"
+      />
+    </div>
+  )
+}
 
 /**
  * Stories page — top-level IA surface.
@@ -253,15 +271,14 @@ export default function Stories() {
             <X className="h-3 w-3" aria-hidden="true" />
           </button>
         ) : (
-          <select
-            aria-label="Filter by real moments"
+          <FilterSelect
+            ariaLabel="Filter by real moments"
             value=""
             onChange={(e) => setParam('capture', e.target.value)}
-            className={SELECT_CLS}
           >
             <option value="">Real moments: All</option>
             <option value="real">Real moments only</option>
-          </select>
+          </FilterSelect>
         )}
 
         {/* Campaign — active chip or selector */}
@@ -276,17 +293,16 @@ export default function Stories() {
             <X className="h-3 w-3" aria-hidden="true" />
           </button>
         ) : selectableCampaigns.length > 0 ? (
-          <select
-            aria-label="Filter by campaign"
+          <FilterSelect
+            ariaLabel="Filter by campaign"
             value=""
             onChange={(e) => setParam('campaign', e.target.value)}
-            className={SELECT_CLS}
           >
             <option value="">Campaign: All</option>
             {selectableCampaigns.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </FilterSelect>
         ) : null}
 
         {/* Staff / author — active chip or selector */}
@@ -301,54 +317,50 @@ export default function Stories() {
             <X className="h-3 w-3" aria-hidden="true" />
           </button>
         ) : staffAll.length > 1 ? (
-          <select
-            aria-label="Filter by author"
+          <FilterSelect
+            ariaLabel="Filter by author"
             value=""
             onChange={(e) => setParam('staff', e.target.value)}
-            className={SELECT_CLS}
           >
             <option value="">Author: All</option>
             {staffAll.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
+          </FilterSelect>
         ) : null}
 
         {/* Platform */}
-        <select
-          aria-label="Filter by platform"
+        <FilterSelect
+          ariaLabel="Filter by platform"
           value={platformFilter}
           onChange={(e) => setParam('platform', e.target.value)}
-          className={SELECT_CLS}
         >
           <option value="">Platform: All</option>
           {PLATFORMS.map((p) => (
             <option key={p} value={p}>{PLATFORM_META[p].label}</option>
           ))}
-        </select>
+        </FilterSelect>
 
         {/* Location — only when workspace has multiple */}
         {showLocations ? (
-          <select
-            aria-label="Filter by location"
+          <FilterSelect
+            ariaLabel="Filter by location"
             value={locationFilter}
             onChange={(e) => setParam('location', e.target.value)}
-            className={SELECT_CLS}
           >
             <option value="">Location: All</option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>{loc.label || loc.city}</option>
             ))}
-          </select>
+          </FilterSelect>
         ) : null}
 
         {/* Archetype — only when workspace has defined prototypes */}
         {showArchetypes ? (
-          <select
-            aria-label="Filter by archetype"
+          <FilterSelect
+            ariaLabel="Filter by archetype"
             value={searchParams.get('archetype') || ''}
             onChange={(e) => setParam('archetype', e.target.value)}
-            className={SELECT_CLS}
           >
             <option value="">Archetype: All</option>
             {prototypes.map((p) => (
@@ -356,7 +368,7 @@ export default function Stories() {
                 {p.emoji ? `${p.emoji} ${p.label}` : p.label}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         ) : null}
         </div>
       </div>

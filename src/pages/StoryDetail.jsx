@@ -38,17 +38,20 @@ import { getCleanupLevel } from '@/lib/cleanupLevels'
  * audience / story_type on interviews that pre-date these fields, which
  * directly improves voice-attribution scores on regeneration.
  */
-function EditablePill({ value, options, placeholder, label, onChange, disabled }) {
+function EditablePill({ value, options, placeholder, label, onChange, disabled, demoteUnset }) {
   const selected = options.find((o) => o.key === value) || null
+  // Unset CTA styling draws the eye to missing metadata. When several pills are
+  // unset at once, only the first should shout — pass demoteUnset on the rest so
+  // they read as quiet "add later" chips and don't compete for attention.
+  const unsetCls = demoteUnset
+    ? 'text-muted-foreground bg-muted/40 border border-dashed border-border hover:bg-muted active:bg-muted px-2 py-1.5'
+    : 'text-primary bg-primary/5 border border-dashed border-primary/40 hover:bg-primary/10 hover:border-primary/60 active:bg-primary/10 font-medium px-2 py-1.5'
   return (
     <label
       className={`relative inline-flex items-center gap-1 text-xs rounded-full transition-colors ${
         selected
           ? 'text-muted-foreground bg-muted/60 hover:bg-muted active:bg-muted px-2 py-1.5'
-          // Unset state — call-to-action styling: dashed primary border,
-          // primary-tinted text, "+" affordance. Reads as an action chip,
-          // not a passive label, so clinicians notice missing metadata.
-          : 'text-primary bg-primary/5 border border-dashed border-primary/40 hover:bg-primary/10 hover:border-primary/60 active:bg-primary/10 font-medium px-2 py-1.5'
+          : unsetCls
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {selected ? (
@@ -343,6 +346,9 @@ export default function StoryDetail() {
                     options={storyTypeOptions}
                     placeholder="Add story type"
                     label="Story type"
+                    // Keep this pill quiet while audience is still unset so the
+                    // header shows one CTA at a time, not two competing ones.
+                    demoteUnset={!story.audience}
                     disabled={updateInterview.isPending || !user?.id}
                     onChange={(next) =>
                       updateInterview.mutate({

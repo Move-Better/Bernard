@@ -879,6 +879,8 @@ export default function VideoEditor() {
     setAlignGuidesOn(true)
     alignGuideTimerRef.current = setTimeout(() => setAlignGuidesOn(false), 800)
   }
+  // Clear the flash timer on unmount so it can't fire setAlignGuidesOn after teardown.
+  useEffect(() => () => { if (alignGuideTimerRef.current) clearTimeout(alignGuideTimerRef.current) }, [])
   const busy = exportMutation.isPending || wholeMutation.isPending
   const anyDest = dest.post || dest.broll || dest.ad
 
