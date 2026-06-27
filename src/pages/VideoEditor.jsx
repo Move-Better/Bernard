@@ -102,8 +102,7 @@ function Canvas({ ctx }) {
       </div>
       <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>
         <div
-          className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
-          style={clipSelRing ? { boxShadow: '0 0 0 2px hsl(var(--primary))' } : undefined}
+          className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-primary ring-offset-2' : ''}`}
           onClick={togglePlay}
         >
           {asset?.blob_url ? (

@@ -2182,7 +2182,7 @@ function InterviewVoiceDock({
         </Tooltip>
 
         {/* Center: waveform bars + mic button */}
-        <div className="relative flex items-center justify-center" style={{ width: 160, height: 88 }}>
+        <div className="relative flex w-40 h-[88px] items-center justify-center">
           {/* Waveform bars — opacity driven by isListening, heights driven by RAF */}
           <div
             ref={waveformRef}

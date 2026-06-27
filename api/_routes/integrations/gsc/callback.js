@@ -1,3 +1,4 @@
+import { verifyToken } from '@clerk/backend'
 import { withSentry } from '../../../_lib/sentry.js'
 import {
   gscRedirectUri,
@@ -61,6 +62,27 @@ async function handler(req, res) {
   const parsed = verifyOAuthState(state)
   if (!parsed) {
     return renderApexError(res, 'OAuth state is invalid or has expired (10 minute window). Try connecting again.')
+  }
+
+  // Verify the Clerk session cookie matches the user who initiated the flow,
+  // preventing replay of a legitimately-issued state token by a different user.
+  if (parsed.userId) {
+    const cookies = req.headers.cookie || ''
+    const match = cookies.match(/(?:^|;\s*)__session=([^;]+)/)
+    const sessionToken = match ? decodeURIComponent(match[1]) : null
+    if (!sessionToken) {
+      return renderApexError(res, 'Session expired. Please sign in and try connecting again.')
+    }
+    try {
+      const claims = await verifyToken(sessionToken, { secretKey: process.env.CLERK_SECRET_KEY })
+      if (claims.sub !== parsed.userId) {
+        console.error('[gsc/callback] user_id mismatch — possible state replay', { state_uid: parsed.userId, session_uid: claims.sub })
+        return renderApexError(res, 'Authentication mismatch. Please try connecting again from your workspace settings.')
+      }
+    } catch (e) {
+      console.error('[gsc/callback] session verification failed:', e?.message)
+      return renderApexError(res, 'Session expired. Please sign in and try connecting again.')
+    }
   }
 
   let tokens

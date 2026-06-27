@@ -118,7 +118,8 @@ async function handler(req, res) {
     qs += `&id=in.(${collectionAssetIds.map(encodeURIComponent).join(',')})`
   }
   if (search) {
-    const term = encodeURIComponent(`%${search}%`)
+    const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_')
+    const term = encodeURIComponent(`%${escaped}%`)
     // PostgREST `or` syntax. Note: jsonb columns can't be ilike'd directly here.
     qs += `&or=(filename.ilike.${term},display_title.ilike.${term},notes.ilike.${term},condition.ilike.${term},patient_pseudonym.ilike.${term},transcription.ilike.${term})`
   }
