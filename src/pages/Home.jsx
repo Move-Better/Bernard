@@ -212,7 +212,7 @@ export default function Home() {
           {isRefetchingStories ? (
             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden="true" />
           ) : (
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
           )}
           Retry
         </Button>
@@ -244,7 +244,7 @@ export default function Home() {
             {failedPieces.length} {failedPieces.length === 1 ? 'post' : 'posts'} failed to publish
           </span>
           <span className="ml-auto inline-flex items-center gap-0.5 text-sm font-medium text-destructive">
-            Review <ChevronRight className="h-3.5 w-3.5" />
+            Review <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
         </Link>
       )}

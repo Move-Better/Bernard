@@ -124,7 +124,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
               onClick={() => onReview(m)}
               className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium flex items-center gap-1.5 hover:bg-primary/10"
             >
-              <Scissors className="h-4 w-4" />Review &amp; trim
+              <Scissors className="h-4 w-4" aria-hidden="true" />Review &amp; trim
             </button>
             <button
               type="button"
@@ -157,7 +157,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Staff</span>
           <Select value={staffFilter} onValueChange={setStaffFilter}>
-            <SelectTrigger className="h-9 text-sm w-auto min-w-[120px]" aria-label="Filter by staff">
+            <SelectTrigger className="h-9 text-sm w-auto min-w-28" aria-label="Filter by staff">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -186,7 +186,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
         <div role="status" className="flex justify-center py-12"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading moments…</span></div>
       ) : moments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center rounded-xl border-2 border-dashed border-border">
-          <Sparkles className="h-8 w-8 text-muted-foreground" />
+          <Sparkles className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
           <p className="text-sm font-semibold">{totalCount === 0 ? 'No moments yet' : 'No moments match this filter'}</p>
           <p className="text-xs text-muted-foreground max-w-sm">
             {totalCount === 0
@@ -245,7 +245,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
         {thumbUrl ? (
           <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          <PlayCircle className="h-9 w-9 text-muted-foreground/40" />
+          <PlayCircle className="h-9 w-9 text-muted-foreground/40" aria-hidden="true" />
         )}
         {durationLabel && (
           <span className="absolute bottom-1.5 right-1.5 text-3xs text-white/80 bg-black/40 rounded px-1.5 py-0.5">
@@ -254,7 +254,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
         )}
         {proposals !== null && proposals > 0 && (
           <span className="absolute top-1.5 left-1.5 text-3xs bg-primary text-primary-foreground rounded px-1.5 py-0.5 font-medium flex items-center gap-1">
-            <Sparkles className="h-2.5 w-2.5" />{proposals} clip{proposals !== 1 ? 's' : ''} proposed
+            <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />{proposals} clip{proposals !== 1 ? 's' : ''} proposed
           </span>
         )}
         {(proposals === null || proposals === 0) && clips !== null && clips > 0 && (
@@ -294,8 +294,8 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
           aria-label={!ok ? 'Resolve consent before cutting clips' : 'Cut a clip'}
         >
           {proposals !== null && proposals > 0
-            ? <><Sparkles className="h-3.5 w-3.5" />Review {proposals} clip{proposals !== 1 ? 's' : ''}</>
-            : <><Scissors className="h-3.5 w-3.5" />Cut a clip</>
+            ? <><Sparkles className="h-3.5 w-3.5" aria-hidden="true" />Review {proposals} clip{proposals !== 1 ? 's' : ''}</>
+            : <><Scissors className="h-3.5 w-3.5" aria-hidden="true" />Cut a clip</>
           }
         </button>
 
@@ -313,7 +313,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
               disabled={!ok}
               className="w-full px-3 py-1.5 rounded-lg text-3xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
             >
-              <Sparkles className="h-3 w-3" />Find moments
+              <Sparkles className="h-3 w-3" aria-hidden="true" />Find moments
             </button>
           )
         )}
@@ -551,7 +551,7 @@ export default function MomentMiner() {
                   : 'bg-card border-border text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             Ready to review{' '}
             {!momentsLoading && allMoments.length > 0 && (
               <span
@@ -608,7 +608,7 @@ export default function MomentMiner() {
                 : 'bg-card border-border text-muted-foreground hover:text-foreground'
             }`}
           >
-            <BarChart3 className="h-3.5 w-3.5" />Coverage
+            <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />Coverage
           </button>
         </div>
 
@@ -660,7 +660,7 @@ export default function MomentMiner() {
         />
       ) : visibleVideos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center rounded-xl border-2 border-dashed border-border">
-          <Film className="h-10 w-10 text-muted-foreground" />
+          <Film className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <div>
             <p className="font-semibold text-base">
               {view === 'in_progress'

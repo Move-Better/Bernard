@@ -195,7 +195,7 @@ export default function StaffProfile() {
             <div className="flex gap-2 shrink-0">
               <Button asChild size="sm">
                 <Link to="/new">
-                  <Plus className="h-4 w-4 mr-1.5" />
+                  <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
                   New Interview
                 </Link>
               </Button>
@@ -512,7 +512,7 @@ export default function StaffProfile() {
                   className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
                   onClick={() => setDeleteTarget({ type: 'staff' })}
                 >
-                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  <Trash2 className="h-4 w-4 mr-1.5" aria-hidden="true" />
                   Remove staff member
                 </Button>
               </div>
@@ -710,18 +710,18 @@ function ProfileTab({ active, onClick, children, id }) {
 // ── Channel icon map ─────────────────────────────────────────────────────────
 
 const CHANNEL_ICON = {
-  facebook:     <Facebook className="h-3.5 w-3.5" />,
-  instagram:    <Instagram className="h-3.5 w-3.5" />,
-  gbp:          <Globe className="h-3.5 w-3.5" />,
-  email:        <Mail className="h-3.5 w-3.5" />,
-  blog:         <BookOpen className="h-3.5 w-3.5" />,
-  youtube:      <TrendingUp className="h-3.5 w-3.5" />,
-  landing_page: <Globe className="h-3.5 w-3.5" />,
-  google_ads:   <Globe className="h-3.5 w-3.5" />,
+  facebook:     <Facebook className="h-3.5 w-3.5" aria-hidden="true" />,
+  instagram:    <Instagram className="h-3.5 w-3.5" aria-hidden="true" />,
+  gbp:          <Globe className="h-3.5 w-3.5" aria-hidden="true" />,
+  email:        <Mail className="h-3.5 w-3.5" aria-hidden="true" />,
+  blog:         <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />,
+  youtube:      <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />,
+  landing_page: <Globe className="h-3.5 w-3.5" aria-hidden="true" />,
+  google_ads:   <Globe className="h-3.5 w-3.5" aria-hidden="true" />,
 }
 
 function ChannelBadge({ platform }) {
-  const icon = CHANNEL_ICON[platform] ?? <Globe className="h-3.5 w-3.5" />
+  const icon = CHANNEL_ICON[platform] ?? <Globe className="h-3.5 w-3.5" aria-hidden="true" />
   return (
     <Badge variant="outline" className="text-xs gap-1 capitalize shrink-0">
       {icon}

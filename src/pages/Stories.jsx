@@ -223,8 +223,7 @@ export default function Stories() {
           {/* Mine toggle */}
           <button
             type="button"
-            role="tab"
-            aria-selected={mineOnly}
+            aria-pressed={mineOnly}
             onClick={() => mineOnly ? clearOwner() : setParam('owner', 'me')}
             className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
               mineOnly

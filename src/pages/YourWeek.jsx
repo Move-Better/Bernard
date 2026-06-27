@@ -84,7 +84,7 @@ function WeekNav({ offset, onPrev, onNext, onToday }) {
         <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div>
           <div className="text-sm font-bold leading-tight">{weekRangeLabel(offset)}</div>
-          <div className="text-3xs font-semibold uppercase tracking-wide text-primary">{weekRelative(offset)}</div>
+          <div className="text-2xs font-semibold uppercase tracking-wide text-primary">{weekRelative(offset)}</div>
         </div>
         {offset !== 0 && (
           <button

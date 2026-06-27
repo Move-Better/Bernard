@@ -150,7 +150,7 @@ function MemberCard({ m }) {
   const streak = computeStreak(m.capture_weeks)
   const due = kind === 'due' || kind === 'new'
   return (
-    <div className="bg-card p-4">
+    <div className="bg-card p-4 border border-border rounded-lg">
       <div className="flex items-center gap-3">
         <span className={`h-11 w-11 rounded-full text-sm font-bold flex items-center justify-center shrink-0 ${due ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
           {getInitials(m.name)}

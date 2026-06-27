@@ -166,7 +166,7 @@ export default function Ads() {
         groups.map((g) => (
           <section key={g.key}>
             <div className="mb-2 flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
+              <Target className="h-4 w-4 text-primary" aria-hidden="true" />
               <h2 className="text-sm font-semibold">{g.campaign?.name || 'Ungrouped'}</h2>
               <span className="rounded-full bg-muted px-2 py-0.5 text-3xs text-muted-foreground">
                 {g.items.length} creative{g.items.length !== 1 ? 's' : ''}
