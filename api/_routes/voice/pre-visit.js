@@ -19,6 +19,12 @@
 export const config = { runtime: 'nodejs', maxDuration: 60 }
 
 import { randomUUID } from 'node:crypto'
+import { createWriteStream } from 'node:fs'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { readFile, unlink } from 'node:fs/promises'
 import { generateText } from 'ai'
 import { put } from '@vercel/blob'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
@@ -149,8 +155,17 @@ export default async function handler(req, res) {
       console.error('[voice/pre-visit] ElevenLabs error', ttsRes.status, detail.slice(0, 500))
       return err(res, 'TTS synthesis failed', 502)
     }
-    const arrayBuf = await ttsRes.arrayBuffer()
-    audioBuffer = Buffer.from(arrayBuf)
+    // Stream to a temp file to avoid materializing the full audio in RAM —
+    // arrayBuffer() on a long TTS response can OOM the function.
+    const tmpPath = join(tmpdir(), `pre-visit-${randomUUID()}.mp3`)
+    try {
+      await pipeline(Readable.fromWeb(ttsRes.body), createWriteStream(tmpPath))
+    } catch (streamErr) {
+      console.error('[voice/pre-visit] TTS stream write failed:', streamErr?.message)
+      unlink(tmpPath).catch(() => {})
+      return err(res, 'TTS stream failed', 502)
+    }
+    audioBuffer = await readFile(tmpPath).finally(() => unlink(tmpPath).catch(() => {}))
   } catch (e) {
     console.error('[voice/pre-visit] ElevenLabs fetch failed:', e?.message)
     return err(res, 'TTS upstream unreachable', 502)

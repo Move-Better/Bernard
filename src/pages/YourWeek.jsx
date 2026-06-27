@@ -193,7 +193,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
           {meta.label}
         </span>
       </div>
-      <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
+      <div className="text-xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
         {item.brief || item.label}
       </div>
       {/* Pill and action stack on separate lines — side-by-side overflowed the
@@ -242,7 +242,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
           {item.voiceFlag && item.voiceFidelityScore !== null && item.voiceFidelityScore < 65 && (
             <p className="mb-1.5 text-3xs italic text-action">Flagged: {item.voiceFlag}</p>
           )}
-          <p className="text-2xs italic leading-snug text-muted-foreground line-clamp-4">
+          <p className="text-sm leading-snug text-muted-foreground line-clamp-4">
             &ldquo;{item.excerpt}&rdquo;
           </p>
           {/* Stacked full-width actions: side-by-side overflowed/wrapped in a

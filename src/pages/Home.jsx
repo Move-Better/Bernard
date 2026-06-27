@@ -254,7 +254,7 @@ export default function Home() {
           cards below. Detail lives in Overview; this is just the count + a link. */}
       {attentionTotal > 0 && (
         <div
-          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl border border-action/25 bg-action/8 px-4 py-3 flex-wrap"
+          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl border border-action/30 bg-action/10 px-4 py-3 flex-wrap"
         >
           <span className="h-2 w-2 rounded-full bg-action shrink-0" />
           <span className="text-sm font-medium text-foreground">
