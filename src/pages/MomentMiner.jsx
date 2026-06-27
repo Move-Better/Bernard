@@ -130,7 +130,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
               type="button"
               disabled={saving}
               onClick={() => onSave(m)}
-              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}Looks good — save
             </button>

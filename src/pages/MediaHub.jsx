@@ -732,10 +732,10 @@ export default function MediaHub() {
             .map((group, i) => (
               <div key={group.id} className={i > 0 ? 'mt-8' : undefined}>
                 <div className="flex items-baseline justify-between gap-2 mb-3">
-                  <p className="text-2xs uppercase tracking-widest text-muted-foreground font-semibold">
+                  <h2 className="text-2xs uppercase tracking-widest text-muted-foreground font-semibold">
                     {group.label}
                     <span className="ml-1.5 normal-case tracking-normal font-medium text-muted-foreground/40">· {group.assets.length}</span>
-                  </p>
+                  </h2>
                   {group.sub && (
                     <p className="text-2xs text-muted-foreground/40">{group.sub}</p>
                   )}

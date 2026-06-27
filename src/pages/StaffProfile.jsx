@@ -171,8 +171,8 @@ export default function StaffProfile() {
               </p>
             </div>
 
-            {/* Stat chips — hidden on mobile to keep the header compact */}
-            <div className="hidden md:flex items-center gap-2 flex-wrap">
+            {/* Stat chips */}
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-muted/50 border border-border rounded-full text-xs text-muted-foreground">
                 <strong className="text-foreground font-semibold">{interviews.length}</strong> stor{interviews.length !== 1 ? 'ies' : 'y'}
               </span>

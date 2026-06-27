@@ -26,7 +26,7 @@ const TIER_PILL = {
 }
 const TIER_LABEL = { owner: '★ Owner', producer: 'Producer', clinician: 'Clinician', viewer: 'Viewer' }
 
-const AVATAR_COLORS = ['#0b111e', '#058ac7', '#7c3aed', '#6366f1', '#0284c7', '#059669', '#d97706']
+const AVATAR_COLORS = ['#0c7580', '#058ac7', '#7c3aed', '#6366f1', '#0284c7', '#059669', '#d97706']
 function avatarFor(person, i) {
   const initials = (person.name || '?')
     .split(/[\s@.]+/)

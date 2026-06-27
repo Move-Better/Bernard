@@ -100,6 +100,7 @@ export default function NewInterview() {
   // the voice-fidelity overhaul — legacy recipes may still carry them, but we
   // no longer apply them.)
   function applyRecipe(recipe) {
+    if (!recipe) { setSelectedRecipeId(null); return }
     setSelectedRecipeId(recipe.id)
     if (recipe.tone)          setTone(recipe.tone)
     if (recipe.voice_mode)    setVoiceMode(recipe.voice_mode)
@@ -312,7 +313,7 @@ export default function NewInterview() {
       </div>
 
       {error && (
-        <div className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">{error}</div>
+        <div role="alert" className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">{error}</div>
       )}
 
       <Card>
@@ -338,7 +339,7 @@ export default function NewInterview() {
                       type="button"
                       aria-pressed={isSelected}
                       onClick={() => setStaffName(s.name)}
-                      className={`inline-flex items-center gap-2 rounded-full border-2 pl-1 pr-3 py-1 transition-all ${
+                      className={`inline-flex items-center gap-2 rounded-full border-2 pl-1 pr-3 py-1 transition-all focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
                         isSelected
                           ? 'border-primary bg-primary/10'
                           : 'border-border hover:border-primary/40'
@@ -616,6 +617,7 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
       <div className="relative">
         <button
           type="button"
+          aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
           className="w-full flex items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-left hover:border-primary/40 transition-colors"
         >
