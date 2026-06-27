@@ -44,6 +44,7 @@ const PLATFORM_TO_SERVICE = {
 
 async function gql(token, query, variables = {}) {
   const r = await fetch(BUFFER_GQL, {
+    signal: AbortSignal.timeout(30_000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ query, variables }),

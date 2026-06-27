@@ -514,7 +514,7 @@ export default function MediaHub() {
                 kind === k.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
-              {k.icon && <span>{k.icon}</span>}
+              {k.icon && <span aria-hidden="true">{k.icon}</span>}
               <span>{k.label}</span>
               {!loading && <span className="opacity-70">· {countLabel(k.count)}</span>}
             </button>

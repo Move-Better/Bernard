@@ -30,6 +30,7 @@ export function isMissingTeam(e) {
 async function patchRow(table, id, body) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return false
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+    signal: AbortSignal.timeout(10_000),
     method: 'PATCH',
     headers: {
       apikey: SUPABASE_KEY,

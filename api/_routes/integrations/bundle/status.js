@@ -32,6 +32,7 @@ async function fetchActiveLocations(workspaceId) {
     order: 'position.asc',
   })
   const r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_locations?${params.toString()}`, {
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
   if (!r.ok) return []

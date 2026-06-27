@@ -60,8 +60,11 @@ async function fetchSamplePhotos(workspaceId, limit) {
  * Throws if the response is not 2xx or the file is too large.
  */
 async function downloadThumbnail(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
-  if (!res.ok) throw new Error(`Thumbnail fetch ${res.status}: ${url}`)
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
+    headers: { Range: 'bytes=0-204800' },
+  })
+  if (!res.ok && res.status !== 206) throw new Error(`Thumbnail fetch ${res.status}: ${url}`)
   const buf = await res.arrayBuffer()
   if (buf.byteLength > 200 * 1024) {
     // Safety: thumbnails should be <40KB; if one is unusually large, skip it.

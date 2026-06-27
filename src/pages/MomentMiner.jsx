@@ -117,26 +117,28 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
             {m.filename} · @ {fmtClock(m.startSec)}–{fmtClock(m.endSec)}
           </p>
         </div>
-        <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => onReview(m)}
-            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90"
-          >
-            <Scissors className="h-4 w-4" />Review &amp; trim
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => onSave(m)}
-            className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Looks good — save
-          </button>
+        <div className="flex items-center justify-between gap-2 mt-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onReview(m)}
+              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90"
+            >
+              <Scissors className="h-4 w-4" />Review &amp; trim
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => onSave(m)}
+              className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Looks good — save
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => onDismiss(m)}
-            className="px-2.5 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted ml-auto"
+            className="px-2.5 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted shrink-0"
           >
             Not this one
           </button>

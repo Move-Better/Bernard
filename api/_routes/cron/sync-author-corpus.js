@@ -23,6 +23,10 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 const SOURCE_SLUG = 'movebetter-people'
 const TARGET_SLUG = 'qbook'
+// UUID pins guard against a future tenant reusing a slug and receiving transcripts.
+// Set CORPUS_SYNC_SOURCE_WS_ID + CORPUS_SYNC_TARGET_WS_ID to the stable workspace UUIDs.
+const SOURCE_WS_ID = process.env.CORPUS_SYNC_SOURCE_WS_ID || null
+const TARGET_WS_ID = process.env.CORPUS_SYNC_TARGET_WS_ID || null
 
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
@@ -77,9 +81,15 @@ export async function syncAuthorCorpus({ log = false, dryRun = false } = {}) {
   const tgtWs  = workspaces.find((w) => w.slug === TARGET_SLUG)
 
   if (!srcWs) throw new Error(`Source workspace not found: ${SOURCE_SLUG}`)
+  if (SOURCE_WS_ID && srcWs.id !== SOURCE_WS_ID) {
+    throw new Error(`Source workspace UUID mismatch: expected ${SOURCE_WS_ID}, got ${srcWs.id}`)
+  }
   if (!tgtWs) {
     emit(`[sync-author-corpus] Target workspace "${TARGET_SLUG}" does not exist yet — skipping`)
     return { synced: 0, skipped: 0, note: 'qbook workspace not yet created' }
+  }
+  if (TARGET_WS_ID && tgtWs.id !== TARGET_WS_ID) {
+    throw new Error(`Target workspace UUID mismatch: expected ${TARGET_WS_ID}, got ${tgtWs.id}`)
   }
 
   // ── Resolve Q's clinician in each workspace (matched by user_id) ───────

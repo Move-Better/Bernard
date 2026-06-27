@@ -128,6 +128,7 @@ async function handler(req, res) {
 async function sbGet(url) {
   try {
     const r = await fetch(url, {
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
     })
     if (!r.ok) {
