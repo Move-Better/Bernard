@@ -151,36 +151,45 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
 // The moment-first feed: staff filter + type chips + ranked MomentCards.
 // Replaces the per-source-video review rows.
 function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, staffFilter, setStaffFilter, staffOptions, savingId, onReview, onSave, onDismiss, onSeeUncut }) {
+  const filtersActive = momentType !== 'all' || staffFilter !== 'all'
+  function clearFilters() { setMomentType('all'); setStaffFilter('all') }
   return (
     <div className="flex flex-col gap-3">
-      {staffOptions.length > 0 && (
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Staff</span>
-          <Select value={staffFilter} onValueChange={setStaffFilter}>
-            <SelectTrigger className="h-9 text-sm w-auto min-w-28" aria-label="Filter by staff">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All staff</SelectItem>
-              {staffOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <div className="flex items-center gap-2 flex-wrap">
+        {staffOptions.length > 0 && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Staff</span>
+            <Select value={staffFilter} onValueChange={setStaffFilter}>
+              <SelectTrigger className="h-9 text-sm w-auto min-w-28" aria-label="Filter by staff">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All staff</SelectItem>
+                {staffOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div role="group" aria-label="Filter by moment type" className="flex items-center gap-2 flex-wrap">
+          {MOMENT_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setMomentType(f.key)}
+              aria-pressed={momentType === f.key}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                momentType === f.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-      )}
-      <div role="group" aria-label="Filter by moment type" className="flex items-center gap-2 flex-wrap">
-        {MOMENT_FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setMomentType(f.key)}
-            aria-pressed={momentType === f.key}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-              momentType === f.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted'
-            }`}
-          >
-            {f.label}
+        {filtersActive && (
+          <button type="button" onClick={clearFilters} className="px-3 py-1.5 rounded-full text-xs font-semibold border border-border bg-card hover:bg-muted text-muted-foreground transition-colors">
+            Clear filters
           </button>
-        ))}
+        )}
       </div>
 
       {loading ? (
@@ -195,6 +204,7 @@ function MomentFeed({ loading, moments, totalCount, momentType, setMomentType, s
               : 'Try a different type or staff member.'}
           </p>
           {totalCount === 0 && <Button size="sm" variant="outline" onClick={onSeeUncut}>See uncut footage</Button>}
+          {totalCount > 0 && filtersActive && <Button size="sm" variant="outline" onClick={clearFilters}>Clear filters</Button>}
         </div>
       ) : (
         <div className="flex flex-col gap-3">

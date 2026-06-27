@@ -130,6 +130,7 @@ export default async function handler(req, res) {
     // Range requests are supported by Vercel Blob.
     const fetchRes = await fetch(asset.blob_url, {
       headers: { Range: `bytes=0-${MAX_PROBE_BYTES - 1}` },
+      signal: AbortSignal.timeout(30_000),
     })
     if (!fetchRes.ok && fetchRes.status !== 206) {
       throw new Error(`Blob download failed: ${fetchRes.status}`)

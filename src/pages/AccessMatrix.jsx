@@ -159,7 +159,7 @@ export default function AccessMatrix() {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <p className="text-2xs text-muted-foreground/40">Settings &middot; {wsName} &middot; Access matrix</p>
+        <p className="text-2xs text-muted-foreground/70">Settings &middot; {wsName} &middot; Access matrix</p>
         <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center">
           <span className="nx-rail" aria-hidden="true" />
           Team access matrix
@@ -278,7 +278,7 @@ export default function AccessMatrix() {
                               {TIER_LABEL[person.permission_tier] || person.permission_tier}
                             </span>
                             {dirtyIds.has(person.id) && (
-                              <button onClick={() => resetPerson(person.id)} className="text-3xs text-[hsl(var(--owner-accent))] hover:underline">reset</button>
+                              <button onClick={() => resetPerson(person.id)} className="text-xs px-1 py-0.5 text-[hsl(var(--owner-accent))] hover:underline">reset</button>
                             )}
                           </div>
                         </div>

@@ -270,7 +270,7 @@ export default function NewInterview() {
     return (
       <div className="space-y-3">
         {error && (
-          <div className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">{error}</div>
+          <div role="alert" className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">{error}</div>
         )}
         {loading ? (
           <div role="status" className="rounded-xl border bg-card p-10 flex flex-col items-center gap-4">

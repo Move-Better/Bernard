@@ -116,7 +116,7 @@ function rotatedDims(srcW, srcH, deg) {
 }
 
 async function downloadToTmp(blobUrl, destPath) {
-  const res = await fetch(blobUrl)
+  const res = await fetch(blobUrl, { signal: AbortSignal.timeout(240_000) })
   if (!res.ok) throw new Error(`Source download failed: ${res.status}`)
   // Stream to disk — videos can be 500MB+ and arrayBuffer() OOMs the function.
   await pipeline(Readable.fromWeb(res.body), createWriteStream(destPath))
