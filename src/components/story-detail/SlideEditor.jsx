@@ -1468,7 +1468,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
         </button>
 
         {/* iPhone frame with IG chrome + the real rendered slide */}
-        <div className="relative rounded-[2.5rem] border-[10px] border-black bg-black shadow-2xl" style={{ width: 320 }}>
+        <div className="relative rounded-[2.5rem] border-[10px] border-black bg-black shadow-2xl w-80">
           <div className="absolute left-1/2 top-0 z-20 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-black" />
           <div className="overflow-hidden rounded-[1.9rem] bg-white">
             {/* IG header */}

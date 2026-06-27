@@ -117,7 +117,7 @@ function CroppedSvg({ url, label }) {
       <img
         src={url}
         alt={label}
-        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+        className="block w-full h-full object-contain"
       />
     )
   }
@@ -125,7 +125,7 @@ function CroppedSvg({ url, label }) {
     <div
       ref={hostRef}
       aria-label={label}
-      style={{ width: '100%', height: '100%' }}
+      className="w-full h-full"
       dangerouslySetInnerHTML={{ __html: markup }}
     />
   )
@@ -158,7 +158,7 @@ function AssetPreview({ asset, size = 'md', backdrop = 'checker' }) {
         <img
           src={asset.blob_url}
           alt={asset.filename}
-          style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+          className="block w-full h-full object-contain"
         />
       )}
     </div>

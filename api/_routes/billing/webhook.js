@@ -149,6 +149,7 @@ async function handler(req, res) {
           try {
             const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
               headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+              signal: AbortSignal.timeout(15_000),
             })
             const sub = await subRes.json()
             priceId = sub?.items?.data?.[0]?.price?.id || null
@@ -289,6 +290,7 @@ async function handler(req, res) {
           try {
             const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
               headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+              signal: AbortSignal.timeout(15_000),
             })
             const sub = await subRes.json()
             priceId = sub?.items?.data?.[0]?.price?.id || null

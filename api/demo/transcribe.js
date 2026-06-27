@@ -131,6 +131,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { Authorization: `Bearer ${OPENAI_KEY}` },
       body: form,
+      signal: AbortSignal.timeout(90_000),
     })
     if (!wRes.ok) {
       const errTxt = await wRes.text().catch(() => '')

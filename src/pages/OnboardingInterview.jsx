@@ -722,7 +722,7 @@ export default function OnboardingInterview() {
 
   // ── Main UI ──────────────────────────────────────────────────────────────
   return (
-    <div className="px-4 py-5 flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+    <div className="px-4 py-5 flex flex-col min-h-[calc(100vh-4rem)]">
       {dryRun && (
         <div className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 flex items-center gap-2 text-sm">
           <FlaskConical className="h-4 w-4 text-warning shrink-0" />
@@ -1020,7 +1020,7 @@ function VoiceDock({
         </button>
 
         {/* Center: waveform + mic */}
-        <div className="relative flex items-center justify-center" style={{ width: 160, height: 88 }}>
+        <div className="relative flex items-center justify-center w-[160px] h-[88px]">
           {/* Waveform bars — RAF drives transforms, opacity tracks isListening */}
           <div
             ref={waveformRef}

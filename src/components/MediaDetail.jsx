@@ -482,7 +482,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
           {a.kind === 'video' ? (
             <MediaVideoPlayer asset={a} />
           ) : (
-            <div className="relative bg-black flex items-center justify-center" style={{ minHeight: 240 }}>
+            <div className="relative bg-black flex items-center justify-center min-h-60">
               <img
                 src={a.blob_url}
                 alt={a.alt_text || a.filename}

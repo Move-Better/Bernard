@@ -867,7 +867,7 @@ function TikTokPreview({ content, mediaUrls = [] }) {
         </div>
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-700 z-10">
-          <div className="h-full bg-[#fe2c55]" style={{ width: '35%' }} />
+          <div className="h-full bg-[#fe2c55] w-[35%]" />
         </div>
       </div>
       {/* TikTok bottom nav chrome */}
