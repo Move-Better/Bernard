@@ -18,7 +18,7 @@
 // "everything clinician-shaped" we want one consistent prefix. Inline keys
 // drift over time and become silent staleness bugs.
 
-import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useAppMutation } from './useAppMutation'
 import {
   apiFetch,
@@ -197,6 +197,9 @@ export function useWorkspaceUsage(weeks = 12, weekOffset = 0, options = {}) {
     queryFn: () =>
       apiFetch(`/api/db/workspace-usage?weeks=${weeks}&week_offset=${weekOffset}`).catch(() => EMPTY_USAGE),
     staleTime: 1000 * 60 * 5,
+    // Keep the prior week's data on screen while stepping weeks so the page
+    // doesn't skeleton-flash on every ◀/▶ — only the first load shows a skeleton.
+    placeholderData: keepPreviousData,
     ...options,
   })
 }

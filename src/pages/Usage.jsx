@@ -6,6 +6,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import PageHelp from '@/components/PageHelp'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function relTime(iso) {
@@ -177,6 +178,31 @@ function StaffRow({ s }) {
   )
 }
 
+// ── loading skeleton — mirrors the page layout so there's no empty-state flash ─
+function UsageSkeleton() {
+  return (
+    <div className="space-y-4" role="status" aria-busy="true">
+      <span className="sr-only">Loading usage…</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-9 w-44 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Skeleton className="h-56 rounded-xl md:col-span-2" />
+        <Skeleton className="h-56 rounded-xl" />
+      </div>
+      <Skeleton className="h-28 rounded-xl" />
+      <Skeleton className="h-48 rounded-xl" />
+    </div>
+  )
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 export default function Usage() {
   useDocumentTitle('Usage')
@@ -184,10 +210,15 @@ export default function Usage() {
   const { role, isLoading: roleLoading } = useUserRole()
   const [weeks] = useState(12)
   const [weekOffset, setWeekOffset] = useState(0)
-  const { data = {}, isLoading } = useWorkspaceUsage(weeks, weekOffset)
+  const { data = {}, isPending, isFetching } = useWorkspaceUsage(weeks, weekOffset)
 
   // Admin/owner only — the per-staff breakdown is mildly sensitive.
   if (!roleLoading && role !== 'admin') return <Navigate to="/" replace />
+
+  // First load (no data yet) → content-shaped skeleton, never the empty state.
+  // Stepping weeks keeps prior data on screen (keepPreviousData), so this only
+  // fires on the very first mount.
+  if (isPending) return <UsageSkeleton />
 
   const period = data.period || null
   const stats = data.stats || {}
@@ -198,7 +229,7 @@ export default function Usage() {
   const lastActive = staff.map((s) => s.last_active_at).filter(Boolean).sort().pop()
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`} aria-busy={isFetching}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -239,9 +270,7 @@ export default function Usage() {
             <h3 className="font-semibold">Activity over time</h3>
             <Legend />
           </div>
-          {isLoading
-            ? <div className="h-40 animate-pulse rounded bg-muted/40" />
-            : <ActivityChart activity={activity} />}
+          <ActivityChart activity={activity} />
         </div>
 
         {/* stickiness */}
@@ -297,7 +326,7 @@ export default function Usage() {
               </tr>
             </thead>
             <tbody>
-              {staff.length === 0 && !isLoading && (
+              {staff.length === 0 && (
                 <tr><td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">No team activity yet.</td></tr>
               )}
               {staff.map((s) => <StaffRow key={s.id} s={s} />)}
