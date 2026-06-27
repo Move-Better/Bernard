@@ -89,7 +89,7 @@ export default async function handler(req, res) {
     // Verify the supplied staffId belongs to this workspace.
     const checkRes = await fetch(
       `${SUPABASE_URL}/rest/v1/staff?id=eq.${requestedStaffId}&workspace_id=eq.${ws.id}&select=id&limit=1`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) }
     )
     if (!checkRes.ok) return dbErr(res, checkRes, 'Staff lookup failed')
     const rows = await checkRes.json().catch(() => [])
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
     // Fall back to the authenticated user's own staff row.
     const staffRes = await fetch(
       `${SUPABASE_URL}/rest/v1/staff?workspace_id=eq.${ws.id}&user_id=eq.${auth.userId}&select=id&limit=1`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) }
     )
     if (!staffRes.ok) return dbErr(res, staffRes, 'Staff lookup failed')
     const rows = await staffRes.json().catch(() => [])
@@ -132,6 +132,7 @@ export default async function handler(req, res) {
         Prefer:          'return=representation,resolution=merge-duplicates',
       },
       body: JSON.stringify(docPayload),
+      signal: AbortSignal.timeout(10_000),
     }
   )
   if (!upsertRes.ok) return dbErr(res, upsertRes, 'Failed to save corpus document')

@@ -158,13 +158,8 @@ export default function TranscriptHighlighter({ story, children }) {
         <div
           role="dialog"
           aria-label="Route selection to format"
-          style={{
-            position: 'fixed',
-            left: popover.x,
-            top: popover.y,
-            transform: 'translate(-50%, -100%)',
-            zIndex: 9999,
-          }}
+          className="fixed -translate-x-1/2 -translate-y-full z-[9999]"
+          style={{ left: popover.x, top: popover.y }}
           // Prevent the popover's own mousedown from triggering the outside-click
           // handler that would immediately dismiss it.
           onMouseDown={(e) => e.stopPropagation()}

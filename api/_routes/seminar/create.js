@@ -61,6 +61,7 @@ async function kickWorker(baseUrl, interviewId) {
         authorization: `Bearer ${process.env.CRON_SECRET}`,
       },
       body: JSON.stringify({ interviewId }),
+      signal: AbortSignal.timeout(25_000),
     })
     return r.ok
   } catch (e) {

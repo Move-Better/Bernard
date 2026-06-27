@@ -75,6 +75,7 @@ export default async function handler(req, res) {
             apikey:        process.env.SUPABASE_SERVICE_KEY,
             Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
           },
+          signal: AbortSignal.timeout(8_000),
         },
       )
       if (r.ok) {

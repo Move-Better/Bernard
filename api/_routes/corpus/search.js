@@ -43,6 +43,7 @@ export default async function handler(req, res) {
         apikey:        SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
       },
+      signal: AbortSignal.timeout(10_000),
     }
   )
   let staffId = null

@@ -25,6 +25,7 @@ async function stripePost(path, params) {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body,
+    signal: AbortSignal.timeout(15_000),
   })
   return r.json()
 }

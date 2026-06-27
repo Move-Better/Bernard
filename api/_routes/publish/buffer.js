@@ -164,7 +164,7 @@ async function handler(req, res) {
     if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })
     const ownerCheck = await fetch(
       `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(bufferUpdateId)}&workspace_id=eq.${workspaceId}&select=id`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) },
     )
     if (ownerCheck.ok) {
       const rows = await ownerCheck.json()
@@ -214,7 +214,7 @@ async function handler(req, res) {
     if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })
     const ciCheck = await fetch(
       `${SUPABASE_URL}/rest/v1/content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}&select=id`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) },
     )
     if (ciCheck.ok) {
       const rows = await ciCheck.json()

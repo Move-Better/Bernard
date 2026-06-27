@@ -64,7 +64,7 @@ async function handler(req, res) {
     // Load the target staff row — must belong to the same workspace.
     const tres = await fetch(
       `${SUPA}/rest/v1/staff?id=eq.${encodeURIComponent(targetId)}&workspace_id=eq.${workspace.id}&select=id,permission_tier,user_id&limit=1`,
-      { headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}` } }
+      { headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}` }, signal: AbortSignal.timeout(10_000) }
     )
     if (!tres.ok) {
       console.error('[staff/capabilities] target fetch failed:', tres.status, await tres.text())
@@ -109,6 +109,7 @@ async function handler(req, res) {
           Prefer: 'return=representation',
         },
         body: JSON.stringify({ capability_overrides: overrides }),
+        signal: AbortSignal.timeout(10_000),
       }
     )
     if (!pres.ok) {

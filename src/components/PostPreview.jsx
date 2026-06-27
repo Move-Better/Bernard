@@ -1174,7 +1174,8 @@ function EmailPreview({ content, mediaUrls = [] }) {
       <iframe
         srcDoc={filledHtml}
         title="Email Preview"
-        style={{ width: '100%', height: 'min(960px, 80vh)', border: '1px solid #e2e8f0', borderRadius: 8, display: 'block' }}
+        className="block w-full rounded-lg border border-border"
+        style={{ height: 'min(960px, 80vh)' }}
         sandbox=""
       />
 

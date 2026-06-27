@@ -51,6 +51,7 @@ export default async function handler(req, res) {
         apikey:        SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
       },
+      signal: AbortSignal.timeout(10_000),
     }
   )
   if (!staffRes.ok) return dbErr(res, staffRes, 'Clinician lookup failed')

@@ -137,6 +137,7 @@ async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
     })
   } catch (e) {
     console.error('[book/publish] receiver network error:', e?.message)

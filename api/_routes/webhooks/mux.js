@@ -35,7 +35,7 @@ async function rehostMuxThumbnail(playbackId, assetId, workspaceId) {
       ? mintPlaybackToken({ playbackId, audience: 't', expiresInSec: 300 })
       : null
     const url = `https://image.mux.com/${playbackId}/thumbnail.jpg${token ? `?token=${token}` : ''}`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
     if (!res.ok) {
       console.error(`[mux/webhook] Mux thumbnail fetch failed: ${res.status}`)
       return null

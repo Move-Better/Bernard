@@ -238,12 +238,11 @@ export default function AccessMatrix() {
                       key={cap}
                       scope="col"
                       title={capabilityLabel(cap)}
-                      className={`bg-card border-b-2 border-border align-bottom px-1 pb-2 ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-border/50'}`}
-                      style={{ height: 110 }}
+                      className={`bg-card border-b-2 border-border align-bottom px-1 pb-2 h-[110px] ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-border/50'}`}
                     >
                       <span
-                        className="text-2xs font-semibold text-foreground inline-block whitespace-nowrap"
-                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                        className="text-2xs font-semibold text-foreground inline-block whitespace-nowrap rotate-180"
+                        style={{ writingMode: 'vertical-rl' }}
                       >
                         {capabilityShortLabel(cap)}
                       </span>
@@ -261,8 +260,8 @@ export default function AccessMatrix() {
                     <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/20 border-b border-border border-r-2 border-r-border px-4 py-2.5 min-w-[220px]">
                       <div className="flex items-center gap-2.5">
                         <span
-                          className="inline-flex items-center justify-center rounded-full text-white font-bold shrink-0"
-                          style={{ width: 32, height: 32, background: av.color, fontSize: 11, opacity: person.pending ? 0.5 : 1 }}
+                          className="inline-flex items-center justify-center rounded-full text-white font-bold text-2xs shrink-0 w-8 h-8"
+                          style={{ background: av.color, opacity: person.pending ? 0.5 : 1 }}
                         >
                           {av.initials}
                         </span>
@@ -291,8 +290,7 @@ export default function AccessMatrix() {
                         return (
                           <td
                             key={cap}
-                            className={`text-center border-b border-border group-hover:bg-muted/20 ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-border/50'}`}
-                            style={{ height: 52 }}
+                            className={`text-center border-b border-border group-hover:bg-muted/20 h-[52px] ${i === 0 ? 'border-l-2 border-l-border' : 'border-r border-r-border/50'}`}
                           >
                             <Cell person={person} st={st} onClick={() => toggleCap(person, cap)} />
                           </td>

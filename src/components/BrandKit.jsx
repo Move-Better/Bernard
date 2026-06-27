@@ -149,8 +149,8 @@ function AssetPreview({ asset, size = 'md', backdrop = 'checker' }) {
   }
   return (
     <div
-      className="w-full rounded-md overflow-hidden"
-      style={{ ...backdropStyleFor(backdrop), height: `${heightPx}px`, padding: '10px', boxSizing: 'border-box' }}
+      className="w-full rounded-md overflow-hidden p-[10px] box-border"
+      style={{ ...backdropStyleFor(backdrop), height: `${heightPx}px` }}
     >
       {asset.mime_type === 'image/svg+xml' ? (
         <CroppedSvg url={asset.blob_url} label={asset.filename} />
