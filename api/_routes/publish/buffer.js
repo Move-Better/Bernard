@@ -50,6 +50,7 @@ async function gql(token, query, variables = {}) {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(30_000),
   })
   const json = await r.json().catch(() => ({}))
   return { ok: r.ok, status: r.status, data: json.data, errors: json.errors }

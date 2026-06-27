@@ -23,7 +23,7 @@ export async function getDriveFile({ workspaceId, fileId, fields = 'id,name,mime
   })
   const r = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) },
   )
   if (!r.ok) {
     const text = await r.text().catch(() => '')
@@ -50,6 +50,7 @@ export async function downloadDriveFile({ workspaceId, fileId }) {
   const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`
   const r = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(120_000),
   })
   if (!r.ok) {
     const text = await r.text().catch(() => '')

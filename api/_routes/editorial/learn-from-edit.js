@@ -122,6 +122,9 @@ export default async function handler(req, res) {
   if (typeof original !== 'string' || typeof edited !== 'string') {
     return res.status(400).json({ error: 'original and edited must be strings' })
   }
+  if (original.length > 50_000 || edited.length > 50_000) {
+    return res.status(400).json({ error: 'content_too_large' })
+  }
   if (!staff_id) {
     return res.status(400).json({ error: 'staff_id is required' })
   }

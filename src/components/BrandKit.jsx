@@ -338,15 +338,14 @@ function RolePickerModal({ role, assets, currentAssetId, onPick, onClose }) {
                 key={a.id}
                 type="button"
                 onClick={() => { onPick(a.id); onClose() }}
-                style={{ display: 'flex', flexDirection: 'column', height: 'auto', minHeight: '240px' }}
-                className={`text-left rounded-lg border overflow-hidden transition-colors w-full ${
+                className={`text-left rounded-lg border overflow-hidden transition-colors w-full flex flex-col h-auto min-h-60 ${
                   isCurrent ? 'border-success ring-2 ring-success/30' : 'border-border hover:border-primary/50'
                 }`}
               >
-                <div style={{ flex: '0 0 auto', width: '100%' }}>
+                <div className="shrink-0 w-full">
                   <AssetPreview asset={a} size="lg" backdrop={backdrop} />
                 </div>
-                <div className="p-2 space-y-1" style={{ flex: '0 0 auto' }}>
+                <div className="p-2 space-y-1 shrink-0">
                   <div className="text-3xs font-medium truncate" title={a.filename}>{a.filename}</div>
                   {c > 0 && (
                     <div className="text-3xs text-muted-foreground">

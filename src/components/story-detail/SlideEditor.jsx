@@ -290,8 +290,7 @@ function BlockRow({ block, onChange, onRemove }) {
             e.preventDefault()
             document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
           }}
-          className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
-          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2rem' }}
+          className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)] whitespace-pre-wrap break-words min-h-8"
           data-placeholder={`${meta.label} text…`}
         />
         <p className="mt-1 flex items-center gap-1 text-3xs text-muted-foreground">

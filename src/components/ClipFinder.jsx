@@ -51,8 +51,8 @@ function ClipPreviewPlayer({ blobUrl, thumbnailUrl, activeClip, onClose }) {
   return (
     <div className="px-3 pb-3 space-y-1.5">
       <div
-        className="rounded-lg overflow-hidden bg-black w-full"
-        style={{ maxHeight: '320px', aspectRatio: activeClip.aspectRatio || '16 / 9' }}
+        className="rounded-lg overflow-hidden bg-black w-full max-h-80"
+        style={{ aspectRatio: activeClip.aspectRatio || '16 / 9' }}
       >
         <video
           ref={videoRef}

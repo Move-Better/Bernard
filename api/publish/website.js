@@ -223,6 +223,7 @@ async function publishToWordPress(res, payload, cred) {
   const wp = (path, init = {}) => fetch(`${wpRoot}${path}`, {
     ...init,
     headers: { Authorization: authHeader, ...(init.headers || {}) },
+    signal: init.signal ?? AbortSignal.timeout(90_000),
   })
 
   const tag = `[publish/website slug=${payload.slug}]`
@@ -344,7 +345,7 @@ async function publishToWordPress(res, payload, cred) {
 }
 
 async function uploadMedia(wp, sourceUrl, altText, overrideFilename = null) {
-  const sourceRes = await fetch(sourceUrl)
+  const sourceRes = await fetch(sourceUrl, { signal: AbortSignal.timeout(120_000) })
   if (!sourceRes.ok) throw new Error(`Could not download image from ${sourceUrl} (${sourceRes.status})`)
   const contentType = sourceRes.headers.get('content-type') || 'application/octet-stream'
   const filename = overrideFilename || filenameFromUrl(sourceUrl, contentType)

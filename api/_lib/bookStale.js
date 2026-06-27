@@ -26,6 +26,7 @@ export async function markBookStale({ workspaceId }) {
         'Content-Type': 'application/json',
         Prefer:        'return=minimal,resolution=merge-duplicates',
       },
+      signal: AbortSignal.timeout(8_000),
       body: JSON.stringify({
         workspace_id: workspaceId,
         stale_at:     new Date().toISOString(),

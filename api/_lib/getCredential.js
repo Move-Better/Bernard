@@ -46,6 +46,7 @@ async function fetchRow(workspaceId, service) {
   try {
     r = await fetch(url, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      signal: AbortSignal.timeout(8_000),
     })
   } catch (e) {
     console.error('[getCredential] fetch error:', e?.message)

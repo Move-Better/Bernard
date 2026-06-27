@@ -414,8 +414,7 @@ export default function StaffProfile() {
                         <div>
                           <p className="text-2xs font-semibold uppercase tracking-wider text-white/40 mb-2">Voice memory</p>
                           <div
-                            className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/65"
-                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
+                            className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/65 bg-white/[0.06] border border-white/[0.09]"
                           >
                             {staffMember.voice_notes}
                           </div>
@@ -455,11 +454,7 @@ export default function StaffProfile() {
                       {topPhrases.map((p, i) => (
                         <div
                           key={i}
-                          className="text-sm italic px-3 py-2 rounded-lg leading-snug"
-                          style={i < 2
-                            ? { background: 'hsl(var(--action)/.15)', border: '1px solid hsl(var(--action)/.40)', color: 'hsl(var(--action-foreground))' }
-                            : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.80)' }
-                          }
+                          className={`text-sm italic px-3 py-2 rounded-lg leading-snug ${i < 2 ? 'bg-action/15 border border-action/40 text-action-foreground' : 'bg-white/[0.07] border border-white/10 text-white/80'}`}
                         >
                           &ldquo;{p.phrase}&rdquo;
                         </div>
