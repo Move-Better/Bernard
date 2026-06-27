@@ -32,6 +32,35 @@ goes through `api/_lib/workspaceCredentials.js`.
 **Clerk organizations** map 1:1 to workspaces. The Clerk org id is stored on the `workspaces`
 row. `api/_lib/auth.js` verifies the Clerk session and resolves the org membership.
 
+**Workspace-scoping is necessary but NOT sufficient for row ownership.** `requireRole(req, null, …)`
+authenticates the caller as a *member* of the workspace org — it does NOT check that they own a
+particular row. When `allowedRoles` is null/empty the role check is skipped entirely
+(`auth.js:149`), so any authenticated member passes. For a route that performs an
+ownership-bearing or irreversible action on a *specific staff member's* resource (deleting a
+voice clone, training a clone, editing a person's profile), `workspace_id`-scoping the lookup is
+not enough — a plain clinician could act on a colleague's row. Add an explicit self-or-admin gate
+after the row lookup:
+
+```js
+// SELECT must include user_id
+const isSelf = staffMember.user_id && staffMember.user_id === auth.userId
+if (!isSelf && auth.role !== 'admin') return res.status(403).json({ error: 'forbidden' })
+```
+
+- **`staffMember.user_id === auth.userId` is the canonical "which clinician am I?" link** — same
+  field `useSelfStaffId()` resolves self by, and the gate form used at `api/_routes/capture/token.js`
+  and `api/_routes/staff/capabilities.js` (the null-guard on `user_id` stops an unlinked row from
+  coincidentally matching). NOT `created_by_id` (that's the UI's "I created this row" signal).
+- **`auth.role === 'admin'` is the admin-authority signal** — a strict superset of `auth.isOrgAdmin`
+  (`auth.js:148` resolves `role` to `'admin'` for Clerk org admins, `publicMetadata.role:'admin'`
+  users, AND every member of an `internal`-plan workspace). Gate on `role === 'admin'`, not
+  `isOrgAdmin`, or you'll 403 internal-plan members (the Move Better seed workspaces, where every
+  member is a trusted admin). The security property holds identically either way.
+
+The 4 `voice-clone/{opt-out,revoke,create,resume}` routes had this gap (PR #1806); the audit
+flagged it as a P0 because opt-out/revoke call ElevenLabs `deleteVoice()` (irreversible). The
+class recurs by copy-paste — apply this gate to any new staff-row-scoped destructive route.
+
 ---
 
 ## API handler runtimes
