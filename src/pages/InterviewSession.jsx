@@ -1665,7 +1665,7 @@ export default function InterviewSession() {
               </span>
             : <span
                 role="status"
-                className={`text-xs shrink-0 inline-flex items-center gap-1 ${saveStatus === 'recovered' ? 'text-action' : 'text-muted-foreground'}`}
+                className="text-xs shrink-0 inline-flex items-center gap-1 text-muted-foreground"
               >
                 {saveStatus === 'saving'
                   ? <><Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />Saving…</>

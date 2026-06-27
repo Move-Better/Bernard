@@ -24,6 +24,45 @@ import { Readable } from 'node:stream'
 import { getBrandFont, ensureFontconfig, getFallbackFontBuffer } from './brandFonts.js'
 import { applyGradeParamsSharp } from './gradeParams.js'
 
+const MAX_SOURCE_BYTES = 50 * 1024 * 1024
+
+/**
+ * Fetch a source photo into a Buffer with the 50MB cap enforced DURING the
+ * download. `response.arrayBuffer()` reads the entire body into the JS heap
+ * before any size check can run, so a >50MB image (common when Content-Length
+ * is absent on chunked Blob/CDN responses) fully materializes in RAM before
+ * being rejected — concurrent large composes can then OOM the function. Reading
+ * chunk-by-chunk lets us stop and throw the moment the cap is exceeded, so peak
+ * heap is bounded by the cap rather than the source size. The returned Buffer is
+ * identical to the old path, so the Sharp pipeline is unchanged.
+ */
+async function fetchSourcePhotoBuffer(photoUrl) {
+  const response = await fetch(photoUrl)
+  if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
+  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
+  if (contentLength > MAX_SOURCE_BYTES) throw new Error(`Source too large: ${contentLength} bytes`)
+  if (!response.body) {
+    // No readable stream (shouldn't happen on Node fetch); fall back to buffering.
+    const arrayBuf = await response.arrayBuffer()
+    if (arrayBuf.byteLength > MAX_SOURCE_BYTES) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
+    return Buffer.from(arrayBuf)
+  }
+  const reader = response.body.getReader()
+  const chunks = []
+  let received = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    received += value.length
+    if (received > MAX_SOURCE_BYTES) {
+      await reader.cancel().catch(() => {})
+      throw new Error(`Source too large: ${received} bytes`)
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks)
+}
+
 // Channel specs. Width × height in pixels. Add new channels here.
 export const CHANNEL_SPECS = {
   linkedin_feed:        { width: 1080, height: 1080, aspect: '1:1',  captionPos: 'top' },
@@ -224,23 +263,9 @@ export async function renderPhotoChannel({ photoUrl, channel, captionText, works
   // sets FONTCONFIG_FILE env var). No-op after first call.
   await ensureFontconfig()
 
-  // Fetch source photo into memory. Cap at 50MB to avoid surprise OOMs.
-  const response = await fetch(photoUrl)
-  if (!response.ok) {
-    throw new Error(`Source fetch failed: ${response.status}`)
-  }
-  // Cheap early-out on the declared size, but Content-Length is often absent on
-  // chunked Blob/CDN responses (fresh uploads), so the header check alone lets a
-  // huge body through. Enforce the real size after materializing.
-  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
-  if (contentLength > 50 * 1024 * 1024) {
-    throw new Error(`Source too large: ${contentLength} bytes`)
-  }
-  const arrayBuf = await response.arrayBuffer()
-  if (arrayBuf.byteLength > 50 * 1024 * 1024) {
-    throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
-  }
-  const buffer = Buffer.from(arrayBuf)
+  // Fetch source photo into memory. Cap at 50MB (enforced during download) to
+  // avoid surprise OOMs when Content-Length is absent on chunked CDN responses.
+  const buffer = await fetchSourcePhotoBuffer(photoUrl)
 
   // Resize + crop the source to the channel aspect (cover fit, centered).
   const photoLayer = await sharp(buffer)
@@ -450,15 +475,7 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
 
   const [width, height] = EDITORIAL_ASPECTS[treatment.aspect] || EDITORIAL_ASPECTS['4:5']
 
-  const response = await fetch(photoUrl)
-  if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
-  // Header check is a cheap early-out; Content-Length is often null on chunked
-  // Blob/CDN responses, so re-check the actual byte length post-download.
-  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
-  if (contentLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${contentLength} bytes`)
-  const arrayBuf = await response.arrayBuffer()
-  if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
-  const buffer = Buffer.from(arrayBuf)
+  const buffer = await fetchSourcePhotoBuffer(photoUrl)
 
   // Grade. NEW treatments carry a full `gradeParams` object (the colorist:
   // exposure/contrast/saturation/warmth/tint/depth) applied by the shared,
@@ -526,13 +543,7 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
 export async function renderAdPhoto({ photoUrl, aspect, grade }) {
   const [width, height] = EDITORIAL_ASPECTS[aspect] || EDITORIAL_ASPECTS['1:1']
 
-  const response = await fetch(photoUrl)
-  if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
-  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
-  if (contentLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${contentLength} bytes`)
-  const arrayBuf = await response.arrayBuffer()
-  if (arrayBuf.byteLength > 50 * 1024 * 1024) throw new Error(`Source too large: ${arrayBuf.byteLength} bytes`)
-  const buffer = Buffer.from(arrayBuf)
+  const buffer = await fetchSourcePhotoBuffer(photoUrl)
 
   // Same gentle, on-brand grade as the editorial path (default 40).
   const g = Math.min(Math.max(Number(grade ?? 40), 0), 100) / 100

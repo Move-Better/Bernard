@@ -77,7 +77,7 @@ function ReadCard({ read }) {
 // One "unlocks when connected" preview row in the website section.
 function PendingRead({ icon: Icon, badge, children }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 opacity-90">
+    <div className="rounded-2xl border border-dashed border-border bg-card p-5 opacity-60">
       <div className="flex items-start gap-3">
         <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
           <Icon className="h-4 w-4 text-info" />
