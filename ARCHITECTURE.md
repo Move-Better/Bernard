@@ -61,6 +61,17 @@ The 4 `voice-clone/{opt-out,revoke,create,resume}` routes had this gap (PR #1806
 flagged it as a P0 because opt-out/revoke call ElevenLabs `deleteVoice()` (irreversible). The
 class recurs by copy-paste — apply this gate to any new staff-row-scoped destructive route.
 
+### Platform-admin gate — cross-tenant surfaces
+
+A *cross-tenant* route (one that deliberately reads across ALL workspaces, e.g. the global
+`/admin` usage view → `api/_routes/admin/platform-usage.js`) is gated by **`requirePlatformAdmin(req)`**
+(`auth.js`), NOT `requireRole`. This is a **user-level** Clerk flag (`publicMetadata.platform_admin === true`),
+deliberately distinct from the per-workspace `'admin'` role: org admins and internal-plan members are
+NOT platform admins. Such a route does **not** call `workspaceContext(req)` — there is no tenant to
+scope to; the platform-admin flag IS the authorization boundary. Frontend mirror = `usePlatformAdmin()`
+(`src/lib/usePlatformAdmin.js`), used for nav visibility (`requiresPlatformAdmin` in Layout) and a
+page self-guard; the server gate is authoritative. (PR #1831.) Set the flag in the Clerk dashboard.
+
 ---
 
 ## API handler runtimes
@@ -249,6 +260,33 @@ this because `*` is a splat: the matched portion is empty, so descendants see th
 
 If you genuinely need an outer exemption (to bypass `WorkspaceProvider` or `OrgGate`), use
 `<Route path="/your-path/*">` with the splat.
+
+---
+
+## Loading states — no empty/blank flash
+
+Three layers between a click and rendered content; each must show a content-shaped skeleton, never
+blank or the empty/zero layout. (PRs #1835–#1837.)
+
+1. **Code-chunk load** — the in-app routed `<Suspense>` in `src/App.jsx` (inside `<Layout>`) uses
+   `fallback={<PageSkeleton />}`, NOT `fallback={null}`. A null fallback flashes blank on the first
+   visit to each lazy page.
+2. **Data load** — gate a page's first render on its PRIMARY query's `isPending` with the shared
+   **`src/components/PageSkeleton.jsx`** (variants `dashboard|list|grid|detail`):
+   ```jsx
+   const { data = {}, isPending } = useThing()
+   if (!roleLoading && !isEditor) return <Navigate to="/" replace />  // existing guards first
+   if (isPending) return <PageSkeleton variant="dashboard" />          // AFTER all hooks (rules-of-hooks)
+   ```
+   Place the gate after ALL hook calls and after any role-guard early returns. Without it the page
+   renders its `= []`/`= {}` defaults (empty state) during load, then pops to content.
+3. **Param-driven refetch** (week steppers, filters that change the query key) — add
+   `placeholderData: keepPreviousData` to the hook so changing the param keeps the prior result
+   on screen (dim via `isFetching`) instead of skeleton-flashing each step. See `useWorkspaceUsage`.
+
+Auth is NOT a flash source: `OrgGate` already blocks page render until the Clerk org-token carries
+`org_id`, so queries don't fire pre-auth. Do not add an `enabled: authReady` gate — redundant.
+Pre-existing good examples: `Home.jsx` (`HomeSkeleton`), `MediaHub.jsx` (`MediaGridSkeleton`).
 
 ---
 
