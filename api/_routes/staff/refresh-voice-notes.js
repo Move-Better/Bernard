@@ -82,11 +82,20 @@ export default async function handler(req, res) {
   if (!UUID_RE.test(staffId)) return err(res, 'Invalid staff_id')
 
   // Fetch clinician (and confirm they belong to this workspace)
-  const clinRes = await sb(`staff?id=eq.${staffId}&${wsFilter}&select=id,name`)
+  const clinRes = await sb(`staff?id=eq.${staffId}&${wsFilter}&select=id,name,user_id`)
   if (!clinRes.ok) return err(res, 'Database error', 500)
   const clinRows = await clinRes.json()
   if (!clinRows.length) return err(res, 'Staff member not found', 404)
   const staffMember = clinRows[0]
+
+  // Authorization: this AI-reads the clinician's edit history and overwrites
+  // their voice_notes. requireRole(req, null) above only authenticates the caller
+  // as a workspace member — without this gate any member could regenerate (and
+  // clobber) a colleague's voice profile. Allow only the staff member themselves
+  // (user_id, the canonical self link — see useSelfStaffId / capture/token.js) or
+  // a workspace admin. (Same class as the voice-clone fix, PR #1806.)
+  const isSelf = staffMember.user_id && staffMember.user_id === auth.userId
+  if (!isSelf && auth.role !== 'admin') return err(res, 'forbidden', 403)
 
   // Pull recent content_items where the clinician edited the AI draft.
   // We compare in JS rather than via a PostgREST filter because content

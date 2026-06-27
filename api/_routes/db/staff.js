@@ -202,6 +202,19 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
 
+    // Authorization: PATCH writes voice_notes / tts_settings / defaults to a
+    // specific staff row. requireRole(req, null) above only authenticates the
+    // caller as a workspace member — without this gate any member could overwrite
+    // a colleague's voice profile by passing their staff id. Allow only the staff
+    // member themselves (user_id, the canonical self link) or a workspace admin.
+    // (DELETE below is already ADMIN_ROLES-gated; same class as PR #1806.)
+    const targetRes = await sb(`staff?id=eq.${id}&${wsFilter}&select=user_id`)
+    if (!targetRes.ok) return dbErr(res, targetRes)
+    const [targetRow] = await targetRes.json()
+    if (!targetRow) return err(res, 'Not found', 404)
+    const isSelf = targetRow.user_id && targetRow.user_id === userId
+    if (!isSelf && auth.role !== 'admin') return err(res, 'forbidden', 403)
+
     const PATCHABLE = new Set(['default_audience', 'default_story_type', 'default_tone', 'default_voice_mode', 'voice_notes', 'preferred_length', 'tts_settings', 'blog_review_enabled'])
     const body = req.body || {}
     const patch = { updated_at: new Date().toISOString() }
