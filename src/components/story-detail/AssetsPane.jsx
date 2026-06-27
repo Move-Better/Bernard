@@ -308,6 +308,7 @@ function ContentEditor({ piece, onProvenanceHighlight }) {
         originalRef.current = savedText
         apiFetch('/api/editorial/learn-from-edit', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             original: baselineText,
             edited: savedText,

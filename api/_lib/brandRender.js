@@ -37,10 +37,10 @@ const MAX_SOURCE_BYTES = 50 * 1024 * 1024
  * identical to the old path, so the Sharp pipeline is unchanged.
  */
 async function fetchSourcePhotoBuffer(photoUrl) {
-  const response = await fetch(photoUrl)
+  const response = await fetch(photoUrl, { signal: AbortSignal.timeout(20_000) })
   if (!response.ok) throw new Error(`Source fetch failed: ${response.status}`)
-  const contentLength = parseInt(response.headers.get('content-length') || '0', 10)
-  if (contentLength > MAX_SOURCE_BYTES) throw new Error(`Source too large: ${contentLength} bytes`)
+  const clRaw = parseInt(response.headers.get('content-length') || '', 10)
+  if (!isNaN(clRaw) && clRaw > MAX_SOURCE_BYTES) throw new Error(`Source too large: ${clRaw} bytes`)
   if (!response.body) {
     // No readable stream (shouldn't happen on Node fetch); fall back to buffering.
     const arrayBuf = await response.arrayBuffer()

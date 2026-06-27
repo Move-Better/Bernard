@@ -60,6 +60,7 @@ export function FeedbackWidget() {
     try {
       await apiFetch('/api/feedback', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message:         message.trim(),
           screenshotDataUrl: screenshot ?? undefined,

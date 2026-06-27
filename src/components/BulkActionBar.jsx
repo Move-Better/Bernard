@@ -416,6 +416,7 @@ export default function BulkActionBar({
               }}
               disabled={selectingAll}
               title={allVisibleSelected ? 'Deselect all' : hasMore ? 'Select all matching' : `Select all ${visibleCount}`}
+              aria-label={allVisibleSelected ? 'Deselect all' : hasMore ? 'Select all matching' : `Select all ${visibleCount}`}
             >
               {selectingAll
                 ? <Icon as={Loader2} size="sm" className="animate-spin inline" />

@@ -93,7 +93,7 @@ const GH_HEADERS_BASE = {
 
 async function githubGet(token, path) {
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}?ref=${encodeURIComponent(REPO_BRANCH)}`
-  return fetch(url, { headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` } })
+  return fetch(url, { signal: AbortSignal.timeout(20_000), headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` } })
 }
 
 // List the published blog slugs by reading the content directory. Returns an
@@ -104,7 +104,7 @@ async function githubListSlugs(token) {
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CONTENT_PATH_PREFIX}?ref=${encodeURIComponent(REPO_BRANCH)}`
   let resp
   try {
-    resp = await fetch(url, { headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` } })
+    resp = await fetch(url, { signal: AbortSignal.timeout(20_000), headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` } })
   } catch {
     return null
   }
@@ -121,6 +121,7 @@ async function githubPut(token, path, content, message) {
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`
   return fetch(url, {
     method: 'PUT',
+    signal: AbortSignal.timeout(20_000),
     headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message,

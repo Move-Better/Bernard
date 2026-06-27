@@ -65,6 +65,7 @@ async function handler(req, res) {
   // Exchange code for access token
   const tokenRes = await fetch(TOKEN_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: CLIENT_ID,
@@ -92,6 +93,7 @@ async function handler(req, res) {
   const secret_ciphertext = encryptSecret(access_token)
   const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?on_conflict=workspace_id,service`, {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -118,7 +120,7 @@ async function handler(req, res) {
   // workspace will find no row here and fall back to the apex redirect.
   const wsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${payload.workspace_id}&status=eq.active&select=slug`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { signal: AbortSignal.timeout(15_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   const workspaces = wsRes.ok ? await wsRes.json().catch(() => []) : []
   const slug = workspaces[0]?.slug

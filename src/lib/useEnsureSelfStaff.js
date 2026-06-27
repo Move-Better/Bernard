@@ -64,6 +64,7 @@ export function useEnsureSelfStaff() {
       try {
         await apiFetch('/api/staff/ensure-self', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: user.fullName || '' }),
         })
         // Refresh so useSelfStaffId picks up the new row and the avatar

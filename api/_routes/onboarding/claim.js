@@ -324,7 +324,7 @@ async function handler(req, res) {
     const at = addr.lastIndexOf('@')
     const userDomain = at > 0 ? addr.slice(at + 1).trim().toLowerCase().replace(/^www\./, '') : null
     if (userDomain && !PUBLIC_EMAIL_DOMAINS.has(userDomain)) {
-      const existsRes = await sb(`workspaces?status=eq.active&select=slug,display_name,website_hostname`)
+      const existsRes = await sb(`workspaces?status=eq.active&website_hostname=ilike.${encodeURIComponent('%' + userDomain)}&select=slug,display_name,website_hostname`)
       if (existsRes.ok) {
         const rows = await existsRes.json().catch(() => null)
         if (Array.isArray(rows)) {

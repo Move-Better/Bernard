@@ -132,6 +132,7 @@ export default async function handler(req, res) {
   try {
     const ttsRes = await fetch(ttsUrl, {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         'xi-api-key':   elevenKey,
         'content-type': 'application/json',

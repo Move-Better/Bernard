@@ -223,19 +223,17 @@ function Canvas({ ctx }) {
 function InspectorShell({ icon: Icon, title, right, children }) {
   return (
     <>
-      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/0.08)' }}>
-        <Icon className="h-4 w-4" style={{ color: 'hsl(var(--primary))' }} />
-        <span className="text-xs font-semibold" style={{ color: 'hsl(var(--primary))' }}>{title}</span>
-        {right ? <span className="ml-auto text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{right}</span> : null}
+      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/8">
+        <Icon className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-primary">{title}</span>
+        {right ? <span className="ml-auto text-3xs text-muted-foreground">{right}</span> : null}
       </div>
       {children}
     </>
   )
 }
 
-const segBtn = (on) => on
-  ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.08)', color: 'hsl(var(--primary))' }
-  : { borderColor: 'hsl(var(--border))' }
+const segBtn = (on) => on ? 'border-primary bg-primary/8 text-primary' : 'border-border'
 
 // Source-relative trim: drag the in/out handles across the WHOLE source span to
 // recut the clip window (clamped to a ≤60s window). Distinct from the bottom
@@ -262,7 +260,7 @@ function ClipInspector({ ctx }) {
       <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Motion</p>
       <div className="mb-2 grid grid-cols-3 gap-1.5">
         {[['none', 'None'], ['push_in', 'Push in'], ['pull_out', 'Pull out'], ['pan_left', 'Pan ←'], ['pan_right', 'Pan →']].map(([m, l]) => (
-          <button key={m} onClick={() => setKenBurns('motion', m)} className="rounded-md border py-1.5 text-3xs" style={segBtn(kbMotion === m)}>{l}</button>
+          <button key={m} onClick={() => setKenBurns('motion', m)} className={`rounded-md border py-1.5 text-3xs ${segBtn(kbMotion === m)}`}>{l}</button>
         ))}
       </div>
       {kbMotion !== 'none' && (
@@ -274,7 +272,7 @@ function ClipInspector({ ctx }) {
       <p className="mb-1.5 mt-3 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Speed</p>
       <div className="mb-3 flex gap-1.5">
         {[0.5, 1, 1.5, 2].map((s) => (
-          <button key={s} onClick={() => setSpeed(s)} className="flex-1 rounded-md border py-1.5 text-2xs" style={segBtn(speed === s)}>{s}×</button>
+          <button key={s} onClick={() => setSpeed(s)} className={`flex-1 rounded-md border py-1.5 text-2xs ${segBtn(speed === s)}`}>{s}×</button>
         ))}
       </div>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Captions</p>
@@ -323,7 +321,7 @@ function CaptionInspector({ ctx }) {
     <div className="mb-3">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="flex gap-1.5">
-        {opts.map((o) => <button key={o} onClick={() => setCaption(key, o)} className="flex-1 rounded-md border py-1.5 text-2xs" style={segBtn(caption[key] === o)}>{o[0].toUpperCase() + o.slice(1)}</button>)}
+        {opts.map((o) => <button key={o} onClick={() => setCaption(key, o)} className={`flex-1 rounded-md border py-1.5 text-2xs ${segBtn(caption[key] === o)}`}>{o[0].toUpperCase() + o.slice(1)}</button>)}
       </div>
     </div>
   )
@@ -331,13 +329,13 @@ function CaptionInspector({ ctx }) {
     <InspectorShell icon={Captions} title="Captions" right="auto · from transcript">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Captions</p>
       <div className="mb-3 flex gap-1.5">
-        {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(caption.preset === p)}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}
+        {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className={`flex-1 rounded-md border py-1.5 text-3xs ${segBtn(caption.preset === p)}`}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}
       </div>
       {caption.preset !== 'off' && (
         <div className="mb-3">
           <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Animation</p>
           <div className="flex gap-1.5">
-            {[['none', 'None'], ['pop', 'Pop'], ['fade', 'Fade']].map(([v, l]) => <button key={v} onClick={() => setCaption('anim', v)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn((caption.anim || 'none') === v)}>{l}</button>)}
+            {[['none', 'None'], ['pop', 'Pop'], ['fade', 'Fade']].map(([v, l]) => <button key={v} onClick={() => setCaption('anim', v)} className={`flex-1 rounded-md border py-1.5 text-3xs ${segBtn((caption.anim || 'none') === v)}`}>{l}</button>)}
           </div>
           <p className="mt-1 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Entrance effect — shown in the exported video.</p>
         </div>
@@ -388,7 +386,7 @@ function OverlayInspector({ ctx }) {
       <textarea rows={2} aria-label="Overlay text content" value={o.text} onChange={(e) => setOverlay('text', e.target.value)} className="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm leading-snug outline-none focus:ring-1 focus:ring-primary/50" style={{ borderColor: 'hsl(var(--border))' }} />
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Role</p>
       <div className="mb-3 flex gap-1.5">
-        {OVERLAY_ROLES.map(([k, n]) => <button key={k} onClick={() => setOverlay('role', k)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(o.role === k)}>{n}</button>)}
+        {OVERLAY_ROLES.map(([k, n]) => <button key={k} onClick={() => setOverlay('role', k)} className={`flex-1 rounded-md border py-1.5 text-3xs ${segBtn(o.role === k)}`}>{n}</button>)}
       </div>
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>In / out (seconds)</p>
       <div className="mb-3 flex items-center gap-2 text-2xs">
@@ -937,8 +935,7 @@ export default function VideoEditor() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setFormat(k)}
-                  className="flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight"
-                  style={segBtn(format === k)}
+                  className={`flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight ${segBtn(format === k)}`}
                 >
                   <span className="font-medium">{FORMATS[k].label}</span>
                   <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>

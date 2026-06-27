@@ -62,6 +62,7 @@ export default function VideoAttachPrompt({ interviewId, staffName, onDone }) {
       try {
         await apiFetch('/api/interviews/detect-video-offset', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ interviewId, assetId: result.assetId }),
         })
       } catch (detectErr) {

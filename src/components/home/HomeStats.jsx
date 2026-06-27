@@ -78,11 +78,10 @@ export default function HomeStats({ stories = [] }) {
 
       {/* Voice match — center hero: the core moat KPI */}
       <div
-        className="flex-1 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
-        style={{ background: 'hsl(var(--foreground))', borderColor: 'hsl(var(--foreground))', color: 'white' }}
+        className="flex-1 rounded-2xl border border-foreground bg-foreground p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
       >
         <div className="flex items-center justify-between mb-2">
-          <div className="text-2xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.65)' }}>Voice match</div>
+          <div className="text-2xs font-bold uppercase tracking-widest text-white/65">Voice match</div>
           {typeof metrics.voiceMatch === 'number' ? (
             <span className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-agreement-signal/20 text-agreement-signal">
               {metrics.voiceMatch >= 60 ? 'strong' : metrics.voiceMatch >= 40 ? 'fair' : 'building'}
@@ -92,7 +91,7 @@ export default function HomeStats({ stories = [] }) {
         <div className="text-4xl font-extrabold tracking-tight nx-grad-text tabular-nums">
           {typeof metrics.voiceMatch === 'number' ? `${metrics.voiceMatch}%` : '—'}
         </div>
-        <div className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
+        <div className="text-sm mt-1 text-white/75">
           {typeof metrics.voiceMatch === 'number' ? 'your words · your voice' : 'Run an interview to start tracking'}
         </div>
       </div>

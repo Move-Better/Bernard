@@ -141,6 +141,7 @@ export default async function handler(req, res) {
 
     const wRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
+      signal: AbortSignal.timeout(60_000),
       headers: { Authorization: `Bearer ${OPENAI_KEY}` },
       body: form,
     })
