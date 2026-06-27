@@ -160,6 +160,9 @@ async function handler(req, res) {
     if (!bufferUpdateId || typeof bufferUpdateId !== 'string') {
       return res.status(400).json({ error: 'Missing bufferUpdateId' })
     }
+    if (bufferUpdateId.length > 128 || !/^[a-zA-Z0-9_-]+$/.test(bufferUpdateId)) {
+      return res.status(400).json({ error: 'invalid_buffer_update_id' })
+    }
     // Verify the scheduled post belongs to this workspace before cancelling —
     // prevents a member of workspace A from cancelling workspace B's posts.
     if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })

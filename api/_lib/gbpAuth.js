@@ -194,7 +194,7 @@ async function detectAllLocations(accessToken) {
     // v1 readMask is required or the response body is empty
     const locRes = await fetch(
       `https://mybusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title,storefrontAddress,websiteUri,regularHours`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      { signal: AbortSignal.timeout(15_000), headers: { Authorization: `Bearer ${accessToken}` } },
     )
     if (!locRes.ok) {
       const text = await locRes.text().catch(() => '')

@@ -38,6 +38,7 @@ const BUFFER_GQL = 'https://api.buffer.com/graphql'
 
 async function gql(token, query, variables = {}) {
   const r = await fetch(BUFFER_GQL, {
+    signal: AbortSignal.timeout(30_000),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

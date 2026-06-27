@@ -566,7 +566,7 @@ export default function StoryboardPiece() {
                       </div>
                     )}
                     {composing && (
-                      <div role="status" className="absolute inset-0 flex items-center justify-center bg-black/25">
+                      <div role="status" className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden="true" />
                         <span className="sr-only">Baking image…</span>
                       </div>

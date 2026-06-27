@@ -31,7 +31,7 @@ export default function EditorChrome({ onBack, title, badge, note, aspect, child
 
       {badge && (
         <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold bg-info/12 text-info"
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold bg-info/10 text-info"
         >
           {BadgeIcon && <BadgeIcon className="h-3.5 w-3.5" />}
           {badge.label}

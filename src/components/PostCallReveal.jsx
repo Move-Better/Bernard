@@ -44,7 +44,7 @@ export default function PostCallReveal() {
   // Fallback: plan not woven yet (or polling timed out). No fabricated counts.
   if (!data?.hasPlan) {
     return (
-      <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-gradient-to-b from-card to-primary/5 p-7 text-center">
+      <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-gradient-to-b from-card to-primary/10 p-7 text-center">
         <div role="status" className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
           <span className="sr-only">Loading plan…</span>
@@ -67,7 +67,7 @@ export default function PostCallReveal() {
   const platforms = Object.entries(data.byPlatform || {})
 
   return (
-    <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-gradient-to-b from-card to-primary/5 p-7">
+    <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-gradient-to-b from-card to-primary/10 p-7">
       <div className="mb-5 text-center">
         <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-primary to-action">
           <Sparkles className="h-6 w-6 text-white" aria-hidden="true" />
@@ -121,7 +121,7 @@ export default function PostCallReveal() {
 
       {/* Digest contribution */}
       {data.digest && (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-action/30 bg-gradient-to-b from-card to-action/5 p-4">
+        <div className="mb-5 flex items-center gap-3 rounded-xl border border-action/30 bg-gradient-to-b from-card to-action/10 p-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-action/20 text-action">
             <Mail className="h-4.5 w-4.5" aria-hidden="true" />
           </div>
