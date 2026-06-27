@@ -324,8 +324,7 @@ export default function AccessMatrix() {
           <button
             onClick={() => saveMutation.mutate([...dirtyIds])}
             disabled={dirtyIds.size === 0 || saveMutation.isPending}
-            className="px-4 py-2 rounded-[10px] text-xs font-semibold text-primary-foreground disabled:opacity-50"
-            style={{ background: 'hsl(var(--primary))' }}
+            className="px-4 py-2 rounded-[10px] text-xs font-semibold text-primary-foreground disabled:opacity-50 bg-primary"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
