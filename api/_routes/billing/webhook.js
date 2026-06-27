@@ -183,9 +183,23 @@ async function handler(req, res) {
           console.error('[billing/webhook] customer.subscription.updated: no workspace_id in metadata')
           break
         }
+        // Cross-validate: confirm the workspace's stripe_customer_id matches the event's customer
+        const subCustomerId = sub.customer || null
+        if (subCustomerId) {
+          const wsr = await fetch(
+            `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${workspaceId}&select=stripe_customer_id`,
+            { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(8_000) }
+          )
+          if (wsr.ok) {
+            const [wsRow] = await wsr.json()
+            if (wsRow?.stripe_customer_id && wsRow.stripe_customer_id !== subCustomerId) {
+              console.error(`[billing/webhook] customer.subscription.updated: customer mismatch workspace=${workspaceId} expected=${wsRow.stripe_customer_id} got=${subCustomerId}`)
+              break
+            }
+          }
+        }
         const priceId = sub?.items?.data?.[0]?.price?.id || null
         const planConfig = priceId ? PRICE_PLAN_MAP[priceId] : null
-        const subCustomerId = sub.customer || null
         if (planConfig) {
           await updateWorkspace(workspaceId, {
             stripe_price_id: priceId,

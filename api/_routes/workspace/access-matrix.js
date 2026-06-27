@@ -49,7 +49,7 @@ async function handler(req, res) {
       `${SUPA}/rest/v1/staff?workspace_id=eq.${workspace.id}` +
         `&select=id,name,legal_name,permission_tier,staff_type,capability_overrides,user_id,eleven_voice_id,created_by_email,created_at` +
         `&order=name.asc`,
-      { headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}` } }
+      { headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}` }, signal: AbortSignal.timeout(10_000) }
     )
     if (!sres.ok) {
       console.error('[workspace/access-matrix] staff fetch failed:', sres.status, await sres.text())
@@ -84,7 +84,7 @@ async function handler(req, res) {
       if (auth.orgId && process.env.CLERK_SECRET_KEY) {
         const cres = await fetch(
           `https://api.clerk.com/v1/organizations/${auth.orgId}/invitations?status=pending&limit=50`,
-          { headers: { Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}` } }
+          { headers: { Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}` }, signal: AbortSignal.timeout(10_000) }
         )
         if (cres.ok) {
           const body = await cres.json()

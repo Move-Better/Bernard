@@ -839,7 +839,7 @@ function TikTokPreview({ content, mediaUrls = [] }) {
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden shadow-sm font-sans" style={{ background: '#000' }}>
       {/* 9:16 dark video frame */}
-      <div className="relative overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '480px', background: '#111' }}>
+      <div className="relative overflow-hidden max-h-[480px]" style={{ aspectRatio: '9/16', background: '#111' }}>
         {video
           ? <ReelPreview video={video} />
           : <div className="absolute inset-0 flex items-center justify-center text-slate-600 text-sm">Video</div>

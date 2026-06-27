@@ -71,7 +71,7 @@ function ClipPreviewPlayer({ blobUrl, thumbnailUrl, activeClip, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="text-2xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          className="text-xs text-foreground/70 hover:text-foreground flex items-center gap-1"
         >
           <ChevronUp className="h-3 w-3" />Close preview
         </button>

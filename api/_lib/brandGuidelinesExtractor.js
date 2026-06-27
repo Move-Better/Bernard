@@ -44,7 +44,7 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
 
   let pdfText = ''
   try {
-    const res = await fetch(pdfBlobUrl)
+    const res = await fetch(pdfBlobUrl, { signal: AbortSignal.timeout(20_000) })
     if (!res.ok) throw new Error(`PDF fetch failed: ${res.status}`)
     const buf = new Uint8Array(await res.arrayBuffer())
     const pdf = await getDocumentProxy(buf)

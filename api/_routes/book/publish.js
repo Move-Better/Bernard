@@ -55,7 +55,7 @@ async function handler(req, res) {
     `${SUPABASE_URL}/rest/v1/workspace_books` +
     `?workspace_id=eq.${ws.id}` +
     `&select=manuscript_md,chapters,last_regen_at,regen_status`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(10_000) },
   )
   if (!bookRes.ok) {
     const body = await bookRes.text().catch(() => '')

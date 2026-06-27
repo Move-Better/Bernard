@@ -31,7 +31,7 @@ async function handler(req, res) {
   try {
     r = await fetch(
       `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=slug`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, signal: AbortSignal.timeout(8_000) },
     )
   } catch (e) {
     console.error('[capacity] network error:', e?.message)

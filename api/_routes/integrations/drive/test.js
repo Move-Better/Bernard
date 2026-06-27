@@ -51,7 +51,7 @@ async function handler(req, res) {
   try {
     const r = await fetch(
       'https://www.googleapis.com/drive/v3/about?fields=user(emailAddress,displayName,photoLink),storageQuota(limit,usage)',
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15_000) },
     )
     if (!r.ok) {
       const text = await r.text().catch(() => '')

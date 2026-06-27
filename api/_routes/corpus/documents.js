@@ -73,6 +73,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(10_000),
     }
   )
   if (!r.ok) return dbErr(res, r)

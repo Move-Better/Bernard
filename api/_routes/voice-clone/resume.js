@@ -99,7 +99,7 @@ export default async function handler(req, res) {
   // fast with a clear message so the client clears its stash instead of
   // looping on a 422 from upstream.
   try {
-    const head = await fetch(sampleUrl, { method: 'HEAD' })
+    const head = await fetch(sampleUrl, { method: 'HEAD', signal: AbortSignal.timeout(8_000) })
     if (!head.ok) {
       return res.status(410).json({ error: 'The earlier recording is no longer available — please record again.' })
     }

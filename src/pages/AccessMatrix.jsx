@@ -7,6 +7,7 @@ import { Navigate } from 'react-router-dom'
 import { Shield, Lock, Check, Minus, AlertTriangle, UserCheck, GitMerge, UserPlus } from 'lucide-react'
 import { apiFetch } from '../lib/api.js'
 import { useAppMutation } from '../lib/useAppMutation.js'
+import { useConfirm } from '@/lib/useConfirm'
 import { toast } from '../lib/toast'
 import { useWorkspace } from '../lib/WorkspaceContext'
 import { usePermission } from '../lib/usePermission.js'
@@ -25,7 +26,7 @@ const TIER_PILL = {
 }
 const TIER_LABEL = { owner: '★ Owner', producer: 'Producer', clinician: 'Clinician', viewer: 'Viewer' }
 
-const AVATAR_COLORS = ['#0b111e', '#058ac7', '#7c3aed', '#0C7580', '#0284c7', '#059669', '#d97706']
+const AVATAR_COLORS = ['#0b111e', '#058ac7', '#7c3aed', '#6366f1', '#0284c7', '#059669', '#d97706']
 function avatarFor(person, i) {
   const initials = (person.name || '?')
     .split(/[\s@.]+/)
@@ -40,6 +41,7 @@ export default function AccessMatrix() {
   const ws = useWorkspace()
   const { has } = usePermission()
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['access-matrix'],
@@ -185,14 +187,14 @@ export default function AccessMatrix() {
           reconciliation={reconciliation}
           busy={reconcileMutation.isPending}
           onClaim={(staffId, userId) => reconcileMutation.mutate({ action: 'claim', staffId, userId })}
-          onMerge={(sourceId, targetId, label) => {
-            if (
-              window.confirm(
-                `Merge ${label} into the existing profile? All of its interviews, voice phrases, and learning move to the kept profile, and the duplicate is removed. This can't be undone.`
-              )
-            ) {
-              reconcileMutation.mutate({ action: 'merge', sourceId, targetId })
-            }
+          onMerge={async (sourceId, targetId, label) => {
+            const ok = await confirm({
+              title: `Merge ${label}?`,
+              description: `All interviews, voice phrases, and learning move to the kept profile. The duplicate is removed. This can't be undone.`,
+              confirmLabel: 'Merge',
+              variant: 'destructive',
+            })
+            if (ok) reconcileMutation.mutate({ action: 'merge', sourceId, targetId })
           }}
         />
       )}

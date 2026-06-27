@@ -71,6 +71,7 @@ async function handler(req, res) {
   try {
     r = await fetch(url, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      signal: AbortSignal.timeout(10_000),
     })
   } catch (e) {
     console.error('[workspace/list] supabase network:', e?.message)
