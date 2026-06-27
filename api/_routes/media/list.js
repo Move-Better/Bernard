@@ -48,8 +48,11 @@ async function handler(req, res) {
   const clipParent  = searchParams.get('clipParent')
   const collectionId = searchParams.get('collectionId')// limit to assets in a given collection
   const compact     = searchParams.get('compact') === 'true'
-  const limit       = Math.min(parseInt(searchParams.get('limit') || '60', 10), 200)
-  const offset      = parseInt(searchParams.get('offset') || '0', 10)
+  // `|| 60` / `|| 0` after parseInt coerces a non-numeric param (which parses to
+  // NaN and would land as the literal "NaN" in the PostgREST query → 400) back to
+  // the default instead of breaking the list.
+  const limit       = Math.min(Math.max(parseInt(searchParams.get('limit') || '60', 10) || 60, 1), 200)
+  const offset      = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0)
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(404).json({ error: 'no_workspace' })

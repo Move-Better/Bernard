@@ -38,8 +38,10 @@ async function handler(req, res) {
   const status  = searchParams.get('status')   // active (default) | archived | all
   const rawKind = searchParams.get('kind')     // campaign | series | session | adhoc
   const assetId = searchParams.get('assetId')  // limit to collections containing this asset
-  const limit   = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500)
-  const offset  = parseInt(searchParams.get('offset') || '0', 10)
+  // `|| N` after parseInt coerces a non-numeric param (NaN → literal "NaN" in the
+  // PostgREST query → 400) back to the default.
+  const limit   = Math.min(Math.max(parseInt(searchParams.get('limit') || '100', 10) || 100, 1), 500)
+  const offset  = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0)
 
   const VALID_KINDS = new Set(['campaign', 'series', 'session', 'adhoc'])
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

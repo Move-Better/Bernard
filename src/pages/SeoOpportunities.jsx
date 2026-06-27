@@ -295,7 +295,7 @@ export default function SeoOpportunities() {
                 onStartInterview={onStartInterview}
                 onDraft={onDraft}
                 onDismiss={onDismiss}
-                dismissing={dismiss.isPending}
+                dismissing={dismiss.isPending && dismiss.variables?.query === opp.query}
               />
             ))}
             {filteredOpps.length === 0 && (filter === 'all' || filter === 'striking' || filter === 'demand') && (

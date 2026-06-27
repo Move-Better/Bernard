@@ -466,19 +466,28 @@ export default async function handler(req, res) {
     // Delete any content_items row inserted in this request before resetting the
     // atom — otherwise a partial failure (insert succeeded, later step failed)
     // leaves an orphaned draft row that permanently pollutes Stories/Library.
+    let cleanupFailed = false
     if (insertedContentPieceId) {
       const deleteRes = await sb(`content_items?id=eq.${insertedContentPieceId}&${wsFilter}`, {
         method: 'DELETE',
         headers: { Prefer: 'return=minimal' },
       })
-      if (!deleteRes.ok) console.error('[content-plan/draft] cleanup delete failed', insertedContentPieceId, deleteRes.status)
+      if (!deleteRes.ok) {
+        cleanupFailed = true
+        console.error('[content-plan/draft] cleanup delete failed', insertedContentPieceId, deleteRes.status)
+      }
     }
-    // Reset atom to pending so the user can retry
-    await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'pending', updated_at: new Date().toISOString() }),
-      headers: { Prefer: 'return=minimal' },
-    })
+    // Only reset the atom to pending when no orphan was left behind. If the cleanup
+    // DELETE failed, resetting to pending would let the user retry and insert a
+    // SECOND orphan content_items row; leaving the atom non-pending blocks the
+    // retry until the stranded row is reconciled.
+    if (!cleanupFailed) {
+      await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'pending', updated_at: new Date().toISOString() }),
+        headers: { Prefer: 'return=minimal' },
+      })
+    }
     console.error('[content-plan/draft]', e.message)
     return err(res, 'draft_generation_failed', 500)
   }
