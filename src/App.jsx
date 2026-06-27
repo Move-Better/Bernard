@@ -55,6 +55,8 @@ const YourWeek = lazy(() => import('@/pages/YourWeek'))
 const Overview = lazy(() => import('@/pages/Overview'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const SeoOpportunities = lazy(() => import('@/pages/SeoOpportunities'))
+const Usage = lazy(() => import('@/pages/Usage'))
+const AdminUsage = lazy(() => import('@/pages/AdminUsage'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const StoryboardPublish = lazy(() => import('@/pages/StoryboardPublish'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
@@ -623,6 +625,12 @@ function AppRoutes() {
             {/* SEO Opportunities — GSC demand → content + advisory site fixes.
                 Self-guards to editors; clinicians redirect home. */}
             <Route path="/seo" element={guarded(<SeoOpportunities />)} />
+            {/* Usage — per-workspace adoption dashboard (activity, stickiness,
+                funnel, per-staff). Self-guards to admin/owner; others redirect home. */}
+            <Route path="/usage" element={guarded(<Usage />)} />
+            {/* Admin — cross-tenant platform usage. Self-guards to platform admins
+                (Clerk publicMetadata.platform_admin); everyone else redirects home. */}
+            <Route path="/admin" element={guarded(<AdminUsage />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
             <Route path="/synthesis" element={guarded(<Synthesis />)} />
             <Route path="/write" element={guarded(<AuthorMode />)} />
