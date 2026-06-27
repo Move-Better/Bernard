@@ -2229,7 +2229,7 @@ function InterviewVoiceDock({
             {/* Listening: red pulsing ring */}
             {isListening && (
               <span
-                className="absolute inset-0 rounded-full animate-ping bg-destructive/[0.22]"
+                className="absolute inset-0 rounded-full animate-ping bg-destructive/20"
                 style={{ animationDuration: '1.6s' }}
                 aria-hidden="true"
               />
@@ -2237,7 +2237,7 @@ function InterviewVoiceDock({
             {/* Speaking: blue pulsing ring */}
             {isSpeaking && (
               <span
-                className="absolute inset-0 rounded-full animate-ping bg-info/[0.22]"
+                className="absolute inset-0 rounded-full animate-ping bg-info/20"
                 style={{ animationDuration: '1.8s' }}
                 aria-hidden="true"
               />

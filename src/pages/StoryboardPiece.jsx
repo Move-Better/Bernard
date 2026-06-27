@@ -554,7 +554,7 @@ export default function StoryboardPiece() {
                           </div>
                           <div className="mt-2 flex items-center gap-2">
                             <span className="h-[3px] w-7 rounded-full bg-primary" style={brandStyle?.accent_color ? { background: brandStyle.accent_color } : undefined} />
-                            <span className="text-xs font-semibold text-white/95">{piece.staff_name || workspaceName}</span>
+                            <span className="text-xs font-semibold text-white/90">{piece.staff_name || workspaceName}</span>
                           </div>
                         </div>
                       </>

@@ -146,7 +146,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
               onChange={(e) => setOverlay(e.target.value)}
               onBlur={saveOverlay}
               rows={2}
-              className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-sm font-semibold uppercase tracking-wide outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-sm font-semibold uppercase tracking-wide outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               placeholder="YOUR SHORT, PUNCHY HEADLINE"
             />
             <p className="text-3xs text-muted-foreground">Short + all-caps · printed over the media</p>
@@ -162,7 +162,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
               value={sticker}
               onChange={(e) => setSticker(e.target.value)}
               onBlur={saveSticker}
-              className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               placeholder="e.g. Reserve your seat · Book now · Learn more"
             />
             <p className="text-3xs text-muted-foreground">2–4 words · the tap target on the posted Story</p>

@@ -386,7 +386,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                                 </div>
                               )}
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="h-7 w-7 rounded-full bg-black/55 flex items-center justify-center">
+                                <div className="h-7 w-7 rounded-full bg-black/60 flex items-center justify-center">
                                   <Play className="h-3.5 w-3.5 text-white ml-0.5" />
                                 </div>
                               </div>

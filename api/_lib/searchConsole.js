@@ -39,6 +39,7 @@ async function getServiceAccountToken(serviceAccountJson) {
   signer.update(unsigned)
   const jwt = `${unsigned}.${b64url(signer.sign(sa.private_key))}`
   const r = await fetch(TOKEN_URL, {
+    signal:  AbortSignal.timeout(30_000),
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }),
@@ -79,6 +80,7 @@ export async function fetchSearchQueries({ credential, serviceAccountJson, siteU
   const fmt = (d) => d.toISOString().slice(0, 10)
 
   const r = await fetch(QUERY_URL(url), {
+    signal: AbortSignal.timeout(30_000),
     method:  'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify({
@@ -119,6 +121,7 @@ export async function testSearchConsoleAccess({ credential, serviceAccountJson, 
   const fmt = (d) => d.toISOString().slice(0, 10)
 
   const r = await fetch(QUERY_URL(url), {
+    signal: AbortSignal.timeout(30_000),
     method:  'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify({ startDate: fmt(startDate), endDate: fmt(endDate), rowLimit: 1 }),

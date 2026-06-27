@@ -452,7 +452,7 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
             onPointerDown={(e) => startDrag(e, idx, f)}
             title="Drag to place"
             className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move items-center justify-center rounded ${
-              sel ? 'border-2 border-dashed border-primary bg-primary/10' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
+              sel ? 'border-2 border-dashed border-primary bg-primary/10' : 'border border-transparent hover:border-white/70 hover:bg-white/10'
             }`}
             style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, width: `${w * 100}%`, minHeight: '8%' }}
           >
@@ -1013,7 +1013,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
 
   return (
     <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/[0.08]">
+      <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/10">
         <ImageIcon className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">This slide&apos;s photo</span>
       </div>
@@ -1323,7 +1323,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
   const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary'
   return (
     <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/[0.08]">
+      <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/10">
         <Type className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">Text layer</span>
         <div className="ml-auto flex items-center gap-1">
@@ -1378,7 +1378,7 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
                   ? <img src={photoUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
                   : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-500" />
                 }
-                <div className="absolute inset-0 bg-black/15" />
+                <div className="absolute inset-0 bg-black/20" />
                 {slide.template_id && (
                   <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-action" />
                 )}
@@ -1488,7 +1488,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
                 renderKey={renderKey}
               />
               {slides.length > 1 && (
-                <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-3xs font-semibold text-white">{activeIdx + 1}/{slides.length}</span>
+                <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-3xs font-semibold text-white">{activeIdx + 1}/{slides.length}</span>
               )}
             </div>
             {/* IG actions */}
@@ -1525,7 +1525,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
         </button>
       </div>
 
-      <p className="mt-4 text-xs text-white/45">← → to navigate · Esc to close · the real rendered slide — exactly what publishes</p>
+      <p className="mt-4 text-xs text-white/40">← → to navigate · Esc to close · the real rendered slide — exactly what publishes</p>
     </div>
   )
 }

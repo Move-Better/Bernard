@@ -1048,14 +1048,14 @@ function VoiceDock({
           <div className="relative flex items-center justify-center h-[72px] w-[72px]">
             {isListening && (
               <span
-                className="absolute inset-0 rounded-full animate-ping bg-destructive/[0.22]"
+                className="absolute inset-0 rounded-full animate-ping bg-destructive/20"
                 style={{ animationDuration: '1.6s' }}
                 aria-hidden="true"
               />
             )}
             {isSpeaking && (
               <span
-                className="absolute inset-0 rounded-full animate-ping bg-info/[0.22]"
+                className="absolute inset-0 rounded-full animate-ping bg-info/20"
                 style={{ animationDuration: '1.8s' }}
                 aria-hidden="true"
               />

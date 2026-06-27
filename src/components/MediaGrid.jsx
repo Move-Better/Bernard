@@ -49,7 +49,7 @@ function Thumb({ asset }) {
         </div>
       )}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="h-8 w-8 rounded-full bg-black/55 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full bg-black/60 flex items-center justify-center">
           <Play className="h-4 w-4 text-white ml-0.5" />
         </div>
       </div>

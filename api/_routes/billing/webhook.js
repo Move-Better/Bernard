@@ -26,6 +26,7 @@ export const config = { runtime: 'nodejs' }
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // eslint-disable-next-line bernard/require-workspace-scope -- Stripe webhook — workspace resolved from Stripe event metadata, not Host header
 function sb(path, init = {}) {
@@ -139,6 +140,10 @@ async function handler(req, res) {
           console.error('[billing/webhook] checkout.session.completed: no workspace_id in metadata')
           break
         }
+        if (!UUID_RE.test(workspaceId)) {
+          console.error(`[billing/webhook] invalid workspace_id format: ${workspaceId}`)
+          break
+        }
         const customerId = session.customer
         const subscriptionId = session.subscription
 
@@ -183,6 +188,10 @@ async function handler(req, res) {
           console.error('[billing/webhook] customer.subscription.updated: no workspace_id in metadata')
           break
         }
+        if (!UUID_RE.test(workspaceId)) {
+          console.error(`[billing/webhook] invalid workspace_id format: ${workspaceId}`)
+          break
+        }
         // Cross-validate: confirm the workspace's stripe_customer_id matches the event's customer
         const subCustomerId = sub.customer || null
         if (subCustomerId) {
@@ -218,6 +227,10 @@ async function handler(req, res) {
         const workspaceId = sub.metadata?.workspace_id
         if (!workspaceId) {
           console.error('[billing/webhook] customer.subscription.deleted: no workspace_id in metadata')
+          break
+        }
+        if (!UUID_RE.test(workspaceId)) {
+          console.error(`[billing/webhook] invalid workspace_id format: ${workspaceId}`)
           break
         }
         const deletedCustomerId = sub.customer || null
@@ -294,6 +307,10 @@ async function handler(req, res) {
 
         if (!workspaceId) {
           console.error(`[billing/webhook] invoice.paid: could not resolve workspace_id (customer=${customerId})`)
+          break
+        }
+        if (!UUID_RE.test(workspaceId)) {
+          console.error(`[billing/webhook] invalid workspace_id format: ${workspaceId}`)
           break
         }
 

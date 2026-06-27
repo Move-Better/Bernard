@@ -64,7 +64,7 @@ export function SaveBar({ saving, saved, error, isDirty, onSave, onDiscard }) {
   if (!isDirty && !saved && !error) return null
   return (
     <div
-      className="sticky bottom-0 z-20 md:static -mx-6 md:mx-0 px-4 py-3 mt-6 flex items-center justify-between gap-4 border md:rounded-lg border-x-0 md:border-x border-border bg-background/95 md:bg-muted/40 backdrop-blur md:backdrop-blur-none supports-[backdrop-filter]:bg-background/80"
+      className="sticky bottom-0 z-20 md:static -mx-6 md:mx-0 px-4 py-3 mt-6 flex items-center justify-between gap-4 border md:rounded-lg border-x-0 md:border-x border-border bg-background/90 md:bg-muted/40 backdrop-blur md:backdrop-blur-none supports-[backdrop-filter]:bg-background/80"
       style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
     >
       <p className="text-xs text-muted-foreground">

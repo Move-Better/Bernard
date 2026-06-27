@@ -63,7 +63,7 @@ async function probeImageDimsFromUrl(url) {
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: { Range: 'bytes=0-65535' } })
   if (!res.ok) throw new Error(`image-dims probe failed: ${res.status}`)
   const buf = Buffer.from(await res.arrayBuffer())
-  if (buf.length > 131072) console.warn('[recordUploadedAsset] Range request returned oversized buffer', buf.length)
+  if (buf.length > 131072) return { width: null, height: null }
   const meta = await sharp(buf).metadata()
   return { width: meta.width || null, height: meta.height || null }
 }

@@ -140,7 +140,7 @@ export default function MediaEditModal({ asset, onClose, onSaved, inline = false
 
         {canEdit && (
           <>
-            <div className="flex-1 min-h-0 rounded-md border bg-black/95 overflow-hidden">
+            <div className="flex-1 min-h-0 rounded-md border bg-black/90 overflow-hidden">
               <Cropper
                 ref={cropperRef}
                 src={previewSrc}

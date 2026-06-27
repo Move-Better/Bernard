@@ -52,6 +52,7 @@ async function getAccessToken(serviceAccountJson) {
   const jwt = `${unsigned}.${b64url(signature)}`
 
   const r = await fetch(TOKEN_URL, {
+    signal:  AbortSignal.timeout(30_000),
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    new URLSearchParams({
@@ -83,6 +84,7 @@ export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePath
 
   const token = await getAccessToken(serviceAccountJson)
   const r = await fetch(REPORT_URL(propertyId), {
+    signal: AbortSignal.timeout(30_000),
     method:  'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -135,6 +137,7 @@ export async function testGA4Access({ serviceAccountJson, propertyId }) {
   if (!propertyId) throw new Error('GA4 Property ID is required (the numeric ID, not the G-XXXX measurement ID).')
   const token = await getAccessToken(serviceAccountJson)
   const r = await fetch(REPORT_URL(propertyId), {
+    signal: AbortSignal.timeout(30_000),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -188,6 +191,7 @@ export async function fetchGA4LandingPages({ serviceAccountJson, propertyId, day
   let data
   let hasKeyEvents = true
   const r = await fetch(REPORT_URL(propertyId), {
+    signal: AbortSignal.timeout(30_000),
     method:  'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify(baseBody),
@@ -199,6 +203,7 @@ export async function fetchGA4LandingPages({ serviceAccountJson, propertyId, day
     if (r.status === 400) {
       hasKeyEvents = false
       const r2 = await fetch(REPORT_URL(propertyId), {
+        signal: AbortSignal.timeout(30_000),
         method:  'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body:    JSON.stringify({ ...baseBody, metrics: [{ name: 'sessions' }, { name: 'engagementRate' }] }),
@@ -239,6 +244,7 @@ export async function fetchGA4ExitAnalysis({ serviceAccountJson, propertyId, pag
 
   const token = await getAccessToken(serviceAccountJson)
   const r = await fetch(REPORT_URL(propertyId), {
+    signal: AbortSignal.timeout(30_000),
     method:  'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify({

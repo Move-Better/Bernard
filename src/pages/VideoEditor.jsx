@@ -342,7 +342,7 @@ function CaptionInspector({ ctx }) {
       {seg('Position', ['top', 'center', 'bottom'], 'position')}
       {seg('Size', ['small', 'medium', 'large'], 'size')}
       {lines.length === 0 ? (
-        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-action bg-action/[0.06] py-2 text-2xs text-action disabled:opacity-60">
+        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-action bg-action/10 py-2 text-2xs text-action disabled:opacity-60">
           {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
         </button>
       ) : (

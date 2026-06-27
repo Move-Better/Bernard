@@ -82,7 +82,7 @@ export default function CampaignProgressStrip({ campaign, staff = [] }) {
               {pendingStaff.map(({ id, name }) => (
                 <li key={id} className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-full pl-1 pr-3 py-0.5">
                   <StaffChip id={id} name={name} size="sm" showName
-                    nameClassName="text-white/95 text-xs font-medium"
+                    nameClassName="text-white/90 text-xs font-medium"
                   />
                 </li>
               ))}

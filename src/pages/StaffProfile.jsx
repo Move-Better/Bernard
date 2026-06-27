@@ -410,7 +410,7 @@ export default function StaffProfile() {
                         <div>
                           <p className="text-2xs font-semibold uppercase tracking-wider text-white/40 mb-2">Voice memory</p>
                           <div
-                            className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/60 bg-white/5 border border-white/10"
+                            className="rounded-lg px-3 py-2.5 text-xs leading-relaxed line-clamp-4 text-white/60 bg-white/10 border border-white/10"
                           >
                             {staffMember.voice_notes}
                           </div>

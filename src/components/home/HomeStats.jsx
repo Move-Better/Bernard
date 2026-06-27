@@ -91,7 +91,7 @@ export default function HomeStats({ stories = [] }) {
         <div className="text-4xl font-extrabold tracking-tight nx-grad-text tabular-nums">
           {typeof metrics.voiceMatch === 'number' ? `${metrics.voiceMatch}%` : '—'}
         </div>
-        <div className="text-sm mt-1 text-white/75">
+        <div className="text-sm mt-1 text-white/80">
           {typeof metrics.voiceMatch === 'number' ? 'your words · your voice' : 'Run an interview to start tracking'}
         </div>
       </div>

@@ -54,7 +54,7 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', scope.id))) return
   // Order by created_at asc so successive runs naturally walk forward through
   // the backlog. Each pass picks up the next chunk of un-thumbnailed videos.
   const query = `media_assets?${scope.column}=eq.${scope.id}&kind=eq.video&thumbnail_url=is.null&blob_url=not.is.null&select=id,${scope.column},kind,blob_url&order=created_at.asc&limit=${limit}`

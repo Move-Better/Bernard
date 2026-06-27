@@ -259,7 +259,7 @@ function ReelPreview({ video }) {
           <Play className="ml-1 h-7 w-7 text-white" />
         </div>
       </div>
-      <span className="absolute right-2 top-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-3xs font-medium text-white">
+      <span className="absolute right-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-3xs font-medium text-white">
         Reel
       </span>
       {video.name && (

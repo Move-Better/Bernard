@@ -57,7 +57,7 @@ function CreativeCard({ creative, onDelete, deleting }) {
           <img src={preview} alt="" className="h-full w-full object-cover" />
         ) : null}
         {isCarousel && (
-          <span className="absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 py-0.5 text-3xs font-medium text-white">
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-3xs font-medium text-white">
             {items.length} slides
           </span>
         )}

@@ -309,7 +309,7 @@ export default function AccessMatrix() {
 
       {/* Save bar */}
       {!isLoading && !error && (
-        <div className="sticky bottom-0 z-20 -mx-6 md:mx-0 px-4 py-3 flex items-center gap-3 border md:rounded-lg border-x-0 md:border-x border-border bg-background/95 backdrop-blur">
+        <div className="sticky bottom-0 z-20 -mx-6 md:mx-0 px-4 py-3 flex items-center gap-3 border md:rounded-lg border-x-0 md:border-x border-border bg-background/90 backdrop-blur">
           {dirtyIds.size > 0 ? (
             <span className="text-xs text-action font-semibold flex items-center gap-1.5">
               {dirtyIds.size} {dirtyIds.size === 1 ? 'person' : 'people'} changed

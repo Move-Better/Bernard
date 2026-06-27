@@ -24,8 +24,8 @@ function fmtDuration(s) {
 export function matchTier(sim) {
   const s = Number(sim) || 0
   if (s >= 0.48) return { label: 'Strong match', cls: 'bg-primary text-primary-foreground' }
-  if (s >= 0.38) return { label: 'Good match', cls: 'bg-black/65 text-white' }
-  return { label: 'Worth a look', cls: 'bg-black/45 text-white/90' }
+  if (s >= 0.38) return { label: 'Good match', cls: 'bg-black/60 text-white' }
+  return { label: 'Worth a look', cls: 'bg-black/40 text-white/90' }
 }
 
 // One human-readable line about what's IN the asset — the visual narrative's
@@ -79,7 +79,7 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
         )}
         {isVideo && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="rounded-full bg-black/55 p-3 transition-transform group-hover:scale-110">
+            <div className="rounded-full bg-black/60 p-3 transition-transform group-hover:scale-110">
               <Play className="h-6 w-6 text-white" fill="white" />
             </div>
           </div>
@@ -90,13 +90,13 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
         >
           {tier.label}
         </span>
-        <span className="absolute right-2 top-2 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="absolute right-2 top-2 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
           <Maximize2 className="h-3.5 w-3.5" />
         </span>
         {/* Kind badge — labels each candidate Photo or Video (with its length
             when known) so the producer can tell stills from clips at a glance,
             on top of the centered play overlay videos already get. */}
-        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-3xs font-medium text-white">
+        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-3xs font-medium text-white">
           {isVideo ? <Video className="h-2.5 w-2.5" /> : <ImageIcon className="h-2.5 w-2.5" />}
           {isVideo ? (fmtDuration(clip.durationS) ? `Video · ${fmtDuration(clip.durationS)}` : 'Video') : 'Photo'}
         </span>

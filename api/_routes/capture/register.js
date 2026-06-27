@@ -83,7 +83,13 @@ export default async function handler(req, res) {
   // Validate the blobPathname belongs to this workspace to prevent cross-workspace
   // registration of another workspace's uploaded blob.
   const expectedPrefix = `media/capture/${auth.workspace.id}/`
-  if (!blobPathname.startsWith(expectedPrefix)) {
+  // Normalize to prevent path-traversal (e.g. ws-a/../ws-b/file.mp4 bypassing startsWith)
+  const normalizedPathname = blobPathname.split('/').reduce((acc, seg) => {
+    if (seg === '..') acc.pop()
+    else if (seg !== '.') acc.push(seg)
+    return acc
+  }, []).join('/')
+  if (!normalizedPathname.startsWith(expectedPrefix)) {
     return res.status(403).json({ error: 'pathname_workspace_mismatch' })
   }
 
