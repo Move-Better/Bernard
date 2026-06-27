@@ -375,6 +375,21 @@ export default function InterviewSession() {
   useEffect(() => { runtimeWorkspaceRef.current = runtimeWorkspace }, [runtimeWorkspace])
   useEffect(() => { userIdRef.current = user?.id }, [user?.id])
   useEffect(() => { interviewCompleteRef.current = interviewComplete }, [interviewComplete])
+  // Pre-cache the Clerk bearer token for use in the synchronous pagehide/
+  // beforeunload handler. An async getToken() inside pagehide is dropped by
+  // iOS Safari before the microtask queue resolves — keepalive fetch never
+  // fires. Refresh every 50s (tokens are valid for 60s by default).
+  const cachedTokenRef = useRef(null)
+  useEffect(() => {
+    async function refreshToken() {
+      try {
+        cachedTokenRef.current = await window.Clerk?.session?.getToken?.() ?? null
+      } catch { /* non-fatal */ }
+    }
+    refreshToken()
+    const id = setInterval(refreshToken, 50_000)
+    return () => clearInterval(id)
+  }, [])
 
   // Build the session_state payload from the current messages ref.
   // Called both from the debounced effect and from the unload/visibility handlers.
@@ -401,9 +416,9 @@ export default function InterviewSession() {
       paused_at: new Date().toISOString(),
     })
     try {
-      const token = await window.Clerk?.session?.getToken?.()
+      const token = cachedTokenRef.current
       if (!token) return
-      await fetch(url, {
+      fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -413,9 +428,8 @@ export default function InterviewSession() {
         body: payload,
         keepalive: true,
       })
-    } catch {
-      // Best-effort; localStorage mirror already happened upstream.
-    }
+      // intentionally not awaited — keepalive fetch outlives the page
+    } catch { /* Best-effort; localStorage mirror is the real safety net */ }
   }
 
   // Debounced auto-save of session_state whenever messages change.
@@ -822,6 +836,14 @@ export default function InterviewSession() {
 
     if (user?.id) {
       const patch = { messages: updated }
+      // Cancel the debounced session_state autosave before every saveMessages
+      // PATCH — both target the same row and last-writer-wins. Without the
+      // cancel, a 3s-delayed autosave can overwrite the just-written messages
+      // with a stale session_state.messages snapshot, rolling back the turn on
+      // next resume. The autosave re-arms immediately after via the messages
+      // effect (for non-complete turns) or stays cancelled for the complete case.
+      clearTimeout(sessionSaveTimerRef.current)
+      sessionSaveTimerRef.current = null
       // Clear session_state when the AI signals completion — the interview
       // is done and the resume banner should not appear on next visit.
       // NOTE: do NOT write status here. Status transitions to 'completed' only
@@ -832,10 +854,6 @@ export default function InterviewSession() {
       if (isComplete) {
         patch.session_state = null
         patch.paused_at = null
-        // Cancel the pending debounced autosave BEFORE dispatching the finalizing
-        // PATCH so it can't race the session_state null-out (last-writer-wins).
-        clearTimeout(sessionSaveTimerRef.current)
-        sessionSaveTimerRef.current = null
       }
       saveMessages(interviewId, patch)
       // Once the AI declares the interview complete, the local backup has

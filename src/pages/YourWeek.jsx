@@ -148,7 +148,7 @@ function drillTo(item) {
 function cardState(item) {
   const cis = item.contentItemStatus
   if (!item.contentPieceId || item.status === 'pending') {
-    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft' }
+    return { label: 'Needs words', cls: 'bg-action/10 text-action', action: 'draft' }
   }
   if (item.status === 'drafting') {
     return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }

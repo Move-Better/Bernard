@@ -71,6 +71,16 @@ async function handler(req, res) {
     return redirectTo(res, '/settings/integrations?buffer_error=invalid_state')
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(payload.workspace_id)) {
+    console.error('[oauth/buffer/callback] invalid workspace_id in state payload')
+    return redirectTo(res, '/settings/integrations?buffer_error=invalid_state')
+  }
+  if (payload.user_id && !UUID_RE.test(payload.user_id)) {
+    console.error('[oauth/buffer/callback] invalid user_id in state payload')
+    return redirectTo(res, '/settings/integrations?buffer_error=invalid_state')
+  }
+
   // Verify the caller's Clerk session matches the user who started the flow.
   // If CLERK_SECRET is missing (misconfiguration) or the session is absent,
   // we reject rather than falling back — state replay is a real attack here.

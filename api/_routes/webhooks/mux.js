@@ -106,7 +106,7 @@ export default async function handler(req, res) {
   // Re-reading the stream here (req.on('data')) hangs the function — req has
   // already emitted 'end' — so verify the signature against req.rawBody.
   const rawBody = req.rawBody
-  const signature = req.headers['mux-signature'] || req.headers['Mux-Signature']
+  const signature = req.headers['mux-signature']
   if (!rawBody || !rawBody.length) {
     return res.status(400).json({ error: 'no_raw_body' })
   }

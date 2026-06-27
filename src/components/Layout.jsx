@@ -133,7 +133,9 @@ export default function Layout({ children }) {
   // edge-to-edge inside the sidebar offset (just gutter padding), so the grid
   // can grow to more columns and the preview/controls split stays balanced on
   // wide screens. Every other page keeps the comfortable reading-width cap.
-  const fullBleed = true
+  const fullBleed = ['/slate', '/moments', '/library', '/publish', '/week', '/ads'].some(
+    (prefix) => location.pathname === prefix || location.pathname.startsWith(prefix + '/') || location.pathname.startsWith(prefix + '?')
+  )
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -155,7 +157,7 @@ export default function Layout({ children }) {
             <Link to="/" className="flex items-center gap-2.5 min-w-0">
               <img src={logoSrc} alt={logoAlt} className="h-8 w-auto shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-none truncate">Bernard</p>
+                <p className="text-sm font-semibold leading-none truncate">{ws?.app_name || ws?.display_name || 'Bernard'}</p>
                 <p className="text-3xs text-muted-foreground mt-0.5 leading-none truncate" title={APP_BYLINE}>
                   {APP_BYLINE}
                 </p>

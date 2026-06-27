@@ -31,9 +31,6 @@ function GreetingRibbon({ greeting, callFirst, hasResume }) {
   return (
     <div className="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
       <div className="min-w-0">
-        <p className="text-2xs font-bold uppercase tracking-widest opacity-[0.85]">
-          Welcome back
-        </p>
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{greeting}</h1>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -172,7 +169,7 @@ export default function Home() {
     if (readyForContent.length > 0) parts.push({ label: `${readyForContent.length} to draft`, to: '/stories?stage=drafting' })
     if (reviewCount > 0) parts.push({ label: `${reviewCount} to review`, to: '/stories?stage=review' })
     if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
-    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new', urgent: true })
+    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/overview', urgent: true })
     return parts
   }, [readyForContent, reviewCount, readyToDistribute, overdueCount])
 
@@ -238,7 +235,7 @@ export default function Home() {
       {failedPieces.length > 0 && (
         <Link
           to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories'}
-          className="flex items-center gap-3 rounded-xl border border-destructive/28 bg-destructive/7 px-4 py-3 hover:brightness-[0.98] transition"
+          className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 hover:brightness-[0.98] transition"
         >
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">
             <AlertTriangle className="h-4 w-4" />
@@ -302,7 +299,7 @@ export default function Home() {
       {!isEditor && yourReview.length > 0 && (
         <Link
           to="/week"
-          className="flex items-center gap-3 rounded-xl border border-action/30 bg-action/5 px-4 py-3 hover:bg-action/10 transition-colors"
+          className="flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-3 hover:bg-muted/80 transition-colors"
         >
           <BookOpen className="h-4 w-4 text-action shrink-0" />
           <div className="flex-1 min-w-0">

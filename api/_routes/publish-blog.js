@@ -24,6 +24,7 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 30 }
 
+import { timingSafeEqual as cryptoTimingSafeEqual } from 'node:crypto'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { findSlugPrefixCollision, slugifyTitle, SLUG_MAX } from '../../src/lib/blogOutput.js'
 
@@ -73,16 +74,11 @@ function buildMarkdownFile(data) {
 }
 
 function timingSafeEqual(a, b) {
-  // Constant-time string comparison for secret validation. Node has
-  // crypto.timingSafeEqual but it requires Buffer args of equal length;
-  // this version handles unequal lengths without short-circuiting.
   if (typeof a !== 'string' || typeof b !== 'string') return false
-  const max = Math.max(a.length, b.length)
-  let mismatch = a.length === b.length ? 0 : 1
-  for (let i = 0; i < max; i++) {
-    mismatch |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
-  }
-  return mismatch === 0
+  const ba = Buffer.from(a)
+  const bb = Buffer.from(b)
+  if (ba.length !== bb.length) return false
+  return cryptoTimingSafeEqual(ba, bb)
 }
 
 const GH_HEADERS_BASE = {
