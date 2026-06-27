@@ -45,7 +45,7 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
   // they read as quiet "add later" chips and don't compete for attention.
   const unsetCls = demoteUnset
     ? 'text-muted-foreground bg-muted/40 border border-dashed border-border hover:bg-muted active:bg-muted px-2 py-1.5'
-    : 'text-primary bg-primary/10 border border-dashed border-primary/40 hover:bg-primary/20 hover:border-primary/50 active:bg-primary/20 font-medium px-2 py-1.5'
+    : 'text-action bg-action/10 border border-dashed border-action/40 hover:bg-action/20 hover:border-action/50 active:bg-action/20 font-medium px-2 py-1.5'
   return (
     <label
       className={`relative inline-flex items-center gap-1 text-xs rounded-full transition-colors ${

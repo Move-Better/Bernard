@@ -42,6 +42,10 @@ const BUCKETS = {
   // spend over a full day. Both fail open until Upstash is provisioned.
   demo:      { max: 5,  windowSec: 60 },
   demoDaily: { max: 20, windowSec: 86400 },
+  // Unauthenticated onboarding endpoints that call an LLM + multiple external
+  // fetches. Tighter than `generic` (60/min) — keyed by IP, same as `demo`.
+  'onboarding-scan':    { max: 5,  windowSec: 60 },
+  'socials-search':     { max: 10, windowSec: 60 },
 }
 
 const _limiters = {}

@@ -53,7 +53,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'workspace_fetch_failed' })
   }
   const wsRows = await wsRes.json().catch(() => [])
-  const activeWsIds = (Array.isArray(wsRows) ? wsRows : []).map(w => w.id)
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const activeWsIds = (Array.isArray(wsRows) ? wsRows : []).map(w => w.id).filter(id => UUID_RE.test(id))
   if (!activeWsIds.length) return res.status(200).json({ resumed: 0, note: 'no_active_workspaces' })
   const wsIdFilter = `&workspace_id=in.(${activeWsIds.map(id => `"${id}"`).join(',')})`
 

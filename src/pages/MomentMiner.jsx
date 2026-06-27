@@ -83,7 +83,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
     <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
       <div
         className="w-20 shrink-0 rounded-lg overflow-hidden bg-foreground/80 relative grid place-items-center"
-        style={{ aspectRatio: m.width && m.height ? `${Math.min(m.width / m.height, 16 / 9)}` : '9 / 16' }}
+        style={{ aspectRatio: m.width && m.height ? `${Math.min(m.width / m.height, 16 / 9)}` : '16 / 9' }}
       >
         {m.thumbnailUrl
           ? <img src={m.thumbnailUrl} alt="" className="w-full h-full object-cover" />
@@ -123,14 +123,14 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
               type="button"
               disabled={saving}
               onClick={() => onSave(m)}
-              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+              className="px-3 py-2.5 sm:py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}Looks good — save
             </button>
             <button
               type="button"
               onClick={() => onReview(m)}
-              className="px-3 py-1.5 rounded-lg border border-border text-muted-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-muted"
+              className="px-3 py-2.5 sm:py-1.5 rounded-lg border border-border text-muted-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-muted"
             >
               <Scissors className="h-4 w-4" aria-hidden="true" />Review &amp; trim
             </button>
@@ -138,7 +138,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           <button
             type="button"
             onClick={() => onDismiss(m)}
-            className="px-2.5 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted shrink-0"
+            className="px-2.5 py-2.5 sm:py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted shrink-0"
           >
             Not this one
           </button>

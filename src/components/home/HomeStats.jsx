@@ -63,27 +63,27 @@ export default function HomeStats({ stories = [] }) {
   }, [stories])
 
   return (
-    <div className="flex items-stretch gap-0">
+    <div className="flex items-stretch gap-0 flex-wrap sm:flex-nowrap">
       {/* This week — input to the pipeline */}
-      <div className="flex-1 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <div className="flex-1 min-w-[140px] rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Last 7 days</div>
         <div className="text-4xl font-extrabold tracking-tight tabular-nums">{metrics.thisWeek}</div>
         <div className="text-sm text-muted-foreground mt-1">stories captured</div>
       </div>
 
       {/* Arrow connector */}
-      <div className="flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
+      <div className="hidden sm:flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
         <ArrowRight className="h-4 w-4" />
       </div>
 
       {/* Voice match — center hero: the core moat KPI */}
       <div
-        className="flex-1 rounded-2xl border border-foreground bg-foreground p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+        className="flex-1 min-w-[140px] rounded-2xl border border-foreground bg-foreground p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
       >
         <div className="flex items-center justify-between mb-2">
           <div className="text-2xs font-bold uppercase tracking-widest text-white/50">Voice match</div>
           {typeof metrics.voiceMatch === 'number' ? (
-            <span className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-agreement-signal/20 text-agreement-signal">
+            <span className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-white/20 text-white">
               {metrics.voiceMatch >= 60 ? 'strong' : metrics.voiceMatch >= 40 ? 'fair' : 'building'}
             </span>
           ) : null}
@@ -97,17 +97,19 @@ export default function HomeStats({ stories = [] }) {
       </div>
 
       {/* Arrow connector */}
-      <div className="flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
+      <div className="hidden sm:flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
         <ArrowRight className="h-4 w-4" />
       </div>
 
       {/* Published — output of the pipeline */}
-      <div className="flex-1 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <div className="flex-1 min-w-[140px] rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="flex items-center justify-between mb-2">
           <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Published</div>
           {metrics.publishedDelta !== 0 ? (
             <span className={`text-2xs font-bold ${metrics.publishedDelta > 0 ? 'text-success' : 'text-destructive'}`}>
-              {metrics.publishedDelta > 0 ? '↗' : '↘'} {metrics.publishedDelta > 0 ? '+' : ''}{metrics.publishedDelta}
+              <span aria-hidden="true">{metrics.publishedDelta > 0 ? '↗' : '↘'}</span>
+              <span className="sr-only">{metrics.publishedDelta > 0 ? 'up' : 'down'}</span>
+              {' '}{metrics.publishedDelta > 0 ? '+' : ''}{metrics.publishedDelta}
             </span>
           ) : null}
         </div>

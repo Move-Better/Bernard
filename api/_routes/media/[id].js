@@ -69,7 +69,7 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
-  if (req.method !== 'GET' && !(await enforceLimit(req, res, 'generic', scope.id))) return
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
 
   const SELECT = `${scope.column},${SELECT_COMMON}`
   const where  = `id=eq.${id}&${scope.column}=eq.${scope.id}`

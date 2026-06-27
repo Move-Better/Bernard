@@ -76,22 +76,25 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
-  // Acquire the lock: mark regenerating only if not already regenerating.
-  // (PostgREST doesn't expose row-level locks, so this is best-effort —
-  // two concurrent presses would both pass and one would overwrite the
-  // other's result. The admin-only + rate-limit gates make that unlikely.)
-  const lockRes = await sb(`workspace_books?workspace_id=eq.${ws.id}&select=regen_status`)
-  if (lockRes.ok) {
-    const existing = await lockRes.json().catch(() => [])
-    if (existing[0]?.regen_status === 'regenerating') {
-      return res.status(409).json({ error: 'A regeneration is already in progress' })
-    }
+  // Atomic lock: PATCH only when regen_status is NOT 'regenerating'.
+  // If two requests arrive concurrently, only one will match this filter and
+  // proceed; the other gets an empty return array and 409s immediately.
+  const lockPatch = await sb(
+    `workspace_books?workspace_id=eq.${ws.id}&regen_status=neq.regenerating`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ regen_status: 'regenerating', regen_error: null }),
+    },
+  )
+  if (!lockPatch.ok) {
+    console.error('[book/regenerate] lock PATCH failed:', lockPatch.status)
+    return res.status(500).json({ error: 'lock_failed' })
   }
-
-  await upsertBookRow(ws.id, {
-    regen_status: 'regenerating',
-    regen_error:  null,
-  })
+  const locked = await lockPatch.json().catch(() => [])
+  if (!Array.isArray(locked) || locked.length === 0) {
+    return res.status(409).json({ error: 'A regeneration is already in progress' })
+  }
 
   let result
   try {

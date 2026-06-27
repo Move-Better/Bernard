@@ -62,8 +62,15 @@ export default async function handler(req, res) {
   // Note: old slug-based blobs (written before this change) no longer pass
   // this guard. Callers stashing pre-change sample URLs must re-record.
   const expectedPrefix = `voice-clone-samples/${ws.id}/${staffId}-`
-  const looksOk = /^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//.test(sampleUrl)
-    && sampleUrl.includes(expectedPrefix)
+  // Use URL parsing + startsWith on the path to prevent a crafted URL where
+  // the expected prefix appears only in a query param or fragment from bypassing.
+  let looksOk = false
+  try {
+    const parsed = new URL(sampleUrl)
+    looksOk =
+      /^[^/]+\.public\.blob\.vercel-storage\.com$/.test(parsed.hostname) &&
+      parsed.pathname.startsWith('/' + expectedPrefix)
+  } catch { looksOk = false }
   if (!looksOk) {
     return res.status(400).json({ error: 'sampleUrl does not match expected workspace/staff path' })
   }
