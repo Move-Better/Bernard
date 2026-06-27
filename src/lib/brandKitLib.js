@@ -141,3 +141,33 @@ export async function uploadBrandAsset(file, meta = {}, options = {}) {
     }),
   })
 }
+
+// Upload a brand-discovery VISUAL ANCHOR screenshot. Direct-to-Blob, but unlike
+// uploadBrandAsset this writes NO brand_assets row — anchors live only on the
+// brand brief. Namespaced by workspace id per the blob-path convention. Returns
+// the @vercel/blob Blob ({ url, pathname, ... }); the caller persists url via
+// /api/brand-discovery/anchors.
+const ALLOWED_ANCHOR_MIME = new Set(['image/png', 'image/jpeg', 'image/webp'])
+
+export async function uploadBrandAnchorImage(file, { workspaceId, onProgress } = {}) {
+  const contentType = resolveContentType(file)
+  if (!contentType || !ALLOWED_ANCHOR_MIME.has(contentType)) {
+    throw new Error('Use a PNG, JPG, or WebP screenshot.')
+  }
+  if (!workspaceId) throw new Error('Missing workspace')
+
+  const ext      = (file.name.match(/\.[^.]+$/) || [''])[0]
+  const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase()
+  const stamp    = new Date().toISOString().replace(/[:.]/g, '-')
+  const pathname = `brand-anchors/${workspaceId}/${stamp}-${baseName}${ext}`
+
+  const token = await getClerkToken()
+
+  return await upload(pathname, file, {
+    access: 'public',
+    handleUploadUrl: '/api/brand-discovery/anchor-upload',
+    contentType,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    onUploadProgress: typeof onProgress === 'function' ? (e) => onProgress(e) : undefined,
+  })
+}

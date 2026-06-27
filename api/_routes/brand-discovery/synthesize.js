@@ -6,6 +6,7 @@
 // Synchronous (no queue). Typical run: ~15–30s on Sonnet. Well within 300s.
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
+import { randomUUID } from 'node:crypto'
 import { generateText } from 'ai'
 import { workspaceContext, invalidateWorkspaceCacheById, invalidateWorkspaceCacheBySlug } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
@@ -170,7 +171,7 @@ export default async function handler(req, res) {
     interview.staff_id
       ? sb(`staff?id=eq.${interview.staff_id}&workspace_id=eq.${ws.id}&select=id,name`)
       : Promise.resolve({ ok: true, json: async () => [] }),
-    sb(`workspaces?id=eq.${ws.id}&select=display_name`),
+    sb(`workspaces?id=eq.${ws.id}&select=display_name,brand_brief`),
   ])
   if (!staffR.ok) { await revertClaim(); return dbErr(res, staffR, 'Staff load failed') }
   if (!wsR.ok)    { await revertClaim(); return dbErr(res, wsR,    'Workspace load failed') }
@@ -216,6 +217,13 @@ export default async function handler(req, res) {
     await revertClaim()
     return err(res, 'synthesis_validation_failed', 502)
   }
+
+  // Tag interview-derived anchors and PRESERVE any user-curated ones (added via
+  // /api/brand-discovery/anchors) so a retake never wipes uploaded references.
+  const prevAnchors = Array.isArray(wsRow.brand_brief?.visualAnchors) ? wsRow.brand_brief.visualAnchors : []
+  const userAnchors = prevAnchors.filter((a) => a && (a.source === 'user' || a.imageUrl))
+  const interviewAnchors = brief.visualAnchors.map((a) => ({ id: randomUUID(), ...a, source: 'interview' }))
+  brief.visualAnchors = [...interviewAnchors, ...userAnchors]
 
   const briefPayload = {
     ...brief,
