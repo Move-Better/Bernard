@@ -226,7 +226,7 @@ async function defaultGenerate({ system, user }) {
   const { generateText } = await import('ai')
   const { text } = await generateText({
     model: 'anthropic/claude-sonnet-4-6',
-    system,
+    instructions: system,
     messages: [{ role: 'user', content: user }],
     maxOutputTokens: 1500,
   })

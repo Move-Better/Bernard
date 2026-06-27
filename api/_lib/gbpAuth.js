@@ -145,6 +145,7 @@ export async function refreshGbpToken(refreshToken) {
 async function fetchAccountEmail(accessToken) {
   try {
     const r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo?fields=email', {
+      signal: AbortSignal.timeout(10_000),
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (!r.ok) return null
@@ -159,9 +160,9 @@ async function fetchAccountEmail(accessToken) {
 // Also keeps top-level location_name/location_id for the legacy localPosts path
 // and for workspaces.gbp_location_name (used as a "is configured?" sentinel).
 // Retry a fetch up to maxRetries times on 429, waiting retryDelayMs between attempts.
-async function fetchWithRetry(url, init, maxRetries = 3, retryDelayMs = 2000) {
+async function fetchWithRetry(url, init, maxRetries = 3, retryDelayMs = 2000, timeoutMs = 15_000) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const res = await fetch(url, init)
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
     if (res.status !== 429 || attempt === maxRetries) return res
     console.warn(`[gbpAuth] 429 from ${url} — retrying in ${retryDelayMs}ms (attempt ${attempt + 1}/${maxRetries})`)
     await new Promise((r) => setTimeout(r, retryDelayMs))

@@ -936,7 +936,7 @@ export default function VideoEditor() {
                   className={`flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight ${segBtn(format === k)}`}
                 >
                   <span className="font-medium">{FORMATS[k].label}</span>
-                  <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
+                  <span className="opacity-70">{FORMATS[k].dim}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>{`${FORMATS[k].label} · ${FORMATS[k].dim}`}</TooltipContent>

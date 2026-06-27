@@ -349,7 +349,7 @@ export async function synthesizeBook({ workspaceId, workspace }) {
 
     const { text } = await generateText({
       model: MODEL,
-      system,
+      instructions: system,
       messages: [{ role: 'user', content: user }],
       maxOutputTokens: MAX_OUTPUT_TOKENS,
     })

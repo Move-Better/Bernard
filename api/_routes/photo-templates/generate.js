@@ -162,7 +162,7 @@ export default async function handler(req, res) {
     const { object } = await generateObject({
       model: MODEL,
       schema: outSchema,
-      system,
+      instructions: system,
       messages: [{ role: 'user', content: `Generate ${count} distinct, on-brand templates.` }],
       temperature: 0.8,
     })

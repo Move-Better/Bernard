@@ -138,6 +138,7 @@ export async function refreshGscToken(refreshToken) {
 async function fetchAccountEmail(accessToken) {
   try {
     const r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo?fields=email', {
+      signal: AbortSignal.timeout(10_000),
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (!r.ok) return null
@@ -151,6 +152,7 @@ async function detectSiteUrl(accessToken) {
     // Canonical host. The legacy www.googleapis.com/webmasters host returns
     // null/404 for the sites list, which silently left config.site_url unset.
     const r = await fetch('https://searchconsole.googleapis.com/webmasters/v3/sites', {
+      signal: AbortSignal.timeout(15_000),
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (!r.ok) return null

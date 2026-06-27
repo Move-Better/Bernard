@@ -94,8 +94,7 @@ function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview,
         <button
           type="button"
           onClick={() => onTogglePreview(s)}
-          className="shrink-0 relative rounded-md overflow-hidden bg-muted mt-0.5 group"
-          style={{ width: 64, height: 64 }}
+          className="shrink-0 relative rounded-md overflow-hidden bg-muted mt-0.5 group w-16 h-16"
           title={`Preview: ${mmss(startSec)}–${mmss(endSec)}`}
           aria-label={`${isActive ? 'Stop preview' : 'Preview clip'}: ${mmss(startSec)}–${mmss(endSec)}`}
           aria-pressed={isActive}

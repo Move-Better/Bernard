@@ -587,9 +587,9 @@ function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, sa
   const started = messages.length > 0 || draftConfig
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden grid" style={{ gridTemplateColumns: '420px 1fr' }}>
+    <div className="rounded-xl border bg-card overflow-hidden grid grid-cols-1 md:grid-cols-[420px_1fr]">
       {/* LEFT — chat */}
-      <div className="border-r flex flex-col" style={{ height: 640 }}>
+      <div className="border-r flex flex-col h-[640px] max-h-[80vh]">
         {/* Seed row */}
         <div className="p-3 border-b">
           <div className="text-2xs font-medium text-muted-foreground mb-1.5">Start from</div>
@@ -682,7 +682,7 @@ function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, sa
       </div>
 
       {/* RIGHT — live preview + save */}
-      <div className="flex flex-col p-4" style={{ height: 640 }}>
+      <div className="flex flex-col p-4 h-[640px] max-h-[80vh]">
         <div className="flex items-center justify-between mb-2 gap-3">
           <div className="min-w-0">
             <div className="text-sm font-bold text-foreground truncate">{draftName}</div>

@@ -188,13 +188,13 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
 
   if (!asset) return null
 
-  const baseClass = `bg-black flex items-center justify-center ${className}`
+  const baseClass = `bg-black flex items-center justify-center min-h-60 ${className}`
 
   // Transcode placeholder — covers 'pending' and 'processing'. Users see
   // an animated "Transcoding…" pill instead of a broken video frame.
   if (status === 'pending' || status === 'processing') {
     return (
-      <div className={baseClass} style={{ minHeight: 240 }}>
+      <div className={baseClass}>
         <div role="status" className="flex items-center gap-2 text-white/80 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           Transcoding for cross-browser playback… (usually under 2 minutes)
@@ -207,7 +207,7 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
   // original blob_url — at minimum the uploader can confirm what they sent.
   if (status === 'errored' || !wantsMux) {
     return (
-      <div className={baseClass} style={{ minHeight: 240 }}>
+      <div className={baseClass}>
         {status === 'errored' && (
           <div className="absolute top-2 left-2 right-2 flex items-start gap-1.5 rounded bg-black/60 px-2 py-1 text-2xs text-warning">
             <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
@@ -222,7 +222,7 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
   // Ready + we got the token (or it isn't required): mount <mux-player>.
   if (tokenState.error) {
     return (
-      <div className={baseClass} style={{ minHeight: 240 }}>
+      <div className={baseClass}>
         <div className="text-warning text-sm flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
           Couldn&apos;t load playback token: {tokenState.error}
@@ -232,7 +232,7 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
   }
   if (!muxReady || tokenState.loading) {
     return (
-      <div role="status" className={baseClass} style={{ minHeight: 240 }}>
+      <div role="status" className={baseClass}>
         <Loader2 className="h-4 w-4 animate-spin text-white/80" aria-hidden="true" />
         <span className="sr-only">Loading…</span>
       </div>

@@ -235,7 +235,7 @@ export default async function handler(req, res) {
     const { object } = await generateObject({
       model: MODEL,
       schema: outSchema,
-      system,
+      instructions: system,
       messages,
       temperature: 0.7,
     })
