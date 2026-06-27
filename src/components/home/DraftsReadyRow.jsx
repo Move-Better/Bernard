@@ -50,8 +50,7 @@ export default function DraftsReadyRow({ stories = [] }) {
     <div id="review" className="nx-card-action">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
         <span
-          className="inline-block w-1 h-6 rounded-full shrink-0"
-          style={{ background: 'hsl(var(--action))' }}
+          className="inline-block w-1 h-6 rounded-full shrink-0 bg-action"
           aria-hidden="true"
         />
         <Eye className="h-4 w-4 text-primary" />

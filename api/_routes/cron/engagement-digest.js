@@ -244,6 +244,7 @@ async function handler(req, res) {
         try {
           const sendRes = await fetch(RESEND_ENDPOINT, {
             method: 'POST',
+            signal: AbortSignal.timeout(10_000),
             headers: {
               Authorization: `Bearer ${RESEND_API_KEY}`,
               'Content-Type': 'application/json',

@@ -112,7 +112,7 @@ export default function StoriesAtAGlance({ stories = [] }) {
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
       <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Voice match · 30d avg</div>
-        <div className="text-2xl font-extrabold tracking-tight mt-1 tabular-nums" style={{ color: metrics.voiceMatch == null ? undefined : 'hsl(var(--success))' }}>
+        <div className={`text-2xl font-extrabold tracking-tight mt-1 tabular-nums${metrics.voiceMatch != null ? ' text-success' : ''}`}>
           {metrics.voiceMatch == null ? '—' : `${metrics.voiceMatch}%`}
         </div>
         {metrics.voiceMatch == null && (
@@ -152,7 +152,7 @@ export default function StoriesAtAGlance({ stories = [] }) {
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Top platform · 30d</div>
-        <div className="text-2xl font-extrabold tracking-tight mt-1" style={{ color: topPlatformLabel ? 'hsl(var(--scheduled))' : undefined }}>
+        <div className={`text-2xl font-extrabold tracking-tight mt-1${topPlatformLabel ? ' text-scheduled' : ''}`}>
           {topPlatformLabel || '—'}
         </div>
         {!topPlatformLabel && (

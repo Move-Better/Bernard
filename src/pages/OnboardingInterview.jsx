@@ -902,8 +902,7 @@ export default function OnboardingInterview() {
           {/* ── In-place error (no reload) ──────────────────────────── */}
           {error && (
             <div
-              className="mb-3 rounded-xl border px-4 py-3"
-              style={{ borderColor: 'hsl(var(--destructive) / 0.35)', background: 'hsl(var(--destructive) / 0.06)' }}
+              className="mb-3 rounded-xl border border-destructive/35 bg-destructive/[0.06] px-4 py-3"
             >
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
@@ -1025,11 +1024,10 @@ function VoiceDock({
           {/* Waveform bars — RAF drives transforms, opacity tracks isListening */}
           <div
             ref={waveformRef}
-            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none ${
+            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none text-destructive ${
               isListening ? 'opacity-100' : 'opacity-0'
             }`}
             aria-hidden="true"
-            style={{ color: 'hsl(var(--destructive))' }}
           >
             {Array.from({ length: 13 }, (_, i) => (
               <span
@@ -1050,15 +1048,15 @@ function VoiceDock({
           <div className="relative flex items-center justify-center h-[72px] w-[72px]">
             {isListening && (
               <span
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: 'hsl(var(--destructive) / 0.22)', animationDuration: '1.6s' }}
+                className="absolute inset-0 rounded-full animate-ping bg-destructive/[0.22]"
+                style={{ animationDuration: '1.6s' }}
                 aria-hidden="true"
               />
             )}
             {isSpeaking && (
               <span
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: 'hsl(var(--info) / 0.22)', animationDuration: '1.8s' }}
+                className="absolute inset-0 rounded-full animate-ping bg-info/[0.22]"
+                style={{ animationDuration: '1.8s' }}
                 aria-hidden="true"
               />
             )}

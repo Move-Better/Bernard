@@ -452,8 +452,7 @@ function DangerZone({ workspace, getToken }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <span
-            className="inline-block w-1 h-5 rounded-full shrink-0"
-            style={{ background: 'hsl(var(--destructive))' }}
+            className="inline-block w-1 h-5 rounded-full shrink-0 bg-destructive"
             aria-hidden="true"
           />
           <CardTitle className="text-lg font-bold text-destructive">Danger zone</CardTitle>

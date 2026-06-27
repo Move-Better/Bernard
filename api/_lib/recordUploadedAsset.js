@@ -60,7 +60,7 @@ function defaultPurpose(kind) {
 }
 
 async function probeImageDimsFromUrl(url) {
-  const res = await fetch(url, { headers: { Range: 'bytes=0-65535' } })
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: { Range: 'bytes=0-65535' } })
   if (!res.ok) throw new Error(`image-dims probe failed: ${res.status}`)
   const buf = Buffer.from(await res.arrayBuffer())
   if (buf.length > 131072) console.warn('[recordUploadedAsset] Range request returned oversized buffer', buf.length)
@@ -84,7 +84,7 @@ function probeVideoDimsFromUrl(url) {
 
 async function probeFaststart(url) {
   try {
-    const r = await fetch(url, { headers: { Range: 'bytes=0-262143' } })
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: { Range: 'bytes=0-262143' } })
     if (!r.ok && r.status !== 206) return 'unknown'
     const buf = Buffer.from(await r.arrayBuffer())
     let off = 0

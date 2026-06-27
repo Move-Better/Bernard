@@ -2186,11 +2186,10 @@ function InterviewVoiceDock({
           {/* Waveform bars — opacity driven by isListening, heights driven by RAF */}
           <div
             ref={waveformRef}
-            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none ${
+            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none text-destructive ${
               isListening ? 'opacity-100' : 'opacity-0'
             }`}
             aria-hidden="true"
-            style={{ color: 'hsl(var(--destructive))' }}
           >
             {Array.from({ length: 13 }, (_, i) => (
               <span
@@ -2212,16 +2211,16 @@ function InterviewVoiceDock({
             {/* Listening: red pulsing ring */}
             {isListening && (
               <span
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: 'hsl(var(--destructive) / 0.22)', animationDuration: '1.6s' }}
+                className="absolute inset-0 rounded-full animate-ping bg-destructive/[0.22]"
+                style={{ animationDuration: '1.6s' }}
                 aria-hidden="true"
               />
             )}
             {/* Speaking: blue pulsing ring */}
             {isSpeaking && (
               <span
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: 'hsl(var(--info) / 0.22)', animationDuration: '1.8s' }}
+                className="absolute inset-0 rounded-full animate-ping bg-info/[0.22]"
+                style={{ animationDuration: '1.8s' }}
                 aria-hidden="true"
               />
             )}

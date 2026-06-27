@@ -1014,7 +1014,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
 
   return (
     <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+      <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/[0.08]">
         <ImageIcon className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">This slide&apos;s photo</span>
       </div>
@@ -1324,7 +1324,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
   const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary'
   return (
     <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+      <div className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/[0.08]">
         <Type className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">Text layer</span>
         <div className="ml-auto flex items-center gap-1">
@@ -1334,7 +1334,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
           <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-[26px]`} aria-label="Center vertically">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
-          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary`} style={{ borderColor: 'hsl(var(--primary)/.35)', background: 'hsl(var(--primary)/.06)' }} aria-label="Center on canvas">
+          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary border-primary/35 bg-primary/[0.06]`} aria-label="Center on canvas">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
             Center
           </button>
@@ -1381,7 +1381,7 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
                 }
                 <div className="absolute inset-0 bg-black/15" />
                 {slide.template_id && (
-                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ background: 'hsl(var(--action))' }} />
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-action" />
                 )}
               </button>
             </div>
@@ -2104,7 +2104,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         </aside>
 
         {/* 3. Canvas — centre, takes remaining space */}
-        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(var(--muted))' }}>
+        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5 bg-muted">
           {/* Safe-zone toggle — slide counter moved to inspector header */}
           <div className="absolute left-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
             <label className="flex cursor-pointer items-center gap-1">

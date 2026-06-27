@@ -65,6 +65,7 @@ export default async function handler(req, res) {
   try {
     const r = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',

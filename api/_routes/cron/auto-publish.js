@@ -47,6 +47,7 @@ function sb(path, init = {}) {
 async function gql(token, query, variables = {}) {
   const r = await fetch(BUFFER_GQL, {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ query, variables }),
   })

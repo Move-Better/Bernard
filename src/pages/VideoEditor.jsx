@@ -327,27 +327,27 @@ function CaptionInspector({ ctx }) {
   )
   return (
     <InspectorShell icon={Captions} title="Captions" right="auto · from transcript">
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Captions</p>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Captions</p>
       <div className="mb-3 flex gap-1.5">
         {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className={`flex-1 rounded-md border py-1.5 text-3xs ${segBtn(caption.preset === p)}`}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}
       </div>
       {caption.preset !== 'off' && (
         <div className="mb-3">
-          <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Animation</p>
+          <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Animation</p>
           <div className="flex gap-1.5">
             {[['none', 'None'], ['pop', 'Pop'], ['fade', 'Fade']].map(([v, l]) => <button key={v} onClick={() => setCaption('anim', v)} className={`flex-1 rounded-md border py-1.5 text-3xs ${segBtn((caption.anim || 'none') === v)}`}>{l}</button>)}
           </div>
-          <p className="mt-1 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Entrance effect — shown in the exported video.</p>
+          <p className="mt-1 text-3xs text-muted-foreground">Entrance effect — shown in the exported video.</p>
         </div>
       )}
       {seg('Position', ['top', 'center', 'bottom'], 'position')}
       {seg('Size', ['small', 'medium', 'large'], 'size')}
       {lines.length === 0 ? (
-        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(var(--action))' }}>
+        <button onClick={genCaptions} disabled={genCaptionsPending} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-action bg-action/[0.06] py-2 text-2xs text-action disabled:opacity-60">
           {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
         </button>
       ) : (
-        <p className="mt-1 rounded-md px-2 py-1.5 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Tap the caption on the video to fix a word.</p>
+        <p className="mt-1 rounded-md bg-muted px-2 py-1.5 text-3xs text-muted-foreground">Tap the caption on the video to fix a word.</p>
       )}
     </InspectorShell>
   )
@@ -367,39 +367,38 @@ function OverlayInspector({ ctx }) {
     <InspectorShell icon={Type} title="Text overlay" right={
       <div className="flex items-center gap-1">
         <button type="button" onClick={() => alignOverlay(true, false)} title="Center horizontally" aria-label="Center horizontally"
-          className={`${alignBtnCls} w-[26px]`} style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+          className={`${alignBtnCls} w-[26px] border-border text-muted-foreground`}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="2" y="5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(false, true)} title="Center vertically" aria-label="Center vertically"
-          className={`${alignBtnCls} w-[26px]`} style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+          className={`${alignBtnCls} w-[26px] border-border text-muted-foreground`}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(true, true)} title="Center on frame" aria-label="Center on frame"
-          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold`}
-          style={{ borderColor: 'hsl(var(--primary)/0.35)', background: 'hsl(var(--primary)/0.06)', color: 'hsl(var(--primary))' }}>
+          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold border-primary/35 bg-primary/[0.06] text-primary`}>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
           Center
         </button>
       </div>
     }>
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Text</p>
-      <textarea rows={2} aria-label="Overlay text content" value={o.text} onChange={(e) => setOverlay('text', e.target.value)} className="mb-3 w-full resize-none rounded-md border px-2 py-2 text-sm leading-snug outline-none focus:ring-1 focus:ring-primary/50" style={{ borderColor: 'hsl(var(--border))' }} />
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Role</p>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Text</p>
+      <textarea rows={2} aria-label="Overlay text content" value={o.text} onChange={(e) => setOverlay('text', e.target.value)} className="mb-3 w-full resize-none rounded-md border border-border px-2 py-2 text-sm leading-snug outline-none focus:ring-1 focus:ring-primary/50" />
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Role</p>
       <div className="mb-3 flex gap-1.5">
         {OVERLAY_ROLES.map(([k, n]) => <button key={k} onClick={() => setOverlay('role', k)} className={`flex-1 rounded-md border py-1.5 text-3xs ${segBtn(o.role === k)}`}>{n}</button>)}
       </div>
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>In / out (seconds)</p>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">In / out (seconds)</p>
       <div className="mb-3 flex items-center gap-2 text-2xs">
-        <input aria-label="Overlay start time (seconds)" type="number" step="0.5" min="0" max={durationSec} value={o.in} onChange={(e) => setOverlayTime('in', e.target.value)} className="flex-1 rounded-md border px-2 py-1.5 text-right font-mono outline-none focus:ring-1 focus:ring-primary/50" style={{ borderColor: 'hsl(var(--border))' }} />
-        <span style={{ color: 'hsl(var(--muted-foreground))' }}>→</span>
-        <input aria-label="Overlay end time (seconds)" type="number" step="0.5" min="0" max={durationSec} value={o.out} onChange={(e) => setOverlayTime('out', e.target.value)} className="flex-1 rounded-md border px-2 py-1.5 text-right font-mono outline-none focus:ring-1 focus:ring-primary/50" style={{ borderColor: 'hsl(var(--border))' }} />
+        <input aria-label="Overlay start time (seconds)" type="number" step="0.5" min="0" max={durationSec} value={o.in} onChange={(e) => setOverlayTime('in', e.target.value)} className="flex-1 rounded-md border border-border px-2 py-1.5 text-right font-mono outline-none focus:ring-1 focus:ring-primary/50" />
+        <span className="text-muted-foreground">→</span>
+        <input aria-label="Overlay end time (seconds)" type="number" step="0.5" min="0" max={durationSec} value={o.out} onChange={(e) => setOverlayTime('out', e.target.value)} className="flex-1 rounded-md border border-border px-2 py-1.5 text-right font-mono outline-none focus:ring-1 focus:ring-primary/50" />
       </div>
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Size</p>
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Size</p>
       <input aria-label="Text overlay size" type="range" min={50} max={160} value={Math.round((o.size || 1) * 100)} onChange={(e) => setOverlay('size', +e.target.value / 100)} className="mb-3 w-full" />
-      <div className="flex items-center gap-2 rounded-md border px-2.5 py-2 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+      <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2 text-2xs text-muted-foreground">
         <Move className="h-4 w-4 shrink-0" /><span><b>Drag the overlay</b> anywhere on the canvas.</span>
       </div>
-      <button onClick={delOverlay} className="mt-3 w-full rounded-md border px-2 py-1.5 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(0 70% 50%)' }}><Trash2 className="mr-1 inline h-3 w-3" />Delete overlay</button>
+      <button onClick={delOverlay} className="mt-3 w-full rounded-md border border-border px-2 py-1.5 text-2xs text-destructive"><Trash2 className="mr-1 inline h-3 w-3" />Delete overlay</button>
     </InspectorShell>
   )
 }
@@ -411,11 +410,11 @@ function MomentsInspector({ ctx }) {
   return (
     <InspectorShell icon={Scissors} title="Moments" right={proposals.length ? `${proposals.length}` : ''}>
       {loading ? (
-        <div role="status" className="flex items-center gap-2 text-2xs" style={{ color: 'hsl(var(--muted-foreground))' }}><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /><span className="sr-only">Finding moments…</span><span aria-hidden="true">Finding moments…</span></div>
+        <div role="status" className="flex items-center gap-2 text-2xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /><span className="sr-only">Finding moments…</span><span aria-hidden="true">Finding moments…</span></div>
       ) : proposals.length === 0 ? (
         <>
-          <p className="mb-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No AI moments yet — find the standalone clips in this source.</p>
-          <button onClick={findMoments} className="flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs" style={{ borderColor: 'hsl(var(--primary))', color: 'hsl(var(--primary))' }}><Scissors className="h-3.5 w-3.5" />Find clips</button>
+          <p className="mb-2 text-3xs text-muted-foreground">No AI moments yet — find the standalone clips in this source.</p>
+          <button onClick={findMoments} className="flex w-full items-center justify-center gap-1.5 rounded-md border border-primary py-2 text-2xs text-primary"><Scissors className="h-3.5 w-3.5" />Find clips</button>
         </>
       ) : (
         <>
@@ -423,16 +422,16 @@ function MomentsInspector({ ctx }) {
             const on = s.id === selectedSegmentId
             const dur = Math.max(0, (Number(s.end_sec) || 0) - (Number(s.start_sec) || 0))
             return (
-              <div key={s.id} className="mb-1.5 rounded-md border p-2" style={{ borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', background: on ? 'hsl(var(--primary)/0.06)' : undefined }}>
+              <div key={s.id} className={`mb-1.5 rounded-md border p-2 ${on ? 'border-primary bg-primary/[0.06]' : 'border-border'}`}>
                 <button onClick={() => applySegment(s)} className="block w-full text-left">
-                  <span className="block text-2xs font-medium" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>{s.hook || 'Moment'}</span>
-                  <span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(Number(s.start_sec) || 0)} · {Math.round(dur)}s</span>
+                  <span className={`block text-2xs font-medium ${on ? 'text-primary' : 'text-foreground'}`}>{s.hook || 'Moment'}</span>
+                  <span className="block text-3xs text-muted-foreground">{fmt(Number(s.start_sec) || 0)} · {Math.round(dur)}s</span>
                 </button>
-                <button onClick={() => discardSegment(s.id)} className="mt-1 text-3xs" style={{ color: 'hsl(0 60% 50%)' }}>Discard</button>
+                <button onClick={() => discardSegment(s.id)} className="mt-1 text-3xs text-destructive">Discard</button>
               </div>
             )
           })}
-          <button onClick={findMoments} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-3xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}><Scissors className="h-3 w-3" />Re-find</button>
+          <button onClick={findMoments} className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-border py-1.5 text-3xs text-muted-foreground"><Scissors className="h-3 w-3" />Re-find</button>
         </>
       )}
     </InspectorShell>
