@@ -259,7 +259,7 @@ function DraggableCard({ item }) {
       {...listeners}
       onClick={(e) => e.preventDefault()}
       aria-label="Drag to move"
-      className="absolute top-1 right-1 z-10 grid place-items-center h-6 w-6 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted cursor-grab touch-none"
+      className="absolute top-1 right-1 z-10 grid place-items-center h-6 w-6 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted cursor-grab touch-none"
     >
       <GripVertical className="h-3.5 w-3.5" />
     </button>

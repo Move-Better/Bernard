@@ -230,7 +230,7 @@ export default function CampaignsSettings() {
 function CampaignList({ title, items, onEdit, muted, staffMap }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className={`text-2xs font-bold uppercase tracking-widest ${muted ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
+      <h2 className={`text-2xs font-bold uppercase tracking-widest ${muted ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}>
         {title} <span className="opacity-70">· {items.length}</span>
       </h2>
       <div className="flex flex-col gap-2">

@@ -41,7 +41,7 @@ export default function PageHelp({ pageKey, variant = 'default' }) {
   if (!content) return null
 
   const chipCls = variant === 'onGradient'
-    ? 'inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors'
+    ? 'inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors'
     : 'inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors'
 
   return (

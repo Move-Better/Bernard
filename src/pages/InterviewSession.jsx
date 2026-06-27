@@ -1993,7 +1993,7 @@ export default function InterviewSession() {
             >
               <Video className="h-3.5 w-3.5" />
               Recorded a video too? Attach it
-              <span className="text-muted-foreground/70">(optional)</span>
+              <span className="text-muted-foreground/40">(optional)</span>
             </button>
           </div>
         </div>

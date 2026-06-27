@@ -23,16 +23,16 @@ export function ToneCard({ toneObj, label, value, onChange, systemDefault }) {
               {hasContent ? (
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">{value.slice(0, 80)}{value.length > 80 ? '…' : ''}</p>
               ) : systemDefault ? (
-                <p className="text-xs text-muted-foreground/60 mt-0.5 truncate italic">{systemDefault.slice(0, 90)}{systemDefault.length > 90 ? '…' : ''}</p>
+                <p className="text-xs text-muted-foreground/40 mt-0.5 truncate italic">{systemDefault.slice(0, 90)}{systemDefault.length > 90 ? '…' : ''}</p>
               ) : (
-                <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Using system default</p>
+                <p className="text-xs text-muted-foreground/40 mt-0.5 italic">Using system default</p>
               )}
             </div>
           </AccordionTrigger>
           <AccordionContent className="border-t border-input px-3 pb-3 pt-2 space-y-2">
             {systemDefault && !hasContent && (
               <div className="rounded-md bg-muted/40 border border-input px-2.5 py-1.5">
-                <p className="text-3xs uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">System default</p>
+                <p className="text-3xs uppercase tracking-wider text-muted-foreground/40 font-semibold mb-0.5">System default</p>
                 <p className="text-2xs text-muted-foreground italic leading-relaxed">{systemDefault}</p>
               </div>
             )}

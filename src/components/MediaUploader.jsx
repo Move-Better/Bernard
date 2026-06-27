@@ -347,7 +347,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               })}
             </div>
             {speakerRole === 'patient_guest' && (
-              <div className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/15 p-2">
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/10 p-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
                 <p className="text-2xs text-warning">
                   Verify written consent from the patient before uploading. Patient-guest content cannot be published without it.
@@ -504,7 +504,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             Browse files
           </button>
           {(purpose === 'interview' || purpose === 'broll') && (
-            <p className="text-2xs text-muted-foreground/80 mb-1">
+            <p className="text-2xs text-muted-foreground/40 mb-1">
               Dragging from macOS Photos? Use the Browse files button — Photos&apos; drag handler sends preview frames, not the source video.
             </p>
           )}
@@ -543,7 +543,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                     </div>
                   </div>
                   {p.mismatch ? (
-                    <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium">
+                    <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded bg-warning/10 text-warning font-medium">
                       type mismatch
                     </span>
                   ) : (

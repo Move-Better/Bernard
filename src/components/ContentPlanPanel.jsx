@@ -420,7 +420,7 @@ function WordsValidatedSwitch({ keystoneTitle }) {
 
         {/* Gear-shift chip row */}
         <div className="my-7 flex items-center justify-center gap-3 text-sm">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/8 text-foreground font-medium">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/10 text-foreground font-medium">
             <PenLine className="w-4 h-4" />
             Stories: done
           </span>

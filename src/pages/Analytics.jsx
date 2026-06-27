@@ -201,7 +201,7 @@ function ExitAnalysisRead({ data }) {
   }
   if (!data.exitRisks?.length) {
     return (
-      <div className="rounded-2xl border border-success/15 bg-success/10 p-4">
+      <div className="rounded-2xl border border-success/20 bg-success/10 p-4">
         <div className="flex items-start gap-3">
           <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
           <p className="text-sm">
@@ -618,7 +618,7 @@ export default function Analytics() {
         {/* Live-now: page-health check (no GA4 needed) */}
         {health && health.checked > 0 && (
           health.issues.length === 0 ? (
-            <div className="rounded-2xl border border-success/15 bg-success/10 p-4">
+            <div className="rounded-2xl border border-success/20 bg-success/10 p-4">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
                 <p className="text-sm">
@@ -676,7 +676,7 @@ export default function Analytics() {
             <GitBranch className="h-4 w-4 text-primary" aria-hidden="true" />
             <h2 className="font-semibold">What Bernard already did with this</h2>
           </div>
-          <div className="rounded-2xl border border-success/15 bg-success/10 p-5">
+          <div className="rounded-2xl border border-success/20 bg-success/10 p-5">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
               <div className="text-sm leading-relaxed">

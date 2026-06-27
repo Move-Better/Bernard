@@ -320,7 +320,7 @@ export default function StaffProfile() {
                 <footer className="text-xs text-muted-foreground">
                   — {staffMember.name.split(' ')[0]}
                   {arc.standoutQuote.interviewTopic && (
-                    <span className="ml-1 text-muted-foreground/60">· {arc.standoutQuote.interviewTopic}</span>
+                    <span className="ml-1 text-muted-foreground/40">· {arc.standoutQuote.interviewTopic}</span>
                   )}
                 </footer>
               </blockquote>
@@ -1262,7 +1262,7 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
           <p className="font-medium text-sm truncate" title={interview.topic}>{interview.topic}</p>
           <p className="text-xs text-muted-foreground">
             {formatRelativeDate(interview.updated_at)}
-            {ownerName && <span className="ml-2 text-muted-foreground/60">· by {ownerName}</span>}
+            {ownerName && <span className="ml-2 text-muted-foreground/40">· by {ownerName}</span>}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

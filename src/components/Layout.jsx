@@ -192,7 +192,7 @@ export default function Layout({ children }) {
               {section.label && (collapsed ? (
                 <div className="mx-2 my-1.5 border-t border-border/70" aria-hidden="true" />
               ) : (
-                <p className="px-3 pt-1 pb-1 text-3xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <p className="px-3 pt-1 pb-1 text-3xs font-semibold uppercase tracking-wider text-muted-foreground/40">
                   {section.label}
                 </p>
               ))}
@@ -315,7 +315,7 @@ export default function Layout({ children }) {
             {navSections.map((section, si) => (
               <div key={section.label || 'top'} className={si > 0 ? 'pt-2' : ''}>
                 {section.label && (
-                  <p className="px-3 pt-1 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  <p className="px-3 pt-1 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/40">
                     {section.label}
                   </p>
                 )}
@@ -328,7 +328,7 @@ export default function Layout({ children }) {
                       >
                         {item.icon && <item.icon className="h-4 w-4 shrink-0" />}
                         <span className="flex-1">{item.label}</span>
-                        {item.hint && <span className="text-2xs text-muted-foreground/60">{item.hint}</span>}
+                        {item.hint && <span className="text-2xs text-muted-foreground/40">{item.hint}</span>}
                       </Link>
                     </DrawerClose>
                   ))}
@@ -518,7 +518,7 @@ function SidebarNavLink({ to, label, hint, badge, active, icon: Icon, collapsed 
     >
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
-      {!collapsed && hint && <span className="text-3xs text-muted-foreground/60 shrink-0">{hint}</span>}
+      {!collapsed && hint && <span className="text-3xs text-muted-foreground/40 shrink-0">{hint}</span>}
       {!collapsed && badge && <span className="text-3xs font-semibold bg-warning/20 text-warning px-1.5 py-0.5 rounded-full shrink-0">{badge}</span>}
       {collapsed && (
         <span className="absolute left-full ml-2 px-2 py-1 text-xs font-medium bg-popover border border-border text-popover-foreground rounded-md shadow-md

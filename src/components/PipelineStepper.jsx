@@ -30,10 +30,10 @@ export default function PipelineStepper({ current, className = '' }) {
             ? 'bg-primary/10 text-primary'
             : 'bg-muted text-muted-foreground'
         const badge = active
-          ? 'bg-white/25 text-primary-foreground'
+          ? 'bg-white/20 text-primary-foreground'
           : done
             ? 'bg-primary/20 text-primary'
-            : 'bg-muted-foreground/15 text-muted-foreground'
+            : 'bg-muted-foreground/10 text-muted-foreground'
 
         return (
           <div key={id} className="flex shrink-0 items-center gap-1 sm:gap-1.5">

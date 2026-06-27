@@ -1016,7 +1016,7 @@ function InstagramStoryPreview({ content, mediaUrls = [], overlayText = null, te
         {/* Video affordance */}
         {isVideo && (
           <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/25">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm ring-1 ring-white/30">
               <Play className="ml-0.5 h-6 w-6 text-white" />
             </div>
           </div>

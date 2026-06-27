@@ -93,7 +93,7 @@ function SidebarSubGroup({ item }) {
   const location = useLocation()
   return (
     <div className="space-y-0.5">
-      <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground/70">
+      <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground/40">
         {item.label}
       </div>
       <div className="pl-3 space-y-0.5">
@@ -226,7 +226,7 @@ export default function SettingsLayout() {
             return (
               <div key={group.label}>
                 {!group.noHeader && (
-                  <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
+                  <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/40 px-2.5 mb-1">
                     {group.label}
                   </p>
                 )}

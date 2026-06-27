@@ -206,7 +206,7 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
             </Badge>
           )}
           {isInProgress && (
-            <Badge className="text-xs bg-warning/15 text-warning border-0 px-1.5 py-0">In progress</Badge>
+            <Badge className="text-xs bg-warning/10 text-warning border-0 px-1.5 py-0">In progress</Badge>
           )}
           {isCompleted && (
             <Badge className="text-xs bg-success/10 text-success border-0 px-1.5 py-0 gap-1">

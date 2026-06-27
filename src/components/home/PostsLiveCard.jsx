@@ -67,8 +67,8 @@ export default function PostsLiveCard({ stories = [], userId }) {
   if (live.length === 0) return null
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-agreement-signal/25 bg-gradient-to-b from-agreement-signal/5 to-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]">
-      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-agreement-signal/15">
+    <div className="rounded-2xl overflow-hidden border border-agreement-signal/30 bg-gradient-to-b from-agreement-signal/10 to-transparent shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-agreement-signal/20">
         <PartyPopper className="h-4 w-4 text-agreement-signal" aria-hidden="true" />
         <h2 className="text-base font-bold tracking-tight text-agreement-signal flex-1">Your posts are live</h2>
         <span className="nx-pill nx-pill-emerald">
@@ -84,7 +84,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
             <Link
               key={item.storyId}
               to={`/stories/${item.storyId}`}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-agreement-signal/5 transition-colors group"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-agreement-signal/10 transition-colors group"
             >
               <div className="h-11 w-11 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
                 <Icon className="h-5 w-5" aria-hidden="true" />
@@ -104,7 +104,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
         })}
       </div>
 
-      <div className="px-4 py-2.5 bg-agreement-signal/5 text-2xs text-agreement-signal flex items-center gap-1.5">
+      <div className="px-4 py-2.5 bg-agreement-signal/10 text-2xs text-agreement-signal flex items-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         Reach &amp; “how’d you hear about us?” will land here next — closing the outcome loop.
       </div>

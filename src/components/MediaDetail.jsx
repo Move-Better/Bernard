@@ -757,7 +757,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 </label>
                 {!staffId && (
                   <span
-                    className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/30"
+                    className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/30"
                     title="No staff member attached — video renders fall back to the workspace name and AI captions can't apply this staff member's voice."
                   >
                     <AlertTriangle className="h-3 w-3" />
@@ -995,7 +995,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">
                 Alt text
-                <span className="text-muted-foreground/70 font-normal ml-1">
+                <span className="text-muted-foreground/40 font-normal ml-1">
                   · describes what&apos;s in the image for screen readers + captions
                 </span>
               </label>

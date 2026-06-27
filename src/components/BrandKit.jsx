@@ -798,7 +798,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
       )}
 
       {!isOnboarding && !roleAssignments.primary_logo && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 dark:bg-warning/15 p-3 flex items-start gap-2">
+        <div className="rounded-lg border border-warning/40 bg-warning/10 dark:bg-warning/20 p-3 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
           <div className="text-xs text-warning">
             <strong>No primary logo set.</strong>{' '}

@@ -497,7 +497,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
               }`}
             >
               {uploading ? (
-                <Loader2 className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3 animate-spin" aria-hidden="true" />
+                <Loader2 className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3 animate-spin" aria-hidden="true" />
               ) : (
                 <Upload className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
               )}

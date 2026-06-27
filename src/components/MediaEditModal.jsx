@@ -173,7 +173,7 @@ export default function MediaEditModal({ asset, onClose, onSaved, inline = false
             <div className="shrink-0">
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">
                 Variant label
-                <span className="text-muted-foreground/70 font-normal ml-1">
+                <span className="text-muted-foreground/40 font-normal ml-1">
                   · how this variant shows up in the library
                 </span>
               </label>

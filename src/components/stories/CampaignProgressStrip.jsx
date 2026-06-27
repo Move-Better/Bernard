@@ -56,7 +56,7 @@ export default function CampaignProgressStrip({ campaign, staff = [] }) {
           </span>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <div className="h-1.5 w-32 sm:w-40 rounded-full bg-white/25 overflow-hidden">
+          <div className="h-1.5 w-32 sm:w-40 rounded-full bg-white/20 overflow-hidden">
             <div
               className="h-full bg-white transition-all duration-300"
               style={{ width: `${pct}%` }}
@@ -80,7 +80,7 @@ export default function CampaignProgressStrip({ campaign, staff = [] }) {
           {showPending ? (
             <ul className="mt-2 flex flex-wrap gap-2">
               {pendingStaff.map(({ id, name }) => (
-                <li key={id} className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-full pl-1 pr-3 py-0.5">
+                <li key={id} className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-full pl-1 pr-3 py-0.5">
                   <StaffChip id={id} name={name} size="sm" showName
                     nameClassName="text-white/95 text-xs font-medium"
                   />

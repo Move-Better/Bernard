@@ -143,7 +143,7 @@ export default function VoiceTonePage() {
       {/* Breadcrumb + heading */}
       <div>
         <div className="flex items-center justify-between">
-          <p className="text-2xs text-muted-foreground/80">
+          <p className="text-2xs text-muted-foreground/40">
             Settings · {interviewerName} · Your voice
           </p>
           <Link

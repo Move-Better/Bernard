@@ -120,7 +120,7 @@ export default function PlanNextInterview({
                     >
                       <Plus className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary transition-colors" aria-hidden="true" />
                       <span className="text-sm text-foreground flex-1 min-w-0">{t.topic}</span>
-                      <span className="text-2xs text-muted-foreground/60 shrink-0 hidden sm:inline">
+                      <span className="text-2xs text-muted-foreground/40 shrink-0 hidden sm:inline">
                         {t.priority === 'high' ? 'high demand' : t.priority === 'medium' ? 'medium' : ''}
                       </span>
                     </Link>
@@ -140,7 +140,7 @@ export default function PlanNextInterview({
               >
                 <Plus className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary transition-colors" aria-hidden="true" />
                 <span className="text-sm text-foreground flex-1 min-w-0">{t.topic}</span>
-                <span className="text-2xs text-muted-foreground/60 shrink-0 hidden sm:inline">
+                <span className="text-2xs text-muted-foreground/40 shrink-0 hidden sm:inline">
                   {t.priority === 'high' ? 'high demand' : t.priority === 'medium' ? 'medium' : ''}
                 </span>
               </Link>

@@ -732,10 +732,10 @@ export default function MediaHub() {
                 <div className="flex items-baseline justify-between gap-2 mb-3">
                   <p className="text-2xs uppercase tracking-widest text-muted-foreground font-semibold">
                     {group.label}
-                    <span className="ml-1.5 normal-case tracking-normal font-medium text-muted-foreground/80">· {group.assets.length}</span>
+                    <span className="ml-1.5 normal-case tracking-normal font-medium text-muted-foreground/40">· {group.assets.length}</span>
                   </p>
                   {group.sub && (
-                    <p className="text-2xs text-muted-foreground/80">{group.sub}</p>
+                    <p className="text-2xs text-muted-foreground/40">{group.sub}</p>
                   )}
                 </div>
                 <MediaGrid

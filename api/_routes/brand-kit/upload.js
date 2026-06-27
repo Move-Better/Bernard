@@ -73,7 +73,7 @@ async function handler(req, res) {
     if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
     const auth = await requireRole(req, HANDSHAKE_ALLOWED_ROLES, { orgId: scope.workspace.clerk_org_id })
     if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', scope.id))) return
   }
 
   try {

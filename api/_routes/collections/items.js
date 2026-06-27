@@ -64,7 +64,7 @@ async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
+  if (!(await enforceLimit(req, res, 'generic', scope.id))) return
 
   // Always confirm the collection belongs to this workspace.
   const colCheck = await verifyScope(scope, 'collections', [collectionId])

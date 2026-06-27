@@ -159,7 +159,7 @@ export default function AccessMatrix() {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <p className="text-2xs text-muted-foreground/80">Settings &middot; {wsName} &middot; Access matrix</p>
+        <p className="text-2xs text-muted-foreground/40">Settings &middot; {wsName} &middot; Access matrix</p>
         <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center">
           <span className="nx-rail" aria-hidden="true" />
           Team access matrix

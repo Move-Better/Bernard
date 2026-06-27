@@ -80,7 +80,7 @@ function WordsPanel({ piece, updateItem }) {
           placeholder="Caption visible to followers…"
           className="min-h-[200px] flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
         />
-        <p className="shrink-0 text-3xs text-muted-foreground/70">
+        <p className="shrink-0 text-3xs text-muted-foreground/40">
           Saves when you click away. The live preview updates as you type.
         </p>
       </div>
@@ -219,7 +219,7 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-3xs text-muted-foreground/70">Sets the crop used when you bake a brand look in Grade.</p>
+            <p className="mt-1 text-3xs text-muted-foreground/40">Sets the crop used when you bake a brand look in Grade.</p>
           </div>
         )}
 
@@ -492,7 +492,7 @@ function GradePanel({ piece, aspect }) {
           {composing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Palette className="h-3.5 w-3.5" />}
           {composed ? 'Re-bake to image' : 'Bake to image'}
         </button>
-        <p className="text-3xs text-muted-foreground/70">
+        <p className="text-3xs text-muted-foreground/40">
           Bakes server-side at the {aspect || '4:5'} crop — the baked image is exactly what publishes.
         </p>
       </div>

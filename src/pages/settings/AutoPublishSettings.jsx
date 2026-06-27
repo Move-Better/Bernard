@@ -202,7 +202,7 @@ export default function AutoPublishSettings() {
                     aria-label="Minimum voice fidelity score"
                     className="w-full h-2 rounded-full accent-primary cursor-pointer"
                   />
-                  <div className="flex justify-between text-2xs text-muted-foreground/60 mt-0.5">
+                  <div className="flex justify-between text-2xs text-muted-foreground/40 mt-0.5">
                     <span>Permissive</span><span>Default (7)</span><span>Strict</span>
                   </div>
                   <p className="text-2xs text-muted-foreground">
@@ -227,7 +227,7 @@ export default function AutoPublishSettings() {
                     aria-label="Minimum clip-topic similarity"
                     className="w-full h-2 rounded-full accent-primary cursor-pointer"
                   />
-                  <div className="flex justify-between text-2xs text-muted-foreground/60 mt-0.5">
+                  <div className="flex justify-between text-2xs text-muted-foreground/40 mt-0.5">
                     <span>Permissive</span><span>Default</span><span>Strict</span>
                   </div>
                   <p className="text-2xs text-muted-foreground">

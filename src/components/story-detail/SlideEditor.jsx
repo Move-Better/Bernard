@@ -680,7 +680,7 @@ function SlideInspector({
       {/* Theme — visual swatch grid with deck inheritance */}
       <div className="space-y-2">
         <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Theme <span className="font-normal normal-case text-muted-foreground/70">· colour &amp; style</span>
+          Theme <span className="font-normal normal-case text-muted-foreground/40">· colour &amp; style</span>
         </p>
         <button
           type="button"
@@ -696,16 +696,16 @@ function SlideInspector({
         </button>
         {/* Two families: Photo templates (full-bleed photo + overlay) and Text
             cards (no photo, branded). Family derived via templateFamily. */}
-        <p className="pt-0.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/80">
-          Photo templates <span className="font-normal normal-case text-muted-foreground/60">· full-bleed photo</span>
+        <p className="pt-0.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/40">
+          Photo templates <span className="font-normal normal-case text-muted-foreground/40">· full-bleed photo</span>
         </p>
         <div className="grid grid-cols-2 gap-1.5">
           {allThemes.filter((t) => templateFamily(resolveTheme(t.id, customThemes)) === 'photo').map((t) => (
             <ThemeTile key={t.id} t={t} slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} customThemes={customThemes} thumbSig={thumbSig} onChange={onChange} />
           ))}
         </div>
-        <p className="pt-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/80">
-          Text cards <span className="font-normal normal-case text-muted-foreground/60">· no photo</span>
+        <p className="pt-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/40">
+          Text cards <span className="font-normal normal-case text-muted-foreground/40">· no photo</span>
         </p>
         <div className="grid grid-cols-2 gap-1.5">
           {allThemes.filter((t) => templateFamily(resolveTheme(t.id, customThemes)) === 'text').map((t) => (
@@ -1333,7 +1333,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
           <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-[26px]`} aria-label="Center vertically">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
-          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary border-primary/35 bg-primary/[0.06]`} aria-label="Center on canvas">
+          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary border-primary/30 bg-primary/10`} aria-label="Center on canvas">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
             Center
           </button>

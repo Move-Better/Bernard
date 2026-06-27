@@ -902,7 +902,7 @@ export default function OnboardingInterview() {
           {/* ── In-place error (no reload) ──────────────────────────── */}
           {error && (
             <div
-              className="mb-3 rounded-xl border border-destructive/35 bg-destructive/[0.06] px-4 py-3"
+              className="mb-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3"
             >
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
