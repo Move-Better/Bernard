@@ -26,7 +26,6 @@ const MB_HANDLE   = workspace.social.instagram
 const MB_NAME     = workspace.name
 const MB_LOCATION = workspace.location
 const MB_INITIALS = workspace.socialAvatarInitials
-const MB_BLURB    = workspace.linkPreviewBlurb
 const MB_HOSTNAME = workspace.websiteHostname
 const MB_INDUSTRY = workspace.linkedInIndustry
 const MB_BOOKING  = workspace.prompt.bookingUrl
