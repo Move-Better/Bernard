@@ -995,6 +995,33 @@ function VoiceDock({
         )}
       </div>
 
+      {/* Live waveform strip — RAF drives the bar transforms; sits ABOVE the mic
+          (not behind it) so it reads as an audio meter and never pokes out as
+          stubs around the button. Collapses to 0 height when not listening. */}
+      <div
+        ref={waveformRef}
+        aria-hidden="true"
+        className={`flex items-center justify-center gap-[3px] overflow-hidden transition-all duration-300 ${
+          isListening ? 'opacity-100 h-6 mb-3' : 'opacity-0 h-0 mb-0'
+        }`}
+        style={{ color: 'hsl(var(--destructive))' }}
+      >
+        {Array.from({ length: 27 }, (_, i) => (
+          <span
+            key={i}
+            className="bg-current rounded-full"
+            style={{
+              width: '3px',
+              height: `${8 + Math.round(Math.abs(Math.sin(i * 1.3)) * 16)}px`,
+              transformOrigin: 'center',
+              transform: 'scaleY(0.3)',
+              willChange: 'transform',
+              flex: 'none',
+            }}
+          />
+        ))}
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <button
           onClick={onFinish}
@@ -1009,30 +1036,8 @@ function VoiceDock({
           <span className="text-3xs">Finish</span>
         </button>
 
-        <div className="relative flex items-center justify-center" style={{ width: 160, height: 88 }}>
-          <div
-            ref={waveformRef}
-            className={`absolute inset-0 flex items-center justify-center gap-[3px] transition-opacity duration-300 pointer-events-none ${
-              isListening ? 'opacity-100' : 'opacity-0'
-            }`}
-            aria-hidden="true"
-            style={{ color: 'hsl(var(--destructive))' }}
-          >
-            {Array.from({ length: 13 }, (_, i) => (
-              <span
-                key={i}
-                className="bg-current rounded-full"
-                style={{
-                  width: '3px',
-                  height: `${14 + Math.round(Math.abs(Math.sin(i * 1.3)) * 28)}px`,
-                  transformOrigin: 'center',
-                  transform: 'scaleY(0.25)',
-                  willChange: 'transform',
-                }}
-              />
-            ))}
-          </div>
-
+        <div className="relative flex items-center justify-center" style={{ width: 88, height: 88 }}>
+          {/* Mic ring + button (waveform lives in the strip above, not behind) */}
           <div className="relative flex items-center justify-center h-[72px] w-[72px]">
             {isListening && (
               <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'hsl(var(--destructive) / 0.22)', animationDuration: '1.6s' }} aria-hidden="true" />
