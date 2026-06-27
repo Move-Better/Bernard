@@ -183,16 +183,19 @@ async function transcribeAll(segmentPaths) {
  * background worker (waitUntil). Reads source_audio_url off the interview row,
  * stitches the transcript into messages[0], and flips transcribe_status.
  *
- * @param {{ interviewId: string }} args
+ * @param {{ interviewId: string, workspaceId?: string }} args
  * @returns {Promise<{ ok: boolean, chars?: number, segments?: number, error?: string }>}
  */
-export async function transcribeSeminar({ interviewId }) {
+export async function transcribeSeminar({ interviewId, workspaceId: callerWorkspaceId }) {
   // Resolve the audio URL AND the row's workspace_id before any early-exit
   // setStatus call — every write must be scoped by workspace_id.
+  // If the caller supplies workspaceId, scope the initial lookup for defense-in-depth.
   let audioUrl
   let workspaceId
   try {
-    const r = await sb(`interviews?id=eq.${interviewId}&select=id,workspace_id,source_audio_url`)
+    let lookupPath = `interviews?id=eq.${interviewId}&select=id,workspace_id,source_audio_url`
+    if (callerWorkspaceId) lookupPath += `&workspace_id=eq.${callerWorkspaceId}`
+    const r = await sb(lookupPath)
     const rows = r.ok ? await r.json() : []
     audioUrl = rows[0]?.source_audio_url
     workspaceId = rows[0]?.workspace_id

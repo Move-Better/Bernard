@@ -121,18 +121,18 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => onReview(m)}
-              className="px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium flex items-center gap-1.5 hover:bg-primary/10"
-            >
-              <Scissors className="h-4 w-4" aria-hidden="true" />Review &amp; trim
-            </button>
-            <button
-              type="button"
               disabled={saving}
               onClick={() => onSave(m)}
               className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}Looks good — save
+            </button>
+            <button
+              type="button"
+              onClick={() => onReview(m)}
+              className="px-3 py-1.5 rounded-lg border border-border text-muted-foreground text-sm font-medium flex items-center gap-1.5 hover:bg-muted"
+            >
+              <Scissors className="h-4 w-4" aria-hidden="true" />Review &amp; trim
             </button>
           </div>
           <button

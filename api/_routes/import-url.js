@@ -63,6 +63,26 @@ function isValidHttpUrl(str) {
   }
 }
 
+// Reject RFC-1918 / loopback / link-local targets to prevent SSRF.
+function isPrivateAddr(str) {
+  try {
+    const { hostname } = new URL(str)
+    return (
+      /^localhost$/i.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^::1$/.test(hostname) ||
+      /^fc00:/i.test(hostname) ||
+      /^fd[0-9a-f]{2}:/i.test(hostname)
+    )
+  } catch {
+    return false
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -81,6 +101,7 @@ export default async function handler(req, res) {
   const { url } = req.body || {}
   if (!url?.trim()) return res.status(400).json({ error: 'url is required' })
   if (!isValidHttpUrl(url.trim())) return res.status(400).json({ error: 'That doesn\'t look like a valid URL. Include https://' })
+  if (isPrivateAddr(url.trim())) return res.status(400).json({ error: 'That URL is not allowed' })
 
   const cleanUrl = url.trim()
 

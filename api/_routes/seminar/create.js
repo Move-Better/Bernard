@@ -48,7 +48,7 @@ function sb(path, init = {}) {
 // Fire the background transcription worker on a fresh instance. We don't await
 // the actual transcription — the worker schedules it via waitUntil and returns
 // 202 fast, so this resolves quickly and the create request returns to the user.
-async function kickWorker(baseUrl, interviewId) {
+async function kickWorker(baseUrl, interviewId, workspaceId) {
   if (!baseUrl || !process.env.CRON_SECRET) {
     console.error('[seminar/create] cannot kick worker — baseUrl or CRON_SECRET missing')
     return false
@@ -60,7 +60,7 @@ async function kickWorker(baseUrl, interviewId) {
         'content-type': 'application/json',
         authorization: `Bearer ${process.env.CRON_SECRET}`,
       },
-      body: JSON.stringify({ interviewId }),
+      body: JSON.stringify({ interviewId, workspaceId }),
       signal: AbortSignal.timeout(25_000),
     })
     return r.ok
@@ -183,7 +183,7 @@ export default async function handler(req, res) {
   const baseUrl = vercelHost
     ? `https://${vercelHost}`
     : (req.headers.host ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}` : null)
-  const kicked = await kickWorker(baseUrl, interview.id)
+  const kicked = await kickWorker(baseUrl, interview.id, ws.id)
   if (!kicked) {
     // The row exists with transcribe_status='processing'; without a worker it
     // would poll forever. Mark it failed so the UI surfaces a retry instead.

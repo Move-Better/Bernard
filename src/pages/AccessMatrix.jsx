@@ -278,7 +278,7 @@ export default function AccessMatrix() {
                               {TIER_LABEL[person.permission_tier] || person.permission_tier}
                             </span>
                             {dirtyIds.has(person.id) && (
-                              <button onClick={() => resetPerson(person.id)} className="text-xs px-1 py-0.5 text-[hsl(var(--owner-accent))] hover:underline">reset</button>
+                              <button type="button" onClick={() => resetPerson(person.id)} className="inline-flex items-center justify-center min-h-6 min-w-6 px-1 text-xs text-[hsl(var(--owner-accent))] hover:underline">reset</button>
                             )}
                           </div>
                         </div>

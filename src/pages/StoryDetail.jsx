@@ -72,7 +72,7 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
         onChange={(e) => onChange(e.target.value || null)}
         disabled={disabled}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-        aria-label={placeholder}
+        aria-label={selected ? `${label || placeholder}: ${selected.label}` : placeholder}
       >
         <option value="">— Unset —</option>
         {options.map((o) => (

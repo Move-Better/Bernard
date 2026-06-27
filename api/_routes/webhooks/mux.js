@@ -42,13 +42,14 @@ async function rehostMuxThumbnail(playbackId, assetId, workspaceId) {
     }
     // Mux thumbnails are small JPEGs; guard against an unexpectedly large body
     // before buffering it into memory (CLAUDE.md large-file rule).
-    const len = Number(res.headers.get('content-length') || 0)
-    if (len && len > 25 * 1024 * 1024) {
+    const lenHeader = res.headers.get('content-length')
+    const len = lenHeader !== null ? Number(lenHeader) : null
+    if (len !== null && len > 25 * 1024 * 1024) {
       console.error(`[mux/webhook] thumbnail too large (${len} bytes); skipping rehost`)
       return null
     }
     const buf = Buffer.from(await res.arrayBuffer())
-    // Guard for missing Content-Length header — cap after buffering.
+    // Post-buffer guard covers absent or inaccurate Content-Length header.
     if (buf.length > 25 * 1024 * 1024) {
       console.error(`[mux/webhook] thumbnail too large after buffer (${buf.length} bytes); skipping rehost`)
       return null
