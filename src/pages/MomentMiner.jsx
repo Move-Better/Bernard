@@ -15,6 +15,7 @@ import { findClips, listMoments, updateSegment, renderSegments } from '@/lib/cli
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import CoveragePanel from '@/components/slate/CoveragePanel'
+import PageSkeleton from '@/components/PageSkeleton'
 
 const REFETCH_INTERVAL_MS = 30_000
 // Hard cap on every Slate poll loop. Detection of a long seminar can run for
@@ -520,6 +521,8 @@ export default function MomentMiner() {
       toast.error(e?.message || 'Could not dismiss.')
     }
   }
+
+  if (isLoading) return <PageSkeleton variant="grid" />
 
   return (
     <div className="flex flex-col gap-4">

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send, Trash2 } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
+import PageSkeleton from '@/components/PageSkeleton'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { Badge } from '@/components/ui/badge'
 import { useContentItems, useDeleteContentItem } from '@/lib/queries'
@@ -133,6 +134,8 @@ export default function Storyboard() {
       document.getElementById('ready')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [hash, isLoading, ready.length])
+
+  if (isLoading) return <PageSkeleton variant="grid" />
 
   return (
     <div className="space-y-6 py-6">

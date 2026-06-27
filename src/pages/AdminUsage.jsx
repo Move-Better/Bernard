@@ -4,6 +4,7 @@ import { Globe, Lock } from 'lucide-react'
 import { usePlatformUsage } from '@/lib/queries'
 import { usePlatformAdmin } from '@/lib/usePlatformAdmin'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import PageSkeleton from '@/components/PageSkeleton'
 
 function relTime(iso) {
   if (!iso) return 'never'
@@ -74,10 +75,12 @@ function WsRow({ w }) {
 export default function AdminUsage() {
   useDocumentTitle('Platform usage')
   const { isPlatformAdmin, isLoading: gateLoading } = usePlatformAdmin()
-  const { data = {}, isLoading } = usePlatformUsage({ enabled: isPlatformAdmin })
+  const { data = {}, isPending } = usePlatformUsage({ enabled: isPlatformAdmin })
   const [onlyAtRisk, setOnlyAtRisk] = useState(false)
 
   if (!gateLoading && !isPlatformAdmin) return <Navigate to="/" replace />
+  // First load → content-shaped skeleton, never the empty table flash.
+  if (gateLoading || isPending) return <PageSkeleton variant="dashboard" />
 
   const t = data.topline || {}
   let rows = data.workspaces || []
@@ -130,7 +133,7 @@ export default function AdminUsage() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && !isLoading && (
+              {rows.length === 0 && (
                 <tr><td colSpan={8} className="py-6 text-center text-sm text-muted-foreground">No workspaces.</td></tr>
               )}
               {rows.map((w) => <WsRow key={w.id} w={w} />)}

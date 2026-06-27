@@ -13,6 +13,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights, totalReach, sumField } from '@/lib/insightsReads'
 import { buildCostView, fmtUsd } from '@/lib/costEstimate'
+import PageSkeleton from '@/components/PageSkeleton'
 
 // ── Insights advisor ──────────────────────────────────────────────────────────
 //
@@ -449,7 +450,7 @@ export default function Analytics() {
   useDocumentTitle('Insights')
   const ws = useWorkspace()
   const { isEditor, isLoading: roleLoading } = useUserRole()
-  const { data: stories = [] } = useStories()
+  const { data: stories = [], isLoading: storiesLoading } = useStories()
   const { data: performers = [] } = useTopPerformers()
   const { data: recap } = useWorkspaceRecap()
   const { data: topics } = useTopicSuggestions()
@@ -460,6 +461,8 @@ export default function Analytics() {
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
+
+  if (storiesLoading) return <PageSkeleton variant="dashboard" />
 
   const assetName = ws?.display_name || 'This asset'
 

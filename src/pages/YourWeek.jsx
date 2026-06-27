@@ -16,8 +16,8 @@ import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes } f
 import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { toast } from '@/lib/toast'
-import LoadingState from '@/components/LoadingState'
 import PageHelp from '@/components/PageHelp'
+import PageSkeleton from '@/components/PageSkeleton'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 // F2.3 — "Your week": the producer's plan/review hub (Phase 2).
@@ -366,7 +366,7 @@ export default function YourWeek() {
     }
   }
 
-  if (roleLoading || isLoading) return <LoadingState />
+  if (roleLoading || isLoading) return <PageSkeleton variant="dashboard" />
 
   const quiet = new Set((data?.quietDays || ['sat', 'sun']).map((q) => q.toLowerCase()))
   const cadence = data?.cadence || {}

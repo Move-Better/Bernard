@@ -16,6 +16,7 @@ import { getVoiceModes } from '@/lib/prompts'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
+import PageSkeleton from '@/components/PageSkeleton'
 
 // Content-style options for the inline "New goal" form. Mirrors the campaigns
 // content_style enum (api/campaigns/upsert.js ALLOWED_CONTENT_STYLE).
@@ -158,6 +159,8 @@ export default function NewNewsletter() {
   const matchesExistingStaff = staffList.some(
     (s) => s.name.trim().toLowerCase() === staffName.trim().toLowerCase(),
   )
+
+  if (staffLoading || campaignsLoading) return <PageSkeleton variant="list" />
 
   // ── Goal-picker form ──────────────────────────────────────────────────────
   return (
