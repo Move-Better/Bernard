@@ -39,6 +39,10 @@ const VALID_PLATFORMS = [
   'tiktok', 'youtube_short', 'bluesky', 'mastodon', 'gbp', 'newsletter',
 ]
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// assigned_to is an email. Validate format before it lands in the eq. filter so a
+// blank/whitespace value can't silently match empty assignments (returning wrong
+// rows instead of a 400). encodeURIComponent already blocks operator injection.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const SELECT_COMMON =
   'id,source_asset_id,source_trim_start,source_trim_end,source_quote,' +
@@ -69,6 +73,9 @@ async function handler(req, res) {
   }
   if (sourceId && !UUID_RE.test(sourceId)) {
     return res.status(400).json({ error: 'invalid_source_id' })
+  }
+  if (assignedTo && !EMAIL_RE.test(assignedTo)) {
+    return res.status(400).json({ error: 'invalid_assigned_to' })
   }
 
   const scope = await workspaceScope(req)

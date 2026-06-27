@@ -4,7 +4,7 @@ import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, Loader2, RefreshCw, ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
-import LoadingState from '@/components/LoadingState'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useStories, useStaffSummaries } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
@@ -24,6 +24,49 @@ import PageHelp from '@/components/PageHelp'
 import InstallBanner from '@/components/home/InstallBanner'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
+
+// Greeting ribbon — depends only on user + workspace (not the stories/staff
+// queries), so it renders immediately, including during load.
+function GreetingRibbon({ greeting, callFirst }) {
+  return (
+    <div className="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
+      <div className="min-w-0">
+        <p className="text-2xs font-bold uppercase tracking-widest opacity-85">
+          Welcome back
+        </p>
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{greeting}</h1>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <PageHelp pageKey="home" variant="onGradient" />
+        {!callFirst && (
+          <Link
+            to="/new"
+            className="inline-flex items-center gap-2 bg-background text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-muted text-sm"
+          >
+            <Mic2 className="h-4 w-4" aria-hidden="true" />
+            Start your weekly call
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Loading skeleton — shows the real ribbon immediately, then content-shaped
+// placeholders for the data-dependent sections, instead of a blank spinner.
+function HomeSkeleton({ greeting, callFirst }) {
+  return (
+    <div className="flex flex-col gap-6" role="status" aria-busy="true">
+      <span className="sr-only">Loading your home…</span>
+      <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      </div>
+      <Skeleton className="h-32 rounded-xl" />
+      <Skeleton className="h-40 rounded-xl" />
+    </div>
+  )
+}
 
 export default function Home() {
   useDocumentTitle('Home')
@@ -156,7 +199,12 @@ export default function Home() {
 
   const isLoading = storiesLoading || staffLoading
 
-  if (isLoading) return <LoadingState />
+  const greeting = greetingFor(user, runtimeWorkspace)
+  // WeeklyCallHero is the primary front door for realtime-voice workspaces;
+  // the ribbon CTA is hidden so the hero owns the single capture action.
+  const callFirst = runtimeWorkspace?.realtime_voice_enabled === true
+
+  if (isLoading) return <HomeSkeleton greeting={greeting} callFirst={callFirst} />
 
   if (storiesError) {
     return (
@@ -175,35 +223,10 @@ export default function Home() {
     )
   }
 
-  const greeting = greetingFor(user, runtimeWorkspace)
-
-  // WeeklyCallHero is the primary front door for realtime-voice workspaces;
-  // the ribbon CTA is hidden so the hero owns the single capture action.
-  const callFirst = runtimeWorkspace?.realtime_voice_enabled === true
-
   return (
     <div className="flex flex-col gap-6">
       {/* Greeting ribbon — personality + single interview CTA */}
-      <div className="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <p className="text-2xs font-bold uppercase tracking-widest opacity-85">
-            Welcome back
-          </p>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{greeting}</h1>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <PageHelp pageKey="home" variant="onGradient" />
-          {!callFirst && (
-            <Link
-              to="/new"
-              className="inline-flex items-center gap-2 bg-background text-foreground font-semibold px-4 py-2 rounded-lg shadow hover:bg-muted text-sm"
-            >
-              <Mic2 className="h-4 w-4" aria-hidden="true" />
-              Start your weekly call
-            </Link>
-          )}
-        </div>
-      </div>
+      <GreetingRibbon greeting={greeting} callFirst={callFirst} />
 
       {/* Call-first hero — only for realtime-voice workspaces. */}
       {callFirst && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
