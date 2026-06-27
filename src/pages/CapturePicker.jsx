@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Phone, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -38,6 +38,30 @@ export default function CapturePicker() {
     navigate(`${path}${suffix}`)
   }
 
+  // Probe WebRTC + mic availability WITHOUT requesting permission.
+  // Returns false if HTTPS is missing, RTCPeerConnection is absent, media API
+  // is absent, or the microphone permission was previously denied. Any other
+  // uncertainty resolves to true — the real mic prompt happens inside PhoneCall.
+  async function supportsLiveInterview() {
+    try {
+      if (!window.isSecureContext) return false
+      if (!window.RTCPeerConnection) return false
+      if (!navigator.mediaDevices?.getUserMedia) return false
+      const perm = await navigator.permissions.query({ name: 'microphone' })
+      return perm.state !== 'denied'
+    } catch {
+      return !!(window.RTCPeerConnection && navigator.mediaDevices?.getUserMedia)
+    }
+  }
+
+  async function handleInterviewClick() {
+    if (realtimeEnabled && (await supportsLiveInterview())) {
+      go('/new/live-interview')
+    } else {
+      go('/new/interview')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -55,10 +79,14 @@ export default function CapturePicker() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Interview — existing AI-led flow */}
+        {/* Interview — voice-first (live) with automatic text fallback when
+            WebRTC or mic permission is unavailable. supportsLiveInterview()
+            checks capability silently before navigating; no mic prompt fires
+            here. The text path (/new/interview) is also reachable directly
+            from the fallback link inside PhoneCall if the call fails to start. */}
         <button
           type="button"
-          onClick={() => go('/new/interview')}
+          onClick={handleInterviewClick}
           className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
         >
           <Card className="h-full transition hover:border-primary hover:shadow-sm">
@@ -167,40 +195,6 @@ export default function CapturePicker() {
             </CardContent>
           </Card>
         </button>
-
-        {/* Live Interview — real-time duplex voice (Phase 5 spike, Beta).
-            Gated on workspace.realtime_voice_enabled; hidden entirely for
-            workspaces that haven't been onboarded yet. Originally shipped
-            as "Phone Call" — renamed 2026-05-24 because "live interview"
-            better matches what users called it and avoids confusion with
-            actual telephony. */}
-        {realtimeEnabled && (
-        <button
-          type="button"
-          onClick={() => go('/new/live-interview')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                  <Phone className="h-5 w-5" />
-                </div>
-                <span className="text-3xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded border text-muted-foreground">
-                  Beta
-                </span>
-              </div>
-              <div>
-                <div className="font-medium">Live interview</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Continuous voice conversation with Bernard. No press-to-talk —
-                  just talk, pause, think out loud.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-        )}
 
         {/* Patient handout — Phase 5 Feature 4. Gated on
             workspace.patient_handouts_enabled. Hidden entirely for
