@@ -20,6 +20,13 @@ import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
+import {
+  MAX_AUTO_PUBLISH_RETRIES,
+  unpostedTargets,
+  mergePostedLocations,
+  isChannelComplete,
+  decideClaimDisposition,
+} from '../../_lib/autoPublishRetry.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -67,27 +74,29 @@ async function resolveBundleGbpTargets(workspaceId) {
 }
 
 // Dispatch a GBP package via bundle.social (one post per location team).
-// Returns { bufferId: firstPostId } matching the Buffer return shape, or null on total failure.
+// `targets` is the PENDING (not-yet-posted) subset — the caller filters out
+// locations already recorded in published_channels so they're never re-sent.
+// Returns { posted: [{ id, postId }], failed: [id] } keyed by the stable target
+// id (= bundle teamId) so the caller can record exactly which locations posted.
 async function dispatchGbpBundle({ pkg, workspace, targets }) {
   const text = pkg.caption_text || pkg.topic || ''
   const mediaUrls = Array.isArray(pkg.renders)
     ? pkg.renders.filter((r) => r.channel === 'gbp_post' && r.blobUrl).map((r) => ({ url: r.blobUrl, type: 'image' }))
     : []
 
-  let firstPostId = null
-  const failedLocations = []
+  const posted = []
+  const failed = []
   for (const target of targets) {
     const pub = new BundlePublisher(workspace, { teamId: target.teamId })
     try {
       const result = await pub.publish({ platform: 'gbp', content: text, mediaUrls })
-      if (!firstPostId && result?.postId) firstPostId = result.postId
+      posted.push({ id: target.id, postId: result?.postId ?? null })
     } catch (e) {
       console.error('[auto-publish] bundle GBP dispatch failed for location:', target.label, e?.message)
-      failedLocations.push(target.teamId)
+      failed.push(target.id)
     }
   }
-  if (!firstPostId) return null
-  return { bufferId: firstPostId, failedLocations: failedLocations.length ? failedLocations : undefined }
+  return { posted, failed }
 }
 
 // Resolve Buffer GBP channel IDs for a workspace (same logic as api/publish/buffer.js).
@@ -102,7 +111,10 @@ async function resolveGbpChannelIds(workspaceId) {
     .map((row) => ({ locationId: row.id, channelId: row.gbp_location_id }))
 }
 
-// Post a GBP package to Buffer queue; returns { bufferId } or null on failure.
+// Post a GBP package to Buffer queue. `locationChannels` is the PENDING subset
+// (caller filters out already-posted locations). Returns
+// { posted: [{ id, postId }], failed: [id] } keyed by stable target id
+// (= Buffer channelId) so the caller records exactly which locations posted.
 async function dispatchGbp({ pkg, token, locationChannels }) {
   const text = pkg.caption_text || pkg.topic || ''
   const mediaUrls = Array.isArray(pkg.renders)
@@ -115,9 +127,9 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
     m.type?.startsWith('video') ? { video: { url: m.url } } : { image: { url: m.url } }
   )
 
-  let firstBufferId = null
-  const failedLocations = []
-  for (const { channelId } of locationChannels) {
+  const posted = []
+  const failed = []
+  for (const { id, channelId } of locationChannels) {
     const input = {
       channelId,
       text,
@@ -142,13 +154,12 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
     if (r.errors || r.data?.createPost?.__typename !== 'PostActionSuccess') {
       const msg = r.errors?.[0]?.message || r.data?.createPost?.message || 'unknown'
       console.error('[auto-publish] GBP createPost failed:', msg, 'channelId:', channelId, 'pkg:', pkg.id)
-      failedLocations.push(channelId)
+      failed.push(id)
       continue
     }
-    if (!firstBufferId) firstBufferId = r.data.createPost.post?.id
+    posted.push({ id, postId: r.data.createPost.post?.id ?? null })
   }
-  if (!firstBufferId) return null
-  return { bufferId: firstBufferId, failedLocations: failedLocations.length ? failedLocations : undefined }
+  return { posted, failed }
 }
 
 // Upsert the approved content_items row to scheduled + mark auto_published.
@@ -206,7 +217,7 @@ async function processWorkspace(ws, summary) {
     `story_packages?workspace_id=eq.${ws.id}` +
     `&status=eq.approved` +
     `&auto_published_at=is.null` +
-    `&select=id,workspace_id,staff_id,source_asset_id,topic,caption_text,similarity,voice_fidelity_score,channels,renders,qc_flags,source_asset:media_assets(consent_status,qc_flags)` +
+    `&select=id,workspace_id,staff_id,source_asset_id,topic,caption_text,similarity,voice_fidelity_score,channels,renders,qc_flags,auto_publish_state,source_asset:media_assets(consent_status,qc_flags)` +
     `&order=updated_at.asc` +
     `&limit=${BATCH_SIZE}`
   )
@@ -258,21 +269,28 @@ async function processWorkspace(ws, summary) {
 
     const result = evaluate({ pkg, sourceAsset: pkg.source_asset, workspace: ws })
 
-    // Write evaluation state back to the package row (so Slate badge is live).
-    await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        auto_publish_state: {
-          eligible:      result.eligible,
-          evaluated_at:  now,
-          channels:      result.channels,
-          gated_reasons: result.reasons,
-        },
-        updated_at: now,
-      }),
-    }).catch((e) => console.error('[auto-publish] state patch failed:', e?.message))
-
     if (!result.eligible || result.channels.length === 0) {
+      // Held / ineligible: refresh the evaluation snapshot for the Slate badge
+      // but PRESERVE any durable published_channels / retry_count from a prior
+      // run (a package can flip eligible→held — e.g. consent revoked — between
+      // runs; wiping its posted-set would let a later re-dispatch double-post
+      // to an already-posted location). This is race-free: an ineligible
+      // package is never claimed/dispatched, so no concurrent run is writing
+      // published_channels for it.
+      const prior = pkg.auto_publish_state || {}
+      await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          auto_publish_state: {
+            ...prior,
+            eligible:      result.eligible,
+            evaluated_at:  now,
+            channels:      result.channels,
+            gated_reasons: result.reasons,
+          },
+          updated_at: now,
+        }),
+      }).catch((e) => console.error('[auto-publish] state patch failed:', e?.message))
       held.push({ id: pkg.id, reasons: result.reasons })
       continue
     }
@@ -282,8 +300,9 @@ async function processWorkspace(ws, summary) {
     // reading the same auto_published_at=is.null package would each dispatch —
     // double-posting to the customer's Google Business Profile. The PATCH is
     // filtered on auto_published_at=is.null, so only one run wins the claim;
-    // a losing run gets 0 rows back and skips. The claim is released below if
-    // nothing actually dispatches, so a transient failure retries next run.
+    // a losing run gets 0 rows back and skips. The claim is released at the end
+    // (in a single atomic PATCH alongside the recorded posted-set) only when
+    // unfinished, retriable work remains, so failed locations retry next run.
     const claimRes = await sb(
       `story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}&auto_published_at=is.null`,
       {
@@ -298,105 +317,121 @@ async function processWorkspace(ws, summary) {
       continue
     }
 
-    // Dispatch each eligible channel.
-    let dispatchedAny = false
-    let failedAny = false
+    // AUTHORITATIVE posted-set: read published_channels from the CLAIM
+    // representation, never from the (possibly stale) batch-select pkg. The
+    // claim PATCH is the serialization point — the winning run sees the latest
+    // committed auto_publish_state, so already-posted locations are skipped even
+    // across overlapping runs. This is the core double-post guard.
+    const priorState = claimed[0]?.auto_publish_state || {}
+    const publishedChannels = { ...(priorState.published_channels || {}) }
+    const retryCount = (Number(priorState.retry_count) || 0) + 1
+
+    // Per-channel terminal status this run: 'complete' | 'retriable' | 'permanent'.
+    const channelStatus = {}
+
     for (const channel of result.channels) {
-      if (channel === 'gbp') {
-        let dispatch
-        if (isBundle) {
-          if (bundleGbpTargets.length === 0) {
-            held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No bundle GBP locations configured' }] })
-            failedAny = true
-            continue
-          }
-          dispatch = await dispatchGbpBundle({ pkg, workspace: ws, targets: bundleGbpTargets })
+      // Only GBP is wired (autoPublishGate LIVE_CHANNELS); guard defensively so
+      // a future live channel without a dispatch branch can't silently 'complete'.
+      if (channel !== 'gbp') continue
+
+      // Full per-location target list with a stable id (Buffer channelId /
+      // bundle teamId) used as the skip key in published_channels.
+      const targets = isBundle
+        ? bundleGbpTargets.map((t) => ({ id: t.teamId, teamId: t.teamId, label: t.label }))
+        : gbpChannels.map((c) => ({ id: c.channelId, channelId: c.channelId, locationId: c.locationId }))
+
+      if (targets.length === 0) {
+        // No locations configured — permanent (admin must fix); don't retry forever.
+        held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: `No ${isBundle ? 'bundle ' : ''}GBP locations configured` }] })
+        channelStatus[channel] = 'permanent'
+        continue
+      }
+
+      const channelState = publishedChannels[channel] || { locations: {} }
+      const pending = unpostedTargets(targets, channelState)
+
+      // Dispatch only the not-yet-posted locations. A null/throw is treated as
+      // "all pending failed" so nothing is silently marked posted.
+      let posted = []
+      let failed = []
+      if (pending.length > 0) {
+        const dispatch = isBundle
+          ? await dispatchGbpBundle({ pkg, workspace: ws, targets: pending }).catch(() => null)
+          : await dispatchGbp({ pkg, token: cred.secret, locationChannels: pending }).catch(() => null)
+        posted = dispatch?.posted || []
+        failed = dispatch?.failed || pending.map((t) => t.id)
+      }
+
+      // Merge newly-posted locations durably (monotonic — never drops a prior post).
+      const merged = mergePostedLocations(channelState, posted, now)
+      publishedChannels[channel] = merged
+
+      // Mark the GBP content_item scheduled the first time ANY location posts.
+      // On retry runs (content_item_id already recorded) this is skipped, so the
+      // post is never re-sent and the content_item isn't re-queried.
+      const anyPosted = Object.keys(merged.locations).length > 0
+      if (anyPosted && merged.content_item_id == null) {
+        const firstPostId = merged.buffer_id || posted[0]?.postId || Object.values(merged.locations)[0]?.post_id
+        const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: firstPostId })
+        if (ciId != null) {
+          merged.content_item_id = ciId
+          merged.buffer_id = firstPostId
+          merged.first_fired_at = merged.first_fired_at || now
         } else {
-          if (gbpChannels.length === 0) {
-            held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No GBP locations configured' }] })
-            failedAny = true
-            continue
-          }
-          dispatch = await dispatchGbp({
-            pkg,
-            token: cred.secret,
-            locationChannels: gbpChannels,
-            workspaceId: ws.id,
-          })
+          // Post fired but bookkeeping failed — retry the marking next run
+          // (post NOT re-sent: the location is already recorded above).
+          console.error('[auto-publish] GBP post fired but markContentItemScheduled returned null — will retry bookkeeping next run (post NOT re-sent)', { pkgId: pkg.id, channel, retryCount })
         }
-        if (!dispatch) {
-          held.push({ id: pkg.id, reasons: [{ signal: 'dispatch_error', detail: 'GBP dispatch failed' }] })
-          failedAny = true
-          continue
-        }
-        if (dispatch.failedLocations?.length) {
-          console.error('[auto-publish] GBP partial failure', { pkgId: pkg.id, failedLocations: dispatch.failedLocations })
-          held.push({ id: pkg.id, reasons: [{ signal: 'gbp_partial_failure', detail: `GBP locations failed: ${dispatch.failedLocations.join(', ')}` }] })
-          // Mark dispatchedAny=true so the claim is retained and the package
-          // is not re-dispatched to already-posted locations on the next run.
-          dispatchedAny = true
-          failedAny = true
-          continue
-        }
-        const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: dispatch.bufferId })
-        if (ciId == null) {
-          console.error('[auto-publish] GBP post fired but markContentItemScheduled returned null — claim kept locked to prevent double-post; manual investigation required', { pkgId: pkg.id, channel, bufferId: dispatch.bufferId })
-          held.push({ id: pkg.id, reasons: [{ signal: 'ci_missing', detail: 'GBP post already dispatched; no approved content_item found; claim locked for manual investigation' }] })
-          dispatchedAny = true
-          failedAny = true
-          continue
-        }
-
-        // Mark package auto_published_at so the cron skips it next run.
-        const patchR = await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            auto_published_at: now,
-            auto_publish_state: {
-              eligible:      true,
-              evaluated_at:  now,
-              channels:      [channel],
-              gated_reasons: [],
-              published_channels: {
-                [channel]: { fired_at: now, content_item_id: ciId, buffer_id: dispatch.bufferId },
-              },
-            },
-            updated_at: now,
-          }),
-        }).catch((e) => { console.error('[auto-publish] auto_publish_state final PATCH error', { pkgId: pkg.id, channel, ciId, bufferId: dispatch.bufferId, error: e?.message }); return null })
-        if (patchR && !patchR.ok) {
-          const body = await patchR.text().catch(() => '')
-          console.error('[auto-publish] auto_publish_state final PATCH failed', { pkgId: pkg.id, channel, ciId, bufferId: dispatch.bufferId, status: patchR.status, body: body.slice(0, 300) })
-        }
-
-        dispatched.push({ id: pkg.id, channel, bufferId: dispatch.bufferId, ciId })
-        dispatchedAny = true
       }
+
+      if (posted.length > 0) {
+        dispatched.push({ id: pkg.id, channel, count: posted.length, bufferId: merged.buffer_id ?? null })
+      }
+      if (failed.length > 0) {
+        console.error('[auto-publish] GBP partial dispatch — failed locations recorded for retry', { pkgId: pkg.id, failed, retryCount })
+        held.push({ id: pkg.id, reasons: [{ signal: 'gbp_partial_failure', detail: `GBP locations failed (will retry): ${failed.join(', ')}` }] })
+      }
+
+      channelStatus[channel] = isChannelComplete(targets, merged) ? 'complete' : 'retriable'
     }
 
-    if (dispatchedAny && failedAny) {
-      console.error('[auto-publish] partial channel failure — some channels succeeded, some failed; claim retained to prevent double-posting', { pkgId: pkg.id })
+    // Claim disposition across all eligible channels.
+    const statuses = Object.values(channelStatus)
+    const allComplete = statuses.length > 0 && statuses.every((s) => s === 'complete')
+    const anyRetriable = statuses.some((s) => s === 'retriable')
+    const { release, exhausted } = decideClaimDisposition({
+      allComplete, anyRetriable, retryCount, maxRetries: MAX_AUTO_PUBLISH_RETRIES,
+    })
+
+    if (exhausted) {
+      console.error('[auto-publish] retry budget exhausted — retaining claim, manual investigation required', { pkgId: pkg.id, retryCount, channelStatus })
     }
 
-    // Release the claim only when nothing dispatched at all, so a transient
-    // failure retries next run. When at least one channel succeeded, keep the
-    // auto_published_at stamp — overwriting it to null would cause the next run
-    // to re-dispatch to channels that already posted.
-    if (!dispatchedAny) {
-      // Config errors (no channels configured) are permanent — retaining the
-      // claim prevents the cron from re-attempting every 10 min forever. An
-      // admin must fix the channel config and clear auto_published_at to re-arm.
-      const isConfigOnlyHold = held.some(
-        (h) => h.id === pkg.id && h.reasons?.every((r) => r.signal === 'config'),
-      )
-      if (isConfigOnlyHold) {
-        console.error('[auto-publish] config-only hold — retaining claim to prevent infinite retry', { pkgId: pkg.id, held })
-      } else {
-        await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ auto_published_at: null }),
-        }).catch((e) => console.error('[auto-publish] claim release failed:', e?.message))
-      }
+    // SINGLE atomic final PATCH: record the posted-set AND set the claim
+    // disposition together. Releasing (auto_published_at=null) is only ever safe
+    // because the posted-set is persisted in the same write — if this PATCH
+    // fails, the claim stays held (set by the claim PATCH above) and the package
+    // is NOT re-dispatched, which is the safe direction (no double-post).
+    const finalPatch = await sb(`story_packages?id=eq.${pkg.id}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        auto_published_at: release ? null : now,
+        auto_publish_state: {
+          ...priorState,
+          eligible:           result.eligible,
+          evaluated_at:       now,
+          channels:           result.channels,
+          gated_reasons:      result.reasons,
+          retry_count:        retryCount,
+          published_channels: publishedChannels,
+          ...(exhausted ? { retry_exhausted_at: now } : {}),
+        },
+        updated_at: now,
+      }),
+    }).catch((e) => { console.error('[auto-publish] final PATCH error', { pkgId: pkg.id, error: e?.message }); return null })
+    if (finalPatch && !finalPatch.ok) {
+      const body = await finalPatch.text().catch(() => '')
+      console.error('[auto-publish] final PATCH failed — claim retained (safe), package not re-dispatched', { pkgId: pkg.id, status: finalPatch.status, body: body.slice(0, 300) })
     }
   }
 
