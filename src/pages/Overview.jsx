@@ -8,6 +8,7 @@ import StoriesCalendarView from '@/components/stories/StoriesCalendarView'
 import StoriesCampaignsView from '@/components/stories/StoriesCampaignsView'
 import WeeklyRecapPanel from '@/components/overview/WeeklyRecapPanel'
 import PageHelp from '@/components/PageHelp'
+import PageSkeleton from '@/components/PageSkeleton'
 
 // The clinic-wide, top-down board — separate from Home (which is personal) and
 // from Stories/Storyboard (the producer's own work).
@@ -34,6 +35,8 @@ export default function Overview() {
   const showPublisherBanner = isProducer || (isEditor && readyToDistribute.length > 0)
   // Clinician approval banner — shown to staff members when blogs need their sign-off.
   const showClinicianBanner = !showPublisherBanner && isStaff && blogsToApprove.length > 0
+
+  if (isLoading) return <PageSkeleton variant="dashboard" />
 
   return (
     <div className="space-y-4">

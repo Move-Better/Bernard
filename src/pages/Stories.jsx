@@ -11,6 +11,7 @@ import StoriesCardsView from '@/components/stories/StoriesCardsView'
 import CampaignProgressStrip from '@/components/stories/CampaignProgressStrip'
 import StoriesAtAGlance from '@/components/stories/StoriesAtAGlance'
 import PageHelp from '@/components/PageHelp'
+import PageSkeleton from '@/components/PageSkeleton'
 
 const PLATFORMS = Object.keys(PLATFORM_META)
 
@@ -145,6 +146,8 @@ export default function Stories() {
       return next
     }, { replace: true })
   }
+
+  if (isLoading) return <PageSkeleton variant="grid" />
 
   return (
     <main className="py-6 px-6 flex flex-col gap-4">

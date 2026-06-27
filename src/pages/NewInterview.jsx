@@ -27,6 +27,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { toast } from '@/lib/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queries'
+import PageSkeleton from '@/components/PageSkeleton'
 
 export default function NewInterview() {
   useDocumentTitle('New interview')
@@ -292,6 +293,8 @@ export default function NewInterview() {
       </div>
     )
   }
+
+  if (staffLoading) return <PageSkeleton variant="list" />
 
   return (
     <div className="space-y-5">
