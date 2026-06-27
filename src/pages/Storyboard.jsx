@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { GalleryHorizontalEnd, ArrowRight, Check, Loader2, Video, Image as ImageIcon, Inbox, Send, Trash2 } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { Badge } from '@/components/ui/badge'
 import { useContentItems, useDeleteContentItem } from '@/lib/queries'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -89,6 +90,7 @@ function PublisherInboxBanner({ needsMediaCount, readyCount }) {
  * channel's accepted media kind and how long it's been waiting.
  */
 export default function Storyboard() {
+  useDocumentTitle('Publish')
   const { data: items = [], isLoading } = useContentItems({ status: 'draft,in_review' })
   // Oldest first — age is the priority signal, so the draft that has waited
   // longest for media sits at the top of the queue.

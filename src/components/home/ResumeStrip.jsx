@@ -22,11 +22,7 @@ export default function ResumeStrip({ interviews, currentUserId, staff = [] }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span
-          className="inline-block w-1 h-6 rounded-full shrink-0"
-          style={{ background: 'hsl(var(--primary))' }}
-          aria-hidden="true"
-        />
+        <span className="nx-rail shrink-0" aria-hidden="true" />
         <PlayCircle className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-bold tracking-tight text-foreground">
           Pick up where you left off
