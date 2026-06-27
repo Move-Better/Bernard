@@ -663,7 +663,7 @@ export default function MediaHub() {
         <MediaGridSkeleton />
       ) : error && assets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <AlertCircle className="h-8 w-8 text-destructive/60 mb-3" />
+          <AlertCircle className="h-8 w-8 text-destructive/60 mb-3" aria-hidden="true" />
           <p className="text-sm font-medium text-destructive mb-1">Could not load your media library</p>
           <p className="text-xs text-muted-foreground mb-4">{error}</p>
           <Button size="sm" variant="outline" onClick={refetchMedia}>

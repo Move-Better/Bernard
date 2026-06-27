@@ -47,6 +47,7 @@ async function handler(req, res) {
 
   const sb = (path, init = {}) =>
     fetch(`${SUPA}/rest/v1/${path}`, {
+      signal: AbortSignal.timeout(8_000),
       ...init,
       headers: {
         apikey: SROLE,

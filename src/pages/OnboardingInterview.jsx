@@ -660,7 +660,7 @@ export default function OnboardingInterview() {
       <div className="px-4 py-12">
         <Card>
           <CardContent className="pt-6 text-center space-y-2">
-            <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground" />
+            <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground" aria-hidden="true" />
             <p className="text-sm text-muted-foreground">
               The onboarding interview is only available to workspace admins.
             </p>
@@ -686,7 +686,7 @@ export default function OnboardingInterview() {
       <div className="px-4 py-12">
         <Card>
           <CardContent className="pt-6 text-center space-y-3">
-            <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+            <AlertCircle className="h-8 w-8 mx-auto text-destructive" aria-hidden="true" />
             <p className="text-sm">{error}</p>
             <Button onClick={() => {
               setError(null)
@@ -905,7 +905,7 @@ export default function OnboardingInterview() {
               className="mb-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3"
             >
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
+                <AlertCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" aria-hidden="true" />
                 <div className="flex-1 text-sm min-w-0">
                   <p className="font-medium">That didn&apos;t go through.</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
@@ -1267,7 +1267,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
     return (
       <Card className="border-destructive/40 bg-destructive/10">
         <CardContent className="pt-6 text-center space-y-3">
-          <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+          <AlertCircle className="h-8 w-8 mx-auto text-destructive" aria-hidden="true" />
           <div className="space-y-1">
             <p className="font-medium">Synthesis failed.</p>
             <p className="text-sm text-muted-foreground">
@@ -1301,7 +1301,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
       <CardContent className="pt-6 text-center space-y-3">
         {dryRun
           ? <FlaskConical className="h-8 w-8 mx-auto text-warning" />
-          : <CheckCircle2 className="h-8 w-8 mx-auto text-success" />}
+          : <CheckCircle2 className="h-8 w-8 mx-auto text-success" aria-hidden="true" />}
         <div className="space-y-1">
           <p className="font-medium">{headline}</p>
           <p className="text-sm text-muted-foreground">{subhead}</p>

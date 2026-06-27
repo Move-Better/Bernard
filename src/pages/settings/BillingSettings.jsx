@@ -95,13 +95,13 @@ export default function BillingSettings() {
 
       {billingToast === 'success' && (
         <div className="flex items-center gap-2 rounded-md bg-success/10 border border-success/30 px-4 py-3 text-sm text-success">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
           <span><strong>Subscription activated!</strong> Your plan has been updated.</span>
         </div>
       )}
       {billingToast === 'cancelled' && (
         <div className="flex items-center gap-2 rounded-md bg-muted border border-border px-4 py-3 text-sm text-muted-foreground">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Checkout cancelled — no changes were made.</span>
         </div>
       )}

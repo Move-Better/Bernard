@@ -67,7 +67,7 @@ function TopicRow({ t }) {
     <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors">
       <div className="shrink-0">
         {hasCoverage
-          ? <CheckCircle2 className="h-4 w-4 text-success" />
+          ? <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
           : priority === 'high'
             ? <TrendingDown className="h-4 w-4 text-destructive" />
             : <Lightbulb className="h-4 w-4 text-action" />}
@@ -114,7 +114,7 @@ export default function CoveragePanel() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-        <AlertCircle className="h-8 w-8 text-destructive" />
+        <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
         <p className="text-sm text-destructive font-medium">Failed to load coverage data</p>
         <button
           className="text-xs font-medium text-primary hover:underline"

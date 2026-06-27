@@ -770,7 +770,7 @@ function ScanScreen({ form, setField, scanState, runScan, onContinue }) {
 
       {scanState.status === 'error' && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             {scanState.error === 'fetch-failed' || scanState.error === 'invalid-url'
               ? "We couldn't load that URL. Double-check it, or skip and fill in the basics by hand."
@@ -867,7 +867,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
         <Label className="text-xs">Your social profiles</Label>
         {detectedCount > 0 && (
           <span className="text-2xs text-success inline-flex items-center gap-1">
-            <CheckCircle2 className="h-3.5 w-3.5" /> {detectedCount} found on your site
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {detectedCount} found on your site
           </span>
         )}
       </div>
@@ -914,7 +914,7 @@ function SocialHandlesSection({ form, setForm, socialLookup, setSocialLookup }) 
             )}
             {socialLookup.status === 'error' && (
               <span className="text-2xs text-destructive inline-flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5" /> Couldn&apos;t search — add handles by hand
+                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> Couldn&apos;t search — add handles by hand
               </span>
             )}
           </div>
@@ -997,7 +997,7 @@ function BusinessScreen({ form, setForm, setField, scanState, runScan, socialLoo
     >
       {scanned && (
         <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>Read {scanState.sources.length} page{scanState.sources.length === 1 ? '' : 's'} from your site and pre-filled the fields below.</span>
         </div>
       )}
@@ -1280,12 +1280,12 @@ function SubdomainScreen({ form, setField, slugCheck, setSlugCheck, onBack, onCo
           )}
           {slugCheck.status === 'done' && slugCheck.available && (
             <span className="text-success inline-flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Available
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Available
             </span>
           )}
           {slugCheck.status === 'done' && !slugCheck.available && slugCheck.reason && (
             <span className="text-destructive inline-flex items-center gap-1">
-              <AlertCircle className="h-3.5 w-3.5" /> {reasonText[slugCheck.reason] || slugCheck.reason}
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> {reasonText[slugCheck.reason] || slugCheck.reason}
             </span>
           )}
         </div>
@@ -1653,7 +1653,7 @@ function ReviewScreen({ form, submitting, submitError, onBack, onSubmit }) {
       <ReviewRow label="Channels" value={`${form.enabled_outputs.length} selected`} />
       {submitError && (
         <div className="text-xs text-destructive flex items-center gap-1">
-          <AlertCircle className="h-3.5 w-3.5" />
+          <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
           {submitError === 'slug-taken' && 'That subdomain was just taken. Go back and pick another.'}
           {submitError === 'founding-spots-full' && 'Founding spots filled while you were filling this out. Email us to join the waitlist.'}
           {submitError === 'no-channels-selected' && 'Pick at least one channel.'}
@@ -1763,7 +1763,7 @@ function LaunchingScreen({ redirectUrl }) {
         subtitle="Your workspace was created, but the SSL certificate for your subdomain isn't responding yet. This usually resolves in another minute or two."
       >
         <div className="text-xs text-destructive flex items-center gap-1">
-          <AlertCircle className="h-3.5 w-3.5" />
+          <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
           Subdomain activation is taking longer than expected — try again or check your connection.
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-1">

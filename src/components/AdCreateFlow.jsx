@@ -109,7 +109,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
           )}
           {!ready && metaFailed && (
             <div className="mt-3 flex gap-1.5 rounded-lg border border-warning bg-warning/10 p-2.5 text-2xs text-muted-foreground">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
               <span>
                 Couldn&rsquo;t read this clip&rsquo;s length in the browser — it may still be processing.
                 Try another clip, or trim it in <span className="font-semibold">Moment Miner</span> once it&rsquo;s ready.
@@ -152,7 +152,7 @@ function VideoTrimStage({ video, onBack, onClose, onContinue }) {
             <span className={`font-mono font-semibold ${tooLong ? 'text-destructive' : 'text-primary'}`}>{fmt(clipLen)}</span>
             {tooLong && (
               <span className="flex items-center gap-1 text-destructive">
-                <AlertCircle className="h-3 w-3" /> Max {CLIP_MAX}s per ad clip — shorten it
+                <AlertCircle className="h-3 w-3" aria-hidden="true" /> Max {CLIP_MAX}s per ad clip — shorten it
               </span>
             )}
           </div>

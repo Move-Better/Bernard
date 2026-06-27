@@ -1612,7 +1612,7 @@ export default function InterviewSession() {
               body="The interviewer asks one question at a time, read aloud. Tap the microphone button when you're ready to answer, then speak at your normal pace. You can pause and think — it won't cut you off. When you're done with an answer, say 'done' or 'that's all', or tap the mic button again to send it."
             />
             <InstructionCard
-              icon={<AlertCircle className="h-5 w-5 text-primary" />}
+              icon={<AlertCircle className="h-5 w-5 text-primary" aria-hidden="true" />}
               title="You control when it ends"
               body="The interviewer will keep asking follow-up questions until you've covered the topic thoroughly — there's no fixed number of questions. When you feel you've said everything useful, just say so ('I think that covers it', 'that's everything', 'let's generate') or click the Finish button at the top. The AI does the rest."
             />
@@ -1678,8 +1678,8 @@ export default function InterviewSession() {
         </div>
         {saveStatus && (
           saveStatus === 'error'
-            ? <span className="text-xs shrink-0 inline-flex items-center gap-1 text-destructive font-medium">
-                <AlertTriangle className="h-3 w-3" />Save failed — your progress may not be saved
+            ? <span role="alert" className="text-xs shrink-0 inline-flex items-center gap-1 text-destructive font-medium">
+                <AlertTriangle className="h-3 w-3" aria-hidden="true" />Save failed — your progress may not be saved
               </span>
             : <span
                 role="status"
@@ -1694,7 +1694,7 @@ export default function InterviewSession() {
               </span>
         )}
         {interviewComplete
-          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><CheckCircle2 className="h-4 w-4" />Interview complete</span>
+          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />Interview complete</span>
           : isOwner && (
             // Desktop header keeps the action buttons. On mobile they live
             // in the bottom dock so they're within thumb reach next to the
@@ -1768,7 +1768,7 @@ export default function InterviewSession() {
 
       {saveStatus === 'error' && (
         <div className="mb-2 rounded-lg bg-warning/10 border border-warning/30 px-4 py-2.5 text-xs text-warning flex items-center gap-2 shrink-0" role="alert">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="flex-1">Server save failed — your answers are kept locally.</span>
           <button
             type="button"
@@ -1813,7 +1813,7 @@ export default function InterviewSession() {
 
           {error && (
             <div className="flex items-center gap-3 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="flex-1 min-w-0">{error}</span>
               {lastTurnRef.current && !isStreaming && (
                 <Button

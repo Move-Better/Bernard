@@ -96,7 +96,7 @@ function ConceptRow({ concept, totalStaff, onDraft }) {
         <div className="flex flex-wrap gap-1 mt-2">
           {concept.mentionedBy.map(c => (
             <span key={c.id} className="inline-flex items-center gap-1 text-2xs bg-success/10 text-success border border-success/30 rounded-full px-2 py-0.5">
-              <CheckCircle2 className="h-2.5 w-2.5" /> {c.name}
+              <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" /> {c.name}
             </span>
           ))}
           {gaps.map(c => (
@@ -199,7 +199,7 @@ export default function Synthesis() {
   if (error === 'admin_only') {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+        <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Admin access required to view synthesis.</p>
       </div>
     )
@@ -208,7 +208,7 @@ export default function Synthesis() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-3">
-        <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+        <AlertCircle className="h-8 w-8 text-destructive mx-auto" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Failed to load synthesis data.</p>
         <Button variant="outline" size="sm" onClick={load}>Retry</Button>
       </div>

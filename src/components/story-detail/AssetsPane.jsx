@@ -1168,7 +1168,7 @@ function WhenToPublishCard({
           />
           {customConflict && (
             <div className="flex items-start gap-1.5 text-xs text-warning bg-warning/10 border border-warning/30 rounded px-2 py-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>
                 Another {PLATFORM_META[piece.platform]?.label || piece.platform} post is scheduled near this time
                 {' — '}
@@ -1709,7 +1709,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       {piece.status === 'failed' && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
-            <AlertTriangle className="h-3.5 w-3.5" />
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
             Failed to publish
           </div>
           {piece.publish_error && (
@@ -1766,7 +1766,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             disabled={isBusy}
             loading={isBusy && updateStatus.isPending}
           >
-            {!(isBusy && updateStatus.isPending) && <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+            {!(isBusy && updateStatus.isPending) && <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />}
             Approve
           </Button>
         )}
@@ -1813,7 +1813,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               disabled
               className="border-success/30 bg-success/10 text-success cursor-default opacity-100"
             >
-              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
               {piece.platform === 'blog' ? 'Published to Website' : 'Published to Buffer'}
             </Button>
             {piece.published_at && (

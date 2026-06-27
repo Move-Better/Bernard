@@ -348,7 +348,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             </div>
             {speakerRole === 'patient_guest' && (
               <div className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/10 p-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-2xs text-warning">
                   Verify written consent from the patient before uploading. Patient-guest content cannot be published without it.
                 </p>
@@ -526,7 +526,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
         {pending.length > 0 && (
           <div className="mt-3 rounded-lg border border-success/30 bg-success/10 p-3">
             <div className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-success mb-2">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               {pending.length} file{pending.length === 1 ? '' : 's'} detected · uploading now
             </div>
             <div className="space-y-1.5">
@@ -575,7 +575,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
         <div className="mt-3 space-y-1.5">
           {rejected.map((r) => (
             <div key={r.id} className="flex items-start gap-2 text-xs px-2.5 py-1.5 rounded-md bg-destructive/10 border border-destructive/20">
-              <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />
+              <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium" title={r.name}>{r.name}</div>
                 <div className="text-destructive">{r.error}</div>

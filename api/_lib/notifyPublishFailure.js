@@ -39,6 +39,7 @@ function escapeHtml(s) {
 // api/_routes/** handlers, not _lib helpers, so no disable directive is needed.)
 function sb(path) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(8_000),
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
 }

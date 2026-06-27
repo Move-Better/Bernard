@@ -101,6 +101,39 @@ async function handler(req, res) {
     }
   }
 
+  // Verify the user is still a member of the target workspace's Clerk org.
+  // Protects against a state token being completed after the user was removed
+  // from the org between initiation and callback (10-minute window).
+  if (payload.user_id && CLERK_SECRET) {
+    try {
+      const wsCheckRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${payload.workspace_id}&status=eq.active&select=clerk_org_id&limit=1`,
+        { signal: AbortSignal.timeout(8_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+      )
+      if (wsCheckRes.ok) {
+        const [ws] = await wsCheckRes.json().catch(() => [])
+        if (ws?.clerk_org_id) {
+          const CLERK_API = 'https://api.clerk.com/v1'
+          const memRes = await fetch(
+            `${CLERK_API}/organizations/${encodeURIComponent(ws.clerk_org_id)}/memberships?user_id.any_of=${encodeURIComponent(payload.user_id)}&limit=1`,
+            { signal: AbortSignal.timeout(8_000), headers: { Authorization: `Bearer ${CLERK_SECRET}` } }
+          )
+          if (memRes.ok) {
+            const memBody = await memRes.json().catch(() => null)
+            const isMember = Array.isArray(memBody?.data) && memBody.data.length > 0
+            if (!isMember) {
+              console.error('[oauth/buffer/callback] user is no longer a member of workspace', { user_id: payload.user_id, workspace_id: payload.workspace_id })
+              return redirectTo(res, '/settings/integrations?buffer_error=not_member')
+            }
+          }
+          // If Clerk API fails, proceed — don't block OAuth on Clerk degradation
+        }
+      }
+    } catch (e) {
+      console.error('[oauth/buffer/callback] membership check error (proceeding):', e?.message)
+    }
+  }
+
   // Exchange code for access token
   const tokenRes = await fetch(TOKEN_URL, {
     method: 'POST',

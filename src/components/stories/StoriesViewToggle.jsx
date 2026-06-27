@@ -25,15 +25,14 @@ export default function StoriesViewToggle({ defaultView = 'cards' }) {
   }
 
   return (
-    <div role="tablist" aria-label="Stories view" className="inline-flex items-center bg-muted border border-border rounded-xl p-1 gap-0.5">
+    <div role="toolbar" aria-label="Stories view" className="inline-flex items-center bg-muted border border-border rounded-xl p-1 gap-0.5">
       {VIEWS.map(({ key, label }) => {
         const isActive = current === key
         return (
           <button
             key={key}
             type="button"
-            role="tab"
-            aria-selected={isActive}
+            aria-pressed={isActive}
             onClick={() => setView(key)}
             className={
               isActive

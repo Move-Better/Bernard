@@ -203,7 +203,7 @@ function ExitAnalysisRead({ data }) {
     return (
       <div className="rounded-2xl border border-success/20 bg-success/10 p-4">
         <div className="flex items-start gap-3">
-          <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+          <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" aria-hidden="true" />
           <p className="text-sm">
             <span className="font-semibold">All your published pages are holding visitors well.</span>{' '}
             <span className="text-muted-foreground">No high-exit pages to flag — keep publishing consistently.</span>
@@ -620,7 +620,7 @@ export default function Analytics() {
           health.issues.length === 0 ? (
             <div className="rounded-2xl border border-success/20 bg-success/10 p-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+                <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" aria-hidden="true" />
                 <p className="text-sm">
                   <span className="font-semibold">All {health.checked} of your published pages are loading fine.</span>{' '}
                   <span className="text-muted-foreground">No broken links to fix right now — we&rsquo;ll flag any page that stops loading.</span>
@@ -631,7 +631,7 @@ export default function Analytics() {
             <div className="rounded-2xl border border-warning/30 bg-warning/10 p-5">
               <div className="flex items-start gap-3">
                 <div className="h-9 w-9 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-2xs uppercase tracking-wide bg-success/20 text-success px-2 py-0.5 rounded-full font-medium">
@@ -678,7 +678,7 @@ export default function Analytics() {
           </div>
           <div className="rounded-2xl border border-success/20 bg-success/10 p-5">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+              <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" aria-hidden="true" />
               <div className="text-sm leading-relaxed">
                 <p>
                   You don&rsquo;t have to act on every note yourself — Bernard&rsquo;s already using this in the

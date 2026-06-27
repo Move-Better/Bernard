@@ -760,7 +760,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                     className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/30"
                     title="No staff member attached — video renders fall back to the workspace name and AI captions can't apply this staff member's voice."
                   >
-                    <AlertTriangle className="h-3 w-3" />
+                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
                     Unattributed
                   </span>
                 )}
@@ -1041,7 +1041,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
         {/* Archived banner with cooldown + purge controls */}
         {isArchived && (
           <div className="px-5 py-3 border-t bg-warning/10 text-warning text-xs flex items-start gap-2 shrink-0">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1 space-y-2">
               <div>
                 Archived {asset.archived_at ? new Date(asset.archived_at).toLocaleDateString() : ''}.

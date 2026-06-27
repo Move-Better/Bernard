@@ -158,7 +158,7 @@ export default function VideoAttachPrompt({ interviewId, staffName, onDone }) {
     return (
       <div className="flex flex-col items-center gap-4 py-8 px-4 max-w-sm mx-auto text-center">
         <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
-          <CheckCircle2 className="h-5 w-5 text-success" />
+          <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
         </div>
         <p className="text-sm font-medium">Video attached</p>
       </div>
@@ -169,7 +169,7 @@ export default function VideoAttachPrompt({ interviewId, staffName, onDone }) {
   return (
     <div className="flex flex-col items-center gap-4 py-6 px-4 max-w-sm mx-auto text-center">
       <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
-        <AlertCircle className="h-5 w-5 text-destructive" />
+        <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
       </div>
       <div>
         <p className="text-sm font-medium">Upload failed</p>

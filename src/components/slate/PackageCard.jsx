@@ -585,7 +585,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
                 {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : consentBlocks ? (
                   <><ShieldAlert className="h-3 w-3 mr-1" />Blocked</>
                 ) : (
-                  <><CheckCircle2 className="h-3 w-3 mr-1" />Approve</>
+                  <><CheckCircle2 className="h-3 w-3 mr-1" aria-hidden="true" />Approve</>
                 )}
               </Button>
             </div>

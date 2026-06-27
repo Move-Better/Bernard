@@ -113,6 +113,7 @@ export default function NewBrief() {
     try {
       await apiFetch('/api/briefs/generate', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title:           title.trim(),
           body:            body.trim(),
@@ -382,7 +383,7 @@ function GeneratingView({ channels }) {
       </div>
 
       <Card>
-        <CardContent role="status" className="p-5 divide-y divide-border">
+        <CardContent className="p-5 divide-y divide-border">
           {channels.map((ch) => (
             <div key={ch.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
               <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" aria-hidden="true" />

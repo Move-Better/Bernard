@@ -212,12 +212,12 @@ export default function WorkspaceSettings() {
         <div className="flex items-center gap-2 shrink-0 pt-1">
           {saved && (
             <span className="text-xs text-success flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />Saved
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Saved
             </span>
           )}
           {error && (
             <span className="text-xs text-destructive flex items-center gap-1">
-              <AlertCircle className="h-3.5 w-3.5" />{error}
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />{error}
             </span>
           )}
           <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
@@ -492,7 +492,7 @@ function DangerZone({ workspace, getToken }) {
             />
             {error && (
               <p className="text-xs text-destructive flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5" />
+                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
                 {error === 'confirm-slug-mismatch'
                   ? "The slug you typed doesn't match. Copy the value above exactly."
                   : error}

@@ -210,7 +210,7 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
       <div className={baseClass}>
         {status === 'errored' && (
           <div className="absolute top-2 left-2 right-2 flex items-start gap-1.5 rounded bg-black/60 px-2 py-1 text-2xs text-warning">
-            <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+            <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden="true" />
             Transcode failed — playing original. Some browsers may not play this file.
           </div>
         )}
@@ -224,7 +224,7 @@ export default function MediaVideoPlayer({ asset, className = '' }) {
     return (
       <div className={baseClass}>
         <div className="text-warning text-sm flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
           Couldn&apos;t load playback token: {tokenState.error}
         </div>
       </div>

@@ -196,7 +196,7 @@ export default function CaptureReview() {
   if (ivError || !interview) {
     return (
       <div className="py-16 text-center space-y-3">
-        <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+        <AlertCircle className="h-8 w-8 text-destructive mx-auto" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Could not load the interview — it may have been deleted.</p>
         <Button variant="ghost" asChild><Link to="/">← Home</Link></Button>
       </div>

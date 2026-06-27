@@ -221,7 +221,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
           <div className="p-5 space-y-4">
             {showPatientWarning && (
               <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/20 p-3 text-xs">
-                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <p className="font-medium text-warning">Patient consent required</p>
                   <p className="text-warning/90 mt-0.5">

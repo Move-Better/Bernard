@@ -345,7 +345,7 @@ function Legend({ swatch, icon, label }) {
 
 function Cell({ person, st, onClick }) {
   if (person.pending) {
-    return <span className="inline-flex items-center justify-center rounded-full bg-muted/30 text-muted-foreground/30 w-[30px] h-[30px]" title="Not yet accepted invite"><Minus className="h-3.5 w-3.5" /></span>
+    return <span className="inline-flex items-center justify-center rounded-full bg-muted/30 text-muted-foreground/30 w-[30px] h-[30px]" aria-label="Not yet accepted invite"><Minus className="h-3.5 w-3.5" /></span>
   }
   if (st.locked) {
     return (
@@ -416,7 +416,7 @@ function ReconciliationPanel({ reconciliation, busy, onClaim, onMerge }) {
   return (
     <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3.5 space-y-3">
       <div className="flex items-start gap-2.5">
-        <AlertTriangle className="h-4 w-4 text-action shrink-0 mt-0.5" />
+        <AlertTriangle className="h-4 w-4 text-action shrink-0 mt-0.5" aria-hidden="true" />
         <div>
           <p className="text-xs font-bold text-[hsl(var(--owner-accent-muted))]">
             {total} {total === 1 ? 'profile needs' : 'profiles need'} attention

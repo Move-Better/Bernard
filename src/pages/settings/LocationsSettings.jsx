@@ -139,7 +139,7 @@ function LocationsPanel({ getToken }) {
     <div className="space-y-2">
       {error && (
         <div className="text-xs text-destructive flex items-center gap-1">
-          <AlertCircle className="h-3.5 w-3.5" />{error}
+          <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />{error}
         </div>
       )}
       {locations.length === 0 && (
@@ -320,7 +320,7 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
           <div className="flex items-center gap-2 justify-end">
             {error && (
               <span className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5" />{error}
+                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />{error}
               </span>
             )}
             {!location.is_primary && (
@@ -337,7 +337,7 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
               {saving
                 ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Save</>
                 : saved
-                  ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Saved</>
+                  ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />Saved</>
                   : 'Save'}
             </Button>
           </div>

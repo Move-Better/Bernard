@@ -39,7 +39,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
+    signal: AbortSignal.timeout(8_000),
+...init,
     headers: {
       apikey:        SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,

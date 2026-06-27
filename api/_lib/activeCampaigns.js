@@ -52,6 +52,7 @@ export async function getActiveCampaigns(workspaceId) {
                `&select=${CAMPAIGN_FIELDS}`
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      signal: AbortSignal.timeout(8_000),
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,

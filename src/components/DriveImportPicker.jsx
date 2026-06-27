@@ -274,13 +274,13 @@ export default function DriveImportPicker({ onComplete, onClose }) {
       <div className="flex-1 overflow-y-auto py-2 min-h-[260px]">
         {pickerLoadError && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 flex items-start gap-2 mb-3">
-            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
             <div className="text-sm text-destructive flex-1">{pickerLoadError}</div>
           </div>
         )}
         {openError && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 flex items-start gap-2 mb-3">
-            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
             <div className="text-sm text-destructive flex-1">{openError}</div>
           </div>
         )}
@@ -350,7 +350,7 @@ export default function DriveImportPicker({ onComplete, onClose }) {
                     </div>
                     {status === 'imported' && (
                       <div className="absolute inset-x-0 bottom-0 bg-success/90 text-success-foreground text-3xs px-2 py-1 flex items-center gap-1 font-medium">
-                        <CheckCircle2 className="h-3 w-3" /> Imported
+                        <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Imported
                       </div>
                     )}
                     {status === 'duplicate' && (

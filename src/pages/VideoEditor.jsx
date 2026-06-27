@@ -898,7 +898,7 @@ export default function VideoEditor() {
   if (error || !asset) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-        <AlertCircle className="h-8 w-8 text-destructive" />
+        <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
         <p className="text-sm font-medium text-destructive">Could not load this clip</p>
         <Button size="sm" variant="outline" onClick={() => navigate('/moments')}>Back to Moment Miner</Button>
       </div>

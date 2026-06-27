@@ -135,7 +135,7 @@ export default function UploadTray() {
                   {r.status === 'uploading' && <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
                   {r.status === 'indexing'  && <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
                   {r.status === 'done'      && <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${r.slowIndex ? 'text-warning' : 'text-success'}`} />}
-                  {r.status === 'error'     && <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                  {r.status === 'error'     && <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" aria-hidden="true" />}
                   {r.status === 'canceled'  && <Ban className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                   {r.status === 'paused'    && <PauseCircle className="h-3.5 w-3.5 text-warning shrink-0" />}
                   <span className="truncate flex-1 font-medium" title={r.name}>{r.name}</span>

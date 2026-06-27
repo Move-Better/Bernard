@@ -34,7 +34,7 @@ async function loadCampaignLocation(workspaceId, locationId) {
         `&status=eq.active` +
         `&select=id,label,city,region,location_keyword,location_hashtag,visit_url` +
         `&limit=1`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+      { signal: AbortSignal.timeout(8_000), headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
     )
     if (!r.ok) {
       console.error('[tentpoleCampaignContext] location fetch failed:', r.status)

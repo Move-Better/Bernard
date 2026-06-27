@@ -221,7 +221,7 @@ export default function Integrations() {
 
       {!isAdmin && !roleLoading && (
         <div className="rounded-lg border bg-muted/40 px-4 py-3 flex items-start gap-3">
-          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
             Only workspace admins can connect publishing integrations. Ask your admin to set this up.
           </p>
@@ -230,7 +230,7 @@ export default function Integrations() {
 
       {isAdmin && loadError && (
         <div className="rounded-lg border bg-muted/40 px-4 py-3 flex items-start gap-3">
-          <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">{loadError}</p>
         </div>
       )}
@@ -446,7 +446,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                       <span className="text-2xs text-muted-foreground">Checking…</span>
                     ) : (
                       <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-                        <CheckCircle2 className="h-3.5 w-3.5" />{accounts.filter(a => a.connected).length} connected
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />{accounts.filter(a => a.connected).length} connected
                       </span>
                     )}
                     <span className="text-2xs text-muted-foreground ml-2">Instagram, Facebook, X, LinkedIn &amp; more</span>
@@ -469,11 +469,11 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                         </span>
                         {a.connected ? (
                           <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-                            <CheckCircle2 className="h-3.5 w-3.5" />Connected
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Connected
                           </span>
                         ) : (
                           <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action">
-                            <AlertTriangle className="h-3.5 w-3.5" />Needs attention
+                            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />Needs attention
                           </span>
                         )}
                       </div>
@@ -509,7 +509,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                       {loc.connected ? (
                         <>
                           <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-                            <CheckCircle2 className="h-3.5 w-3.5" />Connected
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Connected
                           </span>
                           <button
                             type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
@@ -523,7 +523,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                           type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
                           className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-action/40 text-action font-medium disabled:opacity-60 hover:bg-action/10 shrink-0"
                         >
-                          <AlertTriangle className="h-3.5 w-3.5" />Reconnect
+                          <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />Reconnect
                         </button>
                       ) : (
                         <button
@@ -860,7 +860,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
                     : 'border-destructive/30 bg-destructive/10 text-destructive'
                 }`}>
                   {testResult.ok ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
                   ) : (
                     <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   )}
@@ -1038,7 +1038,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
                     ? 'border-success/30 bg-success/10 text-success'
                     : 'border-destructive/30 bg-destructive/10 text-destructive'
                 }`}>
-                  {testResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                  {testResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
                   <span>{testResult.message}</span>
                 </div>
               )}

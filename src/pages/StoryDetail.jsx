@@ -474,7 +474,7 @@ export default function StoryDetail() {
           </DialogHeader>
           {deleteError && (
             <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 mx-1">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />{deleteError}
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />{deleteError}
             </div>
           )}
           <DialogFooter>

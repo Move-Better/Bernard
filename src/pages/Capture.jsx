@@ -381,7 +381,7 @@ export default function Capture() {
                             </span>
                           )}
                           {p.status === 'done' && <Check className="w-4 h-4 text-success" />}
-                          {p.status === 'failed' && <AlertCircle className="w-4 h-4 text-destructive" />}
+                          {p.status === 'failed' && <AlertCircle className="w-4 h-4 text-destructive" aria-hidden="true" />}
                         </div>
                       </div>
                       <div className="text-xs text-muted-foreground mb-1.5">

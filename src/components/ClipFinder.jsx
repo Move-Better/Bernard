@@ -353,7 +353,7 @@ export default function ClipFinder({ asset, canEdit }) {
       {/* Failed */}
       {failed && (
         <div className="flex items-start gap-2 text-2xs text-destructive bg-destructive/10 rounded px-2.5 py-2">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
           <span>{note || 'Clip detection failed.'} {canEdit && 'Try "Find clips" again.'}</span>
         </div>
       )}

@@ -131,7 +131,7 @@ export default function ProducerOnboarding({ onComplete }) {
               {saving ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Saving…</>
               ) : isLast ? (
-                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Start using Slate</>
+                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Start using Slate</>
               ) : (
                 <>Next <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
               )}

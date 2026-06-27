@@ -799,7 +799,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
 
       {!isOnboarding && !roleAssignments.primary_logo && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 dark:bg-warning/20 p-3 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
           <div className="text-xs text-warning">
             <strong>No primary logo set.</strong>{' '}
             {assets.length === 0
@@ -905,7 +905,7 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
                   <span className="text-xs truncate flex-1" title={row.name}>{row.name}</span>
                   {row.status === 'uploading' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" aria-hidden="true" />}
                   {row.status === 'done'      && <Check className="h-3 w-3 text-success shrink-0" />}
-                  {row.status === 'error'     && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
+                  {row.status === 'error'     && <AlertCircle className="h-3 w-3 text-destructive shrink-0" aria-hidden="true" />}
                 </div>
                 {row.status === 'uploading' && (
                   <div className="h-1 rounded-full bg-muted overflow-hidden">

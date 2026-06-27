@@ -636,7 +636,7 @@ export default function MomentMiner() {
       {/* Content area */}
       <div
         role="tabpanel"
-        aria-labelledby={`tab-${view === 'clips_to_review' ? 'clips-to-review' : view === 'needs_cutting' ? 'needs-cutting' : view === 'in_progress' ? 'in-progress' : 'coverage'}`}
+        aria-labelledby={`tab-${view.replaceAll('_', '-')}`}
       >
       {view === 'coverage' ? (
         <CoveragePanel />

@@ -80,6 +80,7 @@ async function lookupWorkspacePlanByOrgId(orgId) {
   const url = `${supabaseUrl}/rest/v1/workspaces?clerk_org_id=eq.${encodeURIComponent(orgId)}&select=plan&limit=1`
   try {
     const r = await fetch(url, {
+      signal: AbortSignal.timeout(8_000),
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
     })
     if (!r.ok) return null
@@ -203,6 +204,7 @@ export async function lookupPermissionTier(userId, workspaceId) {
       `${SUPABASE_URL_FOR_TIER}/rest/v1/staff?user_id=eq.${encodeURIComponent(userId)}` +
       `&workspace_id=eq.${encodeURIComponent(workspaceId)}&select=permission_tier&limit=1`,
       {
+        signal: AbortSignal.timeout(8_000),
         headers: {
           apikey: SUPABASE_KEY_FOR_TIER,
           Authorization: `Bearer ${SUPABASE_KEY_FOR_TIER}`,

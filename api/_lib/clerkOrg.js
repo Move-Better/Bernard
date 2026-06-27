@@ -24,7 +24,7 @@ export async function fetchClerkMembers(orgId) {
     try {
       res = await fetch(
         `${CLERK_API}/organizations/${encodeURIComponent(orgId)}/memberships?limit=${limit}&offset=${offset}`,
-        { headers: { Authorization: `Bearer ${secret}` } }
+        { signal: AbortSignal.timeout(8_000), headers: { Authorization: `Bearer ${secret}` } }
       )
     } catch (e) {
       console.error('[clerkOrg] memberships fetch threw:', e?.message)

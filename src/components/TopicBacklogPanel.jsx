@@ -132,7 +132,7 @@ export default function TopicBacklogPanel() {
 
       {error && (
         <p className="text-xs text-destructive flex items-center gap-1.5">
-          <AlertCircle className="h-3.5 w-3.5" />
+          <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
           {error}
         </p>
       )}
@@ -210,7 +210,7 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
           )}
           {isCompleted && (
             <Badge className="text-xs bg-success/10 text-success border-0 px-1.5 py-0 gap-1">
-              <CheckCircle2 className="h-2.5 w-2.5" />
+              <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" />
               Done
             </Badge>
           )}
@@ -246,7 +246,7 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
             title="Mark complete"
             onClick={() => onComplete(topic)}
           >
-            <CheckCircle2 className="h-3.5 w-3.5" />
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         )}
         {(isPending || isInProgress) && (

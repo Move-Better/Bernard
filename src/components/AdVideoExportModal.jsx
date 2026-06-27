@@ -159,7 +159,7 @@ export default function AdVideoExportModal({ clip, onClose }) {
                   <div className={`relative flex items-center justify-center overflow-hidden rounded bg-muted ${ASPECT_BOX[f.aspect]}`}>
                     {r?.status === 'rendering' && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                     {r?.status === 'done' && <Check className="h-6 w-6 text-success" />}
-                    {r?.status === 'error' && <AlertCircle className="h-6 w-6 text-destructive" />}
+                    {r?.status === 'error' && <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />}
                     {on && !r && (
                       <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded bg-primary text-primary-foreground">
                         <Check className="h-3 w-3" />
