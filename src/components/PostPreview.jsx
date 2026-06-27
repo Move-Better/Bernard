@@ -880,7 +880,7 @@ function TikTokPreview({ content, mediaUrls = [] }) {
           { label: 'Inbox', icon: <MessageCircle className="h-4.5 w-4.5 text-slate-500" /> },
           { label: 'Profile', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
         ].map(({ label, icon }) => (
-          <button key={label} className="flex flex-col items-center text-[9px] text-slate-500 gap-0.5">
+          <button key={label} className="flex flex-col items-center text-3xs text-slate-500 gap-0.5">
             {icon}
             {label}
           </button>
