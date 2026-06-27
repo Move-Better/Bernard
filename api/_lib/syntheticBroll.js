@@ -106,6 +106,7 @@ function runwayHeaders() {
 async function submitRunwayJob({ promptText, ratio = '1280:768', duration = 5 }) {
   const res = await fetch(`${RUNWAY_API_BASE}/text_to_video`, {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: runwayHeaders(),
     body: JSON.stringify({ model: RUNWAY_MODEL, promptText, ratio, duration }),
   })
@@ -131,6 +132,7 @@ async function pollRunwayTask(taskId) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
 
     const res = await fetch(`${RUNWAY_API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+      signal: AbortSignal.timeout(15_000),
       headers: runwayHeaders(),
     })
     if (!res.ok) {
@@ -175,7 +177,7 @@ async function uploadGeneratedVideo({ videoUrl, workspace, staffId, topic }) {
   // Stream download to a temp file to avoid buffering the whole MP4 in RAM.
   const tmpPath = join(tmpdir(), `runway-${randomUUID()}.mp4`)
   try {
-    const r = await fetch(videoUrl)
+    const r = await fetch(videoUrl, { signal: AbortSignal.timeout(120_000) })
     if (!r.ok) throw new Error(`Runway download failed: ${r.status}`)
     await pipeline(Readable.fromWeb(r.body), createWriteStream(tmpPath))
 
