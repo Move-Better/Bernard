@@ -58,18 +58,40 @@ const CLINIC_NETWORKS = [
 // bundle surfaces failures on the post object (status=ERROR) and in the webhook
 // payload identically: errorsVerbose (richest) -> error -> errors[]. Exported so
 // the bundle webhook handler can reuse the exact same extraction.
+//
+// errorsVerbose and errors may be a flat string/array OR an object keyed by
+// platform (e.g. { INSTAGRAM: { errorMessage, code, ... } }) — handle both.
+function extractFromMap(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
+  const parts = Object.values(obj).map((v) => {
+    if (typeof v === 'string') return v.trim()
+    if (v && typeof v === 'object') {
+      const msg = v.errorMessage || v.message || v.error || ''
+      const code = v.code ? ` (${v.code})` : ''
+      return msg ? `${msg}${code}` : ''
+    }
+    return ''
+  }).filter(Boolean)
+  return parts.length ? parts.join('; ') : null
+}
+
 export function bundleErrorText(res) {
   if (!res) return null
-  const verbose = typeof res.errorsVerbose === 'string' ? res.errorsVerbose.trim() : ''
-  if (verbose) return verbose
-  const single = typeof res.error === 'string' ? res.error.trim() : ''
-  if (single) return single
+  // errorsVerbose: richest — may be a string or a platform-keyed object
+  if (typeof res.errorsVerbose === 'string' && res.errorsVerbose.trim()) return res.errorsVerbose.trim()
+  const verboseMap = extractFromMap(res.errorsVerbose)
+  if (verboseMap) return verboseMap
+  // error: flat string
+  if (typeof res.error === 'string' && res.error.trim()) return res.error.trim()
+  // errors: array of strings/objects OR platform-keyed object
   if (Array.isArray(res.errors) && res.errors.length) {
     const parts = res.errors
       .map((e) => (typeof e === 'string' ? e : e?.message || e?.error || ''))
       .filter(Boolean)
     if (parts.length) return parts.join('; ')
   }
+  const errorsMap = extractFromMap(res.errors)
+  if (errorsMap) return errorsMap
   return null
 }
 
