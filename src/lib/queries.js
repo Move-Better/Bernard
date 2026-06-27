@@ -93,7 +93,7 @@ export const queryKeys = {
   },
   usage: {
     all: ['usage'],
-    workspace: (weeks = 12) => ['usage', 'workspace', weeks],
+    workspace: (weeks = 12, weekOffset = 0) => ['usage', 'workspace', weeks, weekOffset],
     platform: () => ['usage', 'platform'],
   },
   media: {
@@ -175,6 +175,7 @@ export function useWorkspaceRecap(options = {}) {
 // funnel, per-staff). Admin-gated surface. Tolerant default so a transient
 // failure renders an empty dashboard rather than blanking the page.
 const EMPTY_USAGE = {
+  period: null,
   stats: {
     active_days: { this_week: 0, prev_week: 0 },
     captures: { this_week: 0, prev_week: 0 },
@@ -190,11 +191,11 @@ const EMPTY_USAGE = {
   staff: [],
 }
 
-export function useWorkspaceUsage(weeks = 12, options = {}) {
+export function useWorkspaceUsage(weeks = 12, weekOffset = 0, options = {}) {
   return useQuery({
-    queryKey: queryKeys.usage.workspace(weeks),
+    queryKey: queryKeys.usage.workspace(weeks, weekOffset),
     queryFn: () =>
-      apiFetch(`/api/db/workspace-usage?weeks=${weeks}`).catch(() => EMPTY_USAGE),
+      apiFetch(`/api/db/workspace-usage?weeks=${weeks}&week_offset=${weekOffset}`).catch(() => EMPTY_USAGE),
     staleTime: 1000 * 60 * 5,
     ...options,
   })
