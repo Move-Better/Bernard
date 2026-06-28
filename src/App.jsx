@@ -44,6 +44,7 @@ const PhotoTemplatesSettings  = lazy(() => import('@/pages/settings/PhotoTemplat
 const BrandIdentitySettings = lazy(() => import('@/pages/settings/BrandIdentitySettings'))
 const CampaignsSettings = lazy(() => import('@/pages/settings/CampaignsSettings'))
 const AutoPublishSettings = lazy(() => import('@/pages/settings/AutoPublishSettings'))
+const PracticeBrainSettings = lazy(() => import('@/pages/settings/PracticeBrainSettings'))
 import SettingsLayout from '@/components/SettingsLayout'
 const OnboardingBrandKit = lazy(() => import('@/pages/OnboardingBrandKit'))
 const Members = lazy(() => import('@/pages/Members'))
@@ -689,6 +690,7 @@ function AppRoutes() {
               <Route path="/settings/carousel-themes" element={<Navigate to="/settings/photo-templates" replace />} />
               <Route path="/settings/campaigns" element={guarded(<CampaignsSettings />)} />
               <Route path="/settings/workspace/auto-publish" element={guarded(<AutoPublishSettings />)} />
+              <Route path="/settings/practice-brain" element={guarded(<PracticeBrainSettings />)} />
               {/* Clerk-mounted pages use routing="path" so their deep links resolve. */}
               <Route path="/settings/members/*" element={guarded(<Members />)} />
               <Route path="/settings/access" element={guarded(<AccessMatrix />)} />
