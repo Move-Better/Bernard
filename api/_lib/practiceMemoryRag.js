@@ -237,25 +237,29 @@ export async function indexInterviewSummary({ workspaceId, staffId, interviewId,
  * earn a place in retrieval since hot-tier also gates on that status.
  */
 export async function indexContentItem({ workspaceId, contentItemId }) {
-  try {
-    if (!workspaceId || !contentItemId) return
+  if (!workspaceId || !contentItemId) return { indexed: 0, skipped: 'missing-ids' }
 
+  // Wrapped in withRetry (like indexInterviewSummary): this runs fire-and-forget
+  // off the content PATCH's waitUntil(), so a transient embedding/REST hiccup
+  // would otherwise silently strand the piece out of the corpus with no retry —
+  // exactly the gap that left ~half of recent published rows un-indexed.
+  return withRetry(`indexContentItem item=${contentItemId}`, async () => {
     const r = await sb(
       `content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}` +
       '&select=id,staff_id,topic,platform,content,status,created_at'
     )
     if (!r.ok) {
-      console.error(`[practiceMemoryRag] content fetch ${r.status} item=${contentItemId}`)
-      return
+      const body = await r.text().catch(() => '')
+      throw new Error(`content fetch ${r.status}: ${body.slice(0, 200)}`)
     }
     const [row] = await r.json()
-    if (!row) return
-    if (!['approved', 'published'].includes(row.status)) return
+    if (!row) return { indexed: 0, skipped: 'no-row' }
+    if (!['approved', 'published'].includes(row.status)) return { indexed: 0, skipped: `status-${row.status}` }
     const body = String(row.content || '').trim()
-    if (!body) return
+    if (!body) return { indexed: 0, skipped: 'empty-body' }
 
     const chunks = chunkContent(body)
-    if (chunks.length === 0) return
+    if (chunks.length === 0) return { indexed: 0, skipped: 'no-chunks' }
 
     const [embeddings, allTopicTags] = await Promise.all([
       embedTexts(chunks),
@@ -288,9 +292,8 @@ export async function indexContentItem({ workspaceId, contentItemId }) {
 
     await upsertChunks(rows)
     await deleteExtraChunks(workspaceId, 'content_item', row.id, rows.length)
-  } catch (e) {
-    console.error(`[practiceMemoryRag] indexContentItem item=${contentItemId} threw: ${e?.stack || e?.message}`)
-  }
+    return { indexed: rows.length }
+  })
 }
 
 function cap(s) {
