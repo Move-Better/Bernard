@@ -132,6 +132,7 @@ async function upsertChunks(rows) {
     tokens:        r.tokens,
     embedding:     `[${r.embedding.join(',')}]`,
     topic_tags:    r.topicTags ?? [],
+    source_date:   r.sourceDate ?? null,
   }))
   const r = await sb('practice_memory_chunks?on_conflict=workspace_id,source_type,source_id,chunk_index', {
     method: 'POST',
@@ -215,6 +216,7 @@ export async function indexInterviewSummary({ workspaceId, staffId, interviewId,
     await upsertChunks([{
       workspaceId,
       staffId,
+      sourceDate:  createdAt ?? null,
       sourceType:  'interview_summary',
       sourceId:    interviewId,
       chunkIndex:  0,
@@ -277,6 +279,7 @@ export async function indexContentItem({ workspaceId, contentItemId }) {
       return {
         workspaceId,
         staffId:  row.staff_id ?? null,
+        sourceDate:   row.created_at ?? null,
         sourceType:   'content_item',
         sourceId:     row.id,
         chunkIndex:   i,
@@ -313,7 +316,7 @@ function cap(s) {
  * @param {string[]=} args.excludeSourceIds — skip these source IDs (e.g., hot-tier items, current interview)
  * @returns {Promise<Array<{source_type, source_id, source_label, text, similarity}>>}
  */
-export async function searchPracticeMemory({ workspaceId, staffId, query, topK = 6, excludeSourceIds = [], sourceTypes = null }) {
+export async function searchPracticeMemory({ workspaceId, staffId, query, topK = 6, excludeSourceIds = [], sourceTypes = null, halfLifeDays }) {
   try {
     if (!workspaceId) return []
     const q = String(query || '').trim()
@@ -331,6 +334,9 @@ export async function searchPracticeMemory({ workspaceId, staffId, query, topK =
         p_match_count:        topK,
         p_exclude_source_ids: excludeSourceIds,
         p_source_types:       sourceTypes,
+        // Practice Mode (default) recency-weights by source_date; Author Mode
+        // passes null to disable so a clinician's older blogs aren't down-ranked.
+        p_half_life_days:     halfLifeDays === undefined ? 365 : halfLifeDays,
       }),
     })
     if (!r.ok) {
@@ -450,6 +456,7 @@ export async function indexInterviewTranscriptFull({
       return {
         workspaceId,
         staffId:  staffId ?? null,
+        sourceDate:   createdAt ?? null,
         sourceType:   'interview_transcript_full',
         sourceId:     interviewId,
         chunkIndex:   i,
@@ -506,6 +513,7 @@ async function indexAuthoredProse({
       return {
         workspaceId,
         staffId:  staffId ?? null,
+        sourceDate:   dateLabel ?? null,
         sourceType,
         sourceId,
         chunkIndex:   i,
@@ -574,5 +582,6 @@ export function searchAuthorCorpus({ workspaceId, staffId, query, topK = 6, excl
     topK,
     excludeSourceIds,
     sourceTypes: AUTHOR_MODE_SOURCE_TYPES,
+    halfLifeDays: null,   // authoring pulls the clinician's own words — no recency bias
   })
 }

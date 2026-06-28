@@ -286,6 +286,17 @@
     "stats",
     "workspace_id"
   ],
+  "gsc_query_snapshots": [
+    "captured_at",
+    "clicks",
+    "ctr",
+    "id",
+    "impressions",
+    "position",
+    "query",
+    "window_days",
+    "workspace_id"
+  ],
   "interview_references": [
     "added_by",
     "created_at",
@@ -413,6 +424,7 @@
     "created_at",
     "embedding",
     "id",
+    "source_date",
     "source_id",
     "source_label",
     "source_type",
@@ -421,6 +433,13 @@
     "tokens",
     "topic_tags",
     "updated_at",
+    "workspace_id"
+  ],
+  "seo_opportunity_dismissals": [
+    "dismissed_at",
+    "dismissed_by",
+    "id",
+    "query",
     "workspace_id"
   ],
   "staff": [
@@ -448,6 +467,8 @@
     "updated_at",
     "user_id",
     "voice_clone_consent_at",
+    "voice_clone_opt_out",
+    "voice_clone_opt_out_at",
     "voice_clone_revoked_at",
     "voice_clone_sample_url",
     "voice_notes",
