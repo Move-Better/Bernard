@@ -315,8 +315,6 @@ export default async function handler(req, res) {
           content:     updated.content,
         }))
       }
-      // Phase 5 Feature 2 PR3 — embed approved content into the RAG corpus.
-      waitUntil(indexContentItem({ workspaceId: ws.id, contentItemId: updated.id }))
     } else if (updated && patch.status === 'in_review' && patch.notes?.trim() && updated.content?.trim()) {
       // Change request returned — mild negative signal on the rejected draft.
       waitUntil(extractConcepts({
@@ -327,6 +325,20 @@ export default async function handler(req, res) {
         staffId:  updated.staff_id ?? null,
         weightDelta:  -0.5,
       }))
+    }
+
+    // F6 — embed approved/published content into the RAG practice-memory corpus.
+    // Decoupled from the approval-signal enrichment above (which deliberately
+    // gates on the `approved` transition): indexing must ALSO fire when a piece
+    // is published directly (the old `=== 'approved'` gate silently missed
+    // publish-direct items — ~half of recent published rows had no chunk) and
+    // when an already-eligible body is EDITED (keeps chunks fresh). indexContentItem
+    // self-guards on status, upserts, and prunes orphan chunks, so an over-eager
+    // call (e.g. a metadata-only PATCH on a draft) is a cheap no-op.
+    const enteredCorpus = patch.status === 'approved' || patch.status === 'published'
+    const corpusEligible = updated && ['approved', 'published'].includes(updated.status) && updated.content?.trim()
+    if (corpusEligible && (enteredCorpus || patch.content !== undefined)) {
+      waitUntil(indexContentItem({ workspaceId: ws.id, contentItemId: updated.id }))
     }
 
     return ok(res, updated)
