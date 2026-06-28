@@ -435,6 +435,26 @@
     "updated_at",
     "workspace_id"
   ],
+  "practice_memory_supersessions": [
+    "confidence",
+    "detected_at",
+    "id",
+    "new_chunk_id",
+    "new_excerpt",
+    "new_source_id",
+    "new_source_label",
+    "old_chunk_id",
+    "old_excerpt",
+    "old_source_id",
+    "old_source_label",
+    "rationale",
+    "relationship",
+    "resolved_at",
+    "resolved_by",
+    "staff_id",
+    "status",
+    "workspace_id"
+  ],
   "seo_opportunity_dismissals": [
     "dismissed_at",
     "dismissed_by",
