@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>F6 P4 — Supersession confirm (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%; --border:214 32% 91%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+    --success:152 76% 40%; --info:199 95% 40%; --radius:0.625rem;
+    --owner-accent:20 74% 42%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .tok-card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:var(--radius)}
+  .tok-primary{background:hsl(var(--primary));color:hsl(var(--primary-foreground))}
+  .tok-muted{color:hsl(var(--muted-foreground))}
+  .pill{font-size:11px;font-weight:600;letter-spacing:.02em;border-radius:999px;padding:2px 9px}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-3xl mx-auto px-6 py-10">
+
+  <!-- header -->
+  <div class="flex items-center gap-3 mb-1">
+    <div class="w-9 h-9 rounded-lg tok-primary grid place-items-center"><i data-lucide="brain" class="w-5 h-5"></i></div>
+    <h1 class="text-xl font-semibold tracking-tight">Practice Brain</h1>
+    <span class="pill ml-1" style="background:hsl(var(--action)/.12);color:hsl(var(--action))">1 update to review</span>
+  </div>
+  <p class="tok-muted text-sm mb-7 pl-12">Bernard learns from every interview and post. When your thinking on a topic looks like it changed, it asks before letting the newer take win.</p>
+
+  <!-- the confirm card -->
+  <div class="tok-card p-6 shadow-sm mb-5">
+    <div class="flex items-start gap-2 mb-4">
+      <i data-lucide="git-compare-arrows" class="w-5 h-5 mt-0.5" style="color:hsl(var(--info))"></i>
+      <div>
+        <div class="font-semibold">Has your thinking on <span style="color:hsl(var(--primary))">bed rest for low back pain</span> changed?</div>
+        <div class="tok-muted text-[13px] mt-0.5">A newer take looks like it reverses an older one. Confirm which represents how you practice today.</div>
+      </div>
+    </div>
+
+    <!-- before / after -->
+    <div class="grid md:grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
+      <div class="rounded-lg p-4" style="background:hsl(var(--muted));border:1px solid hsl(var(--border))">
+        <div class="flex items-center gap-1.5 mb-2"><i data-lucide="history" class="w-3.5 h-3.5 tok-muted"></i><span class="pill" style="background:hsl(var(--owner-accent)/.12);color:hsl(var(--owner-accent))">EARLIER · Interview · May 2024</span></div>
+        <p class="text-[13.5px] leading-relaxed">“For acute low back pain, my advice is a few days of bed rest to let the inflammation settle before you start moving around again.”</p>
+      </div>
+      <div class="hidden md:grid place-items-center"><i data-lucide="arrow-right" class="w-5 h-5 tok-muted"></i></div>
+      <div class="rounded-lg p-4" style="background:hsl(var(--success)/.07);border:1px solid hsl(var(--success)/.35)">
+        <div class="flex items-center gap-1.5 mb-2"><i data-lucide="sparkles" class="w-3.5 h-3.5" style="color:hsl(var(--success))"></i><span class="pill" style="background:hsl(var(--success)/.14);color:hsl(var(--success))">RECENTLY · Blog · Jun 2026</span></div>
+        <p class="text-[13.5px] leading-relaxed">“I no longer recommend bed rest for low back pain — staying gently active heals faster, and prolonged rest actually delays recovery.”</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5 mt-3 mb-5 tok-muted text-xs">
+      <i data-lucide="bot" class="w-3.5 h-3.5"></i> Bernard flagged this (3/3 confident). Nothing is hidden until you confirm — and nothing is ever deleted.
+    </div>
+
+    <!-- actions -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="tok-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5"><i data-lucide="check" class="w-4 h-4"></i> Yes — use my newer take</button>
+      <button class="px-4 py-2 rounded-lg text-sm font-medium" style="border:1px solid hsl(var(--border));background:hsl(var(--card))">Keep both</button>
+      <span class="tok-muted text-xs ml-1">Confirming stops the older take from steering generated content.</span>
+    </div>
+  </div>
+
+  <!-- a second, collapsed item to imply a queue -->
+  <div class="tok-card px-5 py-3.5 shadow-sm flex items-center gap-3 opacity-90">
+    <i data-lucide="git-compare-arrows" class="w-4 h-4 tok-muted"></i>
+    <div class="text-sm flex-1">Has your thinking on <span class="font-medium">post-adjustment soreness</span> changed? <span class="tok-muted">· Interview Apr 2025 → Interview Jun 2026</span></div>
+    <button class="text-xs font-medium px-2.5 py-1 rounded-md" style="color:hsl(var(--primary))">Review</button>
+  </div>
+
+  <!-- empty-state note -->
+  <div class="mt-8 rounded-lg border border-dashed p-4 text-[13px] tok-muted" style="border-color:hsl(var(--border))">
+    <span class="font-medium" style="color:hsl(var(--foreground))">When there's nothing to review</span> (the usual state — your corpus rarely diverges): this surface shows “Your practice brain is up to date — no conflicting takes to resolve.” It only nudges you when a real reversal is detected.
+  </div>
+
+  <div class="mt-6 text-[11px] tok-muted">Mockup · F6 Phase 4 · placements to decide: (a) a card on Overview when count&gt;0, (b) a “Practice Brain” item under Settings, (c) both. Data + confirm/reject endpoint already live (#1845).</div>
+</div>
+<script>lucide.createIcons()</script>
+</body>
+</html>

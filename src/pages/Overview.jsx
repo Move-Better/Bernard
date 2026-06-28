@@ -7,6 +7,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import StoriesCalendarView from '@/components/stories/StoriesCalendarView'
 import StoriesCampaignsView from '@/components/stories/StoriesCampaignsView'
 import WeeklyRecapPanel from '@/components/overview/WeeklyRecapPanel'
+import { PracticeBrainCard } from '@/components/PracticeBrainReview'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 
@@ -102,6 +103,8 @@ export default function Overview() {
       )}
 
       {/* Weekly all-staff recap */}
+      <PracticeBrainCard />
+
       <WeeklyRecapPanel stories={stories} />
 
       {/* Calendar — always visible, no tab needed */}
