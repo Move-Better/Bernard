@@ -493,6 +493,35 @@ model default, which can be much larger than intended. Any handler that calls `g
 token budget should use `maxOutputTokens`. Grep check: `grep -rn "maxTokens:" api/` should return 0
 — if it returns any (other than `max_tokens` in JSON bodies), revert them to `maxOutputTokens`.
 
+## Model provider — all Claude calls go through the Vercel AI Gateway
+
+Production has **no `ANTHROPIC_API_KEY`**. Every Claude call routes through the **Vercel AI
+Gateway** via `AI_GATEWAY_API_KEY`, using plain `'anthropic/<model>'` strings (e.g.
+`anthropic/claude-sonnet-4-6`, `anthropic/claude-haiku-4-5`). This holds for `/api/stream`, every
+`generateText`/`generateObject`/`streamText` handler, and the offline backfill scripts — those
+fall back to a raw `ANTHROPIC_API_KEY` only when the gateway key is absent, a local-dev path that
+never runs in prod. There is no `@ai-sdk/anthropic` direct wiring and no BYOK provider key plumbed
+into the gateway.
+
+**The only consumer of a raw `sk-ant-…` key is CI**: the `pr.yml` review job
+(`anthropics/claude-code-action@beta`) reads the `ANTHROPIC_API_KEY` GitHub Actions secret on
+`Move-Better/Bernard`. So rotating or deleting the Anthropic key affects **only the PR-review
+job** — never the live app. (Confirmed 2026-06-28: the legacy Anthropic key was deleted and prod
+Claude kept serving; the migration to a dedicated "Bernard" Console workspace + key required no
+Vercel change.)
+
+**Smoke the gateway → Anthropic path with no auth and zero tenant writes** via the public
+`POST /api/demo/generate` endpoint (body `{ text, topicId }`, `topicId` ∈ `story|faq|insight`). It
+uses the same `AI_GATEWAY_API_KEY` + `anthropic/claude-sonnet-4-6` path but has no
+`workspaceContext`/Supabase, so a `200` + streamed text proves the gateway is healthy. From a
+browser console on any `*.withbernard.ai` host:
+```js
+const r = await fetch('/api/demo/generate', { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ topicId: 'insight', text: 'short clinical note' }) })
+// r.status === 200 and r.body streams SSE text-deltas of real generated copy
+```
+
 ## How `/week` gets populated — the Strategist drip model
 
 `/week` (YourWeek.jsx → `GET /api/content-plan/week-summary`) renders ONLY `content_plan_atoms`
