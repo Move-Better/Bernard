@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
-import { Shield, Lock, Check, Minus, AlertTriangle, UserCheck, GitMerge, UserPlus } from 'lucide-react'
+import { Shield, Lock, Check, Minus, AlertTriangle, UserCheck, GitMerge, UserPlus, Mail, X } from 'lucide-react'
 import { apiFetch } from '../lib/api.js'
 import { useAppMutation } from '../lib/useAppMutation.js'
 import { toast } from '../lib/toast'
@@ -46,6 +46,38 @@ export default function AccessMatrix() {
     queryFn: () => apiFetch('/api/workspace/access-matrix'),
     enabled: has('members.invite'),
   })
+
+  // Invite panel state
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+
+  const inviteMutation = useAppMutation({
+    mutationFn: (email) =>
+      apiFetch('/api/workspace/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }),
+    errorMessage: 'Could not send invite',
+    onSuccess: (_data, email) => {
+      toast.success(`Invite sent to ${email}`)
+      setInviteEmail('')
+      setShowInvite(false)
+      queryClient.invalidateQueries({ queryKey: ['access-matrix'] })
+    },
+    onError: (err) => {
+      if (err?.message?.includes('already-invited') || err?.status === 409) {
+        toast.error('That email was already invited or is already a member.')
+      }
+    },
+  })
+
+  function handleInviteSubmit(e) {
+    e.preventDefault()
+    const email = inviteEmail.trim().toLowerCase()
+    if (!email) return
+    inviteMutation.mutate(email)
+  }
 
   // Local, editable overrides keyed by staff id: { [id]: { [cap]: bool } }
   const [localOverrides, setLocalOverrides] = useState({})
@@ -158,15 +190,54 @@ export default function AccessMatrix() {
       {/* Header */}
       <div>
         <p className="text-2xs text-muted-foreground/80">Settings &middot; {wsName} &middot; Access matrix</p>
-        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center">
-          <span className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5" style={{ background: 'hsl(var(--primary))' }} aria-hidden="true" />
-          Team access matrix
-        </h1>
+        <div className="flex items-start justify-between gap-3 mt-0.5">
+          <h1 className="text-2xl font-bold tracking-tight flex items-center">
+            <span className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5" style={{ background: 'hsl(var(--primary))' }} aria-hidden="true" />
+            Team access matrix
+          </h1>
+          <button
+            onClick={() => setShowInvite((v) => !v)}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
+          >
+            <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+            Invite teammate
+          </button>
+        </div>
         <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed max-w-2xl">
           One row per person, one column per capability. Click any cell to grant or revoke.
           An <span className="text-action font-semibold">amber dot</span> marks a cell that differs from the tier default for that person &mdash;
           easy to spot custom access as the team grows.
         </p>
+
+        {/* Inline invite form */}
+        {showInvite && (
+          <form onSubmit={handleInviteSubmit} className="mt-3 flex items-center gap-2 max-w-sm">
+            <input
+              type="email"
+              required
+              placeholder="colleague@example.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="flex-1 rounded-lg border border-border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={inviteMutation.isPending}
+              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition"
+            >
+              {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowInvite(false); setInviteEmail('') }}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition"
+              aria-label="Cancel"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Scale note */}
