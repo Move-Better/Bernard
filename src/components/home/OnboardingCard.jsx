@@ -55,7 +55,7 @@ function setSnooze(workspaceId) {
 
 export default function OnboardingCard() {
   const workspace = useWorkspace()
-  const { role } = useUserRole()
+  const { isOrgAdmin } = useUserRole()
   const [interview, setInterview] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [snoozed, setSnoozed] = useState(false)
@@ -75,7 +75,7 @@ export default function OnboardingCard() {
   // onboarded, or viewer isn't admin).
   const shouldRender =
     !!workspace?.id &&
-    role === 'admin' &&
+    isOrgAdmin &&
     !workspace.onboarding_interview_completed_at
 
   useEffect(() => {

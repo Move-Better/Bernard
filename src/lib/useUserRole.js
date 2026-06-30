@@ -41,6 +41,7 @@ export function useUserRole() {
 
   return {
     role,
+    isOrgAdmin,
     isLoading,
     isEditor:    editor,
     canUpload:  true,                                  // any signed-in user
