@@ -289,6 +289,19 @@ The shared `/api/stream` endpoint and its client wrapper `streamMessage()` in `s
 
    On error, the user gets the error card with a "Try again" action that page-reloads (resetting the ref). No silent auto-retry. PR #731 fixed both bugs after they hit prod.
 
+## Realtime voice session — system prompt caching pattern
+
+`api/realtime-session.js` mints an OpenAI Realtime client secret. The full system prompt is set in `sessionConfig.instructions` at mint time (not via a post-connect `session.update`) so OpenAI can cache it from token zero.
+
+**Do NOT attempt to port `getInterviewSystemPrompt` server-side.** That function pulls past interviews, practice-memory RAG (concept/agreement/gap vector blocks), staff record, tone, and staffType — replicating those fetches server-side would duplicate the entire interview-context pipeline. The established pattern instead:
+
+1. Browser builds the full prompt via `getInterviewSystemPrompt` (same as today).
+2. Browser sends `{ interviewId, systemPrompt: fullPrompt }` in the mint POST body.
+3. Server validates and injects it into `sessionConfig.instructions` at mint time; falls back to a 2-sentence bootstrap if the field is absent or too short.
+4. Browser still sends `session.update { instructions }` after the data channel opens as a belt-and-suspenders — same content, so OpenAI's cache still hits, and it covers the reconnect path.
+
+The server validates `systemPrompt` as a string with a minimum length (100 chars) and a maximum (32 KB) to prevent abuse; it never logs or stores it.
+
 ## Custom ESLint rules to know before writing JSX
 
 Three project-specific rules bite hard if you don't know them:
