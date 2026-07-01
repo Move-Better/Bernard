@@ -20,7 +20,7 @@ import {
 } from '@/lib/overlayTemplates'
 import { resolveTheme, DEFAULT_DECK_THEME, templateFamily } from '@/lib/photoTemplates'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
-import { ensureRenderedSlides } from '@/lib/renderSlides'
+import { ensureRenderedSlides, AD_CAROUSEL_DIMS } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
 import { deriveStory } from '@/lib/storyFields'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
@@ -305,7 +305,7 @@ function BlockRow({ block, onChange, onRemove }) {
 
 // ── Slide card ────────────────────────────────────────────────────────────────
 
-function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className }) {
+function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className, aspect }) {
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
   const movedRef = useRef(false)
@@ -315,14 +315,20 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
       const canvas = canvasRef.current
       if (!canvas) return
       try {
+        // The canvas BITMAP must match the CSS box's aspect (ASPECT_STAGE in the
+        // caller) or the browser stretches it non-uniformly — this is what made
+        // Story's forced 9:16 frame look warped/smeared when the bitmap stayed a
+        // hardcoded 4:5 (SLIDE_W/SLIDE_H). Same dimension table the publish bake
+        // (ensureRenderedSlides) already uses, so preview and output agree.
+        const [w, h] = AD_CAROUSEL_DIMS[aspect] || [SLIDE_W, SLIDE_H]
         await renderFreeformSlide({
           sourceUrl: photoUrl || null,
           slide,
           brandStyle: brandStyle || {},
           canvas,
           theme,
-          width: SLIDE_W,
-          height: SLIDE_H,
+          width: w,
+          height: h,
         })
       } catch (e) {
         if (!cancelled) console.warn('[SlidePreview] render failed', e.message)
@@ -330,7 +336,7 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
     }
     draw()
     return () => { cancelled = true }
-  }, [slide, photoUrl, brandStyle, theme])
+  }, [slide, photoUrl, brandStyle, theme, aspect])
 
   const canReframe = !!photoUrl && !!onReframe
   function onPointerDown(e) {
@@ -1388,7 +1394,7 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
             </div>
           )
         })}
-        {canAdd && (
+        {canAdd ? (
           <button
             type="button"
             onClick={onAdd}
@@ -1397,6 +1403,10 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
             <Plus className="h-4 w-4" />
             <span className="text-3xs mt-0.5">Add</span>
           </button>
+        ) : (
+          <p className="ml-[14px] w-[calc(100%-14px)] text-center text-3xs leading-snug text-muted-foreground/70">
+            Single photo — no extra slides
+          </p>
         )}
       </div>
     </aside>
@@ -2136,6 +2146,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                 photoUrl={activePhotoUrl}
                 brandStyle={brandStyle}
                 theme={activeTheme}
+                aspect={aspect}
                 onReframe={(next) => updateSlide(activeSlideIdx, next)}
                 onSelectPhoto={() => { setSelection({ type: 'photo' }); setTool('photo') }}
                 className={`h-full w-full rounded-xl border bg-muted shadow-lg ${activePhotoUrl ? 'cursor-move' : 'cursor-pointer'}`}
@@ -2175,8 +2186,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         </section>
 
         {/* 4. Slide rail — the surface (right edge). For single-slide (photo)
-            posts the one slide still shows, but "Add slide" is hidden — the only
-            difference from the carousel. */}
+            posts the one slide still shows, but "Add slide" is replaced with an
+            explanatory note instead of just disappearing. */}
         <SlideRail
           slides={slides}
           activeIdx={activeSlideIdx}
