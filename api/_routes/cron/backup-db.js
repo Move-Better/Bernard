@@ -22,6 +22,7 @@ import { gzipSync } from 'node:zlib'
 import pg from 'pg'
 import { put, list, del } from '@vercel/blob'
 import { verifyCronSecret } from '../../_lib/auth.js'
+import { waitUntil } from '@vercel/functions'
 
 const { Pool } = pg
 
@@ -133,7 +134,7 @@ async function handler(req, res) {
     } while (cursor)
 
     const pingUrl = process.env.HC_PING_BACKUP_DB
-    if (pingUrl) fetch(pingUrl).catch(() => {})
+    if (pingUrl) waitUntil(fetch(pingUrl).catch((e) => console.error('[backup-db] healthcheck ping failed:', e?.message)))
 
     return res.status(200).json({
       ok: true,

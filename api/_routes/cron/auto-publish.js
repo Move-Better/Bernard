@@ -27,6 +27,7 @@ import {
   isChannelComplete,
   decideClaimDisposition,
 } from '../../_lib/autoPublishRetry.js'
+import { waitUntil } from '@vercel/functions'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -472,7 +473,7 @@ export default async function handler(req, res) {
   summary.finishedAt = new Date().toISOString()
 
   const pingUrl = process.env.HC_PING_AUTO_PUBLISH
-  if (pingUrl) fetch(pingUrl).catch(() => {})
+  if (pingUrl) waitUntil(fetch(pingUrl).catch((e) => console.error('[auto-publish] healthcheck ping failed:', e?.message)))
 
   return res.status(200).json(summary)
 }
