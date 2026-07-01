@@ -157,7 +157,7 @@ export default function StaffProfile() {
     <div className="-mt-8 -mx-6">
 
       {/* ── Sticky profile header ──────────────────────────────────── */}
-      <div className="sticky top-14 z-30 bg-card border-b border-border">
+      <div className="sticky top-14 md:top-0 z-30 bg-card border-b border-border">
         <div className="px-6 pt-5 pb-0">
 
           {/* Identity row */}
