@@ -220,7 +220,7 @@ export default function NewBrief() {
                       placeholder="https://…"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Used as the Instagram Story link sticker
+                      Woven into captions as the call-to-action link (not supported as an Instagram Story sticker link — Meta/bundle.social do not expose that)
                     </p>
                   </div>
                   <div className="space-y-1.5">

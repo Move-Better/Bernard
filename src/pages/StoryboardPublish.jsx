@@ -67,9 +67,10 @@ export default function StoryboardPublish() {
   const Icon = meta.icon
   const title = piece.topic || firstHeading(piece.content) || 'Untitled draft'
   // Route by editing archetype (the unified-shell resolver) instead of ad-hoc
-  // platform/media flags. An Instagram piece with a video is a Reel ('vvideo'),
-  // without is a carousel; instagram_story routes to the Story composer whether
-  // it's a photo frame ('story') or a video story ('storyvid').
+  // platform/media flags. An Instagram piece with a video is a Reel ('vvideo');
+  // a photo Instagram Story ('story') is ALSO just a carousel of one slide —
+  // same editor, same templates/Grade, forced 9:16 — only a video Story
+  // ('storyvid') still needs the dedicated composer (SlideEditor is photo-only).
   const archetype = resolveArchetype(piece)
   const isCarousel = archetype === 'carousel'
   // A single-photo / text post (LinkedIn, Facebook, X, GBP, Pinterest…) is just a
@@ -77,17 +78,19 @@ export default function StoryboardPublish() {
   // rail, templates, Grade, canvas), only without "Add slide". No separate photo
   // editor.
   const isVisual = archetype === 'visual'
-  const isStory = piece.platform === 'instagram_story'
+  const isStoryPhoto = archetype === 'story'
+  const isStory = archetype === 'storyvid'
   // Named format + slide-count badge from the shared helper — the header used to
   // count source photos ("1 media attached") next to N slide cards.
   const fmt = postFormat(piece)
   const photoCount = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
 
-  // Carousel + single visual → the full-bleed SlideEditor. Breaks out of the
-  // page's padding (the Layout `main` adds px/py) and fills the content region so
-  // the editor canvas dominates. Publish/schedule fold into the editor's own top
-  // bar (Schedule button → modal). All page chrome is intentionally dropped here.
-  if (isCarousel || isVisual) {
+  // Carousel + single visual + photo Story → the full-bleed SlideEditor. Breaks
+  // out of the page's padding (the Layout `main` adds px/py) and fills the
+  // content region so the editor canvas dominates. Publish/schedule fold into
+  // the editor's own top bar (Schedule button → modal). All page chrome is
+  // intentionally dropped here.
+  if (isCarousel || isVisual || isStoryPhoto) {
     const scheduleNode = (
       <div className="space-y-4">
         <ApprovalPanel piece={piece} mode="publish" />
@@ -123,19 +126,21 @@ export default function StoryboardPublish() {
         <SlideEditor
           piece={piece}
           onBack={() => navigate('/publish')}
-          formatLabel={isVisual ? meta.label : fmt.label}
-          formatSub={isVisual ? 'Single photo' : `${fmt.count} ${fmt.unit}`}
+          formatLabel={isVisual || isStoryPhoto ? meta.label : fmt.label}
+          formatSub={isStoryPhoto ? 'Story frame' : isVisual ? 'Single photo' : `${fmt.count} ${fmt.unit}`}
           photoCount={photoCount}
           scheduleNode={scheduleNode}
-          singleSlide={isVisual}
-          badgeIcon={isVisual ? Icon : null}
+          singleSlide={isVisual || isStoryPhoto}
+          badgeIcon={isVisual || isStoryPhoto ? Icon : null}
+          forcedAspect={isStoryPhoto ? '9:16' : null}
         />
       </div>
     )
   }
 
-  // Instagram Story → the dedicated single-frame composer (media + overlay text
-  // + link sticker), inside the standard page chrome.
+  // Video Instagram Story → the dedicated single-frame composer. SlideEditor is
+  // photo-only, so a video Story can't fold into it (same reason vvideo/lvideo
+  // stay on their own timeline editor rather than the slide editor).
   if (isStory) {
     return (
       <div className="space-y-5 py-6">

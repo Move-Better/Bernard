@@ -17,9 +17,11 @@ import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from 
 import { PLATFORM_META } from '@/lib/contentMeta'
 
 // UnifiedEditor — the single-shell editor body for every archetype that isn't a
-// carousel (SlideEditor) or an Instagram Story (StoryComposer): the `visual`
-// text/photo posts (LinkedIn, Facebook, Twitter…), `doc` (blog/landing),
-// `email`, `textad` (Google ads) and `ad` creative. It gives these posts the
+// carousel, single visual, or photo Story (all three route to SlideEditor —
+// see `isCarousel || isVisual || isStoryPhoto` in StoryboardPublish.jsx) or a
+// video Story (StoryComposer, since SlideEditor is photo-only): `doc`
+// (blog/landing), `email`, `textad` (Google ads) and `ad` creative. It gives
+// these posts the
 // same full-bleed shell (EditorChrome + IconRail + centered canvas) as the
 // carousel and reel editors — the "one editing backbone for every channel"
 // from `.claude/mockups/unified-shell-all-channels.html`.
