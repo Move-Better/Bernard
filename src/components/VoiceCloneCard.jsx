@@ -13,8 +13,8 @@
 // Owner-only — gated upstream in StaffProfile.
 
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
-import { Mic, Sparkles, ShieldOff, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Mic, Sparkles, ShieldOff, Loader2, Volume2, Square } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -23,6 +23,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queries'
 import { toast } from '@/lib/toast'
 import { useConfirm } from '@/lib/useConfirm'
+import { createTtsPlayer, primeAudioPlayback } from '@/lib/tts'
 
 function fmtDate(iso) {
   if (!iso) return ''
@@ -30,11 +31,26 @@ function fmtDate(iso) {
   catch { return '' }
 }
 
+// Phoneme-varied script read back through the clone so a drifted or
+// low-fidelity clone is easy to catch by ear before it ships in real content.
+const SAMPLE_SCRIPT =
+  "Hi, this is a quick sample of my cloned voice. The quick brown fox jumps over " +
+  "the lazy dog, and a well-planned treatment plan takes patience, precision, and care. " +
+  "If this doesn't sound like me, it's time to retrain."
+
 export default function VoiceCloneCard({ staffMember }) {
   const queryClient = useQueryClient()
   const [revoking, setRevoking] = useState(false)
   const [togglingLock, setTogglingLock] = useState(false)
+  const [sampleState, setSampleState] = useState('idle') // idle | loading | playing
   const confirm = useConfirm()
+  const ttsRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      try { ttsRef.current?.cancel?.() } catch { /* noop */ }
+    }
+  }, [])
 
   const optedOut = !!staffMember?.voice_clone_opt_out
   const hasClone = !!staffMember?.eleven_voice_id && !staffMember?.voice_clone_revoked_at
@@ -63,6 +79,27 @@ export default function VoiceCloneCard({ staffMember }) {
     } finally {
       setRevoking(false)
     }
+  }
+
+  const onPlaySample = () => {
+    if (sampleState === 'playing' || sampleState === 'loading') {
+      try { ttsRef.current?.cancel?.() } catch { /* noop */ }
+      setSampleState('idle')
+      return
+    }
+    if (!ttsRef.current) ttsRef.current = createTtsPlayer()
+    // iOS audio-unlock — must run inside this click handler.
+    primeAudioPlayback()
+    setSampleState('loading')
+    ttsRef.current.speak(SAMPLE_SCRIPT, {
+      staffId: staffMember?.id,
+      onStart: () => setSampleState('playing'),
+      onEnd:   () => setSampleState('idle'),
+      onError: () => {
+        setSampleState('idle')
+        toast.error('Could not play sample.')
+      },
+    })
   }
 
   // Switch represents "Allow voice cloning" → checked = NOT opted out.
@@ -132,6 +169,15 @@ export default function VoiceCloneCard({ staffMember }) {
           <div className="flex flex-wrap gap-2 pt-1">
             {hasClone ? (
               <>
+                <Button type="button" variant="outline" size="sm" onClick={onPlaySample} disabled={sampleState === 'loading'}>
+                  {sampleState === 'loading' ? (
+                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Loading…</>
+                  ) : sampleState === 'playing' ? (
+                    <><Square className="h-4 w-4 mr-1" fill="currentColor" /> Stop</>
+                  ) : (
+                    <><Volume2 className="h-4 w-4 mr-1" /> Play sample</>
+                  )}
+                </Button>
                 <Button asChild variant="outline" size="sm">
                   <Link to="/settings/voice-training">Re-train</Link>
                 </Button>
