@@ -22,6 +22,7 @@ import { resolveTheme, DEFAULT_DECK_THEME, templateFamily } from '@/lib/photoTem
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
+import { deriveStory } from '@/lib/storyFields'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
@@ -1541,7 +1542,7 @@ const ASPECT_STAGE = {
 
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
 
-export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode, singleSlide = false, badgeIcon = null }) {
+export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode, singleSlide = false, badgeIcon = null, forcedAspect = null }) {
   const workspace = useWorkspace()
   const navigate = useNavigate()
   const brandStyle = workspace?.brand_style || {}
@@ -1566,16 +1567,28 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   useEffect(() => () => { if (guidesTimerRef.current) clearTimeout(guidesTimerRef.current) }, [])
 
   // Seed: stored slides if any, else one empty cover slide bound to photo 0.
+  // Instagram Story rows predate the slide model — their headline/sticker text
+  // lived in content/text_card (see storyFields.js). A Story with no `slides`
+  // yet gets that legacy text migrated into a hook/cta block pair on first
+  // open, using the 'cta' template (headline top, CTA bottom) so it doesn't
+  // silently vanish when the piece opens in this editor for the first time.
   function seedSlides() {
     const stored = Array.isArray(piece?.slides) ? piece.slides : null
     if (stored && stored.length > 0) return stored.map((s, i) => normalizeSlide(s, i))
+    if (piece?.platform === 'instagram_story') {
+      const { overlay, sticker } = deriveStory(piece)
+      const blocks = []
+      if (overlay) blocks.push({ role: 'hook', text: overlay, position: defaultPositionFor('cta', 'hook') })
+      if (sticker) blocks.push({ role: 'cta', text: sticker, position: defaultPositionFor('cta', 'cta') })
+      return [{ photo_idx: hasMedia ? 0 : null, template: 'cta', blocks }]
+    }
     return [{ photo_idx: hasMedia ? 0 : null, template: 'cover', blocks: [] }]
   }
 
   const [slides, setSlides] = useState(seedSlides)
   const [savedSlidesJson, setSavedSlidesJson] = useState(() => JSON.stringify(seedSlides()))
   const [themeId, setThemeId] = useState(() => piece?.photo_template_id || DEFAULT_DECK_THEME)
-  const [aspect, setAspect] = useState(() => piece?.aspect_ratio || '4:5')
+  const [aspect, setAspect] = useState(() => forcedAspect || piece?.aspect_ratio || '4:5')
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
@@ -1599,7 +1612,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setSlides(next)
     setSavedSlidesJson(JSON.stringify(next))
     setThemeId(piece?.photo_template_id || DEFAULT_DECK_THEME)
-    setAspect(piece?.aspect_ratio || '4:5')
+    setAspect(forcedAspect || piece?.aspect_ratio || '4:5')
     setActiveSlideIdx(0)
     setSelection({ type: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1612,7 +1625,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
   const dirty = JSON.stringify(slides) !== savedSlidesJson
     || themeId !== (piece?.photo_template_id || DEFAULT_DECK_THEME)
-    || aspect !== (piece?.aspect_ratio || '4:5')
+    || aspect !== (forcedAspect || piece?.aspect_ratio || '4:5')
   const updateItem = useUpdateContentItem()
 
   // Auto-attach top AI pick per slide on first open when slides have no photos.
@@ -1905,7 +1918,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
           : null}
-        aspect={{ value: aspect, options: ['1:1', '4:5', '9:16'], onChange: setAspect }}
+        aspect={forcedAspect ? null : { value: aspect, options: ['1:1', '4:5', '9:16'], onChange: setAspect }}
       >
         <Tooltip>
           <TooltipTrigger asChild>
