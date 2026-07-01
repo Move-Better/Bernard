@@ -169,7 +169,7 @@ export default function VoiceCloneCard({ staffMember }) {
           <div className="flex flex-wrap gap-2 pt-1">
             {hasClone ? (
               <>
-                <Button type="button" variant="outline" size="sm" onClick={onPlaySample} disabled={sampleState === 'loading'}>
+                <Button type="button" variant="outline" size="sm" onClick={onPlaySample}>
                   {sampleState === 'loading' ? (
                     <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Loading…</>
                   ) : sampleState === 'playing' ? (
