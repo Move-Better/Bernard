@@ -154,7 +154,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
 
           <div className="space-y-1.5">
             <label htmlFor="sticker-label-input" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-              <Link2 className="h-3.5 w-3.5 text-muted-foreground" /> Link sticker label
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground" /> Sticker text
             </label>
             <input
               id="sticker-label-input"
@@ -165,7 +165,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
               className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
               placeholder="e.g. Reserve your seat · Book now · Learn more"
             />
-            <p className="text-3xs text-muted-foreground">2–4 words · the tap target on the posted Story</p>
+            <p className="text-3xs text-muted-foreground">2–4 words · visual only — bundle.social does not support a clickable link on Instagram Stories</p>
           </div>
         </div>
 
