@@ -96,9 +96,8 @@ export default function BrandIdentitySettings() {
           </ul>
         </div>
 
-        <div className="mt-3 rounded-xl p-3 text-xs text-muted-foreground flex items-center gap-2"
-             style={{ background: 'hsl(var(--info) / 0.06)', border: '1px solid hsl(var(--info) / 0.25)' }}>
-          <Info className="h-3.5 w-3.5 shrink-0" style={{ color: 'hsl(var(--info))' }} aria-hidden="true" />
+        <div className="mt-3 rounded-xl bg-info/10 border border-info/25 p-3 text-xs text-muted-foreground flex items-center gap-2">
+          <Info className="h-3.5 w-3.5 shrink-0 text-info" aria-hidden="true" />
           To change the brief, retake the interview — it&apos;s the same conversation, and your new answers replace this.
         </div>
       </div>
