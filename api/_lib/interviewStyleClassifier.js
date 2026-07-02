@@ -87,22 +87,36 @@ Return ONLY minified JSON, no prose, no code fences:
   const register = REGISTERS.has(parsed?.register) ? parsed.register : 'mid'
 
   try {
-    const readRes = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=interview_style_memory`)
-    if (!readRes.ok) { console.error('[interviewStyleClassifier] read failed:', readRes.status); return }
-    const rows = await readRes.json()
-    if (!Array.isArray(rows) || !rows.length) return // staff not in this workspace — never cross-tenant write
-    const prev = (rows[0].interview_style_memory && typeof rows[0].interview_style_memory === 'object') ? rows[0].interview_style_memory : {}
-    const prevSessions = Array.isArray(prev.sessions) ? prev.sessions : []
-    const sessions = [...prevSessions, { interviewId, tactics: leadTactics, angles, register, at: new Date().toISOString() }].slice(-MAX_SESSIONS)
-    const registerCeiling = [prev.registerCeiling, register].filter((r) => REGISTERS.has(r)).reduce((hi, r) => (RANK[r] > RANK[hi] ? r : hi), 'lay')
-    const next = { sessions, registerCeiling, sessionCount: (Number(prev.sessionCount) || 0) + 1 }
+    // Optimistic-concurrency merge: two completions for the same clinician can run
+    // concurrently (both fire-and-forget via waitUntil), so the PATCH is conditioned
+    // on the sessionCount we read. A lost race matches 0 rows; re-read and retry.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const readRes = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=interview_style_memory`)
+      if (!readRes.ok) { console.error('[interviewStyleClassifier] read failed:', readRes.status); return }
+      const rows = await readRes.json()
+      if (!Array.isArray(rows) || !rows.length) return // staff not in this workspace — never cross-tenant write
+      const prev = (rows[0].interview_style_memory && typeof rows[0].interview_style_memory === 'object') ? rows[0].interview_style_memory : {}
+      const prevSessions = Array.isArray(prev.sessions) ? prev.sessions : []
+      const sessions = [...prevSessions, { interviewId, tactics: leadTactics, angles, register, at: new Date().toISOString() }].slice(-MAX_SESSIONS)
+      const registerCeiling = [prev.registerCeiling, register].filter((r) => REGISTERS.has(r)).reduce((hi, r) => (RANK[r] > RANK[hi] ? r : hi), 'lay')
+      const prevCount = Number(prev.sessionCount) || 0
+      const next = { sessions, registerCeiling, sessionCount: prevCount + 1 }
 
-    const patchRes = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}`, {
-      method: 'PATCH',
-      headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ interview_style_memory: next }),
-    })
-    if (!patchRes.ok) console.error('[interviewStyleClassifier] patch failed:', patchRes.status)
+      // ->>sessionCount is null for both a NULL column and an object missing the key
+      const guard = prevCount > 0
+        ? `&interview_style_memory->>sessionCount=eq.${prevCount}`
+        : '&interview_style_memory->>sessionCount=is.null'
+      const patchRes = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}${guard}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ interview_style_memory: next }),
+      })
+      if (!patchRes.ok) { console.error('[interviewStyleClassifier] patch failed:', patchRes.status); return }
+      const updated = await patchRes.json().catch(() => [])
+      if (Array.isArray(updated) && updated.length) return // claimed cleanly
+      // 0 rows matched — a concurrent completion won the write; retry on the fresh ledger
+    }
+    console.error('[interviewStyleClassifier] patch conflict persisted after 3 attempts; skipping')
   } catch (e) {
     console.error('[interviewStyleClassifier] store failed:', e?.message)
   }

@@ -163,23 +163,8 @@ export default function Stories() {
               {mineOnly ? 'My stories' : 'Stories'}
             </h1>
             {!isLoading && stories.length > 0 ? (
-              <span className="text-sm text-muted-foreground truncate flex items-baseline gap-2">
-                {awaitingReviewCount > 0 && stageFilter !== 'review' ? (
-                  // Interactive shortcut: applies the Review stage filter.
-                  // Styled as a subtle outlined chip (not a filled-primary
-                  // pill) so it reads as a secondary filter affordance, not a
-                  // primary CTA — and the trailing arrow signals it's clickable.
-                  <button
-                    type="button"
-                    onClick={() => setParam('stage', 'review')}
-                    title="Filter to stories awaiting review"
-                    className="inline-flex items-center gap-1 rounded-full border border-action/30 bg-action/10 text-action px-2 py-0.5 text-2xs font-bold uppercase tracking-wide hover:bg-action/20 transition-colors"
-                  >
-                    {awaitingReviewCount} awaiting review
-                    <span aria-hidden="true">→</span>
-                  </button>
-                ) : null}
-                <span>{stories.length === 1 ? '1 story' : `${stories.length} stories`}</span>
+              <span className="text-sm text-muted-foreground truncate">
+                {stories.length === 1 ? '1 story' : `${stories.length} stories`}
               </span>
             ) : null}
           </div>
@@ -221,6 +206,19 @@ export default function Stories() {
                 }`}
               >
                 {qf.label}
+                {/* Act-now badge: awaiting-review count rides the In Review pill
+                    (amber only while unselected — the "needs you" signal; neutral
+                    once the filter is active). Replaces the old standalone header
+                    chip that duplicated this same stage=review action. */}
+                {qf.key === 'ready' && awaitingReviewCount > 0 ? (
+                  <span
+                    className={`ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 py-px text-2xs font-bold ${
+                      isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-action/15 text-action'
+                    }`}
+                  >
+                    {awaitingReviewCount}
+                  </span>
+                ) : null}
               </button>
             )
           })}

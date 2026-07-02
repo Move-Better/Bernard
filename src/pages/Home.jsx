@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Loader2, RefreshCw, ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
+import { BookOpen, ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
+import ErrorState from '@/components/ErrorState'
 import { useStories, useStaffSummaries } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -208,18 +208,12 @@ export default function Home() {
 
   if (storiesError) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-sm text-destructive mb-2">Failed to load data</p>
-        <p className="text-xs text-muted-foreground mb-4">{storiesError.message}</p>
-        <Button size="sm" variant="outline" onClick={() => refetchStories()} disabled={isRefetchingStories}>
-          {isRefetchingStories ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden="true" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-          )}
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        message="Failed to load data"
+        detail={storiesError.message}
+        onRetry={() => refetchStories()}
+        retrying={isRefetchingStories}
+      />
     )
   }
 

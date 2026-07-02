@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Scissors, Loader2, AlertCircle, BarChart3, Film, ShieldAlert,
+  Scissors, Loader2, BarChart3, Film, ShieldAlert,
   ShieldCheck, PlayCircle, Search, Sparkles, Gem, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import CoveragePanel from '@/components/slate/CoveragePanel'
 import PageSkeleton from '@/components/PageSkeleton'
+import ErrorState from '@/components/ErrorState'
 
 const REFETCH_INTERVAL_MS = 30_000
 // Hard cap on every Slate poll loop. Detection of a long seminar can run for
@@ -637,11 +638,7 @@ export default function MomentMiner() {
           <span className="sr-only">Loading moments…</span>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-          <AlertCircle className="h-8 w-8 text-destructive" />
-          <p className="text-sm text-destructive font-medium">Failed to load videos</p>
-          <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
-        </div>
+        <ErrorState message="Failed to load videos" onRetry={() => refetch()} size="sm" />
       ) : view === 'clips_to_review' ? (
         <MomentFeed
           loading={momentsLoading}

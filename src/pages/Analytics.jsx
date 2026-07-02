@@ -45,52 +45,52 @@ const TONE = {
   muted: { ring: 'bg-muted', icon: 'text-muted-foreground', card: 'border-border bg-card' },
 }
 
-function ReadCard({ read }) {
-  const Icon = READ_ICONS[read.icon] || Sparkles
-  const tone = TONE[read.tone] || TONE.muted
+// Shared icon-circle card shell used by ReadCard and PendingRead below.
+function ReadShell({ cardCls, ringCls, iconCls, icon: Icon, children }) {
   return (
-    <div className={`rounded-2xl border p-5 ${tone.card}`}>
+    <div className={`rounded-2xl border p-5 ${cardCls}`}>
       <div className="flex items-start gap-3">
-        <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${tone.ring}`}>
-          <Icon className={`h-4 w-4 ${tone.icon}`} />
+        <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${ringCls}`}>
+          <Icon className={`h-4 w-4 ${iconCls}`} />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm leading-relaxed">
-            <span className="font-semibold">{read.title}</span>{' '}
-            <span className="text-muted-foreground">{read.body}</span>
-          </p>
-          {read.action && (
-            <div className="mt-3">
-              <Link
-                to={read.action.to}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
-              >
-                <Mic className="h-4 w-4" /> {read.action.label}
-              </Link>
-            </div>
-          )}
-        </div>
+        <div className="flex-1 min-w-0">{children}</div>
       </div>
     </div>
   )
 }
 
-// One "unlocks when connected" preview row in the website section.
-function PendingRead({ icon: Icon, badge, children }) {
+function ReadCard({ read }) {
+  const Icon = READ_ICONS[read.icon] || Sparkles
+  const tone = TONE[read.tone] || TONE.muted
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card p-5 opacity-60">
-      <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
-          <Icon className="h-4 w-4 text-info" />
+    <ReadShell cardCls={tone.card} ringCls={tone.ring} iconCls={tone.icon} icon={Icon}>
+      <p className="text-sm leading-relaxed">
+        <span className="font-semibold">{read.title}</span>{' '}
+        <span className="text-muted-foreground">{read.body}</span>
+      </p>
+      {read.action && (
+        <div className="mt-3">
+          <Link
+            to={read.action.to}
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Mic className="h-4 w-4" /> {read.action.label}
+          </Link>
         </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
-            {badge}
-          </span>
-          <p className="text-sm leading-relaxed mt-2 text-muted-foreground">{children}</p>
-        </div>
-      </div>
-    </div>
+      )}
+    </ReadShell>
+  )
+}
+
+// One "unlocks when connected" preview row in the website section.
+function PendingRead({ icon, badge, children }) {
+  return (
+    <ReadShell cardCls="border-dashed border-border bg-card opacity-60" ringCls="bg-info/10" iconCls="text-info" icon={icon}>
+      <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+        {badge}
+      </span>
+      <p className="text-sm leading-relaxed mt-2 text-muted-foreground">{children}</p>
+    </ReadShell>
   )
 }
 
