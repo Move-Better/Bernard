@@ -604,11 +604,30 @@ Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) an
   `PlainPreview` raw-dumps its content (the Story `LINK_STICKER_TEXT:` bug class). Every enabled
   channel now has a case; add one for any new channel.
 
+**As of #1690 (2026-06-25) and #1854/#1856 (2026-07-01), `SlideEditor` is not just the carousel
+editor** — every `singleSlide`-capable archetype routes through it as a carousel of one slide, not a
+separate implementation: `carousel`, `visual` (single-photo LinkedIn/FB/X/GBP/Pinterest/Reddit, via
+`singleSlide={true}`), and `story` (photo Instagram Story, via `singleSlide={true}` + a `forcedAspect`
+prop that locks the aspect and hides the chrome's aspect switcher). Only `storyvid` (video Story) stays
+on the dedicated `StoryComposer` — `SlideEditor` is photo-only, same reason `vvideo`/`lvideo` stay on
+the timeline editor. **Lesson (re-confirmed twice now): when the ask is "same editor as X," route to X
+— don't build a parallel implementation that re-clones X's panels.** The two-column preview+schedule
+page is fully retired for photo/carousel content; it's only where `doc`/`email`/`textad`/`ad` land now.
+
+**Canvas bitmap dimensions must be derived from the archetype's `aspect`, never hardcoded** — a canvas
+element's intrinsic `width`/`height` attributes (the pixel buffer `renderFreeformSlide` draws into) are
+independent of its CSS box size. If the CSS box is sized per-aspect (`ASPECT_STAGE` in `SlideEditor.jsx`)
+but the bitmap stays a fixed `SLIDE_W`/`SLIDE_H` (1080×1350, i.e. always 4:5), the browser non-uniformly
+stretches the bitmap to fill the CSS box — invisible at the 4:5 default, but a visibly warped/smeared
+photo (especially the blurred cover-fill backdrop) at any other aspect. Bit us when Story's `forcedAspect`
+made every single render hit this pre-existing latent bug (#1856). Fix: derive width/height from the same
+`AD_CAROUSEL_DIMS[aspect]` table (`src/lib/renderSlides.js`) the publish bake already uses, so editor
+preview and published output always agree — never introduce a second aspect→dimension mapping.
+
 **Deliberately NOT unified** (a real object boundary, not missing work): `/publish/:pieceId`
 (`content_items`, piece-based) and `/slate/clip/:assetId` (`media_assets`, asset-based, from Moment
 Miner) edit DIFFERENT objects at different pipeline stages — they share the chrome/rail components but
-are NOT one route. Thin-edit channels (FB/LinkedIn/GBP) stay on the two-column preview+schedule page;
-the full-bleed canvas shell is for rich carousel/reel editing only. See `memory/project-unified-shell.md`.
+are NOT one route. See `memory/project-unified-shell.md`.
 
 ## Practice-memory RAG — recency + supersession contract
 
