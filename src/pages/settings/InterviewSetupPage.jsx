@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
-import { Loader2, ArrowLeft, ChevronDown, ChevronUp, Mic, ChevronRight } from 'lucide-react'
+import { Loader2, ArrowLeft, ChevronDown, ChevronUp, Mic, ChevronRight, Sliders } from 'lucide-react'
 import { Section, SaveBar } from '@/components/settings/helpers'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
@@ -145,8 +145,8 @@ export default function InterviewSetupPage() {
             Back: Your voice
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center">
-          <span className="nx-rail shrink-0" aria-hidden="true" />
+        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center gap-2">
+          <Sliders className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
           Interview setup
         </h1>
         <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">

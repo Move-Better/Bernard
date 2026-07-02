@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
-import { Loader2, Sparkles, Pencil, ArrowRight } from 'lucide-react'
+import { Loader2, Sparkles, Pencil, ArrowRight, Mic2 } from 'lucide-react'
 import { Section, Field, Textarea2, SaveBar } from '@/components/settings/helpers'
 import { Button } from '@/components/ui/button'
 import { useUserRole } from '@/lib/useUserRole'
@@ -154,8 +154,8 @@ export default function VoiceTonePage() {
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center">
-          <span className="nx-rail shrink-0" aria-hidden="true" />
+        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center gap-2">
+          <Mic2 className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
           Your voice
         </h1>
         <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">

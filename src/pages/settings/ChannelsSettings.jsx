@@ -529,8 +529,8 @@ export default function ChannelsSettings() {
       {/* Sticky header / save bar */}
       <div className="md:sticky md:top-0 z-20 py-4 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span className="nx-rail shrink-0" aria-hidden="true" />
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Radio className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Channels
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -550,10 +550,7 @@ export default function ChannelsSettings() {
       {groups.map((group) => (
         <Card key={group.label} className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <span className="nx-rail shrink-0" aria-hidden="true" />
-              <CardTitle className="text-lg font-bold">{group.label}</CardTitle>
-            </div>
+            <CardTitle className="text-lg font-bold">{group.label}</CardTitle>
             <CardDescription className="text-xs">
               {group.channels.length} channel{group.channels.length === 1 ? '' : 's'}
             </CardDescription>

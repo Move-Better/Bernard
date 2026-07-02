@@ -99,8 +99,6 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
     }
   }, [editing])
 
-  const accent = <span className="nx-rail shrink-0" aria-hidden="true" />
-
   async function commit() {
     const next = draft.trim()
     if (!next || next === value) {
@@ -123,7 +121,6 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
   if (editing) {
     return (
       <h1 className="text-2xl font-bold tracking-tight text-foreground leading-snug flex items-center min-w-0">
-        {accent}
         <input
           ref={inputRef}
           value={draft}
@@ -144,7 +141,6 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
 
   return (
     <h1 className="group text-2xl font-bold tracking-tight text-foreground leading-snug flex items-center min-w-0">
-      {accent}
       <span className="truncate">{value || 'Untitled interview'}</span>
       {canEdit && (
         <button

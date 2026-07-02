@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Mic, Target, User, X, ChevronDown } from 'lucide-react'
+import { Mic, Target, User, X, ChevronDown, Newspaper } from 'lucide-react'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -158,8 +158,8 @@ export default function Stories() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-baseline gap-3 min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center">
-              <span className="nx-rail" aria-hidden="true" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <Newspaper className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
               {mineOnly ? 'My stories' : 'Stories'}
             </h1>
             {!isLoading && stories.length > 0 ? (

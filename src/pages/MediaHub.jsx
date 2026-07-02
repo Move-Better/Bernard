@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, Sparkles } from 'lucide-react'
+import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, Sparkles, FolderOpen } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -360,8 +360,8 @@ export default function MediaHub() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span className="nx-rail shrink-0" aria-hidden="true" />
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <FolderOpen className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Library
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -557,7 +557,6 @@ export default function MediaHub() {
           className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors rounded-t-2xl"
         >
           <div className="flex items-center gap-2 text-xs">
-            <span className="nx-rail shrink-0" aria-hidden="true" />
             {collectionsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             <span className="text-base font-bold tracking-tight text-foreground">Collections</span>
             {collectionId && (

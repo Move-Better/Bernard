@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
   Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronRight,
-  Trash2, Plus, Star,
+  Trash2, Plus, Star, MapPin,
 } from 'lucide-react'
 import { Section } from '@/components/settings/helpers'
 import { Button } from '@/components/ui/button'
@@ -53,8 +53,8 @@ export default function LocationsSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center">
-          <span className="nx-rail shrink-0" aria-hidden="true" />
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
           Locations
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
