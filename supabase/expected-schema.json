@@ -478,6 +478,7 @@
     "default_voice_mode",
     "eleven_voice_id",
     "id",
+    "interview_style_memory",
     "legal_name",
     "name",
     "permission_tier",

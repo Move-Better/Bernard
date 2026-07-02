@@ -1,4 +1,5 @@
 import { getLengthPreset, DEFAULT_LENGTH_PRESET } from './lengthPresets.js'
+import { buildTacticLibraryBlock } from './interviewTactics.js'
 
 // All paradigm content (tone modifiers, interview/PNW context, patient
 // prototypes, topic suggestions) is now stored per-workspace in JSONB
@@ -385,6 +386,10 @@ export function getInterviewSystemPrompt(workspace, staffName, condition, pastIn
     gapBlock       = '',
     audienceSlot   = null,
     storyTypeSlot  = null,
+    // Phase 2 (evolving interviewer): anti-repeat + register-ceiling block built
+    // by the caller from staff.interview_style_memory. Empty on a first interview,
+    // so the prompt stays byte-identical when there's no history.
+    styleMemoryBlock = '',
     // Goal-steered "Write a newsletter" flow: a formatted block describing the
     // campaign goal this conversation is building toward. Empty for a regular
     // interview, so the prompt is byte-identical when absent.
@@ -457,6 +462,8 @@ INTERVIEW ARC — the level should MOVE, and so should the topic:
 3. TRANSLATE + TURN (a REQUIRED beat once you've gone deep): after about 2–3 deep questions on ONE thread — and BEFORE you chase it further or open a new thread — pull the level all the way back down and have them put the sharp point they just made into plain words for a scared patient who knows zero anatomy ("How would you say that to a patient sitting in the room?"). Bank that patient-ready line, THEN move to a DIFFERENT area below.
 Don't spend the whole interview spiraling one mechanism: depth on a thread → translate → a new thread. You want several sharp points, each with its peer-level truth AND its patient translation.
 
+${buildTacticLibraryBlock()}
+
 ${personaIntro}
 ${goalBlock}${pieceDirectionBlock}${formatInterviewContextForPrompt(workspace, condition)}${pastContext}
 ${workspace.display_name} context: ${workspace.clinic_context}
@@ -466,7 +473,7 @@ ${conceptBlock}
 ${agreementBlock}
 ${gapBlock}
 ${probeGoal}
-${reprobeInstruction}${ownHistoryBlock || priorSessionBlock}
+${reprobeInstruction}${ownHistoryBlock || priorSessionBlock}${styleMemoryBlock}
 WHAT TO COVER — these are goals, NOT a script and NOT a numbered march. Cover the ones that fit this clinician and this condition, in whatever order the conversation makes natural. Skip any that don't fit today's audience or piece; don't force one. A vague answer to any of them gets a follow-up before you move on — generic answers produce generic downstream content.
 - The principle that makes their approach to ${condition} genuinely different — the reasoning underneath it, not just the procedure.
 - The counterintuitive truth: the one thing conventional treatment gets wrong, or the myth patients arrive with. Push for one punchy statement, not a list.
