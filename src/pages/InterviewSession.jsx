@@ -17,6 +17,7 @@ import PostCallReveal from '@/components/PostCallReveal'
 import { streamMessage } from '@/lib/claude'
 import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getNewsletterSystemPrompt, buildCampaignGoalBlock, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
 import { resolveAudienceSlot, resolveStoryTypeSlot } from '@/lib/interviewOptionsCatalog'
+import { buildStyleMemoryBlock } from '@/lib/interviewTactics'
 import { detectEmotionalState, getEmotionPromptInjection } from '@/lib/emotionDetection'
 import { getInitials } from '@/lib/utils'
 import { workspace } from '@/lib/workspace'
@@ -294,6 +295,9 @@ export default function InterviewSession() {
   // + recent approved content). Built once when clinician + content fetch
   // resolve; injected into every system prompt for the session.
   const ownHistoryBlockRef = useRef('')
+  // Phase 2 (evolving interviewer): anti-repeat + register-ceiling block, built
+  // from staff.interview_style_memory when the clinician row resolves.
+  const styleMemoryBlockRef = useRef('')
   // Goal-steered "Write a newsletter" flow. When the interview is bound to a
   // campaign_id, goalBlockRef holds the steering block injected into every
   // interview turn, and campaignRef holds the campaign for newsletter
@@ -581,6 +585,10 @@ export default function InterviewSession() {
           priorInterviews,
           priorContent: Array.isArray(recentContent) ? recentContent : [],
         })
+        styleMemoryBlockRef.current = buildStyleMemoryBlock({
+          staffName: staffRow?.name,
+          styleMemory: staffRow?.interview_style_memory,
+        })
       })
       .catch((err) => console.warn('[InterviewSession] practice-memory fetch failed', err?.status, err?.message))
     // `saveMessages` is a stable scope-level helper; `user.id` doesn't change
@@ -734,6 +742,7 @@ export default function InterviewSession() {
         isFirstMessage,
         shallowReprobe: shouldReprobe,
         ownHistoryBlock: ownHistoryBlockRef.current,
+        styleMemoryBlock: styleMemoryBlockRef.current,
         goalBlock: goalBlockRef.current,
         conceptBlock:   conceptBlockRef.current,
         agreementBlock: agreementBlockRef.current,

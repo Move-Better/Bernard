@@ -13,6 +13,7 @@ import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { extractConcepts, buildInterviewText } from '../../_lib/conceptExtractor.js'
 import { summarizeInterview } from '../../_lib/interviewSummarizer.js'
+import { classifyAndStoreInterviewStyle } from '../../_lib/interviewStyleClassifier.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { markBookStale } from '../../_lib/bookStale.js'
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
@@ -411,6 +412,16 @@ export default async function handler(req, res) {
               staffName,
               topic:         topic,
               messages:      turns,
+            }))
+            // Phase 2 (evolving interviewer) — classify which lead tactics /
+            // angles / register this interview used and merge them into the
+            // staff style ledger, so the NEXT interview with this clinician
+            // reaches for fresh tactics instead of re-running the same angles.
+            waitUntil(classifyAndStoreInterviewStyle({
+              workspaceId: ws.id,
+              staffId:     rows[0].staff_id ?? null,
+              interviewId: id,
+              messages:    turns,
             }))
             // Author-Mode parity for Practice Mode — index the RAW transcript
             // into THIS workspace so retrieval includes the clinician's verbatim

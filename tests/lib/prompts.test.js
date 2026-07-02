@@ -95,6 +95,7 @@ describe('getInterviewSystemPrompt — clinical mode (default)', () => {
     expect(prompt).toContain('INTERVIEWER REGISTER')
     expect(prompt).toContain('INTERVIEW ARC')
     expect(prompt).toContain('WHAT TO COVER')
+    expect(prompt).toContain('QUESTION TACTICS')
     expect(prompt).toContain('For referring providers')
   })
 
@@ -104,6 +105,13 @@ describe('getInterviewSystemPrompt — clinical mode (default)', () => {
     const c = getInterviewSystemPrompt(clinicalWorkspace({ prompt_mode: 'clinical' }), 'Dr. Smith', 'sciatica', [], null, { isFirstMessage: true })
     expect(a).toBe(b)
     expect(a).toBe(c)
+  })
+
+  it('injects the caller-provided styleMemoryBlock opt (Phase 2 anti-repeat)', () => {
+    const p = getInterviewSystemPrompt(clinicalWorkspace(), 'Dr. Smith', 'lower back pain', [], null, {
+      styleMemoryBlock: 'ALREADY COVERED WITH Dr. Smith — PHASE2-MARKER',
+    })
+    expect(p).toContain('PHASE2-MARKER')
   })
 })
 
@@ -116,6 +124,7 @@ describe('getInterviewSystemPrompt — general mode (non-clinical workspaces)', 
     // The clinical-specific sections MUST NOT appear in general mode.
     expect(prompt).not.toContain('INTERVIEWER REGISTER')
     expect(prompt).not.toContain('WHAT TO COVER')
+    expect(prompt).not.toContain('QUESTION TACTICS')
     expect(prompt).not.toContain('For referring providers')
     // "patient" and "treat <topic>" should not appear in the general template.
     expect(prompt).not.toContain('patient')
