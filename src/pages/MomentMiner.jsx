@@ -466,10 +466,21 @@ export default function MomentMiner() {
   const [savingId, setSavingId] = useState(null)
 
   // Moment Miner feed — flattened, ranked proposed moments across all sources.
+  // Proposals land here asynchronously (waitUntil background detection), so
+  // this must poll while detection is in flight or a freshly-detected video's
+  // moments never appear without a manual page reload. Same gating as
+  // clipCounts/proposalCounts above: ref-read + 5-min hard cap.
   const { data: momentsData, isLoading: momentsLoading } = useQuery({
     queryKey: ['moments'],
     queryFn: listMoments,
     enabled: !!ws,
+    refetchInterval: () => {
+      if (!detectingRef.current) return false
+      if (!pollStartRef.current.at) pollStartRef.current.at = Date.now()
+      if (Date.now() - pollStartRef.current.at > POLL_CEILING_MS) return false
+      return 60_000
+    },
+    refetchOnWindowFocus: false,
   })
   const allMoments = useMemo(() => momentsData?.moments || [], [momentsData])
   const staffOptions = useMemo(
