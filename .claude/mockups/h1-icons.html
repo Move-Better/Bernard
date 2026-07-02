@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Heading accent: rail → icons — sign-off mockup</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;
+    --muted-foreground: 215 16% 47%;
+    --border: 214 32% 91%;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    padding: 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  h1.page { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
+  p.sub { color: hsl(var(--muted-foreground)); font-size: 14px; margin-bottom: 28px; }
+  .legend {
+    border: 1.5px dashed hsl(var(--primary) / 0.5); border-radius: 12px;
+    background: hsl(var(--primary) / 0.04); padding: 14px 18px; font-size: 13px;
+    margin-bottom: 32px; line-height: 1.6;
+  }
+  .tier { margin-bottom: 36px; }
+  .tier > h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: hsl(var(--muted-foreground)); margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 170px 1fr 1fr; gap: 0; border: 1px solid hsl(var(--border)); border-radius: 14px; overflow: hidden; background: hsl(var(--card)); }
+  .grid .h { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: hsl(var(--muted-foreground)); padding: 10px 16px; background: hsl(var(--background)); border-bottom: 1px solid hsl(var(--border)); }
+  .cell { padding: 14px 16px; border-bottom: 1px solid hsl(var(--border)); display: flex; align-items: center; min-height: 58px; }
+  .grid > .cell:nth-last-child(-n+3) { border-bottom: none; }
+  .page-name { font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); flex-direction: column; align-items: flex-start !important; justify-content: center; gap: 2px; }
+  .page-name .route { font-size: 10px; font-weight: 500; opacity: 0.7; }
+  .rail { display: inline-block; width: 4px; height: 22px; border-radius: 9999px; margin-right: 10px; vertical-align: middle; background: hsl(var(--primary)); }
+  .hx { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+  .hx.card-t { font-size: 16px; }
+  .hx.small { font-size: 14px; }
+  .hx svg { width: 20px; height: 20px; color: hsl(var(--primary)); stroke-width: 2.2; flex: none; }
+  .hx.card-t svg, .hx.small svg { width: 16px; height: 16px; }
+  .note { font-size: 11px; color: hsl(var(--muted-foreground)); margin-left: 10px; font-weight: 500; }
+  .gone { font-size: 12px; color: hsl(var(--muted-foreground)); font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1 class="page">Heading accent → icons</h1>
+<p class="sub">Every current <code>nx-rail</code> heading (left = TODAY) with its proposed replacement (right = PROPOSED). Icons reuse the exact icon already paired with that page in the sidebar/settings nav, so title and nav always match.</p>
+
+<div class="legend">
+  <strong>What changes:</strong> ① Page titles get the nav's lucide icon in primary teal (same pattern Overview / Your Week / Ads / Usage already use). ② Card &amp; section headings <em>inside</em> pages just lose the rail — no icon (matches Overview's inner cards, keeps content titles clean). ③ Two Home cards that already have an icon simply drop the now-redundant rail. End state: <code>.nx-rail</code> is deleted from index.css — one heading convention app-wide.
+</div>
+
+<div class="tier">
+  <h2>① Page titles — rail → nav icon (12 headings)</h2>
+  <div class="grid">
+    <div class="h">Page</div><div class="h">Today</div><div class="h">Proposed</div>
+
+    <div class="cell page-name">Stories<span class="route">/stories</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Stories</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="newspaper"></i>Stories</span><span class="note">= sidebar icon</span></div>
+
+    <div class="cell page-name">Library<span class="route">/library</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Library</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="folder-open"></i>Library</span><span class="note">= sidebar icon</span></div>
+
+    <div class="cell page-name">New interview<span class="route">/new</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Start an interview</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="mic"></i>Start an interview</span></div>
+
+    <div class="cell page-name">Knowledge synthesis<span class="route">/synthesis</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Knowledge synthesis</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="brain"></i>Knowledge synthesis</span><span class="note">= Practice Brain icon</span></div>
+
+    <div class="cell page-name">Settings · General<span class="route">/settings/workspace</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>General</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="settings"></i>General</span><span class="note">= settings-nav icon</span></div>
+
+    <div class="cell page-name">Settings · Your voice<span class="route">/settings/workspace/voice</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Your voice</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="mic-vocal"></i>Your voice</span><span class="note">= settings-nav icon (Mic2)</span></div>
+
+    <div class="cell page-name">Settings · Interview setup<span class="route">/settings/workspace/interview</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Interview setup</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="sliders-vertical"></i>Interview setup</span><span class="note">= settings-nav icon (Sliders)</span></div>
+
+    <div class="cell page-name">Settings · Locations<span class="route">/settings/workspace/locations</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Locations</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="map-pin"></i>Locations</span><span class="note">= settings-nav icon</span></div>
+
+    <div class="cell page-name">Settings · Channels<span class="route">/settings/workspace/channels</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Channels</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="radio"></i>Channels</span><span class="note">= settings-nav icon</span></div>
+
+    <div class="cell page-name">Settings · Plan &amp; billing<span class="route">/settings/workspace/billing</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Plan &amp; billing</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="credit-card"></i>Plan &amp; billing</span><span class="note">= settings-nav icon</span></div>
+
+    <div class="cell page-name">Team access matrix<span class="route">/settings/access</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Team access matrix</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="shield"></i>Team access matrix</span><span class="note">= settings-nav icon</span></div>
+
+    <div class="cell page-name">Account &amp; security<span class="route">/account</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Account &amp; security</span></div>
+    <div class="cell"><span class="hx"><i data-lucide="circle-user"></i>Account &amp; security</span></div>
+  </div>
+</div>
+
+<div class="tier">
+  <h2>② Card / section headings inside pages — rail removed, no icon (5 sites)</h2>
+  <div class="grid">
+    <div class="h">Where</div><div class="h">Today</div><div class="h">Proposed</div>
+
+    <div class="cell page-name">Settings sidebar label</div>
+    <div class="cell"><span class="hx small"><span class="rail"></span>Settings</span></div>
+    <div class="cell"><span class="hx small">Settings</span><span class="note">nav list below is the identity</span></div>
+
+    <div class="cell page-name">Workspace-settings cards<span class="route">each CardTitle</span></div>
+    <div class="cell"><span class="hx card-t"><span class="rail"></span>Publishing cadence</span></div>
+    <div class="cell"><span class="hx card-t">Publishing cadence</span><span class="note">cards keep their own hierarchy</span></div>
+
+    <div class="cell page-name">Channels group cards<span class="route">each CardTitle</span></div>
+    <div class="cell"><span class="hx card-t"><span class="rail"></span>Social media</span></div>
+    <div class="cell"><span class="hx card-t">Social media</span></div>
+
+    <div class="cell page-name">Library · Collections<span class="route">collapsible section</span></div>
+    <div class="cell"><span class="hx card-t"><span class="rail"></span><i data-lucide="chevron-down" style="width:14px;height:14px;color:hsl(var(--foreground))"></i>Collections</span></div>
+    <div class="cell"><span class="hx card-t"><i data-lucide="chevron-down" style="width:14px;height:14px;color:hsl(var(--foreground))"></i>Collections</span><span class="note">chevron already anchors it</span></div>
+
+    <div class="cell page-name">Story detail title<span class="route">/stories/:id</span></div>
+    <div class="cell"><span class="hx"><span class="rail"></span>Why sciatica flares at night</span></div>
+    <div class="cell"><span class="hx">Why sciatica flares at night</span><span class="note">user content, not chrome — stays clean</span></div>
+  </div>
+</div>
+
+<div class="tier">
+  <h2>③ Home cards that already have an icon — redundant rail dropped (2 sites)</h2>
+  <div class="grid">
+    <div class="h">Where</div><div class="h">Today (rail + icon)</div><div class="h">Proposed (icon only)</div>
+
+    <div class="cell page-name">Home · Resume strip</div>
+    <div class="cell"><span class="hx" style="font-size:18px"><span class="rail"></span><i data-lucide="circle-play"></i>Pick up where you left off</span></div>
+    <div class="cell"><span class="hx" style="font-size:18px"><i data-lucide="circle-play"></i>Pick up where you left off</span></div>
+
+    <div class="cell page-name">Home · Getting started</div>
+    <div class="cell"><span class="hx" style="font-size:18px"><span class="rail"></span><i data-lucide="sparkles"></i>Getting started</span></div>
+    <div class="cell"><span class="hx" style="font-size:18px"><i data-lucide="sparkles"></i>Getting started</span></div>
+  </div>
+</div>
+
+<p class="sub" style="margin-top:8px">Reference — the pattern these join (already live): <span class="hx" style="display:inline-flex;font-size:18px"><i data-lucide="building-2"></i>Overview</span>&nbsp;&nbsp;<span class="hx" style="display:inline-flex;font-size:18px"><i data-lucide="calendar-days"></i>Your week</span></p>
+
+<script>lucide.createIcons()</script>
+</body>
+</html>

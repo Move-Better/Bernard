@@ -4,7 +4,7 @@ import { posthogCapture } from '@/lib/posthog'
 import { useUser, useAuth } from '@clerk/react'
 import {
   ArrowLeft, ArrowRight, Loader2, TrendingUp, Sparkles, Plus,
-  ChevronDown, ChevronUp, Star, Check,
+  ChevronDown, ChevronUp, Star, Check, Mic,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -306,8 +306,8 @@ export default function NewInterview() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span className="nx-rail shrink-0" aria-hidden="true" />
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Mic className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Start an interview
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Answer two things and start talking. Everything else you shape later, in your own words.</p>

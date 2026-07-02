@@ -202,7 +202,6 @@ export default function SettingsLayout() {
       <aside className="hidden md:block w-fit shrink-0 pb-6 pr-2 border-r border-border md:-ml-6 lg:-ml-8">
         <div className="sticky top-8 space-y-6">
           <div className="flex items-center gap-2 px-2.5 mb-1">
-            <span className="nx-rail" aria-hidden="true" />
             <h2 className="text-base font-bold tracking-tight text-foreground">
               Settings
             </h2>

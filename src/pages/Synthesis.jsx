@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Loader2, AlertCircle, Users, BookOpen, TrendingUp,
-  ChevronRight, Circle, CheckCircle2, BarChart3, Lightbulb,
+  ChevronRight, Circle, CheckCircle2, BarChart3, Lightbulb, Brain,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -259,8 +259,8 @@ export default function Synthesis() {
           <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3">
             <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span className="nx-rail shrink-0" aria-hidden="true" />
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Knowledge synthesis
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

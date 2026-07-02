@@ -152,17 +152,6 @@
   .nx-pill-ink     { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
   .nx-pill-primary { background: hsl(var(--primary)); color: #fff; }
 
-  /* Accent rail — colored 4px bar that sits to the left of a section
-     heading. Use the inline style="background: …" to pick the hue. */
-  .nx-rail {
-    display: inline-block;
-    width: 4px; height: 22px;
-    border-radius: 9999px;
-    margin-right: 10px;
-    vertical-align: middle;
-    background: hsl(var(--primary));
-  }
-
   /* Signature gradient — used once per page as "the moment." Reserve for
      hero ribbons, campaign progress strips, brand-mark badges. Do NOT use
      for buttons (use .nx-btn-primary). */

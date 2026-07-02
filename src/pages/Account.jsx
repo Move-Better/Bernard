@@ -8,7 +8,7 @@
 // UserButton dropdown surfaces both with their own labels.
 
 import { UserProfile } from '@clerk/react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, UserCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -24,8 +24,8 @@ export default function Account() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span className="nx-rail shrink-0" aria-hidden="true" />
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <UserCircle className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Account &amp; security
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
