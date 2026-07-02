@@ -105,28 +105,10 @@ export function getVoiceModes(workspace) {
   ]
 }
 
-// Patient prototype selector — driven by workspace.patient_context.prototypes.
-// First entry (id: null) is the "all patients" default. Workspaces with no
-// prototypes (equine, animals, fresh self-onboarded tenants) return only
-// that first entry, and the selector is effectively hidden in the UI.
-export function getPatientPrototypesUi(workspace) {
-  const prototypes = workspace?.patient_context?.prototypes
-  const list = Array.isArray(prototypes) ? prototypes : []
-  return [
-    {
-      id: null,
-      label: 'All patients',
-      emoji: '✨',
-      description: 'No specific archetype — AI draws on the full patient base',
-    },
-    ...list.map((p) => ({
-      id: p.id,
-      label: p.shortLabel || p.label,
-      emoji: p.emoji || '',
-      description: p.coreDesire,
-    })),
-  ]
-}
+// Patient prototype selector — moved to its own module so eagerly-loaded
+// pages (Home) can import it without pulling this entire prompt library
+// into the main bundle. Re-exported here for existing consumers.
+export { getPatientPrototypesUi } from './patientPrototypes.js'
 
 // Resolve a condition string to one of the workspace's interview-context
 // entries. Exact match on the bank key first, then a fuzzy keyword-alias
