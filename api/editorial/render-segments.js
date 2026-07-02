@@ -64,8 +64,9 @@ async function sb(path, init = {}) {
  * Never throws — on failure the segment is reset to 'proposed' so the clinician
  * can re-select and retry, and the error is logged. (video_segments has no
  * per-row error column; reverting to 'proposed' keeps the suggestion intact and
- * re-renderable. A hard-killed render leaves the row stuck in 'rendering';
- * segmentDetect clears stale 'rendering' rows on the next detect.)
+ * re-renderable. A hard-killed render — SIGKILL at the 300s wall — runs no
+ * catch, leaving the row stuck in 'rendering'; the sweep-stuck-segment-renders
+ * cron resets those to 'proposed' after ~10 min.)
  */
 async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
   const startSec = Number(seg.start_sec) || 0
@@ -242,7 +243,8 @@ export default async function handler(req, res) {
     // and its segment stranded in 'rendering'); a small pool finishes a typical
     // batch well inside the budget without N concurrent ffmpeg procs OOMing the
     // 1GB function. ClipFinder polls segments to completion; any segment still
-    // 'rendering' if the wall is hit on a large batch self-heals on re-detect.
+    // 'rendering' if the wall is hit on a large batch is reset to 'proposed' by
+    // the sweep-stuck-segment-renders cron (~10 min) so it can be re-submitted.
     const RENDER_CONCURRENCY = 3
     waitUntil(
       (async () => {
