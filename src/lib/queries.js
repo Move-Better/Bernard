@@ -118,6 +118,7 @@ export const queryKeys = {
   websiteGA4:       ['website-ga4'],
   searchQueries:    ['search-queries'],
   seoOpportunities: ['seo-opportunities'],
+  seoCitations:     ['seo-citations'],
   gbpPerformance:   ['gbp-performance'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
@@ -882,6 +883,53 @@ export function useDismissSeoOpportunity() {
       if (ctx?.prev) qc.setQueryData(queryKeys.seoOpportunities, ctx.prev)
     },
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.seoOpportunities }),
+  })
+}
+
+// Citation scoreboard ("Are you the answer?") — latest weekly probe results.
+// { available, connectedEngines, share, perEngine, rows, lastProbedAt }.
+// Cached 1h like the opportunities feed; the underlying probe cron is weekly.
+export function useSeoCitations() {
+  return useQuery({
+    queryKey: queryKeys.seoCitations,
+    queryFn: () =>
+      apiFetch('/api/seo/citations').catch(() => ({ available: false, error: true })),
+    staleTime: 1000 * 60 * 60, // 1h
+    refetchOnWindowFocus: false,
+  })
+}
+
+// Scoreboard actions: queue_goal (→ interview coverage goal), dismiss, add.
+// queue_goal optimistically stamps the row so the button flips to "Queued".
+export function useCitationQuestionAction() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't update this question",
+    mutationFn: ({ action, id, question, topic }) =>
+      apiFetch('/api/seo/citation-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, id, question, topic }),
+      }),
+    onMutate: async ({ action, id }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.seoCitations })
+      const prev = qc.getQueryData(queryKeys.seoCitations)
+      if (prev?.rows && action === 'queue_goal') {
+        qc.setQueryData(queryKeys.seoCitations, {
+          ...prev,
+          rows: prev.rows.map((r) => (r.id === id ? { ...r, goalQueuedAt: new Date().toISOString() } : r)),
+        })
+      }
+      return { prev }
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.seoCitations, ctx.prev)
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.seoCitations })
+      // queue_goal also touches workspaces.topic_suggestions read by /new.
+      qc.invalidateQueries({ queryKey: queryKeys.topicSuggestions })
+    },
   })
 }
 

@@ -4,12 +4,16 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   TrendingUp, Target, Sparkles, TrendingDown, GitBranch, Mic, PenLine, X,
   FilePlus2, FilePen, Wrench, Search, Lock, Plug, RefreshCw,
+  SearchCheck, CheckCircle2, Repeat, CalendarClock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { useSeoOpportunities, useDismissSeoOpportunity } from '@/lib/queries'
+import {
+  useSeoOpportunities, useDismissSeoOpportunity,
+  useSeoCitations, useCitationQuestionAction,
+} from '@/lib/queries'
 
 // SEO Opportunities (/seo) — search demand → content Bernard makes with you,
 // plus advisory on-site fixes. Built to .claude/mockups/seo-opportunities.html.
@@ -133,6 +137,211 @@ function SiteCard({ s }) {
   )
 }
 
+// ── Citation scoreboard ("Are you the answer?") ─────────────────────────────
+// Built to .claude/mockups/answer-graph-v1.html screen 2 (Q sign-off 2026-07-02).
+// AI assistants now answer a large share of patient questions directly; the
+// scoreboard tracks whether THIS clinic is the cited answer, per question per
+// engine, and turns every gap into an interview coverage goal.
+
+const ENGINE_META = [
+  { key: 'chatgpt',    label: 'ChatGPT' },
+  { key: 'perplexity', label: 'Perplexity' },
+  { key: 'google',     label: 'Google AI' },
+]
+
+function shortDomain(domain) {
+  if (!domain) return null
+  const base = domain.replace(/^www\./, '')
+  return base.length > 22 ? `${base.slice(0, 20)}…` : base
+}
+
+function EngineCell({ probe, connected }) {
+  if (!connected) return <span className="text-2xs text-muted-foreground/60" title="This engine isn't connected yet">·</span>
+  if (!probe) return <span className="text-2xs text-muted-foreground">—</span>
+  if (probe.cited) {
+    return (
+      <span className="inline-flex text-2xs font-bold px-2 py-1 rounded-full bg-success/10 text-success whitespace-nowrap">
+        ✓ You
+      </span>
+    )
+  }
+  return (
+    <span
+      className="inline-flex text-2xs font-medium px-2 py-1 rounded-full bg-destructive/10 text-destructive/80 whitespace-nowrap"
+      title={probe.topCitedDomain ? `Cited instead: ${probe.topCitedDomain}` : 'No local source cited'}
+    >
+      {shortDomain(probe.topCitedDomain) || '— generic'}
+    </span>
+  )
+}
+
+function CitationHero({ share, perEngine, connectedEngines, lastProbedAt }) {
+  const probedLabel = lastProbedAt
+    ? new Date(lastProbedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })
+    : null
+  return (
+    <div
+      className="rounded-xl p-5 text-primary-foreground"
+      style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(186 83% 18%))' }}
+    >
+      <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+        <div>
+          <div className="text-2xs font-semibold uppercase tracking-wider opacity-70">Are you the answer?</div>
+          <div className="flex items-end gap-3 mt-1 flex-wrap">
+            <div className="text-4xl font-black tabular-nums">{share.pct}%</div>
+            <div className="text-sm opacity-80 pb-1.5">
+              cited in <span className="font-bold">{share.citedQuestions} of {share.probedQuestions}</span> tracked patient questions
+            </div>
+            {share.deltaQuestions !== null && share.deltaQuestions !== 0 && (
+              <div className="text-2xs font-bold pb-2 px-2 py-0.5 rounded-full bg-white/15 whitespace-nowrap">
+                {share.deltaQuestions > 0 ? '▲ +' : '▼ '}{share.deltaQuestions} question{Math.abs(share.deltaQuestions) === 1 ? '' : 's'} vs last probe
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-3 sm:ml-auto flex-wrap">
+          {ENGINE_META.map(({ key, label }) => {
+            const tally = perEngine?.[key]
+            return (
+              <div key={key} className="rounded-lg bg-white/10 px-4 py-2.5 text-center min-w-[5.5rem]">
+                {connectedEngines?.[key] && tally ? (
+                  <div className="text-lg font-bold tabular-nums">{tally.cited}/{tally.probed}</div>
+                ) : (
+                  <div className="text-lg font-bold opacity-50" title="Not connected yet">—</div>
+                )}
+                <div className="text-3xs opacity-75">{label}{!connectedEngines?.[key] && ' · soon'}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div className="text-2xs opacity-70 mt-3">
+        Probed weekly{probedLabel && ` · last run ${probedLabel}`} · clicks are no longer the scoreboard — AI answers now resolve a large share of patient searches before any website is visited.
+      </div>
+    </div>
+  )
+}
+
+function CitationRow({ row, connectedEngines, onQueueGoal, queueing }) {
+  const anyCited = ENGINE_META.some(({ key }) => row.engines[key]?.cited)
+  const queued = Boolean(row.goalQueuedAt)
+  return (
+    <tr className={!anyCited && !queued ? 'bg-action/5' : ''}>
+      <td className="py-3 pr-4 font-medium text-sm">{row.question}</td>
+      {ENGINE_META.map(({ key }) => (
+        <td key={key} className="px-3 text-center">
+          <EngineCell probe={row.engines[key]} connected={connectedEngines?.[key]} />
+        </td>
+      ))}
+      <td className="pl-3">
+        {anyCited ? (
+          <span className="text-2xs font-medium text-success inline-flex items-center gap-1 whitespace-nowrap">
+            <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" /> Answer live · holding
+          </span>
+        ) : queued ? (
+          <span className="text-2xs font-medium text-muted-foreground inline-flex items-center gap-1 whitespace-nowrap">
+            <CalendarClock className="w-3.5 h-3.5" aria-hidden="true" /> Queued for interview
+          </span>
+        ) : (
+          <Button
+            size="sm"
+            onClick={() => onQueueGoal(row)}
+            disabled={queueing}
+            aria-busy={queueing}
+            className="bg-action text-action-foreground hover:bg-action/90 whitespace-nowrap"
+          >
+            <Mic className="w-3.5 h-3.5" /> → Monday&apos;s interview
+          </Button>
+        )}
+      </td>
+    </tr>
+  )
+}
+
+function CitationScoreboard() {
+  const { data, isLoading } = useSeoCitations()
+  const act = useCitationQuestionAction()
+
+  if (isLoading) return <div className="h-40 rounded-xl bg-muted animate-pulse mt-5" />
+
+  // Pre-first-probe state: the cron seeds questions + probes on Mondays.
+  if (!data?.available) {
+    return (
+      <div className="mt-5 bg-card border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground flex items-start gap-2.5">
+        <SearchCheck className="w-4 h-4 mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+        <span>
+          <span className="font-medium text-foreground">Are you the answer?</span>{' '}
+          Every Monday Bernard asks ChatGPT and Perplexity the questions your patients ask, and tracks whether
+          you&apos;re the cited answer.{' '}
+          {data?.seededQuestions > 0
+            ? `${data.seededQuestions} questions are tracked — the first probe lands next Monday.`
+            : 'Questions seed automatically from your Search Console data on the first run.'}
+        </span>
+      </div>
+    )
+  }
+
+  const rows = data.rows || []
+  const gaps = rows.filter((r) => !ENGINE_META.some(({ key }) => r.engines[key]?.cited))
+  const queuedGaps = gaps.filter((r) => r.goalQueuedAt)
+  const firstOpenGap = gaps.find((r) => !r.goalQueuedAt) || gaps[0]
+  const onQueueGoal = (row) => act.mutate({ action: 'queue_goal', id: row.id })
+
+  return (
+    <div className="mt-5 space-y-4">
+      <CitationHero
+        share={data.share}
+        perEngine={data.perEngine}
+        connectedEngines={data.connectedEngines}
+        lastProbedAt={data.lastProbedAt}
+      />
+
+      <div className="bg-card border border-border rounded-xl p-4 overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
+          <thead>
+            <tr className="text-left text-2xs text-muted-foreground border-b border-border">
+              <th className="py-2 pr-4 font-semibold">Patient question</th>
+              {ENGINE_META.map(({ key, label }) => (
+                <th key={key} className="py-2 px-3 font-semibold text-center">{label}</th>
+              ))}
+              <th className="py-2 pl-3 font-semibold">Next step</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => (
+              <CitationRow
+                key={row.id}
+                row={row}
+                connectedEngines={data.connectedEngines}
+                onQueueGoal={onQueueGoal}
+                queueing={act.isPending && act.variables?.id === row.id}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {gaps.length > 0 && (
+        <div className="rounded-xl border-2 border-action/40 bg-action/5 p-4">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <Repeat className="w-4 h-4 text-action" aria-hidden="true" /> The loop — gap → interview → answer → cited
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            {queuedGaps.length > 0
+              ? <>{queuedGaps.length} uncited question{queuedGaps.length === 1 ? ' is' : 's are'} queued as <span className="font-medium text-foreground">interview coverage goals</span> — they surface as suggested topics when your next interview starts.</>
+              : <>Queue an uncited question and it becomes an <span className="font-medium text-foreground">interview coverage goal</span> — a suggested topic the moment your next interview starts.</>}
+          </p>
+          {firstOpenGap && (
+            <div className="mt-3 rounded-lg bg-card border border-border px-4 py-3 text-sm italic text-muted-foreground">
+              &ldquo;AIs are answering &lsquo;{firstOpenGap.question}&rsquo; without you. Give me your two-minute take and it&apos;s published this week.&rdquo;
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NotConnected() {
   return (
     <div className="bg-card border border-border rounded-xl p-8 text-center">
@@ -244,8 +453,11 @@ export default function SeoOpportunities() {
         </div>
       ) : (
         <>
+          {/* Citation scoreboard — "Are you the answer?" (weekly probe) */}
+          <CitationScoreboard />
+
           {/* Summary strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 mb-6">
             <SummaryCard value={summary.open} label="Open opportunities" />
             <SummaryCard value={summary.strikingDistance} label="Striking distance (#8–20)" tone="text-action" />
             <SummaryCard value={summary.demandNoContent} label="Demand, no content" />
