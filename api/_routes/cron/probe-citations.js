@@ -110,10 +110,25 @@ async function seedQuestions(ws) {
   return ins.json().catch(() => [])
 }
 
+// A workspace probed within this window is skipped, so (a) a re-trigger after
+// a deadline-partial run goes straight to the workspaces that were missed —
+// partial runs are self-completing — and (b) a duplicate cron fire can't
+// double a round.
+const RECENT_PROBE_MS = 72 * 60 * 60 * 1000
+
 async function probeWorkspace(ws, engines, deadline, summary) {
   const domains = clinicDomains(ws)
   if (domains.length === 0) {
     summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'no-domain' })
+    return
+  }
+
+  const lastRes = await sb(
+    `seo_citation_probes?workspace_id=eq.${ws.id}&select=probed_at&order=probed_at.desc&limit=1`
+  )
+  const last = lastRes.ok ? (await lastRes.json().catch(() => []))?.[0]?.probed_at : null
+  if (last && Date.now() - new Date(last).getTime() < RECENT_PROBE_MS) {
+    summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'recently-probed' })
     return
   }
 
