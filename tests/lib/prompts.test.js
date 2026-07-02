@@ -89,13 +89,13 @@ describe('getInterviewSystemPrompt — clinical mode (default)', () => {
     const prompt = getInterviewSystemPrompt(ws, 'Dr. Smith', 'lower back pain', [], null, {
       isFirstMessage: true,
     })
-    // The clinical hardcodes the refactor PRESERVES (intentional — Move Better
-    // and other clinical workspaces must see no behavior change).
+    // Clinical mode: adaptive register + deliberate arc + coverage-goal framing
+    // (Phase 1 of the evolving-interviewer redesign). These markers are clinical-only.
     expect(prompt).toContain('treat lower back pain')
-    expect(prompt).toContain('PATIENT SCENARIO')
-    expect(prompt).toContain('CLINICAL PHILOSOPHY')
-    expect(prompt).toContain('TREATMENT & RECOVERY PROCESS')
-    expect(prompt).toContain('FOR REFERRING PROVIDERS')
+    expect(prompt).toContain('INTERVIEWER REGISTER')
+    expect(prompt).toContain('INTERVIEW ARC')
+    expect(prompt).toContain('WHAT TO COVER')
+    expect(prompt).toContain('For referring providers')
   })
 
   it('produces identical output regardless of whether prompt_mode is unset, null, or "clinical"', () => {
@@ -113,12 +113,10 @@ describe('getInterviewSystemPrompt — general mode (non-clinical workspaces)', 
     const prompt = getInterviewSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard', [], null, {
       isFirstMessage: true,
     })
-    // The clinical-specific section headers from the old template MUST NOT appear.
-    expect(prompt).not.toContain('PATIENT SCENARIO')
-    expect(prompt).not.toContain('CLINICAL PHILOSOPHY')
-    expect(prompt).not.toContain('TREATMENT & RECOVERY PROCESS')
-    expect(prompt).not.toContain('FOR REFERRING PROVIDERS')
-    expect(prompt).not.toContain('LOCAL COMMUNITY ANGLE')
+    // The clinical-specific sections MUST NOT appear in general mode.
+    expect(prompt).not.toContain('INTERVIEWER REGISTER')
+    expect(prompt).not.toContain('WHAT TO COVER')
+    expect(prompt).not.toContain('For referring providers')
     // "patient" and "treat <topic>" should not appear in the general template.
     expect(prompt).not.toContain('patient')
     expect(prompt).not.toContain('treat why I built Bernard')
