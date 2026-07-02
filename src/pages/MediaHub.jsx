@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, RefreshCw, AlertCircle, Sparkles } from 'lucide-react'
+import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
 import EmptyState from '@/components/EmptyState'
+import ErrorState from '@/components/ErrorState'
 import { MediaGridSkeleton } from '@/components/ui/skeleton'
 import MediaUploader from '@/components/MediaUploader'
 import DriveImportPicker from '@/components/DriveImportPicker'
@@ -660,15 +661,7 @@ export default function MediaHub() {
       {loading ? (
         <MediaGridSkeleton />
       ) : error && assets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <AlertCircle className="h-8 w-8 text-destructive/60 mb-3" />
-          <p className="text-sm font-medium text-destructive mb-1">Could not load your media library</p>
-          <p className="text-xs text-muted-foreground mb-4">{error}</p>
-          <Button size="sm" variant="outline" onClick={refetchMedia}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Retry
-          </Button>
-        </div>
+        <ErrorState message="Could not load your media library" detail={error} onRetry={refetchMedia} />
       ) : assets.length === 0 ? (
         // Distinguish "library is empty" from "filters returned nothing" so
         // the coaching matches the situation. hasActiveFilter is true whenever

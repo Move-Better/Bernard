@@ -513,7 +513,9 @@ export default function YourWeek() {
               </span>
             ))}
           </div>
-          <span className="ml-auto text-2xs text-muted-foreground">I take more off your plate as I learn what you greenlight</span>
+          {/* basis-full below lg keeps the sentence on its own tidy row instead of
+              orphaning mid-ladder when the flex row wraps at narrow widths */}
+          <span className="basis-full lg:basis-auto lg:ml-auto text-2xs text-muted-foreground">I take more off your plate as I learn what you greenlight</span>
         </div>
       )}
 

@@ -72,7 +72,7 @@ export default function HomeStats({ stories = [] }) {
       </div>
 
       {/* Arrow connector */}
-      <div className="flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
+      <div className="flex items-center px-1.5 sm:px-3 shrink-0 text-muted-foreground/30" aria-hidden="true">
         <ArrowRight className="h-4 w-4" />
       </div>
 
@@ -98,7 +98,7 @@ export default function HomeStats({ stories = [] }) {
       </div>
 
       {/* Arrow connector */}
-      <div className="flex items-center px-3 text-muted-foreground/30" aria-hidden="true">
+      <div className="flex items-center px-1.5 sm:px-3 shrink-0 text-muted-foreground/30" aria-hidden="true">
         <ArrowRight className="h-4 w-4" />
       </div>
 

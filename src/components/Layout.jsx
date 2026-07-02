@@ -267,7 +267,7 @@ export default function Layout({ children }) {
           <button
             type="button"
             onClick={toggleSidebar}
-            className={`flex items-center gap-2 py-2 w-full rounded-md text-xs text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors ${collapsed ? 'justify-center px-0' : 'px-3'}`}
+            className={`flex items-center gap-2 py-2 w-full rounded-md text-xs text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${collapsed ? 'justify-center px-0' : 'px-3'}`}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <ChevronLeft className={`h-4 w-4 shrink-0 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`} />
@@ -471,7 +471,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
-          className={`inline-flex items-center gap-1 h-6 pl-2 pr-1.5 text-xs font-medium rounded-full border border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${inSidebar ? 'w-full justify-between' : ''}`}
+          className={`inline-flex items-center gap-1 h-6 pl-2 pr-1.5 text-xs font-medium rounded-full border border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${inSidebar ? 'w-full justify-between' : ''}`}
           aria-expanded={open}
           aria-haspopup="listbox"
         >
@@ -492,7 +492,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
                 role="option"
                 aria-selected={ws.slug === currentWs?.slug}
                 onClick={() => handleSwitch(ws)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-inset"
               >
                 <Check className={`h-3.5 w-3.5 shrink-0 ${ws.slug === currentWs?.slug ? 'text-primary' : 'text-transparent'}`} />
                 <span className="truncate">{ws.display_name}</span>
