@@ -534,8 +534,9 @@ export default function MomentMiner() {
         </span>
       </div>
 
-      {/* Tabs + search row — review-first: the decisions tab leads, in the
-          act-now amber so the eye lands where the AI finished its homework.
+      {/* Tabs + search row — review-first: the decisions tab leads, with an
+          act-now amber count badge (while unselected) so the eye lands where
+          the AI finished its homework. Selected fill is always primary.
           On mobile: tabs scroll horizontally, search drops below. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div role="tablist" aria-label="View" className="flex items-center gap-2 text-xs overflow-x-auto pb-0.5">
@@ -546,10 +547,8 @@ export default function MomentMiner() {
             onClick={() => setView('clips_to_review')}
             className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5 ${
               view === 'clips_to_review'
-                ? 'bg-action text-action-foreground border-action'
-                : allMoments.length > 0
-                  ? 'bg-action/10 border-action/40 text-foreground hover:border-action hover:bg-action/20'
-                  : 'bg-card border-border text-muted-foreground hover:text-foreground'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground'
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
