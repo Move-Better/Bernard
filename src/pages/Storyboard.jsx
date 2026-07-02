@@ -40,9 +40,9 @@ function ageLabel(days) {
 }
 
 // Publisher inbox banner — shown at the top of Storyboard when there is
-// actionable work. Mirrors the DraftsReadyRow warm-inbox treatment from Home
-// so the visual language is consistent: primary-orange border + gradient bg =
-// "your queue, act now."
+// actionable work. Shares the .nx-card-action warm-inbox treatment with
+// Overview's queue banners so the visual language is consistent: amber
+// border + gradient bg = "your queue, act now."
 function PublisherInboxBanner({ needsMediaCount, readyCount }) {
   if (needsMediaCount === 0 && readyCount === 0) return null
   const parts = []
