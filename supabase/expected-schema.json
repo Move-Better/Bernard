@@ -455,11 +455,32 @@
     "status",
     "workspace_id"
   ],
+  "seo_citation_probes": [
+    "answer_excerpt",
+    "cited",
+    "cited_urls",
+    "engine",
+    "id",
+    "probed_at",
+    "question_id",
+    "top_cited_domain",
+    "workspace_id"
+  ],
   "seo_opportunity_dismissals": [
     "dismissed_at",
     "dismissed_by",
     "id",
     "query",
+    "workspace_id"
+  ],
+  "seo_tracked_questions": [
+    "active",
+    "created_at",
+    "goal_queued_at",
+    "id",
+    "question",
+    "source",
+    "topic",
     "workspace_id"
   ],
   "staff": [

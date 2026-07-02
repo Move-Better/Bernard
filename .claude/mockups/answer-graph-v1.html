@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Graph + Standing Producer — Mockup v1</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    /* Bernard app tokens — copied from src/index.css */
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;          /* Blue Spruce */
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --accent-foreground: 160 84% 30%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --info: 199 95% 40%;
+    --action: 32 95% 44%;            /* amber act-now */
+    --radius: 0.625rem;
+
+    /* Tenant (Move Better) public-page brand — rendered from workspaces.brand_style at build time */
+    --tenant: 168 45% 22%;           /* deep evergreen-teal */
+    --tenant-soft: 168 35% 95%;
+    --tenant-accent: 16 85% 60%;     /* warm coral accent */
+  }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); }
+  .b-primary { color: hsl(var(--primary)); }
+  .bg-b-primary { background: hsl(var(--primary)); }
+  .b-muted { color: hsl(var(--muted-foreground)); }
+  .b-action { color: hsl(var(--action)); }
+  .bg-b-action-soft { background: hsl(var(--action) / .12); }
+  .bg-b-success-soft { background: hsl(var(--success) / .12); }
+  .b-success { color: hsl(var(--success)); }
+  .b-info { color: hsl(var(--info)); }
+  .legend { border: 2px dashed hsl(var(--action) / .55); background: hsl(var(--action) / .06); border-radius: var(--radius); }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .tab-btn.active { background: hsl(var(--primary)); color: white; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .tenant-page { background: #fdfdfb; }
+  .tenant-ink { color: hsl(var(--tenant)); }
+  .bg-tenant { background: hsl(var(--tenant)); }
+  .bg-tenant-soft { background: hsl(var(--tenant-soft)); }
+  .tenant-accent { color: hsl(var(--tenant-accent)); }
+  .check-yes { background: hsl(var(--success) / .12); color: hsl(var(--success)); }
+  .check-no { background: hsl(0 0% 0% / .04); color: hsl(var(--muted-foreground)); }
+  .check-them { background: hsl(0 84% 60% / .09); color: hsl(0 60% 45%); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ───────────────────────── Screen switcher ───────────────────────── -->
+<div class="sticky top-0 z-50 border-b" style="background:hsl(var(--card)); border-color:hsl(var(--border))">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
+    <div class="w-7 h-7 rounded-lg bg-b-primary text-white grid place-items-center font-bold text-sm">B</div>
+    <div class="text-sm font-semibold">Answer Graph + Standing Producer — mockup v1</div>
+    <div class="ml-auto flex gap-1.5">
+      <button class="tab-btn active text-xs font-medium px-3 py-1.5 rounded-lg border" style="border-color:hsl(var(--border))" data-screen="s1" onclick="go('s1',this)">1 · Public answer page</button>
+      <button class="tab-btn text-xs font-medium px-3 py-1.5 rounded-lg border" style="border-color:hsl(var(--border))" data-screen="s2" onclick="go('s2',this)">2 · /seo — Are you the answer?</button>
+      <button class="tab-btn text-xs font-medium px-3 py-1.5 rounded-lg border" style="border-color:hsl(var(--border))" data-screen="s3" onclick="go('s3',this)">3 · Standing Producer in the app</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN 1 — PUBLIC ANSWER PAGE ═══════════════════ -->
+<section id="s1" class="screen active">
+  <div class="max-w-6xl mx-auto px-6 py-5">
+    <div class="legend px-4 py-3 mb-5 text-sm">
+      <span class="font-bold b-action">WHAT THIS SCREEN IS —</span> a surface that does not exist today. One public page per real patient question,
+      compiled from <span class="mono text-xs">practice_memory_chunks</span>, written only in Dr. Q's captured words
+      (<b>voice-fidelity judge promoted to a hard publish gate</b>), machine-readable to AI search, and kept current by the supersession sweep.
+      Rendered in the tenant's brand from <span class="mono text-xs">brand_style</span> — this is Move Better's page, not Bernard's.
+    </div>
+
+    <!-- fake browser chrome -->
+    <div class="card overflow-hidden shadow-sm">
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b" style="background:hsl(var(--muted)); border-color:hsl(var(--border))">
+        <div class="flex gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-300"></span><span class="w-2.5 h-2.5 rounded-full bg-amber-300"></span><span class="w-2.5 h-2.5 rounded-full bg-green-300"></span></div>
+        <div class="mono text-xs b-muted bg-white rounded-md px-3 py-1 flex-1">movebetter.co/answers/sciatica/worse-in-the-morning</div>
+      </div>
+
+      <div class="tenant-page">
+        <!-- tenant header -->
+        <header class="border-b" style="border-color:hsl(var(--tenant)/.12)">
+          <div class="max-w-3xl mx-auto px-8 py-5 flex items-center gap-4">
+            <div class="text-xl font-black tracking-tight tenant-ink">Move Better</div>
+            <nav class="hidden md:flex gap-5 text-sm tenant-ink opacity-70 ml-6">
+              <span>Answers</span><span>Conditions</span><span>Our team</span>
+            </nav>
+            <button class="ml-auto bg-tenant text-white text-sm font-semibold px-4 py-2 rounded-full">Book a visit</button>
+          </div>
+        </header>
+
+        <main class="max-w-3xl mx-auto px-8 py-10">
+          <div class="text-xs font-semibold uppercase tracking-wider tenant-ink opacity-60 mb-3">Sciatica · Portland &amp; Vancouver</div>
+          <h1 class="text-4xl font-black tracking-tight tenant-ink leading-tight">Is sciatica worse in the morning?</h1>
+
+          <!-- trust strip -->
+          <div class="flex flex-wrap items-center gap-2 mt-5">
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-b-success-soft b-success">
+              <i data-lucide="badge-check" class="w-3.5 h-3.5"></i> Voice-verified — Dr. Q's actual words (9.2/10)
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-tenant-soft tenant-ink">
+              <i data-lucide="refresh-ccw" class="w-3.5 h-3.5"></i> Current as of Jun 28, 2026 — reviewed after Dr. Q's latest interview
+            </span>
+          </div>
+
+          <!-- the answer, in his words -->
+          <div class="mt-7 text-[17px] leading-relaxed" style="color:#1d2b28">
+            <p class="font-semibold tenant-ink mb-3">Dr. Q's answer:</p>
+            <p>"Usually, yes — and it's not because you slept wrong. Overnight your discs actually rehydrate and swell a little,
+            so the first hour of the day is when there's the most pressure on the nerve. That's why the first ten steps out of
+            bed feel like the worst ten steps of your day."</p>
+            <p class="mt-4">"What I tell patients: don't stretch first thing. Walk first — five easy minutes, let the disc settle,
+            <em>then</em> work on mobility. Most people do it in the opposite order and wonder why mornings never improve."</p>
+          </div>
+
+          <!-- supersession note — truth maintenance made visible -->
+          <div class="mt-6 rounded-xl px-4 py-3 bg-tenant-soft border" style="border-color:hsl(var(--tenant)/.15)">
+            <div class="flex items-start gap-2.5">
+              <i data-lucide="history" class="w-4 h-4 tenant-ink mt-0.5 shrink-0"></i>
+              <p class="text-sm tenant-ink"><b>This answer was updated.</b> Dr. Q's earlier guidance (March 2026) suggested stretching on waking;
+              his current approach is walk-then-stretch. The change was confirmed in his June interview — this page updated automatically.</p>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div class="mt-8 flex items-center gap-4 rounded-2xl bg-tenant text-white px-6 py-5">
+            <div>
+              <div class="font-bold">Still fighting morning sciatica?</div>
+              <div class="text-sm opacity-80">Dr. Q sees new patients in Portland &amp; Vancouver this week.</div>
+            </div>
+            <button class="ml-auto shrink-0 bg-white tenant-ink text-sm font-bold px-4 py-2.5 rounded-full">Book with Dr. Q</button>
+          </div>
+
+          <!-- related questions -->
+          <div class="mt-10">
+            <div class="text-sm font-bold tenant-ink mb-3">People also ask Dr. Q</div>
+            <div class="grid md:grid-cols-2 gap-3">
+              <div class="rounded-xl border px-4 py-3 text-sm font-medium tenant-ink" style="border-color:hsl(var(--tenant)/.15)">Do I need an MRI before seeing a chiropractor for sciatica?</div>
+              <div class="rounded-xl border px-4 py-3 text-sm font-medium tenant-ink" style="border-color:hsl(var(--tenant)/.15)">Is it safe to deadlift with a disc bulge?</div>
+              <div class="rounded-xl border px-4 py-3 text-sm font-medium tenant-ink" style="border-color:hsl(var(--tenant)/.15)">Why does my sciatica move from side to side?</div>
+              <div class="rounded-xl border px-4 py-3 text-sm font-medium opacity-50 tenant-ink border-dashed" style="border-color:hsl(var(--tenant)/.3)">How long should a flare-up last? — <i>gap: queued for next interview</i></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- machine-readable panel -->
+    <div class="grid md:grid-cols-2 gap-4 mt-5">
+      <div class="card p-4">
+        <div class="flex items-center gap-2 text-sm font-bold mb-2"><i data-lucide="bot" class="w-4 h-4 b-info"></i> What the AIs read (same page, structured layer)</div>
+        <pre class="mono text-[11px] leading-relaxed b-muted bg-slate-50 rounded-lg p-3 overflow-x-auto">&lt;script type="application/ld+json"&gt;
+{ "@type": ["FAQPage","MedicalWebPage"],
+  "mainEntity": { "name": "Is sciatica worse in the morning?",
+    "acceptedAnswer": { "text": "Usually, yes — overnight your discs rehydrate…",
+      "author": { "@type":"Person", "name":"Dr. Q", "jobTitle":"Chiropractor",
+                  "worksFor":"Move Better", "areaServed":"Portland, OR" } },
+    "dateModified": "2026-06-28" } }
+&lt;/script&gt;
+<span class="b-success">movebetter.co/llms.txt      → answers index for AI crawlers</span>
+<span class="b-success">GET /api/answers/sciatica    → the same corpus as an API</span></pre>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center gap-2 text-sm font-bold mb-2"><i data-lucide="shield-check" class="w-4 h-4 b-success"></i> Why an AI cites THIS page over a content-mill page</div>
+        <ul class="text-sm b-muted space-y-2 mt-1">
+          <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 b-success shrink-0 mt-0.5"></i><span><b class="text-slate-700">A named clinician, verifiable, local.</b> Author + practice + city in the structured data — exactly what "near me" answers select for.</span></li>
+          <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 b-success shrink-0 mt-0.5"></i><span><b class="text-slate-700">Freshness that's real.</b> dateModified moves because supersession actually updated the answer — not a fake timestamp bump.</span></li>
+          <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 b-success shrink-0 mt-0.5"></i><span><b class="text-slate-700">One voice, hundreds of questions.</b> Consistent authorship across the whole corpus reads as genuine expertise, not SEO spam.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SCREEN 2 — /seo CITATION SCOREBOARD ═══════════════════ -->
+<section id="s2" class="screen">
+  <div class="max-w-6xl mx-auto px-6 py-5">
+    <div class="legend px-4 py-3 mb-5 text-sm">
+      <span class="font-bold b-action">TODAY → CHANGE —</span> the /seo page keeps everything it has (GSC opportunity cards, striking-distance, demand-no-content).
+      <b>Added on top:</b> a weekly probe asks ChatGPT / Perplexity / Google AI the questions patients actually ask, and the page's hero metric becomes
+      <b>citation share</b> — are you the answer? — with uncited questions flowing straight into the weekly interview as coverage goals.
+    </div>
+
+    <!-- app chrome approximation -->
+    <div class="card p-6">
+      <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <i data-lucide="search-check" class="w-6 h-6 b-primary"></i> SEO opportunities
+      </h1>
+      <p class="text-sm b-muted mt-1">Search demand → content, for Move Better · Portland &amp; Vancouver</p>
+
+      <!-- NEW hero: citation share -->
+      <div class="mt-5 rounded-xl p-5 text-white" style="background:linear-gradient(135deg, hsl(var(--primary)), hsl(186 83% 20%))">
+        <div class="flex flex-wrap items-center gap-x-10 gap-y-4">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-wider opacity-70">NEW · Are you the answer?</div>
+            <div class="flex items-end gap-3 mt-1">
+              <div class="text-4xl font-black">21%</div>
+              <div class="text-sm opacity-80 pb-1.5">cited in <b>4 of 19</b> tracked patient questions</div>
+              <div class="text-xs font-bold pb-2 px-2 py-0.5 rounded-full bg-white/15">▲ +2 questions this month</div>
+            </div>
+          </div>
+          <div class="flex gap-3 ml-auto">
+            <div class="rounded-lg bg-white/10 px-4 py-2.5 text-center"><div class="text-lg font-bold">3/12</div><div class="text-[11px] opacity-75">Google AI Overview</div></div>
+            <div class="rounded-lg bg-white/10 px-4 py-2.5 text-center"><div class="text-lg font-bold">1/9</div><div class="text-[11px] opacity-75">ChatGPT</div></div>
+            <div class="rounded-lg bg-white/10 px-4 py-2.5 text-center"><div class="text-lg font-bold">2/7</div><div class="text-[11px] opacity-75">Perplexity</div></div>
+          </div>
+        </div>
+        <div class="text-xs opacity-70 mt-3">Probed weekly · clicks are no longer the scoreboard — AI Overviews now answer ~25% of searches and cut clicks 34–58% when they appear.</div>
+      </div>
+
+      <!-- question table -->
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs b-muted border-b" style="border-color:hsl(var(--border))">
+              <th class="py-2 pr-4 font-semibold">Patient question (Portland-area)</th>
+              <th class="py-2 px-3 font-semibold text-center">AI Overview</th>
+              <th class="py-2 px-3 font-semibold text-center">ChatGPT</th>
+              <th class="py-2 px-3 font-semibold text-center">Perplexity</th>
+              <th class="py-2 pl-3 font-semibold">Next step</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y" style="border-color:hsl(var(--border))">
+            <tr>
+              <td class="py-3 pr-4 font-medium">Is sciatica worse in the morning?</td>
+              <td class="px-3 text-center"><span class="check-yes text-xs font-bold px-2 py-1 rounded-full">✓ You</span></td>
+              <td class="px-3 text-center"><span class="check-yes text-xs font-bold px-2 py-1 rounded-full">✓ You</span></td>
+              <td class="px-3 text-center"><span class="check-yes text-xs font-bold px-2 py-1 rounded-full">✓ You</span></td>
+              <td class="pl-3"><span class="text-xs font-medium b-success inline-flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Answer live · holding</span></td>
+            </tr>
+            <tr>
+              <td class="py-3 pr-4 font-medium">Best chiropractor for sciatica near me</td>
+              <td class="px-3 text-center"><span class="check-yes text-xs font-bold px-2 py-1 rounded-full">✓ You</span></td>
+              <td class="px-3 text-center"><span class="check-them text-xs font-medium px-2 py-1 rounded-full">Competitor A</span></td>
+              <td class="px-3 text-center"><span class="check-yes text-xs font-bold px-2 py-1 rounded-full">✓ You</span></td>
+              <td class="pl-3"><span class="text-xs b-muted">Strengthen: 2 supporting answers queued</span></td>
+            </tr>
+            <tr class="bg-b-action-soft/40">
+              <td class="py-3 pr-4 font-medium">Do I need an MRI before a chiropractor visit?</td>
+              <td class="px-3 text-center"><span class="check-them text-xs font-medium px-2 py-1 rounded-full">WebMD</span></td>
+              <td class="px-3 text-center"><span class="check-no text-xs font-medium px-2 py-1 rounded-full">— nobody local</span></td>
+              <td class="px-3 text-center"><span class="check-them text-xs font-medium px-2 py-1 rounded-full">Competitor B</span></td>
+              <td class="pl-3"><button class="text-xs font-bold text-white px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5" style="background:hsl(var(--action))"><i data-lucide="mic" class="w-3.5 h-3.5"></i> → Monday's interview</button></td>
+            </tr>
+            <tr class="bg-b-action-soft/40">
+              <td class="py-3 pr-4 font-medium">How long should a sciatica flare-up last?</td>
+              <td class="px-3 text-center"><span class="check-no text-xs font-medium px-2 py-1 rounded-full">— generic</span></td>
+              <td class="px-3 text-center"><span class="check-no text-xs font-medium px-2 py-1 rounded-full">— generic</span></td>
+              <td class="px-3 text-center"><span class="check-no text-xs font-medium px-2 py-1 rounded-full">— generic</span></td>
+              <td class="pl-3"><button class="text-xs font-bold text-white px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5" style="background:hsl(var(--action))"><i data-lucide="mic" class="w-3.5 h-3.5"></i> → Monday's interview</button></td>
+            </tr>
+            <tr>
+              <td class="py-3 pr-4 font-medium">Is it safe to deadlift with a disc bulge?</td>
+              <td class="px-3 text-center"><span class="check-no text-xs font-medium px-2 py-1 rounded-full">—</span></td>
+              <td class="px-3 text-center"><span class="check-yes text-xs font-bold px-2 py-1 rounded-full">✓ You</span></td>
+              <td class="px-3 text-center"><span class="check-no text-xs font-medium px-2 py-1 rounded-full">—</span></td>
+              <td class="pl-3"><span class="text-xs b-muted">Answer live · 12 days old</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- the loop -->
+      <div class="grid md:grid-cols-2 gap-4 mt-6">
+        <div class="rounded-xl border-2 p-4" style="border-color:hsl(var(--action)/.4); background:hsl(var(--action)/.05)">
+          <div class="flex items-center gap-2 text-sm font-bold"><i data-lucide="repeat" class="w-4 h-4 b-action"></i> The loop — gap → interview → answer → cited</div>
+          <p class="text-sm b-muted mt-2">2 uncited questions are queued as <b class="text-slate-700">coverage goals</b> for Monday's call. Bernard opens with:</p>
+          <div class="mt-3 rounded-lg bg-white border px-4 py-3 text-sm italic" style="border-color:hsl(var(--border))">
+            "AIs in Portland are answering 'do I need an MRI first?' with WebMD, not you. Give me your two-minute take and it's a published answer by Thursday."
+          </div>
+        </div>
+        <div class="card p-4">
+          <div class="flex items-center gap-2 text-sm font-bold"><i data-lucide="layers" class="w-4 h-4 b-primary"></i> Unchanged below this line (TODAY)</div>
+          <p class="text-sm b-muted mt-2">The existing opportunity cards stay exactly as shipped:</p>
+          <div class="mt-3 space-y-2 opacity-60">
+            <div class="rounded-lg border px-3 py-2 text-xs flex items-center gap-2" style="border-color:hsl(var(--border))"><span class="bg-b-action-soft b-action font-semibold px-2 py-0.5 rounded-full">Worth doing</span> Striking distance: "sciatica stretches" ranks #11 — one refresh from page 1</div>
+            <div class="rounded-lg border px-3 py-2 text-xs flex items-center gap-2" style="border-color:hsl(var(--border))"><span class="bg-b-action-soft b-action font-semibold px-2 py-0.5 rounded-full">Worth doing</span> Demand, no content: "pinched nerve vs sciatica" — 480 searches/mo, no page</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SCREEN 3 — STANDING PRODUCER ═══════════════════ -->
+<section id="s3" class="screen">
+  <div class="max-w-6xl mx-auto px-6 py-5">
+    <div class="legend px-4 py-3 mb-5 text-sm">
+      <span class="font-bold b-action">WHAT CHANGES vs WHAT DOESN'T —</span> Bernard becomes a <b>named member</b> holding the producer role that already exists
+      (and sits vacant) in the permission system. Your surfaces stay: <b>/week is still where you approve, the editors still exist, nothing publishes without
+      the gate.</b> What's new: the work arrives <i>already done</i>, every action is visible in a workday feed, and Bernard initiates when it needs you.
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-5">
+      <!-- Members page -->
+      <div class="lg:col-span-2 card p-5">
+        <h1 class="text-xl font-bold tracking-tight">Members</h1>
+        <p class="text-xs b-muted mt-0.5 mb-4">Invite teammates, change roles, and manage workspace access.</p>
+
+        <div class="space-y-2.5">
+          <div class="flex items-center gap-3 rounded-lg border px-3 py-2.5" style="border-color:hsl(var(--border))">
+            <div class="w-9 h-9 rounded-full bg-slate-200 grid place-items-center text-sm font-bold text-slate-600">Q</div>
+            <div class="min-w-0"><div class="text-sm font-semibold">Dr. Q</div><div class="text-xs b-muted">operations@movebetter.co</div></div>
+            <span class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Owner</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-lg border px-3 py-2.5" style="border-color:hsl(var(--border))">
+            <div class="w-9 h-9 rounded-full bg-slate-200 grid place-items-center text-sm font-bold text-slate-600">W</div>
+            <div class="min-w-0"><div class="text-sm font-semibold">Whitney</div><div class="text-xs b-muted">whitney@movebetter.co</div></div>
+            <span class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Admin</span>
+          </div>
+
+          <!-- THE NEW ROW -->
+          <div class="relative flex items-center gap-3 rounded-lg border-2 px-3 py-3" style="border-color:hsl(var(--primary)/.5); background:hsl(var(--primary)/.04)">
+            <span class="absolute -top-2 left-3 text-[10px] font-bold uppercase tracking-wide px-1.5 rounded bg-white b-action border" style="border-color:hsl(var(--action)/.4)">New</span>
+            <div class="relative w-9 h-9 rounded-full bg-b-primary grid place-items-center text-sm font-bold text-white">B
+              <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white" style="background:hsl(var(--success))"></span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold">Bernard <span class="b-muted font-normal">· always on</span></div>
+              <div class="text-xs b-success flex items-center gap-1"><i data-lucide="loader" class="w-3 h-3"></i> Working: drafting Thursday's carousel</div>
+            </div>
+            <span class="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-b-primary text-white">Producer</span>
+          </div>
+        </div>
+
+        <!-- what stays -->
+        <div class="mt-5 rounded-lg p-3.5" style="background:hsl(var(--accent))">
+          <div class="text-xs font-bold mb-2" style="color:hsl(var(--accent-foreground))">What does NOT change</div>
+          <ul class="text-xs space-y-1.5" style="color:hsl(160 30% 25%)">
+            <li class="flex gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 shrink-0 mt-px"></i> You still approve everything on /week — same page, same button</li>
+            <li class="flex gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 shrink-0 mt-px"></i> Nothing publishes without the gate — the publish rules are untouched</li>
+            <li class="flex gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 shrink-0 mt-px"></i> All editors remain — they become "open the hood", not the default path</li>
+            <li class="flex gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 shrink-0 mt-px"></i> The weekly interview is still your only required input</li>
+            <li class="flex gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 shrink-0 mt-px"></i> Same data, same channels, same tenant isolation — no new capture, no synthetic media</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Workday feed -->
+      <div class="lg:col-span-3 card p-5">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xl font-bold tracking-tight">Bernard's workday</h2>
+          <span class="text-xs b-muted">Wednesday, Jul 2</span>
+          <span class="ml-auto text-xs font-medium px-2 py-1 rounded-full bg-b-success-soft b-success">All 7 promises this week kept · 1 repairing</span>
+        </div>
+        <p class="text-xs b-muted mt-1 mb-4">Every action the producer takes, as it takes it — the 14 invisible cron jobs become a colleague's visible standup.</p>
+
+        <div class="space-y-0 relative">
+          <div class="absolute left-[13px] top-2 bottom-2 w-px" style="background:hsl(var(--border))"></div>
+
+          <div class="relative flex gap-3.5 py-2.5">
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 z-10 bg-b-success-soft"><i data-lucide="film" class="w-3.5 h-3.5 b-success"></i></div>
+            <div class="text-sm"><span class="mono text-xs b-muted mr-2">6:05a</span>Scored 2 new moments from yesterday's gym-floor footage (<b>87</b> and 74). Queued the 87 — "the hip-hinge line everyone gets backwards" — into /week as Friday's Reel.</div>
+          </div>
+
+          <div class="relative flex gap-3.5 py-2.5">
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 z-10" style="background:hsl(var(--primary)/.1)"><i data-lucide="pen-line" class="w-3.5 h-3.5 b-primary"></i></div>
+            <div class="text-sm"><span class="mono text-xs b-muted mr-2">6:12a</span>Drafted Thursday's GBP post from Monday's interview. Voice check: <b>6.8</b> — too polished. Rewrote closer to your transcript → <b>8.9</b>. <span class="font-semibold b-action">Waiting for your approve.</span></div>
+          </div>
+
+          <div class="relative flex gap-3.5 py-2.5">
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 z-10 bg-b-success-soft"><i data-lucide="camera" class="w-3.5 h-3.5 b-success"></i></div>
+            <div class="text-sm"><span class="mono text-xs b-muted mr-2">7:00a</span>Verified Tuesday's Instagram carousel is <b>live and rendering correctly</b> — fetched the published post and compared it against the approved version. Match. <span class="text-xs b-muted">(read-back proof, not just "the API said 200")</span></div>
+          </div>
+
+          <div class="relative flex gap-3.5 py-2.5">
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 z-10 bg-b-action-soft"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 b-action"></i></div>
+            <div class="text-sm"><span class="mono text-xs b-muted mr-2">7:02a</span>Instagram connection expires in 6 days. <b>Texted you the reconnect link.</b> Thursday's post is safe either way — I'll re-route to the queue and retry after you reconnect.</div>
+          </div>
+
+          <div class="relative flex gap-3.5 py-2.5">
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 z-10" style="background:hsl(var(--info)/.1)"><i data-lucide="search-check" class="w-3.5 h-3.5 b-info"></i></div>
+            <div class="text-sm"><span class="mono text-xs b-muted mr-2">8:30a</span>Weekly citation probe done: you're now the cited answer for <b>"is sciatica worse in the morning"</b> on all three AIs. Two gaps queued as interview goals.</div>
+          </div>
+
+          <div class="relative flex gap-3.5 py-2.5">
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 z-10" style="background:hsl(var(--primary)/.1)"><i data-lucide="phone-outgoing" class="w-3.5 h-3.5 b-primary"></i></div>
+            <div class="text-sm"><span class="mono text-xs b-muted mr-2">9:00a</span><b>Calling you tomorrow at 8:15a</b> (your usual drive-in slot). On the agenda: 2 "has your thinking changed?" confirmations + the MRI-question gap. Should take 9 minutes.</div>
+          </div>
+        </div>
+
+        <!-- comment→revision -->
+        <div class="mt-5 rounded-xl border-2 p-4" style="border-color:hsl(var(--primary)/.25)">
+          <div class="text-xs font-bold b-primary uppercase tracking-wide mb-2.5">Also new — request changes in plain words, Bernard does the revision</div>
+          <div class="space-y-2.5">
+            <div class="flex gap-2.5 items-start">
+              <div class="w-6 h-6 rounded-full bg-slate-200 grid place-items-center text-[10px] font-bold text-slate-600 shrink-0">Q</div>
+              <div class="rounded-lg bg-slate-100 px-3 py-2 text-sm">Too clinical for Facebook — warm it up, and lead with the morning-walk tip.</div>
+            </div>
+            <div class="flex gap-2.5 items-start">
+              <div class="w-6 h-6 rounded-full bg-b-primary grid place-items-center text-[10px] font-bold text-white shrink-0">B</div>
+              <div class="rounded-lg px-3 py-2 text-sm" style="background:hsl(var(--primary)/.07)">Done — moved the walk-first tip to the opener, swapped "disc rehydration" for "your discs soak up fluid overnight." Voice check 9.1. Ready for another look.</div>
+            </div>
+          </div>
+          <div class="text-xs b-muted mt-2.5">Today this comment box exists on every piece ("Request changes") — but nothing answers it. This wires the other end.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  function go(id, btn) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+  lucide.createIcons();
+</script>
+</body>
+</html>

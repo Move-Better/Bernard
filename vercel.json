@@ -58,7 +58,8 @@
     { "path": "/api/cron/sweep-stuck-segment-renders", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/weekly-plan", "schedule": "0 5 * * 1" },
     { "path": "/api/cron/gsc-snapshot", "schedule": "0 4 * * 1" },
-    { "path": "/api/cron/detect-supersessions", "schedule": "0 5 * * 0" }
+    { "path": "/api/cron/detect-supersessions", "schedule": "0 5 * * 0" },
+    { "path": "/api/cron/probe-citations", "schedule": "0 6 * * 1" }
   ],
   "functions": {
     "api/media/upload.js": {
