@@ -7,7 +7,7 @@ import {
   FileText, CheckCircle2, XCircle, Send, Loader2,
   ChevronDown, MessageSquare, Eye, RotateCcw, ExternalLink, Quote,
   Calendar, Clock, AlertTriangle, Layers, Copy, Download, Lock,
-  Image as ImageIcon, ArrowRight,
+  Image as ImageIcon, ArrowRight, Bot,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -88,16 +88,47 @@ function StatusBadge({ status }) {
   return <Badge className={`text-xs border-0 ${badgeClass}`}>{sm.label}</Badge>
 }
 
-function CommentThread({ pieceId }) {
-  const { data: comments = [], isLoading } = useComments(pieceId)
+function CommentThread({ pieceId, interviewId }) {
+  const qc = useQueryClient()
+  // While the newest comment is a human change request Bernard hasn't answered,
+  // poll so his reply appears live (within ~one 5-min tick). Stops the moment he
+  // replies (newest becomes his comment) or after an 8-min cap so an unanswered
+  // request never polls forever.
+  const { data: comments = [], isLoading } = useComments(pieceId, {
+    refetchInterval: (q) => {
+      const list = q.state.data || []
+      const last = list[list.length - 1]
+      if (!last || last.kind !== 'change_request') return false
+      if (Date.now() - new Date(last.created_at).getTime() > 8 * 60_000) return false
+      return 20_000
+    },
+    refetchIntervalInBackground: false,
+  })
   const addComment = useAddComment(pieceId)
   const { data: staff = [] } = useStaff()
   const [draft, setDraft] = useState('')
+
+  // When a new Bernard reply lands, refresh the piece so its body + status
+  // (draft→in_review) update in place — not just the thread. Skips the initial
+  // mount and fires again on each subsequent revision (iterative change requests).
+  const bernardCountRef = useRef(null)
+  useEffect(() => {
+    // Wait for the real fetch — seeding the ref from the [] placeholder would
+    // then fire a spurious invalidation on the first loaded render of any piece
+    // that already has prior Bernard replies.
+    if (isLoading) return
+    const n = comments.filter((c) => c.user_id === 'bernard-producer').length
+    if (bernardCountRef.current !== null && n > bernardCountRef.current && interviewId) {
+      qc.invalidateQueries({ queryKey: queryKeys.stories.detail(interviewId) })
+    }
+    bernardCountRef.current = n
+  }, [comments, isLoading, interviewId, qc])
 
   // Resolve a comment's author to a human display name. Prefer a matching
   // clinician row (by Clerk user id) so threads read "Q" rather than
   // "drq@withbernard.ai"; fall back to the email local-part.
   const authorLabel = (c) => {
+    if (c.user_id === 'bernard-producer') return 'Bernard'
     const match = c.user_id && staff.find((s) => s?.user_id === c.user_id)
     if (match?.name) return match.name
     const email = c.user_email || ''
@@ -125,27 +156,36 @@ function CommentThread({ pieceId }) {
         <p className="text-xs text-muted-foreground italic">No comments yet.</p>
       )}
 
-      {comments.map((c) => (
+      {comments.map((c) => {
+        const isBernard = c.user_id === 'bernard-producer'
+        return (
         <div
           key={c.id}
           className={`rounded-md p-2.5 text-xs ${
             c.kind === 'change_request'
               ? 'bg-warning/10 border border-warning/30'
-              : 'bg-muted/40 border border-border'
+              : isBernard
+                ? 'bg-primary/[0.06] border border-primary/25'
+                : 'bg-muted/40 border border-border'
           }`}
         >
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="font-medium text-foreground">{authorLabel(c)}</span>
+            {isBernard && <Bot className="h-3 w-3 text-primary shrink-0" aria-hidden="true" />}
+            <span className={`font-medium ${isBernard ? 'text-primary' : 'text-foreground'}`}>{authorLabel(c)}</span>
             <span className="text-muted-foreground">
               {timeAgo(c.created_at)}
             </span>
             {c.kind === 'change_request' && (
               <span className="ml-auto text-warning font-medium">Change request</span>
             )}
+            {isBernard && (
+              <span className="ml-auto text-primary/70 font-medium">Producer</span>
+            )}
           </div>
           <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">{c.body}</p>
         </div>
-      ))}
+        )
+      })}
 
       <form onSubmit={handleSubmit} className="flex gap-2 pt-1">
         <textarea
@@ -1883,7 +1923,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       )}
 
       {/* Comment thread — review surface; lives with the words workflow. */}
-      {!isPublish && <CommentThread pieceId={piece.id} />}
+      {!isPublish && <CommentThread pieceId={piece.id} interviewId={piece.interview_id} />}
     </div>
   )
 }
