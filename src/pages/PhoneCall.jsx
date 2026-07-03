@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { posthogCapture } from '@/lib/posthog'
 import {
   apiFetch,
   createInterview,
@@ -315,6 +316,7 @@ export default function PhoneCall() {
       // A PATCH right after creation is the same shape voice-memo uses.
       await updateInterview(interview.id, { capture_mode: 'realtime_voice' })
       interviewIdRef.current = interview.id
+      posthogCapture('capture_started', { topic: topic.trim(), capture_mode: 'realtime_voice' })
 
       // 3. In parallel: fetch the prompt-context refs InterviewSession uses
       //    (similar interviews, learned concepts, prior session) so the AI
