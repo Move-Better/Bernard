@@ -18,12 +18,22 @@ import { enforceLimit } from '../_lib/ratelimit.js'
 // pattern as the auto-tag-on-upload path. The client polls the row (see
 // MediaDetail.jsx pipelinePending) for status to leave 'tagging'.
 //
+// IMPORTANT: maxDuration bounds the WHOLE invocation, including the
+// waitUntil work below — it is not a fresh budget per background task. A
+// too-low maxDuration here silently kills tagInBackground mid-flight before
+// it can either finish or hit its own catch (which would revert status +
+// record tag_error), leaving the row stuck at status='tagging' forever with
+// no error surfaced. (Hit exactly this in prod: dropped to 30 assuming only
+// the response needed covering, and a 488MB video's ffmpeg-proxy + Gemini
+// call got killed silently at the 30s mark.) Keep this at the platform max
+// so the background job gets the same headroom the old synchronous path had.
+//
 // Runs on Node (Fluid Compute) — same constraint as the rest of the media
 // routes. Uses the (req, res) handler shape; req.body is auto-parsed.
 
 // Explicit Node runtime so the Edge whole-graph bundler doesn't follow
 // the ratelimit.js → @clerk/backend → node:crypto chain into middleware.
-export const config = { runtime: 'nodejs', maxDuration: 30 }
+export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
