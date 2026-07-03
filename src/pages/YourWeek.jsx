@@ -320,19 +320,51 @@ export default function YourWeek() {
     }
   }
 
-  // Inline approve from the week view (D4): mark the drafted piece approved so
-  // it joins the batch-schedulable set — no navigation away from /week.
+  // Inline approve from the week view. Phase 2B: approving now ALSO dispatches
+  // server-side (one action = approve + schedule), so it no longer depends on
+  // this tab staying open. The server handles text-only + video pieces directly;
+  // for a carousel that needs a fresh client bake (or a Buffer-provider
+  // workspace) it returns fallback and we run the proven client dispatch here.
   async function handleApprove(item) {
     if (approvingAtom || !item.contentPieceId) return
     setApprovingAtom(item.id)
     try {
-      await updateStatus.mutateAsync({
-        id: item.contentPieceId,
-        status: 'approved',
-        approvedBy: userEmail,
-        approvedAt: new Date().toISOString(),
+      const resp = await apiFetch('/api/content-plan/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ piece_id: item.contentPieceId }),
       })
-      toast.success('Approved — ready to schedule')
+      if (resp?.dispatched) {
+        toast.success('Approved & scheduled')
+      } else if (resp?.fallback === 'client' || resp?.needs_client_bake) {
+        // Server approved it but can't dispatch (carousel bake / Buffer provider)
+        // — finish on the client via the proven publish path.
+        const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
+        const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
+          scheduledAt: item.scheduled_at || null,
+          useQueue: !item.scheduled_at,
+          userEmail,
+          workspace,
+          themes: allThemes,
+        })
+        if (renderedSlides) {
+          try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
+        }
+        await updateStatus.mutateAsync({
+          id: piece.id, status: 'scheduled', approvedBy: userEmail,
+          approvedAt: new Date().toISOString(), scheduledAt,
+        })
+        toast.success('Approved & scheduled')
+      } else if (resp?.reason === 'in_progress') {
+        // Another approve (another tab/teammate) is already dispatching this piece.
+        toast.info('Already being scheduled…')
+      } else if (resp?.error) {
+        // Approved but dispatch failed on the server — leave it approved (the
+        // "Schedule approved" button can retry); surface the reason.
+        toast.warning('Approved — but scheduling failed', { description: 'Use “Schedule approved” to retry.' })
+      } else {
+        toast.success('Approved')
+      }
       qc.invalidateQueries({ queryKey: ['week-summary'] })
     } catch (e) {
       toast.error('Approve failed', { description: e?.message })

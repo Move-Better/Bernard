@@ -1,17 +1,22 @@
 // POST /api/content-plan/approve  { piece_id }
-// Approve a drafted content_item from the /week surface (status → approved).
-// Buffer dispatch (scheduling) happens client-side via publishPieceToBuffer +
-// useUpdateContentItemStatus, matching the ReviewInbox pattern. This endpoint
-// is the server-side half: it validates ownership, checks the piece is ready,
-// and flips status to 'approved'. The client then calls publishPieceToBuffer
-// with use_queue=true (or a specific scheduled_at) and finally updates status
-// to 'scheduled' via the standard /api/db/content PATCH route.
+// Approve a drafted content_item from the /week surface AND dispatch it — one
+// action = approve + schedule (Standing Producer Phase 2B). Flips status to
+// 'approved', then dispatches server-side via dispatchContentItem() so it no
+// longer depends on the browser tab completing the Buffer/bundle call.
+//
+// Response tells the client whether the server finished the job:
+//   { status:'scheduled', dispatched:true, scheduledAt }         — done server-side
+//   { status:'approved', dispatched:false, fallback:'client', needs_client_bake? }
+//                                                                — client runs publishPieceToBuffer
+//   { status:'approved', dispatched:false, error }               — surface; client must NOT re-dispatch
+//   { status, alreadyApproved:true }                             — already scheduled/published
 export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { dispatchContentItem } from '../../_lib/dispatchContentItem.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -49,28 +54,57 @@ export default async function handler(req, res) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!UUID_RE.test(piece_id)) return err(res, 'Invalid piece_id')
 
-  // Verify piece belongs to this workspace and is in an approvable state.
-  const ciRes = await sb(`content_items?id=eq.${piece_id}&${wsFilter}&select=id,status`)
+  // Verify piece belongs to this workspace and load the fields the dispatcher needs.
+  const ciRes = await sb(
+    `content_items?id=eq.${piece_id}&${wsFilter}` +
+    `&select=id,status,platform,content,media_urls,slides,scheduled_at,dispatch_state`
+  )
   if (!ciRes.ok) return err(res, 'Database error', 500)
   const ciRows = await ciRes.json()
   if (!ciRows.length) return err(res, 'Content piece not found', 404)
   const piece = ciRows[0]
 
-  if (piece.status === 'approved' || piece.status === 'scheduled' || piece.status === 'published') {
+  // Terminal states: already scheduled/published — nothing to do.
+  if (piece.status === 'scheduled' || piece.status === 'published') {
     return ok(res, { status: piece.status, alreadyApproved: true })
   }
+
+  // draft/in_review → flip to approved. 'approved' (already approved but not yet
+  // dispatched — e.g. a prior dispatch errored) falls through to retry dispatch.
   const APPROVABLE_STATUSES = new Set(['draft', 'in_review'])
-  if (!APPROVABLE_STATUSES.has(piece.status)) {
+  if (APPROVABLE_STATUSES.has(piece.status)) {
+    const nowIso = new Date().toISOString()
+    const patchRes = await sb(`content_items?id=eq.${piece_id}&${wsFilter}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'approved', approved_by: auth.userId || 'unknown', approved_at: nowIso, updated_at: nowIso }),
+    })
+    if (!patchRes.ok) return err(res, 'Failed to approve piece', 500)
+    piece.status = 'approved'
+  } else if (piece.status !== 'approved') {
     return err(res, 'piece_not_ready', 422)
   }
 
-  const approvedBy = auth.userId || 'unknown'
-  const nowIso = new Date().toISOString()
-  const patchRes = await sb(`content_items?id=eq.${piece_id}&${wsFilter}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: 'approved', approved_by: approvedBy, approved_at: nowIso, updated_at: nowIso }),
-  })
-  if (!patchRes.ok) return err(res, 'Failed to approve piece', 500)
+  // Finish the job server-side: dispatch + schedule. On anything the server
+  // can't dispatch (Buffer provider, carousel needing a bake), the client falls
+  // back to its proven path; on a dispatch error, the piece stays approved and
+  // the client surfaces it (never re-dispatches → no double-post).
+  let dispatch
+  try {
+    dispatch = await dispatchContentItem({ ws, piece })
+  } catch (e) {
+    console.error('[content-plan/approve] dispatch threw:', e?.message)
+    return ok(res, { status: 'approved', dispatched: false, error: 'dispatch_failed' })
+  }
 
-  return ok(res, { status: 'approved' })
+  if (dispatch?.dispatched) {
+    return ok(res, { status: 'scheduled', dispatched: true, scheduledAt: dispatch.scheduledAt ?? null })
+  }
+  return ok(res, {
+    status: 'approved',
+    dispatched: false,
+    ...(dispatch?.fallback ? { fallback: dispatch.fallback } : {}),
+    ...(dispatch?.needs_client_bake ? { needs_client_bake: true } : {}),
+    ...(dispatch?.error ? { error: dispatch.error } : {}),
+  })
 }
