@@ -220,6 +220,7 @@
     "buffer_update_id",
     "content",
     "created_at",
+    "dispatch_state",
     "gbp_post_name",
     "hashtag_suggestions",
     "held_at",

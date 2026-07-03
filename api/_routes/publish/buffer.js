@@ -19,6 +19,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { BundlePublisher } from '../../_lib/social/index.js'
+import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -337,36 +338,6 @@ async function handler(req, res) {
     status: first?.status,
     profileCount: fanOut.length,
   })
-}
-
-// Resolve the location → bundle Team targets for a GBP fan-out. Mirrors the
-// Buffer resolveGbpChannelIds shape, but the per-location scope is the location's
-// own bundle Team (workspace_locations.bundle_team_id) rather than a Buffer
-// channel id. Only active locations that have a connected bundle Team are
-// targeted; an unconnected location is silently skipped (the admin connects it in
-// Settings). Optionally narrows to an explicit locationIds set (validated UUIDs).
-async function resolveBundleGbpTargets(workspaceId, locationIds) {
-  if (!SUPABASE_URL || !SUPABASE_KEY || !workspaceId) return []
-  const params = new URLSearchParams({
-    workspace_id: `eq.${workspaceId}`,
-    status: 'eq.active',
-    bundle_team_id: 'not.is.null',
-    select: 'id,label,bundle_team_id',
-  })
-  if (Array.isArray(locationIds) && locationIds.length > 0) {
-    // bare values inside in.() — quoted strings match zero rows (PostgREST gotcha)
-    const ids = locationIds.filter((id) => UUID_RE.test(String(id)))
-    if (ids.length === 0) return []
-    params.set('id', `in.(${ids.join(',')})`)
-  }
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/workspace_locations?${params.toString()}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
-  if (!r.ok) return []
-  const rows = await r.json().catch(() => [])
-  return (Array.isArray(rows) ? rows : [])
-    .filter((row) => typeof row.bundle_team_id === 'string' && row.bundle_team_id.trim())
-    .map((row) => ({ id: row.id, label: row.label, teamId: row.bundle_team_id }))
 }
 
 // Bundle.social publish path — invoked for workspaces with publish_provider='bundle'.
