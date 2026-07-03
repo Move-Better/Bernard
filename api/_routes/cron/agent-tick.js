@@ -20,6 +20,8 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { reviseContentItem } from '../../_lib/producer/reviseContentItem.js'
 import { regradeContentItem } from '../../_lib/producer/regradeContentItem.js'
+import { predraftWeek } from '../../_lib/producer/predraftWeek.js'
+import { producerActive, laneEnabled } from '../../_lib/producer/config.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -27,6 +29,10 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const DEFAULT_MAX_ITEMS   = 3
 const DEFAULT_DAILY_CAP   = 40
 const MAX_ATTEMPTS        = 3
+// P3 — how many upcoming-week slots to pre-draft per workspace per tick (default;
+// overridable via producer_config.predraft_per_tick). A 6-slot week drains over
+// ~3 ticks, smoothing spend and staying well inside the 300s / deadline budget.
+const DEFAULT_PREDRAFT_PER_TICK = 2
 const STRANDED_MS         = 15 * 60 * 1000
 const BACKFILL_WINDOW_MS  = 24 * 60 * 60 * 1000
 // Stop STARTING new items here. A single revision can run ~150s worst case
@@ -168,7 +174,9 @@ async function finishItem(id, status, result) {
 
 async function dispatch(ws, item) {
   const p = item.payload || {}
+  const cfg = ws.producer_config || {}
   if (item.kind === 'revise_content_item') {
+    if (!laneEnabled(cfg, 'answer_change_requests')) return { status: 'skipped', reason: 'lane_disabled' }
     return reviseContentItem({
       ws,
       contentItemId: p.content_item_id || item.content_item_id,
@@ -178,6 +186,7 @@ async function dispatch(ws, item) {
     })
   }
   if (item.kind === 'regrade_content_item') {
+    if (!laneEnabled(cfg, 'auto_repair_captions')) return { status: 'skipped', reason: 'lane_disabled' }
     return regradeContentItem({
       ws,
       contentItemId: p.content_item_id || item.content_item_id,
@@ -194,8 +203,12 @@ async function processWorkspace(ws, deadline, summary) {
   const maxItems = Number.isFinite(cfg.max_items_per_tick) ? cfg.max_items_per_tick : DEFAULT_MAX_ITEMS
   const dailyCap = Number.isFinite(cfg.daily_ai_call_cap) ? cfg.daily_ai_call_cap : DEFAULT_DAILY_CAP
 
-  await backfillChangeRequests(wsId)
-  await backfillHeldCaptions(wsId)
+  // Lane-gated: only scan for new work in the lanes the owner has left on. The
+  // dispatch loop below also re-checks per item (belt-and-suspenders for anything
+  // already queued). Defaults are ON, so an existing {enabled:true} workspace is
+  // unchanged; turning a lane off stops Bernard taking on that work.
+  if (laneEnabled(cfg, 'answer_change_requests')) await backfillChangeRequests(wsId)
+  if (laneEnabled(cfg, 'auto_repair_captions')) await backfillHeldCaptions(wsId)
   await sweepStranded(wsId)
 
   const spent = await todaysAiCalls(wsId)
@@ -242,6 +255,32 @@ async function processWorkspace(ws, deadline, summary) {
       }
     }
   }
+
+  // P3 — pre-draft the upcoming week. OPT-IN per workspace (lane 'pre_draft_week'
+  // defaults OFF), so no existing workspace pre-drafts until a human enables it.
+  // Runs AFTER the inbox loop on whatever budget/time remains: bounded by the
+  // per-tick pre-draft cap AND the leftover daily budget, and skipped once past the
+  // deadline. Pre-drafts NEVER auto-approve/schedule — they land as status='draft'
+  // for the human on /week. predraftWeek discovers the slots + drips them out.
+  if (laneEnabled(cfg, 'pre_draft_week') && remaining > 0 && Date.now() <= deadline) {
+    const perTick = Number.isFinite(cfg.predraft_per_tick) ? cfg.predraft_per_tick : DEFAULT_PREDRAFT_PER_TICK
+    const predraftCap = Math.max(0, Math.min(perTick, remaining))
+    if (predraftCap > 0) {
+      try {
+        const pre = await predraftWeek({ ws, cap: predraftCap })
+        wsResult.predrafted = pre.drafted
+        wsResult.predraftCandidates = pre.candidates
+        if (pre.failed) wsResult.predraftFailed = pre.failed
+        // Decrement budget by ATTEMPTS (drafts + failures) — a failed attempt
+        // still spent model calls, so it must count against the daily cap.
+        remaining -= (pre.drafted + (pre.failed || 0))
+      } catch (e) {
+        console.error('[agent-tick] predraft threw:', ws.slug, e?.message)
+        wsResult.predraftError = true
+      }
+    }
+  }
+
   summary.push(wsResult)
 }
 
@@ -250,11 +289,16 @@ async function handler(req, res) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Supabase env not configured' })
   if (process.env.PRODUCER_GLOBAL_DISABLED === '1') return res.status(200).json({ skipped: 'globally_disabled' })
 
-  const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,brand_guidelines,producer_config')
+  // audience_options + story_type_options are read by draftAtom's label resolution
+  // — the interactive route gets them via workspaceContext's select=*, so the
+  // pre-draft path must select them too or the two callers diverge.
+  const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,brand_guidelines,audience_options,story_type_options,producer_config')
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json().catch(() => [])
   // Fetch-all + filter in JS (robust for a JSONB boolean; the enabled set is tiny).
-  const enabled = workspaces.filter((w) => w.producer_config?.enabled && !w.producer_config?.paused_at)
+  // producerActive = enabled AND not paused — pause stops all processing while
+  // sensors keep queueing, so resume drains the backlog with nothing lost.
+  const enabled = workspaces.filter((w) => producerActive(w.producer_config))
 
   const deadline = Date.now() + DEADLINE_MS
   const summary = []

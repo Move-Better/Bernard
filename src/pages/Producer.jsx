@@ -1,7 +1,11 @@
-import { Bot, Pause } from 'lucide-react'
+import { Bot, Pause, Settings } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useProducerFeed } from '@/lib/queries'
+import { useUserRole } from '@/lib/useUserRole'
+import { ROLE_ADMIN } from '@/lib/roles'
 import WorkdayFeed from '@/components/producer/WorkdayFeed'
+import NeedsYouStrip from '@/components/producer/NeedsYouStrip'
 
 // /producer — "Bernard's workday" (Standing Producer Phase 0). The append-only
 // feed of what Bernard has done for this workspace. Read-only in Phase 0;
@@ -10,6 +14,8 @@ import WorkdayFeed from '@/components/producer/WorkdayFeed'
 export default function Producer() {
   useDocumentTitle('Bernard')
   const { data, isLoading } = useProducerFeed(30)
+  const { role } = useUserRole()
+  const isAdmin = role === ROLE_ADMIN
 
   const enabled = data?.enabled
   const paused = Boolean(data?.pausedAt)
@@ -28,12 +34,26 @@ export default function Producer() {
             Everything Bernard does for you, as it happens — drafts made, weeks planned, posts published.
           </p>
         </div>
-        {enabled && (
-          <span className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${paused ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'}`}>
-            {paused ? <><Pause className="w-3.5 h-3.5" /> Paused</> : <><span className="w-1.5 h-1.5 rounded-full bg-success" /> Always on</>}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {enabled && (
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${paused ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'}`}>
+              {paused ? <><Pause className="w-3.5 h-3.5" /> Paused</> : <><span className="w-1.5 h-1.5 rounded-full bg-success" /> Always on</>}
+            </span>
+          )}
+          {isAdmin && (
+            <Link
+              to="/producer/settings"
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold hover:bg-muted"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" /> Settings
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Needs you — the things Bernard couldn't clear on his own (self-hides when
+          the producer is off or nothing is outstanding). */}
+      {enabled && <div className="mt-4"><NeedsYouStrip /></div>}
 
       {isLoading ? (
         <div className="space-y-3 mt-6">

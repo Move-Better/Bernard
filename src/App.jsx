@@ -59,6 +59,7 @@ const SeoOpportunities = lazy(() => import('@/pages/SeoOpportunities'))
 const Usage = lazy(() => import('@/pages/Usage'))
 const AdminUsage = lazy(() => import('@/pages/AdminUsage'))
 const Producer = lazy(() => import('@/pages/Producer'))
+const ProducerSettings = lazy(() => import('@/pages/ProducerSettings'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
 const StoryboardPublish = lazy(() => import('@/pages/StoryboardPublish'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
@@ -640,6 +641,9 @@ function AppRoutes() {
             {/* Producer — Bernard's workday feed (Standing Producer Phase 0).
                 Self-guards: renders an empty state when producer_config.enabled is off. */}
             <Route path="/producer" element={guarded(<Producer />)} />
+            {/* Producer control panel (Phase 4) — owner-only; the page self-guards
+                (non-admins redirect to /producer). */}
+            <Route path="/producer/settings" element={guarded(<ProducerSettings />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
             <Route path="/synthesis" element={guarded(<Synthesis />)} />
             <Route path="/write" element={guarded(<AuthorMode />)} />

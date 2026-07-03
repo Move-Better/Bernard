@@ -1,0 +1,280 @@
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;        /* Blue Spruce */
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --accent-foreground: 160 84% 30%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --info: 199 95% 40%;
+    --destructive: 0 84% 60%;
+    --action: 32 95% 44%;          /* amber act-now */
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground));
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 24px 64px; }
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); }
+  .b-muted { color: hsl(var(--muted-foreground)); }
+  .b-primary { color: hsl(var(--primary)); }
+  .b-action { color: hsl(var(--action)); }
+  .b-success { color: hsl(var(--success)); }
+  .b-dest { color: hsl(var(--destructive)); }
+  .mono { font-variant-numeric: tabular-nums; }
+  .legend { border: 2px dashed hsl(var(--action) / .5); background: hsl(var(--action) / .06);
+    border-radius: var(--radius); padding: 10px 14px; font-size: 13px; line-height: 1.5; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .tabs { position: sticky; top: 0; z-index: 20; background: hsl(var(--card)); border-bottom: 1px solid hsl(var(--border));
+    display: flex; align-items: center; gap: 8px; padding: 12px 24px; flex-wrap: wrap; }
+  .tab { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius);
+    border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--muted-foreground)); cursor: pointer; }
+  .tab.active { background: hsl(var(--primary)); color: white; border-color: hsl(var(--primary)); }
+  h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .sub { font-size: 13.5px; margin: 4px 0 0; }
+  .bot { width: 34px; height: 34px; border-radius: 999px; background: hsl(var(--primary)); color: white;
+    display: grid; place-items: center; font-weight: 800; font-size: 15px; flex: none; }
+  /* toggle */
+  .sw { width: 38px; height: 22px; border-radius: 999px; background: hsl(var(--border)); position: relative; flex: none; transition: background .15s; }
+  .sw.on { background: hsl(var(--success)); }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:999px; background:white; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .sw.on::after { transform: translateX(16px); }
+  .lane { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-top: 1px solid hsl(var(--border)); }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; }
+  .pill-on { background: hsl(var(--success) / .12); color: hsl(var(--success)); }
+  .pill-off { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .pill-new { background: hsl(var(--action) / .14); color: hsl(var(--action)); }
+  .row { display:flex; align-items:center; gap: 12px; }
+  .btn { font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius); border: 1px solid hsl(var(--border));
+    background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; }
+  .btn-primary { background: hsl(var(--primary)); color: white; border-color: hsl(var(--primary)); }
+  .btn-amber { background: hsl(var(--action)); color: white; border-color: hsl(var(--action)); }
+  .needs { display:flex; gap: 12px; padding: 13px 14px; border-radius: var(--radius); border: 1px solid hsl(var(--border)); }
+  .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; font-size: 15px; }
+  .grid7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .day { border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 7px; min-height: 92px; background: hsl(var(--card)); }
+  .daylbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); margin-bottom: 6px; }
+  .chip { border: 1px solid hsl(var(--border)); border-radius: 7px; padding: 6px; margin-bottom: 6px; background: hsl(var(--card)); }
+  .chip .plat { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: hsl(var(--primary)); }
+  .chip .txt { font-size: 11px; line-height: 1.3; margin-top: 2px; }
+  .grade { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
+  .g-ok { background: hsl(var(--success) / .12); color: hsl(var(--success)); }
+  .g-hold { background: hsl(var(--action) / .14); color: hsl(var(--action)); }
+  .g-soft { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  @media (max-width: 720px){ .grid7 { grid-template-columns: 1fr; } }
+</style>
+
+<div class="tabs">
+  <div class="bot" style="width:26px;height:26px;font-size:12px">B</div>
+  <strong style="font-size:13px">Standing Producer &mdash; P3 &middot; P4 mockup</strong>
+  <span style="flex:1"></span>
+  <button class="tab active" data-s="s1" onclick="go('s1',this)">1 &middot; Control panel (P4)</button>
+  <button class="tab" data-s="s2" onclick="go('s2',this)">2 &middot; Needs you (P4)</button>
+  <button class="tab" data-s="s3" onclick="go('s3',this)">3 &middot; Pre-drafted week (P3)</button>
+</div>
+
+<!-- SCREEN 1 - CONTROL PANEL -->
+<section id="s1" class="screen active"><div class="wrap">
+  <div class="legend" style="margin-bottom:18px">
+    <b class="b-action">NEW SURFACE (P4)</b> &mdash; the one place you decide what Bernard is allowed to do on his own,
+    and how much he can spend. Lives at <span class="mono">/producer &rarr; Settings</span>, owner-only. Everything is OFF for a
+    workspace until you hire him; each lane is independently switchable so you can let him revise but not pre-draft, etc.
+  </div>
+
+  <div class="row" style="margin-bottom:6px">
+    <div class="bot">B</div>
+    <div style="flex:1">
+      <h1>Bernard <span style="font-weight:500" class="b-muted">&middot; your producer</span></h1>
+      <p class="sub b-muted">Hired Jun 30 &middot; <span class="b-success">on the movebetter workspace</span></p>
+    </div>
+    <span class="pill pill-on"><span style="width:6px;height:6px;border-radius:999px;background:hsl(var(--success))"></span> Always on</span>
+    <button class="btn">Pause Bernard</button>
+  </div>
+
+  <div class="card" style="padding:16px 18px; margin-top:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em" class="b-muted">What Bernard may do on his own</div>
+
+    <div class="lane">
+      <div class="sw on"></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">Answer change requests</div>
+        <div class="sub b-muted">When you click &ldquo;Request changes&rdquo;, he revises the draft in your voice and sends it back for review.</div></div>
+      <span class="pill pill-on">On</span>
+    </div>
+    <div class="lane">
+      <div class="sw on"></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">Auto-repair drifted captions</div>
+        <div class="sub b-muted">If a short caption scores below the voice bar, he takes one faithfulness pass to fix it &mdash; or flags it for you.</div></div>
+      <span class="pill pill-on">On</span>
+    </div>
+    <div class="lane">
+      <div class="sw"></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">Pre-draft the week <span class="pill pill-new">P3 &middot; new</span></div>
+        <div class="sub b-muted">Draft the upcoming week&rsquo;s posts ahead of Monday, grounded + voice-checked, so <span class="mono">/week</span> opens ready to review.</div></div>
+      <span class="pill pill-off">Off</span>
+    </div>
+    <div class="lane">
+      <div class="sw on"></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">Email me when something needs me</div>
+        <div class="sub b-muted">A single email only for things you must act on &mdash; a failed publish, a caption he couldn&rsquo;t fix, a gap he can&rsquo;t fill. Never more than one a day.</div></div>
+      <span class="pill pill-on">On</span>
+    </div>
+  </div>
+
+  <div class="row" style="gap:16px; margin-top:16px; align-items:stretch">
+    <div class="card" style="padding:16px 18px; flex:1">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em" class="b-muted">Daily spend cap</div>
+      <div class="row" style="margin-top:10px">
+        <input type="range" min="10" max="120" value="40" style="flex:1; accent-color: hsl(var(--primary))">
+        <span class="mono" style="font-weight:800;font-size:20px">40</span>
+      </div>
+      <div class="sub b-muted" style="margin-top:6px">AI actions per day before Bernard pauses himself until tomorrow. &asymp; $2&ndash;4/day at this cap.</div>
+    </div>
+    <div class="card" style="padding:16px 18px; flex:1">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em" class="b-muted">This week</div>
+      <div class="row" style="gap:20px; margin-top:10px">
+        <div><div class="mono" style="font-weight:800;font-size:22px">23</div><div class="sub b-muted">actions</div></div>
+        <div><div class="mono" style="font-weight:800;font-size:22px">18</div><div class="sub b-muted">approved by you</div></div>
+        <div><div class="mono" style="font-weight:800;font-size:22px">2</div><div class="sub b-action">need you</div></div>
+      </div>
+      <a href="#" onclick="go('s2',document.querySelector('[data-s=s2]'));return false" style="font-size:12px;font-weight:600;text-decoration:none" class="b-primary">See what needs you &rarr;</a>
+    </div>
+  </div>
+  <p class="sub b-muted" style="margin-top:14px">Global kill switch stays in the environment (ops), separate from this per-workspace panel. Pausing keeps his queue &mdash; nothing is lost; he resumes where he left off.</p>
+</div></section>
+
+<!-- SCREEN 2 - NEEDS YOU -->
+<section id="s2" class="screen"><div class="wrap">
+  <div class="legend" style="margin-bottom:18px">
+    <b class="b-action">NEW (P4)</b> &mdash; Bernard handles what he can and surfaces only what he can&rsquo;t. This &ldquo;Needs you&rdquo; strip sits at the
+    top of <span class="mono">/producer</span> (and feeds the weekly email). Each item is a real dead-end he hit, with the one action that unblocks it &mdash;
+    never busywork.
+  </div>
+
+  <h1>Needs you <span class="pill pill-new" style="font-size:12px">2</span></h1>
+  <p class="sub b-muted">Bernard cleared 21 things this week on his own. These 2 he couldn&rsquo;t.</p>
+
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+    <div class="needs">
+      <div class="ic" style="background:hsl(var(--action) / .14)"><span class="b-action">&#9998;</span></div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">Couldn&rsquo;t get &ldquo;Text neck&rdquo; to your voice</div>
+        <div class="sub b-muted">I tried a faithfulness pass but it still reads invented vs. what you actually said. It needs your eye &mdash; or 30 seconds of you saying it your way.</div>
+        <div class="sub b-muted" style="margin-top:3px;font-style:italic">Instagram &middot; drafted Wed &middot; voice 44/100</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-primary">Open &amp; fix</button><button class="btn">Discard</button></div>
+    </div>
+
+    <div class="needs" style="border-color:hsl(var(--destructive) / .3); background:hsl(var(--destructive) / .04)">
+      <div class="ic" style="background:hsl(var(--destructive) / .1)"><span class="b-dest">&#9888;</span></div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">Instagram disconnected &mdash; Thursday&rsquo;s post is blocked</div>
+        <div class="sub b-muted">Meta expired the connection. I re-routed nothing yet; reconnect and I&rsquo;ll dispatch the queued post automatically.</div>
+        <div class="sub b-muted" style="margin-top:3px;font-style:italic">Publishing &middot; caught 2h ago</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-primary">Reconnect Instagram</button></div>
+    </div>
+
+    <div class="needs" style="border-color:hsl(var(--action) / .35); background:hsl(var(--action) / .05)">
+      <div class="ic" style="background:hsl(var(--action) / .14)"><span class="b-action">&#127897;</span></div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">I&rsquo;m short one topic for next week</div>
+        <div class="sub b-muted">Your backlog fills 5 of 6 slots. Give me ~10 minutes on <b>sciatica</b> &mdash; AIs in Portland are answering it without you &mdash; and I&rsquo;ll fill the sixth.</div>
+        <div class="sub b-muted" style="margin-top:3px;font-style:italic">Planning &middot; for the week of Jul 6</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-amber">Start 10-min interview</button><button class="btn">Skip the slot</button></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:22px; overflow:hidden">
+    <div style="padding:10px 14px; border-bottom:1px solid hsl(var(--border)); font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em" class="b-muted">
+      The Friday email &mdash; &ldquo;Bernard&rsquo;s week&rdquo;</div>
+    <div style="padding:16px 18px; font-size:13.5px; line-height:1.6">
+      <p style="margin:0 0 8px"><b>Here&rsquo;s what I got done this week, Q.</b></p>
+      <p style="margin:0 0 4px">&#9989; Drafted 14 posts &middot; you approved 12 &middot; 9 already live</p>
+      <p style="margin:0 0 4px">&#9997;&#65039; Revised 4 after your change requests</p>
+      <p style="margin:0 0 4px">&#127919; You&rsquo;re now the cited answer for &ldquo;is sciatica worse in the morning&rdquo; on all 3 AIs</p>
+      <p style="margin:8px 0 4px"><b>2 things need you</b> &mdash; a caption I couldn&rsquo;t fix, and Instagram to reconnect.</p>
+      <p style="margin:8px 0 0"><a href="#" style="color:hsl(var(--primary));font-weight:600;text-decoration:none">Open Bernard&rsquo;s workday &rarr;</a></p>
+    </div>
+  </div>
+</div></section>
+
+<!-- SCREEN 3 - PRE-DRAFTED WEEK -->
+<section id="s3" class="screen"><div class="wrap">
+  <div class="legend" style="margin-bottom:18px">
+    <b class="b-action">TODAY &rarr; CHANGE (P3)</b> &mdash; today <span class="mono">/week</span> shows planned slots you must click &ldquo;Draft&rdquo; on one by one.
+    With pre-drafting on, Bernard drafts them ahead of Monday (grounded + voice-checked), so the week opens as a
+    <b>review session, not a workbench</b>. Reuses today&rsquo;s week cards &mdash; the new part is the summary banner + a &ldquo;drafted ahead&rdquo; mark.
+  </div>
+
+  <h1>Your week</h1>
+  <p class="sub b-muted">Jun 29 &ndash; Jul 5 &middot; the week I&rsquo;d run for you. <b>Nothing publishes without your yes.</b></p>
+
+  <div class="card" style="margin-top:14px; padding:13px 16px; border-color:hsl(var(--primary) / .3); background:hsl(var(--primary) / .04)">
+    <div class="row">
+      <div class="bot" style="width:28px;height:28px;font-size:13px">B</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">I pre-drafted your week &mdash; 6 of 6 slots ready to review</div>
+        <div class="sub b-muted">5 cleared the voice check &middot; 1 I couldn&rsquo;t get over the bar (flagged below) &middot; drafted Sun 6:10a from your captures + backlog</div>
+      </div>
+      <button class="btn btn-primary">Review all</button>
+    </div>
+  </div>
+
+  <div class="grid7" style="margin-top:14px">
+    <div class="day"><div class="daylbl">Mon</div>
+      <div class="chip"><div class="plat">LinkedIn</div><div class="txt">Foot pain isn&rsquo;t a foot problem&hellip;</div>
+        <div style="margin-top:5px" class="row"><span class="grade g-ok">voice 82</span> <span class="grade g-soft" style="margin-left:auto">drafted ahead</span></div></div>
+    </div>
+    <div class="day"><div class="daylbl">Tue</div>
+      <div class="chip"><div class="plat">Instagram</div><div class="txt">The 10 worst minutes of your day&hellip;</div>
+        <div style="margin-top:5px" class="row"><span class="grade g-ok">voice 78</span> <span class="grade g-soft" style="margin-left:auto">drafted ahead</span></div></div>
+    </div>
+    <div class="day"><div class="daylbl">Wed</div>
+      <div class="chip" style="border-color:hsl(var(--action) / .45)"><div class="plat">Instagram</div><div class="txt">Text neck &amp; posture&hellip;</div>
+        <div style="margin-top:5px" class="row"><span class="grade g-hold">voice 44 &middot; needs you</span></div></div>
+    </div>
+    <div class="day"><div class="daylbl">Thu</div>
+      <div class="chip"><div class="plat">GBP</div><div class="txt">New patients this week in Portland&hellip;</div>
+        <div style="margin-top:5px" class="row"><span class="grade g-ok">voice 88</span> <span class="grade g-soft" style="margin-left:auto">drafted ahead</span></div></div>
+    </div>
+    <div class="day"><div class="daylbl">Fri</div>
+      <div class="chip"><div class="plat">LinkedIn</div><div class="txt">Why we go upstream first&hellip;</div>
+        <div style="margin-top:5px" class="row"><span class="grade g-soft">voice 61</span> <span class="grade g-soft" style="margin-left:auto">drafted ahead</span></div></div>
+    </div>
+    <div class="day"><div class="daylbl">Sat</div><div class="sub b-muted" style="font-size:10px">quiet day</div></div>
+    <div class="day"><div class="daylbl">Sun</div><div class="sub b-muted" style="font-size:10px">quiet day</div></div>
+  </div>
+
+  <div class="row" style="gap:10px; margin-top:16px">
+    <button class="btn btn-primary">Approve &amp; schedule the 5 ready</button>
+    <button class="btn">Open the flagged one</button>
+  </div>
+
+  <p class="sub b-muted" style="margin-top:14px">
+    Grade legend: <span class="grade g-ok">voice 78</span> cleared the bar &middot;
+    <span class="grade g-soft">voice 61</span> long-form, shown for context (not gated) &middot;
+    <span class="grade g-hold">44 &middot; needs you</span> short caption Bernard couldn&rsquo;t get to your voice.
+  </p>
+</div></section>
+
+<script>
+  function go(id, btn){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    window.scrollTo(0,0);
+  }
+  // let the demo toggles feel alive
+  document.querySelectorAll('.sw').forEach(function(sw){
+    sw.addEventListener('click', function(){ sw.classList.toggle('on'); });
+  });
+</script>
