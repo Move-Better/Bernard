@@ -68,6 +68,7 @@ function daysSince(iso) {
 // Anything else is still in flight (or never started — legacy rows).
 function pipelinePending(a) {
   if (!a) return false
+  if (a.status === 'tagging') return true
   if (a.kind === 'photo') return !a.web_blob_url
   if (a.kind === 'video') {
     const s = a.transcode_status
@@ -174,6 +175,30 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     if (wasOptimizingRef.current && !isOptimizing) onChange?.()
     wasOptimizingRef.current = isOptimizing
   }, [isOptimizing, onChange])
+
+  // Tagging now runs in the background (see api/media/tag.js — was
+  // synchronous and 504'd on large videos). The poll above already treats
+  // status='tagging' as pending; this effect just picks up the result the
+  // moment the row leaves 'tagging', whether that's a success or a
+  // tagInBackground-reverted failure (tag_error set).
+  const isTaggingLive = a.status === 'tagging'
+  const wasTaggingRef = useRef(isTaggingLive)
+  useEffect(() => {
+    if (wasTaggingRef.current && !isTaggingLive) {
+      setTagging(false)
+      setAiTags(a.ai_tags || [])
+      setTranscription(a.transcription || '')
+      setVisualNarrative(a.visual_narrative || '')
+      setStatus(a.status || 'raw')
+      if (a.tag_error) {
+        toast.error('Tagging failed', { description: a.tag_error })
+      } else {
+        toast.success('Tagged with AI')
+      }
+      onChange?.()
+    }
+    wasTaggingRef.current = isTaggingLive
+  }, [isTaggingLive, a.ai_tags, a.transcription, a.visual_narrative, a.tag_error, a.status, onChange])
 
   const isArchived  = a.status === 'archived'
   const archivedAge = daysSince(a.archived_at)
@@ -286,26 +311,19 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     }
   }
 
+  // Kicks off tagging and returns as soon as the server marks the row
+  // 'tagging' (fast — no wait on the actual AI call). The poll above +
+  // the isTaggingLive effect pick up the eventual result, success or failure.
   async function handleTag() {
     setTagging(true); setError('')
     try {
-      const updated = await runWithToast(tagMediaAsset(asset.id), {
-        loading: asset.kind === 'video'
-          ? 'Tagging with AI… (10–60s for video)'
-          : 'Tagging with AI…',
-        success: 'Tagged with AI',
-        error: (e) => ({ message: 'Tagging failed', description: e.message }),
-      })
-      if (updated) {
-        setAiTags(updated.ai_tags || [])
-        if (updated.transcription !== undefined) setTranscription(updated.transcription || '')
-        if (updated.visual_narrative !== undefined) setVisualNarrative(updated.visual_narrative || '')
-        if (updated.status) setStatus(updated.status)
-      }
-      onChange?.()
+      const updated = await tagMediaAsset(asset.id)
+      if (updated?.status) setStatus(updated.status)
+      pollStartRef.current = null // let the pending-poll cap restart from now
+      toast('Tagging with AI…', { description: asset.kind === 'video' ? '10–60s for video' : undefined })
     } catch (e) {
       setError(e.message)
-    } finally {
+      toast.error('Tagging failed', { description: e.message })
       setTagging(false)
     }
   }

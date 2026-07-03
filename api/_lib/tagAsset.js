@@ -248,7 +248,7 @@ export async function tagAndPersist(asset, scope) {
   const where = `id=eq.${asset.id}&${s.column}=eq.${s.id}`
   try {
     const { ai_tags, transcription, visual_narrative, display_title } = await callModel(asset, s)
-    const patch = { ai_tags, status: 'tagged' }
+    const patch = { ai_tags, status: 'tagged', tag_error: null }
     if (asset.kind === 'video') {
       patch.transcription = transcription
       patch.visual_narrative = visual_narrative
@@ -284,8 +284,25 @@ export async function tagAndPersist(asset, scope) {
   }
 }
 
-// Look up an asset by id (workspace-scoped) and run tagAndPersist on it.
-export async function tagById(id, scope) {
+// Flip status -> 'tagging' before the background job starts, so the client's
+// existing pipelinePending-style poll picks it up immediately. Returns the
+// updated row for the handler to send back in the 202 response.
+export async function markTagging(asset, scope) {
+  const s = requireScope(scope)
+  const where = `id=eq.${asset.id}&${s.column}=eq.${s.id}`
+  const res = await sb(`media_assets?${where}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'tagging', tag_error: null }),
+  })
+  if (!res.ok) throw new Error(`Update failed: ${await res.text()}`)
+  const data = await res.json()
+  return data[0] ?? asset
+}
+
+// Look up an asset by id (workspace-scoped), scoped for the manual re-tag
+// endpoint. Returns the raw row — caller decides whether to run tagAndPersist
+// inline or hand it to tagInBackground.
+export async function lookupAssetForTag(id, scope) {
   const s = requireScope(scope)
   const where = `id=eq.${id}&${s.column}=eq.${s.id}`
   const lookup = await sb(`media_assets?${where}&select=id,${s.column},kind,status,blob_url,mime_type,size_bytes,tags,notes,asset_purpose,display_title`)
@@ -293,5 +310,32 @@ export async function tagById(id, scope) {
   const rows = await lookup.json()
   const asset = rows[0]
   if (!asset) throw new Error('Not found')
-  return tagAndPersist(asset, s)
+  return asset
+}
+
+// Look up an asset by id (workspace-scoped) and run tagAndPersist on it
+// synchronously. Kept for callers (e.g. the upload auto-kick) that already
+// run tagAndPersist off the response path themselves.
+export async function tagById(id, scope) {
+  const asset = await lookupAssetForTag(id, scope)
+  return tagAndPersist(asset, scope)
+}
+
+// Fire-and-forget variant for the manual "Tag with AI" button. The caller has
+// already flipped status -> 'tagging' and responded to the client before this
+// runs. On failure, revert status to whatever it was before tagging started
+// and stamp a short error onto tag_error so the UI can surface it instead of
+// polling forever against a status that will never change.
+export async function tagInBackground(asset, scope, previousStatus) {
+  const s = requireScope(scope)
+  try {
+    await tagAndPersist(asset, s)
+  } catch (e) {
+    const where = `id=eq.${asset.id}&${s.column}=eq.${s.id}`
+    const message = String(e?.message || 'Tagging failed').slice(0, 300)
+    await sb(`media_assets?${where}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: previousStatus, tag_error: message }),
+    }).catch((patchErr) => console.error('[tagAsset] failed to record tag failure:', patchErr?.message))
+  }
 }

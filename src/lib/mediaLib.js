@@ -93,7 +93,9 @@ export function purgeMediaAsset(id, confirmFilename) {
 }
 
 // Trigger AI auto-tagging for an asset (vision + transcription for video).
-// Synchronous on the server — caller should expect 10–60s for video clips.
+// Kicks off in the background and returns immediately (status flips to
+// 'tagging') — caller must poll the row for status to leave 'tagging',
+// same pattern as the transcode/optimize pipelines.
 export function tagMediaAsset(id) {
   return api(`/api/media/tag`, {
     method: 'POST',
