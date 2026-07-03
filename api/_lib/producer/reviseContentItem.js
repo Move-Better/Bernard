@@ -110,11 +110,15 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
   }
   const staffId = piece.staff_id || interview?.staff_id || null
   const turns = Array.isArray(interview?.messages) ? interview.messages : []
+  // Near-full transcript (not a 2500-char excerpt): the judge grades
+  // faithfulness against what the clinician actually said, and real interviews
+  // run 14–20k chars — a short slice false-flags faithful revisions drawing on
+  // later turns (Standing Producer P2A measurement). 24k bounds the worst case.
   const clinicianSaid = turns
     .filter((t) => t.role === 'user')
     .map((t) => t.content)
     .join('\n\n')
-    .slice(0, 2500)
+    .slice(0, 24_000)
 
   let staffName = ''
   let voiceNotes = ''
@@ -220,11 +224,10 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
 
   // Post Bernard's reply in the thread — what changed, in plain language. The
   // raw voice score is deliberately NOT shown here: it's persisted to
-  // voice_fidelity_score (surfaced on the /week card, in context) and gates
-  // regeneration in Phase 2, but a naked number in Bernard's voice reads as a
-  // grade and misleads — the fidelity judge scores faithfulness against a 2500-
-  // char transcript excerpt, so a good revision whose source details sit outside
-  // that window scores low for reasons unrelated to its quality.
+  // voice_fidelity_score (surfaced on the /week card, in context), but a naked
+  // number in Bernard's voice reads as a grade and misleads — the
+  // faithfulness-v2 rubric is calibrated for short captions and scores faithful
+  // long-form below the bar, so the number understates a good long revision.
   const replyBody = [
     summary || 'Revised the draft to address your change request.',
     'Back for your review.',
