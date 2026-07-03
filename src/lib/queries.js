@@ -120,6 +120,7 @@ export const queryKeys = {
   seoOpportunities: ['seo-opportunities'],
   seoCitations:     ['seo-citations'],
   producerFeed:     (limit = 30) => ['producer-feed', limit],
+  producerNeedsYou: ['producer-needs-you'],
   gbpPerformance:   ['gbp-performance'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
@@ -854,6 +855,50 @@ export function useProducerFeed(limit = 30) {
       apiFetch(`/api/producer/feed?limit=${limit}`).catch(() => ({ enabled: false, actions: [] })),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+  })
+}
+
+// "Needs you" (Standing Producer Phase 4) — the things Bernard couldn't clear on
+// his own: escalated captions, publish failures, plan gaps. { enabled, items }
+// from /api/producer/needs-you. enabled:false → producer off (render nothing).
+export function useNeedsYou() {
+  return useQuery({
+    queryKey: queryKeys.producerNeedsYou,
+    queryFn: () =>
+      apiFetch('/api/producer/needs-you').catch(() => ({ enabled: false, items: [] })),
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+// Update the producer control panel (enable/pause, per-lane toggles, spend cap).
+// Owner-only server-side. Callers pass the FULL producer_config object; we
+// optimistically patch the workspace cache (source of producer_config) so the
+// toggles respond instantly, then refetch to confirm.
+export function useUpdateProducerConfig() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't update Bernard's settings",
+    mutationFn: (config) =>
+      apiFetch('/api/producer/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      }),
+    onMutate: async (config) => {
+      await qc.cancelQueries({ queryKey: queryKeys.workspace.me })
+      const prev = qc.getQueryData(queryKeys.workspace.me)
+      if (prev) qc.setQueryData(queryKeys.workspace.me, { ...prev, producer_config: config })
+      return { prev }
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.workspace.me, ctx.prev)
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
+      qc.invalidateQueries({ queryKey: ['producer-feed'] })
+      qc.invalidateQueries({ queryKey: queryKeys.producerNeedsYou })
+    },
   })
 }
 
