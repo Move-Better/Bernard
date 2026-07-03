@@ -33,7 +33,11 @@
 export const FIDELITY_DIMENSIONS = ['said_fidelity', 'voice_match', 'naturalness', 'tightness']
 
 /**
- * Build the evaluator prompt. Pure — returns { system, user }.
+ * Build the evaluator prompt. Pure — returns { instructions, user }.
+ * NOTE: the system half is `instructions` (AI SDK v7 field), NOT `system`.
+ * Callers MUST read `.instructions` — reading `.system` passes undefined, so
+ * the judge runs with no register-neutrality preamble AND rambles past the
+ * token cap into unparseable JSON (parseFidelity → null). See PR history.
  *
  * @param {object} p
  * @param {string} p.topic          — thumbnail/title text

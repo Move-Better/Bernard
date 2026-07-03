@@ -80,7 +80,7 @@ const CLIPS = [
 const EVAL_SAMPLES = 3   // single-shot Haiku scoring is noisy (±2); average to stabilize.
 async function scoreOnce({ topic, caption, transcript, staffName, phrases, workspaceName }) {
   const p = buildFidelityPrompt({ topic, caption, transcript, phrases, staffName, workspaceName })
-  const { text } = await generateText({ model: EVAL_MODEL, system: p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
+  const { text } = await generateText({ model: EVAL_MODEL, instructions: p.instructions, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
   const parsed = parseFidelity(text)
   if (!parsed) return { overall: null, said_fidelity: null, red_flag: null }
   return { overall: parsed.overall, said_fidelity: parsed.breakdown.said_fidelity ?? null, red_flag: parsed.breakdown.red_flag || null }

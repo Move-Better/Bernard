@@ -187,7 +187,7 @@ for (let i = 0; i < packages.length; i++) {
 
     const { text } = await generateText({
       model: EVAL_MODEL,
-      system: evalPrompt.system,
+      instructions: evalPrompt.instructions,
       messages: [{ role: 'user', content: evalPrompt.user }],
       maxOutputTokens: 240,
     })
