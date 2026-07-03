@@ -107,6 +107,9 @@ export default async function handler(req, res) {
       // (long-form below the bar; the rubric isn't calibrated there, so not
       // flagged), 'passed', or null (unscored / pre-P2A drafts).
       voiceGate: ci?.voice_audit?.gate || null,
+      // Pre-drafted ahead of the week by the Standing Producer (Phase 3). Drives
+      // the "drafted ahead" mark + the pre-draft summary banner on /week.
+      predrafted: Boolean(ci?.voice_audit?.predrafted),
     }
   }
 
@@ -140,6 +143,23 @@ export default async function handler(req, res) {
     }
   }
 
+  const scheduledShaped = scheduled
+    .map(shape)
+    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+
+  // Pre-draft summary (Phase 3): how much of the week Bernard drafted ahead, and
+  // how much cleared the voice check vs. still needs the human. 'held' short
+  // captions are the ones flagged for a closer look.
+  const predrafted = scheduledShaped.filter((s) => s.predrafted)
+  const predraftSummary = predrafted.length
+    ? {
+        total: scheduledShaped.length,
+        predrafted: predrafted.length,
+        needsYou: predrafted.filter((s) => s.voiceGate === 'held').length,
+        ready: predrafted.filter((s) => s.voiceGate !== 'held').length,
+      }
+    : null
+
   return res.status(200).json({
     weekMonday,
     hasPlan: scheduled.length > 0,
@@ -149,9 +169,8 @@ export default async function handler(req, res) {
     timezone: ws.cadence_policy?.timezone || 'America/Los_Angeles',
     scheduledTotal: scheduled.length,
     byPlatform,
-    scheduled: scheduled
-      .map(shape)
-      .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at)),
+    scheduled: scheduledShaped,
+    predraftSummary,
     heldCount: heldAtoms.length,
     held: heldAtoms.map(shape),
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,

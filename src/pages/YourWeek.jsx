@@ -5,7 +5,7 @@ import { useUser } from '@clerk/react'
 import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus,
   Check, Loader2, Clock, Eye, Send, BookOpen, ChevronDown, AlertTriangle, Pencil,
-  History, CalendarPlus,
+  History, CalendarPlus, Bot,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -203,6 +203,11 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-semibold ${state.cls}`}>
           {state.label}
         </span>
+        {item.predrafted && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-semibold text-muted-foreground" title="Bernard drafted this ahead of the week">
+            <Bot className="h-2.5 w-2.5" aria-hidden="true" /> drafted ahead
+          </span>
+        )}
         {!readOnly && state.action === 'draft' && (
           <button
             type="button"
@@ -565,6 +570,26 @@ export default function YourWeek() {
 
       {/* Bernard's workday — recent activity (renders only when the producer is enabled) */}
       <ProducerFeedStrip />
+
+      {/* Pre-drafted week (Phase 3): when Bernard drafted the week ahead, /week
+          opens as a review session — this banner sets the frame. */}
+      {data?.predraftSummary?.predrafted > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Bot className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">
+              Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} ready to review
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {data.predraftSummary.ready} cleared the voice check
+              {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} needs a closer look (flagged below)` : ''}
+              {' · '}nothing publishes without your yes.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Per-week context banner */}
       {isPast && (
