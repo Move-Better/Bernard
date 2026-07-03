@@ -7,10 +7,11 @@ import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { useEnsureSelfStaff } from '@/lib/useEnsureSelfStaff'
 import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
-  Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe,
+  Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe, Wrench,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
   TrendingUp, Gauge, Globe, Bot,
 } from 'lucide-react'
+import { FeedbackWidget } from '@/components/FeedbackWidget'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import {
@@ -41,18 +42,26 @@ const NAV_SECTIONS = [
     items: [
       { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard,
         requiresCapability: CAP_INTERVIEW_START },
-      // Overview — clinic-wide board (recap + calendar + campaigns). Editor-gated.
-      { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: Building2,
-        requiresEditor: true },
-      // Analytics — per-asset performance dashboard. Editor-gated like Overview.
-      { to: '/analytics', label: 'Insights', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
-        requiresEditor: true },
-      // SEO Opportunities — search demand → content + advisory site fixes. Editor-gated.
-      { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp,
-        requiresEditor: true },
-      // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
-      { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge,
-        requiresAdmin: true },
+      // Analytics — grouped flyout for the four measurement surfaces (Overview,
+      // Insights, SEO, Usage). Collapses 4 top-level icons into 1; each item
+      // keeps its own gating and still routes to its existing page.
+      {
+        label: 'Analytics', icon: BarChart3,
+        flyoutItems: [
+          // Overview — clinic-wide board (recap + calendar + campaigns). Editor-gated.
+          { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: Building2,
+            requiresEditor: true },
+          // Insights — per-asset performance dashboard. Editor-gated like Overview.
+          { to: '/analytics', label: 'Insights', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
+            requiresEditor: true },
+          // SEO Opportunities — search demand → content + advisory site fixes. Editor-gated.
+          { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp,
+            requiresEditor: true },
+          // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
+          { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge,
+            requiresAdmin: true },
+        ],
+      },
     ],
   },
   {
@@ -87,21 +96,23 @@ const NAV_SECTIONS = [
   {
     label: 'Tools',
     items: [
-      { to: '/book',      label: 'Book',      match: (p) => p.startsWith('/book'),      icon: BookOpen,
-        requiresCapability: CAP_INTERVIEW_START },
-      { to: '/write',     label: 'Write',     match: (p) => p.startsWith('/write'),     icon: PenLine,
-        hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START },
-      { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2,
-        requiresCapability: CAP_INTERVIEW_START },
-    ],
-  },
-  {
-    label: 'Platform',
-    items: [
-      // Admin — cross-tenant global usage. Visible only to platform operators
-      // (Clerk publicMetadata.platform_admin), distinct from per-workspace admin.
-      { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe,
-        requiresPlatformAdmin: true },
+      // Tools — grouped flyout for the lower-frequency surfaces (Book, Write,
+      // Pre-Visit, Admin). Collapses 4 top-level icons into 1.
+      {
+        label: 'Tools', icon: Wrench,
+        flyoutItems: [
+          { to: '/book',      label: 'Book',      match: (p) => p.startsWith('/book'),      icon: BookOpen,
+            requiresCapability: CAP_INTERVIEW_START },
+          { to: '/write',     label: 'Write',     match: (p) => p.startsWith('/write'),     icon: PenLine,
+            hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START },
+          { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2,
+            requiresCapability: CAP_INTERVIEW_START },
+          // Admin — cross-tenant global usage. Visible only to platform operators
+          // (Clerk publicMetadata.platform_admin), distinct from per-workspace admin.
+          { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe,
+            requiresPlatformAdmin: true },
+        ],
+      },
     ],
   },
 ]
@@ -138,10 +149,23 @@ export default function Layout({ children }) {
     if (it.showWhen && !it.showWhen(ws)) return false
     return true
   }
-  // Resolve each section to its visible items, then drop any section that has
-  // none left (so an empty group never renders a stray header).
+  // Resolve each section's items: a flyout group's own children are filtered
+  // first (and the group dropped if none remain visible), then the section is
+  // dropped if it has no visible items left (so an empty group never renders
+  // a stray header).
+  function resolveItem(it) {
+    if (!it.flyoutItems) return it
+    const items = it.flyoutItems.filter(itemVisible)
+    return items.length ? { ...it, flyoutItems: items } : null
+  }
   const navSections = NAV_SECTIONS
-    .map((s) => ({ ...s, items: s.items.filter(itemVisible) }))
+    .map((s) => ({ ...s, items: s.items.filter(itemVisible).map(resolveItem).filter(Boolean) }))
+    .filter((s) => s.items.length > 0)
+  // Mobile drawer flattens flyout groups back into individual links — the
+  // drawer already scrolls a full-height sheet, so there's no crowding
+  // pressure that the desktop flyouts exist to relieve.
+  const mobileNavSections = NAV_SECTIONS
+    .map((s) => ({ ...s, items: s.items.flatMap((it) => (it.flyoutItems ? it.flyoutItems : [it])).filter(itemVisible) }))
     .filter((s) => s.items.length > 0)
 
   const sidebarW = collapsed ? 'w-14' : 'w-56'
@@ -216,16 +240,27 @@ export default function Layout({ children }) {
               ))}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
-                  <SidebarNavLink
-                    key={item.to}
-                    to={item.to}
-                    label={item.label}
-                    hint={item.hint}
-                    badge={item.badge}
-                    active={item.match(location.pathname)}
-                    icon={item.icon}
-                    collapsed={collapsed}
-                  />
+                  item.flyoutItems ? (
+                    <SidebarNavFlyout
+                      key={item.label}
+                      label={item.label}
+                      icon={item.icon}
+                      items={item.flyoutItems}
+                      pathname={location.pathname}
+                      collapsed={collapsed}
+                    />
+                  ) : (
+                    <SidebarNavLink
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      hint={item.hint}
+                      badge={item.badge}
+                      active={item.match(location.pathname)}
+                      icon={item.icon}
+                      collapsed={collapsed}
+                    />
+                  )
                 ))}
               </div>
             </div>
@@ -261,6 +296,8 @@ export default function Layout({ children }) {
               collapsed={collapsed}
             />
           )}
+
+          <FeedbackWidget anchor="sidebar" collapsed={collapsed} />
 
           {/* UserButton */}
           <div className={`pt-1 ${collapsed ? 'flex justify-center' : 'px-1'}`}>
@@ -330,7 +367,7 @@ export default function Layout({ children }) {
             <DrawerTitle>Menu</DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto">
-            {navSections.map((section, si) => (
+            {mobileNavSections.map((section, si) => (
               <div key={section.label || 'top'} className={si > 0 ? 'pt-2' : ''}>
                 {section.label && (
                   <p className="px-3 pt-1 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -518,6 +555,73 @@ function WorkspaceSwitcher({ inSidebar = false }) {
         onConfirm={confirmSwitch}
       />
     </>
+  )
+}
+
+// Grouped nav flyout — a single icon that expands a popover listing several
+// related routes (e.g. Analytics: Overview/Insights/SEO/Usage). Reduces
+// top-level sidebar icon count while keeping every route one click away.
+// The trigger highlights active the same way a normal SidebarNavLink does,
+// whenever any child route is the current page.
+function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const active = items.some((it) => it.match(pathname))
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(e) { if (e.key === 'Escape') setOpen(false) }
+    function onOutside(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onOutside)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onOutside)
+    }
+  }, [open])
+
+  const base = `flex items-center rounded-md text-sm font-medium transition-colors w-full relative
+    ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'}`
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={label}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`${base} ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
+      >
+        {Icon && <Icon className="h-4 w-4 shrink-0" />}
+        {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
+        {!collapsed && <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label={label}
+          className={`absolute z-50 w-48 rounded-lg border border-border bg-popover shadow-md py-1
+            ${collapsed ? 'left-full top-0 ml-2' : 'left-0 top-full mt-1'}`}
+        >
+          {items.map((it) => (
+            <Link
+              key={it.to}
+              to={it.to}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors
+                ${it.match(pathname) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent/30 hover:text-foreground'}`}
+            >
+              {it.icon && <it.icon className="h-4 w-4 shrink-0" />}
+              <span className="flex-1 truncate">{it.label}</span>
+              {it.hint && <span className="text-3xs text-muted-foreground/60 shrink-0">{it.hint}</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

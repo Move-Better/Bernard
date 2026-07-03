@@ -81,7 +81,6 @@ import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import PageSkeleton from '@/components/PageSkeleton'
 import { setSentryUser, setSentryWorkspace } from '@/lib/sentry'
 import { initPosthog, posthogIdentify, posthogGroup, posthogPageview } from '@/lib/posthog'
-import { FeedbackWidget } from '@/components/FeedbackWidget'
 import { Toaster } from '@/lib/toast'
 import UpdateAvailableModal from '@/components/UpdateAvailableModal'
 import { useVersionCheck } from '@/lib/useVersionCheck'
@@ -809,7 +808,6 @@ function ProtectedAppWithProvider() {
             in flight. window.location.reload() mid-recording would discard
             the in-memory transcript before it's persisted. */}
         <VersionUpdateHost />
-        <FeedbackWidget />
         </ConfirmProvider>
       </UploadProgressProvider>
     </WorkspaceProvider>
