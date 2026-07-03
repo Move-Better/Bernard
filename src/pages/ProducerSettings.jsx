@@ -18,22 +18,25 @@ import {
 // workspace; writes optimistically via useUpdateProducerConfig.
 
 function LaneRow({ lane, checked, disabled, onToggle }) {
+  // A "coming soon" lane (e.g. escalation email — no sender wired yet) renders
+  // disabled so the control never pretends to do something it can't.
+  const soon = Boolean(lane.comingSoon)
   return (
     <div className="flex items-start gap-3 border-t border-border py-3.5 first:border-t-0">
       <div className="pt-0.5">
-        <Switch checked={checked} disabled={disabled} onCheckedChange={onToggle} aria-label={lane.label} />
+        <Switch checked={soon ? false : checked} disabled={soon || disabled} onCheckedChange={onToggle} aria-label={lane.label} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">{lane.label}</span>
-          {lane.isNew && (
+          {lane.isNew && !soon && (
             <span className="inline-flex items-center rounded-full bg-action/15 px-1.5 py-0.5 text-3xs font-bold text-action">New</span>
           )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">{lane.description}</p>
       </div>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-3xs font-bold ${checked ? 'bg-success/12 text-success' : 'bg-muted text-muted-foreground'}`}>
-        {checked ? 'On' : 'Off'}
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-3xs font-bold ${soon ? 'bg-muted text-muted-foreground' : checked ? 'bg-success/12 text-success' : 'bg-muted text-muted-foreground'}`}>
+        {soon ? 'Coming soon' : checked ? 'On' : 'Off'}
       </span>
     </div>
   )
@@ -60,10 +63,10 @@ export default function ProducerSettings() {
 
   // Local mirror of the spend cap so the slider drags smoothly; commit on
   // release. Re-seed when the persisted value changes (e.g. after refetch).
-  const [cap, setCap] = useState(() => clampSpendCap(cfg.daily_spend_cap ?? SPEND_CAP_DEFAULT))
+  const [cap, setCap] = useState(() => clampSpendCap(cfg.daily_ai_call_cap ?? SPEND_CAP_DEFAULT))
   useEffect(() => {
-    setCap(clampSpendCap(cfg.daily_spend_cap ?? SPEND_CAP_DEFAULT))
-  }, [cfg.daily_spend_cap])
+    setCap(clampSpendCap(cfg.daily_ai_call_cap ?? SPEND_CAP_DEFAULT))
+  }, [cfg.daily_ai_call_cap])
 
   if (roleLoading) return null
   if (role !== ROLE_ADMIN) return <Navigate to="/producer" replace />
@@ -156,8 +159,8 @@ export default function ProducerSettings() {
                   max={SPEND_CAP_MAX}
                   value={cap}
                   onChange={(e) => setCap(clampSpendCap(e.target.value))}
-                  onPointerUp={() => persist({ daily_spend_cap: cap })}
-                  onKeyUp={() => persist({ daily_spend_cap: cap })}
+                  onPointerUp={() => persist({ daily_ai_call_cap: cap })}
+                  onKeyUp={() => persist({ daily_ai_call_cap: cap })}
                   className="flex-1 accent-primary"
                   aria-label="Daily AI-action cap"
                 />

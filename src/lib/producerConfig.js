@@ -6,7 +6,7 @@
 // pre-drafted-week banner on /week.
 //
 // Config shape (JSONB on workspaces.producer_config):
-//   { enabled, paused_at, daily_spend_cap, lanes: { <laneKey>: boolean } }
+//   { enabled, paused_at, daily_ai_call_cap, lanes: { <laneKey>: boolean } }
 
 // Each lane is an autonomous behavior the owner can independently allow. Lanes
 // default ON when the producer is enabled EXCEPT pre_draft_week, which is
@@ -40,7 +40,8 @@ export const PRODUCER_LANES = [
   {
     key: 'escalation_email',
     label: 'Email me when something needs me',
-    description: 'A single email only for things you must act on — a failed publish, a caption Bernard couldn’t fix, a gap he can’t fill. Never more than one a day.',
+    description: 'A single email only for things you must act on — a failed publish, a caption Bernard couldn’t fix, a gap he can’t fill. Never more than one a day. For now, these surface in “Needs you” on this page.',
+    comingSoon: true, // no email sender wired yet — surfaced in-app via NeedsYouStrip
   },
 ]
 
@@ -85,7 +86,7 @@ export function withProducerChange(config, change) {
   return {
     enabled: Boolean(base.enabled),
     paused_at: base.paused_at ?? null,
-    daily_spend_cap: clampSpendCap(base.daily_spend_cap ?? SPEND_CAP_DEFAULT),
+    daily_ai_call_cap: clampSpendCap(base.daily_ai_call_cap ?? SPEND_CAP_DEFAULT),
     lanes: { ...(base.lanes || {}) },
     ...change,
     ...(change.lanes ? { lanes: { ...(base.lanes || {}), ...change.lanes } } : {}),

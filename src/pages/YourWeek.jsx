@@ -583,7 +583,7 @@ export default function YourWeek() {
               Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} ready to review
             </div>
             <div className="text-xs text-muted-foreground">
-              {data.predraftSummary.ready} cleared the voice check
+              {data.predraftSummary.ready} ready to review
               {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} needs a closer look (flagged below)` : ''}
               {' · '}nothing publishes without your yes.
             </div>

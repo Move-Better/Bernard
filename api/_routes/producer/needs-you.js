@@ -8,8 +8,8 @@
 //      (voice_audit.escalated = true); the human needs to rewrite it.
 //   2. publish_failed    — a recent publish failure not superseded by a later
 //      success for the same piece; the human reconnects/retries.
-//   3. plan_gap          — an upcoming-week scheduled slot with no interview to
-//      draft from; "I need 10 minutes of your voice on X."
+//   3. plan_gap          — the upcoming week's plan is under the cadence target;
+//      "your week is N short — a fresh capture fills the rest."
 //
 // Returns { enabled: producerActive(config), items: [] }. When the producer is
 // disabled OR paused, returns { enabled:false, items:[] } so the UI renders an
@@ -86,11 +86,21 @@ async function unresolvedPublishFailures(wsId) {
   if (!failures.length) return []
 
   // Pull recent successes in the same window to supersede resolved failures.
+  // The limit=200 is generous for the 24h window, but at extreme publish volume
+  // (>200 successes/day) the oldest could fall outside the slice; acceptable at
+  // current scale — revisit with a per-content_item `in.()` filter if it grows.
   const okRes = await sb(
     `agent_actions?workspace_id=eq.${wsId}&kind=eq.published&created_at=gte.${since}` +
     `&select=content_item_id,created_at&order=created_at.desc&limit=200`
   )
-  const successes = okRes.ok ? ((await okRes.json().catch(() => [])) || []) : []
+  // Fail SAFE: if we can't verify what's been superseded, don't surface any
+  // publish failures this pass (better to under-report than to resurface a
+  // failure the user already resolved).
+  if (!okRes.ok) {
+    console.error('[producer/needs-you] supersession success fetch failed:', okRes.status)
+    return []
+  }
+  const successes = (await okRes.json().catch(() => [])) || []
   // Latest success time per content_item_id.
   const latestSuccess = new Map()
   for (const s of successes) {
@@ -114,25 +124,41 @@ async function unresolvedPublishFailures(wsId) {
     }))
 }
 
-// Plan gaps: upcoming-week scheduled slots with no interview to draft from — the
-// producer literally can't fill these; it needs the human's voice on the topic.
-async function planGaps(wsId) {
+// Plan gap: the upcoming week's plan is UNDER the workspace's cadence target —
+// the strategist filled fewer slots than the cadence asks for, so the human's
+// input (a fresh capture) is needed to fill the rest.
+//
+// Note this is NOT `interview_id IS NULL` (an earlier stub used that, but
+// content_plan_atoms.interview_id is NOT NULL at the schema level, so that
+// predicate could never match). The honest, cheap signal is scheduled-count vs.
+// cadence target. Only fires when a plan EXISTS for next week (the strategist has
+// run) but falls short — never when next week simply hasn't been planned yet, so
+// it doesn't nag before the plan is even built.
+async function planGaps(wsId, ws) {
   const nextMonday = mondayOf(new Date(Date.now() + WEEK_MS).toISOString())
   const r = await sb(
     `content_plan_atoms?workspace_id=eq.${wsId}&plan_week=eq.${nextMonday}` +
-    `&scheduled_at=not.is.null&status=eq.pending&content_piece_id=is.null&interview_id=is.null` +
-    `&select=id,platform,angle,angle_label,brief,scheduled_at&order=scheduled_at.asc&limit=${MAX_PER_CATEGORY}`
+    `&scheduled_at=not.is.null&select=id&limit=200`
   )
   if (!r.ok) { console.error('[producer/needs-you] plan-gap fetch failed:', r.status); return [] }
-  const rows = (await r.json().catch(() => [])) || []
-  return rows.map((a) => ({
-    type:            'plan_gap',
-    slotId:          a.id,
-    platform:        a.platform || null,
-    topicSuggestion: a.angle_label || a.brief || null,
-    scheduledAt:     a.scheduled_at || null,
-    week:            nextMonday,
-  }))
+  const scheduled = ((await r.json().catch(() => [])) || []).length
+  if (scheduled === 0) return [] // no plan yet → not actionable, don't surface
+
+  const channels = ws.cadence_policy?.channels || {}
+  const target = Object.values(channels)
+    .filter((c) => c?.enabled)
+    .reduce((sum, c) => sum + (Number(c.target_per_week) || 0), 0)
+  const short = target - scheduled
+  if (short <= 0) return []
+
+  // One aggregate item — "your week is N short" — rather than one per empty slot.
+  return [{
+    type:      'plan_gap',
+    short,
+    scheduled,
+    target,
+    week:      nextMonday,
+  }]
 }
 
 export default async function handler(req, res) {
@@ -161,7 +187,7 @@ export default async function handler(req, res) {
     const [escalated, failures, gaps] = await Promise.all([
       escalatedCaptions(ws.id),
       unresolvedPublishFailures(ws.id),
-      planGaps(ws.id),
+      planGaps(ws.id, ws),
     ])
     items = [...escalated, ...failures, ...gaps]
   } catch (e) {

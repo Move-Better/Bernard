@@ -1,32 +1,28 @@
 // PATCH /api/producer/config — update the Standing Producer's per-workspace
-// config (Phase 4 control panel): enable/pause, per-lane toggles, daily spend
-// cap. Writes workspaces.producer_config (JSONB). Owner-only.
+// config (Phase 4 control panel): enable/pause, per-lane toggles, the daily
+// AI-action cap. Writes workspaces.producer_config (JSONB). Owner-only.
 //
 // The control panel (/producer/settings) reads current config from the
 // workspace context, so this route is write-only. Node runtime, (req, res).
 //
-// NOTE: lane defaults are mirrored from src/lib/producerConfig.js and
-// api/_lib/producer/config.js — the three must agree. (When the P3/P4 backend
-// helper lands, import LANE_DEFAULTS from it instead of redeclaring here.)
+// The cap field is `daily_ai_call_cap` — the SAME key agent-tick enforces
+// (agent-tick.js reads cfg.daily_ai_call_cap). LANE_DEFAULTS is imported from the
+// shared lib so client, this route, and the tick can never drift.
 export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
-import { requireRole }      from '../../_lib/auth.js'
+import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { enforceLimit }     from '../../_lib/ratelimit.js'
+import { CAP_SETTINGS_EDIT } from '../../_lib/capabilities.js'
+import { LANE_DEFAULTS }     from '../../_lib/producer/config.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-const LANE_DEFAULTS = {
-  answer_change_requests: true,
-  auto_repair_captions:   true,
-  pre_draft_week:         false,
-  escalation_email:       true,
-}
 const KNOWN_LANES      = Object.keys(LANE_DEFAULTS)
-const SPEND_CAP_MIN     = 10
-const SPEND_CAP_MAX     = 120
-const SPEND_CAP_DEFAULT = 40
+const CAP_MIN     = 10
+const CAP_MAX     = 120
+const CAP_DEFAULT = 40
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -43,8 +39,8 @@ function sb(path, init = {}) {
 
 function clampCap(n) {
   const v = Math.round(Number(n))
-  if (!Number.isFinite(v)) return SPEND_CAP_DEFAULT
-  return Math.min(SPEND_CAP_MAX, Math.max(SPEND_CAP_MIN, v))
+  if (!Number.isFinite(v)) return CAP_DEFAULT
+  return Math.min(CAP_MAX, Math.max(CAP_MIN, v))
 }
 
 // Fill defaults so the caller gets a complete, resolved config back.
@@ -58,7 +54,7 @@ function resolveConfig(raw) {
   return {
     enabled: Boolean(c.enabled),
     paused_at: c.paused_at ?? null,
-    daily_spend_cap: clampCap(c.daily_spend_cap ?? SPEND_CAP_DEFAULT),
+    daily_ai_call_cap: clampCap(c.daily_ai_call_cap ?? CAP_DEFAULT),
     lanes,
   }
 }
@@ -74,6 +70,12 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'producer-config-write', ws.id))) return
 
+  // Defense-in-depth: mirror the settings-write capability gate (workspace/me.js)
+  // so a coarse legacy 'admin' role whose Phase-4 permission_tier excludes
+  // settings-edit can't reconfigure Bernard's autonomy.
+  const capAuth = await requireCapability(req, ws, [CAP_SETTINGS_EDIT])
+  if (!capAuth.ok) return res.status(403).json({ error: capAuth.reason, missing: capAuth.missing })
+
   const body = req.body && typeof req.body === 'object' ? req.body : {}
   const current = ws.producer_config && typeof ws.producer_config === 'object' ? ws.producer_config : {}
   const next = { ...current }
@@ -83,7 +85,7 @@ export default async function handler(req, res) {
     // Never trust a client timestamp — stamp the server's own when pausing.
     next.paused_at = body.paused_at ? new Date().toISOString() : null
   }
-  if ('daily_spend_cap' in body) next.daily_spend_cap = clampCap(body.daily_spend_cap)
+  if ('daily_ai_call_cap' in body) next.daily_ai_call_cap = clampCap(body.daily_ai_call_cap)
   if (body.lanes && typeof body.lanes === 'object') {
     const lanes = { ...(current.lanes || {}) }
     for (const k of KNOWN_LANES) {

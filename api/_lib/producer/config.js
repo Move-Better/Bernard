@@ -16,10 +16,8 @@
 //   { enabled: bool,              -- master switch (default false)
 //     enabled_at: timestamptz,    -- when hired
 //     paused_at: timestamptz,     -- pause without un-hiring (producerActive → false)
-//     daily_ai_call_cap: int,     -- spend guardrail (default 40; see agent-tick)
-//     daily_spend_cap: int,       -- alias documented in the P3 spec; agent-tick
-//                                    reads daily_ai_call_cap — kept as a synonym
-//                                    only, NOT a second budget
+//     daily_ai_call_cap: int,     -- daily AI-action cap (default 40; agent-tick
+//                                    enforces it, the control panel writes it)
 //     max_items_per_tick: int,    -- work-per-tick guardrail (default 3)
 //     lanes: {                    -- per-behavior gates (see LANE_DEFAULTS)
 //       answer_change_requests: bool,  -- P1  (default true)

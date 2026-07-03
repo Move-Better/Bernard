@@ -174,7 +174,9 @@ async function finishItem(id, status, result) {
 
 async function dispatch(ws, item) {
   const p = item.payload || {}
+  const cfg = ws.producer_config || {}
   if (item.kind === 'revise_content_item') {
+    if (!laneEnabled(cfg, 'answer_change_requests')) return { status: 'skipped', reason: 'lane_disabled' }
     return reviseContentItem({
       ws,
       contentItemId: p.content_item_id || item.content_item_id,
@@ -184,6 +186,7 @@ async function dispatch(ws, item) {
     })
   }
   if (item.kind === 'regrade_content_item') {
+    if (!laneEnabled(cfg, 'auto_repair_captions')) return { status: 'skipped', reason: 'lane_disabled' }
     return regradeContentItem({
       ws,
       contentItemId: p.content_item_id || item.content_item_id,
@@ -200,8 +203,12 @@ async function processWorkspace(ws, deadline, summary) {
   const maxItems = Number.isFinite(cfg.max_items_per_tick) ? cfg.max_items_per_tick : DEFAULT_MAX_ITEMS
   const dailyCap = Number.isFinite(cfg.daily_ai_call_cap) ? cfg.daily_ai_call_cap : DEFAULT_DAILY_CAP
 
-  await backfillChangeRequests(wsId)
-  await backfillHeldCaptions(wsId)
+  // Lane-gated: only scan for new work in the lanes the owner has left on. The
+  // dispatch loop below also re-checks per item (belt-and-suspenders for anything
+  // already queued). Defaults are ON, so an existing {enabled:true} workspace is
+  // unchanged; turning a lane off stops Bernard taking on that work.
+  if (laneEnabled(cfg, 'answer_change_requests')) await backfillChangeRequests(wsId)
+  if (laneEnabled(cfg, 'auto_repair_captions')) await backfillHeldCaptions(wsId)
   await sweepStranded(wsId)
 
   const spent = await todaysAiCalls(wsId)
@@ -264,7 +271,9 @@ async function processWorkspace(ws, deadline, summary) {
         wsResult.predrafted = pre.drafted
         wsResult.predraftCandidates = pre.candidates
         if (pre.failed) wsResult.predraftFailed = pre.failed
-        remaining -= pre.drafted
+        // Decrement budget by ATTEMPTS (drafts + failures) — a failed attempt
+        // still spent model calls, so it must count against the daily cap.
+        remaining -= (pre.drafted + (pre.failed || 0))
       } catch (e) {
         console.error('[agent-tick] predraft threw:', ws.slug, e?.message)
         wsResult.predraftError = true
@@ -280,7 +289,10 @@ async function handler(req, res) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Supabase env not configured' })
   if (process.env.PRODUCER_GLOBAL_DISABLED === '1') return res.status(200).json({ skipped: 'globally_disabled' })
 
-  const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,brand_guidelines,producer_config')
+  // audience_options + story_type_options are read by draftAtom's label resolution
+  // — the interactive route gets them via workspaceContext's select=*, so the
+  // pre-draft path must select them too or the two callers diverge.
+  const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,brand_guidelines,audience_options,story_type_options,producer_config')
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json().catch(() => [])
   // Fetch-all + filter in JS (robust for a JSONB boolean; the enabled set is tiny).

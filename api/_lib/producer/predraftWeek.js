@@ -34,6 +34,15 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 // smoothing model spend and the tick's 300s budget. Overridable per call.
 const DEFAULT_PREDRAFT_CAP = 2
 
+// Stop auto-retrying an atom that keeps failing to pre-draft after this many
+// attempts. A deterministically-broken atom (unsupported angle, empty transcript)
+// would otherwise be reset to 'pending' and re-attempted every 5-min tick forever,
+// burning model calls. Failures are recorded as 'predraft_failed' agent_actions,
+// which double as the per-atom attempt counter AND make the spend visible to the
+// daily-cap guard (todaysAiCalls counts actions with a model set). After the cap
+// the atom stays 'pending' so a human can still draft it manually on /week.
+const MAX_PREDRAFT_ATTEMPTS = 2
+
 // Background/lib reads; workspace_id is always supplied by the caller's ws and
 // every query below is scoped by it. (require-workspace-scope only lints _routes.)
 function sb(path, init = {}) {
@@ -197,6 +206,20 @@ async function predraftOneAtom({ ws, atom }) {
       }).catch(() => {})
     }
     console.error('[predraftWeek] atom draft failed', atom.id, e?.message)
+    // Record the failed attempt: shows in the workday feed, counts against the
+    // daily cap (todaysAiCalls counts actions with a model), and serves as the
+    // per-atom attempt counter that bounds retries (see MAX_PREDRAFT_ATTEMPTS).
+    // `stuck` flags the rare cleanup-DELETE-failed case (atom left in 'drafting').
+    await recordAgentAction({
+      workspaceId:    ws.id,
+      producerConfig: ws.producer_config,
+      kind:           'predraft_failed',
+      title:          `Couldn't pre-draft "${atom.angle || 'a slot'}" for ${atom.platform}`,
+      detail:         { platform: atom.platform, angle: atom.angle, reason: (e?.message || 'error').slice(0, 200), stuck: cleanupFailed },
+      atomId:         atom.id,
+      interviewId:    atom.interview_id || null,
+      model:          'anthropic/claude-sonnet-4-6',
+    }).catch(() => {})
     return { status: 'failed', reason: (e?.message || 'error').slice(0, 200) }
   }
 }
@@ -234,10 +257,28 @@ export async function predraftWeek({ ws, cap = DEFAULT_PREDRAFT_CAP }) {
   }
   const slots = (await slotsRes.json().catch(() => [])) || []
 
-  const result = { weekMonday: nextMonday, candidates: slots.length, drafted: 0, skipped: 0, failed: 0, results: [] }
+  // Bounded retry: drop atoms that have already failed pre-draft
+  // MAX_PREDRAFT_ATTEMPTS times (counted via recorded 'predraft_failed' actions),
+  // so a deterministically-broken atom can't burn model calls on every tick. It
+  // stays 'pending' — a human can still draft it manually on /week.
+  let eligible = slots
+  if (slots.length) {
+    const ids = slots.map((s) => `"${s.id}"`).join(',')
+    const failRes = await sb(
+      `agent_actions?${wsFilter}&kind=eq.predraft_failed&atom_id=in.(${ids})&select=atom_id`
+    )
+    if (failRes.ok) {
+      const failRows = (await failRes.json().catch(() => [])) || []
+      const failCount = {}
+      for (const fr of failRows) failCount[fr.atom_id] = (failCount[fr.atom_id] || 0) + 1
+      eligible = slots.filter((s) => (failCount[s.id] || 0) < MAX_PREDRAFT_ATTEMPTS)
+    }
+  }
+
+  const result = { weekMonday: nextMonday, candidates: slots.length, eligible: eligible.length, drafted: 0, skipped: 0, failed: 0, results: [] }
   // Draft sequentially up to the cap (one model chain at a time keeps us well
   // inside the tick budget and avoids a burst of parallel gateway calls).
-  for (const atom of slots) {
+  for (const atom of eligible) {
     if (result.drafted >= cap) break
     const r = await predraftOneAtom({ ws, atom })
     result.results.push({ atomId: atom.id, ...r })

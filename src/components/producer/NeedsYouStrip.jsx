@@ -46,7 +46,7 @@ function titleFor(item) {
   switch (item.type) {
     case 'escalated_caption': return `Couldn’t get “${topic}” to your voice`
     case 'publish_failed':    return `${item.platform ? `${item.platform} ` : ''}publish failed — needs a reconnect`
-    case 'plan_gap':          return item.topicSuggestion ? `I’m short a topic — got 10 min on ${item.topicSuggestion}?` : 'I’m short a topic for the week'
+    case 'plan_gap':          return `Next week is ${item.short || 'a few'} post${item.short === 1 ? '' : 's'} short`
     default:                  return 'Something needs you'
   }
 }
@@ -55,11 +55,11 @@ function detailFor(item) {
   if (item.description) return item.description
   switch (item.type) {
     case 'escalated_caption':
-      return `I tried a faithfulness pass but couldn’t get it over the voice bar${item.red_flag ? ` — what’s off: ${item.red_flag}` : ''}. It needs your eye.`
+      return `I tried a faithfulness pass but couldn’t get it over the voice bar${item.redFlag ? ` — what’s off: ${item.redFlag}` : ''}. It needs your eye.`
     case 'publish_failed':
       return item.detail || 'The connection expired. Reconnect and I’ll dispatch the queued post automatically.'
     case 'plan_gap':
-      return 'Your backlog can’t quite fill the week. A short capture from you fills the gap.'
+      return `${typeof item.scheduled === 'number' && typeof item.target === 'number' ? `Your plan fills ${item.scheduled} of ${item.target} slots — ` : ''}a short capture from you fills the rest.`
     default:
       return item.detail || ''
   }
