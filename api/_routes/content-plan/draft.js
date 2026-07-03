@@ -217,11 +217,23 @@ export default async function handler(req, res) {
     // profile. If below threshold, try once more with the red_flag as coaching.
     const HAIKU = 'anthropic/claude-haiku-4-5'
     const GATE  = 6.5
+    // The judge grades faithfulness against what the clinician ACTUALLY said, so
+    // it must see (nearly) the WHOLE transcript — real interviews run 14–20k
+    // chars of clinician turns; the old 2500-char slice showed the judge ~13% of
+    // the reference, which false-flagged faithful drafts drawing on later turns
+    // AND intermittently produced unparseable scores (Standing Producer P2A
+    // measurement, 2026-07-02). 24k bounds the worst-case seminar transcript.
+    const TRANSCRIPT_MAX = 24_000
+    // The faithfulness-v2 rubric is calibrated for SHORT captions (GATE=6.5 is
+    // bimodal there); on long-form it clusters faithful pieces below the gate.
+    // So the HARD gate (hold + flag) applies only to short captions; longer
+    // pieces get a soft, non-blocking score.
+    const HARD_GATE_MAX_CHARS = 600
     const clinicianSaid = turns
       .filter((t) => t.role === 'user')
       .map((t) => t.content)
       .join('\n\n')
-      .slice(0, 2500)
+      .slice(0, TRANSCRIPT_MAX)
     const caption1 = extractProvenanceBlock(rawText1.trim()).content.split('---SLIDES---')[0].trim()
 
     let rawText      = rawText1
@@ -356,13 +368,22 @@ export default async function handler(req, res) {
 
     // Persist voice-judge score so /week can surface low-fidelity cards.
     // Non-blocking: a score failure never aborts the draft.
+    //
+    // gate: which tier this score triggers.
+    //   'passed' — at/above GATE (or unscored).
+    //   'held'   — SHORT caption below GATE → a real drift flag; /week marks it
+    //              "needs a closer pass" and de-emphasises approve.
+    //   'soft'   — long-form below GATE → informational only; the rubric isn't
+    //              calibrated for long-form, so we don't flag it as drift.
     if (voiceScore) {
+      let gate = 'passed'
+      if (voiceScore.overall < GATE) gate = caption.length <= HARD_GATE_MAX_CHARS ? 'held' : 'soft'
       waitUntil(
         sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
           method: 'PATCH',
           body: JSON.stringify({
             voice_fidelity_score: Math.round(voiceScore.overall * 10),
-            voice_audit: { ...voiceScore.breakdown, attempts: voiceAttempts },
+            voice_audit: { ...voiceScore.breakdown, attempts: voiceAttempts, gate },
             updated_at: new Date().toISOString(),
           }),
           headers: { Prefer: 'return=minimal' },

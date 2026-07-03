@@ -232,7 +232,10 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
           </Link>
         ))}
       </div>
-      {item.voiceFidelityScore !== null && item.voiceFidelityScore !== undefined && item.voiceFidelityScore < 65 && (
+      {/* Voice drift flag — only when the gate HELD (a short caption below the
+          bar). Long-form scores 'soft' (rubric isn't calibrated there) and
+          pre-P2A drafts have no gate, so neither shows a false drift flag. */}
+      {item.voiceGate === 'held' && (
         <div className="mt-1 flex items-center gap-1">
           <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-action" aria-hidden="true" />
           <span className="text-3xs text-action">voice — open draft to review</span>
@@ -240,7 +243,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
       )}
       {canReviewInline && expanded && (
         <div className="mt-1.5 border-t border-border pt-1.5">
-          {item.voiceFlag && item.voiceFidelityScore !== null && item.voiceFidelityScore < 65 && (
+          {item.voiceFlag && item.voiceGate === 'held' && (
             <p className="mb-1.5 text-3xs italic text-action">Flagged: {item.voiceFlag}</p>
           )}
           <p className="text-2xs italic leading-snug text-muted-foreground line-clamp-4">

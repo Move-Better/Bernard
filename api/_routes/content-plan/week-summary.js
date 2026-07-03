@@ -103,6 +103,10 @@ export default async function handler(req, res) {
       interviewId: a.interview_id,
       voiceFidelityScore: ci?.voice_fidelity_score ?? null,
       voiceFlag: ci?.voice_audit?.red_flag || null,
+      // 'held' (short caption below the voice bar — a real drift flag), 'soft'
+      // (long-form below the bar; the rubric isn't calibrated there, so not
+      // flagged), 'passed', or null (unscored / pre-P2A drafts).
+      voiceGate: ci?.voice_audit?.gate || null,
     }
   }
 
