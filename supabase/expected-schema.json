@@ -31,6 +31,20 @@
     "title",
     "workspace_id"
   ],
+  "agent_inbox": [
+    "attempts",
+    "claimed_at",
+    "content_item_id",
+    "created_at",
+    "dedupe_key",
+    "id",
+    "kind",
+    "payload",
+    "processed_at",
+    "result",
+    "status",
+    "workspace_id"
+  ],
   "app_config": [
     "key",
     "updated_at",
