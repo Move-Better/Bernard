@@ -35,7 +35,11 @@
       "Glob",
       "Grep",
       "Write",
-      "mcp__ccd_session__spawn_task"
+      "mcp__ccd_session__spawn_task",
+      "mcp__scheduled-tasks__list_scheduled_tasks",
+      "mcp__scheduled-tasks__update_scheduled_task",
+      "mcp__scheduled-tasks__create_scheduled_task",
+      "mcp__scheduled-tasks__delete_scheduled_task"
     ]
   }
 }

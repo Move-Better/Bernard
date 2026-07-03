@@ -20,7 +20,9 @@ export function initPosthog() {
   posthog.init(key, {
     api_host: host,
     person_profiles: 'identified_only', // no anonymous profiles — cost control
-    autocapture: true,                   // breadth: heatmaps + rage/dead clicks everywhere
+    autocapture: true,                   // breadth: heatmaps + rage clicks everywhere
+    capture_dead_clicks: true,           // separate from autocapture — off by default in posthog-js
+    capture_performance: true,           // enables $web_vitals capture
     capture_pageview: false,             // we fire virtual pageviews manually on route change
     session_recording: {
       maskAllInputs: true,
