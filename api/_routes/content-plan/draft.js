@@ -4,24 +4,16 @@
 // Creates a content_item and marks the atom as drafted.
 export const config = { runtime: 'nodejs', maxDuration: 120 }
 
-import { generateText } from 'ai'
+// The generation + voice-judge core AND the GBP per-location fan-out both moved
+// into api/_lib/producer/draftAtom.js (P3 extraction) so the pre-draft cron path
+// shares one implementation. This route keeps its req/res/auth/DB-write concerns.
 import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
-import { getAtomSystemPrompt } from '../../_lib/atomPrompts.js'
-import { getContextBlock } from '../../_lib/conceptRetrieval.js'
-import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
-import {
-  loadCurrentTentpole,
-  getTentpolePromptContext,
-  resolveCampaignSubjectLocation,
-  buildTentpoleGbpLocationBlock,
-} from '../../_lib/tentpoleCampaignContext.js'
-import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
-import { buildFidelityPrompt, parseFidelity } from '../../_lib/captionFidelityRubric.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
+import { draftAtom, buildGbpLocationVariants } from '../../_lib/producer/draftAtom.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -96,244 +88,23 @@ export default async function handler(req, res) {
     if (!ivRows.length) throw new Error('Interview not found')
     const interview = ivRows[0]
 
-    const blogPost = interview.outputs?.blogPost || null
-
-    const turns = Array.isArray(interview.messages) ? interview.messages : []
-    if (!turns.length) throw new Error('Interview transcript missing — cannot generate atom')
-
-    // Fetch clinician name + voice substrate
-    let staffName = ''
-    let voiceNotes    = ''
-    let voicePhrases  = []
-    const [clinRes, phrasesRes] = await Promise.all([
-      sb(`staff?id=eq.${interview.staff_id}&${wsFilter}&select=name,voice_notes`),
-      sb(
-        `staff_voice_phrases?staff_id=eq.${interview.staff_id}&${wsFilter}` +
-        `&select=phrase&order=weight.desc,last_seen_at.desc&limit=8`,
-      ),
-    ])
-    if (clinRes.ok) {
-      const clinRows = await clinRes.json()
-      staffName = clinRows[0]?.name ?? ''
-      voiceNotes    = clinRows[0]?.voice_notes ?? ''
-    }
-    if (phrasesRes.ok) {
-      voicePhrases = await phrasesRes.json()
-    }
-
-    // Augment with learned practice knowledge from the concept graph (non-blocking).
-    const conceptBlock = await getContextBlock({ workspaceId: ws.id, topic: interview.topic })
-
-    // Resolve audience + story_type keys to display labels for prompt injection.
-    // Prefer the workspace's current slot object (admin may have renamed the label)
-    // over the raw key string.
-    const audienceLabel = interview.audience
-      ? (Array.isArray(ws.audience_options) ? ws.audience_options.find(s => s.key === interview.audience) : null)?.label ?? interview.audience
-      : null
-    const storyTypeLabel = interview.story_type
-      ? (Array.isArray(ws.story_type_options) ? ws.story_type_options.find(s => s.key === interview.story_type) : null)?.label ?? interview.story_type
-      : null
-
-    // Active tentpole campaign flows into derivative content only. Picks the
-    // highest-weighted active campaign in this workspace (event proximity
-    // weighting per api/_lib/activeCampaigns.js → campaignWeight). Returns
-    // null when nothing is active → empty campaignContext → atoms use their
-    // default per-platform CTAs. Blog generation does NOT call this; blogs
-    // are intentionally evergreen.
-    // Pass staff_id so per-clinician-targeted campaigns are honored —
-    // a campaign with non-empty target_staff_ids only applies to atoms
-    // produced for clinicians on its target list.
-    const activeCampaign = await loadCurrentTentpole(ws.id, interview.staff_id || null)
-    const campaignContext = await getTentpolePromptContext(activeCampaign, ws)
-
-    // A2 — GBP cross-promo. Resolve the active campaign's subject location ONCE
-    // so the per-listing GBP loop below can tailor each Google listing
-    // (we're-here vs sister-clinic cross-promo) without an N+1 fetch. Null when
-    // the campaign has no location aim → the GBP loop keeps today's per-listing
-    // local copy.
-    const gbpSubjectLocation = await resolveCampaignSubjectLocation(activeCampaign, ws)
-
-    // Phase 5 Feature 2 — this clinician's prior thinking block, shared
-    // across the canonical atom call below AND any per-location GBP variant
-    // calls that follow. Resolved once to avoid N+1 Supabase round-trips
-    // when a workspace has many GBP locations.
-    const ownHistoryBlock = interview.staff_id
-      ? await resolveOwnHistoryBlock({
-          workspaceId:        ws.id,
-          staffId:        interview.staff_id,
-          excludeInterviewId: interview.id,
-          query:              buildRagQuery(interview),
-        })
-      : ''
-
-    // Build the focused atom prompt
-    const systemPrompt = getAtomSystemPrompt(
-      ws,
+    // Generation + voice-judge core (Standing Producer P3): extracted verbatim
+    // into api/_lib/producer/draftAtom.js so the pre-draft cron path shares ONE
+    // implementation. Behavior-identical to the prior inline block — same
+    // grounding, model ids, and generateText params. The route keeps its own
+    // req/res/auth/DB-write concerns (the atom claim above, the content_item
+    // insert + GBP variants + agent-action below); `gbpContext` carries the
+    // resolved grounding straight into buildGbpLocationVariants below.
+    const {
+      caption,
+      slides,
+      voiceScore,
+      voiceAudit,
+      voiceAttempts,
       staffName,
-      interview.topic,
-      atom.platform,
-      atom.angle,
-      interview.voice_mode || 'practice',
-      interview.tone || 'smart',
-      voiceNotes,
-      (ws.brand_guidelines || '') + conceptBlock,
-      voicePhrases,
-      audienceLabel,
-      storyTypeLabel,
-      campaignContext,
-      ownHistoryBlock,
-    )
-    if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
-
-    // Replay the interview as the original conversation, then ask for the atom.
-    // The transcript is the primary source of truth; if a blog post exists it is
-    // included as editorial context only (thematic alignment, not wording source).
-    const editorialBlock = blogPost
-      ? `\n\nHere is the editorial summary that has already been written on this topic:\n\n` +
-        `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\nUse it only for thematic alignment — pull voice, examples, and specifics from our conversation above.`
-      : ''
-    const aiMessages = [
-      ...turns.map((m) => ({ role: m.role, content: m.content })),
-      {
-        role: 'user',
-        content:
-          `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-          `Pull voice, examples, and specifics from our conversation above — that is the source of truth.` +
-          editorialBlock,
-      },
-    ]
-
-    // Call the AI — first attempt
-    const { text: rawText1 } = await generateText({
-      model: 'anthropic/claude-sonnet-4-6',
-      instructions: systemPrompt,
-      messages: aiMessages,
-      maxOutputTokens: 1000,
-    })
-
-    if (!rawText1?.trim()) throw new Error('AI returned empty content')
-
-    // Voice-judge gate: score the draft against the interview transcript + voice
-    // profile. If below threshold, try once more with the red_flag as coaching.
-    const HAIKU = 'anthropic/claude-haiku-4-5'
-    const GATE  = 6.5
-    // The judge grades faithfulness against what the clinician ACTUALLY said, so
-    // it must see (nearly) the WHOLE transcript — real interviews run 14–20k
-    // chars of clinician turns; the old 2500-char slice showed the judge ~13% of
-    // the reference, which false-flagged faithful drafts drawing on later turns
-    // AND intermittently produced unparseable scores (Standing Producer P2A
-    // measurement, 2026-07-02). 24k bounds the worst-case seminar transcript.
-    const TRANSCRIPT_MAX = 24_000
-    // The faithfulness-v2 rubric is calibrated for SHORT captions (GATE=6.5 is
-    // bimodal there); on long-form it clusters faithful pieces below the gate.
-    // So the HARD gate (hold + flag) applies only to short captions; longer
-    // pieces get a soft, non-blocking score.
-    const HARD_GATE_MAX_CHARS = 600
-    const clinicianSaid = turns
-      .filter((t) => t.role === 'user')
-      .map((t) => t.content)
-      .join('\n\n')
-      .slice(0, TRANSCRIPT_MAX)
-    const caption1 = extractProvenanceBlock(rawText1.trim()).content.split('---SLIDES---')[0].trim()
-
-    let rawText      = rawText1
-    let voiceScore   = null
-    let voiceAttempts = 1
-
-    try {
-      const ep1 = buildFidelityPrompt({
-        topic: interview.topic, caption: caption1,
-        transcript: clinicianSaid, phrases: voicePhrases,
-        staffName, workspaceName: ws.name || ws.slug || 'practice',
-      })
-      const { text: evalRaw1 } = await generateText({
-        model: HAIKU, instructions: ep1.instructions,
-        messages: [{ role: 'user', content: ep1.user }],
-        maxOutputTokens: 240,
-      })
-      voiceScore = parseFidelity(evalRaw1, {
-        model: HAIKU, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(),
-      })
-    } catch (e) {
-      console.warn('[draft] voice-judge eval-1 failed:', e.message)
-    }
-
-    if (voiceScore && voiceScore.overall < GATE) {
-      const redFlag = voiceScore.breakdown?.red_flag || 'voice drift from transcript'
-      try {
-        const { text: rawText2 } = await generateText({
-          model: 'anthropic/claude-sonnet-4-6',
-          instructions: systemPrompt,
-          messages: [
-            ...aiMessages,
-            { role: 'assistant', content: rawText1.trim() },
-            {
-              role: 'user',
-              content: `That draft was flagged: "${redFlag}". Please rewrite it, staying much closer to the actual words and speaking style from our conversation. Don't smooth or professionalize — capture what was actually said.`,
-            },
-          ],
-          maxOutputTokens: 1000,
-        })
-        if (rawText2?.trim()) {
-          voiceAttempts = 2
-          rawText = rawText2
-          const caption2 = extractProvenanceBlock(rawText2.trim()).content.split('---SLIDES---')[0].trim()
-          const ep2 = buildFidelityPrompt({
-            topic: interview.topic, caption: caption2,
-            transcript: clinicianSaid, phrases: voicePhrases,
-            staffName, workspaceName: ws.name || ws.slug || 'practice',
-          })
-          const { text: evalRaw2 } = await generateText({
-            model: HAIKU, instructions: ep2.instructions,
-            messages: [{ role: 'user', content: ep2.user }],
-            maxOutputTokens: 240,
-          })
-          const score2 = parseFidelity(evalRaw2, {
-            model: HAIKU, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(),
-          })
-          if (score2) voiceScore = score2
-        }
-      } catch (e) {
-        console.warn('[draft] voice-judge regen failed:', e.message)
-        rawText = rawText1  // keep first attempt on regen failure
-      }
-    }
-
-    // Split slides block from caption on the final rawText. Instagram prompts
-    // append a ---SLIDES--- JSON section; other platforms don't. Also strip
-    // the <PROVENANCE> trailer — it's metadata, not body copy.
-    const [captionRaw, slidesRaw] = extractProvenanceBlock(rawText.trim()).content.split('---SLIDES---')
-    const caption = captionRaw.trim()
-
-    let slides = null
-    if (slidesRaw) {
-      try {
-        const jsonStr = slidesRaw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-        const parsed = JSON.parse(jsonStr)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          slides = parsed
-            .filter((s) => s && typeof s === 'object')
-            .map((s) => ({
-              photo_idx: null,
-              template: typeof s.template === 'string' ? s.template : 'custom',
-              blocks: Array.isArray(s.blocks)
-                ? s.blocks
-                    .filter((b) => b && typeof b === 'object' && typeof b.text === 'string' && b.text.trim() !== '')
-                    .map((b) => ({
-                      role: typeof b.role === 'string' ? b.role : 'body',
-                      text: b.text.trim(),
-                      position: b.position ?? 'center',
-                    }))
-                : [],
-            }))
-            .filter((s, idx) => idx === 0 || s.blocks.length > 0 || s.template === 'demonstration')
-          if (slides.length === 0) slides = null
-        }
-      } catch (e) {
-        console.warn('[draft] Failed to parse ---SLIDES--- JSON:', e.message)
-        slides = null
-      }
-    }
+      aiMessages,
+      gbpContext,
+    } = await draftAtom({ ws, atom, interview })
 
     // Create the content_item. scheduled_at stays null until a reviewer
     // approves and picks a time — the prior "anchor + (slot-1) weeks"
@@ -367,23 +138,16 @@ export default async function handler(req, res) {
     insertedContentPieceId = contentPiece.id
 
     // Persist voice-judge score so /week can surface low-fidelity cards.
-    // Non-blocking: a score failure never aborts the draft.
-    //
-    // gate: which tier this score triggers.
-    //   'passed' — at/above GATE (or unscored).
-    //   'held'   — SHORT caption below GATE → a real drift flag; /week marks it
-    //              "needs a closer pass" and de-emphasises approve.
-    //   'soft'   — long-form below GATE → informational only; the rubric isn't
-    //              calibrated for long-form, so we don't flag it as drift.
+    // Non-blocking: a score failure never aborts the draft. `voiceAudit` (with
+    // its 'passed'/'held'/'soft' gate tier) is computed in draftAtom — identical
+    // to the prior inline computation.
     if (voiceScore) {
-      let gate = 'passed'
-      if (voiceScore.overall < GATE) gate = caption.length <= HARD_GATE_MAX_CHARS ? 'held' : 'soft'
       waitUntil(
         sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
           method: 'PATCH',
           body: JSON.stringify({
             voice_fidelity_score: Math.round(voiceScore.overall * 10),
-            voice_audit: { ...voiceScore.breakdown, attempts: voiceAttempts, gate },
+            voice_audit: voiceAudit,
             updated_at: new Date().toISOString(),
           }),
           headers: { Prefer: 'return=minimal' },
@@ -392,78 +156,20 @@ export default async function handler(req, res) {
     }
 
     // For GBP atoms: generate a per-location variant for every workspace_location
-    // that has a gbp_location_id configured. Each variant uses the same interview
-    // conversation but a location-patched system prompt (different location_keyword /
-    // city), so Google sees genuinely distinct local copy on each listing rather
-    // than the same text fanned out. Failures are non-blocking — canonical is kept.
+    // that has a gbp_location_id configured, so Google sees genuinely distinct
+    // local copy per listing. Extracted into buildGbpLocationVariants (P3) so the
+    // pre-draft path fans out identically. Failures are non-blocking (canonical kept).
     if (atom.platform === 'gbp') {
-      const locsRes = await sb(
-        `workspace_locations?workspace_id=eq.${ws.id}&status=eq.active&gbp_location_id=not.is.null` +
-        `&select=id,label,city,location_keyword`,
-      )
-      const locations = locsRes.ok ? ((await locsRes.json()) ?? []) : []
-      if (locations.length > 0) {
-        const variantEntries = await Promise.all(
-          locations.map(async (loc) => {
-            try {
-              const locWs = { ...ws, location_keyword: loc.location_keyword ?? loc.city }
-              // A2 — tailor the campaign focus block for THIS listing when the
-              // active campaign promotes a location: the subject's own listing
-              // gets "we're here" copy, every other listing cross-promotes the
-              // sister clinic. Falls back to the shared workspace-wide block
-              // when there's no location aim.
-              const locCampaignContext = gbpSubjectLocation
-                ? buildTentpoleGbpLocationBlock({
-                    campaign: activeCampaign,
-                    workspace: ws,
-                    publishingLocation: loc,
-                    subjectLocation: gbpSubjectLocation,
-                  })
-                : campaignContext
-              const locPrompt = getAtomSystemPrompt(
-                locWs,
-                staffName,
-                interview.topic,
-                'gbp',
-                atom.angle,
-                interview.voice_mode || 'practice',
-                interview.tone || 'smart',
-                voiceNotes,
-                (ws.brand_guidelines || '') + conceptBlock,
-                voicePhrases,
-                audienceLabel,
-                storyTypeLabel,
-                locCampaignContext,
-                ownHistoryBlock,
-              )
-              if (!locPrompt) return null
-              const { text: locText } = await generateText({
-                model: 'anthropic/claude-sonnet-4-6',
-                instructions: locPrompt,
-                messages: aiMessages,
-                maxOutputTokens: 1000,
-              })
-              if (!locText?.trim()) return null
-              return [loc.id, {
-                content:       extractProvenanceBlock(locText.trim()).content,
-                location_name: loc.label ?? loc.city,
-                generated_at:  new Date().toISOString(),
-              }]
-            } catch (locErr) {
-              console.error('[content-plan/draft] location variant failed', loc.id, locErr.message)
-              return null
-            }
-          }),
-        )
-        const overrides = Object.fromEntries(variantEntries.filter(Boolean))
-        if (Object.keys(overrides).length > 0) {
-          await sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ location_overrides: overrides, updated_at: new Date().toISOString() }),
-            headers: { Prefer: 'return=minimal' },
-          })
-          contentPiece.location_overrides = overrides
-        }
+      const overrides = await buildGbpLocationVariants({
+        ws, atom, interview, staffName, aiMessages, gbpContext,
+      })
+      if (Object.keys(overrides).length > 0) {
+        await sb(`content_items?id=eq.${contentPiece.id}&${wsFilter}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ location_overrides: overrides, updated_at: new Date().toISOString() }),
+          headers: { Prefer: 'return=minimal' },
+        })
+        contentPiece.location_overrides = overrides
       }
     }
 
