@@ -89,13 +89,12 @@ export async function createAsset({ inputUrl, playbackPolicy = 'signed', passthr
   return { assetId: asset.id, playbackId: playback }
 }
 
-// Fetch a Mux Asset by id. Used by the webhook to recover display dimensions
-// when the `video.asset.ready` event payload omits `data.tracks` (Mux often
-// does — 14 of 16 ready videos had null width/height before this was added).
-// Returns { width, height, aspectRatio } in DISPLAY orientation (rotation
-// already applied), with nulls when the asset has no decodable video track.
-export async function getAssetDimensions(assetId) {
-  if (!assetId) throw new Error('getAssetDimensions: assetId required')
+// Fetch a Mux Asset by id and return its raw `data` object — the ground truth
+// for an asset's real encoding state (status, playback_ids, tracks, duration,
+// aspect_ratio). Used by the webhook's dimension fallback and by the
+// sweep-stuck-transcodes cron to recover from a missed/misdelivered webhook.
+export async function getAsset(assetId) {
+  if (!assetId) throw new Error('getAsset: assetId required')
   const res = await fetch(`${MUX_API_BASE}/video/v1/assets/${encodeURIComponent(assetId)}`, {
     headers: { Authorization: basicAuthHeader() },
   })
@@ -105,6 +104,17 @@ export async function getAssetDimensions(assetId) {
   try { json = JSON.parse(text) }
   catch { throw new Error(`Mux getAsset returned non-JSON body: ${text.slice(0, 200)}`) }
   const data = json?.data
+  if (!data) throw new Error('Mux getAsset response missing data')
+  return data
+}
+
+// Fetch display dimensions for an asset. Used by the webhook to recover
+// dimensions when the `video.asset.ready` event payload omits `data.tracks`
+// (Mux often does — 14 of 16 ready videos had null width/height before this
+// was added). Returns { width, height, aspectRatio } in DISPLAY orientation
+// (rotation already applied), with nulls when there's no decodable video track.
+export async function getAssetDimensions(assetId) {
+  const data = await getAsset(assetId)
   const videoTrack = Array.isArray(data?.tracks)
     ? data.tracks.find((t) => t?.type === 'video')
     : null
@@ -113,6 +123,25 @@ export async function getAssetDimensions(assetId) {
     height: videoTrack?.max_height || null,
     aspectRatio: typeof data?.aspect_ratio === 'string' ? data.aspect_ratio : null,
   }
+}
+
+// Build the same media_assets patch the webhook's video.asset.ready handler
+// constructs, from a raw Mux asset `data` object. Shared so the sweep cron's
+// recovery patch stays in lockstep with the webhook's happy-path patch.
+export function buildReadyPatchFromMuxAsset(data) {
+  const playbackId = data?.playback_ids?.[0]?.id || null
+  const patch = { transcode_status: 'ready' }
+  if (playbackId) patch.mux_playback_id = playbackId
+  if (typeof data?.duration === 'number') patch.duration_s = data.duration
+  const videoTrack = Array.isArray(data?.tracks)
+    ? data.tracks.find((t) => t?.type === 'video')
+    : null
+  if (videoTrack?.max_width && videoTrack?.max_height) {
+    patch.width  = videoTrack.max_width
+    patch.height = videoTrack.max_height
+  }
+  if (typeof data?.aspect_ratio === 'string') patch.aspect_ratio = data.aspect_ratio
+  return patch
 }
 
 // Verify the Mux-Signature header on an inbound webhook. The header looks
