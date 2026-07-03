@@ -26,8 +26,10 @@
 export const config = { runtime: 'nodejs' }
 
 import { Bundlesocial } from 'bundlesocial'
+import { waitUntil } from '@vercel/functions'
 import { bundleErrorText } from '../../_lib/social/bundlePublisher.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
+import { recordAgentAction } from '../../_lib/agentActions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -112,7 +114,7 @@ export default async function handler(req, res) {
 
   if (status === 'POSTED') {
     // Promote scheduled → published (guarded; a no-op if already published/failed).
-    await sb(
+    const patch = await sb(
       `content_items?id=eq.${item.id}&workspace_id=eq.${item.workspace_id}&status=eq.scheduled`,
       {
         method: 'PATCH',
@@ -123,6 +125,20 @@ export default async function handler(req, res) {
         }),
       }
     )
+    // Workday ledger (Standing Producer Phase 0) — record the win only on a real
+    // scheduled→published transition, so the webhook and the hourly sync cron
+    // never double-log the same publish (whichever wins the race records it).
+    const promoted = patch.ok ? (await patch.json().catch(() => [])) : []
+    if (Array.isArray(promoted) && promoted.length > 0) {
+      const topic = (item.topic || '').trim()
+      waitUntil(recordAgentAction({
+        workspaceId:   item.workspace_id,
+        kind:          'published',
+        title:         topic ? `Published "${topic.slice(0, 80)}" to ${item.platform}` : `Published a post to ${item.platform}`,
+        detail:        { platform: item.platform || null },
+        contentItemId: item.id,
+      }))
+    }
     return res.status(200).json({ received: true, status: 'POSTED' })
   }
 

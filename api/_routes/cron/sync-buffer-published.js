@@ -15,6 +15,7 @@ import { getCredential } from '../../_lib/getCredential.js'
 import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
+import { recordAgentAction } from '../../_lib/agentActions.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -86,7 +87,26 @@ async function promoteToPublished(id, workspaceId, sentAt) {
       }),
     }
   )
-  return r.ok
+  if (!r.ok) return { ok: false, transitioned: false }
+  // return=representation → an empty array means the row was no longer
+  // 'scheduled' (the webhook beat us to it), so THIS run didn't cause the
+  // transition and must not log a duplicate 'published' ledger row.
+  const rows = await r.json().catch(() => [])
+  return { ok: true, transitioned: Array.isArray(rows) && rows.length > 0 }
+}
+
+// Workday ledger (Standing Producer Phase 0) — narrate a publish this cron just
+// confirmed. Gated on producer_config.enabled inside the helper (fetched, since
+// the item row carries no config). Best-effort; never throws.
+async function recordPublished(workspaceId, item) {
+  const topic = (item.topic || '').trim()
+  await recordAgentAction({
+    workspaceId,
+    kind:          'published',
+    title:         topic ? `Published "${topic.slice(0, 80)}" to ${item.platform}` : `Published a post to ${item.platform}`,
+    detail:        { platform: item.platform || null },
+    contentItemId: item.id,
+  })
 }
 
 // Mark a scheduled post as permanently failed, with the reason bundle returned.
@@ -200,7 +220,10 @@ export default async function handler(req, res) {
             item.id, workspaceId,
             status.postedAt || new Date().toISOString()
           )
-          if (promoted) { summary.promoted++; wsResult.promoted++ }
+          if (promoted.ok) {
+            summary.promoted++; wsResult.promoted++
+            if (promoted.transitioned) await recordPublished(workspaceId, item)
+          }
           else { summary.errors++; wsResult.errors++ }
         } catch (e) {
           console.error('[sync-buffer-published] bundle postGet error for item:', item.id, e?.message)
@@ -242,9 +265,10 @@ export default async function handler(req, res) {
         }
 
         const promoted = await promoteToPublished(item.id, workspaceId, post.sentAt)
-        if (promoted) {
+        if (promoted.ok) {
           summary.promoted++
           wsResult.promoted++
+          if (promoted.transitioned) await recordPublished(workspaceId, item)
         } else {
           summary.errors++
           wsResult.errors++

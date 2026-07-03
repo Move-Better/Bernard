@@ -11,6 +11,7 @@ export const config = { runtime: 'nodejs' }
 
 import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
 import { mondayOf } from '../../_lib/strategist.js'
+import { recordAgentAction } from '../../_lib/agentActions.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -24,7 +25,7 @@ async function handler(req, res) {
   // computes per-channel cadence from enabled_outputs × the cold-start prior;
   // falls back to RECOMMENDED_CADENCE only when there are no enabled outputs).
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,cadence_policy,enabled_outputs`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,cadence_policy,enabled_outputs,producer_config`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
@@ -36,6 +37,23 @@ async function handler(req, res) {
     try {
       const stats = await replanWorkspaceWeek({ workspace: ws, weekMonday })
       summary.push({ slug: ws.slug, ...stats })
+      // Workday ledger (Standing Producer Phase 0) — narrate the week Bernard
+      // planned. Only when a real plan landed (not skipped, non-empty). Gated on
+      // producer_config.enabled inside the helper.
+      if (!stats.skipped && stats.scheduled > 0) {
+        await recordAgentAction({
+          workspaceId:    ws.id,
+          producerConfig: ws.producer_config,
+          kind:           'week_planned',
+          title:          `Planned this week — ${stats.scheduled} post${stats.scheduled === 1 ? '' : 's'} across your channels`,
+          detail:         {
+            scheduled: stats.scheduled,
+            promotedFromBacklog: stats.promotedFromBacklog ?? null,
+            interviews: stats.interviews ?? null,
+            weekMonday,
+          },
+        })
+      }
     } catch (e) {
       console.error(`[cron/weekly-plan] ${ws.slug} threw: ${e?.message}\n${e?.stack || ''}`)
       summary.push({ slug: ws.slug, error: 'failed' })

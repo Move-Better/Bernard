@@ -18,6 +18,7 @@ import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { toast } from '@/lib/toast'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
+import ProducerFeedStrip from '@/components/producer/ProducerFeedStrip'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 
 // F2.3 — "Your week": the producer's plan/review hub (Phase 2).
@@ -526,6 +527,9 @@ export default function YourWeek() {
         onNext={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
         onToday={() => setWeekOffset(0)}
       />
+
+      {/* Bernard's workday — recent activity (renders only when the producer is enabled) */}
+      <ProducerFeedStrip />
 
       {/* Per-week context banner */}
       {isPast && (

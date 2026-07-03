@@ -9,7 +9,7 @@ import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
-  TrendingUp, Gauge, Globe,
+  TrendingUp, Gauge, Globe, Bot,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -62,6 +62,10 @@ const NAV_SECTIONS = [
       // composed week. Supersedes the Review Inbox (which redirects to /week).
       { to: '/week',       label: 'Your week',  hint: 'Plan · approve',  match: (p) => p.startsWith('/week'),     icon: CalendarRange,
         requiresEditor: true },
+      // Bernard — the Standing Producer's workday feed. Only appears once the
+      // workspace has hired Bernard (producer_config.enabled); any member sees it.
+      { to: '/producer',   label: 'Bernard',    hint: 'Workday',         match: (p) => p.startsWith('/producer'), icon: Bot,
+        showWhen: (ws) => ws?.producer_config?.enabled },
       { to: '/stories',    label: 'Stories',    hint: 'Stories',         match: (p) => p.startsWith('/stories'),  icon: Newspaper,
         requiresCapability: CAP_INTERVIEW_START },
       // Slate — the cutting desk (video → clips). Sits between Stories and

@@ -119,6 +119,7 @@ export const queryKeys = {
   searchQueries:    ['search-queries'],
   seoOpportunities: ['seo-opportunities'],
   seoCitations:     ['seo-citations'],
+  producerFeed:     (limit = 30) => ['producer-feed', limit],
   gbpPerformance:   ['gbp-performance'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
@@ -838,6 +839,21 @@ export function useSearchQueries() {
       apiFetch('/api/insights/search-queries').catch(() => ({ connected: false })),
     staleTime: 1000 * 60 * 60, // 1h
     refetchOnWindowFocus: false,
+  })
+}
+
+// ── Bernard's workday (Standing Producer) ─────────────────────────────────────
+//
+// Returns { enabled, actions, pausedAt, hasMore } from /api/producer/feed.
+// enabled:false → the workspace hasn't hired Bernard (render empty state, hide
+// nav). Short staleTime so the feed feels live as actions land.
+export function useProducerFeed(limit = 30) {
+  return useQuery({
+    queryKey: queryKeys.producerFeed(limit),
+    queryFn: () =>
+      apiFetch(`/api/producer/feed?limit=${limit}`).catch(() => ({ enabled: false, actions: [] })),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   })
 }
 
