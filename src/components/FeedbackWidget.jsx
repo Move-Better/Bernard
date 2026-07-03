@@ -4,7 +4,11 @@ import { MessageSquare, X, Camera, Paperclip, Send, CheckCircle, Loader2 } from 
 import { useWorkspaceState } from '@/lib/WorkspaceContext'
 import { apiFetch } from '@/lib/api'
 
-export function FeedbackWidget() {
+// anchor='floating' (default) keeps the legacy fixed bottom-right FAB.
+// anchor='sidebar' renders an inline trigger meant to sit in the sidebar's
+// bottom rail, with the panel opening upward next to it instead of floating
+// over page content.
+export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
   const { user } = useUser()
   const { workspace: ws } = useWorkspaceState()
 
@@ -91,20 +95,37 @@ export function FeedbackWidget() {
     setStatus('idle')
   }, [status])
 
+  const sidebar = anchor === 'sidebar'
+
   return (
-    <>
-      {/* Floating trigger button */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        aria-label="Send feedback"
-        className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {open ? <X className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
-      </button>
+    <div className={sidebar ? 'relative' : undefined}>
+      {/* Trigger button */}
+      {sidebar ? (
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-label={open ? 'Close feedback' : 'Send feedback'}
+          className={`flex items-center rounded-md text-sm font-medium transition-colors w-full text-muted-foreground hover:bg-accent/40 hover:text-foreground
+            ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
+        >
+          <MessageSquare className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="flex-1 truncate text-left">Feedback</span>}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(o => !o)}
+          aria-label="Send feedback"
+          className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {open ? <X className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
+        </button>
+      )}
 
       {/* Panel */}
       {open && (
-        <div className="fixed bottom-20 right-5 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl">
+        <div className={sidebar
+          ? 'absolute bottom-0 left-full ml-2 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl'
+          : 'fixed bottom-20 right-5 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl'}>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-semibold">Send feedback</span>
@@ -202,6 +223,6 @@ export function FeedbackWidget() {
           )}
         </div>
       )}
-    </>
+    </div>
   )
 }
