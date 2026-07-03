@@ -218,11 +218,16 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
     return { status: 'skipped', reason: 'status_changed_during_revision' }
   }
 
-  // Post Bernard's reply in the thread. Score appended programmatically so the
-  // number is always the real one, not the model's self-report.
+  // Post Bernard's reply in the thread — what changed, in plain language. The
+  // raw voice score is deliberately NOT shown here: it's persisted to
+  // voice_fidelity_score (surfaced on the /week card, in context) and gates
+  // regeneration in Phase 2, but a naked number in Bernard's voice reads as a
+  // grade and misleads — the fidelity judge scores faithfulness against a 2500-
+  // char transcript excerpt, so a good revision whose source details sit outside
+  // that window scores low for reasons unrelated to its quality.
   const replyBody = [
     summary || 'Revised the draft to address your change request.',
-    score !== null ? `Voice score ${score}/100 — back for your review.` : 'Back for your review.',
+    'Back for your review.',
   ].join(' ')
   await sb('content_item_comments', {
     method: 'POST',
@@ -242,7 +247,7 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
     workspaceId: wsId,
     producerConfig: ws.producer_config,
     kind: 'revision',
-    title: `Revised "${(piece.topic || 'a piece').slice(0, 60)}" per your change request${score !== null ? ` — voice ${score}/100` : ''}`,
+    title: `Revised "${(piece.topic || 'a piece').slice(0, 60)}" per your change request`,
     detail: { platform: piece.platform, score, change_request: String(changeRequest || '').slice(0, 200) },
     contentItemId,
     interviewId: piece.interview_id || null,
