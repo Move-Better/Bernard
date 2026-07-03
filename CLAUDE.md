@@ -481,6 +481,14 @@ A global rebrand find/replace (old product name → `bernard`, old domain → `w
 - A hotfix needs to ship from a worktree without a PR
 - You need to deploy code that isn't yet (or won't ever be) on `main`
 
+## Retiring a domain must include auditing third-party webhook configs
+
+A domain retirement (redirect rules, DNS, code references) is not complete until every **third-party service that pushes webhooks INTO Bernard** is checked for a stale endpoint URL pointing at the old domain. This is a different blast radius than the string/asset rebrand above — a stale webhook doesn't error visibly, it just silently stops delivering, and the failure mode looks identical to "the feature is slow" or "stuck processing" rather than "broken."
+
+Found 2026-07-03: the Mux webhook (Settings → Webhooks in the Mux dashboard) was still registered against the retired `narraterx.ai` domain from the 2026-06-09 cutover. Every `video.asset.ready` event since 2026-05-20 (over a month) went nowhere — 123 videos sat at `transcode_status: 'processing'` indefinitely even though Mux had finished encoding them within minutes each time. No error anywhere in our logs, because our server never received a request to error on. Diagnostic tell: calling the *provider's own API* directly for one affected asset showed it was actually done — the provider's ground truth disagreed with our DB, and only a webhook-delivery failure explains that gap.
+
+Rule: whenever a domain is retired or changed, check every service with a webhook callback into Bernard — at minimum Mux, Stripe, Clerk, bundle.social, and Google (OAuth redirect URIs) — and confirm the registered URL was updated. Prefer checking the provider dashboard directly over assuming a documented cutover PR caught it; webhook config usually lives outside the codebase entirely, so no grep will find it. See `api/_routes/cron/sweep-stuck-transcodes.js` for the self-healing safety net now in place for the Mux case specifically — but this class of bug can recur for any other webhook-driven pipeline and won't have an equivalent sweep unless one is built.
+
 ## Audit and checkup
 Three complementary commands cover code/UI/prod health:
 

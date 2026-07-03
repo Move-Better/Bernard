@@ -202,6 +202,19 @@ Reference: `api/db/interviews.js` + `api/_lib/interviewSummarizer.js`.
 Diagnostic tell: if all rows of a derived type share a tight `created_at` cluster, they came
 from a backfill, not live writes — the live hook may be silently dropped.
 
+**`maxDuration` bounds the WHOLE invocation, including everything inside `waitUntil` — it is
+NOT a separate budget for background work.** Converting a synchronous handler to
+respond-then-`waitUntil` does not mean the handler's time cap can shrink to "just cover the
+response." The background promise still runs inside the same invocation lifetime, and gets
+killed the moment `maxDuration` elapses — silently, with no error, no catch fired, no terminal
+write. Hit exactly this in `api/media/tag.js` (2026-07-03): making the manual AI-tagging button
+async correctly fixed its 504 (the old bug — the whole download+ffmpeg+Gemini pipeline ran
+synchronously before responding), but `maxDuration` was dropped 120 → 30 on the assumption only
+the response needed covering. On a 488MB video the background job got killed at the 30s mark,
+before it could reach its own `catch` (which reverts status + records an error) — the row sat
+in a `'tagging'`-equivalent pending state forever with no error ever surfaced. Fix: keep
+`maxDuration` sized for the ACTUAL background work, not the response.
+
 ---
 
 ## Social-publishing provider adapter (Buffer / bundle.social)
@@ -383,6 +396,19 @@ const { data: liveAsset } = useQuery({
 Reference: `src/components/MediaDetail.jsx`. Page-level polling (Slate packages, ClipFinder
 segments) must apply the same pattern with an appropriate ceiling (60 s–5 min depending on job
 duration).
+
+**Any client action that flips a row into a pending state server-side must explicitly
+`refetch()` the polling query right after — the query will NOT notice on its own.**
+`refetchInterval` decides whether to keep polling by reading its own cached `q.state.data`, not
+the response of whatever mutation just fired. If a button POSTs to kick off background work and
+the row's `status` flips server-side, but nothing tells the query to look again, the next
+`refetchInterval` evaluation still sees the pre-click cached data and may conclude nothing is
+pending — so it never starts polling, and the eventual result (success or failure) is silently
+missed even though the backend finished normally. Hit this in `MediaDetail.jsx`'s "Tag with AI"
+button (2026-07-03, follow-up to the `maxDuration` bug above): the backend tagged the asset
+correctly, but the spinner never resolved because the kickoff never called the query's
+`refetch()`. Fix: call `refetch()` (destructured from the same `useQuery`) immediately after the
+kickoff request resolves, so the very next evaluation sees the fresh pending status.
 
 ### Preview ≠ published artifact
 When a feature renders something to a `<canvas>` or any in-memory/preview-only surface, that is
