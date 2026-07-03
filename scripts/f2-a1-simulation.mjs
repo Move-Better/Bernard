@@ -63,7 +63,7 @@ async function meanScore({ transcript, caption, phrases, staffName }) {
   const runs = []
   for (let i = 0; i < SAMPLES; i++) {
     const p = buildFidelityPrompt({ topic: 'Move Better', caption, transcript, phrases, staffName, workspaceName: 'Move Better People' })
-    const { text } = await generateText({ model: EVAL_MODEL, system: p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
+    const { text } = await generateText({ model: EVAL_MODEL, instructions: p.instructions, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
     const parsed = parseFidelity(text)
     if (parsed) runs.push(parsed)
   }

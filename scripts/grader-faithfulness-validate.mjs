@@ -78,7 +78,10 @@ async function avgScore(buildFn, parseFn, args) {
   const runs = []
   for (let i = 0; i < SAMPLES; i++) {
     const p = buildFn(args)
-    const { text } = await generateText({ model: EVAL_MODEL, system: p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
+    // Generic harness: buildFidelityPrompt returns `.instructions`, the local
+    // buildOldPrompt returns `.system`. Resolve either so BOTH graders get their
+    // system preamble (without this, the new-rubric path ran with none).
+    const { text } = await generateText({ model: EVAL_MODEL, instructions: p.instructions ?? p.system, messages: [{ role: 'user', content: p.user }], maxOutputTokens: 240 })
     const parsed = parseFn(text)
     if (parsed?.overall != null) runs.push(parsed)
   }
