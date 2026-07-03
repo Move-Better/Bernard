@@ -10,6 +10,7 @@
 
 import { createClerkClient } from '@clerk/backend'
 import { sendEmail } from './notifyAdmin.js'
+import { recordAgentAction } from './agentActions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -66,9 +67,26 @@ export async function notifyPublishFailure({ workspaceId, item, reason }) {
     if (!workspaceId || !item?.id) return { ok: false, skipped: true }
 
     const wsRes = await sb(
-      `workspaces?id=eq.${workspaceId}&select=slug,display_name,created_by_clerk_user_id&limit=1`
+      `workspaces?id=eq.${workspaceId}&select=slug,display_name,created_by_clerk_user_id,producer_config&limit=1`
     )
     const ws = wsRes.ok ? (await wsRes.json().catch(() => []))[0] : null
+
+    // Workday ledger (Standing Producer Phase 0) — record the failure once per
+    // transition (this notifier is the single choke point both the webhook and
+    // the sync cron call). Recorded independent of the owner-email path so a
+    // failure still lands in the feed even when no owner email resolves. Gated
+    // on producer_config.enabled inside the helper.
+    const platformLabel = PLATFORM_LABELS[item.platform] || item.platform || 'A post'
+    const ledgerTitleRaw = (item.topic || '').trim()
+    await recordAgentAction({
+      workspaceId,
+      producerConfig: ws?.producer_config,
+      kind:           'publish_failed',
+      title:          `${platformLabel} post failed to publish${ledgerTitleRaw ? `: "${ledgerTitleRaw.slice(0, 80)}"` : ''}`,
+      detail:         { platform: item.platform || null, reason: (reason || '').slice(0, 500) },
+      contentItemId:  item.id,
+    })
+
     const to = await ownerEmail(ws?.created_by_clerk_user_id)
     if (!to) {
       console.warn('[notifyPublishFailure] no owner email for workspace', workspaceId)

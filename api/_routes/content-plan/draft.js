@@ -21,6 +21,7 @@ import {
 } from '../../_lib/tentpoleCampaignContext.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 import { buildFidelityPrompt, parseFidelity } from '../../_lib/captionFidelityRubric.js'
+import { recordAgentAction } from '../../_lib/agentActions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -457,6 +458,22 @@ export default async function handler(req, res) {
     if (!updatedAtomRes.ok) throw new Error(`atom status update failed: ${updatedAtomRes.status}`)
     const updatedAtomRows = await updatedAtomRes.json()
     if (!updatedAtomRows.length) throw new Error('atom status update matched 0 rows — concurrent modification or workspace filter mismatch')
+
+    // Workday ledger (Standing Producer Phase 0) — narrate the draft Bernard
+    // just made. Gated on producer_config.enabled inside the helper; no-op when
+    // the workspace hasn't hired Bernard. Never blocks the response.
+    const draftScore = voiceScore ? Math.round(voiceScore.overall * 10) : null
+    waitUntil(recordAgentAction({
+      workspaceId:     ws.id,
+      producerConfig:  ws.producer_config,
+      kind:            'draft_created',
+      title:           `Drafted "${interview.topic || 'a piece'}" for ${atom.platform}${draftScore !== null ? ` — voice ${draftScore}/100` : ''}`,
+      detail:          { platform: atom.platform, angle: atom.angle, score: draftScore, attempts: voiceAttempts },
+      contentItemId:   contentPiece.id,
+      atomId:          atom.id,
+      interviewId:     interview.id,
+      model:           'anthropic/claude-haiku-4-5',
+    }))
 
     return ok(res, {
       atom:          updatedAtomRows[0] ?? { ...atom, status: 'drafted', content_piece_id: contentPiece.id },

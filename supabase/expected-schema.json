@@ -14,6 +14,23 @@
     "updated_at",
     "workspace_id"
   ],
+  "agent_actions": [
+    "actor",
+    "atom_id",
+    "content_item_id",
+    "created_at",
+    "detail",
+    "id",
+    "inbox_item_id",
+    "input_tokens",
+    "interview_id",
+    "kind",
+    "model",
+    "output_tokens",
+    "package_id",
+    "title",
+    "workspace_id"
+  ],
   "app_config": [
     "key",
     "updated_at",
@@ -775,6 +792,7 @@
     "patient_handouts_enabled",
     "plan",
     "plan_seats",
+    "producer_config",
     "prompt_mode",
     "publish_intent",
     "publish_provider",
