@@ -151,7 +151,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   // upload-done, but the detail drawer doesn't see that signal — so without
   // this, opening the drawer immediately after upload shows a stale row
   // (status='raw', broken HEIC preview) until a manual refresh.
-  const { data: liveAsset } = useQuery({
+  const { data: liveAsset, refetch: refetchLiveAsset } = useQuery({
     queryKey: ['media-asset', asset.id],
     queryFn: () => getMediaAsset(asset.id),
     initialData: asset,
@@ -325,6 +325,14 @@ export default function MediaDetail({ asset, onClose, onChange }) {
       const updated = await tagMediaAsset(asset.id)
       if (updated?.status) setStatus(updated.status)
       pollStartRef.current = null // let the pending-poll cap restart from now
+      // The poll's refetchInterval decides whether to keep polling based on
+      // its OWN cached query data, which still reflects the pre-click state
+      // at this point — it has no idea the server just flipped status to
+      // 'tagging'. Without an explicit refetch here, the interval callback
+      // never sees the pending state and never starts polling, so the
+      // eventual tagged/failed result is never picked up and the spinner
+      // hangs forever even though the background job finishes normally.
+      refetchLiveAsset()
       toast('Tagging with AI…', { description: asset.kind === 'video' ? '10–60s for video' : undefined })
     } catch (e) {
       setError(e.message)
