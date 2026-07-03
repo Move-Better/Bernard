@@ -29,7 +29,13 @@
       "Bash(gh pr *)",
       "Bash(gh api *)",
       "Bash(gh repo *)",
-      "Bash(gh auth *)"
+      "Bash(gh auth *)",
+      "mcp__plugin_posthog_posthog__exec",
+      "Read",
+      "Glob",
+      "Grep",
+      "Write",
+      "mcp__ccd_session__spawn_task"
     ]
   }
 }
