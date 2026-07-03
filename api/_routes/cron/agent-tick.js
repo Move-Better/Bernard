@@ -19,6 +19,7 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { reviseContentItem } from '../../_lib/producer/reviseContentItem.js'
+import { regradeContentItem } from '../../_lib/producer/regradeContentItem.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -79,6 +80,37 @@ async function backfillChangeRequests(wsId) {
   return rows.length
 }
 
+// Ensure every held short-caption draft has a judge_low_score inbox row so the
+// producer takes one voice-repair pass. Idempotent via the dedupe key; skips
+// pieces already producer-attempted (voice_audit.producer_attempts set) so an
+// escalated piece — which stays gate='held' so /week keeps flagging it — isn't
+// re-enqueued.
+async function backfillHeldCaptions(wsId) {
+  const r = await sb(
+    // Oldest-held first so a large backlog can't starve the earliest-flagged
+    // drafts (the newest-50 would otherwise always be re-scanned under load).
+    `content_items?workspace_id=eq.${wsId}&status=eq.draft&voice_audit->>gate=eq.held` +
+    `&select=id,voice_audit&order=updated_at.asc&limit=50`
+  )
+  if (!r.ok) return 0
+  const held = (await r.json().catch(() => []))
+    .filter((p) => p.id && !p.voice_audit?.producer_attempts)
+  if (!held.length) return 0
+  const rows = held.map((p) => ({
+    workspace_id:    wsId,
+    kind:            'regrade_content_item',
+    dedupe_key:      `judge_low_score:${p.id}`,
+    content_item_id: p.id,
+    payload:         { content_item_id: p.id, red_flag: p.voice_audit?.red_flag || 'voice drift' },
+  }))
+  await sb('agent_inbox?on_conflict=workspace_id,dedupe_key', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify(rows),
+  }).catch((e) => console.warn('[agent-tick] held-caption backfill failed:', e?.message))
+  return rows.length
+}
+
 // Reset items stuck in 'claimed' past the deadline (a prior tick died). Under
 // the attempt cap → back to pending for retry; at the cap → failed.
 async function sweepStranded(wsId) {
@@ -135,13 +167,21 @@ async function finishItem(id, status, result) {
 }
 
 async function dispatch(ws, item) {
+  const p = item.payload || {}
   if (item.kind === 'revise_content_item') {
-    const p = item.payload || {}
     return reviseContentItem({
       ws,
       contentItemId: p.content_item_id || item.content_item_id,
       changeRequest: p.body || '',
       commentId:     p.comment_id || null,
+      inboxItemId:   item.id,
+    })
+  }
+  if (item.kind === 'regrade_content_item') {
+    return regradeContentItem({
+      ws,
+      contentItemId: p.content_item_id || item.content_item_id,
+      redFlag:       p.red_flag || null,
       inboxItemId:   item.id,
     })
   }
@@ -155,6 +195,7 @@ async function processWorkspace(ws, deadline, summary) {
   const dailyCap = Number.isFinite(cfg.daily_ai_call_cap) ? cfg.daily_ai_call_cap : DEFAULT_DAILY_CAP
 
   await backfillChangeRequests(wsId)
+  await backfillHeldCaptions(wsId)
   await sweepStranded(wsId)
 
   const spent = await todaysAiCalls(wsId)
@@ -169,7 +210,7 @@ async function processWorkspace(ws, deadline, summary) {
   if (!pendRes.ok) { summary.push({ slug: ws.slug, error: 'pending_fetch_failed' }); return }
   const pending = await pendRes.json().catch(() => [])
 
-  const wsResult = { slug: ws.slug, claimed: 0, revised: 0, skipped: 0, failed: 0 }
+  const wsResult = { slug: ws.slug, claimed: 0, revised: 0, passed: 0, escalated: 0, skipped: 0, failed: 0 }
   let remaining = dailyCap - spent
   for (const item of pending) {
     if (Date.now() > deadline) { wsResult.partial = true; break }
@@ -180,7 +221,13 @@ async function processWorkspace(ws, deadline, summary) {
     remaining--
     try {
       const res = await dispatch(ws, claimed)
-      if (res?.status === 'revised') { wsResult.revised++; await finishItem(claimed.id, 'done', res) }
+      const st = res?.status
+      // All terminal outcomes finalize the inbox item as 'done' (only a thrown
+      // transient error retries). revised/passed = success; escalated = we tried
+      // and handed to the human; skipped = cooperative-cancel / not applicable.
+      if (st === 'revised') { wsResult.revised++; await finishItem(claimed.id, 'done', res) }
+      else if (st === 'passed') { wsResult.passed++; await finishItem(claimed.id, 'done', res) }
+      else if (st === 'escalated') { wsResult.escalated++; await finishItem(claimed.id, 'done', res) }
       else { wsResult.skipped++; await finishItem(claimed.id, 'skipped', res) }
     } catch (e) {
       console.error('[agent-tick]', ws.slug, claimed.id, e?.message)
