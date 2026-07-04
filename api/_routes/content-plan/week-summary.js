@@ -126,13 +126,10 @@ export default async function handler(req, res) {
   // Clinician "yours to review" (2d): blog content_items in in_review for this user's
   // staff row, only when blog_review_enabled is true on that row.
   let yourReview = []
-  // Clinician "answers to review" (public answer library): needs_review/changes_requested
-  // answers owned by this user's staff row, only when answer_review_enabled is true.
-  let yourAnswerReview = []
   const clerkUserId = auth.userId || auth.user?.id || null
   if (clerkUserId) {
     const staffRes = await sb(
-      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled,answer_review_enabled&limit=1`,
+      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
     )
     if (staffRes.ok) {
       const staffRows = await staffRes.json()
@@ -142,12 +139,6 @@ export default async function handler(req, res) {
           `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at&order=created_at.desc&limit=10`,
         )
         if (reviewRes.ok) yourReview = await reviewRes.json()
-      }
-      if (sf?.answer_review_enabled) {
-        const ansRes = await sb(
-          `answers?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&status=in.(needs_review,changes_requested)&select=id,question,condition,status&order=updated_at.desc&limit=20`,
-        )
-        if (ansRes.ok) yourAnswerReview = await ansRes.json()
       }
     }
   }
@@ -184,6 +175,5 @@ export default async function handler(req, res) {
     held: heldAtoms.map(shape),
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
     yourReview,
-    yourAnswerReview,
   })
 }
