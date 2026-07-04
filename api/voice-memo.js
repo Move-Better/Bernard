@@ -63,11 +63,25 @@ function sb(path, init = {}) {
   })
 }
 
-/** Buffer the full request body into a single Buffer. */
-function readBody(req) {
+/**
+ * Buffer the full request body into a single Buffer. Aborts early once
+ * `maxBytes` is exceeded (destroying the request) instead of buffering the
+ * whole oversized body first and only rejecting after — cheap backpressure in
+ * case the client-side size cap ever drifts.
+ */
+function readBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = []
-    req.on('data', (c) => chunks.push(c))
+    let total = 0
+    req.on('data', (c) => {
+      total += c.length
+      if (maxBytes && total > maxBytes) {
+        req.destroy()
+        reject(Object.assign(new Error('body_too_large'), { code: 'BODY_TOO_LARGE' }))
+        return
+      }
+      chunks.push(c)
+    })
     req.on('end', () => resolve(Buffer.concat(chunks)))
     req.on('error', reject)
   })
@@ -99,14 +113,13 @@ export default async function handler(req, res) {
   // The 25MB Whisper limit bounds the maximum buffer size.
   let audioBuffer
   try {
-    audioBuffer = await readBody(req)
+    audioBuffer = await readBody(req, WHISPER_MAX_BYTES)
   } catch (e) {
+    if (e?.code === 'BODY_TOO_LARGE') {
+      return res.status(413).json({ error: 'recording_too_large' })
+    }
     console.error(`[voice-memo] body read failed: ${e?.message}`)
     return res.status(400).json({ error: 'Could not read request body' })
-  }
-
-  if (audioBuffer.byteLength > WHISPER_MAX_BYTES) {
-    return res.status(413).json({ error: 'recording_too_large' })
   }
 
   // ── 2. Upload to Vercel Blob ──────────────────────────────────────────────

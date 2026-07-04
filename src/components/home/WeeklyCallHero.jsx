@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PhoneCall, Mic, CalendarClock, PhoneOutgoing, ArrowRight } from 'lucide-react'
+import { PhoneCall, Mic, ArrowRight } from 'lucide-react'
 
 /**
  * WeeklyCallHero — F1 Phase A. The call-first Home hero.
@@ -10,9 +10,10 @@ import { PhoneCall, Mic, CalendarClock, PhoneOutgoing, ArrowRight } from 'lucide
  * keep today's "Start an interview" ribbon CTA with no broken link). The full
  * capture picker stays one click away via "All capture modes".
  *
- * "Schedule it" and "Have Bernard call me" are seeded as disabled affordances —
- * they're Phase B (scheduling) and Phase C (outbound telephony). Shown so the
- * weekly-ritual intent reads, disabled so nothing is a dead click.
+ * "Schedule it" (Phase B) and "Have Bernard call me" (Phase C, outbound
+ * telephony) aren't built yet — kept as small de-weighted text links below the
+ * primary CTA rather than full-size disabled buttons, so the hero doesn't
+ * spend equal visual weight advertising unshipped features every day.
  *
  * @param {number|null} lastOwnCallAt - epoch ms of the current user's most
  *   recent completed interview, or null. Drives the "N days since your last"
@@ -57,35 +58,19 @@ export default function WeeklyCallHero({ lastOwnCallAt = null }) {
               <Mic className="h-4 w-4" aria-hidden="true" />
               Start your weekly call
             </Link>
-            <button
-              type="button"
-              disabled
-              title="Coming soon"
-              className="nx-btn-secondary inline-flex items-center gap-2 px-4 py-3 text-sm opacity-60 cursor-not-allowed"
-            >
-              <CalendarClock className="h-4 w-4" aria-hidden="true" />
-              Schedule it
-              <span className="nx-pill nx-pill-ink">Soon</span>
-            </button>
-            <button
-              type="button"
-              disabled
-              title="Coming soon"
-              className="nx-btn-secondary inline-flex items-center gap-2 px-4 py-3 text-sm opacity-60 cursor-not-allowed"
-            >
-              <PhoneOutgoing className="h-4 w-4" aria-hidden="true" />
-              Have Bernard call me
-              <span className="nx-pill nx-pill-ink">Soon</span>
-            </button>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
             <Link
               to="/new"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+              className="inline-flex items-center gap-1 hover:text-primary"
             >
               Prefer to type or upload? All capture modes
               <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
+            <span className="text-muted-foreground/40" aria-hidden="true">·</span>
+            <span title="Coming soon" className="cursor-default">Schedule it (soon)</span>
+            <span className="text-muted-foreground/40" aria-hidden="true">·</span>
+            <span title="Coming soon" className="cursor-default">Have Bernard call me (soon)</span>
           </div>
         </div>
       </div>

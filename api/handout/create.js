@@ -53,10 +53,24 @@ function sb(path, init = {}) {
   })
 }
 
-function readBody(req) {
+/**
+ * Buffer the request body, aborting early once `maxBytes` is exceeded rather
+ * than buffering the whole oversized body first — cheap backpressure in case
+ * the client-side size cap ever drifts.
+ */
+function readBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = []
-    req.on('data', (c) => chunks.push(c))
+    let total = 0
+    req.on('data', (c) => {
+      total += c.length
+      if (maxBytes && total > maxBytes) {
+        req.destroy()
+        reject(Object.assign(new Error('body_too_large'), { code: 'BODY_TOO_LARGE' }))
+        return
+      }
+      chunks.push(c)
+    })
     req.on('end', () => resolve(Buffer.concat(chunks)))
     req.on('error', reject)
   })
@@ -90,16 +104,16 @@ export default async function handler(req, res) {
   // ── 1. Buffer audio ─────────────────────────────────────────────────────
   let audioBuffer
   try {
-    audioBuffer = await readBody(req)
+    audioBuffer = await readBody(req, WHISPER_MAX_BYTES)
   } catch (e) {
+    if (e?.code === 'BODY_TOO_LARGE') {
+      return res.status(413).json({ error: 'recording_too_large' })
+    }
     console.error(`[handout] body read failed ws=${ws.slug}: ${e?.message}`)
     return res.status(400).json({ error: 'Could not read request body' })
   }
   if (audioBuffer.byteLength === 0) {
     return res.status(400).json({ error: 'Empty audio body' })
-  }
-  if (audioBuffer.byteLength > WHISPER_MAX_BYTES) {
-    return res.status(413).json({ error: 'recording_too_large' })
   }
 
   // ── 2. Upload to Blob ───────────────────────────────────────────────────

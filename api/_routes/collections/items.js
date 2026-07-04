@@ -99,7 +99,7 @@ async function handler(req, res) {
   if (singleAssetId && !UUID_RE.test(singleAssetId)) return res.status(400).json({ error: 'invalid_assetId' })
   const assetIds = singleAssetId
     ? [singleAssetId]
-    : (Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean) : [])
+    : (Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean).filter(id => UUID_RE.test(String(id))) : [])
 
   if (!assetIds.length) return res.status(400).json({ error: 'assetId or assetIds[] required' })
 

@@ -38,20 +38,34 @@ async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase env not configured' })
   }
 
-  // Fetch workspaces that have at least one active campaign.
+  // Fetch workspaces that have at least one active campaign. Ordered
+  // explicitly so re-runs visit workspaces in a stable sequence — otherwise a
+  // mid-loop timeout (see budget guard below) silently drops a different,
+  // arbitrarily-ordered tail of workspaces on every invocation.
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug&order=id.asc`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json().catch(() => [])
 
   const now = Date.now()
+  const startedAt = now
+  // Bail out of the workspace loop with a clean partial response once we're
+  // within a safety margin of Vercel's function timeout, rather than letting
+  // the invocation get killed mid-loop with no response at all. The next
+  // cron run picks up the remaining workspaces (stable order, see above).
+  const TIME_BUDGET_MS = 270_000
+  let truncated = false
   let tunedTotal = 0
   let skippedTotal = 0
   const workspaceSummary = []
 
   for (const ws of workspaces) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      truncated = true
+      break
+    }
     // Fetch active campaigns for this workspace.
     const nowIso = encodeURIComponent(new Date().toISOString())
     const campsRes = await sb(
@@ -127,13 +141,14 @@ async function handler(req, res) {
     })
   }
 
-  console.info(`[campaign-tune] tuned ${tunedTotal} campaigns across ${workspaces.length} workspaces (${skippedTotal} skipped as fresh/past)`)
+  console.info(`[campaign-tune] tuned ${tunedTotal} campaigns across ${workspaceSummary.length}/${workspaces.length} workspaces (${skippedTotal} skipped as fresh/past)${truncated ? ' — TRUNCATED on time budget' : ''}`)
 
   return res.status(200).json({
-    startedAt: new Date().toISOString(),
+    startedAt: new Date(startedAt).toISOString(),
     workspaces: workspaceSummary,
     tunedTotal,
     skippedTotal,
+    truncated,
   })
 }
 

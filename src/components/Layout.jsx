@@ -595,6 +595,15 @@ function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
       >
         <span className="relative shrink-0">
           {Icon && <Icon className="h-4 w-4" />}
+          {collapsed && (
+            // Corner chevron marks this icon as "opens a menu" vs. a direct
+            // nav link — shown regardless of active state so a first-time
+            // user has a visual cue before ever clicking (2026-07-04 audit).
+            <ChevronDown
+              aria-hidden="true"
+              className="absolute -right-1.5 -bottom-1.5 h-2.5 w-2.5 text-muted-foreground/70 bg-background rounded-full"
+            />
+          )}
           {collapsed && active && (
             <span
               aria-hidden="true"
