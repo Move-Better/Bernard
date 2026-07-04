@@ -84,9 +84,10 @@ export default function AnswerReview() {
 
   const mutation = useAppMutation({
     mutationFn: (payload) => apiFetch('/api/answers', { method: 'PATCH', body: payload }),
-    onSuccess: (_res, payload) => {
-      if (payload.action === 'approve') toast.success('Approved — ready to publish')
-      else if (payload.action === 'edit') toast.success('Your edits saved')
+    onSuccess: (res, payload) => {
+      if (payload.action === 'approve') {
+        toast.success(res?.status === 'published' ? 'Published to movebetter.co ✓' : 'Approved — ready to publish')
+      } else if (payload.action === 'edit') toast.success('Your edits saved')
       else if (payload.action === 'revise') toast.success('Sent to Bernard — it will revise in your voice')
       setMode(null)
       setNote('')
