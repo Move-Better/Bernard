@@ -54,15 +54,20 @@ function GreetingRibbon({ greeting, callFirst }) {
 
 // Loading skeleton — shows the real ribbon immediately, then content-shaped
 // placeholders for the data-dependent sections, instead of a blank spinner.
+// Shaped to roughly match the post-hero-cascade layout (one hero-sized block,
+// a compact strip, a stats row, a card) rather than undershooting it — a
+// short skeleton followed by a much taller real page reads as layout shift
+// (2026-07-04 audit finding #14).
 function HomeSkeleton({ greeting, callFirst }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-busy="true">
       <span className="sr-only">Loading your home…</span>
       <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      <Skeleton className="h-32 rounded-xl" />
+      <Skeleton className="h-12 rounded-xl" />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </div>
-      <Skeleton className="h-32 rounded-xl" />
       <Skeleton className="h-40 rounded-xl" />
     </div>
   )
