@@ -86,7 +86,11 @@
     /* ── Owner-tier accent ─────────────────────────────────────────────────
        Warm burnt-orange used exclusively for the "owner" role in AccessMatrix.
        Kept as a token so it can be themed without hunting raw hex literals.
-       #c04d18 ≈ hsl(20 74% 42%) for text; light tints derived from it. */
+       #c04d18 ≈ hsl(20 74% 42%) for text; light tints derived from it.
+       Note: same hue family as the retired brand-orange literal (#e36525).
+       Intentional and scoped to AccessMatrix — if a future color sweep touches
+       orange hues broadly, exclude this token explicitly rather than assuming
+       any orange-ish match is leftover brand debt. */
     --owner-accent: 20 74% 42%;
     --owner-accent-bg: 20 60% 96%;
     --owner-accent-border: 20 60% 88%;

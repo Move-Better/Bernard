@@ -288,6 +288,7 @@ export default function Home() {
                     to={part.to}
                     className={`font-medium transition-colors inline-flex items-center gap-0.5 ${part.urgent ? 'text-destructive hover:text-destructive/80' : 'text-primary hover:text-primary/80'}`}
                   >
+                    {part.urgent && <Mic2 className="h-3 w-3" aria-hidden="true" />}
                     {part.label} <ChevronRight className="h-3 w-3" />
                   </Link>
                 </span>
