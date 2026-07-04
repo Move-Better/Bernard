@@ -1,8 +1,10 @@
 ---
-description: Full-codebase multi-agent deep audit of Bernard — bug-hunter + tenant-isolation-auditor + ui-reviewer review the entire codebase (no since-last scoping), then synthesize a prioritized punch list and spawn fix-task chips for P0s. Higher cost and time than /audit; use before a release or for a quarterly baseline.
+description: Full-codebase multi-agent deep audit of Bernard — bug-hunter + tenant-isolation-auditor + ui-reviewer review the entire codebase (no since-last scoping), then fixes everything it safely can in the same session (bug-hunter + tenant-isolation findings); UI findings stay report-only pending a mockup. Higher cost and time than /audit; use before a release or for a quarterly baseline.
 ---
 
-Run a structured multi-agent **full-codebase** audit and produce a prioritized punch list. Identical to `/audit` except all three agents sweep the entire codebase — no `.last-audit` scoping. Use this when you want a baseline (before a release, after a long autonomous sprint, or when you suspect a previous since-last run missed something).
+Run a structured multi-agent **full-codebase** audit, then **fix everything it safely can in the same session**, and produce a prioritized punch list. Identical to `/audit` except all three agents sweep the entire codebase — no `.last-audit` scoping. Use this when you want a baseline (before a release, after a long autonomous sprint, or when you suspect a previous since-last run missed something).
+
+**Calibration loop + auto-fix**: same mechanics as `/audit` — see that command's docs for the full explanation. `.claude/audit-history/calibration.md` (force-tracked despite the gitignored directory) is read into every agent prompt and updated in Phase 3; Phase 4 fixes bug-hunter/tenant-isolation findings inline and ships via PR; `ui-reviewer` findings stay report-only pending a mockup + Q's sign-off.
 
 ## Scope
 
@@ -44,9 +46,24 @@ Send a single message with **three concurrent Agent tool calls** so they run in 
 
 ```bash
 git log --oneline origin/main..HEAD 2>/dev/null | head -50 || echo "(on main, no diff to show)"
+echo "Calibration file present: $([ -f .claude/audit-history/calibration.md ] && echo yes || echo no)"
 ```
 
-Then dispatch the three agents in one message:
+**Read `.claude/audit-history/calibration.md` now.** You'll pass its contents into every Phase 2 agent prompt and use it again in Phase 3 synthesis.
+
+Then dispatch the three agents in one message. **Append this calibration block to the end of every one of the three agent prompts below** (substitute the actual contents of `calibration.md`):
+
+> **Calibration from prior audits** — before you report a finding, check it against this:
+>
+> ```
+> <verbatim contents of .claude/audit-history/calibration.md>
+> ```
+>
+> If a finding you're about to report matches something under "Known false positives /
+> intentional design," don't report it unless `git log --oneline -- <file>` shows commits
+> to that file after the note's date. If a finding matches something under "Chronic /
+> recurring," or matches an entry in "Findings snapshot" from last run, report it at
+> **at least P1** regardless of your own severity read — repeated silence is the signal.
 
 ### Agent 1 — bug-hunter
 - **Scope**: full sweep — every file under `src/` and `api/`, skipping `node_modules`, `dist`, `.claude/worktrees`
@@ -92,6 +109,13 @@ After all three agents return:
 
 1. **Compose the punch list**. Interleave findings by priority across agents — all P0s first (regardless of source agent), then P1s, then P2s. Tag each finding with its source `[bug]`, `[tenant]`, `[ui]`.
 
+1a. **Recurrence check against calibration.md's "Findings snapshot" section** (skip if it says "none yet"). Compare this run's P0/P1 findings to that snapshot by file:line + problem:
+   - Still present → prefix with `🔁(Nx)` in the punch list and bump to at least P1 if N ≥ 2.
+   - Was in the snapshot but doesn't reappear → fixed; no action, don't mention it.
+   - Skipped because "Known false positives" already covers it → note this in the Summary line.
+
+1b. **Update `.claude/audit-history/calibration.md`**: overwrite "Findings snapshot" with this run's P0/P1 findings; refresh "Chronic / recurring" for anything `🔁(Nx)` with N ≥ 2 and remove entries that didn't reappear; leave "Known false positives" alone unless an agent's own investigation concludes something is a false positive. `git add -f` it — the directory is gitignored.
+
 2. **Write the report** to `.claude/audit-history/<YYYY-MM-DD-HHMM>-full.md` (note the `-full` suffix so it doesn't collide with `/audit` reports of the same minute):
    ```
    # Audit Report — <date> (FULL SWEEP)
@@ -103,6 +127,7 @@ After all three agents return:
    ## Punch list (priority order)
    ### P0 — Ship-blocking
    1. [tenant] api/clinicians.js:42 — missing workspace_id filter — add `&workspace_id=eq.${ws.id}` to the select
+   2. 🔁(2x) [bug] src/lib/foo.js:10 — still unfixed since last audit — see calibration.md
    …
 
    ### P1 — Important
@@ -121,40 +146,33 @@ After all three agents return:
    ```
    This sets the baseline for the next `/audit` since-last run.
 
-4. **Console summary** — print to chat:
+4. **Console summary** — print to chat (before fixing anything):
    - One-line per priority tier (e.g. "P0: 2 findings (both tenant). P1: 5 findings. P2: 8 findings.")
    - Link to the markdown report
    - Top 3 P0/P1 inlined as bullets
+   - Any `🔁` recurring findings called out separately
 
 ---
 
-## Phase 4 — Spawn fix-task chips
+## Phase 4 — Fix everything fixable, in this session
 
-For each **P0 finding** (and optionally each P1 if there are ≤3 P0s), call `mcp__ccd_session__spawn_task` to surface a one-click chip the user can use to spin up a worktree session to fix it.
+Fix findings directly, in this same session, instead of spawning fix-task chips — same mechanics as `/audit` Phase 4.
 
-Chip prompt template:
+**Scope**: every P0/P1/P2 finding from **bug-hunter** and **tenant-isolation-auditor**. **Do NOT auto-fix `ui-reviewer` findings** (mockup + Q's sign-off required per CLAUDE.md), fixes touching dozens+ call sites, fixes requiring a live-prod migration, or anything you're not confident is correct — flag these in the summary instead.
 
-```
-Fix the P0 audit finding from <audit report path>:
-
-<verbatim finding text from the punch list>
-
-Context: spawned by /auditfull on <date>. Start by cd-ing into a fresh worktree:
-  cd "/Users/qbook/Claude Projects/Bernard" && bash scripts/new-session-worktree.sh fix-<short-slug>
-Then make the change, commit, push, and open a PR with auto-merge.
-```
-
-Title: under 60 chars, action phrase ("Fix tenant filter in api/clinicians.js").
-TLDR: 1-2 sentences plain-English summary for the chip tooltip.
-
-Do NOT spawn chips for P2 findings.
+**How**:
+1. Fix P0s, then P1s, then P2s, serially (not via parallel subagents editing the same files).
+2. After each fix or small batch: `npm run typecheck && npm run lint && npm run build && npm run verify-bundles` (+ `npm test` if relevant). Back out and leave in the punch list if a gate breaks.
+3. Small, separate commits per fix or logical group — include the `calibration.md` update (`git add -f`) in one of them.
+4. Push, open one PR covering the batch, listing what was fixed vs. deliberately skipped and why.
+5. If nothing's fixable but calibration.md changed, still commit + push it on its own small branch/PR.
 
 ---
 
 ## When to stop and surface
 
 - Phase 1 static gates fail — abort, surface the lint/build/typecheck error
-- A tenant-isolation 🔴 finding lands — flag immediately at the top of the report and in the spawn chip title (security issue, user needs to know now)
+- A tenant-isolation 🔴 finding lands — flag immediately at the top of the report and fix it first in Phase 4 (security issue, user needs to know now)
 - An agent times out or errors — note it in the report, continue with the other two, don't fail the whole audit
 
 ---
@@ -164,3 +182,4 @@ Do NOT spawn chips for P2 findings.
 - **Run this sparingly.** Monthly cadence is sensible; before a release is required. Use `/audit` for the routine weekly pass.
 - **The last-audit pointer is shared with `/audit`**. Running `/auditfull` resets the baseline for the next `/audit` since-last run.
 - **Agent prompts must be self-contained.** Each agent starts fresh with no conversation context.
+- **Calibration + auto-fix**: same as `/audit` — see that command's Notes for the full mechanics. Cost/time here scale with fixable findings on top of the $8–15 audit-only estimate above.
