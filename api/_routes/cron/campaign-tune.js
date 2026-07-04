@@ -59,7 +59,7 @@ async function handler(req, res) {
       `&status=eq.active` +
       `&or=(start_at.is.null,start_at.lte.${nowIso})` +
       `&or=(end_at.is.null,end_at.gte.${nowIso})` +
-      `&select=id,name,event_at,ai_tuned_at`,
+      `&select=id,name,event_at,ai_tuned_at,start_at,end_at`,
     )
     if (!campsRes.ok) {
       workspaceSummary.push({ id: ws.id, slug: ws.slug, error: `campaigns fetch ${campsRes.status}` })
@@ -74,6 +74,19 @@ async function handler(req, res) {
     let wsTuned = 0
     let wsSkipped = 0
     for (const c of campaigns) {
+      // Defense-in-depth: the query filter should already exclude
+      // not-yet-started / already-ended campaigns, but don't rely solely on
+      // the PostgREST or=(...) filter — re-check explicitly so a future
+      // query-builder regression can't silently re-tune an inactive campaign.
+      if (c.start_at && new Date(c.start_at).getTime() > now) {
+        wsSkipped++
+        continue
+      }
+      if (c.end_at && new Date(c.end_at).getTime() < now) {
+        wsSkipped++
+        continue
+      }
+
       // Skip campaigns where the event is already in the past.
       if (c.event_at && new Date(c.event_at).getTime() < now) {
         wsSkipped++
