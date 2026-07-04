@@ -868,7 +868,16 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+        <ClerkProvider
+          publishableKey={PUBLISHABLE_KEY}
+          appearance={{
+            // Brand-pass Clerk's default blue across every surface it renders
+            // (UserProfile on /account, SignIn, UserButton menu) so it reads
+            // as part of Bernard rather than a third-party embed. hsl() must
+            // match src/index.css's --primary (Blue Spruce).
+            variables: { colorPrimary: 'hsl(186 83% 27%)' },
+          }}
+        >
           <BrowserRouter>
             <Routes>
               {/* /onboard/brand-kit is the post-claim wizard step — it runs on
