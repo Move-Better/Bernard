@@ -257,6 +257,7 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
       if (insertedRow.kind === 'photo') {
         waitUntil(
           processImageUpload({
+            workspaceId:  innerScope.id,
             assetId:      insertedRow.id,
             blobUrl:      blob.url,
             declaredMime: blob.contentType,

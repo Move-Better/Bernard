@@ -43,8 +43,6 @@ export default async function handler(req, res) {
   }
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   if (req.method === 'POST') {
     const slug = (req.body?.chapter_slug || '').trim()
     if (!slug) return res.status(400).json({ error: 'chapter_slug required' })

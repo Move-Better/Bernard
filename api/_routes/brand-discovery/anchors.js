@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   if (!auth.ok) return err(res, auth.reason, auth.reason === 'forbidden' ? 403 : 401)
 
   if (req.method !== 'POST' && req.method !== 'DELETE') return err(res, 'Method not allowed', 405)
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
   // Load the current brief. Anchors live on it; refuse if there's no brief yet.
   const loadR = await sb(`workspaces?id=eq.${ws.id}&select=brand_brief`)

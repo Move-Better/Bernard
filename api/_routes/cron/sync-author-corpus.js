@@ -18,6 +18,13 @@
 //
 // Auth: Bearer CRON_SECRET (standard pattern — see api/cron/backup-db.js)
 // Schedule: see vercel.json ("0 6 * * 0" = 06:00 UTC every Sunday)
+//
+// Tenant-isolation note: this is the one deliberate, hardcoded cross-workspace
+// data copy in the codebase — reviewed and accepted in the 2026-07-03 /auditfull
+// baseline. It's scoped to a single Clerk user's own data moving between two
+// workspaces they both own (source/target matched by user_id), never another
+// clinician's content. If you're auditing tenant isolation and land here,
+// this is a known exception, not an oversight.
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 

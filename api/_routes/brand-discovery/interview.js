@@ -97,7 +97,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!(await enforceLimit(req, res, 'media'))) return
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
     const { founderName } = req.body || {}
     const found = await findOrCreateFounderStaff(ws, auth.userId, founderName)

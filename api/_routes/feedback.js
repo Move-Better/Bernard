@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   const auth = await requireRole(req, null, { orgId: wsCtx.clerk_org_id })
   if (!auth.ok) return res.status(401).json({ error: auth.reason })
 
-  if (!(await enforceLimit(req, res, 'feedback'))) return
+  if (!(await enforceLimit(req, res, 'feedback', wsCtx.id))) return
 
   const { message, screenshotDataUrl, pageUrl, userName, userEmail } = req.body ?? {}
 
