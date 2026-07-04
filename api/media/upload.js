@@ -60,6 +60,7 @@ async function handler(req, res) {
 
         return {
           allowedContentTypes: ALLOWED_MIME,
+          allowedPathPrefixes: [`media/raw/${scope.id}/`, `media/edited/${scope.id}/`],
           maximumSizeInBytes: 500 * 1024 * 1024,
           tokenPayload: JSON.stringify({
             scopeColumn: scope.column,
