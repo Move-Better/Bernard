@@ -100,7 +100,7 @@ export async function authorAnswersForGaps({ ws, maxDrafts }) {
   for (const g of open) {
     if (drafted >= maxDrafts) break
     const clinician = await pickClinician(ws.id, g.topic || g.question, clinicians)
-    if (!clinician) break
+    if (!clinician) continue
 
     const d = await draftAnswer({ ws, staffId: clinician.id, question: g.question, condition: g.topic })
     if (!d) continue
