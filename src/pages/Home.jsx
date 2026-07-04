@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ChevronRight, Mic2, AlertTriangle, MessagesSquare } from 'lucide-react'
+import { ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import ErrorState from '@/components/ErrorState'
@@ -165,28 +165,6 @@ export default function Home() {
     }).length
   }, [staff])
 
-  // Each part links to where its detail actually lives, so the strip is a real
-  // jump-list rather than a count that dead-ends on a page that doesn't show it.
-  const attentionParts = useMemo(() => {
-    const parts = []
-    if (readyForContent.length > 0) parts.push({ label: `${readyForContent.length} to draft`, to: '/stories?stage=drafting' })
-    if (reviewCount > 0) parts.push({ label: `${reviewCount} to review`, to: '/stories?stage=review' })
-    if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
-    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new', urgent: true })
-    return parts
-  }, [readyForContent, reviewCount, readyToDistribute, overdueCount])
-
-  const attentionTotal = readyForContent.length + reviewCount + readyToDistribute.length + overdueCount
-
-  // Failed posts — a publish bundle.social rejected. A distribution concern, so
-  // it's gated to editors like readyToDistribute. Surfaced as its OWN banner
-  // (below) rather than folded into the attention strip: a dead post is more
-  // urgent than a to-do and must not get buried in the comma list.
-  const failedPieces = useMemo(
-    () => (isEditor ? stories.flatMap((s) => (s.pieces || []).filter((p) => p.status === 'failed')) : []),
-    [stories, isEditor]
-  )
-
   // Blog review nudge — clinicians who opted in and have posts awaiting their read
   const { data: weekData } = useQuery({
     queryKey: ['week-summary'],
@@ -206,6 +184,40 @@ export default function Home() {
     refetchOnWindowFocus: false,
   })
   const yourAnswerReview = answerReviewData?.answers || []
+
+  // Each part links to where its detail actually lives, so the strip is a real
+  // jump-list rather than a count that dead-ends on a page that doesn't show it.
+  // Blog-review and answer-review nudges fold in here too — they're structurally
+  // identical to the other parts ("N items need review, link to X") and don't
+  // warrant their own full-width card (2026-07-03 audit: too many stacked amber
+  // surfaces dilute the "act now" signal).
+  const attentionParts = useMemo(() => {
+    const parts = []
+    if (readyForContent.length > 0) parts.push({ label: `${readyForContent.length} to draft`, to: '/stories?stage=drafting' })
+    if (reviewCount > 0) parts.push({ label: `${reviewCount} to review`, to: '/stories?stage=review' })
+    if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
+    if (yourReview.length > 0) parts.push({ label: `${yourReview.length} blog to review`, to: '/week' })
+    if (yourAnswerReview.length > 0) parts.push({ label: `${yourAnswerReview.length} answers to review`, to: '/answers-review' })
+    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new', urgent: true })
+    return parts
+  }, [readyForContent, reviewCount, readyToDistribute, yourReview.length, yourAnswerReview.length, overdueCount])
+
+  const attentionTotal =
+    readyForContent.length +
+    reviewCount +
+    readyToDistribute.length +
+    yourReview.length +
+    yourAnswerReview.length +
+    overdueCount
+
+  // Failed posts — a publish bundle.social rejected. A distribution concern, so
+  // it's gated to editors like readyToDistribute. Surfaced as its OWN banner
+  // (below) rather than folded into the attention strip: a dead post is more
+  // urgent than a to-do and must not get buried in the comma list.
+  const failedPieces = useMemo(
+    () => (isEditor ? stories.flatMap((s) => (s.pieces || []).filter((p) => p.status === 'failed')) : []),
+    [stories, isEditor]
+  )
 
   const isLoading = storiesLoading || staffLoading
 
@@ -300,52 +312,6 @@ export default function Home() {
 
       {/* Pipeline story: interviews captured → voice match → published */}
       {stories.length > 0 && <HomeStats stories={stories} />}
-
-      {/* Blog review nudge — compact inline link for clinicians with opted-in
-          blog review who have posts waiting on /week. */}
-      {!isEditor && yourReview.length > 0 && (
-        <Link
-          to="/week"
-          className="flex items-center gap-3 rounded-xl border border-action/30 bg-action/5 px-4 py-3 hover:bg-action/10 transition-colors"
-        >
-          <BookOpen className="h-4 w-4 text-action shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground">
-              {yourReview.length === 1
-                ? 'Your blog post is ready to review'
-                : `${yourReview.length} blog posts ready for your review`}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {yourReview[0]?.topic}
-              {yourReview.length > 1 ? ` +${yourReview.length - 1} more` : ''}
-            </p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        </Link>
-      )}
-
-      {/* Answer review nudge — any clinician (editor or not) who opted in and has
-          public-library answers waiting for their sign-off. */}
-      {yourAnswerReview.length > 0 && (
-        <Link
-          to="/answers-review"
-          className="flex items-center gap-3 rounded-xl border border-action/30 bg-action/5 px-4 py-3 hover:bg-action/10 transition-colors"
-        >
-          <MessagesSquare className="h-4 w-4 text-action shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground">
-              {yourAnswerReview.length === 1
-                ? 'An answer is ready for your review'
-                : `${yourAnswerReview.length} answers ready for your review`}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              For the public answer library · {yourAnswerReview[0]?.condition || yourAnswerReview[0]?.question}
-              {yourAnswerReview.length > 1 ? ` +${yourAnswerReview.length - 1} more` : ''}
-            </p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        </Link>
-      )}
 
       {/* What to talk about next (merged: patient question gaps + topic planner)
           Falls back to GettingStarted for brand-new workspaces. */}
