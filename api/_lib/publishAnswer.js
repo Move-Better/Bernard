@@ -64,6 +64,7 @@ export async function publishAnswerToMovebetter({ ws, answer }) {
     author: author.display,
     authorSlug: author.slug,
     condition: answer.condition || undefined,
+    order: Number.isInteger(answer.display_order) ? answer.display_order : undefined,
     chatPrompts: Array.isArray(answer.chat_prompts) && answer.chat_prompts.length ? answer.chat_prompts : undefined,
     pubDate: nowDate,
   }

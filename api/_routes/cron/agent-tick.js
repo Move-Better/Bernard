@@ -21,6 +21,7 @@ import { verifyCronSecret } from '../../_lib/auth.js'
 import { reviseContentItem } from '../../_lib/producer/reviseContentItem.js'
 import { regradeContentItem } from '../../_lib/producer/regradeContentItem.js'
 import { predraftWeek } from '../../_lib/producer/predraftWeek.js'
+import { authorAnswersForGaps } from '../../_lib/producer/authorAnswers.js'
 import { producerActive, laneEnabled } from '../../_lib/producer/config.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -33,6 +34,7 @@ const MAX_ATTEMPTS        = 3
 // overridable via producer_config.predraft_per_tick). A 6-slot week drains over
 // ~3 ticks, smoothing spend and staying well inside the 300s / deadline budget.
 const DEFAULT_PREDRAFT_PER_TICK = 2
+const DEFAULT_AUTHOR_ANSWERS_PER_TICK = 2
 const STRANDED_MS         = 15 * 60 * 1000
 const BACKFILL_WINDOW_MS  = 24 * 60 * 60 * 1000
 // Stop STARTING new items here. A single revision can run ~150s worst case
@@ -277,6 +279,26 @@ async function processWorkspace(ws, deadline, summary) {
       } catch (e) {
         console.error('[agent-tick] predraft threw:', ws.slug, e?.message)
         wsResult.predraftError = true
+      }
+    }
+  }
+
+  // P2 — author answers for citation-scoreboard gaps. OPT-IN (lane 'author_answers'
+  // defaults OFF). On leftover budget/time, draft an answer for each tracked question
+  // the practice isn't answered on yet, in the best-fit clinician's voice, into their
+  // review queue (needs_review / source='producer'). NEVER publishes — human-gated.
+  if (laneEnabled(cfg, 'author_answers') && remaining > 0 && Date.now() <= deadline) {
+    const perTick = Number.isFinite(cfg.author_answers_per_tick) ? cfg.author_answers_per_tick : DEFAULT_AUTHOR_ANSWERS_PER_TICK
+    const cap = Math.max(0, Math.min(perTick, remaining))
+    if (cap > 0) {
+      try {
+        const auth = await authorAnswersForGaps({ ws, maxDrafts: cap })
+        wsResult.answersDrafted = auth.drafted
+        if (auth.candidates) wsResult.answerGapCandidates = auth.candidates
+        remaining -= auth.drafted
+      } catch (e) {
+        console.error('[agent-tick] author_answers threw:', ws.slug, e?.message)
+        wsResult.authorAnswersError = true
       }
     }
   }
