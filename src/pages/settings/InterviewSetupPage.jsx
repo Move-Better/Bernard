@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { Loader2, ArrowLeft, ChevronDown, ChevronUp, Mic, ChevronRight, Sliders } from 'lucide-react'
 import { Section, SaveBar } from '@/components/settings/helpers'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
@@ -145,13 +146,12 @@ export default function InterviewSetupPage() {
             Back: Your voice
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center gap-2">
-          <Sliders className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-          Interview setup
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">
-          What {interviewerName} asks about and what options appear when a staff member starts an interview.
-        </p>
+        <PageHeader
+          className="mt-0.5 mb-0"
+          icon={Sliders}
+          title="Interview setup"
+          subtitle={`What ${interviewerName} asks about and what options appear when a staff member starts an interview.`}
+        />
       </div>
 
       {/* Topic catalog — the live, ongoing piece */}

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -57,17 +58,17 @@ export default function BrandIdentitySettings() {
     const updated = formatDate(brief.synthesized_at)
     return (
       <div className="py-2 max-w-3xl">
-        <div className="flex items-start justify-between gap-3 mb-5">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Compass className="h-5 w-5 text-primary" />
-              Brand identity
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+        <PageHeader
+          className="items-start mb-5"
+          icon={Compass}
+          title="Brand identity"
+          subtitle={
+            <span className="flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden="true" />
               Defined from your interview{updated ? <> · <span className="italic">last updated {updated}</span></> : null}
-            </p>
-          </div>
+            </span>
+          }
+        >
           <Button
             variant="outline"
             className="shrink-0 gap-1.5"
@@ -76,7 +77,7 @@ export default function BrandIdentitySettings() {
             <RefreshCw className="h-3.5 w-3.5" />
             Retake interview
           </Button>
-        </div>
+        </PageHeader>
 
         <BrandBriefView brief={brief} hideVisualAnchors />
 
@@ -107,15 +108,12 @@ export default function BrandIdentitySettings() {
   // ── Empty state ────────────────────────────────────────────────────────────
   return (
     <div className="py-2 max-w-3xl">
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Compass className="h-5 w-5 text-primary" />
-          Brand identity
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          What {displayName} feels like — derived from a short conversation, then used to keep every image and post on-brand.
-        </p>
-      </div>
+      <PageHeader
+        className="mb-5"
+        icon={Compass}
+        title="Brand identity"
+        subtitle={`What ${displayName} feels like — derived from a short conversation, then used to keep every image and post on-brand.`}
+      />
 
       {/* Why do this — made obvious BEFORE starting (Q's request). */}
       <div className="rounded-xl p-4 mb-4 flex gap-3"

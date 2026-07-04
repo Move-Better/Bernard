@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, CheckCircle2, AlertCircle, Sparkles, CreditCard } from 'lucide-react'
 import PricingCards from '@/components/billing/PricingCards'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_BILLING_VIEW } from '@/lib/capabilities'
@@ -82,15 +83,12 @@ export default function BillingSettings() {
           </p>
         </div>
       ) : (
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-            Plan &amp; billing
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage your subscription plan. Changes take effect immediately.
-          </p>
-        </div>
+        <PageHeader
+          title="Plan & billing"
+          subtitle="Manage your subscription plan. Changes take effect immediately."
+          icon={CreditCard}
+          className="mb-0"
+        />
       )}
 
       {billingToast === 'success' && (

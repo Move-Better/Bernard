@@ -4,6 +4,7 @@ import {
   Loader2, Target, Calendar, Plus, Pencil, X, Save,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -138,21 +139,16 @@ export default function CampaignsSettings() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" /> Campaigns
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            Guide your content toward a specific goal — a seminar, a new patient push, a seasonal topic.
-            Set a window and an event date and Bernard will steer upcoming posts toward it automatically.
-            Your voice stays your voice; this just shapes the focus.
-          </p>
-        </div>
+      <PageHeader
+        className="items-start flex-wrap gap-4"
+        icon={Target}
+        title="Campaigns"
+        subtitle="Guide your content toward a specific goal — a seminar, a new patient push, a seasonal topic. Set a window and an event date and Bernard will steer upcoming posts toward it automatically. Your voice stays your voice; this just shapes the focus."
+      >
         <Button onClick={() => setEditing('new')} disabled={!!editing}>
           <Plus className="h-4 w-4 mr-1.5" /> New campaign
         </Button>
-      </div>
+      </PageHeader>
 
       {editing && (
         <CampaignEditor

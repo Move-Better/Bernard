@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useUserRole } from '@/lib/useUserRole'
@@ -528,23 +529,21 @@ export default function ChannelsSettings() {
     <div className="space-y-6 pb-16">
       {/* Sticky header / save bar */}
       <div className="md:sticky md:top-0 z-20 py-4 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Radio className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-            Channels
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Toggle the channels this workspace generates content for. Each interview lets the author pick a subset.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
-          {saved && <span className="text-xs text-success">Saved</span>}
-          {error && <span className="text-xs text-destructive">{error}</span>}
-          <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-            Save changes
-          </Button>
-        </div>
+        <PageHeader
+          className="min-w-0 mb-0 items-start"
+          icon={Radio}
+          title="Channels"
+          subtitle="Toggle the channels this workspace generates content for. Each interview lets the author pick a subset."
+        >
+          <div className="flex items-center gap-2 shrink-0 pt-1">
+            {saved && <span className="text-xs text-success">Saved</span>}
+            {error && <span className="text-xs text-destructive">{error}</span>}
+            <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+              Save changes
+            </Button>
+          </div>
+        </PageHeader>
       </div>
 
       {groups.map((group) => (

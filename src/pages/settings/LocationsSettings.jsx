@@ -9,6 +9,7 @@ import { Section } from '@/components/settings/helpers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
@@ -52,15 +53,11 @@ export default function LocationsSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-          Locations
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Each physical site you operate. The primary location&apos;s city, state, keyword, and hashtag flow into all generated content. Per-post location targeting comes online in a follow-up.
-        </p>
-      </div>
+      <PageHeader
+        icon={MapPin}
+        title="Locations"
+        subtitle="Each physical site you operate. The primary location's city, state, keyword, and hashtag flow into all generated content. Per-post location targeting comes online in a follow-up."
+      />
 
       <Section title="Your locations">
         <LocationsPanel getToken={getToken} />

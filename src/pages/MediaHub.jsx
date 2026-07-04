@@ -58,6 +58,13 @@ function groupByDate(assets) {
 // raw/tagged/rendered read as opaque jargon — or worse, a quality judgment —
 // to a clinician scanning the filter. The trailing "— …" clause spells out
 // what each stage actually means.
+//
+// This is intentionally a DIFFERENT vocabulary from Stories' QUICK_FILTERS
+// (drafting/review/published) — Stories tracks where a STORY sits in the
+// editorial pipeline; this tracks whether an ASSET is ready to use. They're
+// genuinely different questions ("is this photo usable yet?" vs. "where is
+// this story?"), so don't force them into one shared vocabulary — that would
+// blur the distinction rather than clarify it. (2026-07-04 /auditfull P1-3.)
 const STATUS_FILTERS = [
   { id: '',         label: 'Any active' },
   { id: 'raw',      label: 'Just uploaded' },
