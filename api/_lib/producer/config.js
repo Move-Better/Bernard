@@ -36,6 +36,7 @@ export const LANE_DEFAULTS = {
   auto_repair_captions:   true,   // P2A.2 — held-caption repair (already live when enabled)
   pre_draft_week:         false,  // P3  — pre-draft the week: OPT-IN, default OFF
   escalation_email:       true,   // P4  — surfacing default-on; NO email sender exists yet
+  author_answers:         false,  // P2  — draft answer-library gaps into clinician queues: OPT-IN, default OFF
 }
 
 /**

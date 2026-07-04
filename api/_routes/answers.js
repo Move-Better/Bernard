@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     // Ownership gate — fetch the row (workspace-scoped) and confirm it's the caller's.
     const cur = await sb(
       `answers?workspace_id=eq.${ws.id}&id=eq.${id}` +
-        `&select=id,staff_id,status,question,slug,condition,answer_lead,body,summary,seo_title,chat_prompts&limit=1`,
+        `&select=id,staff_id,status,question,slug,condition,answer_lead,body,summary,seo_title,chat_prompts,display_order&limit=1`,
     )
     if (!cur.ok) return dbErr(res, cur, 'fetch')
     const row = (await cur.json())[0]
