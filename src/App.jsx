@@ -53,6 +53,7 @@ const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
 const YourWeek = lazy(() => import('@/pages/YourWeek'))
+const AnswerReview = lazy(() => import('@/pages/AnswerReview'))
 const Overview = lazy(() => import('@/pages/Overview'))
 const AnalyticsPage = lazy(() => import('@/pages/Analytics'))
 const SeoOpportunities = lazy(() => import('@/pages/SeoOpportunities'))
@@ -621,6 +622,7 @@ function AppRoutes() {
                 the Review Inbox, which now redirects here. */}
             <Route path="/week" element={guarded(<YourWeek />)} />
             <Route path="/review-inbox" element={<Navigate to="/week" replace />} />
+            <Route path="/answers-review" element={guarded(<AnswerReview />)} />
             {/* Overview — clinic-wide board (Pipeline/Calendar/Campaigns). Restored
                 from the /week redirect so the compact attention strip on Home has
                 somewhere meaningful to land. */}

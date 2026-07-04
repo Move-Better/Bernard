@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
+import { BookOpen, ChevronRight, Mic2, AlertTriangle, MessagesSquare } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import ErrorState from '@/components/ErrorState'
@@ -196,6 +196,7 @@ export default function Home() {
     refetchOnWindowFocus: false,
   })
   const yourReview = weekData?.yourReview || []
+  const yourAnswerReview = weekData?.yourAnswerReview || []
 
   const isLoading = storiesLoading || staffLoading
 
@@ -308,6 +309,29 @@ export default function Home() {
             <p className="text-xs text-muted-foreground truncate">
               {yourReview[0]?.topic}
               {yourReview.length > 1 ? ` +${yourReview.length - 1} more` : ''}
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        </Link>
+      )}
+
+      {/* Answer review nudge — clinicians with opted-in answer review who have
+          public-library answers waiting for their sign-off. */}
+      {!isEditor && yourAnswerReview.length > 0 && (
+        <Link
+          to="/answers-review"
+          className="flex items-center gap-3 rounded-xl border border-action/30 bg-action/5 px-4 py-3 hover:bg-action/10 transition-colors"
+        >
+          <MessagesSquare className="h-4 w-4 text-action shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {yourAnswerReview.length === 1
+                ? 'An answer is ready for your review'
+                : `${yourAnswerReview.length} answers ready for your review`}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              For the public answer library · {yourAnswerReview[0]?.condition || yourAnswerReview[0]?.question}
+              {yourAnswerReview.length > 1 ? ` +${yourAnswerReview.length - 1} more` : ''}
             </p>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
