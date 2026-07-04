@@ -9,9 +9,20 @@ import {
   ChevronLeft,
   ShieldCheck,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { useAppMutation } from '@/lib/useAppMutation.js'
+
+// Markdown element styling (module scope — never define components inside render).
+const MD_COMPONENTS = {
+  h2: (props) => <h3 className="mt-4 mb-1.5 text-sm font-bold text-foreground" {...props} />,
+  h3: (props) => <h4 className="mt-3 mb-1 text-sm font-semibold text-foreground" {...props} />,
+  p: (props) => <p className="mb-2.5 text-sm leading-relaxed text-muted-foreground" {...props} />,
+  strong: (props) => <strong className="font-semibold text-foreground" {...props} />,
+  ul: (props) => <ul className="mb-2.5 list-disc pl-5 text-sm text-muted-foreground" {...props} />,
+  li: (props) => <li className="mb-1" {...props} />,
+}
 
 // Row in the collapsed queue (module scope — never define components inside render).
 function QueueRow({ answer, index, total, onOpen }) {
@@ -183,7 +194,7 @@ export default function AnswerReview() {
                     <p className="mb-3 border-l-[3px] border-primary pl-3.5 font-medium">
                       {active.answer_lead}
                     </p>
-                    <div className="whitespace-pre-wrap text-muted-foreground">{active.body}</div>
+                    <ReactMarkdown components={MD_COMPONENTS}>{active.body || ''}</ReactMarkdown>
                   </div>
                 )}
 

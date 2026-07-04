@@ -196,7 +196,16 @@ export default function Home() {
     refetchOnWindowFocus: false,
   })
   const yourReview = weekData?.yourReview || []
-  const yourAnswerReview = weekData?.yourAnswerReview || []
+
+  // Answer-review queue — its own fetch (NOT gated on isEditor / week-summary):
+  // an editor who is also a clinician owns answers and must see their queue.
+  const { data: answerReviewData } = useQuery({
+    queryKey: ['answers-review-nudge'],
+    queryFn: () => apiFetch('/api/answers'),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const yourAnswerReview = answerReviewData?.answers || []
 
   const isLoading = storiesLoading || staffLoading
 
@@ -315,9 +324,9 @@ export default function Home() {
         </Link>
       )}
 
-      {/* Answer review nudge — clinicians with opted-in answer review who have
+      {/* Answer review nudge — any clinician (editor or not) who opted in and has
           public-library answers waiting for their sign-off. */}
-      {!isEditor && yourAnswerReview.length > 0 && (
+      {yourAnswerReview.length > 0 && (
         <Link
           to="/answers-review"
           className="flex items-center gap-3 rounded-xl border border-action/30 bg-action/5 px-4 py-3 hover:bg-action/10 transition-colors"
