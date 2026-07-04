@@ -62,8 +62,11 @@ function defaultPurpose(kind) {
 async function probeImageDimsFromUrl(url) {
   const res = await fetch(url, { headers: { Range: 'bytes=0-65535' } })
   if (!res.ok) throw new Error(`image-dims probe failed: ${res.status}`)
-  const buf = Buffer.from(await res.arrayBuffer())
-  if (buf.length > 131072) console.warn('[recordUploadedAsset] Range request returned oversized buffer', buf.length)
+  let buf = Buffer.from(await res.arrayBuffer())
+  if (buf.length > 65536) {
+    console.warn('[recordUploadedAsset] Range request returned oversized buffer; truncating', buf.length)
+    buf = buf.subarray(0, 65536)
+  }
   const meta = await sharp(buf).metadata()
   return { width: meta.width || null, height: meta.height || null }
 }
@@ -275,15 +278,28 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
                 width:             result.webWidth,
                 height:            result.webHeight,
               }
-              if (result.altText && !insertedRow.alt_text) {
-                patch.alt_text = result.altText
-              }
               const upd = await sb(
                 `media_assets?id=eq.${insertedRow.id}&${scopeColumn}=eq.${scopeId}`,
                 { method: 'PATCH', body: JSON.stringify(patch) },
               )
               if (!upd.ok) {
                 console.error('[recordUploadedAsset] image-pipeline PATCH failed:', upd.status, await upd.text())
+              }
+
+              // alt_text is applied in a SEPARATE, conditionally-filtered PATCH
+              // (alt_text=is.null) so a user who typed their own alt text while
+              // this pipeline was still running can't have it silently
+              // overwritten — the insert-time insertedRow.alt_text snapshot
+              // above is stale by the time this fires, so we re-check on the
+              // server via the filter instead of trusting it.
+              if (result.altText) {
+                const altUpd = await sb(
+                  `media_assets?id=eq.${insertedRow.id}&${scopeColumn}=eq.${scopeId}&alt_text=is.null`,
+                  { method: 'PATCH', body: JSON.stringify({ alt_text: result.altText }) },
+                )
+                if (!altUpd.ok) {
+                  console.error('[recordUploadedAsset] alt_text PATCH failed:', altUpd.status, await altUpd.text())
+                }
               }
             })
             .catch((e) => console.error('Image pipeline failed:', e?.message)),

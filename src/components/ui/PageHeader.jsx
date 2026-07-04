@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 // their own header markup with no shared component).
 const PageHeader = React.forwardRef(
   ({ className, title, subtitle, icon: Icon, backTo, children, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center justify-between mb-4', className)} {...props}>
+    <div ref={ref} className={cn('flex items-center justify-between gap-3 flex-wrap mb-4', className)} {...props}>
       <div className="flex items-center gap-3">
         {backTo ? (
           <Button variant="ghost" size="icon" asChild aria-label="Back">
@@ -25,7 +25,7 @@ const PageHeader = React.forwardRef(
           {subtitle ? <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p> : null}
         </div>
       </div>
-      {children ? <div className="flex items-center gap-2">{children}</div> : null}
+      {children ? <div className="flex items-center gap-2 flex-wrap">{children}</div> : null}
     </div>
   )
 )

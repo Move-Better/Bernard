@@ -55,6 +55,10 @@ async function pickClinician(wsId, topic, clinicians) {
   }
   // Tie-break deterministically by staff id (not DB row order) so a coverage tie
   // always resolves the same way instead of depending on query result ordering.
+  // Rule: smallest UUID wins a tie, not first-seen — the `sid < bestId` check
+  // only swaps when the new id sorts lower, so this stays correct regardless
+  // of Object.entries() iteration order. Don't refactor this loop to `Map` or
+  // reorder it assuming "first inserted wins" semantics.
   let bestId = null
   let bestN = 0
   for (const [sid, n] of Object.entries(counts)) {

@@ -387,11 +387,21 @@ async function handler(req, res) {
                   width:             result.webWidth,
                   height:            result.webHeight,
                 }
-                if (result.altText && !inserted.alt_text) patch.alt_text = result.altText
                 await sb(
                   `media_assets?id=eq.${inserted.id}&workspace_id=eq.${workspace.id}`,
                   { method: 'PATCH', body: JSON.stringify(patch) },
                 )
+
+                // Separate, conditionally-filtered PATCH so a user who typed
+                // their own alt text while this pipeline was still running
+                // isn't overwritten — the insert-time `inserted.alt_text`
+                // snapshot is stale by the time this fires.
+                if (result.altText) {
+                  await sb(
+                    `media_assets?id=eq.${inserted.id}&workspace_id=eq.${workspace.id}&alt_text=is.null`,
+                    { method: 'PATCH', body: JSON.stringify({ alt_text: result.altText }) },
+                  )
+                }
               })
               .catch((e) => console.error('[drive/import] image pipeline failed:', e?.message)),
           )

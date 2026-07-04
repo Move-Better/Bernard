@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PartyPopper, Image, Play, ChevronRight, Sparkles } from 'lucide-react'
+import { PartyPopper, Image, Play, ChevronRight } from 'lucide-react'
 import { PLATFORM_META } from '@/lib/contentMeta'
 
 // PostsLiveCard — the "close the loop" payoff surface on Home. Shows the
@@ -103,11 +103,9 @@ export default function PostsLiveCard({ stories = [], userId }) {
           )
         })}
       </div>
-
-      <div className="px-4 py-2.5 bg-agreement-signal/5 text-2xs text-agreement-signal flex items-center gap-1.5">
-        <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        Reach &amp; “how’d you hear about us?” will land here next — closing the outcome loop.
-      </div>
     </div>
   )
 }
+// NOTE: future roadmap item — surface reach + "how'd you hear about us?"
+// attribution here to close the outcome loop. Keep that as a code comment,
+// not shipped UI copy, until it's actually built.
