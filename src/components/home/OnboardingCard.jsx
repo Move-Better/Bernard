@@ -31,7 +31,10 @@ function snoozeKey(workspaceId) {
   return `bernard.onboarding-snooze.${workspaceId}`
 }
 
-function isSnoozed(workspaceId) {
+// Exported so Home.jsx can synchronously predict "will this card render"
+// (admin + not-completed + not-snoozed) without duplicating the async
+// interview-status fetch, in order to sequence the hero cascade.
+export function isSnoozed(workspaceId) {
   if (typeof window === 'undefined' || !workspaceId) return false
   try {
     const raw = window.localStorage.getItem(snoozeKey(workspaceId))

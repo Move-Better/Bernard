@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Sparkles, CheckCircle2, Circle, X, ChevronRight } from 'lucide-react'
+import { Sparkles, CheckCircle2, Circle, X, ChevronRight, ChevronDown } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
 import { useOnboardingProgress } from '@/lib/queries'
 
@@ -36,9 +36,12 @@ const STEPS = [
 // (onboarding_completed_at set server-side) or when user dismisses via
 // Clerk unsafeMetadata. Progress is fetched from /api/onboarding/progress
 // and auto-verified against live DB counts — no manual marking required.
-export default function GettingStarted() {
+// compact: collapse to a one-line progress summary + expand toggle, used
+// whenever a hero card already owns the page's primary attention.
+export default function GettingStarted({ compact = false }) {
   const { user, isLoaded } = useUser()
   const [dismissed, setDismissed] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const { data: progress } = useOnboardingProgress({
     enabled: isLoaded && !dismissed && !user?.unsafeMetadata?.gettingStartedDismissedAt,
@@ -79,6 +82,21 @@ export default function GettingStarted() {
     } catch {
       // Locally hidden either way; metadata write is best-effort.
     }
+  }
+
+  if (compact && !expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center gap-2 rounded-lg border border-primary/30 bg-white px-4 py-2.5 text-sm text-muted-foreground hover:bg-primary/5 transition-colors"
+      >
+        <span className="flex-1 min-w-0 text-left truncate">
+          Getting started — <span className="font-medium text-foreground tabular-nums">{doneCount} / {items.length}</span> steps done
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </button>
+    )
   }
 
   return (
