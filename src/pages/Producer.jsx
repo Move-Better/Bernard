@@ -36,8 +36,8 @@ export default function Producer() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {enabled && (
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${paused ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'}`}>
-              {paused ? <><Pause className="w-3.5 h-3.5" /> Paused</> : <><span className="w-1.5 h-1.5 rounded-full bg-success" /> Always on</>}
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${paused ? 'bg-muted text-muted-foreground' : 'bg-info/10 text-info'}`}>
+              {paused ? <><Pause className="w-3.5 h-3.5" /> Paused</> : <><span className="w-1.5 h-1.5 rounded-full bg-info" /> Always on</>}
             </span>
           )}
           {isAdmin && (
