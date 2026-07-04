@@ -104,12 +104,19 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
-          aria-label={open ? 'Close feedback' : 'Send feedback'}
-          className={`flex items-center rounded-md text-sm font-medium transition-colors w-full text-muted-foreground hover:bg-accent/40 hover:text-foreground
+          aria-label={collapsed ? (open ? 'Close feedback' : 'Send feedback') : undefined}
+          className={`flex items-center rounded-md text-sm font-medium transition-colors group relative w-full text-muted-foreground hover:bg-accent/40 hover:text-foreground
             ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
         >
           <MessageSquare className="h-4 w-4 shrink-0" />
           {!collapsed && <span className="flex-1 truncate text-left">Feedback</span>}
+          {collapsed && (
+            <span className="absolute left-full ml-2 px-2 py-1 text-xs font-medium bg-popover border border-border text-popover-foreground rounded-md shadow-md
+                             invisible group-hover:visible opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[200]
+                             transition-opacity duration-150">
+              Feedback
+            </span>
+          )}
         </button>
       ) : (
         <button
