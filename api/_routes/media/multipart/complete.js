@@ -36,7 +36,7 @@ async function handler(req, res) {
   if (!auth.ok) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', scope.workspace.id))) return
 
   const { uploadId, key, pathname, contentType, parts, tokenPayloadServer } = req.body || {}
 

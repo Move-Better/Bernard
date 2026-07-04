@@ -108,7 +108,7 @@ export default async function handler(req, res) {
 
   const auth = await authByCaptureToken(token)
   if (!auth) return res.status(401).json({ error: 'invalid_or_expired_token' })
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', auth.workspace.id))) return
 
   // --- Parse query ---
   const url = new URL(req.url, 'http://localhost')

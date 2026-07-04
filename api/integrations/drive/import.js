@@ -292,7 +292,7 @@ async function handler(req, res) {
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
 
-  if (!(await enforceLimit(req, res, 'media'))) return
+  if (!(await enforceLimit(req, res, 'media', workspace.id))) return
 
   const body = req.body || {}
   const items = Array.isArray(body.items) ? body.items : null
@@ -369,6 +369,7 @@ async function handler(req, res) {
         if (inserted.kind === 'photo') {
           waitUntil(
             processImageUpload({
+              workspaceId: innerScope.id,
               assetId: inserted.id,
               blobUrl: inserted.blob_url,
               declaredMime: inserted.mime_type,

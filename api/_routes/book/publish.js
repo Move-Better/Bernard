@@ -48,8 +48,6 @@ async function handler(req, res) {
   }
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
-  if (!(await enforceLimit(req, res, 'generic'))) return
-
   // 1. Load the current book row.
   const bookRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspace_books` +

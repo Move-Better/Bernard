@@ -140,9 +140,10 @@ async function generateAltText(imageBytes, mime) {
 }
 
 // Build the Blob pathname for the web variant. Sibling to the original under
-// a `media/web/` prefix so it's easy to spot in the Blob dashboard.
-function webPathname(assetId, ext) {
-  return `media/web/${assetId}.${ext}`
+// a `media/web/<workspace>/` prefix, matching every other blob writer's
+// workspace-first namespacing convention (CLAUDE.md "Blob store").
+function webPathname(workspaceId, assetId, ext) {
+  return `media/web/${workspaceId}/${assetId}.${ext}`
 }
 
 // Main entry point. Given a freshly-uploaded asset row's blob URL + id +
@@ -170,9 +171,9 @@ function webPathname(assetId, ext) {
 // Output (skip / non-fatal):
 //   null  — image was too large to decode safely, or the source wasn't an
 //           image after all. Caller should leave the row alone.
-export async function processImageUpload({ assetId, blobUrl, declaredMime }) {
-  if (!assetId || !blobUrl) {
-    throw new Error('processImageUpload: assetId + blobUrl are required')
+export async function processImageUpload({ workspaceId, assetId, blobUrl, declaredMime }) {
+  if (!workspaceId || !assetId || !blobUrl) {
+    throw new Error('processImageUpload: workspaceId + assetId + blobUrl are required')
   }
 
   // Probe size BEFORE buffering: a HEAD Content-Length check rejects an
@@ -221,7 +222,7 @@ export async function processImageUpload({ assetId, blobUrl, declaredMime }) {
 
   const altText = await generateAltText(resized.buffer, resized.mime)
 
-  const uploaded = await blobPut(webPathname(assetId, target.ext), resized.buffer, {
+  const uploaded = await blobPut(webPathname(workspaceId, assetId, target.ext), resized.buffer, {
     access:          'public',
     contentType:     resized.mime,
     addRandomSuffix: true,

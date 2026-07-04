@@ -94,7 +94,7 @@ async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    if (!(await enforceLimit(req, res, 'generic'))) return
+    if (!(await enforceLimit(req, res, 'generic', scope.workspace.id))) return
     const patch = req.body || {}
 
     // Verify cover_asset_id belongs to this workspace before binding it.
@@ -136,7 +136,7 @@ async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    if (!(await enforceLimit(req, res, 'generic'))) return
+    if (!(await enforceLimit(req, res, 'generic', scope.workspace.id))) return
     const r = await sb(`collections?${where}`, { method: 'DELETE' })
     if (!r.ok) {
       console.error('[[id].js] db error:', r.status)

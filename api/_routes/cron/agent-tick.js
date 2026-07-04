@@ -295,6 +295,7 @@ async function processWorkspace(ws, deadline, summary) {
         const auth = await authorAnswersForGaps({ ws, maxDrafts: cap })
         wsResult.answersDrafted = auth.drafted
         if (auth.candidates) wsResult.answerGapCandidates = auth.candidates
+        if (auth.skippedNoCoverage) wsResult.answerGapsSkippedNoCoverage = auth.skippedNoCoverage
         remaining -= auth.drafted
       } catch (e) {
         console.error('[agent-tick] author_answers threw:', ws.slug, e?.message)

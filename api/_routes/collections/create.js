@@ -35,6 +35,7 @@ function slugify(s) {
 }
 
 const ALLOWED_KINDS = new Set(['campaign', 'series', 'session', 'adhoc'])
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -57,13 +58,25 @@ async function handler(req, res) {
   }
   if (!(await enforceLimit(req, res, 'generic', scope.workspace.id))) return
 
+  // Verify cover_asset_id belongs to this workspace before binding it — the FK only
+  // proves the id exists somewhere, not that it's this tenant's (mirrors the check
+  // in collections/[id].js's PATCH path).
+  let coverAssetId = null
+  if (body.coverAssetId) {
+    if (!UUID_RE.test(body.coverAssetId)) return res.status(400).json({ error: 'invalid_coverAssetId' })
+    const assetChk = await sb(`media_assets?id=eq.${body.coverAssetId}&${scope.column}=eq.${scope.id}&select=id&limit=1`)
+    const assetRows = assetChk.ok ? await assetChk.json().catch(() => []) : []
+    if (!assetRows.length) return res.status(404).json({ error: 'cover_asset_not_found' })
+    coverAssetId = body.coverAssetId
+  }
+
   const row = {
     [scope.column]: scope.id,
     name,
     slug,
     description: body.description || null,
     kind,
-    cover_asset_id: body.coverAssetId || null,
+    cover_asset_id: coverAssetId,
     status: 'active',
     created_by: auth.userId || null,
   }

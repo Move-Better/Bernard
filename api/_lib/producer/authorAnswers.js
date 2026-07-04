@@ -53,9 +53,13 @@ async function pickClinician(wsId, topic, clinicians) {
   for (const row of rows) {
     if (row.staff_id && clinIds.has(row.staff_id)) counts[row.staff_id] = (counts[row.staff_id] || 0) + 1
   }
+  // Tie-break deterministically by staff id (not DB row order) so a coverage tie
+  // always resolves the same way instead of depending on query result ordering.
   let bestId = null
   let bestN = 0
-  for (const [sid, n] of Object.entries(counts)) if (n > bestN) { bestN = n; bestId = sid }
+  for (const [sid, n] of Object.entries(counts)) {
+    if (n > bestN || (n === bestN && bestId && sid < bestId)) { bestN = n; bestId = sid }
+  }
   return bestId ? clinicians.find((c) => c.id === bestId) : null
 }
 
@@ -97,10 +101,11 @@ export async function authorAnswersForGaps({ ws, maxDrafts }) {
   if (!clinicians.length) return { drafted: 0, candidates: open.length }
 
   let drafted = 0
+  let skippedNoCoverage = 0
   for (const g of open) {
     if (drafted >= maxDrafts) break
     const clinician = await pickClinician(ws.id, g.topic || g.question, clinicians)
-    if (!clinician) continue
+    if (!clinician) { skippedNoCoverage++; continue }
 
     const d = await draftAnswer({ ws, staffId: clinician.id, question: g.question, condition: g.topic })
     if (!d) continue
@@ -137,5 +142,11 @@ export async function authorAnswersForGaps({ ws, maxDrafts }) {
     })
   }
 
-  return { drafted, candidates: open.length }
+  if (skippedNoCoverage > 0) {
+    console.info(
+      `[authorAnswers] workspace_id=${ws.id} skipped ${skippedNoCoverage} gap(s) — no clinician has practice-memory coverage`,
+    )
+  }
+
+  return { drafted, candidates: open.length, skippedNoCoverage }
 }
