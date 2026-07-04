@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -51,11 +51,26 @@ function QueueRow({ answer, index, total, onOpen }) {
 }
 
 export default function AnswerReview() {
+  // While Bernard is re-drafting a revise (status changes_requested), poll so the
+  // updated answer appears when it flips back to needs_review. Hard-capped at 90s
+  // so a silent generation failure can't spin forever.
+  const pollStartRef = useRef(0)
   const { data, isPending, refetch } = useQuery({
     queryKey: ['answers-review'],
     queryFn: () => apiFetch('/api/answers'),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const rows = query.state.data?.answers || []
+      const revising = rows.some((a) => a.status === 'changes_requested')
+      if (!revising) {
+        pollStartRef.current = 0
+        return false
+      }
+      if (!pollStartRef.current) pollStartRef.current = Date.now()
+      if (Date.now() - pollStartRef.current > 90_000) return false
+      return 3000
+    },
   })
   const answers = useMemo(() => data?.answers || [], [data])
 
