@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText, Copy } from 'lucide-react'
+import { Plus, Pencil, Trash2, Sparkles, ArrowUp, Check, MessageSquareText, Copy, LayoutTemplate } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useConfirm } from '@/lib/useConfirm'
@@ -854,13 +855,15 @@ export default function PhotoTemplates() {
 
   return (
     <div className="space-y-4">
-      {/* Page header */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Photo Templates</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Built-in layouts — claim cards, split panels, and badge overlays — in dark and light palettes, plus your own. Templates apply per carousel slide and to standalone photos. <span className="font-semibold text-foreground">Design with AI</span> to create a custom template by chatting with a designer.
-        </p>
-      </div>
+      <PageHeader
+        icon={LayoutTemplate}
+        title="Photo Templates"
+        subtitle={
+          <>
+            Built-in layouts — claim cards, split panels, and badge overlays — in dark and light palettes, plus your own. Templates apply per carousel slide and to standalone photos. <span className="font-semibold text-foreground">Design with AI</span> to create a custom template by chatting with a designer.
+          </>
+        }
+      />
 
       {/* Mode toggle: browse/edit vs the AI chat designer */}
       <div className="inline-flex rounded-lg border border-input overflow-hidden text-sm">

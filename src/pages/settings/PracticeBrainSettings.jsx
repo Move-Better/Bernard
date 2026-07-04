@@ -8,6 +8,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { usePracticeBrainSupersessions } from '@/lib/practiceBrain'
 import { PracticeBrainReviewList } from '@/components/PracticeBrainReview'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 export default function PracticeBrainSettings() {
   useDocumentTitle('Practice Brain')
@@ -15,17 +16,11 @@ export default function PracticeBrainSettings() {
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Brain className="h-5 w-5 text-primary" aria-hidden="true" />
-          Practice Brain
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Bernard learns from every interview and post. When your thinking on a topic looks like it
-          changed, it asks before letting the newer take win — so generated content reflects how you
-          practice today.
-        </p>
-      </div>
+      <PageHeader
+        icon={Brain}
+        title="Practice Brain"
+        subtitle="Bernard learns from every interview and post. When your thinking on a topic looks like it changed, it asks before letting the newer take win — so generated content reflects how you practice today."
+      />
 
       {isLoading ? (
         <Skeleton className="h-40 w-full rounded-xl" />

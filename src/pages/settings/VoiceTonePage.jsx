@@ -14,6 +14,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { Loader2, Sparkles, Pencil, ArrowRight, Mic2 } from 'lucide-react'
 import { Section, Field, Textarea2, SaveBar } from '@/components/settings/helpers'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
@@ -154,13 +155,12 @@ export default function VoiceTonePage() {
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight mt-0.5 flex items-center gap-2">
-          <Mic2 className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-          Your voice
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1.5 leading-relaxed">
-          Everything {interviewerName} reads before writing — how {clinicName} sounds, who it serves, and who its patients are.
-        </p>
+        <PageHeader
+          className="mt-0.5 mb-0"
+          icon={Mic2}
+          title="Your voice"
+          subtitle={`Everything ${interviewerName} reads before writing — how ${clinicName} sounds, who it serves, and who its patients are.`}
+        />
       </div>
 
       {/* Unified brief + preview card */}

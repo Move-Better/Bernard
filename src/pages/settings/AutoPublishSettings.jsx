@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { SaveBar } from '@/components/settings/helpers'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
@@ -132,14 +133,11 @@ export default function AutoPublishSettings() {
 
   return (
     <div className="space-y-6 pb-24">
-      <div>
-        <h2 className="text-lg font-semibold">Auto-publish</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          High-confidence packages skip the manual distribution step and go straight to the
-          channel. All four gate signals must pass: voice fidelity, clip match, consent, and no
-          QC flags. Start with GBP — it has the lowest blast radius.
-        </p>
-      </div>
+      <PageHeader
+        icon={Zap}
+        title="Auto-publish"
+        subtitle="High-confidence packages skip the manual distribution step and go straight to the channel. All four gate signals must pass: voice fidelity, clip match, consent, and no QC flags. Start with GBP — it has the lowest blast radius."
+      />
 
       <DigestCard enabled={digestEnabled} onToggle={setDigestEnabled} />
 

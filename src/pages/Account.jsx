@@ -8,31 +8,20 @@
 // UserButton dropdown surfaces both with their own labels.
 
 import { UserProfile } from '@clerk/react'
-import { ArrowLeft, UserCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import { UserCircle } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 export default function Account() {
   useDocumentTitle('Account & security')
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back home">
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <UserCircle className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-            Account &amp; security
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Email, password, multi-factor authentication, and active sessions. Looking for your display name, voice pace, or content focus? Those live on your staff profile — open it from the avatar menu in the bottom-left of the sidebar.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/"
+        icon={UserCircle}
+        title="Account & security"
+        subtitle="Email, password, multi-factor authentication, and active sessions. Looking for your display name, voice pace, or content focus? Those live on your staff profile — open it from the avatar menu in the bottom-left of the sidebar."
+      />
 
       <UserProfile
         routing="path"
