@@ -28,10 +28,12 @@ const QUICK_FILTERS = [
 
 // Filter selects keep the native <select> (best mobile UX + free keyboard
 // support) but drop the OS dropdown chrome (appearance-none) and draw our own
-// chevron, so they share the rounded-pill visual register of the active-filter
-// chips instead of looking like raw browser controls.
+// chevron. Shape is deliberately rounded-lg (not rounded-full) and lightly
+// tinted so it reads as "opens a picker" — distinct from the instant-toggle
+// pill row below, which shares the same size/weight but is fully rounded and
+// unfilled. Two affordances that behave differently shouldn't look identical.
 const SELECT_CLS =
-  'appearance-none w-full rounded-full border border-border bg-background pl-3 pr-7 py-1.5 text-xs font-medium text-foreground ' +
+  'appearance-none w-full rounded-lg border border-border bg-muted/40 pl-3 pr-7 py-1.5 text-xs font-medium text-foreground ' +
   'cursor-pointer hover:border-primary/30 hover:bg-muted transition-colors ' +
   'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
 

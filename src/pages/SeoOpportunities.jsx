@@ -30,10 +30,14 @@ const TYPE_META = {
   demand_no_content: { tag: 'Demand, no content', tagCls: 'bg-primary text-primary-foreground', icon: Sparkles },
 }
 
+// Outlined (not filled) so severity pills read as a distinct signal from the
+// solid TYPE_META tags above — both used "important" tints, but on different
+// axes (opportunity type vs. how worthwhile). Shape now carries that split:
+// solid fill = type, outline = severity.
 const SEV_META = {
-  high: { label: 'Worth doing', cls: 'bg-action/15 text-action' },
-  med:  { label: 'Nice lift',   cls: 'bg-primary/10 text-primary' },
-  low:  { label: 'Minor',       cls: 'bg-muted text-muted-foreground' },
+  high: { label: 'Worth doing', cls: 'border border-action text-action bg-transparent' },
+  med:  { label: 'Nice lift',   cls: 'border border-primary text-primary bg-transparent' },
+  low:  { label: 'Minor',       cls: 'border border-border text-muted-foreground bg-transparent' },
 }
 
 const FILTERS = [

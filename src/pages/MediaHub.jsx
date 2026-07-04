@@ -545,6 +545,25 @@ export default function MediaHub() {
               })}
             </>
           )}
+
+          {/* Reset affordance once any of the 5 filter axes (kind/status/staff/
+              search/collection) is active — was previously only reachable by
+              filtering all the way down to zero results. */}
+          {!!(debouncedSearch || kind || status || collectionId || staffFilter) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('')
+                setKind('')
+                setStatus('')
+                setStaffFilter('')
+                setCollectionId(null)
+              }}
+              className="text-2xs px-2 py-1 text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       </div>
 
