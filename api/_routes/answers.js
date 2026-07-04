@@ -5,6 +5,13 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { draftAnswer } from '../_lib/producer/draftAnswer.js'
+import { publishAnswerToMovebetter } from '../_lib/publishAnswer.js'
+
+// Explicit gate for going live to the public site. Default OFF: approve just
+// marks 'approved' until an operator flips ANSWER_PUBLISH_ENABLED=true (after the
+// answer library + receiver are live on movebetter.co). Prevents a premature
+// prod publish; the operator's flip is the deliberate "go".
+const PUBLISH_ENABLED = process.env.ANSWER_PUBLISH_ENABLED === 'true'
 
 /**
  * /api/answers — the clinician's answer-review queue for the public answer library.
@@ -93,7 +100,8 @@ export default async function handler(req, res) {
 
     // Ownership gate — fetch the row (workspace-scoped) and confirm it's the caller's.
     const cur = await sb(
-      `answers?workspace_id=eq.${ws.id}&id=eq.${id}&select=id,staff_id,status,question,condition,answer_lead,body&limit=1`,
+      `answers?workspace_id=eq.${ws.id}&id=eq.${id}` +
+        `&select=id,staff_id,status,question,slug,condition,answer_lead,body,summary,seo_title,chat_prompts&limit=1`,
     )
     if (!cur.ok) return dbErr(res, cur, 'fetch')
     const row = (await cur.json())[0]
@@ -102,7 +110,20 @@ export default async function handler(req, res) {
 
     const patch = { updated_at: new Date().toISOString() }
     if (action === 'approve') {
-      patch.status = 'approved'
+      // Publish to the public site if enabled; otherwise just mark approved.
+      if (PUBLISH_ENABLED) {
+        const pub = await publishAnswerToMovebetter({ ws, answer: row })
+        if (pub.ok) {
+          patch.status = 'published'
+          patch.published_at = new Date().toISOString()
+          patch.movebetterco_slug = pub.slug
+        } else {
+          console.error('[answers] approve publish failed:', pub.error, id)
+          patch.status = 'approved' // approved but not live — retry later
+        }
+      } else {
+        patch.status = 'approved'
+      }
     } else if (action === 'edit') {
       const { answer_lead, body, question } = req.body || {}
       if (typeof answer_lead === 'string') patch.answer_lead = answer_lead
