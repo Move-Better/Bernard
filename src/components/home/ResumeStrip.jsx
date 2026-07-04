@@ -68,7 +68,7 @@ function ResumeCard({ interview, currentUserId, staff }) {
   return (
     <Link
       to={href}
-      className="nx-card-hi block p-4 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_-16px_rgba(12,117,128,0.35)] transition-all duration-150"
+      className="nx-card-hi nx-card-hi-link block p-4"
     >
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar className="h-6 w-6">

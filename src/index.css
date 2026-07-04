@@ -191,6 +191,23 @@
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(12,117,128,0.22);
   }
+  /* Hover-lift variant for .nx-card-hi used as a standalone, clickable PEER
+     card (e.g. one tile among several in a grid, like ResumeStrip's
+     in-progress interviews). Distinct from a flat hover:bg row INSIDE a
+     shared card (e.g. PostsLiveCard's list rows, GettingStarted's checklist
+     items) — those are one card with many rows, not many peer cards, so a
+     lift there would look wrong. Don't "fix" that flat-hover pattern to
+     match this one; they're intentionally different (2026-07-04 audit #15).
+     Any new standalone peer-card grid should reuse this class rather than
+     hand-copying the lift/shadow values. */
+  .nx-card-hi-link {
+    transition: transform 150ms, box-shadow 150ms, border-color 150ms;
+  }
+  .nx-card-hi-link:hover {
+    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.4);
+    box-shadow: 0 8px 24px -16px rgba(12,117,128,0.35);
+  }
   /* Amber "act now" inbox card — used by Storyboard's PublisherInboxBanner
      and Overview's role-aware queue banners. Single source of truth for the
      warm amber gradient + shadow so implementations stay in sync. */
