@@ -25,7 +25,7 @@ export default function WeeklyCallHero({ lastOwnCallAt = null }) {
       : null
 
   return (
-    <div className="rounded-[14px] border border-primary/30 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(12,117,128,0.22)] p-6 md:p-7">
+    <div className="nx-card-hi p-6 md:p-7">
       <div className="flex items-start gap-5 flex-wrap">
         <div className="h-16 w-16 rounded-2xl nx-grad flex items-center justify-center shrink-0">
           <PhoneCall className="h-7 w-7 text-primary-foreground" aria-hidden="true" />
