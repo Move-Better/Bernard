@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, ChevronDown } from 'lucide-react'
 
 // "What to talk about next" — merged surface for patient question gaps.
 // Shows high-search topics with no content yet, filterable by patient archetype.
@@ -9,13 +10,18 @@ import { Plus } from 'lucide-react'
 //   prototypes        — array of { id, label, emoji, description }
 //   activePrototypeId — currently selected archetype id (or null for all)
 //   onPrototypeChange — setter for activePrototypeId
+//   compact           — collapse to a one-line summary + expand toggle, used
+//                        whenever a hero card already owns the page's primary
+//                        attention (see Home.jsx heroState)
 export default function PlanNextInterview({
   gaps,
   isEmpty = false,
   prototypes = [],
   activePrototypeId = null,
   onPrototypeChange,
+  compact = false,
 }) {
+  const [expanded, setExpanded] = useState(false)
   // Hide the chip strip when the workspace hasn't defined any archetypes —
   // prototypesUi always returns at least one "All patients" sentinel, so
   // "no archetypes" means length <= 1.
@@ -52,6 +58,23 @@ export default function PlanNextInterview({
         return out
       })()
     : null
+
+  if (compact && !expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground hover:bg-accent/30 transition-colors"
+      >
+        <span className="flex-1 min-w-0 text-left truncate">
+          {isEmpty
+            ? 'Pick a high-impact topic for your first interview'
+            : `${gaps.length} topic ${gaps.length === 1 ? 'gap' : 'gaps'} found for your patients`}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </button>
+    )
+  }
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">

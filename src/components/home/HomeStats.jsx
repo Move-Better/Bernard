@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowRight, ChevronDown } from 'lucide-react'
 
 // HomeStats — 3-tile pipeline story: interviews captured → voice match → published.
 // Tells the "I talked → in my voice → it's out there" narrative at a glance.
@@ -40,7 +40,12 @@ function computeVoiceMatch(stories) {
   return Math.round(avg)
 }
 
-export default function HomeStats({ stories = [] }) {
+// compact: collapse to a single summary row with an expand toggle, used
+// whenever a hero card (weekly call / resume / onboarding) already owns the
+// page's primary attention — keeps the pipeline numbers reachable without
+// stacking another full-size card underneath the hero.
+export default function HomeStats({ stories = [], compact = false }) {
+  const [expanded, setExpanded] = useState(false)
   const metrics = useMemo(() => {
     // This week — stories created or last-activity-updated in the last 7 days
     const thisWeek = stories.filter((s) => withinDays(s.last_activity_at || s.created_at, 7)).length
@@ -61,6 +66,26 @@ export default function HomeStats({ stories = [] }) {
 
     return { thisWeek, publishedThis, publishedDelta, voiceMatch }
   }, [stories])
+
+  if (compact && !expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground hover:bg-accent/30 transition-colors"
+      >
+        <span className="flex-1 min-w-0 text-left truncate">
+          <span className="font-medium text-foreground tabular-nums">{metrics.thisWeek}</span> captured ·{' '}
+          <span className="font-medium text-foreground tabular-nums">
+            {typeof metrics.voiceMatch === 'number' ? `${metrics.voiceMatch}%` : '—'}
+          </span>{' '}
+          voice match ·{' '}
+          <span className="font-medium text-foreground tabular-nums">{metrics.publishedThis}</span> published
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </button>
+    )
+  }
 
   return (
     <div className="flex items-stretch gap-0">

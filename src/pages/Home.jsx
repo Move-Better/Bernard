@@ -15,7 +15,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
 import GettingStarted from '@/components/home/GettingStarted'
 import WeeklyCallHero from '@/components/home/WeeklyCallHero'
-import OnboardingCard from '@/components/home/OnboardingCard'
+import OnboardingCard, { isSnoozed as isOnboardingSnoozed } from '@/components/home/OnboardingCard'
 import HomeStats from '@/components/home/HomeStats'
 import ResumeStrip from '@/components/home/ResumeStrip'
 import PlanNextInterview from '@/components/home/PlanNextInterview'
@@ -71,7 +71,7 @@ function HomeSkeleton({ greeting, callFirst }) {
 export default function Home() {
   useDocumentTitle('Home')
   const { user } = useUser()
-  const { canReview, isEditor } = useUserRole()
+  const { canReview, isEditor, isOrgAdmin } = useUserRole()
   const runtimeWorkspace = useWorkspace()
 
   // Stories (interviews + content pieces merged)
@@ -226,6 +226,31 @@ export default function Home() {
   // the ribbon CTA is hidden so the hero owns the single capture action.
   const callFirst = runtimeWorkspace?.realtime_voice_enabled === true
 
+  // ── Hero cascade (2026-07-04 P0 audit fix) ──────────────────────────────
+  // Exactly one "primary surface" renders per lifecycle state, in priority
+  // order, so the page reads as "here's the one thing that matters" instead
+  // of stacking every card that COULD be relevant. Lower-priority surfaces
+  // either hide (when they'd be redundant with the active hero) or collapse
+  // to a compact one-line row via each component's `compact` prop.
+  //   onboarding — admin hasn't finished the founder interview yet (mirrors
+  //     OnboardingCard's own visibility gate, minus the async interview
+  //     fetch, so this can be computed synchronously here)
+  //   resume     — an in-progress interview is pickup-able
+  //   call       — realtime-voice workspaces default to the weekly-call hero
+  const onboardingPending =
+    !!runtimeWorkspace?.id &&
+    isOrgAdmin &&
+    !runtimeWorkspace.onboarding_interview_completed_at &&
+    !isOnboardingSnoozed(runtimeWorkspace.id)
+  const heroState = onboardingPending
+    ? 'onboarding'
+    : resumeInterviews.length > 0
+      ? 'resume'
+      : callFirst
+        ? 'call'
+        : 'none'
+  const secondaryCompact = heroState !== 'none'
+
   if (isLoading) return <HomeSkeleton greeting={greeting} callFirst={callFirst} />
 
   if (storiesError) {
@@ -244,8 +269,11 @@ export default function Home() {
       {/* Greeting ribbon — personality + single interview CTA */}
       <GreetingRibbon greeting={greeting} callFirst={callFirst} />
 
-      {/* Call-first hero — only for realtime-voice workspaces. */}
-      {callFirst && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
+      {/* Call-first hero — only when it's the winning primary surface (see
+          heroState above). Suppressed when onboarding or an in-progress
+          interview already owns the "start/continue a call" action, so the
+          CTA doesn't appear twice. */}
+      {heroState === 'call' && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
 
       {/* Failed-publish alert — a post bundle.social rejected. Rendered above the
           amber attention strip because a dead post is more urgent than a to-do and
@@ -306,16 +334,23 @@ export default function Home() {
       {/* Finish onboarding if needed — self-gated, renders nothing for the 99% case. */}
       <OnboardingCard />
 
-      {/* Resume in-progress interview if one exists within the last 14 days. */}
-      {resumeInterviews.length > 0 && (
+      {/* Resume in-progress interview — the winning hero when heroState is
+          'resume'. Otherwise stays hidden (WeeklyCallHero already lost the
+          cascade to onboarding in that branch, so there's no redundant case
+          to worry about here). */}
+      {heroState === 'resume' && (
         <ResumeStrip interviews={resumeInterviews} currentUserId={user?.id} staff={staff} />
       )}
 
-      {/* Pipeline story: interviews captured → voice match → published */}
-      {stories.length > 0 && <HomeStats stories={stories} />}
+      {/* Pipeline story: interviews captured → voice match → published.
+          Collapses to a one-line row once a hero card above already owns
+          primary attention. */}
+      {stories.length > 0 && <HomeStats stories={stories} compact={secondaryCompact} />}
 
       {/* What to talk about next (merged: patient question gaps + topic planner)
-          Falls back to GettingStarted for brand-new workspaces. */}
+          Falls back to GettingStarted for brand-new workspaces. Both collapse
+          to a one-line row once a hero card above already owns primary
+          attention. */}
       {unfilteredGaps.length > 0 && stories.length > 0 ? (
         <PlanNextInterview
           gaps={topicGaps}
@@ -323,9 +358,10 @@ export default function Home() {
           prototypes={prototypesUi}
           activePrototypeId={topicFilterPrototype}
           onPrototypeChange={setTopicFilterPrototype}
+          compact={secondaryCompact}
         />
       ) : (
-        <GettingStarted />
+        <GettingStarted compact={secondaryCompact} />
       )}
     </div>
   )

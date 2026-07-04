@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home hierarchy — current vs proposed</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --primary:187 79% 29%; --primary-foreground:0 0% 100%;
+    --action:38 92% 50%; --destructive:0 72% 51%;
+    --muted-foreground:215 16% 47%; --border:214 20% 91%; --foreground:222 20% 18%;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f4f6f7;}
+  .card{background:#fff;border-radius:14px;border:1px solid #e6ebee;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+  .tag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;}
+</style>
+</head>
+<body class="p-6">
+
+<div class="max-w-[1400px] mx-auto">
+  <h1 class="text-2xl font-extrabold mb-1">Home hierarchy — current vs proposed</h1>
+  <p class="text-sm text-slate-500 mb-6">P0 audit finding: up to 5–6 near-identical white cards stack simultaneously, diluting "what do I owe today" into "everything is important." Proposed fix: exactly one primary surface per lifecycle state; everything else demotes to a compact row or hides.</p>
+
+  <div class="flex gap-2 mb-6" id="tabs"></div>
+  <div id="screens"></div>
+</div>
+
+<script>
+const states = [
+  {
+    key: 'onboarding',
+    label: 'State A — Onboarding incomplete',
+    note: 'Admin has not finished the founder interview yet. Today: onboarding card + weekly-call hero + getting-started checklist + stats all show at once, none of which matter until onboarding is done.',
+  },
+  {
+    key: 'resume',
+    label: 'State B — Interview in progress',
+    note: 'User has an unfinished interview from 3 days ago. Today: resume strip AND the weekly-call hero (redundant "start a call" CTA) both show, plus posts-live + stats + planner below.',
+  },
+  {
+    key: 'steady',
+    label: 'State C — Steady state, posts live this week',
+    note: 'Normal operation, nothing overdue. Today: weekly-call hero + posts-live card + stats + planner ALL show as equal-weight white cards — no visual signal for which one matters right now.',
+  },
+];
+
+function currentColumn(key) {
+  if (key === 'onboarding') return `
+    <div class="card p-5 border-primary/30" style="border-color:#0c758055">
+      <div class="flex items-center gap-2 mb-1"><span class="tag" style="background:#fdf1e2;color:#92500a">Onboarding</span></div>
+      <p class="font-bold">Finish setting up your voice</p>
+      <p class="text-sm text-slate-500 mt-1">5-minute interview so everything sounds like you.</p>
+    </div>
+    <div class="card p-6">
+      <div class="flex gap-4">
+        <div class="h-14 w-14 rounded-2xl shrink-0" style="background:linear-gradient(135deg,#0c7580,#0a5c66)"></div>
+        <div><p class="text-xs font-bold uppercase text-slate-400">Your weekly call</p>
+        <p class="font-bold text-lg mt-1">Ready when you are</p></div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2">Get started</p>
+      <div class="space-y-2 text-sm text-slate-500">
+        <p>○ Set up your voice</p><p>○ Record your first interview</p><p>○ Review your first draft</p><p>○ Publish your first post</p>
+      </div>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2 text-sm text-slate-400">Pipeline</p>
+      <div class="grid grid-cols-3 gap-3 text-center text-sm">
+        <div><p class="text-xl font-extrabold">0</p><p class="text-slate-400">captured</p></div>
+        <div><p class="text-xl font-extrabold">—</p><p class="text-slate-400">voice match</p></div>
+        <div><p class="text-xl font-extrabold">0</p><p class="text-slate-400">published</p></div>
+      </div>
+    </div>
+  `;
+  if (key === 'resume') return `
+    <div class="card p-6" style="border-color:#0c758055">
+      <div class="flex gap-4">
+        <div class="h-14 w-14 rounded-2xl shrink-0" style="background:linear-gradient(135deg,#0c7580,#0a5c66)"></div>
+        <div><p class="text-xs font-bold uppercase text-slate-400">Your weekly call</p>
+        <p class="font-bold text-lg mt-1">2 days since your last</p></div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-3">Pick up where you left off <span class="text-sm text-slate-400 font-normal">· 1 active</span></p>
+      <div class="border rounded-xl p-3 text-sm">Knee pain follow-up — 3 days ago</div>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2 flex items-center gap-2">🎉 Your posts are live</p>
+      <p class="text-sm text-slate-500">2 posts went live this week</p>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2 text-sm text-slate-400">Pipeline</p>
+      <div class="grid grid-cols-3 gap-3 text-center text-sm">
+        <div><p class="text-xl font-extrabold">14</p><p class="text-slate-400">captured</p></div>
+        <div><p class="text-xl font-extrabold">82%</p><p class="text-slate-400">voice match</p></div>
+        <div><p class="text-xl font-extrabold">9</p><p class="text-slate-400">published</p></div>
+      </div>
+    </div>
+  `;
+  return `
+    <div class="card p-6" style="border-color:#0c758055">
+      <div class="flex gap-4">
+        <div class="h-14 w-14 rounded-2xl shrink-0" style="background:linear-gradient(135deg,#0c7580,#0a5c66)"></div>
+        <div><p class="text-xs font-bold uppercase text-slate-400">Your weekly call</p>
+        <p class="font-bold text-lg mt-1">4 days since your last</p></div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2 flex items-center gap-2">🎉 Your posts are live</p>
+      <p class="text-sm text-slate-500">3 posts went live this week</p>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2 text-sm text-slate-400">Pipeline</p>
+      <div class="grid grid-cols-3 gap-3 text-center text-sm">
+        <div><p class="text-xl font-extrabold">31</p><p class="text-slate-400">captured</p></div>
+        <div><p class="text-xl font-extrabold">88%</p><p class="text-slate-400">voice match</p></div>
+        <div><p class="text-xl font-extrabold">22</p><p class="text-slate-400">published</p></div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <p class="font-bold mb-2">What to talk about next</p>
+      <p class="text-sm text-slate-500">6 topic gaps found for your patients</p>
+    </div>
+  `;
+}
+
+function proposedColumn(key) {
+  const attentionRow = `
+    <div class="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs" style="border-color:#f59e0b40;background:#fef6e6">
+      <span class="h-1.5 w-1.5 rounded-full" style="background:#f59e0b"></span>
+      <span class="font-medium">3 items need your attention</span>
+      <span class="text-slate-400 ml-auto">2 to review · 1 overdue →</span>
+    </div>`;
+  if (key === 'onboarding') return `
+    <div class="rounded-[14px] p-6 text-white" style="background:linear-gradient(135deg,#0c7580,#0a5c66)">
+      <p class="text-xs font-bold uppercase tracking-widest opacity-75 mb-1">Primary surface — onboarding</p>
+      <p class="font-extrabold text-lg">Finish setting up your voice</p>
+      <p class="text-sm opacity-90 mt-1">5-minute interview so everything Bernard writes sounds like you. This unlocks the rest of Home.</p>
+      <button class="mt-3 bg-white text-slate-800 text-sm font-semibold px-4 py-2 rounded-lg">Continue →</button>
+    </div>
+    <div class="rounded-lg border px-3 py-2 text-xs text-slate-500 bg-white flex items-center justify-between">
+      <span>Weekly call, pipeline stats and topic planner unlock once onboarding is done</span>
+    </div>
+  `;
+  if (key === 'resume') return `
+    ${attentionRow}
+    <div class="rounded-[14px] p-6 text-white" style="background:linear-gradient(135deg,#0c7580,#0a5c66)">
+      <p class="text-xs font-bold uppercase tracking-widest opacity-75 mb-1">Primary surface — resume</p>
+      <p class="font-extrabold text-lg">Pick up where you left off</p>
+      <p class="text-sm opacity-90 mt-1">Knee pain follow-up — started 3 days ago, 1 active</p>
+      <button class="mt-3 bg-white text-slate-800 text-sm font-semibold px-4 py-2 rounded-lg">Resume →</button>
+    </div>
+    <div class="rounded-lg border px-3 py-2 text-xs text-slate-600 bg-white flex items-center justify-between">
+      <span>🎉 2 posts went live this week</span><span class="text-primary font-medium">View →</span>
+    </div>
+    <div class="rounded-lg border px-3 py-2 text-xs text-slate-500 bg-white flex items-center justify-between">
+      <span>14 captured · 82% voice match · 9 published</span><span class="text-slate-400">Overview →</span>
+    </div>
+  `;
+  return `
+    ${attentionRow}
+    <div class="rounded-[14px] p-6 text-white" style="background:linear-gradient(135deg,#0c7580,#0a5c66)">
+      <p class="text-xs font-bold uppercase tracking-widest opacity-75 mb-1">Primary surface — weekly call</p>
+      <p class="font-extrabold text-lg">4 days since your last call</p>
+      <p class="text-sm opacity-90 mt-1">Your weekly ritual — about 15 minutes.</p>
+      <button class="mt-3 bg-white text-slate-800 text-sm font-semibold px-4 py-2 rounded-lg">Start call →</button>
+    </div>
+    <div class="rounded-lg border px-3 py-2 text-xs text-slate-600 bg-white flex items-center justify-between">
+      <span>🎉 3 posts went live this week</span><span class="text-primary font-medium">View →</span>
+    </div>
+    <div class="rounded-lg border px-3 py-2 text-xs text-slate-500 bg-white flex items-center justify-between">
+      <span>31 captured · 88% voice match · 22 published</span><span class="text-slate-400">Overview →</span>
+    </div>
+    <div class="rounded-lg border px-3 py-2 text-xs text-slate-500 bg-white flex items-center justify-between">
+      <span>6 topic gaps found for your patients</span><span class="text-slate-400">Plan next →</span>
+    </div>
+  `;
+}
+
+const tabs = document.getElementById('tabs');
+const screens = document.getElementById('screens');
+
+states.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.textContent = s.label;
+  btn.className = 'px-4 py-2 rounded-lg text-sm font-medium border bg-white';
+  btn.dataset.key = s.key;
+  btn.onclick = () => render(s.key);
+  tabs.appendChild(btn);
+});
+
+function render(key) {
+  [...tabs.children].forEach(b => {
+    b.classList.toggle('bg-slate-800', b.dataset.key === key);
+    b.classList.toggle('text-white', b.dataset.key === key);
+  });
+  const s = states.find(x => x.key === key);
+  screens.innerHTML = `
+    <p class="text-sm text-slate-600 mb-4 max-w-3xl">${s.note}</p>
+    <div class="grid grid-cols-2 gap-6">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-wide text-red-500 mb-2">Current — everything stacks</p>
+        <div class="space-y-3">${currentColumn(key)}</div>
+      </div>
+      <div>
+        <p class="text-xs font-bold uppercase tracking-wide text-emerald-600 mb-2">Proposed — one primary + compact rows</p>
+        <div class="space-y-3">${proposedColumn(key)}</div>
+      </div>
+    </div>
+  `;
+}
+
+render('onboarding');
+</script>
+</body>
+</html>
