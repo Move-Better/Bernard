@@ -34,7 +34,25 @@ export default function Account() {
         </div>
       </div>
 
-      <UserProfile routing="path" path="/account" />
+      <UserProfile
+        routing="path"
+        path="/account"
+        appearance={{
+          // ClerkProvider (src/App.jsx) already sets colorPrimary globally;
+          // UserProfile is the one full-page Clerk surface, so give it the
+          // rest of the app's design tokens (radius, background, borders)
+          // rather than relying on Clerk's default gray card chrome.
+          variables: {
+            colorPrimary: 'hsl(186 83% 27%)',
+            colorBackground: 'hsl(0 0% 100%)',
+            borderRadius: '0.625rem',
+          },
+          elements: {
+            rootBox: 'w-full',
+            card: 'shadow-sm border w-full',
+          },
+        }}
+      />
     </div>
   )
 }
