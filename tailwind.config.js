@@ -50,6 +50,10 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
         // Voice-fidelity semantic tokens — see src/index.css for HSL values.
         // The `<alpha-value>` placeholder enables opacity modifiers like
         // bg-contrast-signal/10, border-agreement-signal/30, etc.
