@@ -67,7 +67,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
   if (live.length === 0) return null
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-agreement-signal/25 bg-gradient-to-b from-agreement-signal/5 to-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]">
+    <div className="rounded-2xl overflow-hidden border border-agreement-signal/25 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(16,185,129,0.25)]">
       <div className="flex items-center gap-2 px-5 py-3.5 border-b border-agreement-signal/15">
         <PartyPopper className="h-4 w-4 text-agreement-signal" aria-hidden="true" />
         <h2 className="text-base font-bold tracking-tight text-agreement-signal flex-1">Your posts are live</h2>

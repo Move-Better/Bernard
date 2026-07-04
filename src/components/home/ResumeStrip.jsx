@@ -68,7 +68,7 @@ function ResumeCard({ interview, currentUserId, staff }) {
   return (
     <Link
       to={href}
-      className="block rounded-2xl border border-primary/30 bg-gradient-to-b from-white to-[hsl(var(--primary)/0.05)] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(12,117,128,0.25)] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_-16px_rgba(12,117,128,0.35)] transition-all duration-150"
+      className="block rounded-2xl border border-primary/30 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-18px_rgba(12,117,128,0.25)] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_-16px_rgba(12,117,128,0.35)] transition-all duration-150"
     >
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar className="h-6 w-6">
