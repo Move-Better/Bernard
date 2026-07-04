@@ -593,7 +593,15 @@ function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
         aria-haspopup="menu"
         className={`${base} ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
       >
-        {Icon && <Icon className="h-4 w-4 shrink-0" />}
+        <span className="relative shrink-0">
+          {Icon && <Icon className="h-4 w-4" />}
+          {collapsed && active && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-1 -bottom-1 h-1.5 w-1.5 rounded-full bg-primary"
+            />
+          )}
+        </span>
         {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
         {!collapsed && <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />}
       </button>
