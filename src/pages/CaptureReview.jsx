@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Loader2, Sparkles, AlertCircle, Mic, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ import { toast } from '@/lib/toast'
 export default function CaptureReview() {
   useDocumentTitle('Review transcript')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/')
   const { staffId, interviewId } = useParams()
   const qc = useQueryClient()
   const ws = useWorkspace()
@@ -198,7 +200,7 @@ export default function CaptureReview() {
       <div className="py-16 text-center space-y-3">
         <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
         <p className="text-sm text-muted-foreground">Could not load the interview — it may have been deleted.</p>
-        <Button variant="ghost" asChild><Link to="/">← Home</Link></Button>
+        <Button variant="ghost" onClick={goBack}>← Back</Button>
       </div>
     )
   }
@@ -214,10 +216,8 @@ export default function CaptureReview() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back">
-          <Link to={isTextImport ? '/new/import' : '/new/voice-memo'}>
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">

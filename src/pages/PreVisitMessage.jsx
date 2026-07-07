@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ArrowLeft, Mic2, Loader2, Copy, Check } from 'lucide-react'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -26,6 +26,7 @@ const APPOINTMENT_TYPES = [
  */
 export default function PreVisitMessage() {
   useDocumentTitle('Pre-visit message')
+  const goBack = useSmartBack('/')
 
   const [patientName, setPatientName] = useState('')
   const [appointmentTypeKey, setAppointmentTypeKey] = useState('new patient')
@@ -75,10 +76,8 @@ export default function PreVisitMessage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back">
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">

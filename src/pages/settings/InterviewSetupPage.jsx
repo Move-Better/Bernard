@@ -12,6 +12,7 @@
 
 import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { Loader2, ArrowLeft, ChevronDown, ChevronUp, Mic, ChevronRight, Sliders } from 'lucide-react'
 import { Section, SaveBar } from '@/components/settings/helpers'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -53,6 +54,7 @@ function tryParseJson(text, fallback) {
 
 export default function InterviewSetupPage() {
   useDocumentTitle('Settings — Interview setup')
+  const goBack = useSmartBack('/settings/workspace/voice')
   const runtimeWs = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
   const { has } = usePermission()
@@ -138,13 +140,14 @@ export default function InterviewSetupPage() {
           <p className="text-2xs text-muted-foreground/80">
             Settings · {interviewerName} · Interview setup
           </p>
-          <Link
-            to="/settings/workspace/voice"
+          <button
+            type="button"
+            onClick={goBack}
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3 w-3" />
             Back: Your voice
-          </Link>
+          </button>
         </div>
         <PageHeader
           className="mt-0.5 mb-0"

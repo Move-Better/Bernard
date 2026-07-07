@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
 import {
@@ -95,6 +96,7 @@ function detectStageTag(raw) {
 export default function OnboardingInterview() {
   useDocumentTitle('Onboarding interview')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/')
   const workspace = useWorkspace()
   const { user } = useUser()
   const { role } = useUserRole()
@@ -664,7 +666,7 @@ export default function OnboardingInterview() {
             <p className="text-sm text-muted-foreground">
               The onboarding interview is only available to workspace admins.
             </p>
-            <Button variant="outline" onClick={() => navigate('/')}>Back to Home</Button>
+            <Button variant="outline" onClick={goBack}>Back</Button>
           </CardContent>
         </Card>
       </div>
