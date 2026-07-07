@@ -649,7 +649,7 @@ export default function VideoEditor() {
   const { status: saveStatus } = useAutosave(
     draftDoc,
     (doc) => updateMediaAsset(assetId, { videoEditDraft: doc }),
-    { debounceMs: 1500, enabled: !!assetId && hydrated },
+    { debounceMs: 1500, enabled: !!assetId && hydrated, resetKey: assetId },
   )
 
   // Undo/redo over the same draft shape the autosave above persists. Disabled

@@ -132,9 +132,19 @@ export default function AnswerReview() {
 
   if (isPending) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <div className="h-6 w-40 animate-pulse rounded bg-muted" />
-        <div className="mt-4 h-40 animate-pulse rounded-xl bg-muted" />
+      <div className="py-6 pb-24">
+        <div className="h-4 w-14 animate-pulse rounded bg-muted" />
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="space-y-2">
+            <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-72 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+          <div className="h-96 animate-pulse rounded-xl bg-muted" />
+          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+        </div>
       </div>
     )
   }

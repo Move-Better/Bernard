@@ -17,6 +17,7 @@ import {
   Rss,
   AlertTriangle,
 } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import CredentialForm from '@/components/CredentialForm'
@@ -206,21 +207,19 @@ export default function Integrations() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center">
-          <span
-            className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5 bg-primary"
-            aria-hidden="true"
-          />
-          Integrations
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Optional. Every channel already works as a clean export — copy and paste wherever you post.
-          Connecting a platform here <strong>upgrades</strong> those channels to one-click publishing
-          straight from the Content Hub. Credentials are stored encrypted (AES-256-GCM) and decrypted
-          only at publish time.
-        </p>
-      </div>
+      <PageHeader
+        icon={Share2}
+        title="Integrations"
+        subtitle={
+          <>
+            Optional. Every channel already works as a clean export — copy and paste wherever you post.
+            Connecting a platform here <strong>upgrades</strong> those channels to one-click publishing
+            straight from the Content Hub. Credentials are stored encrypted (AES-256-GCM) and decrypted
+            only at publish time.
+          </>
+        }
+        className="mb-0"
+      />
 
       {!isAdmin && !roleLoading && (
         <div className="rounded-lg border bg-muted/40 px-4 py-3 flex items-start gap-3">
@@ -411,7 +410,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
       </div>
 
       {/* bundle.social */}
-      <div className={`rounded-lg border bg-card ${bundleActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
+      <div className={`rounded-xl border bg-card ${bundleActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
         <div className="px-5 py-4 flex items-start gap-3">
           <span className="h-9 w-9 shrink-0 rounded-md bg-primary/10 grid place-items-center">
             <Share2 className="h-5 w-5 text-primary" />
@@ -553,7 +552,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
       </div>
 
       {/* Buffer */}
-      <div className={`rounded-lg border bg-card ${bufferActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
+      <div className={`rounded-xl border bg-card ${bufferActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
         <div className="px-5 py-4 flex items-start gap-3">
           <span className="h-9 w-9 shrink-0 rounded-md bg-muted grid place-items-center"><Rss className="h-5 w-5 text-muted-foreground" /></span>
           <div className="flex-1 min-w-0">

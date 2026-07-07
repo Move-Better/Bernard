@@ -56,7 +56,7 @@ function setSnooze(workspaceId) {
   }
 }
 
-export default function OnboardingCard() {
+export default function OnboardingCard({ onVisibilityChange } = {}) {
   const workspace = useWorkspace()
   const { isOrgAdmin } = useUserRole()
   const [interview, setInterview] = useState(null)
@@ -103,6 +103,19 @@ export default function OnboardingCard() {
     return () => { cancelled = true }
   }, [shouldRender, snoozed])
 
+  const status = interview?.status ?? null
+
+  // Home.jsx predicts our visibility synchronously (via the same
+  // shouldRender inputs, minus this async fetch) to sequence its hero
+  // cascade. That prediction can't see the synthesized-but-flag-not-yet-set
+  // race window below, so once we've loaded and know the real answer, tell
+  // Home if we're actually going to render nothing — otherwise Home keeps
+  // deferring to us for a hero that never shows up (audit 2026-07-07 P2).
+  useEffect(() => {
+    if (!onVisibilityChange || !shouldRender || snoozed || !loaded) return
+    onVisibilityChange(status !== 'synthesized')
+  }, [onVisibilityChange, shouldRender, snoozed, loaded, status])
+
   if (!shouldRender) return null
   if (snoozed) return null
   if (!loaded) return null  // Avoid a flash of the "not started" copy
@@ -110,7 +123,6 @@ export default function OnboardingCard() {
 
   const messages = Array.isArray(interview?.messages) ? interview.messages : []
   const turnsIn = messages.filter((m) => m?.role === 'user').length
-  const status = interview?.status ?? null
 
   // Hidden case: interview is fully done. (Workspace flag check above should
   // already hide us; this is belt + suspenders for the synthesized-but-flag-

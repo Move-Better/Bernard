@@ -51,7 +51,9 @@ export default async function handler(req, res) {
   const locIds = [...new Set(rows.map((r) => r.location_id).filter(Boolean))]
   let locLabels = {}
   if (locIds.length) {
-    const lr = await sb(`workspace_locations?id=in.(${locIds.join(',')})&select=id,label,city,region`)
+    const lr = await sb(
+      `workspace_locations?id=in.(${locIds.join(',')})&workspace_id=eq.${ws.id}&select=id,label,city,region`
+    )
     if (lr.ok) {
       const locs = await lr.json().catch(() => [])
       for (const l of locs) locLabels[l.id] = l.label || [l.city, l.region].filter(Boolean).join(', ')
