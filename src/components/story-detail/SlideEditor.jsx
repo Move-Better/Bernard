@@ -1794,9 +1794,16 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
     const key = mediaEntryKey(entry)
     const already = raw.some((m) => mediaEntryKey(m) === key)
-    const nextRaw = already ? raw : [...raw, entry]
+    // Single-slide posts (GBP, LinkedIn, Facebook, X, …) support exactly one
+    // photo — replace media_urls outright instead of appending, or every swap
+    // leaves the previous photo orphaned in the array (no slide references it,
+    // but it's still there). GBP's Local Post API hard-rejects >1 media item
+    // at publish time (400) — 3 accumulated swaps → 3 media_urls → publish
+    // failure. Multi-slide carousels keep the append/reuse behavior.
+    const nextRaw = singleSlide ? [entry] : (already ? raw : [...raw, entry])
+    const noop = singleSlide ? (raw.length === 1 && already) : already
     try {
-      if (!already) {
+      if (!noop) {
         await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw } })
       }
       // Index in the photo-only filtered list (videos excluded) — the same filter
