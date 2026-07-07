@@ -649,16 +649,26 @@ error), with session-only undo/redo (`src/components/editor/UndoRedoButtons.jsx`
 surface rather than hand-rolling another autosave effect:
 
 - **`src/lib/useAutosave.js`** — debounced save of a JSON-serializable snapshot; flushes on unmount so
-  navigating away mid-edit doesn't drop the last change. Returns `{status}`.
+  navigating away mid-edit doesn't drop the last change. Returns `{status}`. Takes `{ debounceMs,
+  enabled, resetKey }`. **Pass `resetKey` (the entity's id) whenever the same hook instance can be
+  reused across different entities without an intervening remount** — e.g. a route like
+  `/slate/clip/:assetId` doesn't remount its page component on a `:assetId`-only navigation, so without
+  `resetKey` the new entity's snapshot looks like an unsaved change relative to the OLD entity's saved
+  baseline and fires a spurious autosave on simple navigation (audit finding, 2026-07-07). Both current
+  callers pass it: `SlideEditor` → `piece.id`, `VideoEditor` → `assetId`.
 - **`src/lib/useUndoHistory.js`** — session-only undo/redo over the same kind of snapshot (in-memory,
   resets on reload — standard editor behavior, not a data-loss risk). Takes an `enabled` option so a
   hydration/restore effect (VideoEditor's server+localStorage draft load) doesn't itself become a
   spurious undo step; flip `enabled` true only once the real baseline has loaded.
 
-VideoEditor kept its existing hand-rolled localStorage+server dual-write autosave (it predates
-`useAutosave` and has an offline-mirror behavior the shared hook doesn't cover) — only `useUndoHistory`
-and the status/undo UI were layered on top of it. TextPostStudio has no persisted draft (state only
-ships when "Use this post" bakes it), so it only got `useUndoHistory`, no autosave.
+VideoEditor originally kept its own hand-rolled localStorage+server dual-write autosave alongside the
+new `useUndoHistory`/status UI (it predated `useAutosave` and had an offline-mirror behavior the shared
+hook didn't cover). As of #1949 (2026-07-07) it migrated fully onto `useAutosave` for the server PATCH
+— the shared hook's unmount-flush was fixing a real bug (edits dropped when navigating away mid-debounce)
+that the hand-rolled version didn't have. The localStorage mirror stays as a separate, simple
+undebounced `useEffect` writing on every `draftDoc` change — `useAutosave` only owns the debounced
+server write. TextPostStudio has no persisted draft (state only ships when "Use this post" bakes it),
+so it only got `useUndoHistory`, no autosave.
 
 **React Compiler forbids reading or writing a ref during render** — both new hooks hit this while
 being written (`Cannot access refs during render` / `Cannot update ref during render` errors at build
