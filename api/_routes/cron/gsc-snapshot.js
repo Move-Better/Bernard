@@ -19,13 +19,14 @@ export const config = { runtime: 'nodejs' }
 // Auth: Bearer CRON_SECRET (same pattern as refresh-engagement.js / weekly-plan.js).
 
 import { decryptSecret }      from '../../_lib/credentialCrypto.js'
-import { fetchSearchQueries } from '../../_lib/searchConsole.js'
+import { fetchSearchQueries, fetchSearchQueriesByPage } from '../../_lib/searchConsole.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const WINDOW_DAYS  = 28
-const ROW_LIMIT    = 200   // cap snapshot breadth per workspace per run
+const ROW_LIMIT    = 200   // cap query-level snapshot breadth per workspace per run
+const PAGE_ROW_LIMIT = 500 // (query,page) rows carry more cardinality — allow more
 
 // eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; each query is scoped by workspace_id from the workspace list
 function sb(path, init = {}) {
@@ -107,7 +108,48 @@ async function processWorkspace(ws, summary) {
     summary.workspaces.push({ id: ws.id, slug: ws.slug, error: `insert_${ins.status}` })
     return
   }
-  summary.workspaces.push({ id: ws.id, slug: ws.slug, rows: rows.length })
+
+  // Per-URL rows (page set) for cannibalization — best-effort: a failure here
+  // must never lose the query-level snapshot above (which decay/post-publish
+  // depend on). Query-level rows keep page = NULL; these carry the ranking URL.
+  let pageRowCount = 0
+  try {
+    const pageQueries = await fetchSearchQueriesByPage({
+      credential,
+      siteUrl:  ws.gsc_site_url,
+      days:     WINDOW_DAYS,
+      rowLimit: PAGE_ROW_LIMIT,
+    })
+    const pageRows = (pageQueries || [])
+      .filter((q) => q.query && q.page)
+      .map((q) => ({
+        workspace_id: ws.id,
+        query:        q.query,
+        page:         q.page,
+        clicks:       Math.round(q.clicks || 0),
+        impressions:  Math.round(q.impressions || 0),
+        ctr:          q.ctr || 0,
+        position:     q.position || 0,
+        window_days:  WINDOW_DAYS,
+      }))
+    if (pageRows.length > 0) {
+      const pins = await sb('gsc_query_snapshots', {
+        method:  'POST',
+        headers: { Prefer: 'return=minimal' },
+        body:    JSON.stringify(pageRows),
+      })
+      if (pins.ok) {
+        pageRowCount = pageRows.length
+      } else {
+        const text = await pins.text().catch(() => '')
+        console.error('[cron/gsc-snapshot] page insert failed', ws.slug, pins.status, text.slice(0, 200))
+      }
+    }
+  } catch (e) {
+    console.error('[cron/gsc-snapshot] page fetch failed', ws.slug, e?.message)
+  }
+
+  summary.workspaces.push({ id: ws.id, slug: ws.slug, rows: rows.length, pageRows: pageRowCount })
 }
 
 async function handler(req, res) {

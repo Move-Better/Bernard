@@ -5,6 +5,7 @@ import {
   TrendingUp, Target, Sparkles, TrendingDown, GitBranch, Mic, PenLine, X,
   FilePlus2, FilePen, Wrench, Search, Lock, Plug, RefreshCw,
   SearchCheck, CheckCircle2, Repeat, CalendarClock,
+  ArrowRight, ArrowUp, ArrowDown, Hourglass, FileCheck2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -119,6 +120,124 @@ function LockedCard({ tag, icon: Icon, label, why }) {
         <Icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> {label}
       </div>
       <p className="text-xs text-muted-foreground mt-1.5">{why}</p>
+    </div>
+  )
+}
+
+// Decay ("Slipping in rank") — a query that lost ground week-over-week. Same
+// action seam as OpportunityCard, plus a "Refresh content" primary (drafting for
+// the query is the practical way to defend a slipping page).
+function DecayCard({ item, onRefresh, onStartInterview, onDismiss, dismissing }) {
+  return (
+    <div
+      className="bg-card border border-destructive/30 rounded-xl p-4 hover:border-destructive/50 transition-colors"
+      style={{ background: 'linear-gradient(0deg, hsl(var(--destructive) / 0.04), transparent)' }}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground">Slipping</span>
+            <span className="text-2xs text-muted-foreground">{item.intent}</span>
+            <span className="text-2xs font-semibold text-destructive inline-flex items-center gap-0.5">
+              <ArrowDown className="w-3 h-3" aria-hidden="true" /> {item.drop} pos / wk
+            </span>
+          </div>
+          <div className="font-medium text-sm leading-snug flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 text-destructive shrink-0" aria-hidden="true" />
+            <span className="truncate">{item.query}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{item.why}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-semibold tabular-nums inline-flex items-center gap-1">
+            #{item.prevPosition} <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> <span className="text-destructive">#{item.position}</span>
+          </div>
+          <div className="text-2xs text-muted-foreground mt-0.5">{item.impressions.toLocaleString()} impr · 28d</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+        <Button size="sm" onClick={() => onRefresh(item)}>
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh content
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onStartInterview(item)}>
+          <Mic className="w-3.5 h-3.5" /> Start interview
+        </Button>
+        <Button
+          size="sm" variant="ghost"
+          onClick={() => onDismiss(item)}
+          disabled={dismissing}
+          aria-busy={dismissing}
+          title="Dismiss this slipping query"
+          aria-label="Dismiss this slipping query"
+          className="ml-auto text-muted-foreground"
+        >
+          <X className="w-3.5 h-3.5" /> {dismissing ? 'Dismissing…' : 'Dismiss'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// Post-publish "Did it work?" — ranking movement for a published website piece.
+function PostPublishCard({ item }) {
+  const improved = item.delta > 0
+  const flat     = item.delta === 0
+  const toneCls  = improved ? 'text-success' : flat ? 'text-muted-foreground' : 'text-destructive'
+  const dateLabel = new Date(item.publishedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-accent text-accent-foreground">Website · blog</span>
+            <span className="text-2xs text-muted-foreground">published {dateLabel}</span>
+          </div>
+          <div className="font-medium text-sm leading-snug flex items-center gap-2">
+            <FileCheck2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <span className="truncate">&ldquo;{item.topic}&rdquo; <span className="text-muted-foreground font-normal">→ {item.query}</span></span>
+          </div>
+          <div className="text-2xs mt-2 inline-flex items-center gap-1 text-muted-foreground">
+            {item.confidence === 'exact'
+              ? <><CheckCircle2 className="w-3.5 h-3.5 text-success" aria-hidden="true" /> Exact match</>
+              : <><Search className="w-3.5 h-3.5" aria-hidden="true" /> Likely match</>}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-semibold tabular-nums inline-flex items-center gap-1">
+            #{item.positionAtPublish} <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> <span className={toneCls}>#{item.positionNow}</span>
+          </div>
+          <div className={`text-2xs font-semibold mt-0.5 inline-flex items-center gap-0.5 justify-end ${toneCls}`}>
+            {improved ? <><ArrowUp className="w-3 h-3" aria-hidden="true" /> up {item.delta} since publish</>
+              : flat ? <>no change yet</>
+              : <><ArrowDown className="w-3 h-3" aria-hidden="true" /> down {Math.abs(item.delta)} since publish</>}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Cannibalization — a query where 2+ of the workspace's own pages both rank.
+function CannibalCard({ item }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+        <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">Cannibalization</span>
+        <span className="text-2xs text-muted-foreground">{item.intent}</span>
+      </div>
+      <div className="font-medium text-sm leading-snug flex items-center gap-2">
+        <GitBranch className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+        <span className="truncate">{item.query}</span>
+      </div>
+      <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{item.why}</p>
+      <div className="mt-2.5 space-y-1">
+        {item.pages.map((p) => (
+          <div key={p.page} className="flex items-center justify-between gap-3 text-2xs bg-muted/40 rounded-lg px-2.5 py-1.5">
+            <span className="truncate text-muted-foreground">{p.page}</span>
+            <span className="shrink-0 tabular-nums font-medium">#{p.position} · {p.impressions.toLocaleString()} impr</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -399,11 +518,19 @@ export default function SeoOpportunities() {
   const opps = data?.opportunities || []
   const filteredOpps = filter === 'striking' ? opps.filter((o) => o.type === 'striking_distance')
     : filter === 'demand' ? opps.filter((o) => o.type === 'demand_no_content')
-    : (filter === 'decaying' || filter === 'cannibal') ? []
     : opps
-  const showLocked = filter === 'all' || filter === 'decaying' || filter === 'cannibal'
-  const summary = data?.summary || { open: 0, strikingDistance: 0, demandNoContent: 0 }
+  const decay       = data?.decay || []
+  const postPublish = data?.postPublish || []
+  const cannibal    = data?.cannibalization || []
+  const locked      = data?.locked || { decay: {}, cannibalization: {} }
+  const summary = data?.summary || { open: 0, strikingDistance: 0, demandNoContent: 0, decaying: 0 }
   const site = data?.websiteSuggestions || []
+
+  // Which sections a given filter reveals.
+  const showWrite    = filter === 'all' || filter === 'striking' || filter === 'demand'
+  const showDecay    = filter === 'all' || filter === 'decaying'
+  const showResults  = filter === 'all'   // "Did it work?" + website updates only in the full view
+  const showCannibal = filter === 'all' || filter === 'cannibal'
 
   return (
     <div>
@@ -465,7 +592,9 @@ export default function SeoOpportunities() {
             <SummaryCard value={summary.open} label="Open opportunities" />
             <SummaryCard value={summary.strikingDistance} label="Striking distance (#8–20)" tone="text-action" />
             <SummaryCard value={summary.demandNoContent} label="Demand, no content" />
-            <SummaryCard value={<Lock className="w-5 h-5 inline" />} label="Decay — needs history" locked />
+            {locked.decay?.ready
+              ? <SummaryCard value={summary.decaying ?? 0} label="Slipping in rank" tone="text-destructive" />
+              : <SummaryCard value={<Lock className="w-5 h-5 inline" />} label="Decay — needs history" locked />}
           </div>
 
           {/* Filters */}
@@ -485,70 +614,144 @@ export default function SeoOpportunities() {
           </div>
 
           {/* Write about this */}
-          <div className="flex items-center gap-2 mb-3">
-            <PenLine className="w-4 h-4 text-primary" aria-hidden="true" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Write about this</h2>
-            <span className="text-2xs text-muted-foreground">— search demand → content Bernard makes with you</span>
-          </div>
+          {showWrite && (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <PenLine className="w-4 h-4 text-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Write about this</h2>
+                <span className="text-2xs text-muted-foreground">— search demand → content Bernard makes with you</span>
+              </div>
+              <div className="space-y-3 mb-8">
+                {filteredOpps.map((opp) => (
+                  <OpportunityCard
+                    key={opp.query}
+                    opp={opp}
+                    onStartInterview={onStartInterview}
+                    onDraft={onDraft}
+                    onDismiss={onDismiss}
+                    dismissing={dismiss.isPending && dismiss.variables?.query === opp.query}
+                  />
+                ))}
+                {filteredOpps.length === 0 && (
+                  <div className="text-sm text-muted-foreground py-8 text-center bg-card border border-border rounded-xl">
+                    No open opportunities in this view right now. New ones surface as your Search Console data updates.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
-          <div className="space-y-3">
-            {(filter === 'decaying' || filter === 'cannibal') && (
-              <div className="bg-muted/40 border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground flex items-start gap-2.5">
-                <Lock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
-                <span>
-                  <span className="font-medium text-foreground">
-                    {filter === 'decaying' ? 'Decaying pages' : 'Cannibalization'}
-                  </span>{' '}
-                  isn&apos;t ready yet — it needs about 2 weeks of Search Console history to compare
-                  rankings week-over-week. Snapshots run Mondays; check back once a couple have accrued.
-                </span>
+          {/* Slipping in rank — decay (live once ~2 snapshot weeks accrue) */}
+          {showDecay && (
+            <>
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingDown className="w-4 h-4 text-destructive" aria-hidden="true" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Slipping in rank — act fast</h2>
+                <span className="text-2xs text-muted-foreground">— rankings you were close to winning, now falling</span>
               </div>
-            )}
-            {filteredOpps.map((opp) => (
-              <OpportunityCard
-                key={opp.query}
-                opp={opp}
-                onStartInterview={onStartInterview}
-                onDraft={onDraft}
-                onDismiss={onDismiss}
-                dismissing={dismiss.isPending && dismiss.variables?.query === opp.query}
-              />
-            ))}
-            {filteredOpps.length === 0 && (filter === 'all' || filter === 'striking' || filter === 'demand') && (
-              <div className="text-sm text-muted-foreground py-8 text-center bg-card border border-border rounded-xl">
-                No open opportunities in this view right now. New ones surface as your Search Console data updates.
+              <p className="text-xs text-muted-foreground mb-3">
+                Compared this week&apos;s Search Console position to last week&apos;s. These were in reach and dropped 3+ spots — refresh or expand the page before it leaves page 1.
+              </p>
+              <div className="space-y-3 mb-8">
+                {!locked.decay?.ready ? (
+                  <div className="bg-muted/40 border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground flex items-start gap-2.5">
+                    <Lock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>
+                      <span className="font-medium text-foreground">Decay</span> needs about 2 weeks of Search Console history to compare rankings week-over-week. Snapshots run Mondays; check back once a couple have accrued.
+                    </span>
+                  </div>
+                ) : decay.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-8 text-center bg-card border border-border rounded-xl">
+                    Nothing slipping this week — your rankings held or improved. Bernard checks every Monday.
+                  </div>
+                ) : (
+                  decay.map((item) => (
+                    <DecayCard
+                      key={item.query}
+                      item={item}
+                      onRefresh={onDraft}
+                      onStartInterview={onStartInterview}
+                      onDismiss={onDismiss}
+                      dismissing={dismiss.isPending && dismiss.variables?.query === item.query}
+                    />
+                  ))
+                )}
               </div>
-            )}
-            {showLocked && (
-              <>
-                <LockedCard
-                  tag="Decaying" icon={TrendingDown} label="Pages slipping in rank"
-                  why="Compares each query's position week-over-week to catch rankings that are falling before they leave page 1."
-                />
-                <LockedCard
-                  tag="Cannibalization" icon={GitBranch} label="Two pages competing for one query"
-                  why="Flags when multiple of your pages rank for the same query and split the clicks — consolidate to lift both."
-                />
-              </>
-            )}
-          </div>
+            </>
+          )}
+
+          {/* Did it work? — post-publish ranking delta (website pieces only) */}
+          {showResults && (
+            <>
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-4 h-4 text-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Did it work?</h2>
+                <span className="text-2xs text-muted-foreground">— ranking movement after you publish for a query</span>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                When you publish a <span className="font-medium text-foreground">website / blog</span> piece for a query, Bernard watches its Search Console position before vs. after.
+              </p>
+              <div className="space-y-3 mb-8">
+                {postPublish.length > 0 ? (
+                  postPublish.map((item) => <PostPublishCard key={`${item.query}-${item.publishedAt}`} item={item} />)
+                ) : (
+                  <div className="bg-card border border-border rounded-xl p-6 text-center">
+                    <Hourglass className="w-6 h-6 text-muted-foreground mx-auto mb-2" aria-hidden="true" />
+                    <div className="text-sm font-medium">No measured pieces yet</div>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-xl mx-auto leading-relaxed">
+                      As you publish website/blog content, each piece&apos;s target query shows up here with its ranking movement — once there&apos;s a snapshot from before and after it went live. Social posts aren&apos;t measured; they don&apos;t affect Google rankings.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Cannibalization — locked until per-URL history accrues */}
+          {showCannibal && (
+            <>
+              <div className="flex items-center gap-2 mb-1">
+                <GitBranch className="w-4 h-4 text-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cannibalization</h2>
+                <span className="text-2xs text-muted-foreground">— two of your pages competing for one query</span>
+              </div>
+              <div className="space-y-3 mb-8 mt-2">
+                {!locked.cannibalization?.ready ? (
+                  <LockedCard
+                    tag="Cannibalization" icon={GitBranch} label="Two of your pages competing for one query"
+                    why="Flags when multiple of your pages rank for the same query and split the clicks — consolidate to lift both. Needs per-URL Search Console history, which Bernard is now collecting; it can't be backfilled."
+                  />
+                ) : cannibal.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-8 text-center bg-card border border-border rounded-xl">
+                    No cannibalization detected — no query has two of your pages splitting its clicks.
+                  </div>
+                ) : (
+                  cannibal.map((item) => <CannibalCard key={item.query} item={item} />)
+                )}
+              </div>
+            </>
+          )}
 
           {/* Recommended website updates (advisory) */}
-          <div className="flex items-center gap-2 mt-8 mb-1">
-            <Wrench className="w-4 h-4 text-primary" aria-hidden="true" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recommended website updates</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Changes to the site itself — not content. <span className="font-medium text-foreground">Bernard spots them; you or your web person make them.</span> Suggestions only — Bernard never edits your site.
-          </p>
-          <div className="space-y-2.5">
-            {site.map((s, i) => <SiteCard key={`${s.source}-${i}`} s={s} />)}
-            {site.length === 0 && (
-              <div className="text-sm text-muted-foreground py-6 text-center bg-card border border-border rounded-xl">
-                No site suggestions right now — the on-page checks came back clean.
+          {showResults && (
+            <>
+              <div className="flex items-center gap-2 mt-2 mb-1">
+                <Wrench className="w-4 h-4 text-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recommended website updates</h2>
               </div>
-            )}
-          </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Changes to the site itself — not content. <span className="font-medium text-foreground">Bernard spots them; you or your web person make them.</span> Suggestions only — Bernard never edits your site.
+              </p>
+              <div className="space-y-2.5">
+                {site.map((s, i) => <SiteCard key={`${s.source}-${i}`} s={s} />)}
+                {site.length === 0 && (
+                  <div className="text-sm text-muted-foreground py-6 text-center bg-card border border-border rounded-xl">
+                    No site suggestions right now — the on-page checks came back clean.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

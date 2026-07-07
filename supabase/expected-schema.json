@@ -45,10 +45,51 @@
     "status",
     "workspace_id"
   ],
+  "answers": [
+    "answer_lead",
+    "body",
+    "chat_prompts",
+    "condition",
+    "created_at",
+    "display_order",
+    "grounding_source",
+    "id",
+    "movebetterco_slug",
+    "published_at",
+    "question",
+    "review_notes",
+    "seo_title",
+    "slug",
+    "source",
+    "staff_id",
+    "status",
+    "summary",
+    "updated_at",
+    "workspace_id"
+  ],
   "app_config": [
     "key",
     "updated_at",
     "value"
+  ],
+  "apple_insights": [
+    "call",
+    "created_at",
+    "directions",
+    "id",
+    "location_id",
+    "location_label",
+    "period_month",
+    "photos",
+    "place_card_views",
+    "raw_extract",
+    "source",
+    "taps_from_search",
+    "taps_yoy_pct",
+    "updated_at",
+    "views_yoy_pct",
+    "website",
+    "workspace_id"
   ],
   "book_excluded_sources": [
     "excluded_at",
@@ -325,6 +366,7 @@
     "ctr",
     "id",
     "impressions",
+    "page",
     "position",
     "query",
     "window_days",
@@ -518,6 +560,7 @@
     "workspace_id"
   ],
   "staff": [
+    "answer_review_enabled",
     "blog_review_enabled",
     "campaign_settings",
     "capability_overrides",
