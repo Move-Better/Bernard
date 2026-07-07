@@ -279,7 +279,9 @@ async function handler(req, res) {
   const mode = useQueue ? 'shareNext' : (scheduledAt ? 'customScheduled' : 'shareNow')
   const includeDueAt = mode === 'customScheduled'
   const preparedMedia = await prepareMediaForBuffer(mediaUrls)
-  const assets = buildAssets(preparedMedia)
+  // Google's Local Post API accepts at most one media item — carousels/video
+  // are rejected outright. Mirrors the same cap in the bundle.social GBP path below.
+  const assets = buildAssets(platform === 'gbp' ? preparedMedia.slice(0, 1) : preparedMedia)
   const metadata = buildMetadata(platform, preparedMedia, content)
 
   // 3. Create one post per channel (fan-out for GBP multi-location).
@@ -394,11 +396,15 @@ async function handleBundlePublish(req, res, workspace) {
           error: 'No Google Business location is connected to bundle.social. Open Settings → Integrations and connect each location’s Google Business listing.',
         })
       }
+      // Google's Local Post API accepts at most one media item — carousels and
+      // video are rejected outright (400). Cap here as a last-resort guard even
+      // though the editor should already prevent multi-photo GBP posts.
+      const gbpMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.slice(0, 1) : mediaUrls
       const posts = []
       for (const loc of targets) {
         const text = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
         const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
-        const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls, scheduledAt })
+        const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
         posts.push(r)
       }
       const first = posts[0]
@@ -410,7 +416,7 @@ async function handleBundlePublish(req, res, workspace) {
         profileCount: posts.length,
       })
     } catch (e) {
-      console.error('[publish/bundle gbp] failed:', e?.stack || e?.message)
+      console.error('[publish/bundle gbp] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
       return res.status(502).json({ error: 'bundle_gbp_post_failed' })
     }
   }
@@ -425,7 +431,7 @@ async function handleBundlePublish(req, res, workspace) {
       profileCount: result.profileCount,
     })
   } catch (e) {
-    console.error('[publish/bundle] failed:', e?.stack || e?.message)
+    console.error('[publish/bundle] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
     return res.status(502).json({ error: 'bundle_post_failed' })
   }
 }
