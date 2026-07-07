@@ -283,10 +283,12 @@ export default function Home() {
       {/* Failed-publish alert — a post bundle.social rejected. Rendered above the
           amber attention strip because a dead post is more urgent than a to-do and
           must not get buried in the comma list. Links straight to the failed
-          piece (single) so the fix is one click away. */}
+          piece (single) so the fix is one click away; multiple failures land on
+          Stories pre-filtered to status=failed so it isn't a needle-in-a-haystack
+          hunt through the full list. */}
       {failedPieces.length > 0 && (
         <Link
-          to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories'}
+          to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories?status=failed'}
           className="flex items-center gap-3 rounded-xl border border-destructive/28 bg-destructive/7 px-4 py-3 hover:brightness-[0.98] transition"
         >
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">

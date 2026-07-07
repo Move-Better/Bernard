@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Target } from 'lucide-react'
+import { Target, AlertTriangle } from 'lucide-react'
 import { formatRelativeDate } from '@/lib/utils'
 import { queryKeys, fetchStory } from '@/lib/queries'
 import { getStageToken } from '@/lib/stageTokens'
@@ -63,6 +63,9 @@ export default function StoryCard({ story }) {
   const platforms = [...new Set((pieces || []).map((p) => p.platform).filter(Boolean))]
   // Blog piece for voice fidelity badge — only show when audit data is present.
   const blogPiece = (pieces || []).find((p) => p.platform === 'blog' && p.voice_audit)
+  // Failed-publish pieces — surfaced as a top-row badge so a card matched by
+  // the status=failed filter shows *why* without opening the story.
+  const failedPieces = (pieces || []).filter((p) => p.status === 'failed')
 
   const { badge: badgeClass, label: stageLabel } = getStageToken(story_stage || '')
 
@@ -85,6 +88,16 @@ export default function StoryCard({ story }) {
           {stageLabel}
         </span>
       </div>
+
+      {/* Failed-publish badge — only when a piece in this story actually failed. */}
+      {failedPieces.length > 0 && (
+        <div className="mb-3">
+          <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30">
+            <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+            {failedPieces.length === 1 ? 'Failed to publish' : `${failedPieces.length} failed to publish`}
+          </span>
+        </div>
+      )}
 
       {/* Staff — secondary context */}
       <div className="mb-3">
