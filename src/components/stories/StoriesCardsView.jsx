@@ -6,7 +6,7 @@ import EmptyState from '@/components/EmptyState'
 
 function SkeletonCard() {
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-4 animate-pulse">
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-4 animate-pulse">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="h-4 bg-muted rounded w-1/2" />
         <div className="h-5 bg-muted rounded-full w-16 shrink-0" />

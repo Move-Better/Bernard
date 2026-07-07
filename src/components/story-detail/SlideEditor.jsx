@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
 import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -1612,7 +1612,7 @@ const ASPECT_STAGE = {
 
 export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode, singleSlide = false, badgeIcon = null, forcedAspect = null }) {
   const workspace = useWorkspace()
-  const navigate = useNavigate()
+  const smartBack = useSmartBack('/publish')
   const brandStyle = workspace?.brand_style || {}
   const pieceMediaUrls = piece?.media_urls
   const mediaUrls = (pieceMediaUrls || []).filter((m) => m && m.type !== 'video' && m.url)
@@ -1921,7 +1921,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     }
   }
 
-  const { status: saveStatus } = useAutosave(draftState, saveDraft, { debounceMs: 1500 })
+  const { status: saveStatus } = useAutosave(draftState, saveDraft, { debounceMs: 1500, resetKey: piece?.id })
   const { undo, redo, canUndo, canRedo } = useUndoHistory(draftState, (snap) => {
     setSlides(snap.slides)
     setThemeId(snap.themeId)
@@ -1938,7 +1938,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
   function goBack() {
     if (onBack) onBack()
-    else navigate(-1)
+    else smartBack()
   }
 
   return (

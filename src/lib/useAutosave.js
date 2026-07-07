@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-export function useAutosave(snapshot, save, { debounceMs = 1200, enabled = true } = {}) {
+export function useAutosave(snapshot, save, { debounceMs = 1200, enabled = true, resetKey } = {}) {
   const json = JSON.stringify(snapshot)
   const savedJsonRef = useRef(json)
   const inFlightRef = useRef(false)
@@ -22,8 +22,28 @@ export function useAutosave(snapshot, save, { debounceMs = 1200, enabled = true 
   const saveRef = useRef(save)
   const runSaveRef = useRef(null)
   const jsonRef = useRef(json)
+  const resetKeyRef = useRef(resetKey)
   const [status, setStatus] = useState('idle')
   const [hasSavedOnce, setHasSavedOnce] = useState(false)
+
+  // Callers that reuse one hook instance across different entities (e.g. a
+  // page component that doesn't remount per clip/piece id) must pass a
+  // `resetKey` (the entity id). Without this, switching entities would make
+  // the new entity's snapshot look like an unsaved change relative to the
+  // OLD entity's baseline, firing a spurious autosave on simple navigation.
+  // Runs before the effects below so the new baseline is in place before
+  // they compare against it.
+  useEffect(() => {
+    if (resetKeyRef.current === resetKey) return
+    resetKeyRef.current = resetKey
+    if (timerRef.current) clearTimeout(timerRef.current)
+    savedJsonRef.current = json
+    jsonRef.current = json
+    queuedRef.current = false
+    setStatus('idle')
+    setHasSavedOnce(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey])
 
   // Refs mirroring render-time values must be written in an effect, not during
   // render (React Compiler forbids mutating refs while rendering).
@@ -46,20 +66,19 @@ export function useAutosave(snapshot, save, { debounceMs = 1200, enabled = true 
   }, [])
 
   useEffect(() => {
-    if (!enabled) return
-    if (json === savedJsonRef.current) return
-
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(runSave, debounceMs)
-    runSaveRef.current = runSave
-    return () => clearTimeout(timerRef.current)
-
+    // runSave is (re)defined and runSaveRef kept live on EVERY run of this
+    // effect, including when `enabled` is false — otherwise toggling enabled
+    // off mid-edit pins runSaveRef to a stale pre-disable closure, and the
+    // unmount-flush effect above fires it with a stale `enabled`, plus a
+    // `toSave` closed over an old `json` instead of the true latest value
+    // (which is why `toSave` reads from `jsonRef.current`, not `json`).
     async function runSave() {
       if (inFlightRef.current) {
         queuedRef.current = true
         return
       }
-      const toSave = json
+      if (!enabled) return
+      const toSave = jsonRef.current
       inFlightRef.current = true
       setStatus('saving')
       try {
@@ -78,6 +97,14 @@ export function useAutosave(snapshot, save, { debounceMs = 1200, enabled = true 
         }
       }
     }
+    runSaveRef.current = runSave
+
+    if (!enabled) return
+    if (json === savedJsonRef.current) return
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(runSave, debounceMs)
+    return () => clearTimeout(timerRef.current)
   }, [json, debounceMs, enabled])
 
   return { status: hasSavedOnce && status === 'idle' ? 'saved' : status }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
@@ -242,11 +242,19 @@ export default function Home() {
   //     fetch, so this can be computed synchronously here)
   //   resume     — an in-progress interview is pickup-able
   //   call       — realtime-voice workspaces default to the weekly-call hero
+  // OnboardingCard tells us if it's actually going to render nothing despite
+  // the sync prediction below saying "pending" — the synthesized-but-flag-
+  // not-yet-set race window (see OnboardingCard.jsx). Defaults to true so we
+  // don't flash resume/call before the card's own fetch has resolved.
+  const [onboardingCardWouldRender, setOnboardingCardWouldRender] = useState(true)
+  const handleOnboardingVisibility = useCallback((visible) => setOnboardingCardWouldRender(visible), [])
+
   const onboardingPending =
     !!runtimeWorkspace?.id &&
     isOrgAdmin &&
     !runtimeWorkspace.onboarding_interview_completed_at &&
-    !isOnboardingSnoozed(runtimeWorkspace.id)
+    !isOnboardingSnoozed(runtimeWorkspace.id) &&
+    onboardingCardWouldRender
   const heroState = onboardingPending
     ? 'onboarding'
     : resumeInterviews.length > 0
@@ -339,7 +347,7 @@ export default function Home() {
       <PostsLiveCard stories={stories} userId={user?.id} />
 
       {/* Finish onboarding if needed — self-gated, renders nothing for the 99% case. */}
-      <OnboardingCard />
+      <OnboardingCard onVisibilityChange={handleOnboardingVisibility} />
 
       {/* Resume in-progress interview — the winning hero when heroState is
           'resume'. Otherwise stays hidden (WeeklyCallHero already lost the
