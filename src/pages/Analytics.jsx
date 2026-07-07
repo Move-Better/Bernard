@@ -1,13 +1,16 @@
+import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Sparkles, MessageSquareText, TrendingUp, CalendarClock, Activity,
   BarChart3, Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
   Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink, MapPin,
+  ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
   useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
+  useApplePerformance,
 } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -446,6 +449,156 @@ function GbpPerformanceRead({ data }) {
   )
 }
 
+// ── Apple Business Insights ─────────────────────────────────────────────────
+// Numbers come only from monthly recap PDFs the tenant uploads (one per
+// location). Per-location view — Apple reports per location, so no cross-
+// location summing. The trend is built from actual uploaded months only.
+function fmtMonthShort(iso) {
+  if (!iso) return ''
+  const [y, m] = String(iso).split('-').map(Number)
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString(undefined, { month: 'short' })
+}
+function fmtMonthLong(iso) {
+  if (!iso) return ''
+  const [y, m] = String(iso).split('-').map(Number)
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
+}
+
+function AppleMark({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M16.365 1.43c0 1.14-.42 2.2-1.11 3-.76.9-2 .16-2.06.14-.06-.02-.02-1.12.66-2.02.7-.92 1.9-1.58 2.5-1.62.02.16.01.33.01.5zM19.9 17.02c-.35.82-.53 1.18-.99 1.9-.64 1.01-1.55 2.27-2.68 2.28-1 .01-1.26-.65-2.62-.64-1.36.01-1.64.66-2.64.65-1.13-.01-1.99-1.14-2.63-2.15-1.79-2.82-1.98-6.13-.87-7.89.78-1.24 2.02-1.97 3.18-1.97 1.18 0 1.92.66 2.9.66.95 0 1.53-.66 2.9-.66 1.03 0 2.13.56 2.91 1.53-2.56 1.4-2.14 5.05.31 6.1z" />
+    </svg>
+  )
+}
+
+function AppleYoY({ pct }) {
+  if (pct == null) return null
+  const up = Number(pct) >= 0
+  const Icon = up ? ArrowUp : ArrowDown
+  return (
+    <span className={`text-sm font-semibold flex items-center gap-0.5 ${up ? 'text-success' : 'text-destructive'}`}>
+      <Icon className="h-3 w-3" />{Math.abs(Number(pct))}% YoY
+    </span>
+  )
+}
+
+function AppleTile({ label, value, yoy }) {
+  return (
+    <div className="rounded-xl border border-border bg-accent/40 p-4">
+      <p className="text-xs text-muted-foreground font-medium">{label}</p>
+      <div className="flex items-baseline gap-2 mt-1">
+        <span className="text-3xl font-bold">{value == null ? '—' : Number(value).toLocaleString()}</span>
+        <AppleYoY pct={yoy} />
+      </div>
+    </div>
+  )
+}
+
+function AppleStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-border p-3 text-center">
+      <div className="text-2xl font-bold">{value == null ? '—' : Number(value).toLocaleString()}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+    </div>
+  )
+}
+
+function AppleInsightsRead({ data }) {
+  const rows = data?.rows || []
+  const locs = []
+  const seen = new Set()
+  for (const r of rows) {
+    const key = r.locationId || '__none__'
+    if (!seen.has(key)) { seen.add(key); locs.push({ key, name: r.locationName }) }
+  }
+  const [selKey, setSelKey] = useState(locs[0]?.key)
+
+  if (!data?.connected || rows.length === 0) {
+    return (
+      <PendingRead icon={MapPin} badge="Unlocks when you upload your first Apple recap">
+        <span className="font-semibold text-foreground">Coming:</span>{' '}
+        place-card views, search taps, and interactions from Apple Maps — upload the monthly recap in{' '}
+        <Link to="/settings/integrations" className="underline">Settings → Integrations</Link>.
+      </PendingRead>
+    )
+  }
+
+  const active = locs.find((l) => l.key === selKey) || locs[0]
+  const locRows = rows.filter((r) => (r.locationId || '__none__') === active.key)
+  const latest = locRows[0]
+  const trend = [...locRows].reverse().slice(-6) // ascending, last 6 uploaded months
+  const maxV = Math.max(1, ...trend.map((t) => Number(t.metrics?.placeCardViews || 0)))
+  const multiLoc = locs.length > 1
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <AppleMark className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="font-semibold leading-tight">Apple Business Insights</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {(active.name || latest?.locationName) ? `${active.name || latest.locationName} · ` : ''}from Apple Maps
+            </p>
+          </div>
+        </div>
+        <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium shrink-0">
+          {fmtMonthLong(latest?.month)}
+        </span>
+      </div>
+
+      {multiLoc && (
+        <div className="inline-flex p-1 rounded-lg bg-secondary mt-3">
+          {locs.map((l) => (
+            <button
+              key={l.key}
+              onClick={() => setSelKey(l.key)}
+              className={`px-3 py-1 rounded-md text-xs font-medium ${l.key === active.key ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+            >
+              {l.name || 'Location'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 mt-4">
+        <AppleTile label="Place card views" value={latest?.metrics?.placeCardViews} yoy={latest?.yoy?.viewsPct} />
+        <AppleTile label="Taps from search" value={latest?.metrics?.tapsFromSearch} yoy={latest?.yoy?.tapsPct} />
+      </div>
+
+      <p className="text-xs font-semibold text-muted-foreground mt-5 mb-2 uppercase tracking-wide">Place card interactions</p>
+      <div className="grid grid-cols-4 gap-3">
+        <AppleStat label="Directions" value={latest?.metrics?.directions} />
+        <AppleStat label="Photos" value={latest?.metrics?.photos} />
+        <AppleStat label="Website" value={latest?.metrics?.website} />
+        <AppleStat label="Calls" value={latest?.metrics?.call} />
+      </div>
+
+      {trend.length > 1 ? (
+        <>
+          <p className="text-xs font-semibold text-muted-foreground mt-6 mb-2 uppercase tracking-wide">Place card views · month over month</p>
+          <div className="flex items-end gap-3 h-28 px-1">
+            {trend.map((t, i) => {
+              const v = Number(t.metrics?.placeCardViews || 0)
+              const h = Math.round((v / maxV) * 100)
+              const live = i === trend.length - 1
+              return (
+                <div key={t.month} className="flex-1 flex flex-col items-center gap-1">
+                  <div className={`w-full rounded-t-md ${live ? 'bg-primary' : 'bg-primary/20'}`} style={{ height: `${Math.max(h, 4)}%` }} />
+                  <span className={`text-2xs ${live ? 'font-semibold' : 'text-muted-foreground'}`}>{fmtMonthShort(t.month)}</span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground mt-4">Upload next month&rsquo;s recap to start a month-over-month trend.</p>
+      )}
+    </div>
+  )
+}
+
 export default function Analytics() {
   useDocumentTitle('Insights')
   const ws = useWorkspace()
@@ -458,6 +611,7 @@ export default function Analytics() {
   const { data: websiteGA4 }    = useWebsiteGA4()
   const { data: searchData }    = useSearchQueries()
   const { data: gbpData }       = useGbpPerformance()
+  const { data: appleData }     = useApplePerformance()
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
@@ -607,6 +761,13 @@ export default function Analytics() {
         <h2 className="font-semibold">Google Business Profile</h2>
       </div>
       <GbpPerformanceRead data={gbpData} />
+
+      {/* SECTION 4 — Apple Business Insights (uploaded monthly recaps) */}
+      <div className="flex items-center gap-2 mt-8 mb-3">
+        <AppleMark className="h-4 w-4 text-primary" />
+        <h2 className="font-semibold">Apple Business Insights</h2>
+      </div>
+      <AppleInsightsRead data={appleData} />
 
       {/* SECTION 5 — tune up the website */}
       <div className="flex items-center gap-2 mt-8 mb-1">

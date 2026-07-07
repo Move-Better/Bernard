@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apple Business Insights — mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%; --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --border:214 32% 91%; --success:152 76% 40%; --action:32 95% 44%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;}
+  .tok-primary{color:hsl(var(--primary));} .bg-primary{background:hsl(var(--primary));}
+  .tok-muted{color:hsl(var(--muted-foreground));}
+  .tok-success{color:hsl(var(--success));} .tok-action{color:hsl(var(--action));}
+  .chip{border:1px dashed hsl(var(--action));color:hsl(var(--action));background:hsl(var(--action)/0.06);}
+  .seg-active{background:hsl(var(--card));box-shadow:0 1px 2px rgb(0 0 0 /0.06);}
+  .dropzone{border:2px dashed hsl(var(--border));border-radius:14px;background:hsl(var(--secondary)/0.5);}
+  .bar{background:hsl(var(--primary)/0.18);border-radius:6px 6px 0 0;}
+  .bar-live{background:hsl(var(--primary));}
+</style>
+</head>
+<body class="p-6">
+<div class="max-w-5xl mx-auto">
+
+  <!-- screen switcher -->
+  <div class="flex items-center gap-3 mb-6">
+    <div class="inline-flex p-1 rounded-xl" style="background:hsl(var(--secondary))">
+      <button onclick="show('display')" id="tab-display" class="px-4 py-1.5 rounded-lg text-sm font-medium seg-active">Insights panel</button>
+      <button onclick="show('upload')" id="tab-upload" class="px-4 py-1.5 rounded-lg text-sm font-medium tok-muted">Settings → Integrations</button>
+    </div>
+    <span class="text-xs tok-muted">Apple Business Insights · mockup with real June data</span>
+  </div>
+
+  <!-- ============ DISPLAY: Insights panel ============ -->
+  <section id="screen-display">
+    <div class="card p-5 mb-4">
+      <div class="flex items-start justify-between mb-1">
+        <div class="flex items-center gap-2.5">
+          <!-- apple mark -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="tok-muted"><path d="M16.365 1.43c0 1.14-.42 2.2-1.11 3-.76.9-2 .16-2.06.14-.06-.02-.02-1.12.66-2.02.7-.92 1.9-1.58 2.5-1.62.02.16.01.33.01.5zM19.9 17.02c-.35.82-.53 1.18-.99 1.9-.64 1.01-1.55 2.27-2.68 2.28-1 .01-1.26-.65-2.62-.64-1.36.01-1.64.66-2.64.65-1.13-.01-1.99-1.14-2.63-2.15-1.79-2.82-1.98-6.13-.87-7.89.78-1.24 2.02-1.97 3.18-1.97 1.18 0 1.92.66 2.9.66.95 0 1.53-.66 2.9-.66 1.03 0 2.13.56 2.91 1.53-2.56 1.4-2.14 5.05.31 6.1z"/></svg>
+          <div>
+            <h2 class="text-base font-semibold leading-tight">Apple Business Insights</h2>
+            <p class="text-xs tok-muted" id="loc-sub">237 NE Broadway, Portland · from Apple Maps</p>
+          </div>
+        </div>
+        <span class="text-xs tok-muted flex items-center gap-1.5" id="loc-stamp">
+          <span class="w-1.5 h-1.5 rounded-full" style="background:hsl(var(--success))"></span>June 2026 · uploaded Jul 7
+        </span>
+      </div>
+
+      <!-- location switcher (only shown for multi-location workspaces) -->
+      <div class="inline-flex p-1 rounded-lg mt-3" style="background:hsl(var(--secondary))" id="loc-switch">
+        <button onclick="setLoc('portland')" id="loc-portland" class="px-3 py-1 rounded-md text-xs font-medium seg-active">Portland</button>
+        <button onclick="setLoc('vancouver')" id="loc-vancouver" class="px-3 py-1 rounded-md text-xs font-medium tok-muted">Vancouver</button>
+      </div>
+
+      <!-- headline tiles -->
+      <div class="grid grid-cols-2 gap-3 mt-4">
+        <div class="rounded-xl p-4" style="background:hsl(var(--accent)/0.5);border:1px solid hsl(var(--border))">
+          <p class="text-xs tok-muted font-medium">Place card views</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-3xl font-bold" id="m-views">143</span>
+            <span class="text-sm font-semibold tok-success flex items-center gap-0.5" id="y-views">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>42% YoY
+            </span>
+          </div>
+        </div>
+        <div class="rounded-xl p-4" style="background:hsl(var(--accent)/0.5);border:1px solid hsl(var(--border))">
+          <p class="text-xs tok-muted font-medium">Taps from search</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-3xl font-bold" id="m-taps">72</span>
+            <span class="text-sm font-semibold tok-success flex items-center gap-0.5" id="y-taps">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>29% YoY
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- interactions -->
+      <p class="text-xs font-semibold tok-muted mt-5 mb-2 uppercase tracking-wide">Place card interactions</p>
+      <div class="grid grid-cols-4 gap-3">
+        <div class="rounded-lg p-3 text-center" style="border:1px solid hsl(var(--border))">
+          <div class="text-2xl font-bold" id="m-dir">65</div><div class="text-xs tok-muted mt-0.5">Directions</div>
+        </div>
+        <div class="rounded-lg p-3 text-center" style="border:1px solid hsl(var(--border))">
+          <div class="text-2xl font-bold" id="m-photos">55</div><div class="text-xs tok-muted mt-0.5">Photos</div>
+        </div>
+        <div class="rounded-lg p-3 text-center" style="border:1px solid hsl(var(--border))">
+          <div class="text-2xl font-bold" id="m-web">3</div><div class="text-xs tok-muted mt-0.5">Website</div>
+        </div>
+        <div class="rounded-lg p-3 text-center" style="border:1px solid hsl(var(--border))">
+          <div class="text-2xl font-bold" id="m-call">8</div><div class="text-xs tok-muted mt-0.5">Calls</div>
+        </div>
+      </div>
+
+      <!-- month-over-month trend (fills in as recaps are uploaded) -->
+      <div class="flex items-center justify-between mt-6 mb-2">
+        <p class="text-xs font-semibold tok-muted uppercase tracking-wide">Place card views · month over month</p>
+        <p class="text-xs tok-muted">builds as you upload each month</p>
+      </div>
+      <div class="flex items-end gap-3 h-28 px-1" id="trend"></div>
+      <p class="text-2xs tok-muted mt-3" id="trend-note">Only June's totals come from the uploaded recap — earlier bars appear once you upload those months' recaps. (Mar–May shown here as illustration.)</p>
+    </div>
+
+    <div class="chip inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg">
+      What changed here: new panel on the Insights page, mirrors the Google Business Profile card. Numbers come only from uploaded Apple recaps — nothing is fabricated.
+    </div>
+  </section>
+
+  <!-- ============ UPLOAD: Settings → Integrations card ============ -->
+  <section id="screen-upload" class="hidden">
+    <div class="card p-5 mb-4">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="tok-muted"><path d="M16.365 1.43c0 1.14-.42 2.2-1.11 3-.76.9-2 .16-2.06.14-.06-.02-.02-1.12.66-2.02.7-.92 1.9-1.58 2.5-1.62.02.16.01.33.01.5zM19.9 17.02c-.35.82-.53 1.18-.99 1.9-.64 1.01-1.55 2.27-2.68 2.28-1 .01-1.26-.65-2.62-.64-1.36.01-1.64.66-2.64.65-1.13-.01-1.99-1.14-2.63-2.15-1.79-2.82-1.98-6.13-.87-7.89.78-1.24 2.02-1.97 3.18-1.97 1.18 0 1.92.66 2.9.66.95 0 1.53-.66 2.9-.66 1.03 0 2.13.56 2.91 1.53-2.56 1.4-2.14 5.05.31 6.1z"/></svg>
+          <div>
+            <h2 class="text-base font-semibold leading-tight">Apple Business Insights</h2>
+            <p class="text-xs tok-muted">Upload your monthly Apple Maps recap to track views, taps & interactions.</p>
+          </div>
+        </div>
+        <span class="text-2xs px-2 py-1 rounded-full" style="background:hsl(var(--success)/0.12);color:hsl(var(--success))">Last upload: Jun 2026</span>
+      </div>
+
+      <!-- location select -->
+      <div class="mt-4">
+        <label class="text-xs font-medium tok-muted">Location</label>
+        <select class="w-full mt-1 rounded-lg px-3 py-2 text-sm" style="border:1px solid hsl(var(--border));background:hsl(var(--card))">
+          <option>Portland — 237 NE Broadway (primary)</option>
+          <option>Vancouver clinic</option>
+        </select>
+      </div>
+
+      <!-- dropzone -->
+      <div class="dropzone mt-3 p-6 text-center">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" stroke-width="1.6" class="mx-auto mb-2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        <p class="text-sm font-medium">Drop your Apple recap PDF here</p>
+        <p class="text-xs tok-muted mt-0.5">or <span class="tok-primary font-medium underline">browse</span> · the monthly “Your … Insights” email, saved as PDF</p>
+      </div>
+
+      <!-- parsed preview (shown after drop) -->
+      <div class="mt-3 rounded-xl p-4" style="background:hsl(var(--secondary)/0.6);border:1px solid hsl(var(--border))">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-semibold">Read from your PDF — June 2026</p>
+          <span class="text-2xs tok-success">✓ looks like an Apple recap</span>
+        </div>
+        <div class="grid grid-cols-3 gap-x-4 gap-y-1.5 text-sm">
+          <div class="flex justify-between"><span class="tok-muted">Views</span><b>143</b></div>
+          <div class="flex justify-between"><span class="tok-muted">Taps</span><b>72</b></div>
+          <div class="flex justify-between"><span class="tok-muted">Directions</span><b>65</b></div>
+          <div class="flex justify-between"><span class="tok-muted">Photos</span><b>55</b></div>
+          <div class="flex justify-between"><span class="tok-muted">Website</span><b>3</b></div>
+          <div class="flex justify-between"><span class="tok-muted">Calls</span><b>8</b></div>
+        </div>
+        <button class="bg-primary text-white text-sm font-medium rounded-lg px-4 py-2 mt-3" style="color:hsl(var(--primary-foreground))">Save June 2026</button>
+        <span class="text-2xs tok-muted ml-2">PDF is discarded after we read the numbers.</span>
+      </div>
+
+      <!-- how to export -->
+      <details class="mt-3">
+        <summary class="text-xs font-medium tok-primary cursor-pointer">How do I get this PDF?</summary>
+        <ol class="text-xs tok-muted mt-2 ml-4 list-decimal space-y-1">
+          <li>Open the monthly “Your [Month] Insights” email Apple sends to your admin address, or sign in at businessconnect.apple.com.</li>
+          <li>Print / Save as PDF (one per location).</li>
+          <li>Drop it here — we read the numbers and track them month over month.</li>
+        </ol>
+      </details>
+    </div>
+
+    <div class="chip inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg">
+      What changed here: new card in Settings → Integrations, sits beside Google Business Profile. Upload = opt-in; a live preview confirms the parse before saving. One PDF per location per month.
+    </div>
+  </section>
+
+</div>
+<script>
+function show(which){
+  document.getElementById('screen-display').classList.toggle('hidden', which!=='display');
+  document.getElementById('screen-upload').classList.toggle('hidden', which!=='upload');
+  document.getElementById('tab-display').classList.toggle('seg-active', which==='display');
+  document.getElementById('tab-display').classList.toggle('tok-muted', which!=='display');
+  document.getElementById('tab-upload').classList.toggle('seg-active', which==='upload');
+  document.getElementById('tab-upload').classList.toggle('tok-muted', which!=='upload');
+}
+
+const upArrow = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:inline"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+const LOC = {
+  portland: {
+    sub: '237 NE Broadway, Portland · from Apple Maps',
+    stamp: 'June 2026 · uploaded Jul 7',
+    views:143, vy:'42% YoY', taps:72, ty:'29% YoY', dir:65, photos:55, web:3, call:8,
+    trend:[['Mar',52],['Apr',66],['May',44],['Jun',78]],
+    note:"Only June's totals come from the uploaded recap — earlier bars appear once you upload those months' recaps. (Mar–May shown as illustration.)"
+  },
+  vancouver: {
+    sub: '1005 Main St, Vancouver · from Apple Maps',
+    stamp: 'June 2026 · uploaded Jul 7',
+    views:88, vy:'18% YoY', taps:41, ty:'12% YoY', dir:33, photos:21, web:2, call:5,
+    trend:[['Apr',40],['May',48],['Jun',72]],
+    note:"Sample numbers (Move Better People is Portland-only) — shown so you can see how a second location renders. Each location is its own upload; a location with no recap yet shows an 'upload one' prompt instead."
+  }
+};
+function setLoc(k){
+  const d = LOC[k];
+  document.getElementById('loc-sub').textContent = d.sub;
+  document.getElementById('loc-stamp').innerHTML = '<span class="w-1.5 h-1.5 rounded-full" style="background:hsl(var(--success))"></span>'+d.stamp;
+  document.getElementById('m-views').textContent = d.views;
+  document.getElementById('y-views').innerHTML = upArrow+d.vy;
+  document.getElementById('m-taps').textContent = d.taps;
+  document.getElementById('y-taps').innerHTML = upArrow+d.ty;
+  document.getElementById('m-dir').textContent = d.dir;
+  document.getElementById('m-photos').textContent = d.photos;
+  document.getElementById('m-web').textContent = d.web;
+  document.getElementById('m-call').textContent = d.call;
+  document.getElementById('trend-note').textContent = d.note;
+  const max = Math.max(...d.trend.map(t=>t[1]));
+  document.getElementById('trend').innerHTML = d.trend.map((t,i)=>{
+    const live = i===d.trend.length-1;
+    const h = Math.round(t[1]/max*100);
+    return '<div class="flex-1 flex flex-col items-center gap-1"><div class="'+(live?'bar-live':'bar')+' w-full" style="height:'+h+'%"></div><span class="text-2xs '+(live?'font-semibold':'tok-muted')+'">'+t[0]+'</span></div>';
+  }).join('');
+  document.getElementById('loc-portland').classList.toggle('seg-active', k==='portland');
+  document.getElementById('loc-portland').classList.toggle('tok-muted', k!=='portland');
+  document.getElementById('loc-vancouver').classList.toggle('seg-active', k==='vancouver');
+  document.getElementById('loc-vancouver').classList.toggle('tok-muted', k!=='vancouver');
+}
+setLoc('portland');
+</script>
+</body>
+</html>

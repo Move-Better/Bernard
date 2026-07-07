@@ -20,6 +20,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import CredentialForm from '@/components/CredentialForm'
+import AppleBusinessInsightsCard from '@/components/AppleBusinessInsightsCard'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -305,6 +306,11 @@ export default function Integrations() {
         <GoogleBusinessAnalyticsCard
           row={services?.find?.((s) => s.service === 'gbp_analytics') || null}
           loading={services === null && isAdmin}
+          disabled={!isAdmin}
+          onChange={reload}
+        />
+
+        <AppleBusinessInsightsCard
           disabled={!isAdmin}
           onChange={reload}
         />

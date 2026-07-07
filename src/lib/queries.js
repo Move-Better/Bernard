@@ -161,6 +161,18 @@ export function useLocations() {
   })
 }
 
+// Apple Business Connect — monthly Insights recap metrics the tenant uploads
+// (place-card views/taps + interactions, per location, per month). Returns
+// { connected:false } until the first recap is uploaded. Co-located key; the
+// upload card invalidates ['apple-performance'] after a save.
+export function useApplePerformance() {
+  return useQuery({
+    queryKey: ['apple-performance'],
+    queryFn: () => apiFetch('/api/insights/apple-performance').catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 30,
+  })
+}
+
 // Workspace weekly-recap aggregate (team all-time/streak + cost usage units).
 // Powers the Overview "This week" recap. Editor-only surface, so this is only
 // mounted there. Tolerant default so a transient failure doesn't blank the page.
