@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
@@ -1415,7 +1415,54 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
 
 // ── Phone-mockup preview overlay (renders the REAL slide) ────────────────────
 
-function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId, customThemes, workspace, caption, onClose, onNav }) {
+// Per-platform chrome for the full-preview overlay — mirrors the treatments in
+// PostPreview.jsx so this overlay stops always looking like Instagram
+// regardless of the piece's actual target platform (facebook/linkedin/gbp
+// carousels and single-visual posts all route through SlideEditor).
+const OVERLAY_PLATFORM_CHROME = {
+  facebook: {
+    avatar: <div className="h-7 w-7 rounded-full bg-[#1877f2] flex items-center justify-center"><Facebook className="h-4 w-4 text-white" /></div>,
+    actions: (
+      <>
+        <ThumbsUp className="h-4.5 w-4.5" />
+        <MessageCircle className="h-4.5 w-4.5" />
+        <Repeat2 className="ml-auto h-4.5 w-4.5" />
+      </>
+    ),
+  },
+  linkedin: {
+    avatar: <div className="h-7 w-7 rounded bg-[#0a66c2] flex items-center justify-center"><Linkedin className="h-4 w-4 text-white" /></div>,
+    actions: (
+      <>
+        <ThumbsUp className="h-4.5 w-4.5" />
+        <MessageCircle className="h-4.5 w-4.5" />
+        <Repeat2 className="h-4.5 w-4.5" />
+        <Send className="ml-auto h-4.5 w-4.5" />
+      </>
+    ),
+  },
+  gbp: {
+    avatar: <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center"><MapPin className="h-4 w-4 text-white" /></div>,
+    actions: null,
+  },
+}
+const DEFAULT_OVERLAY_CHROME = {
+  avatar: (
+    <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 p-[2px]">
+      <div className="h-full w-full rounded-full bg-white p-[1.5px]"><div className="h-full w-full rounded-full bg-muted" /></div>
+    </div>
+  ),
+  actions: (
+    <>
+      <Heart className="h-5 w-5" />
+      <MessageCircle className="h-5 w-5" />
+      <Send className="h-5 w-5" />
+      <Bookmark className="ml-auto h-5 w-5" />
+    </>
+  ),
+}
+
+function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId, customThemes, workspace, caption, platform, aspect = '4:5', onClose, onNav }) {
   // Keyboard navigation + ESC
   useEffect(() => {
     function handleKey(e) {
@@ -1441,6 +1488,8 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   const handle = workspace?.slug || workspace?.display_name || 'yourbrand'
   const text = (caption || '').replace(/\s+/g, ' ').trim()
   const snippet = text.slice(0, 90)
+  const chrome = OVERLAY_PLATFORM_CHROME[platform] || DEFAULT_OVERLAY_CHROME
+  const stageAspect = ASPECT_STAGE[aspect]?.twAspect || 'aspect-[4/5]'
   // Re-render the canvas when anything that affects the pixels changes.
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
@@ -1478,20 +1527,17 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
           <ChevronLeft className="h-7 w-7" aria-hidden="true" />
         </button>
 
-        {/* iPhone frame with IG chrome + the real rendered slide */}
+        {/* iPhone frame with platform-specific chrome + the real rendered slide */}
         <div className="relative rounded-[2.5rem] border-[10px] border-black bg-black shadow-2xl" style={{ width: 320 }}>
           <div className="absolute left-1/2 top-0 z-20 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-black" />
           <div className="overflow-hidden rounded-[1.9rem] bg-white">
-            {/* IG header */}
+            {/* Header — avatar + handle styled per target platform */}
             <div className="flex items-center gap-2 px-3 py-2">
-              {/* Instagram gradient ring — platform chrome simulation, not Bernard tokens */}
-              <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 p-[2px]">
-                <div className="h-full w-full rounded-full bg-white p-[1.5px]"><div className="h-full w-full rounded-full bg-muted" /></div>
-              </div>
+              {chrome.avatar}
               <span className="text-2xs font-semibold text-foreground">{handle}</span>
             </div>
             {/* The real slide */}
-            <div className="relative aspect-[4/5] w-full bg-muted">
+            <div className={`relative ${stageAspect} w-full bg-muted`}>
               <MiniSlideCanvas
                 renderSlide={slide}
                 photoUrl={photoUrl}
@@ -1503,13 +1549,12 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
                 <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-3xs font-semibold text-white">{activeIdx + 1}/{slides.length}</span>
               )}
             </div>
-            {/* IG actions */}
-            <div className="flex items-center gap-4 px-3 py-2 text-foreground" aria-hidden="true">
-              <Heart className="h-5 w-5" />
-              <MessageCircle className="h-5 w-5" />
-              <Send className="h-5 w-5" />
-              <Bookmark className="ml-auto h-5 w-5" />
-            </div>
+            {/* Action row — platform-specific (or omitted, e.g. GBP has none) */}
+            {chrome.actions && (
+              <div className="flex items-center gap-4 px-3 py-2 text-foreground" aria-hidden="true">
+                {chrome.actions}
+              </div>
+            )}
             {slides.length > 1 && (
               <div className="flex justify-center gap-1 pb-1">
                 {slides.map((_, i) => (
@@ -1891,6 +1936,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           customThemes={customThemes}
           workspace={workspace}
           caption={piece?.content}
+          platform={piece?.platform}
+          aspect={forcedAspect || aspect}
           onClose={() => setFullPreviewOpen(false)}
           onNav={(delta) => setActiveSlideIdx((prev) => Math.max(0, Math.min(slides.length - 1, prev + delta)))}
         />
