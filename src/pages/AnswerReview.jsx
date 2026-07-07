@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   MessagesSquare,
@@ -55,6 +55,7 @@ export default function AnswerReview() {
   // updated answer appears when it flips back to needs_review. Hard-capped at 90s
   // so a silent generation failure can't spin forever.
   const pollStartRef = useRef(0)
+  const queryClient = useQueryClient()
   const { data, isPending, refetch } = useQuery({
     queryKey: ['answers-review'],
     queryFn: () => apiFetch('/api/answers'),
@@ -92,6 +93,15 @@ export default function AnswerReview() {
     onSuccess: (res, payload) => {
       if (payload.action === 'approve') {
         toast.success(res?.status === 'published' ? 'Published to movebetter.co ✓' : 'Approved — ready to publish')
+        // Approve moves the answer out of the review queue (approved/published),
+        // so drop it from the cache immediately. Without this the screen only
+        // advances once refetch() round-trips — which read as "nothing happened
+        // after publish". setOpenId(null) lets `active` fall through to the next
+        // queued answer instead of clinging to the now-gone id.
+        queryClient.setQueryData(['answers-review'], (prev) =>
+          prev?.answers ? { ...prev, answers: prev.answers.filter((a) => a.id !== payload.id) } : prev,
+        )
+        setOpenId(null)
       } else if (payload.action === 'edit') toast.success('Your edits saved')
       else if (payload.action === 'revise') toast.success('Sent to Bernard — it will revise in your voice')
       setMode(null)
