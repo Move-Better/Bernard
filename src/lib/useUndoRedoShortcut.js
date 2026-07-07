@@ -22,6 +22,7 @@ export function useUndoRedoShortcut(onUndo, onRedo, { disabled = false } = {}) {
         e.preventDefault()
         onRedo?.()
       } else if (!IS_MAC && (e.key === 'y' || e.key === 'Y')) {
+        if (isEditable) return
         e.preventDefault()
         onRedo?.()
       }
