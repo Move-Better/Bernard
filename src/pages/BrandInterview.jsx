@@ -1173,7 +1173,7 @@ function BrandPrimer({ workspace, onContinue }) {
   const interviewer = workspace?.interviewer_name || 'Bernard'
   const practice = workspace?.display_name || 'your practice'
   return (
-    <div className="px-4 py-8 max-w-xl mx-auto">
+    <div className="py-8">
       <div className="space-y-1 mb-6">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Compass className="h-5 w-5 text-primary" />
@@ -1184,7 +1184,7 @@ function BrandPrimer({ workspace, onContinue }) {
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <PrimerCard
           icon={<MessagesSquare className="h-4 w-4 text-primary" />}
           title="It’s about feel, not facts"
@@ -1207,11 +1207,11 @@ function BrandPrimer({ workspace, onContinue }) {
         />
       </div>
 
-      <Button onClick={onContinue} size="lg" className="w-full mt-6 gap-2">
+      <Button onClick={onContinue} size="lg" className="w-full sm:w-auto mt-6 gap-2">
         <Mic className="h-4 w-4" />
         I’m ready — let’s set up audio
       </Button>
-      <p className="text-xs text-muted-foreground text-center mt-3">
+      <p className="text-xs text-muted-foreground mt-3">
         Next we’ll do a quick microphone and speaker check.
       </p>
     </div>
