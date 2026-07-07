@@ -8,6 +8,9 @@ import {
   defaultTextCardState, renderTextCard, bakeTextCard,
 } from '@/lib/textCard'
 import { toast } from '@/lib/toast'
+import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
+import { useUndoHistory } from '@/lib/useUndoHistory'
+import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
 
 const LAYOUT_ICONS = {
   quote: Quote, stat: BarChart3, announce: Megaphone, cta: MousePointerClick,
@@ -40,6 +43,11 @@ export default function TextPostStudio({ pieceId, initialState, brandStyle, work
   const canvasRef = useRef(null)
 
   const fields = (LAYOUTS[state.layout] || LAYOUTS.quote).fields
+
+  // Undo/redo over the in-progress card design — no autosave here, since
+  // nothing persists until "Use this post" bakes and hands the state back.
+  const { undo, redo, canUndo, canRedo } = useUndoHistory(state, setState, { debounceMs: 400 })
+  useUndoRedoShortcut(undo, redo)
 
   // Re-render the live preview whenever the state changes (debounced).
   useEffect(() => {
@@ -88,10 +96,13 @@ export default function TextPostStudio({ pieceId, initialState, brandStyle, work
           <Type className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">Text post studio</span>
           <span className="text-2xs text-muted-foreground">· no clip needed — make a clean branded post</span>
+          <div className="ml-auto flex items-center gap-2">
+            <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
             aria-label="Close"
           >
             <X className="h-4 w-4" aria-hidden="true" />
