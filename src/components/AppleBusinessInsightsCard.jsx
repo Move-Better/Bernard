@@ -62,6 +62,7 @@ export default function AppleBusinessInsightsCard({ disabled, onChange }) {
       const pdfBase64 = await readAsBase64(file)
       const data = await apiFetch('/api/integrations/apple/import', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pdfBase64, filename: file.name, preview: true }),
       })
       setPreview({ ...data, _pdfBase64: pdfBase64, _filename: file.name })
@@ -78,6 +79,7 @@ export default function AppleBusinessInsightsCard({ disabled, onChange }) {
     try {
       await apiFetch('/api/integrations/apple/import', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pdfBase64: preview._pdfBase64,
           filename: preview._filename,
