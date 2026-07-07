@@ -640,6 +640,51 @@ the timeline editor. **Lesson (re-confirmed twice now): when the ask is "same ed
 — don't build a parallel implementation that re-clones X's panels.** The two-column preview+schedule
 page is fully retired for photo/carousel content; it's only where `doc`/`email`/`textad`/`ad` land now.
 
+### Autosave + undo/redo (#1927, 2026-07-07)
+
+`SlideEditor` and `VideoEditor` no longer have a manual Save button — edits autosave (debounced) and
+show a passive status via `src/components/editor/SaveStatus.jsx` ("Saving…" / "✓ All changes saved" /
+error), with session-only undo/redo (`src/components/editor/UndoRedoButtons.jsx`, bound to ⌘Z/⌘⇧Z via
+`src/lib/useUndoRedoShortcut.js`). Two shared hooks power this — reuse them for any future editor
+surface rather than hand-rolling another autosave effect:
+
+- **`src/lib/useAutosave.js`** — debounced save of a JSON-serializable snapshot; flushes on unmount so
+  navigating away mid-edit doesn't drop the last change. Returns `{status}`.
+- **`src/lib/useUndoHistory.js`** — session-only undo/redo over the same kind of snapshot (in-memory,
+  resets on reload — standard editor behavior, not a data-loss risk). Takes an `enabled` option so a
+  hydration/restore effect (VideoEditor's server+localStorage draft load) doesn't itself become a
+  spurious undo step; flip `enabled` true only once the real baseline has loaded.
+
+VideoEditor kept its existing hand-rolled localStorage+server dual-write autosave (it predates
+`useAutosave` and has an offline-mirror behavior the shared hook doesn't cover) — only `useUndoHistory`
+and the status/undo UI were layered on top of it. TextPostStudio has no persisted draft (state only
+ships when "Use this post" bakes it), so it only got `useUndoHistory`, no autosave.
+
+**React Compiler forbids reading or writing a ref during render** — both new hooks hit this while
+being written (`Cannot access refs during render` / `Cannot update ref during render` errors at build
+time, not just lint warnings). Any derived value a component reads on every render (e.g. `canUndo`,
+`canRedo`) must live in `useState`, not be computed from `ref.current.length` inline — mirror history
+arrays into a small `{past, future}` count state and update it wherever the ref arrays change. Likewise,
+mirroring a prop/value into a ref for later use in an effect (`saveRef.current = save`) must happen
+inside a `useEffect`, never as a bare assignment in the component body. This will recur on the next
+hook that needs "current value on demand" semantics — reach for state-mirrored-from-ref, not a raw ref
+read, anywhere the value is read during render.
+
+**Single-media archetypes must REPLACE `media_urls` on swap, never append.** Every archetype whose
+`surface` isn't SLIDES with room for more than one slide — `visual`, `story`, `vvideo`, `lvideo` — has
+exactly ONE media slot at the platform level (Google's Local Post API, Instagram Story frames,
+TikTok/YouTube/Reels all hard-reject or silently ignore extra items). The attach/swap handler for these
+archetypes (`SlideEditor.jsx`'s `attachPhoto()` for `visual`/`story`/`carousel`-of-one, and
+`UnifiedEditor.jsx`'s `MediaPanel.attach()` for `vvideo`/`lvideo`) must gate on the archetype and set
+`media_urls: [entry]` outright instead of `[...media, entry]` — an append-always implementation lets
+`media_urls` silently accumulate every previously-swapped-out item (each still present, orphaned, no
+longer bound to any slide). This is invisible in the editor (only the currently-bound photo renders)
+but hard-fails at publish once the array crosses the platform's real limit (GBP: 400 `bundle_gbp_post_failed`
+on >1 item, discovered/fixed 2026-07-06). `doc`/`email`/`ad` archetypes correctly keep append-on-attach
+— those genuinely support multiple images. When adding a new single-media archetype or a new
+attach/swap surface, check whether the platform enforces a hard media-count cap before defaulting to
+append.
+
 **Canvas bitmap dimensions must be derived from the archetype's `aspect`, never hardcoded** — a canvas
 element's intrinsic `width`/`height` attributes (the pixel buffer `renderFreeformSlide` draws into) are
 independent of its CSS box size. If the CSS box is sized per-aspect (`ASPECT_STAGE` in `SlideEditor.jsx`)
