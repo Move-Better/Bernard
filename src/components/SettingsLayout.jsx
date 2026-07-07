@@ -144,7 +144,7 @@ function MobileNavRail({ visibleItems }) {
     <div className="md:hidden relative -mx-6 -mt-6">
       <nav
         aria-label="Settings sections"
-        className="sticky top-14 z-30 px-6 pt-3 pb-2 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border/60 flex items-center gap-2 overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="sticky top-14 md:top-0 z-30 px-6 pt-3 pb-2 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border/60 flex items-center gap-2 overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {visibleItems.map((item) => {
           const isActive = isItemActive(item, location.pathname)
@@ -167,7 +167,7 @@ function MobileNavRail({ visibleItems }) {
       </nav>
       {/* Right-edge fade — signals that chips extend beyond the viewport
           on narrower phones without needing a visible scrollbar. */}
-      <div className="pointer-events-none sticky top-14 z-40 absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
+      <div className="pointer-events-none sticky top-14 md:top-0 z-40 absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
     </div>
   )
 }
