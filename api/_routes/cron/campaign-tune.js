@@ -1,5 +1,5 @@
 import { withSentry } from '../../_lib/sentry.js'
-export const config = { runtime: 'nodejs' }
+export const config = { runtime: 'nodejs', maxDuration: 300 }
 // GET /api/cron/campaign-tune
 //
 // Phase 7 outcome loop: daily cron that refreshes the AI tune state on every
