@@ -15,6 +15,22 @@ const STRIKING_MIN_POS   = 7.5   // just inside page 1's tail
 const STRIKING_MAX_POS   = 20.5  // ~page 2
 const GAP_MIN_IMPRESSIONS = 10   // ignore low-signal noise
 
+// Decay thresholds — calibrated to a small local clinic's real GSC volume
+// (the generic impr>=50/pos<=10 default flagged nothing on Move Better's data,
+// where non-branded terms all sit under 50 impressions). "Was in reach (top
+// ~20), lost ground, on a query with real search volume."
+const DECAY_MAX_PREV_POS = 20  // was within striking distance / page 1–2
+const DECAY_MIN_DROP     = 3   // positions lost week-over-week to count as slipping
+const DECAY_MIN_IMPR     = 10  // prior-week impressions floor — cuts 1–2 impr jitter
+
+// Cannibalization thresholds — a query where 2+ of the workspace's own URLs both
+// rank meaningfully and split the clicks. Needs per-URL snapshot rows (page set).
+const CANNIBAL_MIN_PAGES = 2
+const CANNIBAL_MAX_POS   = 20  // only count pages ranking well enough to matter
+const CANNIBAL_MIN_IMPR  = 5
+
+const round1 = (n) => Math.round((Number(n) || 0) * 10) / 10
+
 // Rough topic overlap: does this query share a meaningful word (>= 4 chars)
 // with any published post topic? Fast, no model. Mirrors the heuristic the
 // existing Insights endpoint uses so the two reads agree.
@@ -133,4 +149,115 @@ export function gscClickThroughSuggestion(queries) {
     title:  `Rewrite the title/meta on the page ranking for "${top.query}"`,
     why:    `You rank #${Math.round(top.position)} for "${top.query}" (${Math.round(top.impressions).toLocaleString()} impressions) but get very few clicks. A clearer, benefit-led title on that page lifts click-through without needing a higher rank.`,
   }
+}
+
+function decayReason(prevPos, curPos) {
+  const prev = round1(prevPos)
+  const cur  = round1(curPos)
+  if (prevPos <= 10) {
+    return `You were #${prev} — one push off page 1 — and slid to #${cur} in a week. Refresh or expand the page before it drops further.`
+  }
+  return `In reach at #${prev}, now falling to #${cur}. Defend it with a focused piece before it leaves page 2 for good.`
+}
+
+// Decay classifier — compares two week-over-week query-level snapshots.
+//   currentRows / priorRows: [{ query, position, impressions }] (the latest row
+//     per query for the current and prior snapshot weeks; page-level rows excluded).
+//   opts.dismissed: Set/array of dismissed query strings (filtered out).
+//   opts.limit: max cards (default 12).
+// Returns ranked (biggest drop first) [{ query, prevPosition, position, drop,
+//   impressions, intent, why }]. A query must exist in BOTH weeks to be judged.
+export function classifyDecay(currentRows, priorRows, opts = {}) {
+  const dismissed = opts.dismissed instanceof Set ? opts.dismissed : new Set(opts.dismissed || [])
+  const limit     = opts.limit ?? 12
+
+  const priorByQuery = new Map()
+  for (const r of priorRows || []) {
+    if (r?.query && !priorByQuery.has(r.query)) priorByQuery.set(r.query, r)
+  }
+
+  const out = []
+  for (const cur of currentRows || []) {
+    if (!cur?.query || dismissed.has(cur.query)) continue
+    const prev = priorByQuery.get(cur.query)
+    if (!prev) continue
+
+    const prevPos  = prev.position || 0
+    const curPos   = cur.position || 0
+    const drop     = curPos - prevPos
+    const prevImpr = prev.impressions || 0
+
+    if (prevPos <= 0 || prevPos > DECAY_MAX_PREV_POS) continue  // wasn't in reach
+    if (drop < DECAY_MIN_DROP) continue                          // didn't slip enough
+    if (prevImpr < DECAY_MIN_IMPR) continue                      // too little volume — noise
+
+    out.push({
+      query:        cur.query,
+      prevPosition: round1(prevPos),
+      position:     round1(curPos),
+      drop:         round1(drop),
+      impressions:  Math.round(prevImpr),
+      intent:       classifyIntent(cur.query),
+      why:          decayReason(prevPos, curPos),
+    })
+  }
+
+  out.sort((a, b) => b.drop - a.drop)
+  return out.slice(0, limit)
+}
+
+// Cannibalization classifier — from per-URL snapshot rows (page set), find
+// queries where 2+ of the workspace's own pages both rank meaningfully and split
+// the clicks.
+//   pageRows: [{ query, page, position, impressions, clicks }] — the latest row
+//     per (query, page). Rows with no page are ignored.
+// Returns [{ query, pages:[{page,position,impressions,clicks}], intent, why }].
+export function classifyCannibalization(pageRows, opts = {}) {
+  const limit = opts.limit ?? 12
+  const byQuery = new Map()
+  for (const r of pageRows || []) {
+    if (!r?.query || !r?.page) continue
+    if ((r.position || 99) > CANNIBAL_MAX_POS) continue
+    if ((r.impressions || 0) < CANNIBAL_MIN_IMPR) continue
+    if (!byQuery.has(r.query)) byQuery.set(r.query, new Map())
+    // dedup pages per query (keep the best-ranked row for a repeated URL)
+    const pages = byQuery.get(r.query)
+    const existing = pages.get(r.page)
+    if (!existing || (r.position || 99) < (existing.position || 99)) pages.set(r.page, r)
+  }
+
+  const out = []
+  for (const [query, pagesMap] of byQuery) {
+    const pages = [...pagesMap.values()]
+    if (pages.length < CANNIBAL_MIN_PAGES) continue
+    pages.sort((a, b) => (a.position || 99) - (b.position || 99))
+    out.push({
+      query,
+      pages: pages.map((p) => ({
+        page:        p.page,
+        position:    round1(p.position || 0),
+        impressions: Math.round(p.impressions || 0),
+        clicks:      Math.round(p.clicks || 0),
+      })),
+      intent: classifyIntent(query),
+      why:    `${pages.length} of your pages rank for "${query}" and split its clicks — consolidate into one strong page to lift both.`,
+    })
+  }
+
+  out.sort((a, b) => b.pages.length - a.pages.length)
+  return out.slice(0, limit)
+}
+
+// How confident are we that a published piece's topic targets a given GSC query?
+//   'exact'  — the topic string equals the query (case/space-normalized).
+//   'likely' — shares a meaningful word (>= 4 chars), via queryMatchesTopic.
+//   false    — no relationship.
+export function matchPublishedQuery(topic, query) {
+  const norm = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ')
+  const t = norm(topic)
+  const q = norm(query)
+  if (!t || !q) return false
+  if (t === q) return 'exact'
+  if (queryMatchesTopic(q, [t])) return 'likely'
+  return false
 }

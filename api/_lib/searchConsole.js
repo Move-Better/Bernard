@@ -106,6 +106,48 @@ export async function fetchSearchQueries({ credential, serviceAccountJson, siteU
   }))
 }
 
+// Fetch top (query, page) pairs — same window/auth as fetchSearchQueries, but
+// with the `page` (URL) dimension so we can see which of the workspace's own
+// pages rank for each query. Powers cannibalization detection. Returns
+// [{ query, page, clicks, impressions, ctr, position }] sorted by impressions.
+export async function fetchSearchQueriesByPage({ credential, serviceAccountJson, siteUrl, days = 28, rowLimit = 500 }) {
+  const url = siteUrl || credential?.config?.site_url
+  if (!url) throw new Error('gsc: siteUrl is required')
+  const token = await resolveToken({ credential, serviceAccountJson })
+
+  const endDate   = new Date()
+  const startDate = new Date(endDate - days * 24 * 60 * 60 * 1000)
+  const fmt = (d) => d.toISOString().slice(0, 10)
+
+  const r = await fetch(QUERY_URL(url), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      startDate:  fmt(startDate),
+      endDate:    fmt(endDate),
+      dimensions: ['query', 'page'],
+      rowLimit,
+      orderBy:    [{ fieldName: 'impressions', sortOrder: 'DESCENDING' }],
+    }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    if (r.status === 403) throw new Error(`gsc: access denied for ${url} (403) — ${text.slice(0, 300)}`)
+    if (r.status === 400 || r.status === 404) throw new Error(`gsc: site not found (${r.status}) — check the Site URL matches your Search Console property exactly.`)
+    throw new Error(`gsc: searchAnalytics (query,page) query failed (${r.status}) — ${text.slice(0, 300)}`)
+  }
+  const data = await r.json()
+
+  return (data.rows || []).map((row) => ({
+    query:       row.keys[0],
+    page:        row.keys[1],
+    clicks:      row.clicks,
+    impressions: row.impressions,
+    ctr:         row.ctr,
+    position:    row.position,
+  }))
+}
+
 // Test-connection probe: resolve a token (OAuth or SA) then run a minimal
 // 1-row query to confirm property access. Returns { siteUrl, totalImpressions }.
 // Pass either { credential, siteUrl } or { serviceAccountJson, siteUrl }.

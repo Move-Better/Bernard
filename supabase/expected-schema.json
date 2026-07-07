@@ -366,6 +366,7 @@
     "ctr",
     "id",
     "impressions",
+    "page",
     "position",
     "query",
     "window_days",
