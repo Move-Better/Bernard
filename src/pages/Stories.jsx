@@ -165,7 +165,7 @@ export default function Stories() {
   if (isLoading) return <PageSkeleton variant="grid" />
 
   return (
-    <main className="py-6 px-6 flex flex-col gap-4">
+    <div className="py-6 px-6 flex flex-col gap-4">
       {/* Sticky page chrome — keeps the title and filter chips in view while
           the user scrolls through the cards. -mx-6 px-6 extends the fill to the
           parent main's edges; a solid bg-background prevents scrolled cards from
@@ -421,6 +421,6 @@ export default function Stories() {
           views above are rendering, so no extra fetch. Auto-hides when the
           workspace has no stories yet. */}
       {!isLoading ? <StoriesAtAGlance stories={stories} /> : null}
-    </main>
+    </div>
   )
 }
