@@ -200,6 +200,18 @@ cd "/Users/qbook/Claude Projects/Bernard" && npm run verify-bundles
 
 **Allowlisting:** handlers that legitimately cannot be smoke-tested in isolation are listed in the `ALLOWLIST` set at the top of `scripts/verify-function-bundles.mjs`. Each entry must include an inline comment explaining why. The allowlist should stay empty — never add a handler just because it checks env vars at *call* time; the smoke test only loads the module graph, it doesn't invoke any handler.
 
+## Every screen is full-bleed — page roots must not self-narrow
+
+Q's standing rule (repeated, frustrated — 2026-07-07): **all screens must be full-bleed; screen space is used fully and wisely.** A page centered in a narrow column with big empty side gutters reads as broken to Q — it's his single most recurring visual complaint, so treat full-bleed as the default, not a per-request ask.
+
+The Layout shell is ALREADY full-bleed: `src/components/Layout.jsx` has `const fullBleed = true` → `<main className="px-4 sm:px-6 lg:px-8 py-8">` with no max-width. Narrowness only ever comes from a **page** wrapping its own root in `mx-auto max-w-*`. So:
+
+- A new/edited page's root fills the width — just padding (e.g. `py-6`), never `mx-auto max-w-3xl`.
+- "Fully AND wisely" ≠ stretch one column to 1900px. Use the width: side rails (`AnswerReview` = answer + sticky "Up next" queue rail, #1938), multi-column card grids (interview primers = `grid sm:grid-cols-2`, #1941), CTAs `w-full sm:w-auto` (no full-width button bar).
+- On a review/queue screen that advances to the next item on action, `window.scrollTo({ top: 0 })` when the active item id changes — else a new item loads under the old scroll position and it's invisible that anything happened (#1938).
+- **Legitimate exceptions (leave centered):** legal reading pages (Privacy/Terms — readable measure), `max-w-*` on a `<p>` for text measure, and centered `text-center py-16` empty/loading states. Those are correct, not offenders — don't strip them.
+- Daily drivers (Home, Stories, StoryDetail, Library, Slate, YourWeek, Analytics, MediaHub, Settings, Overview) are already full-bleed — verify a new page matches them, don't reintroduce a centered column.
+
 ## Router conventions (App.jsx)
 
 The outer `<Routes>` in `src/App.jsx` has a deliberately minimal shape:
