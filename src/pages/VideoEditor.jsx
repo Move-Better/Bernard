@@ -25,6 +25,7 @@ import SaveStatus from '@/components/editor/SaveStatus'
 import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
 import { useUndoHistory } from '@/lib/useUndoHistory'
 import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
+import { useAutosave } from '@/lib/useAutosave'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 // Output format → render channel (the renderer's VIDEO_CHANNEL_SPECS already
@@ -599,13 +600,11 @@ export default function VideoEditor() {
   // (debounced) writes BOTH: localStorage immediately (offline mirror) + a
   // server PATCH. Fully defensive: a missing/corrupt draft just opens fresh.
   const restoredRef = useRef(false)
-  const hydratedRef = useRef(false)
-  // Mirrors hydratedRef into state — a plain ref flip doesn't itself trigger a
-  // re-render, and when there's no draft to restore, no setState call happens
-  // in the effect below to cause one incidentally. Undo history needs an
-  // actual re-render to pick up enabled=true.
+  // Mirrors whether the restore effect below has run — a plain ref flip
+  // doesn't itself trigger a re-render, and when there's no draft to restore,
+  // no setState call happens in that effect to cause one incidentally. Undo
+  // history and autosave both need an actual re-render to pick up enabled=true.
   const [hydrated, setHydrated] = useState(false)
-  const lastSavedRef = useRef(null)
   useEffect(() => {
     if (!asset || restoredRef.current) return
     restoredRef.current = true
@@ -630,35 +629,33 @@ export default function VideoEditor() {
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
-    hydratedRef.current = true
     setHydrated(true)
   }, [asset, assetId])
-  const [saveStatus, setSaveStatus] = useState('idle')
+
+  // Draft snapshot shared by autosave + undo/redo.
+  const draftDoc = useMemo(
+    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }),
+    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec],
+  )
+
+  // localStorage mirror — immediate, undebounced offline copy. The server
+  // PATCH below is debounced via useAutosave, which also flushes any pending
+  // save on unmount so navigating away mid-edit doesn't drop the change.
   useEffect(() => {
-    if (!assetId || !hydratedRef.current) return
-    const doc = { format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }
-    const json = JSON.stringify(doc)
-    try { localStorage.setItem(`videoEdit:${assetId}`, json) } catch { /* quota — ignore */ }
-    if (json === lastSavedRef.current) return
-    setSaveStatus('saving')
-    const t = setTimeout(() => {
-      lastSavedRef.current = json
-      // Offline / failure is non-fatal — localStorage above still holds the draft.
-      updateMediaAsset(assetId, { videoEditDraft: doc })
-        .then(() => setSaveStatus('saved'))
-        .catch(() => setSaveStatus('error'))
-    }, 1500)
-    return () => clearTimeout(t)
-  }, [assetId, format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec])
+    if (!assetId || !hydrated) return
+    try { localStorage.setItem(`videoEdit:${assetId}`, JSON.stringify(draftDoc)) } catch { /* quota — ignore */ }
+  }, [assetId, hydrated, draftDoc])
+
+  const { status: saveStatus } = useAutosave(
+    draftDoc,
+    (doc) => updateMediaAsset(assetId, { videoEditDraft: doc }),
+    { debounceMs: 1500, enabled: !!assetId && hydrated },
+  )
 
   // Undo/redo over the same draft shape the autosave above persists. Disabled
   // until the server/localStorage draft has hydrated, so the initial restore
   // doesn't itself become an undoable step.
-  const undoDraft = useMemo(
-    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }),
-    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec],
-  )
-  const { undo, redo, canUndo, canRedo } = useUndoHistory(undoDraft, (snap) => {
+  const { undo, redo, canUndo, canRedo } = useUndoHistory(draftDoc, (snap) => {
     setFormat(snap.format)
     setGrade(snap.grade)
     setReframe(snap.reframe)
