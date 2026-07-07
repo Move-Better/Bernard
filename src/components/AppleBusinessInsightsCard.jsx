@@ -108,9 +108,7 @@ export default function AppleBusinessInsightsCard({ disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Apple Business Insights</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">
-                  {latest ? monthLabel(latest) : 'Active'}
-                </span>
+                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
               ) : (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not set up</span>
               )}
@@ -118,6 +116,11 @@ export default function AppleBusinessInsightsCard({ disabled, onChange }) {
             <p className="text-sm text-muted-foreground mt-0.5">
               Upload the monthly recap Apple emails you to track place-card views, search taps, and interactions from Apple Maps.
             </p>
+            {configured && latest && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Latest recap <span className="font-medium">{monthLabel(latest)}</span>
+              </p>
+            )}
             <div className="flex gap-1 mt-1.5 flex-wrap">
               <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Monthly PDF upload</span>
               <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Per location</span>
