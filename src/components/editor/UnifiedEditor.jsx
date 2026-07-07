@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, Crop, ImageIcon, Loader2, MessageCircle, Palette, Plus, Send, Type, Video, X } from 'lucide-react'
+import { ArrowRight, Check, Crop, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Send, Type, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
@@ -129,6 +129,12 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 function MediaPanel({ piece, updateItem, aspect, setAspect }) {
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
   const optional = mediaTierFor(piece) === MEDIA_TIER.OPTIONAL
+  // TikTok/YouTube/Reels (vvideo/lvideo) post exactly ONE video — replace
+  // instead of append, or repeated swaps leave prior videos orphaned in
+  // media_urls (same bug + same GBP-style publish failure this fixed for
+  // single-visual photo posts in SlideEditor's attachPhoto). doc/email/ad
+  // keep the append behavior — those genuinely take multiple images.
+  const singleMedia = ['vvideo', 'lvideo'].includes(resolveArchetype(piece))
   const { data: sugg, isLoading } = useMediaSuggestions(piece.id, { kind: 'photo', k: 12 })
   const clips = sugg?.clips || []
   const [attaching, setAttaching] = useState(null)
@@ -136,10 +142,15 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
 
   async function attach(clip) {
     const entry = clipToMediaEntry(clip)
-    if (attachedKeys.has(mediaEntryKey(entry))) return
+    const already = attachedKeys.has(mediaEntryKey(entry))
+    if (already) return
     setAttaching(clip.assetId || clip.blobUrl || clip.url)
     try {
-      await updateItem.mutateAsync({ id: piece.id, patch: { media_urls: [...media, entry] } })
+      const next = singleMedia ? [entry] : [...media, entry]
+      await updateItem.mutateAsync({ id: piece.id, patch: { media_urls: next } })
+      if (singleMedia && media.length > 0) {
+        toast.success('Media replaced', { description: 'This platform supports one video/image — the previous one was removed.' })
+      }
     } catch (e) {
       toast.error('Could not attach media', { description: e.message })
     } finally {
@@ -164,6 +175,12 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
         </span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        {singleMedia && (
+          <p className="flex items-start gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-2 py-1.5 text-3xs leading-snug text-muted-foreground">
+            <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            This platform supports one video/image — picking a new one replaces it.
+          </p>
+        )}
         {/* Currently attached */}
         {media.length > 0 ? (
           <div className="grid grid-cols-3 gap-2">
