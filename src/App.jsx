@@ -81,7 +81,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import PageSkeleton from '@/components/PageSkeleton'
 import { setSentryUser, setSentryWorkspace } from '@/lib/sentry'
-import { initPosthog, posthogIdentify, posthogGroup, posthogPageview } from '@/lib/posthog'
+import { initPosthog, posthogIdentify, posthogReset, posthogGroup, posthogPageview } from '@/lib/posthog'
 import { Toaster } from '@/lib/toast'
 import UpdateAvailableModal from '@/components/UpdateAvailableModal'
 import { useVersionCheck } from '@/lib/useVersionCheck'
@@ -727,7 +727,27 @@ function ProtectedApp() {
 
   useEffect(() => { setSentryUser(user?.id ?? null) }, [user?.id])
   useEffect(() => { setSentryWorkspace(ws?.slug ?? null) }, [ws?.slug])
-  useEffect(() => { if (user?.id) posthogIdentify(user.id) }, [user?.id])
+  // Identify the signed-in staff member so PostHog attributes activity to a
+  // named person (email + name person properties) instead of only an opaque
+  // Clerk id, keyed on the stable Clerk user id as the distinct id. Reset on
+  // sign-out so a shared browser doesn't bleed one user's identity into the
+  // next. Only the user's own Clerk identity is sent — never patient data.
+  //
+  // Gated on `isLoaded` so a transient Clerk token-refresh flicker (isSignedIn
+  // briefly false — see the hydration-gate comment above) doesn't fire a reset;
+  // a real sign-out re-runs this and clears the person, and a flip back to
+  // signed-in re-identifies the same user.
+  useEffect(() => {
+    if (!isLoaded) return
+    if (isSignedIn && user?.id) {
+      posthogIdentify(user.id, {
+        email: user.primaryEmailAddress?.emailAddress,
+        name: user.fullName,
+      })
+    } else if (!isSignedIn) {
+      posthogReset()
+    }
+  }, [isLoaded, isSignedIn, user?.id, user?.primaryEmailAddress?.emailAddress, user?.fullName])
   useEffect(() => {
     if (ws?.id) posthogGroup(ws.id, ws.slug, ws.app_name)
   }, [ws?.id, ws?.slug, ws?.app_name])

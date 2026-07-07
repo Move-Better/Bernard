@@ -31,9 +31,23 @@ export function initPosthog() {
   })
 }
 
-export function posthogIdentify(userId) {
+// Attach the signed-in staff member's identity to their events. `userId` is the
+// stable Clerk user id (same person across sessions/devices), used as the distinct
+// id; `properties` sets person props (email, name) so an adoption/usage view can
+// name who's using Bernard instead of only showing an opaque id. posthog-js stitches
+// the pre-login anonymous events to this identity on the first identify() call, so
+// no manual alias() is needed. Only the staff user's own Clerk identity is sent —
+// never patient data.
+export function posthogIdentify(userId, properties) {
   if (!posthog.__loaded) return
-  posthog.identify(userId)
+  posthog.identify(userId, properties)
+}
+
+// Clear the identified person on sign-out so a shared browser doesn't attribute
+// the next user's activity to the previous one.
+export function posthogReset() {
+  if (!posthog.__loaded) return
+  posthog.reset()
 }
 
 export function posthogGroup(workspaceId, workspaceSlug, workspaceName) {
