@@ -424,7 +424,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                 <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
               )}
               {bundleActive && (
-                <span className={`text-3xs uppercase tracking-wide px-1.5 py-0.5 rounded ${status?.connected ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`text-3xs uppercase tracking-wide px-2 py-0.5 rounded ${status?.connected ? 'font-bold bg-success text-white shadow-sm' : 'bg-muted text-muted-foreground'}`}>
                   {status == null ? 'Checking…' : status.connected ? 'Connected' : 'Not connected yet'}
                 </span>
               )}
@@ -454,7 +454,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                     {status == null ? (
                       <span className="text-2xs text-muted-foreground">Checking…</span>
                     ) : (
-                      <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                      <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-white shadow-sm">
                         <CheckCircle2 className="h-3.5 w-3.5" />{accounts.filter(a => a.connected).length} connected
                       </span>
                     )}
@@ -477,7 +477,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                           {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
                         </span>
                         {a.connected ? (
-                          <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                          <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-white shadow-sm">
                             <CheckCircle2 className="h-3.5 w-3.5" />Connected
                           </span>
                         ) : (
@@ -517,7 +517,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                       </div>
                       {loc.connected ? (
                         <>
-                          <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
+                          <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-white shadow-sm">
                             <CheckCircle2 className="h-3.5 w-3.5" />Connected
                           </span>
                           <button
@@ -564,7 +564,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                 <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
               )}
               {bufferActive && bufferRow && (
-                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">Connected</span>
+                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
               )}
             </div>
             <p className="text-xs text-muted-foreground leading-snug mt-1">
@@ -627,7 +627,7 @@ function IntegrationCard({ integration, row, loading, disabled, getToken, onChan
                 </span>
               )}
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">
+                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">
                   Connected
                 </span>
               ) : !loading ? (
@@ -679,7 +679,7 @@ const DRIVE_ERROR_COPY = {
 }
 
 function GoogleDriveCard({ row, loading, disabled, onChange }) {
-  const [open, setOpen] = useState(!row)
+  const [open, setOpen] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -772,7 +772,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Drive</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">
+                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">
                   Connected
                 </span>
               ) : !loading ? (
@@ -898,7 +898,7 @@ const GSC_ERROR_COPY = {
 }
 
 function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
-  const [open, setOpen] = useState(!row)
+  const [open, setOpen] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -987,7 +987,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Search Console</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">Connected</span>
+                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
               ) : null}
@@ -1064,7 +1064,7 @@ const GBP_ERROR_COPY = {
 }
 
 function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
-  const [open, setOpen] = useState(!row)
+  const [open, setOpen] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [retrying, setRetrying] = useState(false)
@@ -1151,7 +1151,7 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Business Profile</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide bg-success/10 text-success px-1.5 py-0.5 rounded">Connected</span>
+                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
               ) : null}
