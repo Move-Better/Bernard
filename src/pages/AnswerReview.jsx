@@ -83,7 +83,12 @@ export default function AnswerReview() {
   const active = answers.find((a) => a.id === openId) || answers[0] || null
 
   const mutation = useAppMutation({
-    mutationFn: (payload) => apiFetch('/api/answers', { method: 'PATCH', body: payload }),
+    mutationFn: (payload) =>
+      apiFetch('/api/answers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
     onSuccess: (res, payload) => {
       if (payload.action === 'approve') {
         toast.success(res?.status === 'published' ? 'Published to movebetter.co ✓' : 'Approved — ready to publish')
