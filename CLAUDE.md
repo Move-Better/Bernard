@@ -229,6 +229,10 @@ React Router v6 footgun: a parent `<Route>` matched with a fixed path (no `/*` s
 
 If you genuinely need an outer exemption (e.g. for a route that must bypass `WorkspaceProvider` or `OrgGate`), use `<Route path="/your-path/*">` with the splat to preserve descendant matching.
 
+### Back navigation — use `useSmartBack`, never a hardcoded `<Link to="/…">`
+
+Any "Back" / breadcrumb-return / close-that-navigates affordance must use the shared `useSmartBack(fallback)` hook (`src/lib/useSmartBack.js`), NOT a hardcoded `<Link to="/stories">` or `onClick={() => navigate('/foo')}`. The hook does `navigate(-1)` when real in-app history exists (`window.history.state?.idx > 0`) and only falls back to the passed route for direct links / a fresh tab. A hardcoded destination is wrong whenever the page is reachable from more than one entry point — the canonical failure was StoryDetail's "Back to Stories" always dumping the user on `/stories` even when they arrived from a Campaign, Staff profile, or Review inbox. `fallback` may be a function for a route-derived default (e.g. VideoEditor: `() => location.pathname.startsWith('/slate') ? '/slate' : '/moments'`). `BackLink` already routes through `useSmartBack`, so its `to` prop is a *fallback*, not the always-destination — prefer `BackLink` for the Stories→Storyboard→Publish spine. (Swept app-wide 2026-07-07, #1939; ~25 pages.) True hierarchy breadcrumbs (`Breadcrumb`) stay hardcoded — they express structure, not history.
+
 ## Large-file handling
 Functions that download media (videos, audio, large images) from blob storage **must stream** the response body to disk rather than buffering. `await res.arrayBuffer()` materializes the entire file in RAM and OOMs the function on anything over ~500MB (default Node function memory is 1024MB):
 
