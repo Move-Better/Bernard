@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useUser } from '@clerk/react'
 import {
   ArrowLeft, ArrowRight, Loader2, Mail, Plus, Check, Megaphone, Target, Settings,
@@ -47,6 +48,7 @@ const STYLE_CHIP = {
 export default function NewNewsletter() {
   useDocumentTitle('Write a newsletter')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/new')
   const { user } = useUser()
   const workspace = useWorkspace()
   const VOICE_MODES = getVoiceModes(workspace)
@@ -166,8 +168,8 @@ export default function NewNewsletter() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back">
-          <Link to="/new"><ArrowLeft className="h-4 w-4" aria-hidden="true" /></Link>
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center">

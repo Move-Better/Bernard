@@ -1,8 +1,9 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Mic, MessageSquareText, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 
 /**
@@ -20,6 +21,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 export default function CapturePicker() {
   useDocumentTitle('New')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/')
   const [searchParams] = useSearchParams()
   const workspace = useWorkspace()
   // Patient handouts lane (Phase 5 Feature 4) — gated on per-workspace
@@ -65,10 +67,8 @@ export default function CapturePicker() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back">
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">New</h1>

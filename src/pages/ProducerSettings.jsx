@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { ArrowLeft, Bot, Pause, Play, Power } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
@@ -50,6 +51,7 @@ function actionsThisWeek(actions) {
 
 export default function ProducerSettings() {
   useDocumentTitle('Bernard · settings')
+  const goBack = useSmartBack('/producer')
   const ws = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
   const update = useUpdateProducerConfig()
@@ -80,13 +82,14 @@ export default function ProducerSettings() {
     <div className="max-w-2xl space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link
-          to="/producer"
+        <button
+          type="button"
+          onClick={goBack}
           className="grid h-8 w-8 place-items-center rounded-lg border hover:bg-muted"
           aria-label="Back to Bernard’s workday"
         >
           <ArrowLeft className="h-4 w-4" />
-        </Link>
+        </button>
         <div className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
           <Bot className="h-5 w-5" aria-hidden="true" />
           {active && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-success" aria-hidden="true" />}

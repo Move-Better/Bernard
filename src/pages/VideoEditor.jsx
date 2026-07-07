@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Play, Pause, Film, Sparkles, Captions, Type,
@@ -560,6 +561,12 @@ export default function VideoEditor() {
   useDocumentTitle('Reel Editor · Moment Miner')
   const { assetId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Routed at both /moments/clip/:assetId and /slate/clip/:assetId — the
+  // fallback (used only when there's no real history to go back to) must
+  // match whichever section the URL says we're actually in, not always
+  // Moment Miner.
+  const goBack = useSmartBack(() => (location.pathname.startsWith('/slate') ? '/slate' : '/moments'))
   const videoRef = useRef(null)
 
   const { data: asset, isLoading, error } = useQuery({ queryKey: ['media-asset', assetId], queryFn: () => getMediaAsset(assetId), enabled: !!assetId, retry: 1 })
@@ -937,7 +944,7 @@ export default function VideoEditor() {
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
         <AlertCircle className="h-8 w-8 text-destructive" />
         <p className="text-sm font-medium text-destructive">Could not load this clip</p>
-        <Button size="sm" variant="outline" onClick={() => navigate('/moments')}>Back to Moment Miner</Button>
+        <Button size="sm" variant="outline" onClick={goBack}>Back</Button>
       </div>
     )
   }
@@ -947,7 +954,7 @@ export default function VideoEditor() {
       {/* Shared top chrome (unified shell). Format switcher + transport + Export
           fold into the action slot; the side panel below is inspector-only. */}
       <EditorChrome
-        onBack={() => navigate('/moments')}
+        onBack={goBack}
         title={asset.display_title || asset.filename || 'Reel'}
         badge={{ icon: Film, label: (FORMATS[format] || FORMATS.reel).label, sub: (FORMATS[format] || FORMATS.reel).dim }}
       >

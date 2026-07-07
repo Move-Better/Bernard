@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useAuth } from '@clerk/react'
 import { ArrowLeft, Mic, Square, Trash2, Loader2, Play, Pause, Sparkles, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -83,6 +84,7 @@ export default function VoiceTraining() {
   const navigate = useNavigate()
   const { getToken } = useAuth()
   const staffId = useSelfStaffId()
+  const goBack = useSmartBack(() => (staffId ? `/staff/${staffId}?tab=voice` : '/'))
   const { data: selfStaff } = useStaffMember(staffId)
   const optedOut = !!selfStaff?.voice_clone_opt_out
 
@@ -324,12 +326,13 @@ export default function VoiceTraining() {
   if (optedOut) {
     return (
       <div className="py-6 space-y-6">
-        <Link
-          to={staffId ? `/staff/${staffId}?tab=voice` : '/'}
+        <button
+          type="button"
+          onClick={goBack}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
-        </Link>
+        </button>
         <Card>
           <CardContent className="p-6 space-y-3">
             <div className="flex items-start gap-3">
@@ -354,12 +357,13 @@ export default function VoiceTraining() {
 
   return (
     <div className="py-6 space-y-6">
-      <Link
-        to={staffId ? `/staff/${staffId}?tab=voice` : '/'}
+      <button
+        type="button"
+        onClick={goBack}
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
-      </Link>
+      </button>
 
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold flex items-center gap-2">

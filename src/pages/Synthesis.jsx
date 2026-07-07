@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import {
   ArrowLeft, Loader2, AlertCircle, Users, BookOpen, TrendingUp,
   ChevronRight, Circle, CheckCircle2, BarChart3, Lightbulb, Brain,
@@ -153,6 +154,7 @@ function KindSection({ kind, concepts, totalStaff, onDraft }) {
 export default function Synthesis() {
   useDocumentTitle('Knowledge Synthesis')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/')
   const workspace = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
 
@@ -256,9 +258,13 @@ export default function Synthesis() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3">
-            <ArrowLeft className="h-3.5 w-3.5" /> Home
-          </Link>
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
+          </button>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Knowledge synthesis

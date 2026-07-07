@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import {
   MessagesSquare,
   Check,
@@ -51,6 +51,10 @@ function QueueRow({ answer, index, total, onOpen }) {
 }
 
 export default function AnswerReview() {
+  // Reached from PipelineKanban, StoryDetail, Home, and MediaHub, so the
+  // fallback (used only with no real history to go back to) can't be a
+  // single hardcoded destination.
+  const goBack = useSmartBack('/')
   // While Bernard is re-drafting a revise (status changes_requested), poll so the
   // updated answer appears when it flips back to needs_review. Hard-capped at 90s
   // so a silent generation failure can't spin forever.
@@ -137,12 +141,13 @@ export default function AnswerReview() {
 
   return (
     <div className="py-6 pb-24">
-      <Link
-        to="/"
+      <button
+        type="button"
+        onClick={goBack}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ChevronLeft className="h-4 w-4" /> Home
-      </Link>
+        <ChevronLeft className="h-4 w-4" /> Back
+      </button>
 
       <div className="mt-3 flex items-center gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">

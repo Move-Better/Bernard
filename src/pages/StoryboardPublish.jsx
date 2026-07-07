@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import BackLink from '@/components/ui/BackLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { pieceLabel } from '@/lib/pieceLabel'
 import { postFormat } from '@/lib/mediaEntry'
 import { resolveArchetype } from '@/lib/editorArchetype'
@@ -41,7 +42,7 @@ function firstHeading(content) {
  */
 export default function StoryboardPublish() {
   const { pieceId } = useParams()
-  const navigate = useNavigate()
+  const goBack = useSmartBack('/publish')
   const { data: piece, isLoading, isError } = useContentItem(pieceId)
 
   // Other drafts still waiting on media — drives the "Next up" loop-close so the
@@ -125,7 +126,7 @@ export default function StoryboardPublish() {
       <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
         <SlideEditor
           piece={piece}
-          onBack={() => navigate('/publish')}
+          onBack={goBack}
           formatLabel={isVisual || isStoryPhoto ? meta.label : fmt.label}
           formatSub={isStoryPhoto ? 'Story frame' : isVisual ? 'Single photo' : `${fmt.count} ${fmt.unit}`}
           photoCount={photoCount}
@@ -173,7 +174,7 @@ export default function StoryboardPublish() {
     <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
       <UnifiedEditor
         piece={piece}
-        onBack={() => navigate('/publish')}
+        onBack={goBack}
         formatLabel={fmt.label}
         formatSub={`${fmt.count} ${fmt.unit}`}
         photoCount={photoCount}

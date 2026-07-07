@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useAuth } from '@clerk/react'
 import { ArrowLeft, Mic, Square, Trash2, Loader2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,7 @@ function formatTime(sec) {
 export default function HandoutCapture() {
   useDocumentTitle('Patient handout')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/new')
   const { getToken } = useAuth()
 
   // idle | requesting | recording | recorded | uploading
@@ -176,9 +178,13 @@ export default function HandoutCapture() {
 
   return (
     <div className="py-6 space-y-6">
-      <Link to="/new" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+      <button
+        type="button"
+        onClick={goBack}
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4 mr-1" /> Back
-      </Link>
+      </button>
 
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold flex items-center gap-2">

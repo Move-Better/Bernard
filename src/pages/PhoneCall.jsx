@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { ArrowLeft, Phone, PhoneOff, Mic, MicOff } from 'lucide-react'
@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { posthogCapture } from '@/lib/posthog'
 import {
@@ -1314,12 +1315,11 @@ export default function PhoneCall() {
 // ────────────────────────────────────────────────────────────────────────────
 
 function Header({ topic }) {
+  const goBack = useSmartBack('/new')
   return (
     <div className="flex items-center gap-3">
-      <Button variant="ghost" size="icon" asChild aria-label="Back">
-        <Link to="/new">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </Link>
+      <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       </Button>
       <div className="min-w-0">
         <h1 className="text-2xl font-semibold tracking-tight">

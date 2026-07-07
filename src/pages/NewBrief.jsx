@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { ArrowLeft, Loader2, ClipboardList, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +45,7 @@ const CHANNEL_ICON = {
 export default function NewBrief() {
   useDocumentTitle('New Brief')
   const navigate  = useNavigate()
+  const goBack = useSmartBack('/new')
   const workspace = useWorkspace()
   const [searchParams] = useSearchParams()
 
@@ -135,8 +137,8 @@ export default function NewBrief() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" aria-label="Back" asChild>
-          <Link to="/new"><ArrowLeft className="h-4 w-4" aria-hidden="true" /></Link>
+        <Button variant="ghost" size="icon" aria-label="Back" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Brief</h1>

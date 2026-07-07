@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Link as LinkIcon, Loader2 } from 'lucide-react'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 export default function ImportUrl() {
   useDocumentTitle('Import writing')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/new')
   const workspace = useWorkspace()
 
   const [url, setUrl] = useState('')
@@ -53,10 +55,8 @@ export default function ImportUrl() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back">
-          <Link to="/new">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Import writing</h1>

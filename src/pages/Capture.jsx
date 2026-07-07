@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import {
   ArrowLeft, Camera, FolderOpen, Loader2, Upload, X, Check,
   Image as ImageIcon, AlertCircle, Smartphone, Zap, Copy, RotateCcw,
@@ -49,6 +50,7 @@ function purposeForFile(file) {
 export default function Capture() {
   useDocumentTitle('Capture')
   const staffId = useSelfStaffId()
+  const goBack = useSmartBack('/')
 
   const cameraInputRef = useRef(null)
   const filePickerRef = useRef(null)
@@ -279,9 +281,13 @@ export default function Capture() {
 
   return (
     <div className="py-6">
-      <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Home
-      </Link>
+      <button
+        type="button"
+        onClick={goBack}
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+      </button>
 
       <h1 className="text-2xl font-semibold mb-1">Capture</h1>
       <p className="text-sm text-muted-foreground mb-4">

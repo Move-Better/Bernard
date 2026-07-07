@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
@@ -78,6 +79,7 @@ function detectStageTag(raw) {
 export default function BrandInterview() {
   useDocumentTitle('Brand discovery')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/settings/brand-identity')
   const qc = useQueryClient()
   const workspace = useWorkspace()
   const { user } = useUser()
@@ -659,7 +661,7 @@ export default function BrandInterview() {
             <p className="text-sm text-muted-foreground">
               Brand discovery is only available to workspace admins.
             </p>
-            <Button variant="outline" onClick={() => navigate('/settings/brand-identity')}>Back to Brand identity</Button>
+            <Button variant="outline" onClick={goBack}>Back</Button>
           </CardContent>
         </Card>
       </div>

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { posthogCapture } from '@/lib/posthog'
 import { useUser } from '@clerk/react'
 import { useWakeLock } from '../hooks/useWakeLock'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { ArrowLeft, ArrowRight, Loader2, Sparkles, AlertCircle, AlertTriangle, Mic, MicOff, Volume2, Mic2, PauseCircle, Quote, X, ArrowLeftRight, CheckCircle2, Circle, Check, RefreshCw, Send, Keyboard, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -1201,16 +1202,9 @@ export default function InterviewSession() {
   }
 
   // Back returns to wherever the user came from (Home → New → Interview, or
-  // the staff profile). navigate(-1) preserves that origin; for direct-link
-  // entries with no in-app history (history idx 0), fall back to Home so we
-  // never step off the app into the browser's previous site.
-  const handleBack = () => {
-    if (window.history.state?.idx > 0) {
-      navigate(-1)
-    } else {
-      navigate('/')
-    }
-  }
+  // the staff profile) via the shared useSmartBack hook; falls back to Home
+  // for direct-link entries with no in-app history.
+  const handleBack = useSmartBack('/')
 
   // Verbatim flag helpers. The transcript-substring check guarantees flagged
   // text is something the clinician actually said — selecting an assistant
@@ -1579,8 +1573,8 @@ export default function InterviewSession() {
     return (
       <div className="py-4">
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" asChild aria-label="Back">
-            <Link to="/new"><ArrowLeft className="h-4 w-4" aria-hidden="true" /></Link>
+          <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Back">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
           <div>
             <p className="font-medium text-sm">{staffMember.name}</p>

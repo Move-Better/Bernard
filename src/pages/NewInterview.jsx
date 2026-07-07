@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSmartBack } from '@/lib/useSmartBack'
 import { posthogCapture } from '@/lib/posthog'
 import { useUser, useAuth } from '@clerk/react'
 import {
@@ -32,6 +33,7 @@ import PageSkeleton from '@/components/PageSkeleton'
 export default function NewInterview() {
   useDocumentTitle('New interview')
   const navigate = useNavigate()
+  const goBack = useSmartBack('/')
   const [searchParams] = useSearchParams()
   const { user } = useUser()
   const { getToken } = useAuth()
@@ -300,10 +302,8 @@ export default function NewInterview() {
     <div className="space-y-5">
       <PipelineStepper current="interview" />
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild aria-label="Back">
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">

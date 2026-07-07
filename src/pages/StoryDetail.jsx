@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { AlertCircle, ArrowLeft, ChevronDown, Link as LinkIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Link as LinkIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import BackLink from '@/components/ui/BackLink'
 import PipelineStepper from '@/components/PipelineStepper'
 import { Button } from '@/components/ui/button'
 import {
@@ -238,13 +239,7 @@ export default function StoryDetail() {
   if (isError || !story) {
     return (
       <div className="py-6 space-y-4">
-        <Link
-          to="/stories"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Stories
-        </Link>
+        <BackLink to="/stories">Back to Stories</BackLink>
         <ErrorState message="Story not found." />
       </div>
     )
@@ -258,13 +253,7 @@ export default function StoryDetail() {
       <PipelineStepper current="words" />
       {/* Header */}
       <div className="space-y-2">
-        <Link
-          to="/stories"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Stories
-        </Link>
+        <BackLink to="/stories">Back to Stories</BackLink>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1 min-w-0">
