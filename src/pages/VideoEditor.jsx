@@ -20,6 +20,10 @@ import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import SaveStatus from '@/components/editor/SaveStatus'
+import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
+import { useUndoHistory } from '@/lib/useUndoHistory'
+import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 // Output format → render channel (the renderer's VIDEO_CHANNEL_SPECS already
@@ -589,6 +593,11 @@ export default function VideoEditor() {
   // server PATCH. Fully defensive: a missing/corrupt draft just opens fresh.
   const restoredRef = useRef(false)
   const hydratedRef = useRef(false)
+  // Mirrors hydratedRef into state — a plain ref flip doesn't itself trigger a
+  // re-render, and when there's no draft to restore, no setState call happens
+  // in the effect below to cause one incidentally. Undo history needs an
+  // actual re-render to pick up enabled=true.
+  const [hydrated, setHydrated] = useState(false)
   const lastSavedRef = useRef(null)
   useEffect(() => {
     if (!asset || restoredRef.current) return
@@ -615,20 +624,45 @@ export default function VideoEditor() {
       }
     } catch { /* corrupt draft — open fresh */ }
     hydratedRef.current = true
+    setHydrated(true)
   }, [asset, assetId])
+  const [saveStatus, setSaveStatus] = useState('idle')
   useEffect(() => {
     if (!assetId || !hydratedRef.current) return
     const doc = { format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }
     const json = JSON.stringify(doc)
     try { localStorage.setItem(`videoEdit:${assetId}`, json) } catch { /* quota — ignore */ }
     if (json === lastSavedRef.current) return
+    setSaveStatus('saving')
     const t = setTimeout(() => {
       lastSavedRef.current = json
       // Offline / failure is non-fatal — localStorage above still holds the draft.
-      updateMediaAsset(assetId, { videoEditDraft: doc }).catch(() => {})
+      updateMediaAsset(assetId, { videoEditDraft: doc })
+        .then(() => setSaveStatus('saved'))
+        .catch(() => setSaveStatus('error'))
     }, 1500)
     return () => clearTimeout(t)
   }, [assetId, format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec])
+
+  // Undo/redo over the same draft shape the autosave above persists. Disabled
+  // until the server/localStorage draft has hydrated, so the initial restore
+  // doesn't itself become an undoable step.
+  const undoDraft = useMemo(
+    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }),
+    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec],
+  )
+  const { undo, redo, canUndo, canRedo } = useUndoHistory(undoDraft, (snap) => {
+    setFormat(snap.format)
+    setGrade(snap.grade)
+    setReframe(snap.reframe)
+    setKenBurnsState(snap.kenBurns)
+    setOverlays(snap.overlays)
+    setSpeedState(snap.speed)
+    setCaptionState(snap.caption)
+    setStartSec(snap.startSec)
+    setEndSec(snap.endSec)
+  }, { enabled: hydrated })
+  useUndoRedoShortcut(undo, redo)
 
   // Seed trim + caption from the first proposed segment, once.
   const proposals = useMemo(() => (segData?.segments || []).filter((s) => s.status === 'proposed' || s.status === 'kept'), [segData])
@@ -929,6 +963,8 @@ export default function VideoEditor() {
           </Tooltip>
           <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
         </div>
+        <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+        <SaveStatus status={saveStatus} />
         {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
         <div className="flex gap-1" role="group" aria-label="Output format">
           {FORMAT_KEYS.map((k) => (

@@ -27,6 +27,11 @@ import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import SaveStatus from '@/components/editor/SaveStatus'
+import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
+import { useAutosave } from '@/lib/useAutosave'
+import { useUndoHistory } from '@/lib/useUndoHistory'
+import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
 
 // Role label + chip colors. Mirrors the mockup palette.
 const ROLE_META = {
@@ -1609,13 +1614,14 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const workspace = useWorkspace()
   const navigate = useNavigate()
   const brandStyle = workspace?.brand_style || {}
-  const mediaUrls = (piece?.media_urls || []).filter((m) => m && m.type !== 'video' && m.url)
+  const pieceMediaUrls = piece?.media_urls
+  const mediaUrls = (pieceMediaUrls || []).filter((m) => m && m.type !== 'video' && m.url)
   const hasMedia = mediaUrls.length > 0
   // Keys of every already-attached entry (photo or video) — so the swap/add
   // picks can mark which suggestions are already on the piece.
   const attachedKeys = useMemo(
-    () => new Set((piece?.media_urls || []).map(mediaEntryKey)),
-    [piece?.media_urls],
+    () => new Set((pieceMediaUrls || []).map(mediaEntryKey)),
+    [pieceMediaUrls],
   )
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [safeZones, setSafeZones] = useState(true)
@@ -1649,7 +1655,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   }
 
   const [slides, setSlides] = useState(seedSlides)
-  const [savedSlidesJson, setSavedSlidesJson] = useState(() => JSON.stringify(seedSlides()))
   const [themeId, setThemeId] = useState(() => piece?.photo_template_id || DEFAULT_DECK_THEME)
   const [aspect, setAspect] = useState(() => forcedAspect || piece?.aspect_ratio || '4:5')
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
@@ -1673,7 +1678,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   useEffect(() => {
     const next = seedSlides()
     setSlides(next)
-    setSavedSlidesJson(JSON.stringify(next))
     setThemeId(piece?.photo_template_id || DEFAULT_DECK_THEME)
     setAspect(forcedAspect || piece?.aspect_ratio || '4:5')
     setActiveSlideIdx(0)
@@ -1686,9 +1690,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const customThemes = allThemes.filter((t) => t.custom)
   const theme = resolveTheme(themeId, customThemes)
 
-  const dirty = JSON.stringify(slides) !== savedSlidesJson
-    || themeId !== (piece?.photo_template_id || DEFAULT_DECK_THEME)
-    || aspect !== (forcedAspect || piece?.aspect_ratio || '4:5')
   const updateItem = useUpdateContentItem()
 
   // Auto-attach top AI pick per slide on first open when slides have no photos.
@@ -1733,23 +1734,18 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     if (toAdd.length > 0) {
       // Persist BOTH the new media_urls AND the per-slide photo_idx binding in one
       // patch. media_urls alone (the previous behavior) survives reload but the
-      // binding lived only in local state until an explicit Save — so a reload
-      // before saving showed "N photos" attached but unbound (auto-attach won't
+      // binding lived only in local state until the next autosave — so a reload
+      // before that tick showed "N photos" attached but unbound (auto-attach won't
       // re-fire once media is non-empty). Saving the binding here makes the
-      // auto-populate durable. No bake: the slide images bake on an explicit Save,
-      // and publish has its own render fallback (same as the render-failed path).
-      // Mark the persisted slides as the saved baseline so the editor isn't dirty
-      // from a binding the user never touched.
-      const persisted = JSON.stringify(newSlides)
-      updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw, slides: newSlides } })
-        .then(() => setSavedSlidesJson(persisted))
-        .catch(() => {})
+      // auto-populate durable immediately. No bake: the slide images bake on
+      // the next autosave, and publish has its own render fallback (same as
+      // the render-failed path).
+      updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: nextRaw, slides: newSlides } }).catch(() => {})
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoSuggestions])
 
   const [rendering, setRendering] = useState(false)
-  const busy = updateItem.isPending || rendering
 
   function updateSlide(idx, next) {
     const out = slides.slice()
@@ -1864,13 +1860,21 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     toast.success('Hook updated — Save to bake')
   }
 
-  async function handleSave() {
-    const cleaned = slides.map((s) => ({
+  // Draft snapshot shared by autosave + undo/redo — the wholesale-restorable
+  // shape of "what this editor persists" (slide content, theme, aspect).
+  const draftState = useMemo(() => ({ slides, themeId, aspect }), [slides, themeId, aspect])
+
+  // Autosave — bakes each slide (photo + on-screen text) into an image and
+  // uploads it, so the overlay actually ships at publish, then persists the
+  // slide/theme/aspect patch. Debounced by useAutosave; retries automatically
+  // on the next edit if the render step fails (text is saved either way).
+  async function saveDraft(next) {
+    const cleaned = next.slides.map((s) => ({
       photo_idx: typeof s.photo_idx === 'number' ? s.photo_idx : null,
       template:  s.template,
       // Preserve the per-slide theme override. Without this it was silently
       // dropped on save — the picker set slide.template_id, the resolver and the
-      // bake honored it, but handleSave rebuilt slides without it, so a per-slide
+      // bake honored it, but this rebuilt slides without it, so a per-slide
       // theme never persisted. (P0 data-loss fix.)
       template_id: s.template_id || null,
       // Persist the photo reframe (pan/zoom) so it survives reload and ships in
@@ -1884,9 +1888,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       blocks:    s.blocks.filter((b) => (b.text || '').trim() !== ''),
     }))
 
-    // Bake each slide (photo + on-screen text) into an image and upload it, so
-    // the overlay actually ships at publish — it previously lived only on the
-    // preview canvas and never reached the post. Re-renders only changed slides.
     let toPersist = cleaned
     let renderFailed = false
     setRendering(true)
@@ -1895,41 +1896,38 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         slides:    cleaned,
         mediaUrls: piece?.media_urls,
         brandStyle,
-        theme,
-        themeId,
+        theme:     resolveTheme(next.themeId, customThemes),
+        themeId:   next.themeId,
         customThemes,
         pieceId:   piece.id,
-        aspect,
+        aspect:    next.aspect,
       })
       toPersist = rendered
     } catch (e) {
       // Never lose the user's text on a render/upload hiccup — persist the slide
-      // data anyway. Publish has its own render fallback, and re-saving retries.
+      // data anyway. Publish has its own render fallback, and the next autosave retries.
       renderFailed = true
       console.warn('[SlideEditor] slide render failed, saving text only', e.message)
     } finally {
       setRendering(false)
     }
 
-    try {
-      await updateItem.mutateAsync({
-        id: piece.id,
-        patch: { slides: toPersist, photo_template_id: themeId || null, aspectRatio: aspect },
-      })
-      setSavedSlidesJson(JSON.stringify(cleaned))
-      if (renderFailed) {
-        toast.error('Saved, but slide images need a retry', { description: 'Text is safe — click Save again to bake the on-screen text into the images.' })
-      } else {
-        toast.success('Slides saved')
-      }
-    } catch (e) {
-      toast.error('Save failed', { description: e.message })
+    await updateItem.mutateAsync({
+      id: piece.id,
+      patch: { slides: toPersist, photo_template_id: next.themeId || null, aspectRatio: next.aspect },
+    })
+    if (renderFailed) {
+      toast.error('Saved, but slide images need a retry', { description: 'Text is safe — the next autosave will retry baking the on-screen text into the images.' })
     }
   }
 
-  function handleReset() {
-    setSlides(JSON.parse(savedSlidesJson))
-  }
+  const { status: saveStatus } = useAutosave(draftState, saveDraft, { debounceMs: 1500 })
+  const { undo, redo, canUndo, canRedo } = useUndoHistory(draftState, (snap) => {
+    setSlides(snap.slides)
+    setThemeId(snap.themeId)
+    setAspect(snap.aspect)
+  })
+  useUndoRedoShortcut(undo, redo)
 
   // Active slide derived values — used by the canvas and the inspector.
   const activeSlide = slides[activeSlideIdx] || slides[0]
@@ -2024,12 +2022,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
             <TooltipContent>Render into ad sizes</TooltipContent>
           </Tooltip>
         )}
-        {dirty && (
-          <Button size="sm" variant="ghost" onClick={handleReset} disabled={busy}>Reset</Button>
-        )}
-        <Button size="sm" variant={dirty ? 'default' : 'outline'} onClick={handleSave} disabled={busy || !dirty} loading={busy}>
-          {rendering ? 'Rendering…' : updateItem.isPending ? 'Saving…' : dirty ? 'Save' : 'Saved'}
-        </Button>
+        <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+        <SaveStatus status={rendering ? 'saving' : saveStatus} />
         {scheduleNode && (
           <Button size="sm" onClick={() => setScheduleOpen(true)} className="bg-action text-action-foreground hover:bg-action/90">
             <CalendarClock className="mr-1 h-3.5 w-3.5" />
