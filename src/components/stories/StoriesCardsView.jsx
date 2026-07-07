@@ -36,6 +36,7 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
   const locationFilter = searchParams.get('location') || ''
   const campaignFilter = searchParams.get('campaign') || ''
   const archetypeFilter = searchParams.get('archetype') || ''
+  const failedOnly = searchParams.get('status') === 'failed'
 
   if (isLoading) {
     return (
@@ -53,10 +54,11 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
     if (locationFilter && s.location_id !== locationFilter)                       return false
     if (campaignFilter && s.campaign_id !== campaignFilter)                       return false
     if (archetypeFilter && s.prototype_id !== archetypeFilter)                    return false
+    if (failedOnly && !s.pieces?.some((p) => p.status === 'failed'))              return false
     return true
   })
 
-  const filtersActive = !!(platformFilter || stageFilter || campaignFilter || locationFilter || archetypeFilter)
+  const filtersActive = !!(platformFilter || stageFilter || campaignFilter || locationFilter || archetypeFilter || failedOnly)
 
   if (filtered.length === 0) {
     if (filtersActive) {
@@ -67,6 +69,7 @@ export default function StoriesCardsView({ stories = [], isLoading = false }) {
         next.delete('campaign')
         next.delete('archetype')
         next.delete('location')
+        next.delete('status')
         return next
       }, { replace: true })
       return (

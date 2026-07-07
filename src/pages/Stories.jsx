@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Mic, Target, User, X, ChevronDown, Newspaper } from 'lucide-react'
+import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle } from 'lucide-react'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -75,6 +75,11 @@ export default function Stories() {
   // 'real' = voice_memo + seminar captures only (Real moments filter)
   const captureFilter  = searchParams.get('capture')  || ''
   const realOnly       = captureFilter === 'real'
+  // status=failed — Home's failed-publish banner deep-links here when 2+
+  // posts failed, so the user lands on the specific stories that need
+  // attention instead of the unfiltered list.
+  const statusFilter   = searchParams.get('status')   || ''
+  const failedOnly     = statusFilter === 'failed'
 
   const { data: storiesAll = [], isLoading } = useStories()
   const stories = useMemo(() => {
@@ -140,6 +145,14 @@ export default function Stories() {
     }, { replace: true })
   }
 
+  function clearStatus() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('status')
+      return next
+    }, { replace: true })
+  }
+
   function toggleRealOnly() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -162,7 +175,7 @@ export default function Stories() {
           <div className="flex items-baseline gap-3 min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <Newspaper className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-              {mineOnly ? 'My stories' : 'Stories'}
+              {failedOnly ? 'Failed posts' : mineOnly ? 'My stories' : 'Stories'}
             </h1>
             {!isLoading && stories.length > 0 ? (
               <span className="text-sm text-muted-foreground truncate">
@@ -243,6 +256,22 @@ export default function Stories() {
         {/* Advanced filter bar — horizontal scroll on mobile so chips do not wrap
             into 3+ rows and crowd the sticky header. */}
         <div className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Failed-to-publish — active chip only, no selector. Reached via a
+            deep link from Home's failed-publish banner (status=failed); there
+            is no UI affordance to turn it on manually since it's a triage
+            state, not a browsing filter. */}
+        {failedOnly ? (
+          <button
+            type="button"
+            onClick={clearStatus}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-destructive bg-destructive text-destructive-foreground px-3 py-1.5 text-xs font-semibold hover:bg-destructive/90 transition-colors"
+          >
+            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+            Failed to publish
+            <X className="h-3 w-3" aria-hidden="true" />
+          </button>
+        ) : null}
+
         {/* Owner — "Mine only" active chip. No selector form because the only
             two states are "all" and "me"; non-me staff filtering is
             handled by the existing /staff/:id page. */}
