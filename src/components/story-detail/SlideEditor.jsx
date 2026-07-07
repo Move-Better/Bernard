@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
@@ -969,7 +969,7 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
 
 // ── PHOTO inspector body — swap/add + bind + reframe + colorist ──────────────
 
-function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange }) {
+function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false }) {
   // One photo control: the slide's current photo + Replace, or an empty state
   // that prompts a pick. Picking ALWAYS attaches+binds in one step (per-slide
   // model) — the old "use an attached photo" pool dropdown is gone. `replacing`
@@ -1025,6 +1025,13 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
         <ImageIcon className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">This slide&apos;s photo</span>
       </div>
+
+      {singleSlide && (
+        <p className="flex items-start gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-2 py-1.5 text-3xs leading-snug text-muted-foreground">
+          <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          This platform supports one photo — picking a new one replaces this one.
+        </p>
+      )}
 
       {/* The slide's photo — current photo + Replace/Remove, or an empty state.
           ONE control: picking attaches+binds in one step (per-slide model). The
@@ -1404,9 +1411,10 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
             <span className="text-3xs mt-0.5">Add</span>
           </button>
         ) : (
-          <p className="ml-[14px] w-[calc(100%-14px)] text-center text-3xs leading-snug text-muted-foreground/70">
-            Single photo — no extra slides
-          </p>
+          <div className="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center gap-1 rounded-md border border-dashed border-muted-foreground/30 py-2 text-center text-3xs leading-snug text-muted-foreground/70">
+            <Lock className="h-3 w-3" aria-hidden="true" />
+            <span>Locked to 1 photo — this platform doesn&apos;t support extra slides</span>
+          </div>
         )}
       </div>
     </aside>
@@ -1813,7 +1821,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       if (photoIdx >= 0) {
         setSlides((cur) => cur.map((s, i) => (i === activeSlideIdx ? { ...s, photo_idx: photoIdx } : s)))
       }
-      toast.success(already ? 'Photo swapped' : 'Photo attached')
+      if (singleSlide && !already && raw.length > 0) {
+        toast.success('Photo replaced', { description: 'This platform supports one photo — the previous photo was removed.' })
+      } else {
+        toast.success(already ? 'Photo swapped' : 'Photo attached')
+      }
     } catch (e) {
       toast.error('Could not attach photo', { description: e?.message })
     }
@@ -2114,6 +2126,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     attachedKeys={attachedKeys}
                     onAttachPhoto={attachPhoto}
                     onChange={(next) => updateSlide(activeSlideIdx, next)}
+                    singleSlide={singleSlide}
                   />
                 )}
 
