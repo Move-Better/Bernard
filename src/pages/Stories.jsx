@@ -154,9 +154,10 @@ export default function Stories() {
   return (
     <main className="py-6 px-6 flex flex-col gap-4">
       {/* Sticky page chrome — keeps the title and filter chips in view while
-          the user scrolls through the cards. -mx-6 px-6 extends the backdrop
-          to the parent main's edges so blurred content reads cleanly behind it. */}
-      <div className="sticky top-14 z-30 -mx-6 px-6 -mt-6 pt-6 pb-3 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border/60 flex flex-col gap-3">
+          the user scrolls through the cards. -mx-6 px-6 extends the fill to the
+          parent main's edges; a solid bg-background prevents scrolled cards from
+          ghosting through the bar. */}
+      <div className="sticky top-14 z-30 -mx-6 px-6 -mt-6 pt-6 pb-3 bg-background border-b border-border/60 flex flex-col gap-3">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-baseline gap-3 min-w-0">
