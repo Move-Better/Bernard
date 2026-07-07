@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -83,6 +83,14 @@ export default function AnswerReview() {
   // The expanded answer defaults to the first in the queue.
   const active = answers.find((a) => a.id === openId) || answers[0] || null
 
+  // When the active answer changes (approve advances to the next one, or the
+  // reviewer opens another from the queue), jump back to the top — otherwise a
+  // new answer loads under the old scroll position and it's near-impossible to
+  // tell anything happened.
+  useEffect(() => {
+    if (active?.id) window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [active?.id])
+
   const mutation = useAppMutation({
     mutationFn: (payload) =>
       apiFetch('/api/answers', {
@@ -128,7 +136,7 @@ export default function AnswerReview() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 pb-24">
+    <div className="py-6 pb-24">
       <Link
         to="/"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -164,10 +172,10 @@ export default function AnswerReview() {
           </p>
         </div>
       ) : (
-        <>
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
           {/* Expanded answer */}
           {active && (
-            <div className="mt-5 overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
               <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                 {active.condition && (
                   <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-2xs font-bold text-primary">
@@ -325,9 +333,13 @@ export default function AnswerReview() {
             </div>
           )}
 
-          {/* Collapsed queue (the rest) */}
+          {/* Queue of the remaining answers — a sticky right rail on wide
+              screens, stacked below the active answer on smaller ones. */}
           {answers.length > 1 && (
-            <div className="mt-3 space-y-2">
+            <div className="space-y-2 xl:sticky xl:top-6">
+              <p className="px-1 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
+                Up next
+              </p>
               {answers
                 .filter((a) => a.id !== active?.id)
                 .map((a) => {
@@ -347,7 +359,7 @@ export default function AnswerReview() {
                 })}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   )
