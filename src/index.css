@@ -155,6 +155,9 @@
   .nx-pill-tint    { background: hsl(var(--action) / 0.10); color: hsl(var(--action)); border: 1px solid hsl(var(--action) / 0.25); }
   .nx-pill-ink     { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
   .nx-pill-primary { background: hsl(var(--primary)); color: #fff; }
+  /* Solid amber nudge pill — a stronger "act now" than the soft nx-pill-amber
+     status tint. Reserved for time-pressure nudges (e.g. "N days since"). */
+  .nx-pill-action-solid { background: hsl(var(--action)); color: #fff; }
 
   /* Signature gradient — used once per page as "the moment." Reserve for
      hero ribbons, campaign progress strips, brand-mark badges. Do NOT use
@@ -186,10 +189,10 @@
     box-shadow: 0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10);
   }
   .nx-card-hi {
-    background: linear-gradient(180deg, #fff, hsl(var(--primary) / 0.05));
-    border: 1px solid hsl(var(--primary) / 0.3);
+    background: linear-gradient(180deg, #fff, hsl(var(--primary) / 0.08));
+    border: 1px solid hsl(var(--primary) / 0.38);
     border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px rgba(12,117,128,0.22);
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 30px -18px rgba(12,117,128,0.42);
   }
   /* Hover-lift variant for .nx-card-hi used as a standalone, clickable PEER
      card (e.g. one tile among several in a grid, like ResumeStrip's
@@ -217,6 +220,41 @@
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -18px hsl(var(--action) / 0.22);
   }
+
+  /* Severity ramp (Direction A, 2026-07-08) — alert rows escalate on a
+     full-strength left rail + a deepened tint + a solid icon chip, so
+     severity reads at a glance instead of as a 7-10% whisper of hue. Three
+     steps: crit = broken/failed (destructive), act = act-now (amber action),
+     info = neutral FYI. Shared skeleton so Home's failed-publish + attention
+     strips, Storyboard/Overview inbox banners, and any future alert row stay
+     in sync. The rail is the primary cue — you clock red-vs-amber before
+     reading a word. Pair the row with a matching .nx-alert-chip-*. */
+  .nx-alert {
+    position: relative;
+    display: flex; align-items: center; gap: 12px;
+    border-radius: 12px;
+    padding: 12px 16px 12px 18px;
+  }
+  .nx-alert::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 4px; border-radius: 4px;
+  }
+  .nx-alert-crit { background: hsl(var(--destructive) / 0.12); border: 1px solid hsl(var(--destructive) / 0.35); }
+  .nx-alert-crit::before { background: hsl(var(--destructive)); }
+  .nx-alert-act  { background: hsl(var(--action) / 0.13); border: 1px solid hsl(var(--action) / 0.34); }
+  .nx-alert-act::before  { background: hsl(var(--action)); }
+  .nx-alert-info { background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); }
+  .nx-alert-info::before { background: hsl(var(--muted-foreground) / 0.4); }
+
+  /* Solid icon chip for an alert row — white glyph on the severity color. */
+  .nx-alert-chip {
+    height: 30px; width: 30px; border-radius: 9999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: none; color: #fff;
+  }
+  .nx-alert-chip-crit { background: hsl(var(--destructive)); }
+  .nx-alert-chip-act  { background: hsl(var(--action)); }
+  .nx-alert-chip-info { background: hsl(var(--muted-foreground)); }
 
   /* Buttons — solid Blue Spruce primary with a subtle shadow, neutral
      secondary, ink-dark variant for finish/destructive-ish surfaces. */

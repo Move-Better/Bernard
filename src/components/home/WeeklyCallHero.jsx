@@ -35,7 +35,7 @@ export default function WeeklyCallHero({ lastOwnCallAt = null }) {
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="nx-eyebrow">Your weekly call</span>
             {days != null && (
-              <span className="nx-pill nx-pill-amber">
+              <span className="nx-pill nx-pill-action-solid">
                 {days <= 0
                   ? 'today'
                   : `${days} day${days === 1 ? '' : 's'} since your last`}
