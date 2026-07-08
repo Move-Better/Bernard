@@ -585,7 +585,7 @@ export default function ChannelsSettings() {
             <Link to="/settings/integrations" className="underline underline-offset-2 hover:text-foreground">
               Integrations
             </Link>
-            {' '}page. Channels marked <span className="font-medium">via Buffer</span> post through Buffer — a social scheduling tool that publishes to all your social accounts at once — so they need a Buffer account connected.
+            {' '}page. One-click social channels post through your connected social scheduler, so they need it connected first.
           </p>
         </CardContent>
       </Card>

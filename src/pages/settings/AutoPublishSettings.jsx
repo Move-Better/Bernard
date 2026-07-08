@@ -146,8 +146,8 @@ export default function AutoPublishSettings() {
           <div className="flex gap-2 text-sm text-warning">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <p>
-              <strong>Safety model:</strong> auto-published posts go into your Buffer queue (not
-              immediately live), so you have a window to review or delete them in Buffer before
+              <strong>Safety model:</strong> auto-published posts go into your scheduling queue (not
+              immediately live), so you have a window to review or delete them before
               they send. The cron runs every 10 minutes.
             </p>
           </div>

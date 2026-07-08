@@ -1495,7 +1495,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
           clearly passive and don't compete with the tappable channel toggles below. */}
       <div className="flex gap-2.5 border-l-2 border-primary/50 pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
         <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-        <span>Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Later, you can connect a <strong>social scheduling tool</strong> (we use one called Buffer) and those channels upgrade to one-click publishing.</span>
+        <span>Every channel works as a <strong>clean export</strong> from day one — copy the caption, download the image, paste it wherever you post. Later, you can connect <strong>social publishing</strong> and those channels upgrade to one-click posting.</span>
       </div>
       <div className="flex gap-2.5 border-l-2 border-border pl-3 py-0.5 text-xs text-muted-foreground leading-relaxed">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -1531,7 +1531,7 @@ function ChannelsScreen({ form, setForm, onBack, onContinue }) {
         })}
       </div>
       <p className="text-xs text-muted-foreground">
-        Pick at least one. Once connected, a social scheduling tool (we use Buffer — a free service that pushes to all your social accounts at once) will automatically send posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
+        Pick at least one. Once connected, social publishing will automatically send posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, and more. You don&apos;t need any of this set up to start — export works immediately.
       </p>
       <div className="flex items-center justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>← Back</Button>

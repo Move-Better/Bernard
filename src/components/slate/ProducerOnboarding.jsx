@@ -227,7 +227,7 @@ function ApproveStep() {
           row per platform (LinkedIn, Instagram, blog, etc.).`}
         </li>
         <li>
-          {`The workspace admin can then push to Buffer or your other publishing
+          {`The workspace admin can then push to your connected publishing
           channels — that part is owned by them, not you.`}
         </li>
         <li>{`The package leaves the slate and won't reappear tomorrow.`}</li>

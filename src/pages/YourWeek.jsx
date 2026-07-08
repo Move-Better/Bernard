@@ -789,7 +789,7 @@ export default function YourWeek() {
         open={scheduleConfirmOpen}
         onOpenChange={(v) => { if (!scheduling) setScheduleConfirmOpen(v) }}
         title={`Schedule ${approvedSchedulable.length} approved post${approvedSchedulable.length === 1 ? '' : 's'}?`}
-        description="Bernard will add these to your Buffer queue at their planned times. You can still hold or delete them from Buffer before they publish."
+        description="Bernard will add these to your scheduling queue at their planned times. You can still hold or delete them before they publish."
         confirmLabel={scheduling ? 'Scheduling…' : 'Schedule all'}
         loading={scheduling}
         onConfirm={batchSchedule}
