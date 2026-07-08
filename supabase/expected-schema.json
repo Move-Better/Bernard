@@ -360,6 +360,19 @@
     "stats",
     "workspace_id"
   ],
+  "feedback": [
+    "created_at",
+    "id",
+    "message",
+    "notify_error",
+    "notify_ok",
+    "page_url",
+    "screenshot_url",
+    "user_email",
+    "user_id",
+    "user_name",
+    "workspace_id"
+  ],
   "gsc_query_snapshots": [
     "captured_at",
     "clicks",
