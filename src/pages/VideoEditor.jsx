@@ -42,6 +42,9 @@ const fmt = (s) => {
   return `${m}:${String(ss).padStart(2, '0')}`
 }
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+// Clip window is capped to the server's MAX_RENDER_SECONDS (brandRenderVideo.js).
+// The timeline trim handles clamp to this so a clip can't silently truncate at render.
+const MAX_CLIP_SECONDS = 60
 const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
 
@@ -257,7 +260,7 @@ function ClipInspector({ ctx }) {
         <span className="flex-1 rounded-md border border-border px-2 py-1.5 text-center font-mono">{fmt(endSec)}</span>
         <span className="text-3xs text-muted-foreground">({fmt(durationSec)})</span>
       </div>
-      <p className="mb-3 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Trim with the <b>Clip bar</b> on the timeline below.</p>
+      <p className="mb-3 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Trim with the <b>Clip bar</b> on the timeline below · max {MAX_CLIP_SECONDS}s.</p>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Reframe · position in {formatDim}</p>
       {[['zoom', 'Zoom', 100, 220], ['x', 'Horizontal', 0, 100], ['y', 'Vertical', 0, 100]].map(([k, lbl, lo, hi]) => (
         <div key={k} className="mb-2">
@@ -324,7 +327,7 @@ function GradeInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { caption, setCaption, lines, genCaptions, genCaptionsPending } = ctx
+  const { caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions } = ctx
   const seg = (label, opts, key) => (
     <div className="mb-3">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -355,14 +358,19 @@ function CaptionInspector({ ctx }) {
           {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
         </button>
       ) : (
-        <p className="mt-1 rounded-md px-2 py-1.5 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Tap the caption on the video to fix a word.</p>
+        <>
+          <p className="mt-1 rounded-md px-2 py-1.5 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Tap the caption on the video to fix a word.</p>
+          {captionsEdited && (
+            <button onClick={resetCaptions} className="mt-1.5 w-full rounded-md py-1.5 text-3xs text-muted-foreground underline-offset-2 hover:underline">Reset captions to transcript</button>
+          )}
+        </>
       )}
     </InspectorShell>
   )
 }
 
 function OverlayInspector({ ctx }) {
-  const { curOverlay, setOverlay, setOverlayTime, delOverlay, durationSec, flashAlignGuides } = ctx
+  const { curOverlay, setOverlay, setOverlayTime, delOverlay, durationSec, flashAlignGuides, caption } = ctx
   const o = curOverlay
   if (!o) return null
   function alignOverlay(h, v) {
@@ -403,6 +411,21 @@ function OverlayInspector({ ctx }) {
       </div>
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Size</p>
       <input aria-label="Text overlay size" type="range" min={50} max={160} value={Math.round((o.size || 1) * 100)} onChange={(e) => setOverlay('size', +e.target.value / 100)} className="mb-3 w-full" />
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Text color</p>
+      <div className="mb-3 flex items-center gap-1.5">
+        {['#ffffff', '#111111', caption?.accent || BERNARD_PRIMARY].map((c) => {
+          const on = (o.color || '#ffffff').toLowerCase() === c.toLowerCase()
+          return (
+            <button key={c} type="button" onClick={() => setOverlay('color', c)} aria-label={`Text color ${c}`}
+              className="h-6 w-6 rounded-full border"
+              style={{ background: c, borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', boxShadow: on ? '0 0 0 1.5px hsl(var(--primary))' : undefined }} />
+          )
+        })}
+        <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border" style={{ borderColor: 'hsl(var(--border))' }} title="Custom color">
+          <span className="absolute inset-0" style={{ background: 'conic-gradient(from 90deg, #f44, #fd4, #4d4, #4dd, #44f, #f4f, #f44)' }} aria-hidden="true" />
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(o.color || '') ? o.color : '#ffffff'} onChange={(e) => setOverlay('color', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom overlay text color" />
+        </label>
+      </div>
       <div className="flex items-center gap-2 rounded-md border px-2.5 py-2 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
         <Move className="h-4 w-4 shrink-0" /><span><b>Drag the overlay</b> anywhere on the canvas.</span>
       </div>
@@ -484,7 +507,10 @@ function HorizontalTimeline({ ctx }) {
     const move = (ev) => {
       const r = trackRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
       const s = clamp((ev.clientX - r.left) / r.width, 0, 1) * span
-      if (which === 'in') setStartSec(clamp(s, 0, endSec - 1)); else setEndSec(clamp(s, startSec + 1, span))
+      // Clamp to a ≤MAX_CLIP_SECONDS window so the clip can't exceed what the
+      // server will render (else the export silently truncates the tail).
+      if (which === 'in') setStartSec(clamp(s, Math.max(0, endSec - MAX_CLIP_SECONDS), endSec - 1))
+      else setEndSec(clamp(s, startSec + 1, Math.min(span, startSec + MAX_CLIP_SECONDS)))
     }
     const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
     window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
@@ -536,7 +562,7 @@ function HorizontalTimeline({ ctx }) {
             aria-valuemax={Math.round(endSec - 1)}
             aria-valuenow={Math.round(startSec)}
             onMouseDown={trim('in')}
-            onKeyDown={(e) => { if (e.key === 'ArrowLeft') setStartSec((s) => clamp(s - 0.5, 0, endSec - 1)); else if (e.key === 'ArrowRight') setStartSec((s) => clamp(s + 0.5, 0, endSec - 1)) }}
+            onKeyDown={(e) => { if (e.key === 'ArrowLeft') setStartSec((s) => clamp(s - 0.5, Math.max(0, endSec - MAX_CLIP_SECONDS), endSec - 1)); else if (e.key === 'ArrowRight') setStartSec((s) => clamp(s + 0.5, Math.max(0, endSec - MAX_CLIP_SECONDS), endSec - 1)) }}
             className="absolute inset-y-0 z-10 cursor-ew-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
             style={{ left: `calc(${f(startSec)}% - 5px)`, width: 11, background: 'hsl(var(--primary))' }}
           />
@@ -548,7 +574,7 @@ function HorizontalTimeline({ ctx }) {
             aria-valuemax={Math.round(span)}
             aria-valuenow={Math.round(endSec)}
             onMouseDown={trim('out')}
-            onKeyDown={(e) => { if (e.key === 'ArrowLeft') setEndSec((s) => clamp(s - 0.5, startSec + 1, span)); else if (e.key === 'ArrowRight') setEndSec((s) => clamp(s + 0.5, startSec + 1, span)) }}
+            onKeyDown={(e) => { if (e.key === 'ArrowLeft') setEndSec((s) => clamp(s - 0.5, startSec + 1, Math.min(span, startSec + MAX_CLIP_SECONDS))); else if (e.key === 'ArrowRight') setEndSec((s) => clamp(s + 0.5, startSec + 1, Math.min(span, startSec + MAX_CLIP_SECONDS))) }}
             className="absolute inset-y-0 z-10 cursor-ew-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
             style={{ left: `calc(${f(endSec)}% - 6px)`, width: 11, background: 'hsl(var(--primary))' }}
           />
@@ -729,16 +755,29 @@ export default function VideoEditor() {
   // the line's time so karaoke still animates, and the bake receives these EXACT
   // words (captionWords override → preview==publish for edited captions).
   const [captionLines, setCaptionLines] = useState([])
+  // Once the user hand-edits a caption line, their words win: we stop auto-
+  // re-seeding from the transcript on trim changes (which used to silently wipe
+  // the edits). "Reset captions to transcript" clears this to re-derive.
+  const captionsEditedRef = useRef(false)
+  const [captionsEdited, setCaptionsEdited] = useState(false)
   // Re-seed only when the trim window or line count actually changes — NOT on a
-  // bare asset-object refetch (which would wipe the user's caption edits).
+  // bare asset-object refetch, and NOT once the user has manually edited a line.
   const seedSigRef = useRef('')
   useEffect(() => {
     const sig = `${startSec}|${durationSec}|${derivedLines.length}`
     if (sig === seedSigRef.current) return
     seedSigRef.current = sig
+    if (captionsEditedRef.current) return
     setCaptionLines(derivedLines)
   }, [derivedLines, startSec, durationSec])
+  const resetCaptions = useCallback(() => {
+    captionsEditedRef.current = false
+    setCaptionsEdited(false)
+    setCaptionLines(derivedLines)
+  }, [derivedLines])
   const editLine = useCallback((i, text) => {
+    captionsEditedRef.current = true
+    setCaptionsEdited(true)
     setCaptionLines((prev) => prev.map((l, idx) => {
       if (idx !== i) return l
       const parts = text.trim().split(/\s+/).filter(Boolean)
@@ -951,7 +990,7 @@ export default function VideoEditor() {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
+    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, resetCaptions, captionsEdited, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
