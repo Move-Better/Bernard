@@ -1708,6 +1708,18 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     else setSelection({ type: null })
   }
 
+  // Re-seed ONLY on a genuine piece switch (piece?.id changing) — not on every
+  // `piece.slides` change. StoryboardPublish already gates rendering until
+  // `piece` is loaded, so slides are never "still loading" here; once mounted,
+  // local `slides` state is authoritative and autosave is what pushes it to
+  // the server. Depending on `JSON.stringify(piece?.slides)` used to re-fire
+  // this effect every time OUR OWN save echoed back through the query cache
+  // (`useUpdateContentItem`'s onSuccess writes the saved row straight into
+  // the detail query) — a delete-then-undo inside that echo's round-trip got
+  // silently clobbered back to the deleted state, because the reseed fired
+  // between the undo's local setSlides and the undo's own (later) autosave.
+  // seedSlides()/photo_template_id/aspect_ratio still read the LATEST `piece`
+  // via closure when the effect runs; they just don't need to be dependencies.
   useEffect(() => {
     const next = seedSlides()
     setSlides(next)
@@ -1716,7 +1728,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setActiveSlideIdx(0)
     setSelection({ type: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piece?.id, JSON.stringify(piece?.slides)])
+  }, [piece?.id])
 
   // Fetch workspace custom templates for the picker
   const { data: allThemes = [] } = usePhotoTemplates()
