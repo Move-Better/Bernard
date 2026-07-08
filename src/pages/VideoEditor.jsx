@@ -47,6 +47,27 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const MAX_CLIP_SECONDS = 60
 const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
+const CAPTION_STYLE_OPTS = [
+  { id: 'bold', label: 'Bold' },
+  { id: 'word_box', label: 'Word box' },
+  { id: 'accent_fill', label: 'Accent fill' },
+  { id: 'glow', label: 'Glow' },
+  { id: 'underline', label: 'Underline' },
+  { id: 'pop', label: 'Pop' },
+]
+// Preview styling per caption preset (approximates the ASS bake). Returns the
+// spoken-word style, the upcoming-word style, and any container wrap.
+function captionCss(style, accent) {
+  const a = accent || '#f0b64a'
+  switch (style) {
+    case 'word_box':    return { active: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, base: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, wrap: {} }
+    case 'accent_fill': return { active: { color: '#fff' }, base: { color: '#fff' }, wrap: { background: a, padding: '3px 10px', borderRadius: 8 } }
+    case 'glow':        return { active: { color: a, textShadow: `0 0 12px ${a}, 0 0 4px ${a}` }, base: { color: '#fff', textShadow: `0 0 10px ${a}` }, wrap: {} }
+    case 'underline':   return { active: { color: '#fff', borderBottom: `3px solid ${a}` }, base: { color: '#fff' }, wrap: {} }
+    case 'pop':         return { active: { color: a, display: 'inline-block', transform: 'scale(1.14)' }, base: { color: '#fff' }, wrap: {} }
+    default:            return { active: { color: a }, base: { color: '#fff' }, wrap: {} } // bold
+  }
+}
 
 // Slice whole-source words to a clip window, rebased to 0 (mirrors the server's
 // sliceWordsToWindow — the editor preview must match the bake).
@@ -81,6 +102,7 @@ function Canvas({ ctx }) {
   const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, alignGuidesOn } = ctx
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
+  const capCss = captionCss(caption.style, caption.accent)
   const clipSelRing = sel === 'clip' || sel === 'grade'
   const z = (Number(reframe.zoom) || 100) / 100
   // Ken Burns takes over the transform when active (matches the bake's precedence
@@ -154,10 +176,12 @@ function Canvas({ ctx }) {
                   aria-label="Edit caption line"
                 />
               ) : (
-                activeLine.words.map((w, i) => {
-                  const spoken = playClipT >= w.start
-                  return <span key={i} style={{ color: spoken ? caption.accent : '#fff' }}>{w.word}{' '}</span>
-                })
+                <span style={{ display: 'inline-block', ...capCss.wrap }}>
+                  {activeLine.words.map((w, i) => {
+                    const spoken = playClipT >= w.start
+                    return <span key={i} style={spoken ? capCss.active : capCss.base}>{w.word}{' '}</span>
+                  })}
+                </span>
               )}
             </div>
           )}
@@ -342,6 +366,40 @@ function CaptionInspector({ ctx }) {
       <div className="mb-3 flex gap-1.5">
         {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(caption.preset === p)}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}
       </div>
+      {caption.preset !== 'off' && (
+        <div className="mb-3">
+          <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Style</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {CAPTION_STYLE_OPTS.map((o) => {
+              const on = (caption.style || 'bold') === o.id
+              const css = captionCss(o.id, caption.accent)
+              return (
+                <button key={o.id} onClick={() => setCaption('style', o.id)} className="rounded-md border p-1.5" style={segBtn(on)}>
+                  <span className="flex h-6 items-center justify-center rounded" style={{ background: '#26302a' }}>
+                    <span className="text-3xs font-extrabold leading-none" style={{ display: 'inline-block', ...css.wrap }}><span style={css.active}>Aa</span></span>
+                  </span>
+                  <span className="mt-1 block text-3xs">{o.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {caption.preset !== 'off' && (
+        <div className="mb-3">
+          <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Highlight colour</p>
+          <div className="flex items-center gap-1.5">
+            {['#ffffff', BERNARD_PRIMARY, '#f0b64a'].map((c) => {
+              const on = (caption.accent || '').toLowerCase() === c.toLowerCase()
+              return <button key={c} type="button" onClick={() => setCaption('accent', c)} aria-label={`Caption colour ${c}`} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', boxShadow: on ? '0 0 0 1.5px hsl(var(--primary))' : undefined }} />
+            })}
+            <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border" style={{ borderColor: 'hsl(var(--border))' }} title="Custom colour">
+              <span className="absolute inset-0" style={{ background: 'conic-gradient(from 90deg, #f44, #fd4, #4d4, #4dd, #44f, #f4f, #f44)' }} aria-hidden="true" />
+              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(caption.accent || '') ? caption.accent : '#f0b64a'} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
+            </label>
+          </div>
+        </div>
+      )}
       {caption.preset !== 'off' && (
         <div className="mb-3">
           <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Animation</p>
@@ -661,7 +719,7 @@ export default function VideoEditor() {
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
   const [kenBurns, setKenBurnsState] = useState({ motion: 'none', intensity: 50 })
   const [speed, setSpeedState] = useState(1)
-  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none' })
+  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none', style: 'bold' })
   const [overlays, setOverlays] = useState([])
   const [safeZones, setSafeZones] = useState(true)
   const [selectedSegmentId, setSelectedSegmentId] = useState(null)
@@ -902,7 +960,7 @@ export default function VideoEditor() {
   const renderBody = () => ({
     assetId, channels: [(FORMATS[format] || FORMATS.reel).channel], startSec, durationSec, subtitles: caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
-    captionAnim: caption.anim,
+    captionAnim: caption.anim, captionStyle: caption.style,
     grade, reframe, speed,
     ...(kenBurns.motion && kenBurns.motion !== 'none' ? { kenBurns } : {}),
     // EXACT (possibly edited) caption words so the bake matches the preview.

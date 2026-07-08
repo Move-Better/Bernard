@@ -111,7 +111,20 @@ function entrancePrefix(anim) {
   return ''
 }
 
-export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter', anim = 'none' }) {
+// Caption style presets — each varies ONLY the ASS Style line (box / outline /
+// underline / colour). The per-word \k karaoke events are identical across
+// presets, so the proven fill-timing logic is untouched. IDs match the client
+// gallery in VideoEditor.jsx.
+const CAPTION_STYLES = {
+  bold:        { border: 1, underline: 0,  outline: 'black',  outlineMul: 1,   back: '&H64000000' },
+  word_box:    { border: 3, underline: 0,  outline: 'black',  outlineMul: 0.6, back: '&HA0000000' },
+  accent_fill: { border: 3, underline: 0,  outline: 'black',  outlineMul: 0.4, back: 'accent', whiteText: true },
+  glow:        { border: 1, underline: 0,  outline: 'accent', outlineMul: 1.9, back: '&H50000000' },
+  underline:   { border: 1, underline: -1, outline: 'black',  outlineMul: 1,   back: '&H64000000' },
+  pop:         { border: 1, underline: 0,  outline: 'black',  outlineMul: 1,   back: '&H64000000', anim: 'pop' },
+}
+
+export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter', anim = 'none', style = 'bold' }) {
   if (!Array.isArray(words) || words.length === 0) return null
   const usable = words.filter((w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start)
   if (usable.length === 0) return null
@@ -124,24 +137,28 @@ export function buildKaraokeAss({ words, width, height, captionPos = 'top', acce
   const marginLR = Math.round(width * 0.08)
   const outlineW = Math.max(2, Math.round(fontSize * 0.08))
 
-  const primary = assColor(accentColor)   // spoken words → accent
-  const secondary = '&H00FFFFFF'           // upcoming words → white
-  const outline = '&H00000000'             // black outline
-  const back = '&H64000000'                // soft shadow box
+  const st = CAPTION_STYLES[style] || CAPTION_STYLES.bold
+  const white = '&H00FFFFFF'
+  const primary = st.whiteText ? white : assColor(accentColor)  // spoken → accent (or white on an accent box)
+  const secondary = white                                        // upcoming words → white
+  const outline = st.outline === 'accent' ? assColor(accentColor) : '&H00000000'
+  const back = st.back === 'accent' ? assColor(accentColor, '28') : st.back
+  const oW = Math.max(1, Math.round(outlineW * st.outlineMul))
+  const effAnim = st.anim || anim
 
   const styleBlock = [
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-    `Style: Cap,${fontName},${fontSize},${primary},${secondary},${outline},${back},-1,0,0,0,100,100,0,0,1,${outlineW},0,${alignment},${marginLR},${marginLR},${marginV},1`,
+    `Style: Cap,${fontName},${fontSize},${primary},${secondary},${outline},${back},-1,0,${st.underline},0,100,100,0,0,${st.border},${oW},0,${alignment},${marginLR},${marginLR},${marginV},1`,
   ].join('\n')
 
-  const prefix = entrancePrefix(anim)
+  const prefix = entrancePrefix(effAnim)
   const events = ['Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text']
   for (const line of groupWordsIntoLines(usable)) {
     const start = line[0].start
     const end = line[line.length - 1].end + 0.12   // brief tail so the last word lingers
     // 'fade' has no per-word karaoke (a cross-fading line reads calmer); pop/none
     // keep the \k fill-to-accent timing.
-    const text = anim === 'fade'
+    const text = effAnim === 'fade'
       ? prefix + line.map((w) => assEscape(w.word)).join(' ')
       : prefix + line
         .map((w) => `{\\k${Math.max(1, Math.round((w.end - w.start) * 100))}}${assEscape(w.word)} `)
