@@ -257,7 +257,7 @@ function ClipInspector({ ctx }) {
         <span className="flex-1 rounded-md border border-border px-2 py-1.5 text-center font-mono">{fmt(endSec)}</span>
         <span className="text-3xs text-muted-foreground">({fmt(durationSec)})</span>
       </div>
-      <p className="mb-3 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Trim with the <b>Clip bar</b> on the right timeline.</p>
+      <p className="mb-3 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Trim with the <b>Clip bar</b> on the timeline below.</p>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Reframe · position in {formatDim}</p>
       {[['zoom', 'Zoom', 100, 220], ['x', 'Horizontal', 0, 100], ['y', 'Vertical', 0, 100]].map(([k, lbl, lo, hi]) => (
         <div key={k} className="mb-2">
@@ -468,21 +468,22 @@ function IconRail({ ctx }) {
   return <EditorIconRail items={items} active={active} onPick={pick} />
 }
 
-// Right vertical timeline (v3) — source-relative (0..videoDuration). The Clip
-// column shows the trim window [startSec,endSec] with top/bottom drag handles;
-// the Text column shows overlay bars (clip-relative in/out, drawn at startSec+in)
-// that drag freely (anchored to the grab point) and resize via their ends.
-function VerticalTimeline({ ctx }) {
-  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, playClipT, addOverlay } = ctx
+// Bottom horizontal timeline (v4, CapCut-style) — source-relative
+// (0..videoDuration). The Clip track shows the trim window [startSec,endSec]
+// with left/right drag handles; the Text track shows overlay bars
+// (clip-relative in/out, drawn at startSec+in) that drag freely (anchored to
+// the grab point) and resize via their edges. Dragging (or clicking) anywhere
+// on the track scrubs the red playhead, same as CapCut's timeline.
+function HorizontalTimeline({ ctx }) {
+  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, playClipT, addOverlay, seekClip } = ctx
   const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
-  const clipColRef = useRef(null)
-  const ovColRef = useRef(null)
+  const trackRef = useRef(null)
   const f = (s) => clamp(s / span, 0, 1) * 100
   const trim = (which) => (e) => {
     e.preventDefault(); e.stopPropagation()
     const move = (ev) => {
-      const r = clipColRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
-      const s = clamp((ev.clientY - r.top) / r.height, 0, 1) * span
+      const r = trackRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
+      const s = clamp((ev.clientX - r.left) / r.width, 0, 1) * span
       if (which === 'in') setStartSec(clamp(s, 0, endSec - 1)); else setEndSec(clamp(s, startSec + 1, span))
     }
     const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
@@ -490,30 +491,39 @@ function VerticalTimeline({ ctx }) {
   }
   const ovDown = (o, edge) => (e) => {
     e.preventDefault(); e.stopPropagation(); selectKey(`overlay:${o.id}`)
-    const r = ovColRef.current?.getBoundingClientRect(); const startY = e.clientY; const inAt = o.in; const len = o.out - o.in
+    const r = trackRef.current?.getBoundingClientRect(); const startX = e.clientX; const inAt = o.in; const len = o.out - o.in
     const move = (ev) => {
       if (!r || span <= 0) return
       if (edge === 'move') {
-        const d = (ev.clientY - startY) / r.height * span
+        const d = (ev.clientX - startX) / r.width * span
         const ni = clamp(inAt + d, 0, Math.max(0, durationSec - len))
         setOverlayWindow(o.id, ni, ni + len)
       } else {
-        const clipSec = clamp((ev.clientY - r.top) / r.height * span - startSec, 0, durationSec)
-        if (edge === 't') setOverlayWindow(o.id, Math.min(clipSec, o.out - 0.5), o.out)
+        const clipSec = clamp((ev.clientX - r.left) / r.width * span - startSec, 0, durationSec)
+        if (edge === 'l') setOverlayWindow(o.id, Math.min(clipSec, o.out - 0.5), o.out)
         else setOverlayWindow(o.id, o.in, Math.max(clipSec, o.in + 0.5))
       }
     }
     const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
     window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
   }
+  const scrub = (e) => {
+    e.preventDefault()
+    const r = trackRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
+    const seekAt = (ev) => seekClip(clamp((ev.clientX - r.left) / r.width, 0, 1) * span - startSec)
+    seekAt(e)
+    const move = (ev) => seekAt(ev)
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  }
   return (
-    <aside className="flex w-[120px] shrink-0 flex-col border-l bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
-      <div className="flex items-center justify-between px-2.5 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
-        <span>Clip</span><button onClick={addOverlay} className="flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
+    <div className="flex h-[144px] shrink-0 flex-col border-t bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+      <div className="flex items-center justify-between px-3 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
+        <span>Timeline</span><button onClick={addOverlay} className="flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
       </div>
-      <div className="relative flex flex-1 gap-2 p-2.5">
-        <div ref={clipColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
-          <div onClick={() => selectKey('clip')} className="absolute inset-x-0 cursor-pointer rounded-md" style={{ top: `${f(startSec)}%`, height: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(180deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
+      <div ref={trackRef} onMouseDown={scrub} className="relative mx-3 mb-3 mt-2 flex flex-1 cursor-pointer flex-col gap-1.5">
+        <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
+          <div onClick={() => selectKey('clip')} className="absolute inset-y-0 cursor-pointer rounded-md" style={{ left: `${f(startSec)}%`, width: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(90deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
           <div
             role="slider"
             tabIndex={0}
@@ -522,9 +532,9 @@ function VerticalTimeline({ ctx }) {
             aria-valuemax={Math.round(endSec - 1)}
             aria-valuenow={Math.round(startSec)}
             onMouseDown={trim('in')}
-            onKeyDown={(e) => { if (e.key === 'ArrowUp') setStartSec((s) => clamp(s - 0.5, 0, endSec - 1)); else if (e.key === 'ArrowDown') setStartSec((s) => clamp(s + 0.5, 0, endSec - 1)) }}
-            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            style={{ top: `calc(${f(startSec)}% - 5px)`, height: 11, background: 'hsl(var(--primary))' }}
+            onKeyDown={(e) => { if (e.key === 'ArrowLeft') setStartSec((s) => clamp(s - 0.5, 0, endSec - 1)); else if (e.key === 'ArrowRight') setStartSec((s) => clamp(s + 0.5, 0, endSec - 1)) }}
+            className="absolute inset-y-0 z-10 cursor-ew-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            style={{ left: `calc(${f(startSec)}% - 5px)`, width: 11, background: 'hsl(var(--primary))' }}
           />
           <div
             role="slider"
@@ -534,26 +544,28 @@ function VerticalTimeline({ ctx }) {
             aria-valuemax={Math.round(span)}
             aria-valuenow={Math.round(endSec)}
             onMouseDown={trim('out')}
-            onKeyDown={(e) => { if (e.key === 'ArrowUp') setEndSec((s) => clamp(s - 0.5, startSec + 1, span)); else if (e.key === 'ArrowDown') setEndSec((s) => clamp(s + 0.5, startSec + 1, span)) }}
-            className="absolute inset-x-0 z-10 cursor-ns-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            style={{ top: `calc(${f(endSec)}% - 6px)`, height: 11, background: 'hsl(var(--primary))' }}
+            onKeyDown={(e) => { if (e.key === 'ArrowLeft') setEndSec((s) => clamp(s - 0.5, startSec + 1, span)); else if (e.key === 'ArrowRight') setEndSec((s) => clamp(s + 0.5, startSec + 1, span)) }}
+            className="absolute inset-y-0 z-10 cursor-ew-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            style={{ left: `calc(${f(endSec)}% - 6px)`, width: 11, background: 'hsl(var(--primary))' }}
           />
         </div>
-        <div ref={ovColRef} className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
+        <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           {overlays.length ? overlays.map((o) => {
             const isSel = typeof sel === 'object' && sel.id === o.id
             return (
-              <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-x-0 cursor-grab overflow-hidden rounded-md" style={{ top: `${f(startSec + o.in)}%`, height: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(180deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
-                <div onMouseDown={ovDown(o, 't')} className="absolute inset-x-0 top-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
+              <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-y-0 cursor-grab overflow-hidden rounded-md" style={{ left: `${f(startSec + o.in)}%`, width: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(90deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
+                <div onMouseDown={ovDown(o, 'l')} className="absolute inset-y-0 left-0 z-10 cursor-ew-resize" style={{ width: 9 }} />
                 <div className="flex h-full items-center justify-center"><Type className="h-3 w-3" style={{ color: 'hsl(var(--action-foreground))' }} /></div>
-                <div onMouseDown={ovDown(o, 'b')} className="absolute inset-x-0 bottom-0 z-10 cursor-ns-resize" style={{ height: 9 }} />
+                <div onMouseDown={ovDown(o, 'r')} className="absolute inset-y-0 right-0 z-10 cursor-ew-resize" style={{ width: 9 }} />
               </div>
             )
-          }) : <span className="absolute inset-x-0 top-2 text-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
+          }) : <span className="absolute inset-y-0 left-2 flex items-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
         </div>
-        <div className="pointer-events-none absolute inset-x-2.5 z-20" style={{ top: `calc(10px + ${f(startSec + playClipT)}% * (100% - 20px) / 100)`, height: 2, background: 'hsl(0 80% 55%)' }} />
+        <div className="pointer-events-none absolute inset-y-0 z-20" style={{ left: `${f(startSec + playClipT)}%`, width: 2, background: 'hsl(0 80% 55%)' }}>
+          <div onMouseDown={scrub} className="pointer-events-auto absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 cursor-ew-resize rounded-full" style={{ background: 'hsl(0 80% 55%)' }} />
+        </div>
       </div>
-    </aside>
+    </div>
   )
 }
 
@@ -1020,20 +1032,22 @@ export default function VideoEditor() {
           )}
         </div>
       </EditorChrome>
-      {/* WORK AREA: rail | inspector | canvas | timeline */}
-      <div className="flex min-h-0 flex-1">
-        <IconRail ctx={ctx} />
-        <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
-          <div className="min-h-0 flex-1 overflow-auto p-3">
-            {sel === 'moments' && <MomentsInspector ctx={ctx} />}
-            {sel === 'clip' && <ClipInspector ctx={ctx} />}
-            {sel === 'grade' && <GradeInspector ctx={ctx} />}
-            {sel === 'caption' && <CaptionInspector ctx={ctx} />}
-            {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
-          </div>
-        </aside>
-        <Canvas ctx={ctx} />
-        <VerticalTimeline ctx={ctx} />
+      {/* WORK AREA: rail | inspector | canvas on top, timeline spanning full width below */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1">
+          <IconRail ctx={ctx} />
+          <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+            <div className="min-h-0 flex-1 overflow-auto p-3">
+              {sel === 'moments' && <MomentsInspector ctx={ctx} />}
+              {sel === 'clip' && <ClipInspector ctx={ctx} />}
+              {sel === 'grade' && <GradeInspector ctx={ctx} />}
+              {sel === 'caption' && <CaptionInspector ctx={ctx} />}
+              {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
+            </div>
+          </aside>
+          <Canvas ctx={ctx} />
+        </div>
+        <HorizontalTimeline ctx={ctx} />
       </div>
       {adExportOpen && (
         <AdVideoExportModal
