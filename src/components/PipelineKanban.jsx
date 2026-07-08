@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { formatRelativeDate } from '@/lib/utils'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { getContentStatusToken } from '@/lib/contentStatusTokens'
+import { useStaff } from '@/lib/queries'
 
 // Five lanes in workflow order. Archived items are intentionally excluded —
 // they don't belong on the active pipeline. Published items DO render here
@@ -34,6 +35,9 @@ const MOVABLE = new Set(['draft', 'in_review', 'approved'])
 
 export default function PipelineKanban({ items, onMove }) {
   const interactive = typeof onMove === 'function'
+  // Fetched once here (not per-card) and threaded down to CardContent to
+  // resolve item.reviewed_by (a raw Clerk user id) to a display name.
+  const { data: staffList = [] } = useStaff()
   // Optimistic overrides: item id → status. Bridges the gap between drop and
   // the server refetch so the card moves instantly.
   const [overrides, setOverrides] = useState({})
@@ -109,19 +113,20 @@ export default function PipelineKanban({ items, onMove }) {
             items={grouped[lane.id] || []}
             isPublisherInbox={lane.publisherInbox}
             interactive={interactive}
+            staffList={staffList}
           />
         ))}
       </div>
       {interactive && (
         <DragOverlay>
-          {activeItem ? <div className="w-[260px]"><CardContent item={activeItem} dragging /></div> : null}
+          {activeItem ? <div className="w-[260px]"><CardContent item={activeItem} staffList={staffList} dragging /></div> : null}
         </DragOverlay>
       )}
     </DndContext>
   )
 }
 
-function LaneColumn({ lane, items, isPublisherInbox, interactive }) {
+function LaneColumn({ lane, items, isPublisherInbox, interactive, staffList }) {
   const Icon = lane.icon
   const token = getContentStatusToken(lane.id)
   const droppable = interactive && MOVABLE.has(lane.id)
@@ -162,8 +167,8 @@ function LaneColumn({ lane, items, isPublisherInbox, interactive }) {
         {items.length === 0 && <p className="text-2xs text-muted-foreground italic px-1">Nothing here yet.</p>}
         {items.map((item) =>
           interactive && MOVABLE.has(item.status)
-            ? <DraggableCard key={item.id} item={item} />
-            : <StaticCard key={item.id} item={item} />,
+            ? <DraggableCard key={item.id} item={item} staffList={staffList} />
+            : <StaticCard key={item.id} item={item} staffList={staffList} />,
         )}
       </div>
     </div>
@@ -184,13 +189,18 @@ function VoiceDriftChip({ provenance }) {
 }
 
 // Pure visual card body. Shared by the static Link card and the DragOverlay.
-function CardContent({ item, dragging, handle }) {
+function CardContent({ item, dragging, handle, staffList = [] }) {
   const pm = PLATFORM_META[item.platform] || { label: item.platform, icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
   const Icon = pm.icon
   const hasMedia = Array.isArray(item.media_urls) && item.media_urls.length > 0
   const snippet = (item.content || '').slice(0, 90)
   const scheduledAt = item.scheduled_at ? new Date(item.scheduled_at) : null
   const showVoiceDrift = ['approved', 'scheduled', 'published'].includes(item.status)
+  // item.reviewed_by is always a raw Clerk user id (db/content.js sets it
+  // server-side from auth.userId) — resolve it to a human name via the
+  // workspace staff list, falling back to the raw id if no staff row matches.
+  const reviewerStaff = staffList.find((s) => s.user_id === item.reviewed_by)
+  const reviewerName = reviewerStaff?.name || item.reviewed_by
 
   return (
     <div className={`relative rounded-xl border border-border bg-card p-2.5 text-xs space-y-1.5 ${dragging ? 'shadow-[0_12px_28px_-12px_rgba(15,23,42,0.35)] ring-2 ring-primary/40' : ''}`}>
@@ -222,7 +232,7 @@ function CardContent({ item, dragging, handle }) {
         </span>
       </div>
       {item.reviewed_by && (
-        <p className="text-3xs text-muted-foreground truncate" title={item.reviewed_by}>Reviewer: {item.reviewed_by}</p>
+        <p className="text-3xs text-muted-foreground truncate" title={item.reviewed_by}>Reviewer: {reviewerName}</p>
       )}
     </div>
   )
@@ -233,13 +243,13 @@ function itemHref(item) {
 }
 
 // Read-only card: the whole card navigates to the story.
-function StaticCard({ item }) {
+function StaticCard({ item, staffList }) {
   return (
     <Link
       to={itemHref(item)}
       className="block transition-all duration-150 hover:-translate-y-0.5 [&>div]:hover:border-primary/30 [&>div]:hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)]"
     >
-      <CardContent item={item} />
+      <CardContent item={item} staffList={staffList} />
     </Link>
   )
 }
@@ -247,7 +257,7 @@ function StaticCard({ item }) {
 // Interactive card: a drag handle (top-right grip) initiates the drag; the rest
 // of the card still navigates on click. setActivatorNodeRef scopes the drag to
 // the handle so click-to-open is never swallowed.
-function DraggableCard({ item }) {
+function DraggableCard({ item, staffList }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
     id: item.id,
     data: { from: item.status },
@@ -270,7 +280,7 @@ function DraggableCard({ item }) {
         to={itemHref(item)}
         className="block transition-all duration-150 hover:-translate-y-0.5 [&>div]:hover:border-primary/30 [&>div]:hover:shadow-[0_8px_20px_-16px_rgba(15,23,42,0.18)]"
       >
-        <CardContent item={item} handle={handle} />
+        <CardContent item={item} handle={handle} staffList={staffList} />
       </Link>
     </div>
   )
