@@ -994,6 +994,55 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
 
 // ── PHOTO inspector body — swap/add + bind + reframe + colorist ──────────────
 
+// Draw a photo into a tiny offscreen canvas and read its pixels. Used by
+// Auto-adjust and the "from photo" swatches. Vercel Blob serves CORS-enabled
+// images (the publish bake reads the same canvas), so pixel reads don't taint.
+async function sampleImagePixels(url, size = 48) {
+  const img = await new Promise((res, rej) => {
+    const im = new Image(); im.crossOrigin = 'anonymous'
+    im.onload = () => res(im); im.onerror = rej; im.src = url
+  })
+  const w = size
+  const h = Math.max(1, Math.round(size * ((img.naturalHeight || img.height) / (img.naturalWidth || img.width) || 1)))
+  const c = document.createElement('canvas'); c.width = w; c.height = h
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.drawImage(img, 0, 0, w, h)
+  return ctx.getImageData(0, 0, w, h).data
+}
+// One-tap enhance: push mean luminance toward a mid target + add contrast when
+// the image is flat + a gentle vibrance. Falls back to a clean-bright preset if
+// the pixels can't be read.
+async function autoGradeFromImage(url) {
+  try {
+    const data = await sampleImagePixels(url, 48)
+    let sum = 0, sumSq = 0, n = 0
+    for (let i = 0; i < data.length; i += 4) {
+      const l = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255
+      sum += l; sumSq += l * l; n++
+    }
+    const mean = n ? sum / n : 0.5
+    const std = Math.sqrt(Math.max(0, (n ? sumSq / n : 0) - mean * mean))
+    const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v)))
+    return normalizeGrade({ exposure: cl((0.56 - mean) * 140, -40, 45), contrast: cl((0.19 - std) * 180, 0, 34), saturation: 12, depth: 6 })
+  } catch { return normalizeGrade(GRADE_VIBES[0].params) }
+}
+// A handful of dominant colours from the photo, so text can match the image.
+async function paletteFromImage(url, count = 4) {
+  try {
+    const data = await sampleImagePixels(url, 40)
+    const buckets = new Map()
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 128) continue
+      const key = ((data[i] >> 5) << 10) | ((data[i + 1] >> 5) << 5) | (data[i + 2] >> 5)
+      const e = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 }
+      e.n++; e.r += data[i]; e.g += data[i + 1]; e.b += data[i + 2]
+      buckets.set(key, e)
+    }
+    const hx = (v) => Math.min(255, Math.max(0, Math.round(v))).toString(16).padStart(2, '0')
+    return [...buckets.values()].sort((a, b) => b.n - a.n).slice(0, count).map((e) => `#${hx(e.r / e.n)}${hx(e.g / e.n)}${hx(e.b / e.n)}`)
+  } catch { return [] }
+}
+
 function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false }) {
   // One photo control: the slide's current photo + Replace, or an empty state
   // that prompts a pick. Picking ALWAYS attaches+binds in one step (per-slide
@@ -1003,6 +1052,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
   useEffect(() => { setReplacing(false) }, [photoUrl])
   const [vibePrompt, setVibePrompt] = useState('')
   const [proposing, setProposing] = useState(false)
+  const [autoBusy, setAutoBusy] = useState(false)
 
   const hasPhoto = !!photoUrl
   const photoThumb = (typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]?.thumbnailUrl) || photoUrl
@@ -1017,6 +1067,17 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
   }
   function resetGrade() {
     const s = { ...slide }; delete s.grade; onChange(s)
+  }
+  async function runAutoAdjust() {
+    if (autoBusy || !photoUrl) return
+    setAutoBusy(true)
+    try {
+      const g = await autoGradeFromImage(photoUrl)
+      onChange({ ...slide, grade: normalizeGrade(g) })
+      toast.success('Auto-adjusted — fine-tune below')
+    } finally {
+      setAutoBusy(false)
+    }
   }
   function removePhoto() {
     const s = { ...slide }; s.photo_idx = null; onChange(s)
@@ -1154,6 +1215,18 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
             )}
           </div>
 
+          {/* One-tap auto-adjust — samples the photo, sets a gentle grade */}
+          <button
+            type="button"
+            onClick={runAutoAdjust}
+            disabled={autoBusy}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold disabled:opacity-60"
+            style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.08)', color: 'hsl(var(--action))' }}
+          >
+            {autoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Auto-adjust lighting
+          </button>
+
           {/* Describe the look */}
           <div className="flex gap-2">
             <input
@@ -1257,9 +1330,9 @@ function SegRow({ label, options, value, onPick }) {
     </div>
   )
 }
-function TextStyleControls({ block, onSet }) {
+function TextStyleControls({ block, onSet, photoPalette = [] }) {
   const workspace = useWorkspace()
-  const swatches = useMemo(() => [...brandSwatches(workspace), ...NEUTRAL_SWATCHES], [workspace])
+  const swatches = useMemo(() => [...brandSwatches(workspace), ...photoPalette, ...NEUTRAL_SWATCHES], [workspace, photoPalette])
   const scale = Number.isFinite(block.fontScale) && block.fontScale > 0 ? block.fontScale : 1
   return (
     <div className="space-y-3.5 rounded-xl border border-border/60 p-3.5">
@@ -1321,6 +1394,21 @@ function TextStyleControls({ block, onSet }) {
         </div>
       </div>
 
+      {photoPalette.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">From photo</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {photoPalette.map((c) => (
+              <button
+                key={c} type="button" onClick={() => onSet('color', c)} aria-label={`Photo colour ${c}`}
+                className={`h-8 w-8 rounded-full border ${block.color === c ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <SegRow
         label="Weight"
         options={[{ label: 'Auto', value: null }, { label: 'Reg', value: '400' }, { label: 'Med', value: '500' }, { label: 'Bold', value: '700' }]}
@@ -1367,8 +1455,15 @@ function TextStyleControls({ block, onSet }) {
   )
 }
 
-function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
+function TextInspector({ slide, blockIdx, photoUrl, onChange, onRemoved, onCenter }) {
   const block = slide.blocks[blockIdx]
+  const [photoPalette, setPhotoPalette] = useState([])
+  useEffect(() => {
+    let live = true
+    if (!photoUrl) { setPhotoPalette([]); return }
+    paletteFromImage(photoUrl).then((p) => { if (live) setPhotoPalette(p) })
+    return () => { live = false }
+  }, [photoUrl])
   if (!block) return null
   function updateBlock(next) {
     const blocks = slide.blocks.slice()
@@ -1416,7 +1511,7 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
         onChange={updateBlock}
         onRemove={removeBlock}
       />
-      <TextStyleControls block={block} onSet={setStyle} />
+      <TextStyleControls block={block} onSet={setStyle} photoPalette={photoPalette} />
     </div>
   )
 }
