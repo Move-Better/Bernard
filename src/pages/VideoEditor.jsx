@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
-  FolderOpen, Megaphone, ChevronDown, Scissors,
+  FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -501,12 +501,18 @@ function HorizontalTimeline({ ctx }) {
   const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, displayClipT, setScrubT, addOverlay, seekClip } = ctx
   const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
   const trackRef = useRef(null)
+  const scrollRef = useRef(null)
+  const [zoom, setZoom] = useState(1)
   const f = (s) => clamp(s / span, 0, 1) * 100
+  const SNAP_PX = 8
   const trim = (which) => (e) => {
     e.preventDefault(); e.stopPropagation()
     const move = (ev) => {
       const r = trackRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
-      const s = clamp((ev.clientX - r.left) / r.width, 0, 1) * span
+      let s = clamp((ev.clientX - r.left) / r.width, 0, 1) * span
+      // Snap to the playhead / clip edges when within SNAP_PX so trims land clean.
+      const tol = (SNAP_PX / r.width) * span
+      for (const t of [startSec + displayClipT, 0, span]) if (Math.abs(s - t) < tol) { s = t; break }
       // Clamp to a ≤MAX_CLIP_SECONDS window so the clip can't exceed what the
       // server will render (else the export silently truncates the tail).
       if (which === 'in') setStartSec(clamp(s, Math.max(0, endSec - MAX_CLIP_SECONDS), endSec - 1))
@@ -546,12 +552,39 @@ function HorizontalTimeline({ ctx }) {
     const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
     window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
   }
+  // Wheel-to-zoom (native non-passive listener so preventDefault is allowed).
+  useEffect(() => {
+    const sc = scrollRef.current; if (!sc) return
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      e.preventDefault()
+      setZoom((z) => clamp(+(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)).toFixed(3), 1, 12))
+    }
+    sc.addEventListener('wheel', onWheel, { passive: false })
+    return () => sc.removeEventListener('wheel', onWheel)
+  }, [])
+  // Keep the playhead in view as it moves or the zoom changes.
+  useEffect(() => {
+    const sc = scrollRef.current, tr = trackRef.current; if (!sc || !tr) return
+    const phX = clamp((startSec + displayClipT) / span, 0, 1) * tr.offsetWidth
+    const m = sc.clientWidth * 0.12
+    if (phX < sc.scrollLeft + m) sc.scrollLeft = Math.max(0, phX - m)
+    else if (phX > sc.scrollLeft + sc.clientWidth - m) sc.scrollLeft = phX - sc.clientWidth + m
+  }, [displayClipT, zoom, startSec, span])
+  const zoomBtn = 'flex h-6 items-center justify-center rounded border px-1.5 text-3xs hover:border-primary'
   return (
     <div className="flex h-[144px] shrink-0 flex-col border-t bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
       <div className="flex items-center justify-between px-3 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
-        <span>Timeline</span><button onClick={addOverlay} className="flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
+        <span>Timeline</span>
+        <div className="flex items-center gap-1.5 normal-case">
+          <button onClick={() => setZoom((z) => clamp(+(z / 1.5).toFixed(3), 1, 12))} aria-label="Zoom out" className={zoomBtn} style={{ borderColor: 'hsl(var(--border))' }}>–</button>
+          <button onClick={() => setZoom(1)} aria-label="Fit timeline" className={zoomBtn} style={{ borderColor: 'hsl(var(--border))', minWidth: 42 }}>{Math.round(zoom * 100)}%</button>
+          <button onClick={() => setZoom((z) => clamp(+(z * 1.5).toFixed(3), 1, 12))} aria-label="Zoom in" className={zoomBtn} style={{ borderColor: 'hsl(var(--border))' }}>+</button>
+          <button onClick={addOverlay} className="ml-1 flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
+        </div>
       </div>
-      <div ref={trackRef} onMouseDown={scrub} className="relative mx-3 mb-3 mt-2 flex flex-1 cursor-pointer flex-col gap-1.5">
+      <div ref={scrollRef} className="mx-3 mb-3 mt-2 flex-1 overflow-x-auto overflow-y-hidden">
+      <div ref={trackRef} onMouseDown={scrub} className="relative flex h-full cursor-pointer flex-col gap-1.5" style={{ width: `${zoom * 100}%`, minWidth: '100%' }}>
         <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           <div onClick={() => selectKey('clip')} className="absolute inset-y-0 cursor-pointer rounded-md" style={{ left: `${f(startSec)}%`, width: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(90deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
           <div
@@ -592,8 +625,9 @@ function HorizontalTimeline({ ctx }) {
           }) : <span className="absolute inset-y-0 left-2 flex items-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
         </div>
         <div className="pointer-events-none absolute inset-y-0 z-20" style={{ left: `${f(startSec + displayClipT)}%`, width: 2, background: 'hsl(0 80% 55%)' }}>
-          <div onMouseDown={scrub} className="pointer-events-auto absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 cursor-ew-resize rounded-full" style={{ background: 'hsl(0 80% 55%)' }} />
+          <div onMouseDown={scrub} className="pointer-events-auto absolute top-0 left-1/2 h-2.5 w-2.5 -translate-x-1/2 cursor-ew-resize rounded-full" style={{ background: 'hsl(0 80% 55%)' }} />
         </div>
+      </div>
       </div>
     </div>
   )
@@ -800,6 +834,14 @@ export default function VideoEditor() {
   }, [playing, startSec, endSec, speed])
   useEffect(() => { const v = videoRef.current; if (v) v.playbackRate = speed }, [speed])
   const seekClip = useCallback((clipT) => { const v = videoRef.current; if (!v) return; v.currentTime = startSec + clamp(clipT, 0, durationSec) }, [startSec, durationSec])
+  // Nudge the playhead ~one frame (1/30s), clamped to the trim window.
+  const stepFrame = useCallback((dir) => {
+    const v = videoRef.current
+    const nt = clamp((v ? v.currentTime : startSec) + dir / 30, startSec, endSec)
+    if (v) { v.pause(); v.currentTime = nt }
+    setCurrentTime(nt)
+    setScrubT(clamp(nt - startSec, 0, durationSec))
+  }, [startSec, endSec, durationSec])
 
   const selectKey = useCallback((k) => {
     if (typeof k === 'string' && k.startsWith('overlay:')) setSel({ type: 'overlay', id: k.split(':')[1] })
@@ -1023,6 +1065,7 @@ export default function VideoEditor() {
       >
         {/* Transport */}
         <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
+          <button onClick={() => stepFrame(-1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Previous frame" title="Previous frame"><ChevronLeft className="h-3.5 w-3.5" /></button>
           <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70 text-primary" aria-label={playing ? 'Pause' : 'Play'}>
@@ -1031,6 +1074,7 @@ export default function VideoEditor() {
             </TooltipTrigger>
             <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
           </Tooltip>
+          <button onClick={() => stepFrame(1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Next frame" title="Next frame"><ChevronRight className="h-3.5 w-3.5" /></button>
           <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(displayClipT)} / {fmt(durationSec)}</span>
         </div>
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
