@@ -483,22 +483,29 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
     const rect = rootRef.current?.getBoundingClientRect()
     if (!rect) return
     const SNAP = 0.02
+    // Snap targets: canvas centre, safe-zone margins, and every OTHER text block's
+    // position (element-to-element alignment). Report the matched fraction so the
+    // parent draws a guide line exactly there — not just at centre.
+    const others = (slide.blocks || [])
+      .map((b, i) => (i !== idx && (b.text || '').trim() ? blockFraction(b, theme, skipZone) : null))
+      .filter(Boolean)
+    const XT = [0.5, 0.08, 0.92, ...others.map((o) => o.x)]
+    const YT = [0.5, 0.08, 0.92, ...others.map((o) => o.y)]
     let moved = false
     function move(ev) {
       if (!moved) { moved = true; onDragging?.(true) }   // reveal guides on real drag
       let x = Math.max(0.06, Math.min(0.94, (ev.clientX - rect.left) / rect.width))
       let y = Math.max(0.06, Math.min(0.94, (ev.clientY - rect.top) / rect.height))
-      const sv = Math.abs(x - 0.5) < SNAP   // snap to canvas centre (x)
-      const sh = Math.abs(y - 0.5) < SNAP   // snap to canvas centre (y)
-      if (sv) x = 0.5
-      if (sh) y = 0.5
-      onSnap?.({ v: sv, h: sh })
+      let gx = null, gy = null
+      for (const t of XT) { if (Math.abs(x - t) < SNAP) { x = t; gx = t; break } }
+      for (const t of YT) { if (Math.abs(y - t) < SNAP) { y = t; gy = t; break } }
+      onSnap?.({ x: gx, y: gy })
       onMoveBlock(idx, { x, y })
     }
     function up() {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
-      if (moved) { onDragging?.(false); onSnap?.({ v: false, h: false }) }
+      if (moved) { onDragging?.(false); onSnap?.({ x: null, y: null }) }
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -1851,7 +1858,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // margins + centre snap lines (no more "safe zones" checkbox). `snap` tracks
   // which centre axis the block is currently snapped to.
   const [dragging, setDragging] = useState(false)
-  const [snap, setSnap] = useState({ v: false, h: false })
+  const [snap, setSnap] = useState({ x: null, y: null })
   const [guidesOn, setGuidesOn] = useState(false)
   const guidesTimerRef = useRef(null)
   function flashGuides() {
@@ -2506,8 +2513,14 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     <div className="absolute inset-x-0 top-0 h-[10%] bg-rose-500/10" />
                     <div className="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10" />
                   </div>
-                  <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70 transition-opacity duration-150" style={{ opacity: (snap.h || guidesOn) ? 1 : 0 }} />
-                  <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70 transition-opacity duration-150" style={{ opacity: (snap.v || guidesOn) ? 1 : 0 }} />
+                  {snap.y != null && <div className="absolute inset-x-0 h-px -translate-y-px bg-primary/80" style={{ top: `${snap.y * 100}%` }} />}
+                  {snap.x != null && <div className="absolute inset-y-0 w-px -translate-x-px bg-primary/80" style={{ left: `${snap.x * 100}%` }} />}
+                  {guidesOn && (
+                    <>
+                      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70" />
+                      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70" />
+                    </>
+                  )}
                   <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary transition-opacity duration-150" style={{ opacity: guidesOn ? 1 : 0, boxShadow: '0 0 0 2px white' }} />
                 </div>
               </div>
