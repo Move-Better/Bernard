@@ -315,8 +315,35 @@ function ClipInspector({ ctx }) {
 
 function GradeInspector({ ctx }) {
   const { grade, setGradeKey, applyVibe, resetGrade, brandGrade, saveBrandGrade, savingBrand } = ctx
+  const [vibePrompt, setVibePrompt] = useState('')
+  const [proposing, setProposing] = useState(false)
+  async function proposeFromText() {
+    const prompt = vibePrompt.trim()
+    if (!prompt || proposing) return
+    setProposing(true)
+    try {
+      const res = await apiFetch('/api/editorial/propose-grade', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }),
+      })
+      if (res?.params) { applyVibe(res.params); toast('Look applied — fine-tune below') }
+      else toast('Could not read a look from that')
+    } catch { toast('Describe-a-look failed') }
+    finally { setProposing(false) }
+  }
   return (
     <InspectorShell icon={Sparkles} title="AI Colorist — Frame grade" right="whole clip">
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Describe a look</p>
+      <div className="mb-3 flex gap-1.5">
+        <input
+          type="text" aria-label="Describe the grade or look" value={vibePrompt}
+          onChange={(e) => setVibePrompt(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') proposeFromText() }}
+          placeholder="e.g. bright, warm, clinical" disabled={proposing}
+          className="min-w-0 flex-1 rounded-md border px-2 py-1.5 text-2xs outline-none focus:ring-1 focus:ring-primary/50"
+          style={{ borderColor: 'hsl(var(--border))' }}
+        />
+        <button onClick={proposeFromText} disabled={proposing || !vibePrompt.trim()} className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-2xs font-semibold text-primary-foreground disabled:opacity-50">{proposing ? '…' : 'Apply'}</button>
+      </div>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Vibe presets</p>
       <div className="mb-3 flex flex-wrap gap-1.5">
         <button

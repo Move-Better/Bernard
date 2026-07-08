@@ -1500,8 +1500,9 @@ function TextStyleControls({ block, onSet, photoPalette = [] }) {
         <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Format</p>
         <div className="flex gap-1.5">
           {[
-            { key: 'italic',    label: 'I', className: 'italic'    },
-            { key: 'underline', label: 'U', className: 'underline' },
+            { key: 'italic',    label: 'I',  className: 'italic'    },
+            { key: 'underline', label: 'U',  className: 'underline' },
+            { key: 'uppercase', label: 'AA', className: 'uppercase' },
           ].map(({ key, label, className: cls }) => {
             const active = block[key] === true
             return (
