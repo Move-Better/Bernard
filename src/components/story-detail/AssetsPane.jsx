@@ -1274,6 +1274,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
   const addComment = useAddComment(piece.id)
   const qc = useQueryClient()
   const { data: allThemes = [] } = useCarouselThemes()
+  const { data: staffList = [] } = useStaff()
 
   const [changeRequestOpen, setChangeRequestOpen] = useState(false)
   const [changeRequestBody, setChangeRequestBody] = useState('')
@@ -1587,10 +1588,15 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
     ? piece.provenance?.blocks?.filter((b) => b.source_type === 'verbatim').length ?? 0
     : 0
 
-  // Approver display: StaffChip when we have a name, plain email fallback
-  // otherwise. piece.approved_by historically holds an email; approved_by_name
-  // is the resolved display name when the approver is a clinician.
-  const approverName = piece.approved_by_name || piece.approved_by
+  // Approver display: the API only ever writes piece.approved_by as the
+  // approver's raw Clerk user id (db/content.js sets it server-side from
+  // auth.userId, ignoring any client-supplied value) — it is never an email
+  // or a name. Resolve it to a human name via the workspace staff list
+  // (staff.user_id is bound to the same Clerk id — see ensure-self.js) and
+  // show a StaffChip when the approver is a clinician; fall back to the raw
+  // id only if no staff row matches (e.g. the row was since deleted).
+  const approverStaff = staffList.find((s) => s.user_id === piece.approved_by)
+  const approverName = approverStaff?.name || piece.approved_by
 
   return (
     <div className="mt-3 pt-3 border-t space-y-3">
@@ -1630,8 +1636,8 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
         {piece.approved_by && piece.approved_at && (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             Approved by
-            {piece.approved_by_staff_id
-              ? <StaffChip name={approverName} id={piece.approved_by_staff_id} size="sm" showName />
+            {approverStaff
+              ? <StaffChip name={approverName} id={approverStaff.id} size="sm" showName />
               : <span>{approverName}</span>
             }
             <span>on{' '}

@@ -402,7 +402,11 @@ async function handleBundlePublish(req, res, workspace) {
       const gbpMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.slice(0, 1) : mediaUrls
       const posts = []
       for (const loc of targets) {
-        const text = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
+        const rawText = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
+        // bundle.social enforces the same 1500-char hard cap Google's Local Post
+        // API does (mirrors the Buffer GBP path above) — without this, bundle
+        // rejects the whole post with a 400 Request Validation Error.
+        const text = rawText.slice(0, 1500)
         const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
         const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
         posts.push(r)
