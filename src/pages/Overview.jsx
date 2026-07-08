@@ -63,8 +63,9 @@ export default function Overview() {
       {/* "What needs me" banner — role-aware, hides when queue is empty */}
       {showPublisherBanner && readyToDistribute.length > 0 && (
         <div className="nx-card-action px-5 py-4 flex items-center gap-3">
-          <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
-          <Inbox className="h-4 w-4 text-action shrink-0" />
+          <span className="nx-alert-chip nx-alert-chip-act shrink-0">
+            <Inbox className="h-4 w-4" />
+          </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground">
               Your queue: {readyToDistribute.length} post{readyToDistribute.length === 1 ? '' : 's'} ready to publish.
@@ -83,8 +84,9 @@ export default function Overview() {
       )}
       {showClinicianBanner && (
         <div className="nx-card-action px-5 py-4 flex items-center gap-3">
-          <span className="inline-block w-1 h-6 rounded-full shrink-0 bg-action" aria-hidden="true" />
-          <CheckCircle className="h-4 w-4 text-action shrink-0" />
+          <span className="nx-alert-chip nx-alert-chip-act shrink-0">
+            <CheckCircle className="h-4 w-4" />
+          </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground">
               {blogsToApprove.length} blog{blogsToApprove.length === 1 ? '' : 's'} waiting on your approval.

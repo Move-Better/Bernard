@@ -92,7 +92,7 @@ export default function StoryCard({ story }) {
       {/* Failed-publish badge — only when a piece in this story actually failed. */}
       {failedPieces.length > 0 && (
         <div className="mb-3">
-          <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30">
+          <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground">
             <AlertTriangle className="w-3 h-3" aria-hidden="true" />
             {failedPieces.length === 1 ? 'Failed to publish' : `${failedPieces.length} failed to publish`}
           </span>
