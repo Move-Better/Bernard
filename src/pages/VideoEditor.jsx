@@ -475,21 +475,10 @@ function IconRail({ ctx }) {
 // the grab point) and resize via their edges. Dragging (or clicking) anywhere
 // on the track scrubs the red playhead, same as CapCut's timeline.
 function HorizontalTimeline({ ctx }) {
-  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, playClipT, addOverlay, seekClip } = ctx
+  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, displayClipT, setScrubT, addOverlay, seekClip } = ctx
   const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
   const trackRef = useRef(null)
   const f = (s) => clamp(s / span, 0, 1) * 100
-  // Optimistic playhead position while scrubbing. The video's real `playClipT`
-  // only advances once the <video> element fires timeupdate/seeked for the
-  // seek we issued — which can lag a beat, or (on an unbuffered/slow source)
-  // never fire before the next drag frame. Track the scrub target locally so
-  // the red line follows the pointer immediately, and hand off to the real
-  // playClipT once it catches up (or just stays authoritative if it doesn't).
-  const [scrubT, setScrubT] = useState(null)
-  useEffect(() => {
-    if (scrubT != null && Math.abs(playClipT - scrubT) < 0.08) setScrubT(null)
-  }, [playClipT, scrubT])
-  const displayT = scrubT != null ? scrubT : playClipT
   const trim = (which) => (e) => {
     e.preventDefault(); e.stopPropagation()
     const move = (ev) => {
@@ -576,7 +565,7 @@ function HorizontalTimeline({ ctx }) {
             )
           }) : <span className="absolute inset-y-0 left-2 flex items-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
         </div>
-        <div className="pointer-events-none absolute inset-y-0 z-20" style={{ left: `${f(startSec + displayT)}%`, width: 2, background: 'hsl(0 80% 55%)' }}>
+        <div className="pointer-events-none absolute inset-y-0 z-20" style={{ left: `${f(startSec + displayClipT)}%`, width: 2, background: 'hsl(0 80% 55%)' }}>
           <div onMouseDown={scrub} className="pointer-events-auto absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 cursor-ew-resize rounded-full" style={{ background: 'hsl(0 80% 55%)' }} />
         </div>
       </div>
@@ -620,6 +609,17 @@ export default function VideoEditor() {
 
   const durationSec = Math.max(1, endSec - startSec)
   const playClipT = clamp(currentTime - startSec, 0, durationSec)
+  // Optimistic scrub target while dragging the timeline — the video's real
+  // playClipT only updates once <video> fires timeupdate/seeked for the seek
+  // we issued, which can lag a beat or never fire before the next drag frame
+  // on a slow/unbuffered source. Shared by the timeline playhead and the
+  // transport readout so both redraw immediately and hand off together once
+  // the real value converges.
+  const [scrubT, setScrubT] = useState(null)
+  useEffect(() => {
+    if (scrubT != null && Math.abs(playClipT - scrubT) < 0.08) setScrubT(null)
+  }, [playClipT, scrubT])
+  const displayClipT = scrubT != null ? scrubT : playClipT
 
   // Save & resume. On open, restore this asset's editor doc — preferring the
   // SERVER draft (media_assets.video_edit_draft, cross-device) and falling back
@@ -951,7 +951,7 @@ export default function VideoEditor() {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, playing, togglePlay, seekClip,
+    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
@@ -992,7 +992,7 @@ export default function VideoEditor() {
             </TooltipTrigger>
             <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
           </Tooltip>
-          <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(playClipT)} / {fmt(durationSec)}</span>
+          <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(displayClipT)} / {fmt(durationSec)}</span>
         </div>
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         <SaveStatus status={saveStatus} />
