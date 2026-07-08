@@ -9,7 +9,7 @@
 // onPick: (key) => void
 export default function IconRail({ items, active, onPick }) {
   return (
-    <aside className="flex w-[58px] shrink-0 flex-col border-r bg-card py-1" style={{ borderColor: 'hsl(var(--border))' }}>
+    <aside className="flex w-[87px] shrink-0 flex-col border-r bg-card py-1" style={{ borderColor: 'hsl(var(--border))' }}>
       {items.map(({ key, icon: Icon, label }) => {
         const on = active === key
         return (
@@ -21,7 +21,7 @@ export default function IconRail({ items, active, onPick }) {
             title={label}
           >
             <Icon className="h-4 w-4" aria-hidden="true" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }} />
-            <span className="text-3xs" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
+            <span className="text-xs" style={{ color: on ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
           </button>
         )
       })}
