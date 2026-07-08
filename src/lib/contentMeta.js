@@ -30,6 +30,24 @@ export const PLATFORM_META = {
   email:        { label: 'Email',           icon: Mail,       color: 'text-muted-foreground', bg: 'bg-muted' },
 }
 
+// Hard caption-length caps the destination platform actually enforces at
+// publish time (not soft best-practice guidance). Only platforms with a cap
+// that's realistically reachable by a real caption are listed — Facebook
+// (63,206) and LinkedIn (3,000) posts essentially never hit their ceiling in
+// practice, so they're omitted to avoid cluttering the editor with a warning
+// that never fires. GBP's 1500 is enforced server-side (silently truncated)
+// in api/_routes/publish/buffer.js — surfacing it here in the editor lets the
+// author see and fix an overlong caption before it ships shortened.
+export const CAPTION_LIMITS = {
+  gbp:              1500,
+  twitter:          280,
+  threads:          500,
+  bluesky:          300,
+  instagram:        2200,
+  instagram_story:  2200,
+  tiktok:           2200,
+}
+
 // See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders; same "Ready to publish" label for the approved status).
 export const STATUS_META = {
   draft:      { label: 'Draft',      color: 'bg-muted text-muted-foreground', icon: FileText },
