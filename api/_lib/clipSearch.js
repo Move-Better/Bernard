@@ -34,6 +34,9 @@ async function sb(path, init = {}) {
  * @param {string} [params.kind]          — 'photo' | 'video' | null (= any)
  * @param {number} [params.minScore=0.5]  — cosine similarity threshold
  * @param {string} [params.staffId]   — optional clinician-scoped search
+ * @param {string[]} [params.excludeAssetIds] — asset ids to drop from results
+ *   (e.g. photos already used on other recent pieces) — over-fetches from the
+ *   RPC so filtering these out still leaves up to k candidates.
  *
  * @returns {Promise<Array>} shaped clip objects (camelCase)
  * @throws on embed failure or RPC failure
@@ -45,6 +48,7 @@ export async function searchClips({
   kind = null,
   minScore = 0.5,
   staffId = null,
+  excludeAssetIds = [],
 }) {
   // Embed the query text
   const [queryEmbedding] = await embedTexts([query])
@@ -52,12 +56,18 @@ export async function searchClips({
     throw new Error('embedding_dim_mismatch')
   }
 
+  const excludeSet = new Set(excludeAssetIds.filter(Boolean))
+  const boundedK = Math.max(k, 1)
+  // Over-fetch by the exclusion-set size so filtering out already-used assets
+  // still leaves up to k results, rather than silently returning fewer.
+  const matchCount = Math.min(boundedK + excludeSet.size, 50)
+
   // Call match_visual_memory_chunks RPC
   const rpcRes = await sb('rpc/match_visual_memory_chunks', {
     method: 'POST',
     body: JSON.stringify({
       query_embedding: queryEmbedding,
-      match_count: Math.min(Math.max(k, 1), 50),
+      match_count: matchCount,
       filter_workspace_id: workspaceId,
       filter_kind: kind || null,
       filter_min_score: minScore,
@@ -71,8 +81,11 @@ export async function searchClips({
   }
 
   const rows = await rpcRes.json()
+  const filtered = excludeSet.size
+    ? rows.filter((r) => !excludeSet.has(r.source_id))
+    : rows
 
-  return rows.map((r) => ({
+  return filtered.slice(0, boundedK).map((r) => ({
     chunkId:         r.chunk_id,
     assetId:         r.source_id,
     similarity:      r.similarity,

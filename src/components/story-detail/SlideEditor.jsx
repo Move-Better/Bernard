@@ -1710,7 +1710,9 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // Auto-attach top AI pick per slide on first open when slides have no photos.
   // A ref guards against re-firing; only fires when ALL slides are photo-less (fresh carousel).
   const autoAttachDoneRef = useRef(false)
-  const { data: photoSuggestions } = useMediaSuggestions(piece?.id, { enabled: !!piece?.id, kind: 'photo', k: 6 })
+  // k:10 covers Instagram's max carousel length (10 slides) so there are
+  // enough distinct picks to avoid repeating a photo across slides.
+  const { data: photoSuggestions } = useMediaSuggestions(piece?.id, { enabled: !!piece?.id, kind: 'photo', k: 10 })
   useEffect(() => {
     if (autoAttachDoneRef.current) return
     // useMediaSuggestions returns the raw suggest-media response — { clips: [...] },
@@ -1731,8 +1733,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
     const seen = new Set(raw.map(mediaEntryKey))
     const toAdd = []
+    // Straight index, NOT modulo — wrapping back into `picks` once slides
+    // outnumber distinct suggestions was reusing the same photo across
+    // multiple slides in one carousel. Better to leave a trailing slide
+    // photo-less (the producer picks manually) than to duplicate a shot.
     for (let i = 0; i < slides.length; i++) {
-      const pick = picks[i % picks.length]
+      const pick = picks[i]
       if (!pick) break
       const key = mediaEntryKey(pick)
       if (!seen.has(key)) { toAdd.push(pick); seen.add(key) }
@@ -1740,7 +1746,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const nextRaw = [...raw, ...toAdd]
     const photoOnly = nextRaw.filter((m) => m && m.type !== 'video' && m.url)
     const newSlides = slides.map((s, i) => {
-      const pick = picks[i % picks.length]
+      const pick = picks[i]
       if (!pick) return s
       const idx = photoOnly.findIndex((m) => mediaEntryKey(m) === mediaEntryKey(pick))
       return idx >= 0 ? { ...s, photo_idx: idx } : s

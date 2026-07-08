@@ -11,6 +11,12 @@
 // match — any face is on-brand, and weak matches are simply rejectable (the
 // producer doesn't pick them).
 //
+// Photos already attached to the workspace's other recent pieces (last
+// RECENT_EXCLUDE_LIMIT, by created_at) are excluded from results, so a
+// recurring topic doesn't keep resurfacing the same identical top-ranked shot
+// on every new draft — the underlying vector search is otherwise fully
+// deterministic for a given query.
+//
 // Body:
 //   { id: string }                  — content_items.id to suggest media for
 //   { query: string }               — raw query override (manual "refine search")
@@ -43,6 +49,10 @@ const DEFAULT_K = 8
 // Permissive threshold: surface 3–5 options even for niche topics; the cards
 // show similarity so the producer can judge, and weak picks are rejectable.
 const DEFAULT_MIN_SCORE = 0.3
+// How many of the workspace's most-recent OTHER pieces to check for
+// already-used photos, so a recurring topic (e.g. "Plantar fasciitis") doesn't
+// keep resurfacing the identical top-ranked shot on every new draft.
+const RECENT_EXCLUDE_LIMIT = 20
 
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -54,6 +64,25 @@ async function sb(path, init = {}) {
       ...init.headers,
     },
   })
+}
+
+// Asset ids already attached to the workspace's other recent content pieces.
+// Best-effort: a failure here degrades to "no exclusion" rather than failing
+// the whole suggestion request.
+async function getRecentlyUsedAssetIds(workspaceId, excludeItemId) {
+  let qs = `content_items?workspace_id=eq.${workspaceId}&select=media_urls&order=created_at.desc&limit=${RECENT_EXCLUDE_LIMIT}`
+  if (excludeItemId) qs += `&id=neq.${encodeURIComponent(excludeItemId)}`
+  const r = await sb(qs)
+  if (!r.ok) return []
+  const rows = await r.json()
+  const ids = new Set()
+  for (const row of rows) {
+    const media = Array.isArray(row.media_urls) ? row.media_urls : []
+    for (const m of media) {
+      if (m?.mediaAssetId) ids.add(m.mediaAssetId)
+    }
+  }
+  return [...ids]
 }
 
 export default async function handler(req, res) {
@@ -115,9 +144,14 @@ export default async function handler(req, res) {
     : DEFAULT_MIN_SCORE
 
   // --- Search the workspace's visual memory via the shared helper ---
+  const excludeAssetIds = await getRecentlyUsedAssetIds(ws.id, id).catch((e) => {
+    console.error('[content-items/suggest-media] recent-exclude fetch failed:', e?.message)
+    return []
+  })
+
   let clips
   try {
-    clips = await searchClips({ query, workspaceId: ws.id, k, kind, minScore })
+    clips = await searchClips({ query, workspaceId: ws.id, k, kind, minScore, excludeAssetIds })
   } catch (e) {
     console.error('[content-items/suggest-media] search failed:', e?.message)
     return res.status(500).json({ error: 'search_failed'})
