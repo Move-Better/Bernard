@@ -171,6 +171,16 @@ function BlockRow({ block, onChange, onRemove }) {
     ceRef.current.innerHTML = runsToHTML(block.runs, block.text)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-sync from EXTERNAL text changes (e.g. the on-canvas inline editor) when
+  // this field isn't focused — keeps the side panel in step without clobbering
+  // active typing here.
+  useEffect(() => {
+    const el = ceRef.current
+    if (!el || !initRef.current || document.activeElement === el) return
+    const html = runsToHTML(block.runs, block.text)
+    if (el.innerHTML !== html) el.innerHTML = html
+  }, [block.text, block.runs])
+
   function serializeAndSync() {
     if (suppressRef.current) return
     const el = ceRef.current
@@ -2478,7 +2488,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                   })}
                   onSetText={(idx, text) => updateSlide(activeSlideIdx, {
                     ...activeSlide,
-                    blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, text } : b)),
+                    blocks: activeSlide.blocks.map((b, i) => {
+                      if (i !== idx) return b
+                      const nb = { ...b, text }
+                      delete nb.runs   // inline edit is plain text — drop stale per-word colour runs
+                      return nb
+                    }),
                   })}
                 />
                 {/* Drag-reveal guides — safe-zone margins appear while dragging text;

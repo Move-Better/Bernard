@@ -99,7 +99,7 @@ function groupLines(words) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, safeZones, setSafeZones, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, alignGuidesOn } = ctx
+  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, alignGuidesOn } = ctx
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const capCss = captionCss(caption.style, caption.accent)
@@ -128,9 +128,6 @@ function Canvas({ ctx }) {
   }
   return (
     <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-muted p-4">
-      <div className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-md bg-card/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
-        <label className="flex cursor-pointer items-center gap-1"><input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} /> safe zones</label>
-      </div>
       <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>
         <div
           className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
@@ -217,8 +214,8 @@ function Canvas({ ctx }) {
             )
           })}
 
-          {/* safe zones */}
-          {safeZones && (
+          {/* safe-zone margins — drag-reveal (appear while moving a text overlay) */}
+          {dragging && (
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute rounded-[10px] border border-dashed" style={{ inset: '5% 4%', borderColor: 'rgba(255,255,255,.4)' }} />
               <div className="absolute inset-x-0 top-0" style={{ height: '13%', background: 'rgba(255,80,80,.10)' }} />
@@ -226,15 +223,12 @@ function Canvas({ ctx }) {
             </div>
           )}
 
-          {/* Alignment guide lines — flash ~800ms when overlay is centered */}
-          <div
-            className="pointer-events-none absolute inset-0 transition-opacity duration-300"
-            style={{ opacity: alignGuidesOn ? 1 : 0 }}
-            aria-hidden="true"
-          >
-            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px" style={{ background: 'hsl(var(--primary)/0.7)' }} />
-            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px" style={{ background: 'hsl(var(--primary)/0.7)' }} />
-            <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 0 2px white' }} />
+          {/* Centre snap lines — light up when a dragged overlay snaps to centre;
+              the Center button also flashes them briefly (alignGuidesOn). */}
+          <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px transition-opacity duration-150" style={{ background: 'hsl(var(--primary)/0.7)', opacity: (snap?.h || alignGuidesOn) ? 1 : 0 }} />
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px transition-opacity duration-150" style={{ background: 'hsl(var(--primary)/0.7)', opacity: (snap?.v || alignGuidesOn) ? 1 : 0 }} />
+            <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-150" style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 0 2px white', opacity: alignGuidesOn ? 1 : 0 }} />
           </div>
 
           {/* center play/pause indicator — click anywhere on the video to toggle.
@@ -721,7 +715,11 @@ export default function VideoEditor() {
   const [speed, setSpeedState] = useState(1)
   const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none', style: 'bold' })
   const [overlays, setOverlays] = useState([])
-  const [safeZones, setSafeZones] = useState(true)
+  // Drag-reveal guides: safe-zone margins + centre snap lines appear while a text
+  // overlay is being dragged (no persistent "safe zones" toggle). Mirrors the
+  // photo editor's snapping guides.
+  const [dragging, setDragging] = useState(false)
+  const [snap, setSnap] = useState({ v: false, h: false })
   const [selectedSegmentId, setSelectedSegmentId] = useState(null)
   const seededRef = useRef(false)
 
@@ -921,12 +919,22 @@ export default function VideoEditor() {
   const dragOverlay = useCallback((e, id) => {
     e.preventDefault(); e.stopPropagation()
     const frame = e.currentTarget.parentElement
+    let moved = false
     const move = (ev) => {
+      if (!moved) { moved = true; setDragging(true) }   // reveal guides on real drag
       const r = frame.getBoundingClientRect()
-      const x = clamp((ev.clientX - r.left) / r.width, 0.06, 0.94); const y = clamp((ev.clientY - r.top) / r.height, 0.05, 0.95)
+      let x = clamp((ev.clientX - r.left) / r.width, 0.06, 0.94)
+      let y = clamp((ev.clientY - r.top) / r.height, 0.05, 0.95)
+      const sv = Math.abs(x - 0.5) < 0.02; const sh = Math.abs(y - 0.5) < 0.02
+      if (sv) x = 0.5
+      if (sh) y = 0.5
+      setSnap({ v: sv, h: sh })
       setOverlays((prev) => prev.map((o) => (o.id === id ? { ...o, x, y } : o)))
     }
-    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    const up = () => {
+      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up)
+      if (moved) { setDragging(false); setSnap({ v: false, h: false }) }
+    }
     window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
   }, [])
 
@@ -1091,7 +1099,7 @@ export default function VideoEditor() {
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, resetCaptions, captionsEdited, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
-    startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, safeZones, setSafeZones, trimToLine,
+    startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
