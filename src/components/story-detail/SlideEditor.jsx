@@ -1277,6 +1277,20 @@ function TextStyleControls({ block, onSet }) {
         />
       </div>
 
+      {/* Text width (wrap width) — 100% = Auto (role default) */}
+      <div>
+        <div className="mb-1 flex justify-between text-sm text-muted-foreground">
+          <span>Text width</span>
+          <span>{Number.isFinite(block.width) && block.width > 0 ? `${Math.round(block.width * 100)}%` : 'Auto'}</span>
+        </div>
+        <input
+          type="range" min="0.3" max="1" step="0.05"
+          value={Number.isFinite(block.width) && block.width > 0 ? block.width : 1}
+          onChange={(e) => { const v = parseFloat(e.target.value); onSet('width', v >= 1 ? null : v) }}
+          className="h-5 w-full accent-primary" aria-label="Text width"
+        />
+      </div>
+
       {/* Colour */}
       <div>
         <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Colour</p>
@@ -1312,6 +1326,18 @@ function TextStyleControls({ block, onSet }) {
         options={[{ label: 'Auto', value: null }, { label: 'Reg', value: '400' }, { label: 'Med', value: '500' }, { label: 'Bold', value: '700' }]}
         value={block.fontWeight ?? null}
         onPick={(v) => onSet('fontWeight', v)}
+      />
+      <SegRow
+        label="Font"
+        options={[{ label: 'Auto', value: null }, { label: 'Heading', value: 'heading' }, { label: 'Body', value: 'body' }]}
+        value={block.font ?? null}
+        onPick={(v) => onSet('font', v)}
+      />
+      <SegRow
+        label="Align"
+        options={[{ label: 'Left', value: 'left' }, { label: 'Center', value: null }, { label: 'Right', value: 'right' }]}
+        value={block.align ?? null}
+        onPick={(v) => onSet('align', v)}
       />
       {/* Italic / Underline toggles */}
       <div>

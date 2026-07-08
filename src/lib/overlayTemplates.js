@@ -743,6 +743,10 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   const display = typo.uppercase ? raw.toUpperCase() : raw
   const isWhoop = !!layout
   let { anchorX, anchorY, align, vAnchor } = resolvePosition(block.position, W, H)
+  // An explicit horizontal align on the block wins over the position-derived
+  // default — dragged blocks otherwise always center (this is the Text-layer
+  // "Align" control). Preview + publish share this renderer, so it's WYSIWYG.
+  if (block.align === 'left' || block.align === 'right' || block.align === 'center') align = block.align
 
   // Pull content text into the layout's panel/scrim zone (Q sign-off 2026-06-16,
   // option B): a split/badge headline anchored to canvas-center otherwise floats
