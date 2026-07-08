@@ -82,8 +82,11 @@ export function gradeToCanvasFilter(params) {
   const brightness = (1 + p.exposure * K.exposure).toFixed(3)
   const contrast = (1 + p.contrast * K.contrast).toFixed(3)
   const saturate = Math.max(0, 1 + p.saturation * K.satMul).toFixed(3)
-  // warmth → a touch of sepia (warm) ; the sign only warms (cool stays neutral in
-  // the CSS proxy; the Sharp bake does the true cool via per-channel gain).
-  const sepia = Math.max(0, p.warmth * 0.003).toFixed(3)
-  return `brightness(${brightness}) contrast(${contrast}) saturate(${saturate}) sepia(${sepia})`
+  // warmth → sepia for warm; for COOL (negative) a sepia + hue-rotate to blue so
+  // the preview actually cools instead of staying neutral (closer to the Sharp
+  // bake's per-channel cool). Still a proxy; the bake remains the source of truth.
+  let tone = ''
+  if (p.warmth > 0) tone = ` sepia(${(p.warmth * 0.003).toFixed(3)})`
+  else if (p.warmth < 0) tone = ` sepia(${(-p.warmth * 0.0026).toFixed(3)}) hue-rotate(185deg)`
+  return `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})${tone}`
 }
