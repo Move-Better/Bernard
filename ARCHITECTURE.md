@@ -710,6 +710,30 @@ preview and published output always agree — never introduce a second aspect→
 Miner) edit DIFFERENT objects at different pipeline stages — they share the chrome/rail components but
 are NOT one route. See `memory/project-unified-shell.md`.
 
+### Video timeline — horizontal, optimistic scrub state (#1956/#1959/#1961, 2026-07-08)
+
+`VideoEditor`'s timeline (`HorizontalTimeline`, formerly a vertical right-rail layout) renders trim
+handles, overlay bars, and the playhead along the X-axis, pinned full-width under the canvas —
+CapCut-style. Trim/overlay drag math is synchronous (mouse position → React state → immediate
+re-render); the playhead is not — its position derives from `playClipT`, which only advances once the
+`<video>` element fires `timeupdate`/`seeked` for a `seekClip()` call. That event can lag a frame, or
+never fire at all on a slow/unbuffered source (a Vercel Blob-served clip can sit at `readyState 0`
+indefinitely in some environments — see the matching CLAUDE.md verification note).
+
+**Pattern: optimistic scrub state, lifted to the page level, not owned by the timeline component.**
+`VideoEditor` holds `scrubT` (clip-relative seconds, `null` when not scrubbing) and derives
+`displayClipT = scrubT ?? playClipT`, passed through `ctx` to any consumer that renders a
+media-position-derived value. `HorizontalTimeline`'s scrub handler sets `scrubT` synchronously on every
+mousedown/mousemove — so the playhead follows the pointer with zero lag — and also calls the real
+`seekClip()`. A `useEffect` clears `scrubT` once `playClipT` converges within 0.08s, handing control
+back to the real value with no visible jump; if the video never converges (still buffering), the
+optimistic position simply stays authoritative rather than freezing at the pre-scrub position.
+`displayClipT` drives both the playhead line AND the transport time readout so they never disagree —
+`Canvas`'s caption/overlay-fade timing intentionally stays on the real `playClipT`, since those must
+reflect the actually-decoded frame, not the scrub target. Reuse this pattern (page-level optimistic
+value + convergence-based handoff) for any future editor UI whose visual position is tied to an async
+media element's state.
+
 ## Practice-memory RAG — recency + supersession contract
 
 The "practice brain" (`api/_lib/practiceMemoryRag.js` + the `match_practice_memory_chunks` RPC + `practice_memory_chunks` / `practice_memory_supersessions`) is real pgvector retrieval, not a stub. Invariants to preserve:
