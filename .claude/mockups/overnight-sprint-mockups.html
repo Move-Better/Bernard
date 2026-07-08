@@ -1,0 +1,405 @@
+<title>Overnight Sprint — Proposed UI (6 PRs)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --ground:#EEF2F1; --surface:#FFFFFF; --surface-2:#F3F6F5; --panel:#FFFFFF;
+    --ink:#12201F; --ink-2:#42524F; --ink-3:#6C7B78; --line:#DCE4E2; --line-2:#E8EEEC;
+    --brand:#0C7580; --brand-deep:#08454C; --brand-soft:#E1EDEC; --brand-tint:#F0F7F6;
+    --amber:#B5730A; --amber-soft:#F7EBD5; --rose:#A9463C;
+    --shadow:0 1px 2px rgba(16,32,30,.05),0 10px 30px -20px rgba(16,32,30,.35);
+    --shadow-lift:0 2px 8px rgba(16,32,30,.08),0 26px 52px -30px rgba(16,32,30,.4);
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --ground:#0A1213; --surface:#0F1B1C; --surface-2:#132223; --panel:#101E1F;
+    --ink:#E9F1F0; --ink-2:#AAB9B8; --ink-3:#788988; --line:#213130; --line-2:#1A2827;
+    --brand:#39A7B0; --brand-deep:#6FCBD2; --brand-soft:#122A2C; --brand-tint:#0E2122;
+    --amber:#E0A24A; --amber-soft:#241D10; --rose:#DB786D;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px -20px rgba(0,0,0,.75);
+    --shadow-lift:0 2px 8px rgba(0,0,0,.5),0 28px 56px -30px rgba(0,0,0,.8);
+  }}
+  :root[data-theme="light"]{--ground:#EEF2F1;--surface:#FFFFFF;--surface-2:#F3F6F5;--panel:#FFFFFF;--ink:#12201F;--ink-2:#42524F;--ink-3:#6C7B78;--line:#DCE4E2;--line-2:#E8EEEC;--brand:#0C7580;--brand-deep:#08454C;--brand-soft:#E1EDEC;--brand-tint:#F0F7F6;--amber:#B5730A;--amber-soft:#F7EBD5;--rose:#A9463C;}
+  :root[data-theme="dark"]{--ground:#0A1213;--surface:#0F1B1C;--surface-2:#132223;--panel:#101E1F;--ink:#E9F1F0;--ink-2:#AAB9B8;--ink-3:#788988;--line:#213130;--line-2:#1A2827;--brand:#39A7B0;--brand-deep:#6FCBD2;--brand-soft:#122A2C;--brand-tint:#0E2122;--amber:#E0A24A;--amber-soft:#241D10;--rose:#DB786D;}
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px;}
+  h1{font-size:clamp(1.7rem,4vw,2.4rem);font-weight:820;letter-spacing:-.02em;margin:16px 0 10px;text-wrap:balance;}
+  h2{font-size:1.28rem;font-weight:780;letter-spacing:-.01em;margin:0;}
+  p{margin:0 0 .8em;color:var(--ink-2);}
+  .eyebrow{font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--brand);display:inline-flex;gap:.5em;align-items:center;}
+  .eyebrow::before{content:"";width:22px;height:2px;background:var(--brand);}
+
+  header.hero{padding:48px 0 26px;border-bottom:1px solid var(--line);background:radial-gradient(120% 80% at 90% -20%,var(--brand-soft),transparent 55%);}
+  .hero p{max-width:64ch;}
+  .howto{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;font-family:var(--mono);font-size:.72rem;color:var(--ink-3);}
+  .howto span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;}
+  .howto b{color:var(--ink);}
+
+  section{padding:38px 0;border-bottom:1px solid var(--line);}
+  .sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+  .pr-chip{font-family:var(--mono);font-size:.66rem;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--brand);border-radius:6px;padding:3px 8px;}
+  .pr-chip.big{background:var(--amber);color:#241a06;}
+  .sub{color:var(--ink-3);font-size:.95rem;margin:2px 0 18px;max-width:66ch;}
+
+  /* editor panel mock */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+  .stage{display:grid;grid-template-columns:1fr;gap:18px;}
+  @media(min-width:780px){.stage.two{grid-template-columns:1fr 1fr;}}
+  .lbl{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:0 0 8px;}
+  .lbl.now{color:var(--rose);} .lbl.new{color:var(--brand);}
+
+  /* segmented controls (match real editor) */
+  .seg{display:flex;gap:6px;}
+  .seg button{flex:1;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:9px;padding:8px 6px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s;}
+  .seg button.on{border-color:var(--brand);background:var(--brand-tint);color:var(--brand-deep);}
+  .seg button:hover{border-color:var(--brand);}
+  .fieldrow{padding:14px 16px;} .fieldrow+.fieldrow{border-top:1px solid var(--line-2);}
+
+  /* photo canvas mock */
+  .canvas{position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:linear-gradient(160deg,#2b3a2f,#141a17);}
+  .canvas .photo{position:absolute;inset:0;background:
+    radial-gradient(60% 45% at 50% 32%,rgba(120,150,120,.5),transparent 60%),
+    linear-gradient(180deg,#3a4a3c 0%,#26302a 55%,#151b17 100%);}
+  .txtblock{position:absolute;color:#fff;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.5);cursor:default;}
+
+  /* floating contextual toolbar */
+  .float-tb{position:absolute;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow-lift);padding:5px;z-index:5;}
+  .float-tb button{border:none;background:transparent;color:var(--ink-2);width:30px;height:30px;border-radius:7px;font-size:.86rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;}
+  .float-tb button:hover{background:var(--surface-2);color:var(--ink);}
+  .float-tb button.on{background:var(--brand-tint);color:var(--brand-deep);}
+  .float-tb .div{width:1px;height:18px;background:var(--line);margin:0 3px;}
+  .float-tb .chip{font-size:.74rem;font-weight:600;color:var(--ink-2);padding:0 8px;height:30px;display:flex;align-items:center;gap:5px;border-radius:7px;cursor:pointer;}
+  .float-tb .chip:hover{background:var(--surface-2);}
+  .float-tb .sw{width:14px;height:14px;border-radius:50%;border:1px solid var(--line);}
+  .selring{position:absolute;border:1.5px solid var(--brand);border-radius:3px;}
+  .selring .h{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid var(--brand);border-radius:2px;}
+  .selring .h.tl{left:-5px;top:-5px}.selring .h.tr{right:-5px;top:-5px}.selring .h.bl{left:-5px;bottom:-5px}.selring .h.br{right:-5px;bottom:-5px}
+
+  /* guides */
+  .guide{position:absolute;background:var(--brand);opacity:.85;}
+  .guide.v{width:1px;top:0;bottom:0;} .guide.h{height:1px;left:0;right:0;}
+  .snaptag{position:absolute;font-family:var(--mono);font-size:.6rem;background:var(--brand);color:#fff;padding:1px 5px;border-radius:4px;}
+
+  /* video timeline mock */
+  .vtimeline{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+  .vt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .vt-tools{display:flex;align-items:center;gap:6px;}
+  .icobtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;height:30px;min-width:30px;padding:0 8px;font-size:.78rem;font-weight:600;color:var(--ink-2);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+  .icobtn:hover{border-color:var(--brand);color:var(--brand-deep);}
+  .icobtn.brand{border-color:var(--brand);background:var(--brand-tint);color:var(--brand-deep);}
+  .track{position:relative;height:40px;border-radius:8px;background:linear-gradient(90deg,#274a4e,#1c383b);overflow:hidden;}
+  .track .clip{position:absolute;inset:0 12% 0 4%;background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 12px,rgba(255,255,255,.11) 12px 24px);}
+  .track .ph{position:absolute;top:-4px;bottom:-4px;width:2px;background:#e2564e;left:46%;}
+  .track .ph::before{content:"";position:absolute;top:-3px;left:-4px;width:10px;height:10px;border-radius:50%;background:#e2564e;}
+  .track .snapline{position:absolute;top:0;bottom:0;width:1px;background:var(--brand);left:46%;box-shadow:0 0 6px var(--brand);}
+  .subtrack{position:relative;height:22px;border-radius:7px;background:var(--surface);border:1px solid var(--line);margin-top:6px;overflow:hidden;}
+  .subtrack .cap{position:absolute;inset:2px auto 2px 26%;width:34%;background:linear-gradient(90deg,rgba(181,115,10,.85),rgba(181,115,10,.6));border-radius:5px;}
+
+  /* caption preset gallery */
+  .capgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  @media(min-width:620px){.capgrid{grid-template-columns:repeat(3,1fr);}}
+  .capcard{border:1.5px solid var(--line);border-radius:11px;overflow:hidden;cursor:pointer;background:var(--surface);transition:.12s;}
+  .capcard:hover{border-color:var(--brand);}
+  .capcard.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft);}
+  .capprev{aspect-ratio:16/10;background:linear-gradient(160deg,#33413a,#191f1b);display:flex;align-items:center;justify-content:center;padding:8px;}
+  .capname{font-size:.72rem;font-weight:600;text-align:center;padding:6px;color:var(--ink-2);}
+  .capcard.on .capname{color:var(--brand-deep);}
+  /* caption style samples */
+  .cs{font-weight:800;font-size:.86rem;line-height:1.15;text-align:center;}
+  .cs .hot{color:#f0b64a;}
+  .cs.bold{color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6);}
+  .cs.box{color:#fff;} .cs.box .w{background:#111;padding:1px 5px;border-radius:3px;box-decoration-break:clone;}
+  .cs.hotbox .hot{background:#b5730a;color:#fff;padding:1px 5px;border-radius:4px;}
+  .cs.glow{color:#fff;text-shadow:0 0 10px #0c7580,0 0 4px #0c7580;}
+  .cs.underline .hot{border-bottom:3px solid #f0b64a;}
+  .cs.pop .w2{display:inline-block;transform:scale(1.16);color:#f0b64a;}
+
+  /* before/after bg removal */
+  .ba{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;border:1px solid var(--line);}
+  .ba .layer{position:absolute;inset:0;}
+  .ba .bg{background:linear-gradient(135deg,#3a4a3c,#20281f);}
+  .ba .checker{background:
+    conic-gradient(#e9edec 90deg,#f6f8f7 0 180deg,#e9edec 0 270deg,#f6f8f7 0) 0 0/22px 22px;}
+  .ba .subj{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:52%;height:82%;background:radial-gradient(50% 40% at 50% 22%,#c9b39a,#8a6f52 60%,#5c4a37);border-radius:44% 44% 12% 12%;}
+  .ba .rev{position:absolute;inset:0;overflow:hidden;width:var(--rev,50%);border-right:2px solid var(--brand);}
+  .ba-range{width:100%;margin-top:10px;accent-color:var(--brand);}
+
+  /* swatch color row */
+  .swrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .sw-lg{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);cursor:pointer;}
+  .sw-lg.on{box-shadow:0 0 0 2px var(--brand);border-color:var(--brand);}
+  .grpname{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px;}
+
+  .note{margin-top:16px;border:1px dashed var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:14px 16px;background:var(--surface);}
+  .note .k{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);font-weight:600;}
+  .note p{margin:6px 0 0;font-size:.9rem;}
+  .note ul{margin:6px 0 0;padding-left:18px;font-size:.9rem;color:var(--ink-2);}
+  .note li{margin-bottom:3px;}
+  .decide{color:var(--amber);font-weight:600;}
+
+  .btnrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .fauxbtn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 14px;font-size:.85rem;font-weight:600;color:var(--ink-2);display:inline-flex;gap:7px;align-items:center;}
+  .fauxbtn.primary{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .fauxbtn.amber{background:var(--amber);border-color:var(--amber);color:#241a06;}
+
+  footer{padding:34px 0 60px;}
+  footer p{font-family:var(--mono);font-size:.74rem;color:var(--ink-3);}
+  .kbd{font-family:var(--mono);font-size:.8em;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Overnight Sprint · Mockup for sign-off</span>
+    <h1>6 editor upgrades — proposed UI, before you check out</h1>
+    <p>Each section is what I'll build tonight. Skim, then in chat tell me <b>"all good, go"</b> or redline any section by name. I build each as its own gated PR, prod-verify it in your Chrome, and auto-merge — you wake to shipped work.</p>
+    <div class="howto">
+      <span><b>1</b> Contextual toolbar + on-canvas text · photo</span>
+      <span><b>2</b> Timeline precision · video</span>
+      <span><b>3</b> Caption style presets · video</span>
+      <span><b>4</b> Snapping + guides · photo</span>
+      <span><b>5</b> Background removal · photo</span>
+      <span><b>6</b> Auto-adjust + color picker · photo</span>
+    </div>
+  </div>
+</header>
+
+<!-- 1 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="pr-chip big">PR 1 · the big one</span><h2>Contextual toolbar + on-canvas text editing</h2></div>
+    <p class="sub">The grammar change. Today you type in a side panel and drag on the canvas — two places for one object. Proposed: <b>double-click text on the canvas to edit it in place</b>, and a floating toolbar appears <b>above the selected element</b> with the controls that matter.</p>
+    <div class="stage two">
+      <div>
+        <p class="lbl now">✕ Today — side-panel form</p>
+        <div class="panel" style="padding:14px;">
+          <p class="lbl">TEXT LAYER</p>
+          <div style="border:1px solid var(--line);border-radius:9px;padding:10px;color:var(--ink-3);font-size:.85rem;margin-bottom:10px;">Body text…</div>
+          <p class="lbl">STYLE</p>
+          <div class="seg" style="margin-bottom:8px;"><button>Size</button><button>Width</button></div>
+          <div class="seg" style="margin-bottom:8px;"><button class="on">Auto</button><button>Heading</button><button>Body</button></div>
+          <div class="seg"><button>Left</button><button class="on">Center</button><button>Right</button></div>
+          <p style="font-size:.78rem;color:var(--ink-3);margin:10px 0 0;">…while the text itself sits over there on the canvas. Eyes ping-pong.</p>
+        </div>
+      </div>
+      <div>
+        <p class="lbl new">✓ Proposed — toolbar on the object</p>
+        <div class="canvas">
+          <div class="photo"></div>
+          <div class="txtblock" style="left:14%;top:52%;font-size:1.5rem;max-width:70%;">Stop stretching.<br>Start <span style="color:#f0b64a;">stabilising.</span></div>
+          <div class="selring" style="left:12%;top:47%;width:74%;height:26%;">
+            <span class="h tl"></span><span class="h tr"></span><span class="h bl"></span><span class="h br"></span>
+          </div>
+          <div class="float-tb" style="left:12%;top:38%;">
+            <span class="chip" id="tbfont">Heading ▾</span>
+            <span class="div"></span>
+            <button id="tbB" class="on" style="font-weight:800;">B</button>
+            <button id="tbI" style="font-style:italic;">I</button>
+            <span class="div"></span>
+            <button id="alL">⇤</button><button id="alC" class="on">⇔</button><button id="alR">⇥</button>
+            <span class="div"></span>
+            <span class="chip"><span class="sw" style="background:#f0b64a;"></span>Colour</span>
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:var(--ink-3);margin:8px 0 0;">Double-click to type inline · toolbar follows the selection · handles resize.</p>
+      </div>
+    </div>
+    <div class="note">
+      <span class="k">What changes / your call</span>
+      <ul>
+        <li>Side panel stays for <b>everything else</b> (theme, photo swap, grade) — the toolbar only carries the per-text-element controls (font · weight · align · colour · size).</li>
+        <li><span class="decide">Decision:</span> keep the current side-panel text controls too as a fallback, or move them fully onto the floating toolbar? (I lean: toolbar-primary, panel keeps advanced.)</li>
+        <li>Same renderer bakes preview + publish, so it stays WYSIWYG. This is the highest-effort PR — mockup-first is exactly why it's safe to build tonight.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="pr-chip">PR 2</span><h2>Timeline precision — zoom · snap · frame-step</h2></div>
+    <p class="sub">Today the timeline has no zoom, no snapping, and no frame-step — hard to cut precisely. Proposed: scroll/pinch to zoom the timeline, trim handles snap to the playhead, and ±1-frame buttons by the transport.</p>
+    <div class="panel" style="padding:16px;">
+      <div class="vtimeline">
+        <div class="vt-head">
+          <span class="lbl" style="margin:0;">TIMELINE</span>
+          <div class="vt-tools">
+            <button class="icobtn" title="Step back one frame">◁ᴵ</button>
+            <button class="icobtn" title="Step forward one frame">ᴵ▷</button>
+            <span style="width:8px"></span>
+            <button class="icobtn">– zoom</button>
+            <button class="icobtn brand">100%</button>
+            <button class="icobtn">zoom +</button>
+          </div>
+        </div>
+        <div class="track">
+          <div class="clip"></div>
+          <div class="snapline"></div>
+          <div class="ph"></div>
+          <span class="snaptag" style="left:46%;top:-2px;transform:translateX(6px);">snap ⭯ playhead</span>
+        </div>
+        <div class="subtrack"><div class="cap"></div></div>
+      </div>
+    </div>
+    <div class="note">
+      <span class="k">What changes</span>
+      <ul>
+        <li>Scroll-wheel / pinch zooms the timeline around the cursor; trim handles snap to the playhead and clip edges within a few px.</li>
+        <li>Frame-step buttons + <span class="kbd">←</span>/<span class="kbd">→</span> nudge the playhead exactly one frame. Pure interaction — no new visual design, so low-ambiguity.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="pr-chip">PR 3</span><h2>Caption style presets</h2></div>
+    <p class="sub">The karaoke engine already burns word-by-word captions — this adds a <b>gallery of branded styles</b> you tap once to apply to every line, plus in-panel colour + font. Tap a card to preview:</p>
+    <div class="panel" style="padding:16px;">
+      <div class="capgrid" id="capgrid">
+        <div class="capcard on" data-cap><div class="capprev"><div class="cs bold">You can't out-<span class="hot">stretch</span> it</div></div><div class="capname">Bold (default)</div></div>
+        <div class="capcard" data-cap><div class="capprev"><div class="cs box">You <span class="w">can't</span> out<span class="w">stretch</span> it</div></div><div class="capname">Word box</div></div>
+        <div class="capcard" data-cap><div class="capprev"><div class="cs hotbox">You can't <span class="hot">stretch</span> it</div></div><div class="capname">Accent fill</div></div>
+        <div class="capcard" data-cap><div class="capprev"><div class="cs glow">You can't stretch it</div></div><div class="capname">Glow</div></div>
+        <div class="capcard" data-cap><div class="capprev"><div class="cs underline">You can't <span class="hot">stretch</span> it</div></div><div class="capname">Underline</div></div>
+        <div class="capcard" data-cap><div class="capprev"><div class="cs pop">You <span class="w2">can't</span> stretch it</div></div><div class="capname">Pop</div></div>
+      </div>
+      <div class="fieldrow" style="padding:14px 2px 0;display:flex;gap:22px;flex-wrap:wrap;align-items:center;">
+        <div><p class="lbl" style="margin-bottom:6px;">Highlight colour</p>
+          <div class="swrow"><span class="sw-lg on" style="background:#f0b64a;"></span><span class="sw-lg" style="background:#0c7580;"></span><span class="sw-lg" style="background:#fff;"></span><span class="sw-lg" style="background:conic-gradient(from 90deg,#f44,#fd4,#4d4,#4dd,#44f,#f4f,#f44);"></span></div>
+        </div>
+        <div><p class="lbl" style="margin-bottom:6px;">Font</p>
+          <div class="seg" style="width:200px;"><button class="on">Brand heading</button><button>Body</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <span class="k">What changes / your call</span>
+      <ul>
+        <li>Applying a preset restyles <b>all</b> caption lines at once; the active spoken word still highlights in the chosen colour (accent auto-pulled from brand, overridable here).</li>
+        <li><span class="decide">Decision:</span> these 6 starter styles OK, or want specific ones (e.g. TikTok-style bounce, all-caps)? I can swap any before building.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="pr-chip">PR 4</span><h2>Snapping + smart guides (photo)</h2></div>
+    <p class="sub">Drag a text block or photo and alignment lines appear to canvas-center and other elements, snapping into place — the biggest "amateur vs. clean" tell, handled automatically.</p>
+    <div class="stage two">
+      <div>
+        <p class="lbl new">✓ Dragging near center</p>
+        <div class="canvas">
+          <div class="photo"></div>
+          <div class="guide v" style="left:50%;"></div>
+          <div class="guide h" style="top:50%;"></div>
+          <span class="snaptag" style="left:50%;top:6%;transform:translateX(-50%);">center</span>
+          <div class="txtblock" style="left:50%;top:46%;transform:translateX(-50%);font-size:1.3rem;text-align:center;">Move Better</div>
+          <div class="selring" style="left:26%;top:42%;width:48%;height:14%;"><span class="h tl"></span><span class="h tr"></span><span class="h bl"></span><span class="h br"></span></div>
+        </div>
+      </div>
+      <div>
+        <p class="lbl new">✓ Edge + equal-spacing hints</p>
+        <div class="canvas">
+          <div class="photo"></div>
+          <div class="guide v" style="left:8%;opacity:.5;"></div>
+          <div class="guide v" style="left:92%;opacity:.5;"></div>
+          <div class="txtblock" style="left:8%;top:20%;font-size:1rem;">Hook line</div>
+          <div class="txtblock" style="left:8%;bottom:14%;font-size:.9rem;opacity:.9;">movebetter.co</div>
+          <span class="snaptag" style="left:8%;top:12%;">left margin</span>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <span class="k">What changes</span>
+      <p>Center + edge guides, snap-to-line while dragging, and a temporary distance hint between elements. Hold <span class="kbd">⌘</span> to bypass snapping for fine placement. Standard pattern — low design ambiguity.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="pr-chip">PR 5</span><h2>Background removal (photo)</h2></div>
+    <p class="sub">One click isolates the subject — headshots, product-on-white. Drag the divider to compare:</p>
+    <div class="stage two">
+      <div>
+        <div class="ba" id="ba">
+          <div class="layer checker"></div>
+          <div class="layer rev" id="rev"><div class="bg" style="position:absolute;inset:0;"></div></div>
+          <div class="subj"></div>
+        </div>
+        <input class="ba-range" id="baR" type="range" min="0" max="100" value="50" aria-label="Before/after divider">
+        <p style="font-size:.76rem;color:var(--ink-3);margin-top:4px;text-align:center;">← original · cut-out →</p>
+      </div>
+      <div>
+        <p class="lbl">PHOTO · in the inspector</p>
+        <div class="panel" style="padding:14px;">
+          <div class="btnrow" style="margin-top:0;flex-direction:column;align-items:stretch;">
+            <span class="fauxbtn primary" style="justify-content:center;">✦ Remove background</span>
+            <span class="fauxbtn" style="justify-content:center;">Replace with brand colour ▾</span>
+          </div>
+          <p style="font-size:.8rem;color:var(--ink-3);margin:12px 0 0;">After cut-out: keep transparent, drop on a brand-colour ground, or a solid — your pick. One tap, no brushing.</p>
+        </div>
+        <div class="note" style="margin-top:14px;">
+          <span class="k">Your call</span>
+          <p>Uses a paid removal API (billed per image). I'll wire the cheapest solid option; note it in the PR.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section style="border-bottom:none;">
+  <div class="wrap">
+    <div class="sec-head"><span class="pr-chip">PR 6</span><h2>Auto-adjust + curated colour picker</h2></div>
+    <p class="sub">A one-tap lighting fix, and a colour menu ordered the way non-designers actually pick — brand first, then colours pulled from the photo, then custom.</p>
+    <div class="stage two">
+      <div>
+        <p class="lbl">PHOTO · grade</p>
+        <div class="panel" style="padding:14px;">
+          <span class="fauxbtn amber" style="justify-content:center;width:100%;">✨ Auto-adjust lighting</span>
+          <p style="font-size:.8rem;color:var(--ink-3);margin:10px 0 0;">Sets brightness/contrast/warmth in one tap; the 5 sliders + vibes stay for fine-tuning. Also fixes today's cool-tone preview so what you see matches the bake.</p>
+        </div>
+      </div>
+      <div>
+        <p class="lbl">TEXT COLOUR · curated order</p>
+        <div class="panel" style="padding:14px;">
+          <div class="swrow" style="margin-bottom:12px;"><span class="grpname">Brand</span><span class="sw-lg on" style="background:#0c7580;"></span><span class="sw-lg" style="background:#08454c;"></span><span class="sw-lg" style="background:#b5730a;"></span></div>
+          <div class="swrow" style="margin-bottom:12px;"><span class="grpname">From photo</span><span class="sw-lg" style="background:#8a9c82;"></span><span class="sw-lg" style="background:#3a4a3c;"></span><span class="sw-lg" style="background:#c9b39a;"></span><span class="sw-lg" style="background:#e3ddd0;"></span></div>
+          <div class="swrow"><span class="grpname">Custom</span><span class="sw-lg" style="background:conic-gradient(from 90deg,#f44,#fd4,#4d4,#4dd,#44f,#f4f,#f44);"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <span class="k">What changes</span>
+      <p>The "From photo" swatches are auto-extracted from the current image, so text harmonises with the picture in one tap. Applies to the photo editor's colour menus.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Mockup for sign-off · reply "all good, go" or redline by section · I build each overnight as a gated, prod-verified, auto-merged PR.</p>
+  </div>
+</footer>
+
+<script>
+  // caption card select
+  document.querySelectorAll('[data-cap]').forEach(c=>c.addEventListener('click',()=>{
+    document.querySelectorAll('[data-cap]').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');
+  }));
+  // toolbar toggles (feel only)
+  ['tbB','tbI'].forEach(id=>{const b=document.getElementById(id);b&&b.addEventListener('click',()=>b.classList.toggle('on'));});
+  const al={alL:0,alC:1,alR:2};Object.keys(al).forEach(id=>{const b=document.getElementById(id);b&&b.addEventListener('click',()=>{['alL','alC','alR'].forEach(x=>document.getElementById(x).classList.remove('on'));b.classList.add('on');});});
+  // before/after divider
+  const r=document.getElementById('baR'),rev=document.getElementById('rev');
+  r&&r.addEventListener('input',()=>rev.style.width=r.value+'%');
+</script>
