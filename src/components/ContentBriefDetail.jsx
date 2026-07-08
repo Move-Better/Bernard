@@ -327,7 +327,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
                   <div>
                     <div className="text-xs font-medium">Publish</div>
                     <div className="text-2xs text-muted-foreground">
-                      Dispatches via Buffer using this workspace&apos;s credentials. The finished file (or source clip) is attached as the post media.
+                      Dispatches using this workspace&apos;s connected publishing credentials. The finished file (or source clip) is attached as the post media.
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">

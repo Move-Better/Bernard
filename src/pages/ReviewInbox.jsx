@@ -230,7 +230,7 @@ export default function ReviewInbox() {
     }
     setScheduling(false)
     setScheduleConfirmOpen(false)
-    if (ok) toast.success(`Added ${ok} post${ok === 1 ? '' : 's'} to the Buffer queue`)
+    if (ok) toast.success(`Added ${ok} post${ok === 1 ? '' : 's'} to the queue`)
     if (fail) toast.error(`${fail} couldn’t be queued`, { description: 'Open them individually to retry.' })
     clearSel()
   }
@@ -302,7 +302,7 @@ export default function ReviewInbox() {
                   className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
-                  Add {selectedSchedulable.length} to Buffer queue
+                  Add {selectedSchedulable.length} to queue
                 </button>
               )}
               <button
@@ -375,8 +375,8 @@ export default function ReviewInbox() {
       <ConfirmDialog
         open={scheduleConfirmOpen}
         onOpenChange={setScheduleConfirmOpen}
-        title={`Add ${selectedSchedulable.length} post${selectedSchedulable.length === 1 ? '' : 's'} to the Buffer queue?`}
-        description="Each goes into its channel’s Buffer queue — Buffer picks the slot from your posting schedule. You can still reschedule or cancel in Buffer."
+        title={`Add ${selectedSchedulable.length} post${selectedSchedulable.length === 1 ? '' : 's'} to the queue?`}
+        description="Each goes into its channel’s queue — the slot is picked from your posting schedule. You can still reschedule or cancel afterward."
         confirmLabel="Add to queue"
         destructive={false}
         loading={scheduling}

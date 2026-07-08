@@ -1130,10 +1130,10 @@ function WhenToPublishCard({
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {!publishing && <Calendar className="h-3.5 w-3.5 mr-1.5" />}
-                Add to Buffer queue
+                Add to queue
               </Button>
               <p className="text-xs text-muted-foreground">
-                Buffer will slot this into the next open spot on your channel&rsquo;s queue.
+                This will slot into the next open spot on your channel&rsquo;s queue.
               </p>
             </>
           ) : suggested ? (
@@ -1178,7 +1178,7 @@ function WhenToPublishCard({
                   disabled={publishing}
                   className="text-primary hover:underline"
                 >
-                  Add to Buffer queue
+                  Add to queue
                 </button>
               </>
             )}
@@ -1456,11 +1456,11 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             themes: allThemes,
           }),
           {
-            loading: usingQueue ? 'Adding to Buffer queue…'
-              : effectiveScheduledAt ? 'Scheduling on Buffer…'
-              : 'Sending to Buffer…',
-            success: usingQueue ? 'Added to Buffer queue'
-              : effectiveScheduledAt ? 'Scheduled on Buffer'
+            loading: usingQueue ? 'Adding to queue…'
+              : effectiveScheduledAt ? 'Scheduling…'
+              : 'Publishing…',
+            success: usingQueue ? 'Added to queue'
+              : effectiveScheduledAt ? 'Scheduled'
               : '🎉 It’s live! Your story is out in the world.',
             error: (e) => ({ message: 'Publish failed', description: e.message }),
           },
@@ -1550,13 +1550,13 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
   // metadata; the post stays live on the platform).
   const handleCancelScheduled = async () => {
     if (!piece.buffer_update_id) {
-      toast.error('Cannot cancel — no Buffer post ID on file')
+      toast.error('Cannot cancel — no scheduled post ID on file')
       return
     }
     setPublishing(true)
     try {
       await runWithToast(cancelBufferPost(piece.buffer_update_id), {
-        loading: 'Cancelling on Buffer…',
+        loading: 'Cancelling…',
         success: 'Cancelled — back to Approved',
         error: (e) => ({ message: 'Cancel failed', description: e.message }),
       })
@@ -1708,14 +1708,14 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
       )}
 
       {/* Scheduled state — shows the scheduled time + Cancel button so the
-          reviewer can pull the post out of Buffer's queue and pick a different
-          time (or unapprove). Only valid for Buffer-dispatched platforms; blog
-          publishes don't go through this state. */}
+          reviewer can pull the post out of the queue and pick a different
+          time (or unapprove). Only valid for Buffer/bundle-dispatched platforms;
+          blog publishes don't go through this state. */}
       {isPublish && piece.status === 'scheduled' && canReview && piece.platform !== 'blog' && (
         <div className="rounded-lg border bg-primary/5 border-primary/20 p-3 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
             <Calendar className="h-3.5 w-3.5" />
-            Scheduled on Buffer
+            Scheduled
           </div>
           {piece.scheduled_at && (
             <p className="text-sm font-medium text-foreground">
@@ -1742,7 +1742,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Removes the post from Buffer&rsquo;s queue and returns this piece to Approved so you can pick a new time or unapprove.
+            Removes the post from the queue and returns this piece to Approved so you can pick a new time or unapprove.
           </p>
         </div>
       )}
@@ -1859,7 +1859,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               className="border-success/30 bg-success/10 text-success cursor-default opacity-100"
             >
               <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-              {piece.platform === 'blog' ? 'Published to Website' : 'Published to Buffer'}
+              {piece.platform === 'blog' ? 'Published to Website' : 'Published'}
             </Button>
             {piece.published_at && (
               <span className="text-xs text-muted-foreground">

@@ -312,9 +312,9 @@ export default function WorkspaceSettings() {
             className="mt-0.5 h-4 w-4"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium leading-tight">Use Buffer&rsquo;s queue by default</div>
+            <div className="text-sm font-medium leading-tight">Use the scheduling queue by default</div>
             <div className="text-xs text-muted-foreground mt-1">
-              When approving a post, the primary action becomes &ldquo;Add to Buffer queue&rdquo; — Buffer slots the post into the next open spot on your channel&rsquo;s schedule. Keep this off to use Bernard&rsquo;s platform-aware suggested times instead. &ldquo;Pick a specific time&rdquo; and &ldquo;Publish now&rdquo; remain available either way.
+              When approving a post, the primary action becomes &ldquo;Add to queue&rdquo; — the next open spot on your channel&rsquo;s schedule is picked for you. Keep this off to use Bernard&rsquo;s platform-aware suggested times instead. &ldquo;Pick a specific time&rdquo; and &ldquo;Publish now&rdquo; remain available either way.
             </div>
           </div>
         </label>
@@ -472,7 +472,7 @@ function DangerZone({ workspace, getToken }) {
                 Suspends this workspace immediately. All members lose access — the subdomain stops resolving and every API call returns 404. Content, media, and credentials stay in storage so the workspace can be restored manually via the database.
               </p>
               <ul className="text-2xs text-muted-foreground list-disc pl-4 mt-1.5 space-y-0.5">
-                <li>Published posts on external channels (WordPress / Astro / Buffer) are <strong>not</strong> taken down.</li>
+                <li>Published posts on external channels (WordPress / Astro / your social scheduler) are <strong>not</strong> taken down.</li>
                 <li>Cron jobs that reference this workspace start no-op&apos;ing.</li>
                 <li>Your Clerk Organization is not deleted; members can still sign in elsewhere.</li>
               </ul>

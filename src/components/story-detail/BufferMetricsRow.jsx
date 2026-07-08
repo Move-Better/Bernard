@@ -55,7 +55,7 @@ export default function BufferMetricsRow({ contentItemId }) {
         onClick={handleRefresh}
         disabled={isFetching}
         className="ml-auto inline-flex items-center text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-        aria-label="Refresh Buffer metrics"
+        aria-label="Refresh metrics"
         title="Refresh metrics"
       >
         <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />

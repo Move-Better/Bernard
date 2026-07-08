@@ -104,6 +104,7 @@ export default function PrivacyPolicy() {
                   <tr><td className="py-2 pr-4">Anthropic</td><td className="py-2 pr-4">AI content generation</td><td className="py-2">USA</td></tr>
                   <tr><td className="py-2 pr-4">Stripe</td><td className="py-2 pr-4">Payment processing</td><td className="py-2">USA</td></tr>
                   <tr><td className="py-2 pr-4">Buffer</td><td className="py-2 pr-4">Social media scheduling (optional)</td><td className="py-2">USA</td></tr>
+                  <tr><td className="py-2 pr-4">bundle.social</td><td className="py-2 pr-4">Social media scheduling (optional)</td><td className="py-2">USA</td></tr>
                 </tbody>
               </table>
             </div>

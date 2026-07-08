@@ -22,7 +22,7 @@ const PLAN_LABELS = {
 const FEATURE_LABELS = {
   cross_staff_synthesis: 'Cross-staff story synthesis',
   multi_location:        'Multi-location dashboard',
-  buffer_analyze:        'Buffer analytics',
+  buffer_analyze:        'Post performance analytics',
 }
 
 // UsageGate — wraps a feature with a plan gate.
