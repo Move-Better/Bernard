@@ -680,18 +680,22 @@ inside a `useEffect`, never as a bare assignment in the component body. This wil
 hook that needs "current value on demand" semantics — reach for state-mirrored-from-ref, not a raw ref
 read, anywhere the value is read during render.
 
-**`removeSlide`'s toast-undo can lose data to an out-of-order autosave race.** `SlideEditor.jsx`'s
-delete flow (`removeSlide`) shows a Sonner "Slide deleted" toast with an `Undo` action that restores
-the removed slide into local `slides` state — but `useAutosave` fires its own independent debounced
-PATCH on every `slides` change, so a delete-then-undo done faster than the debounce window queues TWO
-PATCHes (one with N-1 slides, one with N). If the delete's PATCH request resolves AFTER the undo's
-(network reordering, no request sequencing/versioning), it silently overwrites the undo back down to
-N-1 — the UI shows "All changes saved" and N slides, but the DB has N-1. Reproduced 2026-07-08 testing
-`SlideFilmstrip`'s delete affordance against a real draft. No fix shipped yet — worth a dedicated PR
-(likely: cancel/supersede the in-flight delete PATCH when undo fires, or have `useAutosave` sequence
-writes so a stale response can't clobber a newer one). Until fixed, treat rapid delete→undo verification
-on real data as unsafe — either wait for "All changes saved" to settle before undoing, or verify on a
-disposable draft, not a real workspace's unreviewed content.
+**FIXED (#1971, 2026-07-08) — a piece-reseed effect clobbered `removeSlide`'s toast-undo, not a raw
+network race.** `SlideEditor.jsx`'s delete flow (`removeSlide`) shows a Sonner "Slide deleted" toast
+with an `Undo` action that restores the removed slide into local `slides` state. The actual mechanism
+that lost the undo: a `useEffect` re-seeded local `slides`/`themeId`/`aspect` from the `piece` prop on
+every `JSON.stringify(piece?.slides)` change — but `useUpdateContentItem`'s `onSuccess` writes the
+saved row straight into the query-cache detail entry (`qc.setQueryData`), so the delete's own save
+echoed back and re-triggered that effect. If the echo landed in the window between the undo's local
+`setSlides` and the undo's own (later) debounced autosave, the reseed silently overwrote the undo back
+down to the deleted state — and since post-clobber state matched the already-saved state, no further
+save fired, so the UI reported "All changes saved" while the undo was lost. Reproduced 2026-07-08
+testing `SlideFilmstrip`'s delete affordance against a real draft. **Fix:** the reseed effect now
+depends only on `piece?.id`, not `piece?.slides` — `StoryboardPublish` already gates rendering until
+`piece` is loaded, so slides are never "still loading" by the time `SlideEditor` mounts; once mounted,
+local `slides` state is authoritative and autosave is what pushes it to the server, so a reseed on
+every server echo was never correct. Re-verified live post-deploy with the exact repro (delete → wait
+for the save to land on the server → undo → confirm the undo persists, not just the local UI).
 
 **Single-media archetypes must REPLACE `media_urls` on swap, never append.** Every archetype whose
 `surface` isn't SLIDES with room for more than one slide — `visual`, `story`, `vvideo`, `lvideo` — has
