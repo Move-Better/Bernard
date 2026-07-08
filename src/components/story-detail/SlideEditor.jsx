@@ -422,12 +422,47 @@ function blockFraction(block, theme, skipZone = false) {
   return { x, y }
 }
 
-// Draggable text-layer handles overlaid on the active canvas. Each text block
-// is a box you click to select and drag to place (free x/y) — text is a layer
-// like any other, no position presets. The canvas underneath is the true render.
-function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) {
+// Floating contextual toolbar — appears above (or below, near the top edge) the
+// selected text block, carrying the PRIMARY per-element controls (font · weight ·
+// italic · align · colour). Advanced controls (size, width, underline, role) stay
+// in the side panel. `stop` swallows pointerdown so clicking the toolbar doesn't
+// start a drag on the block box beneath it.
+function FloatingTextToolbar({ block, idx, below, onSetStyle, stop }) {
+  const btn = (active) => `flex h-7 min-w-[26px] items-center justify-center rounded px-1 text-sm font-semibold transition-colors ${active ? 'bg-primary/15 text-primary' : 'text-foreground/80 hover:bg-muted'}`
+  const set = (k, v) => (e) => { e.stopPropagation(); onSetStyle(idx, k, v) }
+  const div = <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
+  return (
+    <div
+      onPointerDown={stop}
+      className={`absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg ${below ? 'top-full mt-2' : 'bottom-full mb-2'}`}
+    >
+      <button onPointerDown={stop} onClick={set('font', block.font === 'body' ? 'heading' : 'body')} className={btn(false)} title="Toggle font">{block.font === 'body' ? 'Body' : 'Head'}</button>
+      {div}
+      <button onPointerDown={stop} onClick={set('fontWeight', block.fontWeight === '700' ? null : '700')} className={btn(block.fontWeight === '700')} title="Bold" style={{ fontWeight: 800 }}>B</button>
+      <button onPointerDown={stop} onClick={set('italic', block.italic ? null : true)} className={btn(block.italic === true)} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
+      {div}
+      <button onPointerDown={stop} onClick={set('align', 'left')} className={btn(block.align === 'left')} title="Align left" aria-label="Align left">⇤</button>
+      <button onPointerDown={stop} onClick={set('align', null)} className={btn(!block.align || block.align === 'center')} title="Align center" aria-label="Align center">⇔</button>
+      <button onPointerDown={stop} onClick={set('align', 'right')} className={btn(block.align === 'right')} title="Align right" aria-label="Align right">⇥</button>
+      {div}
+      {TEXT_COLORS.slice(0, 3).map((c) => (
+        <button key={c.value} onPointerDown={stop} onClick={set('color', c.value)} title={c.label} aria-label={`Colour ${c.label}`}
+          className={`h-5 w-5 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary' : 'border-border'}`} style={{ background: c.value }} />
+      ))}
+    </div>
+  )
+}
+
+// On-canvas text layer: each block is a box you click to select, drag to place,
+// and DOUBLE-CLICK to edit inline (a contentEditable over the block; the canvas
+// skips that block's text while editing so there's no double-vision). When a
+// block is selected, the floating toolbar rides above it. The canvas underneath
+// is the true render.
+function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, onSetStyle, onSetText, editingIdx, setEditingIdx }) {
   const rootRef = useRef(null)
+  const stop = (e) => e.stopPropagation()
   function startDrag(e, idx, f) {
+    if (editingIdx === idx) return          // don't drag the block being edited
     e.stopPropagation()
     e.preventDefault()
     onSelectBlock(idx)
@@ -456,25 +491,39 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock }) 
   return (
     <div ref={rootRef} className="pointer-events-none absolute inset-0 rounded-xl">
       {(slide.blocks || []).map((b, idx) => {
-        if (!(b.text || '').trim()) return null
+        const editing = editingIdx === idx
+        if (!(b.text || '').trim() && !editing) return null
         const f = blockFraction(b, theme, skipZone)
         const sel = selection.type === 'text' && selection.idx === idx
         const w = Math.max(0.2, Math.min(1, Number.isFinite(b.width) ? b.width : 0.72))
+        const tbBelow = f.y < 0.22
         return (
           <div
             key={idx}
             onPointerDown={(e) => startDrag(e, idx, f)}
-            title="Drag to place"
-            className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move items-center justify-center rounded ${
+            onDoubleClick={(e) => { e.stopPropagation(); onSelectBlock(idx); setEditingIdx(idx) }}
+            title={editing ? '' : 'Drag to place · double-click to edit'}
+            className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded ${editing ? 'cursor-text' : 'cursor-move'} ${
               sel ? 'border-2 border-dashed border-primary bg-primary/5' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
             }`}
             style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, width: `${w * 100}%`, minHeight: '8%' }}
           >
-            {sel && (
-              <span className="absolute -top-5 left-0 inline-flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-3xs font-semibold text-primary-foreground">
-                <Move className="h-2.5 w-2.5" />{ROLE_META[b.role]?.label || b.role}
-              </span>
-            )}
+            {editing ? (
+              <div
+                contentEditable
+                suppressContentEditableWarning
+                ref={(el) => { if (el && document.activeElement !== el) { el.textContent = b.text || ''; el.focus() } }}
+                onPointerDown={stop}
+                onInput={(e) => onSetText(idx, e.currentTarget.textContent)}
+                onBlur={() => setEditingIdx(null)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null) } else if (e.key === 'Escape') setEditingIdx(null) }}
+                className="w-full rounded bg-black/35 px-1 text-center text-lg font-bold text-white outline-none"
+                style={{ textShadow: '0 2px 8px rgba(0,0,0,.6)' }}
+                aria-label="Edit text"
+              />
+            ) : sel ? (
+              <FloatingTextToolbar block={b} idx={idx} below={tbBelow} onSetStyle={onSetStyle} stop={stop} />
+            ) : null}
           </div>
         )
       })}
@@ -1817,6 +1866,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // Contextual selection driving the canvas (photo ring + text-block drag). One of:
   //   { type: null } | { type: 'slide' } | { type: 'photo' } | { type: 'text', idx }
   const [selection, setSelection] = useState({ type: null })
+  // Which text block is being edited inline on the canvas (double-click). The
+  // canvas skips this block's text while editing so the inline editor doesn't
+  // double up with the baked render. Reset when the active slide changes.
+  const [editingBlockIdx, setEditingBlockIdx] = useState(null)
+  useEffect(() => { setEditingBlockIdx(null) }, [activeSlideIdx])
   // Unified-shell rail tool — which single inspector panel is shown. Orthogonal
   // to `selection` (which drives the canvas), but picking a tool syncs an
   // appropriate selection so the canvas highlight follows the rail.
@@ -2384,7 +2438,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                 style={{ height: `min(calc(100vh - 210px), calc((100vw - 470px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
               >
                 <SlidePreview
-                  slide={activeSlide}
+                  slide={editingBlockIdx != null ? { ...activeSlide, blocks: activeSlide.blocks.map((b, i) => (i === editingBlockIdx ? { ...b, text: '' } : b)) } : activeSlide}
                   photoUrl={activePhotoUrl}
                   brandStyle={brandStyle}
                   theme={activeTheme}
@@ -2405,10 +2459,26 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                   slide={activeSlide}
                   theme={activeTheme}
                   selection={selection}
+                  editingIdx={editingBlockIdx}
+                  setEditingIdx={setEditingBlockIdx}
                   onSelectBlock={(idx) => { setSelection({ type: 'text', idx }); setTool('text') }}
                   onMoveBlock={(idx, pos) => updateSlide(activeSlideIdx, {
                     ...activeSlide,
                     blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, position: pos } : b)),
+                  })}
+                  onSetStyle={(idx, key, val) => updateSlide(activeSlideIdx, {
+                    ...activeSlide,
+                    blocks: activeSlide.blocks.map((b, i) => {
+                      if (i !== idx) return b
+                      const nb = { ...b }
+                      if (val == null || val === '' || (key === 'fontScale' && val === 1)) delete nb[key]
+                      else nb[key] = val
+                      return nb
+                    }),
+                  })}
+                  onSetText={(idx, text) => updateSlide(activeSlideIdx, {
+                    ...activeSlide,
+                    blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, text } : b)),
                   })}
                 />
                 {/* Alignment guide lines — flash for ~800ms when Center is clicked */}
