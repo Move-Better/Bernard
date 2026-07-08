@@ -683,7 +683,8 @@ function SlideInspector({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-1 rounded p-0.5 text-muted-foreground hover:text-destructive"
+          disabled={totalSlides <= 1}
+          className="ml-1 rounded p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground"
           aria-label="Delete slide"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1369,28 +1370,31 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
   )
 }
 
-// ── Slide rail (left vertical thumbnail column, replaces bottom filmstrip) ────
+// ── Slide filmstrip (bottom horizontal thumbnail strip, CapCut-style — mirrors
+// VideoEditor's horizontal timeline) ──────────────────────────────────────────
+// Pinned under the preview canvas, spanning full width. Each thumbnail carries
+// its own hover-delete (X) so add/remove both happen right where you pick a
+// slide, instead of being buried in the Slide tool's inspector panel.
 
-function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = true }) {
+function SlideFilmstrip({ slides, activeIdx, mediaUrls, onSelect, onAdd, onRemove, canAdd = true }) {
   return (
-    <aside className="flex w-[92px] shrink-0 flex-col border-r bg-card">
-      <div className="flex items-center px-2 py-2 border-b">
-        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Slides</span>
-        <span className="ml-auto text-3xs text-muted-foreground">{slides.length}</span>
+    <div className="flex h-[132px] shrink-0 flex-col border-t bg-card">
+      <div className="flex items-center gap-1.5 px-3 pt-2 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span>Slides</span>
+        <span className="text-muted-foreground/70">{slides.length}</span>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div className="flex flex-1 items-center gap-2 overflow-x-auto px-3 pb-3 pt-2">
         {slides.map((slide, idx) => {
           const photoUrl = typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]
             ? (mediaUrls[slide.photo_idx].thumbnailUrl || photoSourceUrl(mediaUrls[slide.photo_idx]))
             : null
           const isActive = idx === activeIdx
           return (
-            <div key={idx} className="flex items-start gap-1">
-              <span className="pt-0.5 text-3xs font-semibold text-muted-foreground">{idx + 1}</span>
+            <div key={idx} className="group relative shrink-0">
               <button
                 type="button"
                 onClick={() => onSelect(idx)}
-                className={`relative aspect-[4/5] w-full overflow-hidden rounded-md border transition-all ${
+                className={`relative aspect-[4/5] h-[84px] overflow-hidden rounded-md border transition-all ${
                   isActive ? 'border-primary ring-1 ring-primary/40' : 'border-border hover:border-primary/40'
                 }`}
               >
@@ -1399,10 +1403,21 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
                   : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-500" />
                 }
                 <div className="absolute inset-0 bg-black/15" />
+                <span className="absolute left-1 top-1 rounded bg-black/55 px-1 text-3xs font-semibold leading-tight text-white">{idx + 1}</span>
                 {slide.template_id && (
                   <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ background: 'hsl(var(--action))' }} />
                 )}
               </button>
+              {slides.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onRemove(idx) }}
+                  aria-label={`Delete slide ${idx + 1}`}
+                  className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-destructive/40 hover:text-destructive group-hover:flex"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
+              )}
             </div>
           )
         })}
@@ -1410,19 +1425,19 @@ function SlideRail({ slides, activeIdx, mediaUrls, onSelect, onAdd, canAdd = tru
           <button
             type="button"
             onClick={onAdd}
-            className="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center justify-center rounded-md border border-dashed border-muted-foreground/30 py-3 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+            className="flex h-[84px] w-[67px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span className="text-3xs mt-0.5">Add</span>
+            <span className="text-3xs">Add</span>
           </button>
         ) : (
-          <div className="ml-[14px] flex w-[calc(100%-14px)] flex-col items-center gap-1 rounded-md border border-dashed border-muted-foreground/30 py-2 text-center text-3xs leading-snug text-muted-foreground/70">
+          <div className="flex h-[84px] w-[150px] shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 px-2 text-center text-3xs leading-snug text-muted-foreground/70">
             <Lock className="h-3 w-3" aria-hidden="true" />
             <span>Locked to 1 photo — this platform doesn&apos;t support extra slides</span>
           </div>
         )}
       </div>
-    </aside>
+    </div>
   )
 }
 
@@ -1760,6 +1775,10 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setSlides(out)
   }
   function removeSlide(idx) {
+    if (slides.length <= 1) {
+      toast('A post needs at least one slide')
+      return
+    }
     const removed = slides[idx]
     const next = slides.filter((_, i) => i !== idx)
     setSlides(next)
@@ -2032,229 +2051,238 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         )}
       </EditorChrome>
 
-      {/* ── WORK AREA: rail | inspector | canvas | caption ─────────────── */}
-      <div className="flex min-h-0 flex-1">
-        {/* 1. Icon rail — unified shell; picks the single inspector panel */}
-        {activeSlide && (
-          <EditorIconRail
-            items={[
-              { key: 'words', icon: MessageCircle, label: 'Words' },
-              { key: 'slide', icon: Layers, label: 'Slide' },
-              { key: 'photo', icon: ImageIcon, label: 'Media' },
-              { key: 'text', icon: Type, label: 'Text' },
-            ]}
-            active={tool}
-            onPick={pickTool}
-          />
-        )}
+      {/* ── WORK AREA: rail | inspector | canvas on top, slide filmstrip spanning
+          full width below (CapCut-style — mirrors VideoEditor's timeline) ── */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1">
+          {/* 1. Icon rail — unified shell; picks the single inspector panel */}
+          {activeSlide && (
+            <EditorIconRail
+              items={[
+                { key: 'words', icon: MessageCircle, label: 'Words' },
+                { key: 'slide', icon: Layers, label: 'Slide' },
+                { key: 'photo', icon: ImageIcon, label: 'Media' },
+                { key: 'text', icon: Type, label: 'Text' },
+              ]}
+              active={tool}
+              onPick={pickTool}
+            />
+          )}
 
-        {/* 2. Inspector — single panel chosen by the rail */}
-        <aside className="flex w-[280px] shrink-0 flex-col border-r bg-card overflow-hidden">
-          {!activeSlide ? (
-            <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
-              Add a slide to start editing
-            </div>
-          ) : tool === 'words' ? (
-            <CaptionPanel piece={piece} onUseAsHook={handleUseAsHook} updateItem={updateItem} />
-          ) : (
-            <>
-              {/* Slide N of M + prev/next nav */}
-              <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
-                <span className="text-xs font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlideIdx((i) => Math.max(0, i - 1))}
-                    disabled={activeSlideIdx === 0}
-                    className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))}
-                    disabled={activeSlideIdx === slides.length - 1}
-                    className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+          {/* 2. Inspector — single panel chosen by the rail */}
+          <aside className="flex w-[280px] shrink-0 flex-col border-r bg-card overflow-hidden">
+            {!activeSlide ? (
+              <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
+                Add a slide to start editing
               </div>
+            ) : tool === 'words' ? (
+              <CaptionPanel piece={piece} onUseAsHook={handleUseAsHook} updateItem={updateItem} />
+            ) : (
+              <>
+                {/* Slide N of M + prev/next nav */}
+                <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
+                  <span className="text-xs font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSlideIdx((i) => Math.max(0, i - 1))}
+                      disabled={activeSlideIdx === 0}
+                      className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))}
+                      disabled={activeSlideIdx === slides.length - 1}
+                      className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                {tool === 'slide' && (
-                  <SlideInspector
-                    slide={activeSlide}
-                    slideIdx={activeSlideIdx}
-                    totalSlides={slides.length}
-                    photoUrl={activePhotoUrl}
-                    brandStyle={brandStyle}
-                    allThemes={allThemes}
-                    customThemes={customThemes}
-                    globalThemeId={themeId}
-                    onChange={(next) => updateSlide(activeSlideIdx, next)}
-                    onApplyThemeToAll={handleApplyThemeToAll}
-                    onAddBlock={(role) => {
-                      const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, role))
-                      updateSlide(activeSlideIdx, { ...activeSlide, blocks })
-                      setTool('text'); setSelection({ type: 'text', idx: blocks.length - 1 })
-                    }}
-                    onMoveLeft={() => {
-                      moveSlide(activeSlideIdx, -1)
-                      setActiveSlideIdx((i) => Math.max(0, i - 1))
-                    }}
-                    onMoveRight={() => {
-                      moveSlide(activeSlideIdx, 1)
-                      setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))
-                    }}
-                    onRemove={() => removeSlide(activeSlideIdx)}
-                  />
-                )}
+                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                  {tool === 'slide' && (
+                    <SlideInspector
+                      slide={activeSlide}
+                      slideIdx={activeSlideIdx}
+                      totalSlides={slides.length}
+                      photoUrl={activePhotoUrl}
+                      brandStyle={brandStyle}
+                      allThemes={allThemes}
+                      customThemes={customThemes}
+                      globalThemeId={themeId}
+                      onChange={(next) => updateSlide(activeSlideIdx, next)}
+                      onApplyThemeToAll={handleApplyThemeToAll}
+                      onAddBlock={(role) => {
+                        const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, role))
+                        updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                        setTool('text'); setSelection({ type: 'text', idx: blocks.length - 1 })
+                      }}
+                      onMoveLeft={() => {
+                        moveSlide(activeSlideIdx, -1)
+                        setActiveSlideIdx((i) => Math.max(0, i - 1))
+                      }}
+                      onMoveRight={() => {
+                        moveSlide(activeSlideIdx, 1)
+                        setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))
+                      }}
+                      onRemove={() => removeSlide(activeSlideIdx)}
+                    />
+                  )}
 
-                {tool === 'photo' && (
-                  <PhotoInspector
-                    slide={activeSlide}
-                    photoUrl={activePhotoUrl}
-                    mediaUrls={mediaUrls}
-                    pieceId={piece?.id}
-                    attachedKeys={attachedKeys}
-                    onAttachPhoto={attachPhoto}
-                    onChange={(next) => updateSlide(activeSlideIdx, next)}
-                    singleSlide={singleSlide}
-                  />
-                )}
+                  {tool === 'photo' && (
+                    <PhotoInspector
+                      slide={activeSlide}
+                      photoUrl={activePhotoUrl}
+                      mediaUrls={mediaUrls}
+                      pieceId={piece?.id}
+                      attachedKeys={attachedKeys}
+                      onAttachPhoto={attachPhoto}
+                      onChange={(next) => updateSlide(activeSlideIdx, next)}
+                      singleSlide={singleSlide}
+                    />
+                  )}
 
-                {tool === 'text' && (
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      {activeSlide.blocks.map((b, i) => {
-                        const meta = ROLE_META[b.role] || ROLE_META.body
-                        const snippet = (b.text || '').trim().slice(0, 22)
-                        const on = selection.type === 'text' && selection.idx === i
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setSelection({ type: 'text', idx: i })}
-                            className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
-                          >
-                            <span className={`shrink-0 text-3xs font-semibold uppercase tracking-wide ${on ? 'text-primary' : 'text-muted-foreground'}`}>{meta.label}</span>
-                            <span className="min-w-0 flex-1 truncate text-xs text-foreground">{snippet || 'Empty'}{snippet && b.text.trim().length > 22 ? '…' : ''}</span>
-                          </button>
-                        )
-                      })}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, 'body'))
-                          updateSlide(activeSlideIdx, { ...activeSlide, blocks })
-                          setSelection({ type: 'text', idx: blocks.length - 1 })
-                        }}
-                        className="w-full rounded-md border border-dashed border-border px-2 py-1.5 text-xs font-medium text-primary hover:bg-muted transition-colors"
-                      >
-                        + Add text block
-                      </button>
-                    </div>
+                  {tool === 'text' && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        {activeSlide.blocks.map((b, i) => {
+                          const meta = ROLE_META[b.role] || ROLE_META.body
+                          const snippet = (b.text || '').trim().slice(0, 22)
+                          const on = selection.type === 'text' && selection.idx === i
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setSelection({ type: 'text', idx: i })}
+                              className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
+                            >
+                              <span className={`shrink-0 text-3xs font-semibold uppercase tracking-wide ${on ? 'text-primary' : 'text-muted-foreground'}`}>{meta.label}</span>
+                              <span className="min-w-0 flex-1 truncate text-xs text-foreground">{snippet || 'Empty'}{snippet && b.text.trim().length > 22 ? '…' : ''}</span>
+                            </button>
+                          )
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, 'body'))
+                            updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                            setSelection({ type: 'text', idx: blocks.length - 1 })
+                          }}
+                          className="w-full rounded-md border border-dashed border-border px-2 py-1.5 text-xs font-medium text-primary hover:bg-muted transition-colors"
+                        >
+                          + Add text block
+                        </button>
+                      </div>
 
-                    {selection.type === 'text' && activeSlide.blocks[selection.idx] && (
+                      {selection.type === 'text' && activeSlide.blocks[selection.idx] && (
+                        <div className="border-t pt-3">
+                          <TextInspector
+                            slide={activeSlide}
+                            blockIdx={selection.idx}
+                            photoUrl={activePhotoUrl}
+                            onChange={(next) => updateSlide(activeSlideIdx, next)}
+                            onRemoved={() => setSelection({ type: null })}
+                            onCenter={flashGuides}
+                          />
+                        </div>
+                      )}
+
                       <div className="border-t pt-3">
-                        <TextInspector
-                          slide={activeSlide}
-                          blockIdx={selection.idx}
-                          photoUrl={activePhotoUrl}
-                          onChange={(next) => updateSlide(activeSlideIdx, next)}
-                          onRemoved={() => setSelection({ type: null })}
-                          onCenter={flashGuides}
+                        <RealQuotesSection
+                          pieceId={piece?.id}
+                          onInsertQuote={(text) => {
+                            if (!activeSlide) return
+                            const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
+                            updateSlide(activeSlideIdx, { ...activeSlide, blocks })
+                            setSelection({ type: 'text', idx: blocks.length - 1 })
+                          }}
                         />
                       </div>
-                    )}
-
-                    <div className="border-t pt-3">
-                      <RealQuotesSection
-                        pieceId={piece?.id}
-                        onInsertQuote={(text) => {
-                          if (!activeSlide) return
-                          const blocks = activeSlide.blocks.concat({ role: 'body', text, position: defaultPositionFor(activeSlide.template, 'body') })
-                          updateSlide(activeSlideIdx, { ...activeSlide, blocks })
-                          setSelection({ type: 'text', idx: blocks.length - 1 })
-                        }}
-                      />
                     </div>
+                  )}
+                </div>
+              </>
+            )}
+          </aside>
+
+          {/* 3. Canvas — centre, takes remaining space. Bounded by BOTH viewport
+              height and width (min(...)) so it letterboxes instead of overflowing
+              either axis. Constants account for the top bar + bottom filmstrip
+              (height) and the icon rail + inspector (width) — the slide picker
+              moved off this row and onto the filmstrip below, so it no longer
+              eats into the width budget. */}
+          <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(var(--muted))' }}>
+            {/* Safe-zone toggle — slide counter moved to inspector header */}
+            <div className="absolute left-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
+              <label className="flex cursor-pointer items-center gap-1">
+                <input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} className="accent-primary" />
+                safe zones
+              </label>
+            </div>
+
+            {activeSlide ? (
+              <div
+                className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-muted' : ''}`}
+                style={{ height: `min(calc(100vh - 275px), calc((100vw - 550px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
+              >
+                <SlidePreview
+                  slide={activeSlide}
+                  photoUrl={activePhotoUrl}
+                  brandStyle={brandStyle}
+                  theme={activeTheme}
+                  aspect={aspect}
+                  onReframe={(next) => updateSlide(activeSlideIdx, next)}
+                  onSelectPhoto={() => { setSelection({ type: 'photo' }); setTool('photo') }}
+                  className={`h-full w-full rounded-xl border bg-muted shadow-lg ${activePhotoUrl ? 'cursor-move' : 'cursor-pointer'}`}
+                />
+                {safeZones && (
+                  <div className="pointer-events-none absolute inset-0 rounded-xl">
+                    <div className="absolute inset-[7%] rounded border border-dashed border-white/50" />
+                    <div className="absolute inset-x-0 top-0 h-[10%] bg-rose-500/10" />
+                    <div className="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10" />
                   </div>
                 )}
-              </div>
-            </>
-          )}
-        </aside>
-
-        {/* 3. Canvas — centre, takes remaining space */}
-        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(var(--muted))' }}>
-          {/* Safe-zone toggle — slide counter moved to inspector header */}
-          <div className="absolute left-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
-            <label className="flex cursor-pointer items-center gap-1">
-              <input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} className="accent-primary" />
-              safe zones
-            </label>
-          </div>
-
-          {activeSlide ? (
-            <div
-              className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-muted' : ''}`}
-              style={{ height: `min(calc(100vh - 140px), calc((100vw - 640px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
-            >
-              <SlidePreview
-                slide={activeSlide}
-                photoUrl={activePhotoUrl}
-                brandStyle={brandStyle}
-                theme={activeTheme}
-                aspect={aspect}
-                onReframe={(next) => updateSlide(activeSlideIdx, next)}
-                onSelectPhoto={() => { setSelection({ type: 'photo' }); setTool('photo') }}
-                className={`h-full w-full rounded-xl border bg-muted shadow-lg ${activePhotoUrl ? 'cursor-move' : 'cursor-pointer'}`}
-              />
-              {safeZones && (
-                <div className="pointer-events-none absolute inset-0 rounded-xl">
-                  <div className="absolute inset-[7%] rounded border border-dashed border-white/50" />
-                  <div className="absolute inset-x-0 top-0 h-[10%] bg-rose-500/10" />
-                  <div className="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10" />
+                {/* Draggable text-layer handles — click to select, drag to place */}
+                <TextDragLayer
+                  slide={activeSlide}
+                  theme={activeTheme}
+                  selection={selection}
+                  onSelectBlock={(idx) => { setSelection({ type: 'text', idx }); setTool('text') }}
+                  onMoveBlock={(idx, pos) => updateSlide(activeSlideIdx, {
+                    ...activeSlide,
+                    blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, position: pos } : b)),
+                  })}
+                />
+                {/* Alignment guide lines — flash for ~800ms when Center is clicked */}
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-xl transition-opacity duration-300"
+                  style={{ opacity: guidesOn ? 1 : 0 }}
+                  aria-hidden="true"
+                >
+                  <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70" />
+                  <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70" />
+                  <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" style={{ boxShadow: '0 0 0 2px white' }} />
                 </div>
-              )}
-              {/* Draggable text-layer handles — click to select, drag to place */}
-              <TextDragLayer
-                slide={activeSlide}
-                theme={activeTheme}
-                selection={selection}
-                onSelectBlock={(idx) => { setSelection({ type: 'text', idx }); setTool('text') }}
-                onMoveBlock={(idx, pos) => updateSlide(activeSlideIdx, {
-                  ...activeSlide,
-                  blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, position: pos } : b)),
-                })}
-              />
-              {/* Alignment guide lines — flash for ~800ms when Center is clicked */}
-              <div
-                className="pointer-events-none absolute inset-0 rounded-xl transition-opacity duration-300"
-                style={{ opacity: guidesOn ? 1 : 0 }}
-                aria-hidden="true"
-              >
-                <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70" />
-                <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70" />
-                <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" style={{ boxShadow: '0 0 0 2px white' }} />
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No slides yet</p>
-          )}
-        </section>
+            ) : (
+              <p className="text-sm text-muted-foreground">No slides yet</p>
+            )}
+          </section>
+        </div>
 
-        {/* 4. Slide rail — the surface (right edge). For single-slide (photo)
-            posts the one slide still shows, but "Add slide" is replaced with an
+        {/* 4. Slide filmstrip — bottom, under the preview canvas. For single-slide
+            (photo) posts the one slide still shows, but "Add" is replaced with an
             explanatory note instead of just disappearing. */}
-        <SlideRail
+        <SlideFilmstrip
           slides={slides}
           activeIdx={activeSlideIdx}
           mediaUrls={mediaUrls}
           onSelect={goToSlide}
           onAdd={addSlide}
+          onRemove={removeSlide}
           canAdd={!singleSlide}
         />
       </div>

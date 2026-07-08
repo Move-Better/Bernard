@@ -42,6 +42,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8745", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/cool-merkle-28b1c6/.claude/mockups"],
       "port": 8745
+    },
+    {
+      "name": "brave-ellis-mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8746", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/brave-ellis-9e429c/.claude/mockups"],
+      "port": 8746
     }
   ]
 }
