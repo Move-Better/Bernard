@@ -680,6 +680,19 @@ inside a `useEffect`, never as a bare assignment in the component body. This wil
 hook that needs "current value on demand" semantics — reach for state-mirrored-from-ref, not a raw ref
 read, anywhere the value is read during render.
 
+**`removeSlide`'s toast-undo can lose data to an out-of-order autosave race.** `SlideEditor.jsx`'s
+delete flow (`removeSlide`) shows a Sonner "Slide deleted" toast with an `Undo` action that restores
+the removed slide into local `slides` state — but `useAutosave` fires its own independent debounced
+PATCH on every `slides` change, so a delete-then-undo done faster than the debounce window queues TWO
+PATCHes (one with N-1 slides, one with N). If the delete's PATCH request resolves AFTER the undo's
+(network reordering, no request sequencing/versioning), it silently overwrites the undo back down to
+N-1 — the UI shows "All changes saved" and N slides, but the DB has N-1. Reproduced 2026-07-08 testing
+`SlideFilmstrip`'s delete affordance against a real draft. No fix shipped yet — worth a dedicated PR
+(likely: cancel/supersede the in-flight delete PATCH when undo fires, or have `useAutosave` sequence
+writes so a stale response can't clobber a newer one). Until fixed, treat rapid delete→undo verification
+on real data as unsafe — either wait for "All changes saved" to settle before undoing, or verify on a
+disposable draft, not a real workspace's unreviewed content.
+
 **Single-media archetypes must REPLACE `media_urls` on swap, never append.** Every archetype whose
 `surface` isn't SLIDES with room for more than one slide — `visual`, `story`, `vvideo`, `lvideo` — has
 exactly ONE media slot at the platform level (Google's Local Post API, Instagram Story frames,
