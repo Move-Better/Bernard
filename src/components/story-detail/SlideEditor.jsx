@@ -808,16 +808,16 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
           type="button"
           disabled={attaching}
           onClick={onAttach}
-          className={`group relative aspect-square overflow-hidden rounded-md border transition-all ${
+          className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
             attached ? 'border-primary' : 'border-border hover:border-primary'
           }`}
         >
           {thumb
             ? <img src={thumb} alt="" className="h-full w-full object-cover" />
-            : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-4 w-4 text-muted-foreground" /></div>}
-          <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
+            : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>}
+          <span className="absolute left-2 top-2 rounded-md bg-primary px-1.5 py-0.5 text-xs font-bold leading-tight text-primary-foreground">AI</span>
           <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : attached ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {attaching ? <Loader2 className="h-7 w-7 animate-spin" /> : attached ? <Check className="h-7 w-7" /> : <Plus className="h-7 w-7" />}
           </span>
         </button>
       </TooltipTrigger>
@@ -891,27 +891,27 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
     <button
       type="button"
       onClick={() => setTab(k)}
-      className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-2xs font-medium transition-colors ${
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
         tab === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
       }`}
     >
-      <Icon className="h-3 w-3" />{label}
+      <Icon className="h-4 w-4" />{label}
     </button>
   )
 
   return (
-    <div className="space-y-2">
-      <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Swap / add a photo</p>
-      <div className="flex gap-1 rounded-lg border border-border p-0.5">
+    <div className="space-y-3">
+      <p className="text-sm font-bold uppercase tracking-wide text-foreground/80">Swap / add a photo</p>
+      <div className="flex gap-1.5 rounded-xl border border-border p-1">
         {tabBtn('ai', 'AI picks', Sparkles)}
         {tabBtn('library', 'Library', FolderOpen)}
       </div>
 
       {tab === 'ai' ? (
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {/* Describe the shot — manual query into the same picks brain */}
-          <div className="flex items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3.5 py-3">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="text"
               aria-label="Describe the shot"
@@ -919,32 +919,32 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
               onChange={(e) => setShotQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') runShotSearch() }}
               placeholder="Describe the shot…"
-              className="min-w-0 flex-1 bg-transparent text-2xs outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
               disabled={shotLoading}
             />
             {shotRes != null && (
-              <button type="button" onClick={clearShot} className="shrink-0 text-3xs text-primary hover:underline">clear</button>
+              <button type="button" onClick={clearShot} className="shrink-0 text-xs font-medium text-primary hover:underline">clear</button>
             )}
-            {shotLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
+            {shotLoading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
           </div>
 
           {suggLoading && shotRes == null ? (
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="aspect-square animate-pulse rounded-md bg-muted" />
+                <div key={i} className="aspect-square animate-pulse rounded-xl bg-muted" />
               ))}
             </div>
           ) : suggError && shotRes == null ? (
-            <p className="text-3xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Couldn&apos;t load picks.{' '}
               <button type="button" onClick={() => refetch()} className="text-primary hover:underline">Try again</button>
             </p>
           ) : clips.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border bg-muted/20 px-2 py-3 text-center text-3xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-5 text-center text-sm text-muted-foreground">
               {shotRes != null ? `Nothing matched “${shotQ}”.` : 'No photo picks — browse your library instead.'}
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-3">
               {clips.slice(0, 6).map((clip) => {
                 const key = clip.assetId || clip.blobUrl || clip.url
                 return (
@@ -959,19 +959,19 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
               })}
             </div>
           )}
-          <p className="text-3xs text-muted-foreground">Picks re-rank from your words. Click one to attach &amp; bind it.</p>
+          <p className="text-sm text-muted-foreground">Picks re-rank from your words. Click one to attach &amp; bind it.</p>
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-3 text-2xs font-semibold text-primary hover:bg-primary/10"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/60 bg-primary/5 px-3 py-5 text-sm font-semibold text-primary hover:bg-primary/10"
           >
-            <Upload className="h-3.5 w-3.5" />
+            <Upload className="h-4 w-4" />
             Browse library / upload
           </button>
-          <p className="text-3xs text-muted-foreground">Search your whole library or upload a new photo.</p>
+          <p className="text-sm text-muted-foreground">Search your whole library or upload a new photo.</p>
         </div>
       )}
 
@@ -983,7 +983,7 @@ function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
         <button
           type="button"
           onClick={onCancel}
-          className="w-full text-center text-3xs text-muted-foreground hover:text-foreground"
+          className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
         >
           cancel — keep current photo
         </button>
@@ -1045,51 +1045,57 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
   }
 
   return (
-    <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
-        <ImageIcon className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-primary">This slide&apos;s photo</span>
+    <div className="space-y-4 p-4">
+      <div className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+        <ImageIcon className="h-6 w-6 text-primary" />
+        <span className="text-lg font-bold text-primary">This slide&apos;s photo</span>
       </div>
 
       {singleSlide && (
-        <p className="flex items-start gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-2 py-1.5 text-3xs leading-snug text-muted-foreground">
-          <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+        <p className="flex items-start gap-2 rounded-xl border border-dashed border-muted-foreground/30 px-3 py-2.5 text-sm leading-snug text-muted-foreground">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           This platform supports one photo — picking a new one replaces this one.
         </p>
       )}
 
-      {/* The slide's photo — current photo + Replace/Remove, or an empty state.
-          ONE control: picking attaches+binds in one step (per-slide model). The
-          old "use an attached photo" pool dropdown is gone. */}
+      {/* The slide's photo — the photo IS the control: click it to open the
+          picker (replace), the corner ✕ removes it. Picking attaches+binds in
+          one step (per-slide model). Empty state prompts the first pick. */}
       {hasPhoto ? (
-        <div className="flex items-center gap-2.5 rounded-md border border-border bg-background/50 p-2">
-          <img src={photoThumb} alt="" className="h-16 w-16 shrink-0 rounded-md border border-border object-cover" />
-          <div className="min-w-0 flex-1">
-            <p className="text-2xs font-semibold">Photo on this slide</p>
-            <p className="text-3xs text-muted-foreground">{graded ? 'From your library · graded' : 'From your library'}</p>
-            <div className="mt-1.5 flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => setReplacing((o) => !o)}
-                className="rounded-md bg-primary px-2 py-1 text-3xs font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                <Repeat className="mr-0.5 inline h-3 w-3" />Replace
-              </button>
-              <button
-                type="button"
-                onClick={removePhoto}
-                className="rounded-md border border-border px-2 py-1 text-3xs text-muted-foreground hover:border-destructive/40 hover:text-destructive"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setReplacing((o) => !o)}
+            className={`group relative block aspect-[4/5] w-full overflow-hidden rounded-2xl border-2 transition-colors ${
+              replacing ? 'border-primary' : 'border-border hover:border-primary'
+            }`}
+            aria-label="Replace this photo"
+          >
+            <img src={photoUrl || photoThumb} alt="Photo on this slide" className="absolute inset-0 h-full w-full object-cover" />
+            <span className={`absolute inset-0 flex items-center justify-center gap-2 text-base font-semibold text-white transition-opacity ${replacing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ background: 'rgba(12,17,29,.42)' }}>
+              <Repeat className="h-5 w-5" />
+              {replacing ? 'Choose below…' : 'Click to replace'}
+            </span>
+            {graded && (
+              <span className="absolute bottom-2.5 left-2.5 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-semibold text-primary-foreground">Graded</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={removePhoto}
+            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-destructive"
+            style={{ background: 'rgba(12,17,29,.55)' }}
+            title="Remove photo"
+            aria-label="Remove photo"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       ) : (
-        <div className="rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-4 text-center">
-          <ImagePlus className="mx-auto mb-1 h-5 w-5 text-primary" />
-          <p className="text-2xs font-semibold text-primary">Add a photo to this slide</p>
-          <p className="mt-0.5 text-3xs text-muted-foreground">Pick from AI picks, your library, or upload — it lands straight on the slide.</p>
+        <div className="rounded-2xl border border-dashed border-primary/50 bg-primary/5 px-4 py-8 text-center">
+          <ImagePlus className="mx-auto mb-2 h-8 w-8 text-primary" />
+          <p className="text-base font-semibold text-primary">Add a photo to this slide</p>
+          <p className="mt-1 text-sm text-muted-foreground">Pick from AI picks, your library, or upload — it lands straight on the slide.</p>
         </div>
       )}
 
@@ -1106,9 +1112,9 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
 
       {/* Reframe (zoom + reset). Drag-to-pan happens on the canvas. */}
       {photoUrl && (
-        <div className="space-y-1.5">
-          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Frame</p>
-          <div className="flex items-center gap-2 text-2xs text-muted-foreground">
+        <div className="space-y-2">
+          <p className="text-sm font-bold uppercase tracking-wide text-foreground/80">Frame</p>
+          <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
             <span className="shrink-0">Zoom</span>
             <input
               type="range"
@@ -1117,39 +1123,39 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
               step="0.01"
               value={slide.photo_zoom || 1}
               onChange={(e) => onChange({ ...slide, photo_zoom: parseFloat(e.target.value) })}
-              className="flex-1 accent-primary"
+              className="h-5 flex-1 accent-primary"
               aria-label="Photo zoom"
             />
             {(slide.photo_zoom > 1 || slide.photo_offset) && (
               <button
                 type="button"
                 onClick={() => { const s = { ...slide }; delete s.photo_zoom; delete s.photo_offset; onChange(s) }}
-                className="shrink-0 text-primary hover:underline"
+                className="shrink-0 font-medium text-primary hover:underline"
               >
                 reset
               </button>
             )}
           </div>
-          <p className="text-3xs text-muted-foreground">Slider far-left = whole photo fits (blurred backdrop fills the rest); zoom in to crop. Drag the photo to reposition · scroll to zoom.</p>
+          <p className="text-sm text-muted-foreground">Slider far-left = whole photo fits (blurred backdrop fills the rest); zoom in to crop. Drag the photo to reposition · scroll to zoom.</p>
         </div>
       )}
 
       {/* AI Photo Editor — the colorist. Describe a vibe, tap a preset, or fine-
           tune the five essentials. Same param schema as the server bake. */}
       {photoUrl && (
-        <div className="space-y-2 border-t border-border/60 pt-3">
-          <div className="flex items-center gap-1.5">
-            <Wand2 className="h-3.5 w-3.5 text-primary" />
-            <span className="text-2xs font-semibold uppercase tracking-wide text-primary">AI Photo Editor</span>
+        <div className="space-y-3 border-t border-border/60 pt-4">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-5 w-5 text-primary" />
+            <span className="text-sm font-bold uppercase tracking-wide text-primary">AI Photo Editor</span>
             {graded && (
-              <button type="button" onClick={resetGrade} className="ml-auto text-3xs text-muted-foreground hover:text-foreground hover:underline">
+              <button type="button" onClick={resetGrade} className="ml-auto text-sm text-muted-foreground hover:text-foreground hover:underline">
                 reset
               </button>
             )}
           </div>
 
           {/* Describe the look */}
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             <input
               type="text"
               aria-label="Describe the grade or look"
@@ -1157,27 +1163,27 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
               onChange={(e) => setVibePrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') proposeFromText() }}
               placeholder="Describe a look — e.g. bright, warm, clinical"
-              className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-2xs outline-none focus:ring-1 focus:ring-primary/50"
+              className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
               disabled={proposing}
             />
             <button
               type="button"
               onClick={proposeFromText}
               disabled={proposing || !vibePrompt.trim()}
-              className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-2xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="shrink-0 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {proposing ? '…' : 'Apply'}
             </button>
           </div>
 
           {/* One-tap vibes */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {GRADE_VIBES.map((v) => (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => applyVibe(v.params)}
-                className="rounded-full border border-border px-2 py-0.5 text-3xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                className="rounded-full border border-border px-3.5 py-1.5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 {v.label}
               </button>
@@ -1185,12 +1191,12 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
           </div>
 
           {/* Fine-tune essentials */}
-          <div className="space-y-1.5 pt-0.5">
+          <div className="space-y-3 pt-1">
             {GRADE_SLIDERS.map((s) => {
               const val = Number(grade[s.key]) || 0
               return (
                 <div key={s.key}>
-                  <div className="flex justify-between text-3xs text-muted-foreground">
+                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{s.label}</span>
                     <span>{val > 0 ? '+' : ''}{val}</span>
                   </div>
@@ -1200,14 +1206,14 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
                     max="100"
                     value={val}
                     onChange={(e) => setGradeParam(s.key, e.target.value)}
-                    className="w-full accent-primary"
+                    className="h-5 w-full accent-primary"
                     aria-label={s.label}
                   />
                 </div>
               )
             })}
           </div>
-          <p className="text-3xs text-muted-foreground">Applies to this photo. The same grade ships in the published post.</p>
+          <p className="text-sm text-muted-foreground">Applies to this photo. The same grade ships in the published post.</p>
         </div>
       )}
     </div>
@@ -2086,7 +2092,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         )}
 
         {/* 2. Inspector — single panel chosen by the rail */}
-        <aside className="flex w-[280px] shrink-0 flex-col border-r bg-card overflow-hidden">
+        <aside className="flex w-[480px] shrink-0 flex-col border-r bg-card overflow-hidden">
           {!activeSlide ? (
             <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
               Add a slide to start editing
