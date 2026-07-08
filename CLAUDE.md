@@ -513,6 +513,14 @@ Found 2026-07-03: the Mux webhook (Settings → Webhooks in the Mux dashboard) w
 
 Rule: whenever a domain is retired or changed, check every service with a webhook callback into Bernard — at minimum Mux, Stripe, Clerk, bundle.social, and Google (OAuth redirect URIs) — and confirm the registered URL was updated. Prefer checking the provider dashboard directly over assuming a documented cutover PR caught it; webhook config usually lives outside the codebase entirely, so no grep will find it. See `api/_routes/cron/sweep-stuck-transcodes.js` for the self-healing safety net now in place for the Mux case specifically — but this class of bug can recur for any other webhook-driven pipeline and won't have an equivalent sweep unless one is built.
 
+## Buffer vs bundle.social publish paths: platform-specific limits don't auto-share
+
+`api/_routes/publish/buffer.js` routes every publish through one of two provider paths — the original Buffer path, or `handleBundlePublish` for workspaces on `publish_provider='bundle'`. The bundle path's own comment calls it "byte-for-byte identical" to the Buffer path for non-GBP platforms, which reads as if platform-specific rules (character caps, media limits) are shared — they are NOT. Each path independently re-implements any provider constraint, so a rule enforced in one silently doesn't exist in the other unless someone copies it over by hand.
+
+Found 2026-07-07: the Buffer GBP branch already truncated captions to Google's 1500-char cap (`rawText.slice(0, 1500)`, line ~297) — but `handleBundlePublish`'s GBP branch never did. Any workspace on the bundle.social provider publishing a caption over 1500 chars got a 502 `bundle_gbp_post_failed` with no indication why (bundle.social's real error — a 400 "String must contain at most 1500 character(s)" — was swallowed into the opaque error key per the no-`detail`-in-error-response rule; only visible via `vercel logs --status-code 502 --expand`).
+
+Rule: when adding or auditing a platform-specific constraint (length cap, media-count cap, format requirement) in one publish provider path, grep the sibling path for the same platform and confirm the constraint is mirrored there too — don't assume "byte-for-byte identical" claims in code comments have stayed true as the paths evolved independently. `src/lib/contentMeta.js`'s `CAPTION_LIMITS` map is the client-side mirror of these same caps (surfaced as an editor warning, added in #1960 as a follow-up) — keep it in sync with whatever the server paths actually enforce.
+
 ## Audit and checkup
 Three complementary commands cover code/UI/prod health:
 
