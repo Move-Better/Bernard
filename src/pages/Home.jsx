@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, Mic2, AlertTriangle } from 'lucide-react'
+import { ChevronRight, Mic2, AlertTriangle, Inbox } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import ErrorState from '@/components/ErrorState'
@@ -297,9 +297,9 @@ export default function Home() {
       {failedPieces.length > 0 && (
         <Link
           to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories?status=failed'}
-          className="flex items-center gap-3 rounded-xl border border-destructive/28 bg-destructive/7 px-4 py-3 hover:brightness-[0.98] transition"
+          className="nx-alert nx-alert-crit hover:brightness-[0.98] transition"
         >
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive/15 text-destructive shrink-0">
+          <span className="nx-alert-chip nx-alert-chip-crit">
             <AlertTriangle className="h-4 w-4" />
           </span>
           <span className="text-sm font-medium text-foreground">
@@ -316,9 +316,11 @@ export default function Home() {
           cards below. Detail lives in Overview; this is just the count + a link. */}
       {attentionTotal > 0 && (
         <div
-          className="flex items-center gap-x-3 gap-y-1.5 rounded-xl border border-action/25 bg-action/8 px-4 py-3 flex-wrap"
+          className="nx-alert nx-alert-act gap-x-3 gap-y-1.5 flex-wrap"
         >
-          <span className="h-2 w-2 rounded-full bg-action shrink-0" />
+          <span className="nx-alert-chip nx-alert-chip-act">
+            <Inbox className="h-4 w-4" />
+          </span>
           <span className="text-sm font-medium text-foreground">
             {attentionTotal} {attentionTotal === 1 ? 'item needs' : 'items need'} your attention
           </span>
