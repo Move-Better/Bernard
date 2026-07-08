@@ -479,6 +479,17 @@ function HorizontalTimeline({ ctx }) {
   const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
   const trackRef = useRef(null)
   const f = (s) => clamp(s / span, 0, 1) * 100
+  // Optimistic playhead position while scrubbing. The video's real `playClipT`
+  // only advances once the <video> element fires timeupdate/seeked for the
+  // seek we issued — which can lag a beat, or (on an unbuffered/slow source)
+  // never fire before the next drag frame. Track the scrub target locally so
+  // the red line follows the pointer immediately, and hand off to the real
+  // playClipT once it catches up (or just stays authoritative if it doesn't).
+  const [scrubT, setScrubT] = useState(null)
+  useEffect(() => {
+    if (scrubT != null && Math.abs(playClipT - scrubT) < 0.08) setScrubT(null)
+  }, [playClipT, scrubT])
+  const displayT = scrubT != null ? scrubT : playClipT
   const trim = (which) => (e) => {
     e.preventDefault(); e.stopPropagation()
     const move = (ev) => {
@@ -510,7 +521,11 @@ function HorizontalTimeline({ ctx }) {
   const scrub = (e) => {
     e.preventDefault()
     const r = trackRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
-    const seekAt = (ev) => seekClip(clamp((ev.clientX - r.left) / r.width, 0, 1) * span - startSec)
+    const seekAt = (ev) => {
+      const clipT = clamp(clamp((ev.clientX - r.left) / r.width, 0, 1) * span - startSec, 0, durationSec)
+      setScrubT(clipT)
+      seekClip(clipT)
+    }
     seekAt(e)
     const move = (ev) => seekAt(ev)
     const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
@@ -561,7 +576,7 @@ function HorizontalTimeline({ ctx }) {
             )
           }) : <span className="absolute inset-y-0 left-2 flex items-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>+ Text</span>}
         </div>
-        <div className="pointer-events-none absolute inset-y-0 z-20" style={{ left: `${f(startSec + playClipT)}%`, width: 2, background: 'hsl(0 80% 55%)' }}>
+        <div className="pointer-events-none absolute inset-y-0 z-20" style={{ left: `${f(startSec + displayT)}%`, width: 2, background: 'hsl(0 80% 55%)' }}>
           <div onMouseDown={scrub} className="pointer-events-auto absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 cursor-ew-resize rounded-full" style={{ background: 'hsl(0 80% 55%)' }} />
         </div>
       </div>
