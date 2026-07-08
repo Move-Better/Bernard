@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
@@ -23,6 +23,7 @@ import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, normalizeGrade, isNeutralGra
 import { ensureRenderedSlides, AD_CAROUSEL_DIMS } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
 import { deriveStory } from '@/lib/storyFields'
+import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorIconRail from '@/components/editor/IconRail'
@@ -546,6 +547,14 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
     }
   }
 
+  // Not every platform caps captions (see CAPTION_LIMITS) — only warn when
+  // the destination actually enforces one. GBP silently truncates over-limit
+  // text at publish time (api/_routes/publish/buffer.js), so this is the only
+  // place the author can see and fix it before that happens.
+  const limit = CAPTION_LIMITS[piece?.platform]
+  const overLimit = limit ? draft.length > limit : false
+  const nearLimit = limit ? !overLimit && draft.length > limit * 0.9 : false
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b px-3 py-2">
@@ -562,6 +571,14 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
           placeholder="Caption visible to followers…"
           className="min-h-[120px] flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
         />
+        {overLimit && (
+          <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-3xs text-destructive">
+            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+            <span>
+              {PLATFORM_META[piece.platform]?.label || 'This platform'} caps captions at {limit} characters — the last {draft.length - limit} will be cut off when published.
+            </span>
+          </div>
+        )}
         <div className="flex shrink-0 items-center justify-between">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -578,7 +595,9 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
             </TooltipTrigger>
             <TooltipContent>Copy the first line of the caption into slide 1&apos;s hook text block</TooltipContent>
           </Tooltip>
-          <span className="text-3xs text-muted-foreground">{draft.length} chars</span>
+          <span className={`text-3xs ${overLimit ? 'text-destructive font-semibold' : nearLimit ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>
+            {limit ? `${draft.length} / ${limit}` : `${draft.length} chars`}
+          </span>
         </div>
       </div>
     </div>

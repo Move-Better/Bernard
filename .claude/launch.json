@@ -48,6 +48,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8746", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/brave-ellis-9e429c/.claude/mockups"],
       "port": 8746
+    },
+    {
+      "name": "elated-ardinghelli-mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8747", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/elated-ardinghelli-ab43a0/.claude/mockups"],
+      "port": 8747
     }
   ]
 }
