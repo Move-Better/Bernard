@@ -458,7 +458,7 @@ function FloatingTextToolbar({ block, idx, below, onSetStyle, stop }) {
 // skips that block's text while editing so there's no double-vision). When a
 // block is selected, the floating toolbar rides above it. The canvas underneath
 // is the true render.
-function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, onSetStyle, onSetText, editingIdx, setEditingIdx }) {
+function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, onSetStyle, onSetText, editingIdx, setEditingIdx, onDragging, onSnap }) {
   const rootRef = useRef(null)
   const stop = (e) => e.stopPropagation()
   function startDrag(e, idx, f) {
@@ -472,14 +472,23 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
     if (f) onMoveBlock(idx, { x: f.x, y: f.y })
     const rect = rootRef.current?.getBoundingClientRect()
     if (!rect) return
+    const SNAP = 0.02
+    let moved = false
     function move(ev) {
-      const x = Math.max(0.06, Math.min(0.94, (ev.clientX - rect.left) / rect.width))
-      const y = Math.max(0.06, Math.min(0.94, (ev.clientY - rect.top) / rect.height))
+      if (!moved) { moved = true; onDragging?.(true) }   // reveal guides on real drag
+      let x = Math.max(0.06, Math.min(0.94, (ev.clientX - rect.left) / rect.width))
+      let y = Math.max(0.06, Math.min(0.94, (ev.clientY - rect.top) / rect.height))
+      const sv = Math.abs(x - 0.5) < SNAP   // snap to canvas centre (x)
+      const sh = Math.abs(y - 0.5) < SNAP   // snap to canvas centre (y)
+      if (sv) x = 0.5
+      if (sh) y = 0.5
+      onSnap?.({ v: sv, h: sh })
       onMoveBlock(idx, { x, y })
     }
     function up() {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      if (moved) { onDragging?.(false); onSnap?.({ v: false, h: false }) }
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -1827,7 +1836,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     [pieceMediaUrls],
   )
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [safeZones, setSafeZones] = useState(true)
+  // Drag-reveal guides: while a text block is being dragged we show the safe-zone
+  // margins + centre snap lines (no more "safe zones" checkbox). `snap` tracks
+  // which centre axis the block is currently snapped to.
+  const [dragging, setDragging] = useState(false)
+  const [snap, setSnap] = useState({ v: false, h: false })
   const [guidesOn, setGuidesOn] = useState(false)
   const guidesTimerRef = useRef(null)
   function flashGuides() {
@@ -2423,14 +2436,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
             slide picker strip sitting directly under the photo (height), and the
             icon rail + inspector (width). */}
         <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(var(--muted))' }}>
-          {/* Safe-zone toggle — slide counter moved to inspector header */}
-          <div className="absolute left-4 top-3 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2 py-1 text-3xs text-muted-foreground backdrop-blur">
-            <label className="flex cursor-pointer items-center gap-1">
-              <input type="checkbox" checked={safeZones} onChange={(e) => setSafeZones(e.target.checked)} className="accent-primary" />
-              safe zones
-            </label>
-          </div>
-
           {activeSlide ? (
             <div className="flex flex-col items-center">
               <div
@@ -2447,13 +2452,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                   onSelectPhoto={() => { setSelection({ type: 'photo' }); setTool('photo') }}
                   className={`h-full w-full rounded-xl border bg-muted shadow-lg ${activePhotoUrl ? 'cursor-move' : 'cursor-pointer'}`}
                 />
-                {safeZones && (
-                  <div className="pointer-events-none absolute inset-0 rounded-xl">
-                    <div className="absolute inset-[7%] rounded border border-dashed border-white/50" />
-                    <div className="absolute inset-x-0 top-0 h-[10%] bg-rose-500/10" />
-                    <div className="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10" />
-                  </div>
-                )}
                 {/* Draggable text-layer handles — click to select, drag to place */}
                 <TextDragLayer
                   slide={activeSlide}
@@ -2461,6 +2459,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                   selection={selection}
                   editingIdx={editingBlockIdx}
                   setEditingIdx={setEditingBlockIdx}
+                  onDragging={setDragging}
+                  onSnap={setSnap}
                   onSelectBlock={(idx) => { setSelection({ type: 'text', idx }); setTool('text') }}
                   onMoveBlock={(idx, pos) => updateSlide(activeSlideIdx, {
                     ...activeSlide,
@@ -2481,15 +2481,18 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     blocks: activeSlide.blocks.map((b, i) => (i === idx ? { ...b, text } : b)),
                   })}
                 />
-                {/* Alignment guide lines — flash for ~800ms when Center is clicked */}
-                <div
-                  className="pointer-events-none absolute inset-0 rounded-xl transition-opacity duration-300"
-                  style={{ opacity: guidesOn ? 1 : 0 }}
-                  aria-hidden="true"
-                >
-                  <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70" />
-                  <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70" />
-                  <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" style={{ boxShadow: '0 0 0 2px white' }} />
+                {/* Drag-reveal guides — safe-zone margins appear while dragging text;
+                    centre lines light up when the block snaps to centre. The Center
+                    button also flashes them briefly (guidesOn). */}
+                <div className="pointer-events-none absolute inset-0 rounded-xl" aria-hidden="true">
+                  <div className="absolute inset-0 transition-opacity duration-200" style={{ opacity: dragging ? 1 : 0 }}>
+                    <div className="absolute inset-[7%] rounded border border-dashed border-white/50" />
+                    <div className="absolute inset-x-0 top-0 h-[10%] bg-rose-500/10" />
+                    <div className="absolute inset-x-0 bottom-0 h-[14%] bg-rose-500/10" />
+                  </div>
+                  <div className="absolute inset-x-0 top-1/2 h-px -translate-y-px bg-primary/70 transition-opacity duration-150" style={{ opacity: (snap.h || guidesOn) ? 1 : 0 }} />
+                  <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-primary/70 transition-opacity duration-150" style={{ opacity: (snap.v || guidesOn) ? 1 : 0 }} />
+                  <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary transition-opacity duration-150" style={{ opacity: guidesOn ? 1 : 0, boxShadow: '0 0 0 2px white' }} />
                 </div>
               </div>
 
