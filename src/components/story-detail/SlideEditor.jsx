@@ -218,21 +218,21 @@ function BlockRow({ block, onChange, onRemove }) {
   const bSwatches = useMemo(() => brandSwatches(workspace), [workspace])
 
   return (
-    <div className="flex items-start gap-2 rounded-md border bg-background/50 p-2">
+    <div className="flex items-start gap-2 rounded-lg border bg-background/50 p-3">
       <div className="flex-1 min-w-0">
-        <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
           <select
             value={block.role}
             onChange={(e) => onChange({ ...block, role: e.target.value })}
             aria-label="Text block role"
-            className={`rounded-full px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
           >
             {BLOCK_ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
             ))}
           </select>
           <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive" aria-label="Delete block">
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -297,12 +297,12 @@ function BlockRow({ block, onChange, onRemove }) {
             e.preventDefault()
             document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
           }}
-          className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
-          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2rem' }}
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
+          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2.5rem' }}
           data-placeholder={`${meta.label} text…`}
         />
-        <p className="mt-1 flex items-center gap-1 text-3xs text-muted-foreground">
-          <Move className="h-3 w-3" /> Drag the text on the canvas to place it. Highlight text to pick a colour.
+        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Move className="h-4 w-4 shrink-0" /> Drag the text on the canvas to place it. Highlight text to pick a colour.
         </p>
       </div>
     </div>
@@ -492,27 +492,27 @@ function RealQuotesSection({ pieceId, onInsertQuote }) {
   if (!isLoading && quotes.length === 0) return null
 
   return (
-    <div className="border-t">
-      <div className="px-3 py-2 flex items-center justify-between">
-        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          <Type className="h-3 w-3" /> Real quotes
+    <div>
+      <div className="pb-2 flex items-center justify-between">
+        <span className="text-sm font-bold uppercase tracking-wide text-foreground/80 flex items-center gap-1.5">
+          <Type className="h-4 w-4" /> Real quotes
         </span>
-        <span className="text-3xs text-muted-foreground">from your interview · tap to add</span>
+        <span className="text-xs text-muted-foreground">from your interview · tap to add</span>
       </div>
       {isLoading ? (
-        <div className="px-3 pb-3 flex items-center gap-2 text-2xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+        <div className="pb-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : (
-        <div className="px-3 pb-3 space-y-1.5">
+        <div className="space-y-2">
           {quotes.map((q) => (
             <button
               key={q.id}
               type="button"
               onClick={() => onInsertQuote?.(q.quote)}
-              className="w-full text-left rounded-md border border-l-[3px] border-l-verbatim-accent bg-card px-2.5 py-2 text-2xs leading-snug text-foreground hover:bg-verbatim-accent/5 transition-colors"
+              className="w-full text-left rounded-lg border border-l-[3px] border-l-verbatim-accent bg-card px-3 py-2.5 text-sm leading-snug text-foreground hover:bg-verbatim-accent/5 transition-colors"
             >
-              <span className="text-3xs font-bold uppercase tracking-wide text-verbatim-accent block mb-0.5">● verbatim</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-verbatim-accent block mb-1">● verbatim</span>
               &ldquo;{q.quote}&rdquo;
             </button>
           ))}
@@ -557,23 +557,23 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b px-3 py-2">
-        <span className="flex items-center gap-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Type className="h-3 w-3" /> Caption
+      <div className="shrink-0 border-b px-4 py-3">
+        <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-foreground/80">
+          <Type className="h-4 w-4" /> Caption
         </span>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
         <textarea
           aria-label="Caption"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={handleBlur}
           placeholder="Caption visible to followers…"
-          className="min-h-[120px] flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
+          className="min-h-[160px] flex-1 w-full resize-none rounded-xl border bg-muted/40 px-3 py-2.5 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
         />
         {overLimit && (
-          <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-3xs text-destructive">
-            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>
               {PLATFORM_META[piece.platform]?.label || 'This platform'} caps captions at {limit} characters — the last {draft.length - limit} will be cut off when published.
             </span>
@@ -588,14 +588,14 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
                   const firstLine = (draft || '').split('\n')[0].trim()
                   if (firstLine) onUseAsHook(firstLine)
                 }}
-                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-3xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
               >
                 ↑ Use as slide hook
               </button>
             </TooltipTrigger>
             <TooltipContent>Copy the first line of the caption into slide 1&apos;s hook text block</TooltipContent>
           </Tooltip>
-          <span className={`text-3xs ${overLimit ? 'text-destructive font-semibold' : nearLimit ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>
+          <span className={`text-sm ${overLimit ? 'text-destructive font-semibold' : nearLimit ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>
             {limit ? `${draft.length} / ${limit}` : `${draft.length} chars`}
           </span>
         </div>
@@ -654,7 +654,7 @@ function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onC
               renderKey={`${t.id}|${thumbSig}`}
             />
           </div>
-          <div className="px-1.5 py-1 text-3xs font-medium truncate text-foreground">{t.name}</div>
+          <div className="px-2 py-1.5 text-xs font-medium truncate text-foreground">{t.name}</div>
           {selected && (
             <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
           )}
@@ -675,72 +675,72 @@ function SlideInspector({
   // Signature of everything (besides the theme) that changes a thumbnail's pixels.
   const thumbSig = `${photoUrl || ''}|${slide.photo_zoom || 1}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}`
   return (
-    <div className="space-y-4 p-3">
+    <div className="space-y-5">
       {/* Slide management — reorder + delete this slide */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={onMoveLeft}
           disabled={slideIdx === 0}
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+          className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
           aria-label="Move slide earlier"
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </button>
-        <span className="flex-1 text-center text-xs font-semibold">
+        <span className="flex-1 text-center text-sm font-semibold">
           Slide {slideIdx + 1} <span className="font-normal text-muted-foreground">of {totalSlides}</span>
         </span>
         <button
           type="button"
           onClick={onMoveRight}
           disabled={slideIdx === totalSlides - 1}
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+          className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
           aria-label="Move slide later"
         >
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
         </button>
         <button
           type="button"
           onClick={onRemove}
           disabled={totalSlides <= 1}
-          className="ml-1 rounded p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground"
+          className="ml-1 rounded p-1 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground"
           aria-label="Delete slide"
         >
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
       {/* Theme — visual swatch grid with deck inheritance */}
-      <div className="space-y-2">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="space-y-3">
+        <p className="text-sm font-bold uppercase tracking-wide text-foreground/80">
           Theme <span className="font-normal normal-case text-muted-foreground/70">· colour &amp; style</span>
         </p>
         <button
           type="button"
           onClick={() => onChange({ ...slide, template_id: null })}
-          className={`flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-2xs transition-colors ${
+          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors ${
             !slide.template_id
               ? 'border-primary bg-primary/10 text-primary font-semibold'
               : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/40'
           }`}
         >
           <span>Same as deck</span>
-          {!slide.template_id && <span className="text-3xs">✓ inheriting</span>}
+          {!slide.template_id && <span className="text-xs">✓ inheriting</span>}
         </button>
         {/* Two families: Photo templates (full-bleed photo + overlay) and Text
             cards (no photo, branded). Family derived via templateFamily. */}
-        <p className="pt-0.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+        <p className="pt-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground/80">
           Photo templates <span className="font-normal normal-case text-muted-foreground/60">· full-bleed photo</span>
         </p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-3">
           {allThemes.filter((t) => templateFamily(resolveTheme(t.id, customThemes)) === 'photo').map((t) => (
             <ThemeTile key={t.id} t={t} slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} customThemes={customThemes} thumbSig={thumbSig} onChange={onChange} />
           ))}
         </div>
-        <p className="pt-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+        <p className="pt-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground/80">
           Text cards <span className="font-normal normal-case text-muted-foreground/60">· no photo</span>
         </p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-3">
           {allThemes.filter((t) => templateFamily(resolveTheme(t.id, customThemes)) === 'text').map((t) => (
             <ThemeTile key={t.id} t={t} slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} customThemes={customThemes} thumbSig={thumbSig} onChange={onChange} />
           ))}
@@ -748,34 +748,34 @@ function SlideInspector({
         <button
           type="button"
           onClick={() => onApplyThemeToAll(slide.template_id || globalThemeId)}
-          className="w-full rounded-md border border-border px-2 py-1.5 text-2xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="w-full rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           Apply this theme to all slides
         </button>
       </div>
 
       {/* Add text block */}
-      <div className="space-y-1.5">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Text</p>
+      <div className="space-y-2">
+        <p className="text-sm font-bold uppercase tracking-wide text-foreground/80">Text</p>
         <div className="relative">
           <button
             type="button"
             onClick={() => setAddOpen((o) => !o)}
-            className="w-full rounded-md border border-dashed border-primary/60 bg-primary/5 px-2 py-1.5 text-2xs font-semibold text-primary hover:bg-primary/10"
+            className="w-full rounded-lg border border-dashed border-primary/60 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
           >
-            <Plus className="inline h-3 w-3 -mt-0.5 mr-0.5" />
+            <Plus className="inline h-4 w-4 -mt-0.5 mr-1" />
             Add text block
           </button>
           {addOpen && (
-            <div className="absolute left-0 right-0 z-40 mt-1 rounded-md border bg-popover p-1 shadow-lg">
+            <div className="absolute left-0 right-0 z-40 mt-1 rounded-lg border bg-popover p-1.5 shadow-lg">
               {BLOCK_ROLES.map((role) => (
                 <button
                   key={role}
                   type="button"
                   onClick={() => { onAddBlock(role); setAddOpen(false) }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-2xs hover:bg-muted"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
                 >
-                  <span className={`inline-block rounded-full px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide ${ROLE_META[role].chip}`}>
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${ROLE_META[role].chip}`}>
                     {ROLE_META[role].label}
                   </span>
                 </button>
@@ -783,7 +783,7 @@ function SlideInspector({
             </div>
           )}
         </div>
-        <p className="text-3xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Click any layer above, or the photo/text on the canvas, to edit it.
         </p>
       </div>
@@ -1045,7 +1045,7 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
   }
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
         <ImageIcon className="h-6 w-6 text-primary" />
         <span className="text-lg font-bold text-primary">This slide&apos;s photo</span>
@@ -1236,8 +1236,8 @@ const TEXT_COLORS = [
 function SegRow({ label, options, value, onPick }) {
   return (
     <div>
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="flex gap-1">
+      <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <div className="flex gap-1.5">
         {options.map((o) => {
           const active = value === o.value || (value == null && o.value == null)
           return (
@@ -1245,7 +1245,7 @@ function SegRow({ label, options, value, onPick }) {
               key={o.label}
               type="button"
               onClick={() => onPick(o.value)}
-              className={`flex-1 rounded-md border px-1.5 py-1 text-2xs font-medium transition-colors ${
+              className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
                 active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
               }`}
             >
@@ -1262,30 +1262,30 @@ function TextStyleControls({ block, onSet }) {
   const swatches = useMemo(() => [...brandSwatches(workspace), ...NEUTRAL_SWATCHES], [workspace])
   const scale = Number.isFinite(block.fontScale) && block.fontScale > 0 ? block.fontScale : 1
   return (
-    <div className="space-y-2.5 rounded-md border border-border/60 p-2.5">
-      <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Style</p>
+    <div className="space-y-3.5 rounded-xl border border-border/60 p-3.5">
+      <p className="text-sm font-bold uppercase tracking-wide text-foreground/80">Style</p>
 
       {/* Size */}
       <div>
-        <div className="mb-0.5 flex justify-between text-3xs text-muted-foreground">
+        <div className="mb-1 flex justify-between text-sm text-muted-foreground">
           <span>Size</span><span>{Math.round(scale * 100)}%</span>
         </div>
         <input
           type="range" min="0.6" max="1.8" step="0.05" value={scale}
           onChange={(e) => onSet('fontScale', parseFloat(e.target.value))}
-          className="w-full accent-primary" aria-label="Text size"
+          className="h-5 w-full accent-primary" aria-label="Text size"
         />
       </div>
 
       {/* Colour */}
       <div>
-        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Colour</p>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Colour</p>
+        <div className="flex flex-wrap items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button" onClick={() => onSet('color', null)}
-                className={`h-6 rounded px-1.5 text-3xs font-medium ${!block.color ? 'bg-primary/10 text-primary ring-1 ring-primary' : 'bg-muted text-muted-foreground'}`}
+                className={`h-8 rounded-lg px-2.5 text-sm font-medium ${!block.color ? 'bg-primary/10 text-primary ring-1 ring-primary' : 'bg-muted text-muted-foreground'}`}
               >Auto</button>
             </TooltipTrigger>
             <TooltipContent>Auto (theme)</TooltipContent>
@@ -1293,7 +1293,7 @@ function TextStyleControls({ block, onSet }) {
           {TEXT_COLORS.map((c) => (
             <button
               key={c.value} type="button" onClick={() => onSet('color', c.value)} aria-label={c.label}
-              className={`h-6 w-6 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
+              className={`h-8 w-8 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary ring-offset-1' : 'border-border'}`}
               style={{ background: c.value }}
             />
           ))}
@@ -1301,7 +1301,7 @@ function TextStyleControls({ block, onSet }) {
             value={/^#[0-9a-f]{6}$/i.test(block.color || '') ? block.color : '#ffffff'}
             onChange={(hex) => onSet('color', hex)}
             swatches={swatches}
-            swatchClassName="h-6 w-6 rounded-full"
+            swatchClassName="h-8 w-8 rounded-full"
             ariaLabel="Pick custom text color"
           />
         </div>
@@ -1315,8 +1315,8 @@ function TextStyleControls({ block, onSet }) {
       />
       {/* Italic / Underline toggles */}
       <div>
-        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Format</p>
-        <div className="flex gap-1">
+        <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Format</p>
+        <div className="flex gap-1.5">
           {[
             { key: 'italic',    label: 'I', className: 'italic'    },
             { key: 'underline', label: 'U', className: 'underline' },
@@ -1327,7 +1327,7 @@ function TextStyleControls({ block, onSet }) {
                 key={key}
                 type="button"
                 onClick={() => onSet(key, active ? null : true)}
-                className={`flex-1 rounded-md border px-1.5 py-1 text-2xs font-medium transition-colors ${cls} ${
+                className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${cls} ${
                   active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
                 }`}
               >
@@ -1366,20 +1366,20 @@ function TextInspector({ slide, blockIdx, onChange, onRemoved, onCenter }) {
     updateBlock({ ...block, position: { x: h ? 0.5 : cur.x, y: v ? 0.5 : cur.y } })
     onCenter?.()
   }
-  const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary'
+  const alignBtnCls = 'flex h-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary'
   return (
-    <div className="space-y-3 p-3">
-      <div className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
-        <Type className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-primary">Text layer</span>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+        <Type className="h-6 w-6 text-primary" />
+        <span className="text-lg font-bold text-primary">Text layer</span>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" onClick={() => alignBlock(true, false)} title="Center horizontally" className={`${alignBtnCls} w-[26px]`} aria-label="Center horizontally">
+          <button type="button" onClick={() => alignBlock(true, false)} title="Center horizontally" className={`${alignBtnCls} w-8`} aria-label="Center horizontally">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="2" y="5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
-          <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-[26px]`} aria-label="Center vertically">
+          <button type="button" onClick={() => alignBlock(false, true)} title="Center vertically" className={`${alignBtnCls} w-8`} aria-label="Center vertically">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
-          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold text-primary`} style={{ borderColor: 'hsl(var(--primary)/.35)', background: 'hsl(var(--primary)/.06)' }} aria-label="Center on canvas">
+          <button type="button" onClick={() => alignBlock(true, true)} title="Center on canvas" className={`${alignBtnCls} gap-1 px-2.5 text-sm font-semibold text-primary`} style={{ borderColor: 'hsl(var(--primary)/.35)', background: 'hsl(var(--primary)/.06)' }} aria-label="Center on canvas">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
             Center
           </button>
@@ -2102,29 +2102,29 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           ) : (
             <>
               {/* Slide N of M + prev/next nav */}
-              <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
-                <span className="text-xs font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
-                <div className="flex gap-1">
+              <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+                <span className="text-sm font-semibold">Slide {activeSlideIdx + 1} of {slides.length}</span>
+                <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => setActiveSlideIdx((i) => Math.max(0, i - 1))}
                     disabled={activeSlideIdx === 0}
-                    className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                    className="rounded-lg border px-2 py-1 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
                   >
-                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <ChevronLeft className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveSlideIdx((i) => Math.min(slides.length - 1, i + 1))}
                     disabled={activeSlideIdx === slides.length - 1}
-                    className="rounded border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                    className="rounded-lg border px-2 py-1 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
                   >
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 {tool === 'slide' && (
                   <SlideInspector
                     slide={activeSlide}
@@ -2168,8 +2168,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                 )}
 
                 {tool === 'text' && (
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
                       {activeSlide.blocks.map((b, i) => {
                         const meta = ROLE_META[b.role] || ROLE_META.body
                         const snippet = (b.text || '').trim().slice(0, 22)
@@ -2179,10 +2179,10 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                             key={i}
                             type="button"
                             onClick={() => setSelection({ type: 'text', idx: i })}
-                            className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
+                            className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
                           >
-                            <span className={`shrink-0 text-3xs font-semibold uppercase tracking-wide ${on ? 'text-primary' : 'text-muted-foreground'}`}>{meta.label}</span>
-                            <span className="min-w-0 flex-1 truncate text-xs text-foreground">{snippet || 'Empty'}{snippet && b.text.trim().length > 22 ? '…' : ''}</span>
+                            <span className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${on ? 'text-primary' : 'text-muted-foreground'}`}>{meta.label}</span>
+                            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{snippet || 'Empty'}{snippet && b.text.trim().length > 22 ? '…' : ''}</span>
                           </button>
                         )
                       })}
@@ -2193,14 +2193,14 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                           updateSlide(activeSlideIdx, { ...activeSlide, blocks })
                           setSelection({ type: 'text', idx: blocks.length - 1 })
                         }}
-                        className="w-full rounded-md border border-dashed border-border px-2 py-1.5 text-xs font-medium text-primary hover:bg-muted transition-colors"
+                        className="w-full rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-muted transition-colors"
                       >
                         + Add text block
                       </button>
                     </div>
 
                     {selection.type === 'text' && activeSlide.blocks[selection.idx] && (
-                      <div className="border-t pt-3">
+                      <div className="border-t pt-4">
                         <TextInspector
                           slide={activeSlide}
                           blockIdx={selection.idx}
