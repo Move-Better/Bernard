@@ -64,3 +64,41 @@ describe('allocateToCadence — region balance cap', () => {
     expect(REGION_CAP).toBe(0.3)
   })
 })
+
+// Promo candidate/backlog with an explicit isPromo flag.
+const cp = (platform, region, id, promo) => ({ interview_id: `iv-${id}`, platform, angle: 'a', region, isPromo: promo })
+
+describe('allocateToCadence — P3 promo lane', () => {
+  it('promo piece bypasses the region cap; evergreen same-region defers', () => {
+    const window = { instagram: { 'foot-ankle': 9 } } // foot already heavy
+    const fresh = [
+      cp('instagram', 'foot-ankle', 'promo-foot', true),
+      cp('instagram', 'foot-ankle', 'ever-foot', false),
+      cp('instagram', 'knee', 'ever-knee', false),
+    ]
+    const { thisWeek, held } = allocateToCadence(fresh, CAD, [], window, 0.40)
+    // promo foot rides the lane despite the cap; knee fills evergreen; evergreen foot defers.
+    expect(thisWeek.map((x) => x.interview_id).sort()).toEqual(['iv-ever-knee', 'iv-promo-foot'])
+    expect(held.map((x) => x.interview_id)).toEqual(['iv-ever-foot'])
+  })
+
+  it('promo lane is bounded by promoShare — excess promo is deferred', () => {
+    const fresh = [
+      cp('instagram', 'knee', 'p1', true),
+      cp('instagram', 'knee', 'p2', true),
+      cp('instagram', 'knee', 'p3', true),
+    ]
+    // target 3 × 0.15 → round(0.45)=0 → floor to 1 reserved promo slot.
+    const { thisWeek, held } = allocateToCadence(fresh, CAD, [], {}, 0.15)
+    expect(thisWeek).toHaveLength(1)
+    expect(held).toHaveLength(2)
+  })
+
+  it('promoShare 0: a stray promo flag is treated as evergreen (region-capped, not held)', () => {
+    const fresh = [cp('instagram', 'knee', 'p1', true), cp('instagram', 'knee', 'p2', true)]
+    const { thisWeek, held } = allocateToCadence(fresh, CAD, [], {}, 0)
+    // No promo lane → both flow through evergreen; small window → both admitted.
+    expect(thisWeek).toHaveLength(2)
+    expect(held).toHaveLength(0)
+  })
+})

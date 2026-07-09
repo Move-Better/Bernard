@@ -177,19 +177,24 @@ function regionWithinCap(regionCount, total, region) {
 /**
  * Allocate candidates + backlog to the week's cadence. Pure (no LLM, no DB).
  *
- * For each enabled channel, filling up to target_per_week and respecting the
- * per-region rolling-window cap:
- *   • fresh candidates within cap + cadence         → THIS WEEK
- *   • fresh candidates over cadence OR over the cap  → HELD (banked / deferred)
- *   • gap under target topped up from the backlog
- *     (FIFO by held_at, also cap-checked)            → PROMOTED (held→this week)
+ * Two lanes per channel (P2 evergreen cap + P3 promo lane):
+ *   • PROMO lane — campaign-attributed pieces (`.isPromo`) get up to
+ *     round(target × promoShare) slots (min 1 when a campaign is live) and
+ *     BYPASS the region cap: a live seminar is allowed to lean into its theme.
+ *   • EVERGREEN lane — everything else fills the remaining slots under the
+ *     rolling-window region cap (no region past 30% of the window).
+ * Promo is placed first so its reserved slots aren't eaten by evergreen; if
+ * there's no promo to place, evergreen uses those slots (no wasted airtime).
+ * Anything not placed (cadence surplus, region-deferred, or promo-over-budget)
+ * is HELD/deferred and interleaved into a later week. Gap under target is topped
+ * up from the backlog (FIFO by held_at), promo-first then region-capped.
  *
- * `recentRegionCounts` = { [platform]: { [region]: count } } for the rolling
- * window. Pass {} to disable balancing (behaves like the pre-P2 allocator).
+ * `recentRegionCounts` = { [platform]: { [region]: count } } rolling window.
+ * `promoShare` ∈ [0, 0.4] — 0 disables the promo lane (pre-P3 behavior).
  *
  * @returns {{ thisWeek: object[], held: object[], promoted: object[] }}
  */
-export function allocateToCadence(candidates, cadence, backlog = [], recentRegionCounts = {}) {
+export function allocateToCadence(candidates, cadence, backlog = [], recentRegionCounts = {}, promoShare = 0) {
   const thisWeek = []
   const held = []
   const promoted = []
@@ -204,31 +209,47 @@ export function allocateToCadence(candidates, cadence, backlog = [], recentRegio
   for (const [platform, cfg] of Object.entries(cadence)) {
     if (!cfg?.enabled) continue
     const target = cfg.target_per_week || 0
+    // Reserved promo slots — at least 1 when a campaign is live so a seminar can
+    // always surge, capped at ~promoShare of the channel's target.
+    const promoCap = promoShare > 0 ? Math.max(1, Math.round(target * promoShare)) : 0
     const fresh = freshByCh[platform] || []
     // Seed the running per-region tally for this channel from the rolling window.
     const regionCount = { ...(recentRegionCounts[platform] || {}) }
     let total = Object.values(regionCount).reduce((s, n) => s + n, 0)
+    const bumpRegion = (r) => { if (r) { regionCount[r] = (regionCount[r] || 0) + 1; total++ } }
+    // A piece only rides the promo lane when there IS a promo lane (promoCap>0);
+    // with no live campaign, campaign-flagged pieces are just evergreen.
+    const isPromoPiece = (x) => x.isPromo && promoCap > 0
 
     let added = 0
-    for (const c of fresh) {
+    let promoAdded = 0
+    // 1. Promo lane first (region-cap-exempt, bounded by promoCap).
+    for (const c of fresh.filter(isPromoPiece)) {
+      if (added >= target || promoAdded >= promoCap) { held.push(c); continue }
+      thisWeek.push(c); added++; promoAdded++; bumpRegion(c.region)
+    }
+    // 2. Evergreen fills the remaining slots under the region cap.
+    for (const c of fresh.filter((x) => !isPromoPiece(x))) {
       if (added >= target) { held.push(c); continue }          // cadence surplus
       if (regionWithinCap(regionCount, total, c.region)) {
-        thisWeek.push(c); added++
-        if (c.region) { regionCount[c.region] = (regionCount[c.region] || 0) + 1; total++ }
+        thisWeek.push(c); added++; bumpRegion(c.region)
       } else {
         held.push(c)                                           // over-budget → defer
       }
     }
-    // Top up the remaining gap from the backlog (FIFO), also cap-checked. A
-    // backlog atom that's still over-budget is left untouched (stays held) and
-    // we try the next one, so we prefer promoting an under-represented region.
+    // 3. Top up the remaining gap from the backlog (FIFO): promo-first up to the
+    //    remaining promo cap, then evergreen under the region cap. A backlog atom
+    //    that can't be placed stays untouched (held) and is tried next week.
     let gap = target - added
     const bl = backlogByCh[platform] || []
-    while (gap > 0 && bl.length) {
-      const b = bl.shift()
+    for (const b of bl.filter(isPromoPiece)) {
+      if (gap <= 0 || promoAdded >= promoCap) break
+      promoted.push(b); gap--; promoAdded++; bumpRegion(b.region)
+    }
+    for (const b of bl.filter((x) => !isPromoPiece(x))) {
+      if (gap <= 0) break
       if (regionWithinCap(regionCount, total, b.region)) {
-        promoted.push(b); gap--
-        if (b.region) { regionCount[b.region] = (regionCount[b.region] || 0) + 1; total++ }
+        promoted.push(b); gap--; bumpRegion(b.region)
       }
       // else: skipped this pass, remains a held atom in the DB (untouched).
     }
@@ -349,6 +370,8 @@ export async function composeWeeklyPlan({
   cadence = RECOMMENDED_CADENCE,
   recentTopics = [],
   recentRegionCounts = {},
+  promoShare = 0,
+  promoCampaignIds = [],
   backlog = [],
   quietDays = ['sat', 'sun'],
   timezone = 'America/Los_Angeles',
@@ -376,13 +399,21 @@ export async function composeWeeklyPlan({
         && (palette[c.platform] || []).some((p) => p.angle === c.angle))
   }
 
-  // Attach each candidate's body region (from its interview) so the allocator's
-  // rolling-window cap can account for it. Backlog atoms already carry `.region`
+  // Attach each candidate's body region + promo flag (from its interview) so the
+  // allocator can region-cap evergreen pieces and route campaign-attributed ones
+  // through the promo lane. Backlog atoms already carry `.region`/`.campaign_id`
   // (attached in getWeekInputs via the interview join).
+  const promoSet = new Set(promoCampaignIds)
   const regionByIv = new Map(interviews.map((i) => [i.id, i.region || null]))
-  candidates = candidates.map((c) => ({ ...c, region: regionByIv.get(c.interview_id) || null }))
+  const campaignByIv = new Map(interviews.map((i) => [i.id, i.campaign_id || null]))
+  candidates = candidates.map((c) => ({
+    ...c,
+    region: regionByIv.get(c.interview_id) || null,
+    isPromo: promoSet.has(campaignByIv.get(c.interview_id)),
+  }))
+  const backlogWithPromo = backlog.map((b) => ({ ...b, isPromo: promoSet.has(b.campaign_id) }))
 
-  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlog, recentRegionCounts)
+  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlogWithPromo, recentRegionCounts, promoShare)
 
   // Materialize this-week + held candidates into atom rows; assign slots to the
   // this-week set; mark held with held_at=now.
