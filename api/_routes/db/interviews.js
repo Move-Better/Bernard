@@ -14,6 +14,7 @@ import { mondayOf } from '../../_lib/strategist.js'
 import { extractConcepts, buildInterviewText } from '../../_lib/conceptExtractor.js'
 import { summarizeInterview } from '../../_lib/interviewSummarizer.js'
 import { classifyAndStoreInterviewStyle } from '../../_lib/interviewStyleClassifier.js'
+import { classifyAndStoreInterviewRegion } from '../../_lib/topicRegion.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { markBookStale } from '../../_lib/bookStale.js'
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
@@ -509,6 +510,13 @@ export default async function handler(req, res) {
           }
         }
       })())
+
+      // Topic-balance engine — classify this interview's topic into a body
+      // region / theme and stamp it onto the interview + its content_items, so
+      // the planner can keep any one region from flooding the feed. Advisory:
+      // a null region is treated as exempt, so a classify failure never blocks
+      // anything. waitUntil() so it isn't frozen when the response is sent.
+      waitUntil(classifyAndStoreInterviewRegion({ interviewId: id, workspaceId: ws.id, topic }))
 
       // Mark the workspace's book stale so the next cron run (or a manual
       // regenerate click) weaves this newly-completed interview in. Covers
