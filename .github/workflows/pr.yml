@@ -50,6 +50,80 @@ jobs:
         env:
           MULTITENANT_DATABASE_URL: ${{ secrets.MULTITENANT_DATABASE_URL }}
 
+  # Confirms every consolidated api/_routes/** route (plus a few kept-separate
+  # probes) actually reaches its handler on the PR's own preview deployment,
+  # rather than falling through to api/index's Express catch-all 404. Catches
+  # the class of bug from #2041: a route file that exists on disk but was
+  # never wired into the manifest or the vercel.json rewrite exclusion, so
+  # every request to it 404'd with a message that looked identical to a
+  # legitimate "not found" response from the handler itself.
+  route-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+
+      # Wait for the Vercel Preview deployment for this PR's head commit to
+      # reach `success`. Mirrors the polling pattern in e2e.yml, scoped to
+      # the Preview environment instead of Production.
+      - name: Wait for Vercel preview
+        id: vercel-preview
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 90); do
+            deployment=$(gh api \
+              "repos/${{ github.repository }}/deployments?sha=${HEAD_SHA}&environment=Preview" \
+              --jq '.[0] // empty')
+            if [ -n "$deployment" ]; then
+              statuses_url=$(echo "$deployment" | jq -r '.statuses_url')
+              state=$(gh api "$statuses_url" --jq '.[0].state // ""')
+              env_url=$(gh api "$statuses_url" --jq '.[0].environment_url // ""')
+              echo "[$i/90] state=$state"
+              case "$state" in
+                success)
+                  echo "url=$env_url" >> "$GITHUB_OUTPUT"
+                  echo "Preview deployment for ${HEAD_SHA} is ready: $env_url"
+                  exit 0
+                  ;;
+                failure|error)
+                  echo "Vercel preview deployment ended in state=$state — bailing." >&2
+                  exit 1
+                  ;;
+              esac
+            else
+              echo "[$i/90] no Preview deployment yet for ${HEAD_SHA}"
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for Vercel Preview deployment for ${HEAD_SHA}." >&2
+          exit 1
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      # `vercel curl` requires a linked project — without one it tries to
+      # link interactively and fails with "requires confirmation" on a CI
+      # runner (there's no .vercel/project.json in a fresh checkout; it's
+      # gitignored). Link non-interactively first. The project id is not
+      # sensitive (same tier as a Supabase project ref) — safe inline.
+      - name: Link Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel link --yes --scope movebetter --project prj_K91v3tRFYgfUPhmrvgBQi5hZKAaU
+
+      - name: Route-resolution smoke
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node scripts/smoke-route-resolution.mjs "${{ steps.vercel-preview.outputs.url }}"
+
   review:
     runs-on: ubuntu-latest
     # Non-blocking: build is the required gate; review is informational.
