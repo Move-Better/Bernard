@@ -834,8 +834,14 @@ function WebsiteWeekCard({ data }) {
         <Globe className="h-4 w-4 text-primary" /> Website — this week
       </h3>
       <div className="mt-4 space-y-3 text-sm">
+        {data?.connected && data?.totalSessions != null && (
+          <div className="flex justify-between items-baseline">
+            <span className="text-muted-foreground">Total site sessions</span>
+            <span className="font-semibold tabular-nums">{fmtNum(data.totalSessions)}</span>
+          </div>
+        )}
         <div className="flex justify-between items-baseline">
-          <span className="text-muted-foreground">Sessions</span>
+          <span className="text-muted-foreground">Sessions on your posts</span>
           <span className="font-semibold tabular-nums">
             {data?.connected && data?.sessions != null ? fmtNum(data.sessions) : '—'}
           </span>
@@ -900,8 +906,9 @@ function DefinitionsModal({ onClose }) {
               Website
             </h3>
             <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
-              <li><span className="font-medium text-foreground">Sessions</span> — Google Analytics 4 sessions on your published pages, for the selected week.</li>
-              <li><span className="font-medium text-foreground">Engagement rate</span> — GA4&rsquo;s engaged sessions ÷ total sessions for that page.</li>
+              <li><span className="font-medium text-foreground">Total site sessions</span> — every GA4 session on your whole property for the selected week, including pages Bernard doesn&rsquo;t track (home, staff bios, service pages, etc).</li>
+              <li><span className="font-medium text-foreground">Sessions on your posts</span> — GA4 sessions on just the pages tied to a published Bernard post, for the same week. Always ≤ total site sessions.</li>
+              <li><span className="font-medium text-foreground">Engagement rate</span> — GA4&rsquo;s engaged sessions ÷ total sessions, for your posts&rsquo; pages.</li>
               <li><span className="font-medium text-foreground">Book Now clicks</span> — clicks on your booking-widget link (from Settings → Workspace &rsquo;s Booking URL), counted via GA4&rsquo;s automatic outbound-link tracking. No custom tracking code needed — GA4 detects any click to a different domain on its own. Only shows once Booking URL is set and GA4 is connected.</li>
             </ul>
           </div>
