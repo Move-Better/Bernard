@@ -148,41 +148,30 @@ export async function fetchSearchQueriesByPage({ credential, serviceAccountJson,
   }))
 }
 
-// Fetch daily clicks/impressions totals (no query/page breakdown) for the
-// last `days` days. Used to bucket into weekly totals for the EOS-scorecard-
-// style weekly read — GSC has no native "week" dimension, so callers sum
-// these daily rows into whatever week boundary they use.
-// Returns [{ date: 'YYYY-MM-DD', clicks, impressions }] ascending by date.
-export async function fetchSearchTotalsByDate({ credential, serviceAccountJson, siteUrl, days = 35 }) {
+// Fetch clicks/impressions totals for an explicit [startDate, endDate]
+// range (both YYYY-MM-DD, inclusive) — no dimension breakdown, so GSC
+// returns a single aggregate row. Used for the Insights page's week/month/
+// year period picker on the SEO tab.
+// Returns { clicks, impressions }.
+export async function fetchSearchTotals({ credential, serviceAccountJson, siteUrl, startDate, endDate }) {
   const url = siteUrl || credential?.config?.site_url
   if (!url) throw new Error('gsc: siteUrl is required')
   const token = await resolveToken({ credential, serviceAccountJson })
 
-  const endDate   = new Date()
-  const startDate = new Date(endDate - days * 24 * 60 * 60 * 1000)
-  const fmt = (d) => d.toISOString().slice(0, 10)
-
   const r = await fetch(QUERY_URL(url), {
     method:  'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
-      startDate:  fmt(startDate),
-      endDate:    fmt(endDate),
-      dimensions: ['date'],
-      rowLimit:   days + 5,
-    }),
+    body:    JSON.stringify({ startDate, endDate, rowLimit: 1 }),
   })
   if (!r.ok) {
     const text = await r.text().catch(() => '')
     if (r.status === 403) throw new Error(`gsc: access denied for ${url} (403) — ${text.slice(0, 300)}`)
     if (r.status === 400 || r.status === 404) throw new Error(`gsc: site not found (${r.status}) — check the Site URL matches your Search Console property exactly.`)
-    throw new Error(`gsc: searchAnalytics (date) query failed (${r.status}) — ${text.slice(0, 300)}`)
+    throw new Error(`gsc: searchAnalytics (totals) query failed (${r.status}) — ${text.slice(0, 300)}`)
   }
   const data = await r.json()
-
-  return (data.rows || [])
-    .map((row) => ({ date: row.keys[0], clicks: row.clicks, impressions: row.impressions }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const row = data.rows?.[0]
+  return { clicks: row?.clicks || 0, impressions: row?.impressions || 0 }
 }
 
 // Test-connection probe: resolve a token (OAuth or SA) then run a minimal

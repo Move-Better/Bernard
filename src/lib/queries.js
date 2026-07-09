@@ -114,8 +114,9 @@ export const queryKeys = {
   },
   topicSuggestions: ['topic-suggestions'],
   topPerformers:    ['top-performers'],
-  socialByWeek:     (weekOffset = 0) => ['social-by-week', weekOffset],
-  websiteByWeek:    (weekOffset = 0) => ['website-by-week', weekOffset],
+  socialByPeriod:   (granularity = 'week', periodOffset = 0) => ['social-by-period', granularity, periodOffset],
+  websiteByPeriod:  (granularity = 'week', periodOffset = 0) => ['website-by-period', granularity, periodOffset],
+  searchByPeriod:   (granularity = 'week', periodOffset = 0) => ['search-by-period', granularity, periodOffset],
   websiteHealth:    ['website-health'],
   websiteGA4:       ['website-ga4'],
   searchQueries:    ['search-queries'],
@@ -811,25 +812,35 @@ export function useTopPerformers() {
   })
 }
 
-// ── Per-platform / per-week social + website reads (Insights) ───────────────
+// ── Per-platform / per-period social + website reads (Insights) ─────────────
 //
-// Feed the Insights page's Social Media + Website tabs and shared week picker.
-// weekOffset mirrors YourWeek.jsx (0 = this week, negative = past weeks).
+// Feed the Insights page's Social Media + Website tabs and shared period
+// picker. granularity is 'week'|'month'|'year'; periodOffset mirrors
+// YourWeek.jsx's weekOffset convention (0 = current period, negative = past).
 
-export function useSocialByWeek(weekOffset) {
+export function useSocialByPeriod(granularity, periodOffset) {
   return useQuery({
-    queryKey: queryKeys.socialByWeek(weekOffset),
+    queryKey: queryKeys.socialByPeriod(granularity, periodOffset),
     queryFn: () =>
-      apiFetch(`/api/engagement/social-by-week?weekOffset=${weekOffset}`).catch(() => null),
+      apiFetch(`/api/engagement/social-by-week?granularity=${granularity}&periodOffset=${periodOffset}`).catch(() => null),
     staleTime: 1000 * 60 * 15,
   })
 }
 
-export function useWebsiteByWeek(weekOffset) {
+export function useWebsiteByPeriod(granularity, periodOffset) {
   return useQuery({
-    queryKey: queryKeys.websiteByWeek(weekOffset),
+    queryKey: queryKeys.websiteByPeriod(granularity, periodOffset),
     queryFn: () =>
-      apiFetch(`/api/engagement/website-by-week?weekOffset=${weekOffset}`).catch(() => ({ connected: false })),
+      apiFetch(`/api/engagement/website-by-week?granularity=${granularity}&periodOffset=${periodOffset}`).catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 15,
+  })
+}
+
+export function useSearchByPeriod(granularity, periodOffset) {
+  return useQuery({
+    queryKey: queryKeys.searchByPeriod(granularity, periodOffset),
+    queryFn: () =>
+      apiFetch(`/api/insights/search-by-period?granularity=${granularity}&periodOffset=${periodOffset}`).catch(() => ({ connected: false })),
     staleTime: 1000 * 60 * 15,
   })
 }
