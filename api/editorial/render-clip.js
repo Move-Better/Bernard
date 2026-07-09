@@ -94,6 +94,14 @@ export default async function handler(req, res) {
   const captionAccent = typeof body.captionAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.captionAccent) ? body.captionAccent : undefined
   const captionAnim = ['pop', 'fade'].includes(body.captionAnim) ? body.captionAnim : undefined
   const captionStyle = ['bold', 'word_box', 'accent_fill', 'glow', 'underline', 'pop'].includes(body.captionStyle) ? body.captionStyle : undefined
+  // Edit-by-transcript cut ranges (clip-relative seconds). Sanitised to finite,
+  // positive-length ranges; the renderer normalises/merges + caps to the clip.
+  const cuts = Array.isArray(body.cuts)
+    ? body.cuts
+        .filter((c) => c && Number.isFinite(+c.start) && Number.isFinite(+c.end) && +c.end > +c.start)
+        .slice(0, 200)
+        .map((c) => ({ start: +c.start, end: +c.end }))
+    : undefined
   // AI-colorist grade (canonical params). Clamped/normalized inside the renderer
   // (gradeToFfmpeg → normalizeGrade); a neutral or absent grade is a no-op.
   const grade = body.grade && typeof body.grade === 'object' && !Array.isArray(body.grade) ? body.grade : undefined
@@ -216,6 +224,7 @@ export default async function handler(req, res) {
           ...(captionAccent !== undefined ? { captionAccent } : {}),
           ...(captionAnim !== undefined ? { captionAnim } : {}),
           ...(captionStyle !== undefined ? { captionStyle } : {}),
+          ...(cuts && cuts.length ? { cuts } : {}),
           ...(captionWords && captionWords.length ? { captionWords } : {}),
           ...(grade ? { grade } : {}),
           ...(reframe ? { reframe } : {}),

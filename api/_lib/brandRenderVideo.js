@@ -29,6 +29,7 @@ import { buildBrandOverlaySvg, resolveBrandColors } from './brandRender.js'
 import { getBrandFont, ensureFontconfig } from './brandFonts.js'
 import { transcribeToSrt, transcribeToWords } from './whisper.js'
 import { buildKaraokeAss } from './karaokeCaptions.js'
+import { normalizeCuts, keptRanges, remapWords, remapOverlays, buildCutFilter, totalCut } from './transcriptCuts.js'
 import { gradeToFfmpeg } from './gradeParams.js'
 import { reframeFilter, isNeutralReframe, buildOverlaySvg, normalizeOverlays, kenBurnsFilter, isKenBurnsActive } from './videoOverlays.js'
 
@@ -304,7 +305,7 @@ function runFfmpeg(args) {
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed, cuts }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -318,6 +319,15 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   // unbounded once chunked render lands). Length follows the content, not a norm.
   const maxDur = spec.longform ? LONGFORM_MAX_SECONDS : MAX_RENDER_SECONDS
   const clipDur = Math.min(Math.max(1, Number(durationSec) || maxDur), maxDur)
+
+  // Edit-by-transcript cuts (WS4): clip-relative ranges to REMOVE. When present, a
+  // pre-render pass trims+concats the KEPT ranges into a compacted clip and the
+  // caption words + overlays are remapped onto that shorter timeline. Empty cuts →
+  // everything below is byte-identical to before (zero risk to normal renders).
+  const cutList = normalizeCuts(cuts, clipDur)
+  const cutKept = cutList.length ? keptRanges(cutList, clipDur) : []
+  const cutsActive = cutList.length > 0 && cutKept.length > 0
+  const effDur = cutsActive ? Math.max(1, +(clipDur - totalCut(cutList, clipDur)).toFixed(3)) : clipDur
 
   // Initialise fontconfig before any Sharp SVG work. No-op after first call.
   await ensureFontconfig()
@@ -334,6 +344,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   // finally block can unlink them even though they're created inside the try.
   const overlayTmpPaths = []
   const tmpOutput  = `/tmp/vid-out-${id}.mp4`
+  const tmpCut     = `/tmp/vid-cut-${id}.mp4`   // compacted clip when transcript cuts are present
 
   // HEAD the source once to get declared size (used for cache-key logic).
   const headRes = await fetch(videoUrl, { method: 'HEAD' }).catch(() => null)
@@ -439,6 +450,9 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // Karaoke ASS captions (built here because it needs the resolved accent
     // colour + caption position). Falls back to the SRT path written above if
     // the word-timestamp pass didn't produce a usable track.
+    // Cuts shorten + shift the timeline — remap the words so the burned captions
+    // land on the compacted footage (and the returned words match the output).
+    if (cutsActive && karaokeWords) karaokeWords = remapWords(karaokeWords, cutList, clipDur)
     if (karaokeWords) {
       const ass = buildKaraokeAss({
         words: karaokeWords,
@@ -490,6 +504,27 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       overlayItems.push({ path: ovPath, in: ov.in, out: ov.out })
     }
 
+    // ── Transcript cuts: compact the clip (pre-pass) + shift overlays ─────────
+    // When cuts are present, trim+concat the KEPT ranges into `tmpCut` and point
+    // the main render at it (renderStart=0). Overlay windows move onto the
+    // compacted timeline. No cuts → render* are the originals, path unchanged.
+    const renderOverlays = cutsActive ? remapOverlays(overlayItems, cutList, clipDur) : overlayItems
+    let renderInput = tmpInput
+    let renderStart = downstreamStart
+    let renderAudioMap = audioMap
+    if (cutsActive) {
+      const { filter, v, a } = buildCutFilter(cutKept, !!audioMap)
+      const cutArgs = []
+      if (downstreamStart > 0) cutArgs.push('-ss', String(downstreamStart))
+      cutArgs.push('-i', tmpInput, '-t', String(clipDur), '-filter_complex', filter, '-map', v)
+      if (a) cutArgs.push('-map', a, '-c:a', 'aac')
+      cutArgs.push('-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-y', tmpCut)
+      await runFfmpeg(cutArgs)
+      renderInput = tmpCut
+      renderStart = 0
+      renderAudioMap = audioMap ? await probeUsableAudioMap(tmpCut) : null
+    }
+
     // ── 4. Build ffmpeg filter_complex ───────────────────────────────────────
     // [0:v] = source video, [1:v] = brand overlay PNG
     //
@@ -508,7 +543,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // static reframe when set — it IS the cover. Clips only; the 'contain' lane
     // below letterboxes and never moves.
     const coverFilter = isKenBurnsActive(kenBurns)
-      ? kenBurnsFilter(kenBurns, W, H, clipDur)
+      ? kenBurnsFilter(kenBurns, W, H, effDur)
       : (reframe && !isNeutralReframe(reframe))
         ? reframeFilter(reframe, W, H)
         : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}[scaled]`
@@ -545,7 +580,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // window — no enable= needed.
     const OVL_FADE = 0.25
     let stage = '[branded]'
-    overlayItems.forEach((ov, i) => {
+    renderOverlays.forEach((ov, i) => {
       const next = `[ovl${i}]`
       const faded = `[ovf${i}]`
       const win = Math.max(0.01, ov.out - ov.in)
@@ -589,16 +624,16 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // -t scales by 1/spd so slow-mo isn't truncated.
     const spd = Math.min(2, Math.max(0.5, Number(speed) || 1))
     const speedActive = Math.abs(spd - 1) > 0.01
-    let audioOut = audioMap
+    let audioOut = renderAudioMap
     if (speedActive) {
       filterComplex.push(`${finalOutput}setpts=${(1 / spd).toFixed(5)}*PTS[sped]`)
       finalOutput = '[sped]'
-      if (audioMap) {
-        filterComplex.push(`[${audioMap}]atempo=${spd.toFixed(4)}[aout]`)
+      if (renderAudioMap) {
+        filterComplex.push(`[${renderAudioMap}]atempo=${spd.toFixed(4)}[aout]`)
         audioOut = '[aout]'
       }
     }
-    const outDur = speedActive ? clipDur / spd : clipDur
+    const outDur = speedActive ? effDur / spd : effDur
 
     // ── 5. Run ffmpeg ────────────────────────────────────────────────────────
     // Input-seek to the clip window on input 0 (the video). The overlay PNG
@@ -606,11 +641,11 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // built from audio extracted at the same offset, so its timestamps (which
     // start at 0) align with the seeked input.
     const ffmpegArgs = []
-    if (downstreamStart > 0) ffmpegArgs.push('-ss', String(downstreamStart))
+    if (renderStart > 0) ffmpegArgs.push('-ss', String(renderStart))
     ffmpegArgs.push(
-      '-i', tmpInput,
+      '-i', renderInput,
       '-i', tmpOverlay,
-      ...overlayItems.flatMap((ov) => ['-loop', '1', '-i', ov.path]),  // inputs 2..(1+N): timed overlays (looped so the alpha fade has frames to ramp; output -t bounds them)
+      ...renderOverlays.flatMap((ov) => ['-loop', '1', '-i', ov.path]),  // inputs 2..(1+N): timed overlays (looped so the alpha fade has frames to ramp; output -t bounds them)
       '-filter_complex', filterComplex.join(';'),
       '-map', finalOutput,
     )
@@ -618,7 +653,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // would also pull in a present-but-undecodable track (iPhone spatial-audio
     // `apac` → Audio: none) and abort the render at exit 234. When no stream is
     // decodable, render the clip silently instead of failing the whole hand-off.
-    if (audioMap) {
+    if (renderAudioMap) {
       ffmpegArgs.push(
         '-map', audioOut,                // decodable audio stream (atempo'd [aout] when sped)
         '-c:a', 'aac',
@@ -649,7 +684,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // tmpInput is ref-counted — release (and unlink when last render is done).
     releaseSourceFile({ videoUrl, declaredLen, clipStart, clipDur })
     // Per-render scratch files are always unique — unlink immediately.
-    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, ...overlayTmpPaths]) {
+    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, tmpCut, ...overlayTmpPaths]) {
       await unlinkP(f).catch(() => {})
     }
   }
