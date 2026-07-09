@@ -1529,7 +1529,38 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     drawFreeformBlock(ctx, block, brandStyle || {}, themeBlock, useWhoop ? layout : null, useWhoop ? palette : null, W, H, skipZone)
   }
 
+  // Objects layer (WS3.1): addable elements — logo / watermark today. Drawn AFTER
+  // text so a corner logo/watermark sits on top. Each object is centre-anchored at
+  // its fractional {x,y}, sized to `scale` of the canvas width, at `opacity`. A
+  // broken/missing asset is skipped, never fatal (matches the publish-safety of
+  // the brand-render logo composite).
+  const objects = theme?.mode === 'ad' ? [] : (Array.isArray(slide?.objects) ? slide.objects : [])
+  for (const obj of objects) {
+    await drawSlideObject(ctx, obj, W, H)
+  }
+
   return target
+}
+
+// Object types the editor can add. Logo/watermark ships first (WS3.1);
+// shape/sticker/frame phase up later.
+export const OBJECT_TYPES = ['logo']
+
+async function drawSlideObject(ctx, obj, W, H) {
+  if (!obj || !obj.src) return
+  let img
+  try { img = await loadImage(obj.src) } catch { return }
+  const scale = Math.max(0.04, Math.min(0.9, Number(obj.scale) || 0.16))
+  const targetW = Math.round(W * scale)
+  const nW = img.naturalWidth || img.width || 1
+  const nH = img.naturalHeight || img.height || 1
+  const targetH = Math.round(targetW * (nH / nW))
+  const cx = Math.max(0, Math.min(1, Number.isFinite(obj.x) ? obj.x : 0.5)) * W
+  const cy = Math.max(0, Math.min(1, Number.isFinite(obj.y) ? obj.y : 0.5)) * H
+  const prevAlpha = ctx.globalAlpha
+  ctx.globalAlpha = Math.max(0.05, Math.min(1, obj.opacity == null ? 1 : Number(obj.opacity)))
+  ctx.drawImage(img, Math.round(cx - targetW / 2), Math.round(cy - targetH / 2), targetW, targetH)
+  ctx.globalAlpha = prevAlpha
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
