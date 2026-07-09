@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
-  FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText,
+  FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -27,6 +27,7 @@ import { useUndoHistory } from '@/lib/useUndoHistory'
 import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
 import { useVideoShortcuts } from '@/lib/useVideoShortcuts'
 import { useAutosave } from '@/lib/useAutosave'
+import { listRevisions, saveRevision } from '@/lib/editorRevisions'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 // Output format → render channel (the renderer's VIDEO_CHANNEL_SPECS already
@@ -820,6 +821,9 @@ export default function VideoEditor() {
   const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none', style: 'bold' })
   const [overlays, setOverlays] = useState([])
   const [cuts, setCuts] = useState([])   // edit-by-transcript: clip-relative removed ranges
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [revisions, setRevisions] = useState([])
+  const lastRevRef = useRef(0)
   // Drag-reveal guides: safe-zone margins + centre snap lines appear while a text
   // overlay is being dragged (no persistent "safe zones" toggle). Mirrors the
   // photo editor's snapping guides.
@@ -917,6 +921,34 @@ export default function VideoEditor() {
     setCuts(snap.cuts || [])
   }, { enabled: hydrated })
   useUndoRedoShortcut(undo, redo)
+
+  // Version history (WS5) — apply a saved snapshot back into editor state.
+  const applyDoc = useCallback((d) => {
+    if (!d || typeof d !== 'object') return
+    if (d.grade) setGrade(d.grade)
+    if (FORMAT_KEYS.includes(d.format)) setFormat(d.format)
+    if (d.reframe) setReframe(d.reframe)
+    if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
+    if (Array.isArray(d.overlays)) setOverlays(d.overlays)
+    if (d.speed) setSpeedState(d.speed)
+    if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
+    if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
+    if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
+    if (Array.isArray(d.cuts)) setCuts(d.cuts)
+  }, [])
+  // Auto-snapshot the draft at most every ~3 min of editing (pruned to 30 server-side).
+  useEffect(() => {
+    if (!hydrated || !assetId) return
+    const now = Date.now()
+    if (now - lastRevRef.current < 180000) return
+    lastRevRef.current = now
+    saveRevision('video', assetId, draftDoc).catch(() => {})
+  }, [draftDoc, hydrated, assetId])
+  async function openHistory() {
+    if (historyOpen) { setHistoryOpen(false); return }
+    try { const r = await listRevisions('video', assetId); setRevisions(r?.revisions || []) } catch { setRevisions([]) }
+    setHistoryOpen(true)
+  }
 
   // Seed trim + caption from the first proposed segment, once.
   const proposals = useMemo(() => (segData?.segments || []).filter((s) => s.status === 'proposed' || s.status === 'kept'), [segData])
@@ -1279,6 +1311,26 @@ export default function VideoEditor() {
         </div>
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         <SaveStatus status={saveStatus} />
+        {/* Version history — auto-snapshots + restore */}
+        <div className="relative">
+          <button onClick={openHistory} className="flex items-center gap-1 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }} title="Version history" aria-label="Version history"><History className="h-3.5 w-3.5" /></button>
+          {historyOpen && (
+            <>
+              <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setHistoryOpen(false)} />
+              <div role="menu" aria-label="Version history" className="absolute right-0 top-full z-40 mt-1 max-h-72 w-64 overflow-auto rounded-lg border bg-card p-1.5 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Version history</p>
+                {revisions.length === 0 ? (
+                  <p className="px-1 py-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No saved versions yet — they appear as you edit.</p>
+                ) : revisions.map((rv) => (
+                  <button key={rv.id} onClick={() => { applyDoc(rv.doc); setHistoryOpen(false); toast('Restored a previous version') }} className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-2xs hover:bg-muted">
+                    <span>{new Date(rv.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                    <span className="font-medium text-primary">Restore</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
         <div className="flex gap-1" role="group" aria-label="Output format">
           {FORMAT_KEYS.map((k) => (
