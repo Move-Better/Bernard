@@ -2540,6 +2540,30 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setHistoryOpen(true)
   }
 
+  // Magic Resize (WS2): switching aspect pulls any hand-placed text back into the
+  // new format's safe zone so it never lands in the crop. Idempotent (clamps into
+  // a margin) so switching back and forth is stable; preset-positioned blocks
+  // already resolve per-aspect in the renderer, so only custom {x,y} blocks move.
+  function reflowForAspect(sl) {
+    return (sl || []).map((s) => ({
+      ...s,
+      blocks: (s.blocks || []).map((b) => {
+        const p = b.position
+        if (p && typeof p === 'object' && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+          const x = Math.max(0.1, Math.min(0.9, p.x))
+          const y = Math.max(0.12, Math.min(0.88, p.y))
+          return (x !== p.x || y !== p.y) ? { ...b, position: { x, y } } : b
+        }
+        return b
+      }),
+    }))
+  }
+  function changeAspect(next) {
+    if (!next || next === aspect) return
+    setSlides((prev) => reflowForAspect(prev))
+    setAspect(next)
+  }
+
   // Active slide derived values — used by the canvas and the inspector.
   const activeSlide = slides[activeSlideIdx] || slides[0]
   const activePhotoUrl = typeof activeSlide?.photo_idx === 'number' && mediaUrls[activeSlide.photo_idx]
@@ -2603,7 +2627,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
           : null}
-        aspect={forcedAspect ? null : { value: aspect, options: ['1:1', '4:5', '9:16'], onChange: setAspect }}
+        aspect={forcedAspect ? null : { value: aspect, options: ['1:1', '4:5', '9:16'], onChange: changeAspect }}
       >
         <Tooltip>
           <TooltipTrigger asChild>
