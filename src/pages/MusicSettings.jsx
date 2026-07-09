@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Upload, Play, Pause, Trash2, Loader2, Music } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useAppMutation } from '@/lib/useAppMutation'
+import { useConfirm } from '@/lib/useConfirm'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
 import { getMusicTracks, uploadMusicTrack, deleteMusicTrack, updateMusicTrack } from '@/lib/musicLib'
@@ -56,6 +57,7 @@ export default function MusicSettings() {
   useDocumentTitle('Music')
   const workspace = useWorkspace()
   const qc = useQueryClient()
+  const confirm = useConfirm()
   const audioRef = useRef(null)
   const fileRef = useRef(null)
   const [previewId, setPreviewId] = useState(null)
@@ -69,6 +71,15 @@ export default function MusicSettings() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['music-tracks'] })
   const delMut = useAppMutation({ mutationFn: (id) => deleteMusicTrack(id), onSuccess: () => { invalidate(); toast('Track removed') } })
   const moodMut = useAppMutation({ mutationFn: ({ id, mood }) => updateMusicTrack(id, { mood }), onSuccess: invalidate })
+
+  async function onDelete(t) {
+    if (!(await confirm({
+      title: `Remove "${t.title}"?`,
+      description: 'This deletes the track permanently — it can’t be recovered.',
+      confirmLabel: 'Remove',
+    }))) return
+    delMut.mutate(t.id)
+  }
 
   function preview(t) {
     const a = audioRef.current
@@ -161,7 +172,7 @@ export default function MusicSettings() {
                   key={t.id} t={t} own isPlaying={previewId === t.id}
                   onPreview={preview}
                   onMood={(id, mood) => moodMut.mutate({ id, mood })}
-                  onDelete={(tr) => delMut.mutate(tr.id)}
+                  onDelete={onDelete}
                 />
               ))}
             </div>
