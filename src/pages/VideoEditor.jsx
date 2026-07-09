@@ -986,6 +986,7 @@ export default function VideoEditor() {
         if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
         if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
         if (Array.isArray(d.cuts)) setCuts(d.cuts)
+        if (d.music) setMusic(d.music)
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
@@ -994,8 +995,8 @@ export default function VideoEditor() {
 
   // Draft snapshot shared by autosave + undo/redo.
   const draftDoc = useMemo(
-    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts }),
-    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts],
+    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music }),
+    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music],
   )
 
   // localStorage mirror — immediate, undebounced offline copy. The server
@@ -1026,6 +1027,7 @@ export default function VideoEditor() {
     setStartSec(snap.startSec)
     setEndSec(snap.endSec)
     setCuts(snap.cuts || [])
+    setMusic(snap.music || { trackId: null, volume: 0.22, duck: true, fade: true })
   }, { enabled: hydrated })
   useUndoRedoShortcut(undo, redo)
 
@@ -1042,6 +1044,7 @@ export default function VideoEditor() {
     if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
     if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
     if (Array.isArray(d.cuts)) setCuts(d.cuts)
+    setMusic(d.music || { trackId: null, volume: 0.22, duck: true, fade: true })
   }, [])
   // Auto-snapshot the draft at most every ~3 min of editing (pruned to 30 server-side).
   useEffect(() => {
