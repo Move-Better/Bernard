@@ -4,7 +4,7 @@ import { useSmartBack } from '@/lib/useSmartBack'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Play, Pause, Film, Sparkles, Captions, Type,
-  Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
+  Plus, Trash2, Check, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,9 @@ import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/c
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
+import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
+import { useContentItem, useUpdateContentItemStatus } from '@/lib/queries'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -1128,8 +1130,34 @@ export default function VideoEditor() {
   // destination (post / b-roll / ad sizes), or render the whole untouched source.
   const [exportOpen, setExportOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
-  const [dest, setDest] = useState({ post: true, broll: false, ad: false })
+  const [dest, setDest] = useState({ broll: true, ad: false })
   const toggleDest = (k) => setDest((d) => ({ ...d, [k]: !d[k] }))
+
+  // Inline "finalize this clip into a post" — Q's "create the post inline" so
+  // approve + Sounds-like-me + publish all happen right here without exporting
+  // and jumping to the Publish screen. One "Sounds like me" click renders the
+  // trimmed clip, creates the content_item (clip-to-post), and approves it; the
+  // header then swaps to the shared EditorWorkflowBar bound to that new post so
+  // the publish controls (Schedule / queue / now) light up in place.
+  const [postId, setPostId] = useState(null)
+  const updatePostStatus = useUpdateContentItemStatus()
+  const { data: post } = useContentItem(postId)
+  const finalizeToPost = useAppMutation({
+    mutationFn: async () => {
+      const render = await doRenderClip()
+      const d = await apiFetch('/api/editorial/clip-to-post', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, captionText: captionSummary(), platform: 'instagram' }),
+      })
+      const id = d?.contentItemId
+      if (!id) throw new Error('Could not create the post from this clip.')
+      // "Sounds like me" is the sign-off — approve the fresh draft so the bar
+      // lands on the publish step. approved_by is stamped server-side.
+      await updatePostStatus.mutateAsync({ id, status: 'approved', approvedAt: new Date().toISOString() })
+      return id
+    },
+    onSuccess: (id) => { setPostId(id); toast('Clip finalized & approved — ready to publish') },
+  })
   const captionSummary = () => lines.map((l) => l.text).join(' ').slice(0, 500)
   const renderBody = () => ({
     assetId, channels: [(FORMATS[format] || FORMATS.reel).channel], startSec, durationSec, subtitles: caption.preset !== 'off',
@@ -1152,37 +1180,24 @@ export default function VideoEditor() {
 
   // ONE render → every selected destination. Post + b-roll share the single reel
   // render; ad export is its own (interactive) modal flow opened afterward.
+  // Export = the non-post destinations (Library b-roll + ad sizes). The post
+  // path moved inline (finalizeToPost above), so this no longer navigates away.
   const exportMutation = useAppMutation({
     mutationFn: async () => {
-      let contentItemId = null
-      if (dest.post || dest.broll) {
+      if (dest.broll) {
         const render = await doRenderClip()
-        if (dest.broll) {
-          await apiFetch('/api/editorial/clip-to-broll', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary() }),
-          })
-        }
-        if (dest.post) {
-          const d = await apiFetch('/api/editorial/clip-to-post', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, captionText: captionSummary(), platform: 'instagram' }),
-          })
-          contentItemId = d?.contentItemId || null
-        }
+        await apiFetch('/api/editorial/clip-to-broll', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary() }),
+        })
       }
-      return { contentItemId }
+      return {}
     },
-    onSuccess: ({ contentItemId }) => {
-      const done = []
-      if (dest.broll) done.push('saved to Library')
-      if (dest.post) done.push('post draft created')
-      if (done.length) toast(done.join(' · '))
+    onSuccess: () => {
+      if (dest.broll) toast('Saved to Library')
       setExportOpen(false)
       // Ad export is an interactive download modal — open it and STAY here.
-      if (dest.ad) { setAdExportOpen(true); return }
-      // Otherwise, if a post was created, go schedule it.
-      if (dest.post && contentItemId) navigate(`/publish/${contentItemId}`)
+      if (dest.ad) { setAdExportOpen(true) }
     },
   })
   const wholeMutation = useAppMutation({
@@ -1257,8 +1272,8 @@ export default function VideoEditor() {
   }
   // Clear the flash timer on unmount so it can't fire setAlignGuidesOn after teardown.
   useEffect(() => () => { if (alignGuideTimerRef.current) clearTimeout(alignGuideTimerRef.current) }, [])
-  const busy = exportMutation.isPending || wholeMutation.isPending
-  const anyDest = dest.post || dest.broll || dest.ad
+  const busy = exportMutation.isPending || wholeMutation.isPending || finalizeToPost.isPending
+  const anyDest = dest.broll || dest.ad
 
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
@@ -1349,7 +1364,29 @@ export default function VideoEditor() {
             </Tooltip>
           ))}
         </div>
-        {/* Export — one render, multiple destinations (pick any). */}
+        {/* Approve + publish this clip inline. Before a post exists, one
+            "Sounds like me" renders the clip → creates the post → approves it;
+            then the shared workflow bar takes over with the publish controls,
+            all without leaving the clip editor. */}
+        {post ? (
+          <EditorWorkflowBar piece={post} />
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                disabled={busy}
+                loading={finalizeToPost.isPending}
+                onClick={() => finalizeToPost.mutate()}
+              >
+                {!finalizeToPost.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
+                {finalizeToPost.isPending ? 'Rendering clip…' : 'Sounds like me'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Renders this clip into a post and approves it — then publish right here</TooltipContent>
+          </Tooltip>
+        )}
+        {/* Export — b-roll + ad sizes (the post path is the inline bar above). */}
         <div className="relative">
           <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center" style={{ background: 'hsl(var(--action))', color: 'hsl(var(--action-foreground))' }}>
             {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
@@ -1360,7 +1397,6 @@ export default function VideoEditor() {
               <div role="menu" aria-label="Export destination" className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border bg-card p-2 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
                 <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Send this clip to — pick any</p>
                 {[
-                  { k: 'post', icon: CalendarClock, label: 'Schedule a post', sub: 'Pick channels & schedule on Publish' },
                   { k: 'broll', icon: FolderOpen, label: 'Save to Library', sub: 'Reusable b-roll clip' },
                   { k: 'ad', icon: Megaphone, label: 'Export for ads', sub: 'Download ad-sized versions' },
                 ].map((o) => (
