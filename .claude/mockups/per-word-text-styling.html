@@ -1,0 +1,404 @@
+<title>Per-word text styling — Photo Editor</title>
+<style>
+  :root {
+    --page-bg: #0b0d0f;
+    --page-fg: #e7ebee;
+    --panel: #16191c;
+    --panel-2: #1d2125;
+    --border: #2a3037;
+    --muted: #8a949d;
+    --primary: #0C7580;
+    --primary-ink: #7fd6dd;
+    --action: #e8843c;
+    --tool-bg: #ffffff;
+    --tool-fg: #23292e;
+    --tool-border: #e2e6ea;
+    --tool-hover: #f0f2f4;
+    --radius: 12px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="light"] { --page-bg: #eef1f3; --page-fg: #12181d; --muted: #5a656e; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --page-bg: #eef1f3; --page-fg: #12181d; --muted: #5a656e; }
+  }
+  * { box-sizing: border-box; }
+  .wrap {
+    font-family: var(--sans); color: var(--page-fg); background: var(--page-bg);
+    min-height: 100%; padding: 26px 18px 60px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+  }
+  .head { max-width: 940px; width: 100%; text-align: center; }
+  .head h1 { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 6px; }
+  .head p { margin: 0 auto; max-width: 640px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .stagewrap {
+    display: grid; grid-template-columns: minmax(300px, 380px) minmax(260px, 340px);
+    gap: 26px; align-items: start; max-width: 940px; width: 100%;
+  }
+  @media (max-width: 740px) { .stagewrap { grid-template-columns: 1fr; } }
+
+  .stage {
+    position: relative; aspect-ratio: 4 / 5; border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border);
+    background:
+      radial-gradient(120% 80% at 30% 15%, rgba(255,255,255,.20), transparent 55%),
+      linear-gradient(160deg, #33474e 0%, #223034 42%, #14201f 100%);
+    box-shadow: 0 12px 40px rgba(0,0,0,.4); user-select: none;
+  }
+  .stage::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.45) 100%); pointer-events: none;
+  }
+  .textbox {
+    position: absolute; left: 50%; top: 60%; transform: translate(-50%, -50%);
+    width: 86%; text-align: center; outline: none; color: #fff;
+    font-weight: 700; font-size: 26px; line-height: 1.28;
+    text-shadow: 0 2px 8px rgba(0,0,0,.6); caret-color: #fff;
+    border-radius: 8px; padding: 6px 8px; z-index: 2; user-select: text; -webkit-user-select: text;
+  }
+  .textbox:focus { box-shadow: 0 0 0 2px rgba(127,214,221,.55); }
+  .textbox::selection { background: rgba(127,214,221,.40); }
+  .hint {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    font-size: 11px; color: rgba(255,255,255,.7); background: rgba(0,0,0,.35);
+    padding: 3px 9px; border-radius: 999px; z-index: 2; pointer-events: none; text-shadow: none;
+  }
+
+  /* ── Canva-style selection toolbar ── */
+  .seltool {
+    position: fixed; z-index: 50; display: none; align-items: center; gap: 3px;
+    padding: 6px; background: var(--tool-bg); color: var(--tool-fg);
+    border: 1px solid var(--tool-border); border-radius: 12px;
+    box-shadow: 0 12px 34px rgba(0,0,0,.28); font-size: 14px;
+  }
+  .seltool.show { display: flex; }
+  .seltool .div { width: 1px; height: 24px; background: var(--tool-border); margin: 0 3px; }
+  .tbtn {
+    height: 32px; min-width: 32px; padding: 0 8px; display: inline-flex; align-items: center;
+    justify-content: center; background: transparent; color: var(--tool-fg); border: 0;
+    border-radius: 8px; font-family: var(--sans); font-size: 15px; cursor: pointer; position: relative;
+  }
+  .tbtn:hover { background: var(--tool-hover); }
+  .tbtn.on { background: rgba(12,117,128,.12); color: var(--primary); }
+  .tbtn.bold { font-weight: 800; }
+  .tbtn.ital { font-style: italic; font-family: Georgia, "Times New Roman", serif; }
+  .tbtn.under { text-decoration: underline; }
+  .tbtn.strike { text-decoration: line-through; }
+  .fontpill {
+    height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px;
+    background: var(--tool-hover); border: 1px solid var(--tool-border); border-radius: 8px;
+    font-size: 13px; cursor: pointer; color: var(--tool-fg); max-width: 128px;
+  }
+  .fontpill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fontpill .caret { color: var(--muted); font-size: 10px; }
+  .sizebox {
+    display: inline-flex; align-items: center; background: var(--tool-hover);
+    border: 1px solid var(--tool-border); border-radius: 8px; height: 32px; overflow: hidden;
+  }
+  .sizebox button { width: 26px; height: 100%; border: 0; background: transparent; cursor: pointer; font-size: 16px; color: var(--tool-fg); }
+  .sizebox button:hover { background: var(--tool-border); }
+  .sizeval { width: 40px; text-align: center; font-size: 13px; color: var(--tool-fg); font-variant-numeric: tabular-nums; }
+  .colorA { flex-direction: column; gap: 0; line-height: 1; font-weight: 800; font-size: 16px; }
+  .colorA .bar { width: 17px; height: 4px; border-radius: 2px; margin-top: 2px; background: #e8843c; border: 1px solid rgba(0,0,0,.15); }
+
+  /* popovers */
+  .pop {
+    position: fixed; z-index: 60; display: none; background: var(--tool-bg); color: var(--tool-fg);
+    border: 1px solid var(--tool-border); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.28); padding: 12px;
+  }
+  .pop.show { display: block; }
+  .pop h4 { margin: 0 0 9px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .swatchgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .swatch { height: 26px; width: 26px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(0,0,0,.18); padding: 0; }
+  .swatch.sel { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary); }
+  .swatch.custom { background: conic-gradient(from 0deg,#ff5f5f,#ffd15f,#6bff8f,#5fb8ff,#b45fff,#ff5f5f); position: relative; overflow: hidden; }
+  .swatch.custom input { position: absolute; inset: -6px; opacity: 0; cursor: pointer; }
+  .fontlist { display: flex; flex-direction: column; min-width: 160px; }
+  .fontlist button { text-align: left; padding: 8px 10px; border: 0; background: transparent; border-radius: 7px; cursor: pointer; font-size: 15px; color: var(--tool-fg); }
+  .fontlist button:hover { background: var(--tool-hover); }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { font-size: 12px; color: var(--muted); width: 84px; }
+  .row input[type=range] { flex: 1; accent-color: var(--primary); }
+  .effopts { display: flex; gap: 8px; }
+  .effopts button { flex: 1; padding: 8px 6px; border: 1px solid var(--tool-border); background: var(--tool-hover); border-radius: 8px; cursor: pointer; font-size: 12px; color: var(--tool-fg); }
+  .effopts button.on { border-color: var(--primary); color: var(--primary); background: rgba(12,117,128,.10); }
+
+  /* explainer */
+  .legend { background: var(--panel); border: 1px dashed var(--border); border-radius: var(--radius); padding: 18px; font-size: 13.5px; }
+  .legend h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--primary-ink); margin: 0 0 12px; }
+  .legend ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .legend li { display: flex; gap: 9px; line-height: 1.45; }
+  .legend .k { flex: 0 0 auto; height: 20px; min-width: 22px; padding: 0 5px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 1px; background: var(--panel-2); color: var(--primary-ink); border: 1px solid var(--border); }
+  .legend .perword { color: var(--page-fg); }
+  .legend .block { color: var(--muted); }
+  .legend .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 1px 5px; border-radius: 4px; margin-left: 2px; vertical-align: middle; }
+  .tag.pw { background: rgba(12,117,128,.16); color: var(--primary-ink); }
+  .tag.bl { background: rgba(138,148,157,.16); color: var(--muted); }
+  .note { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.5; }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Highlight-to-style — full Canva-style toolbar</h1>
+    <p>Double-click into the caption and <b>select any word or phrase</b>. The toolbar carries the Canva set: font, size, color, <b>B I U S</b>, case, align, spacing, and effects. Green-tagged controls restyle just the selection; grey-tagged ones apply to the whole text box.</p>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stage" id="stage">
+      <div class="textbox" id="tb" contenteditable="true" spellcheck="false">Is your sciatica getting <span style="color:#e8843c">worse</span>, not better?</div>
+      <div class="hint">Select a word to style it</div>
+    </div>
+
+    <div class="legend">
+      <h2>Toolbar controls</h2>
+      <ul>
+        <li><span class="k">Aa</span><span class="perword"><b>Font</b> <span class="tag pw">per-word</span> — swap the typeface on a selection.</span></li>
+        <li><span class="k">−#+</span><span class="perword"><b>Size</b> <span class="tag pw">per-word</span> — numeric, like Canva. Emphasise one word without a 2nd box.</span></li>
+        <li><span class="k">A</span><span class="perword"><b>Color</b> <span class="tag pw">per-word</span> — brand swatches + custom.</span></li>
+        <li><span class="k">BIUS</span><span class="perword"><b>Bold / Italic / Underline / Strikethrough</b> <span class="tag pw">per-word</span>.</span></li>
+        <li><span class="k">aA</span><span class="perword"><b>Case</b> <span class="tag pw">per-word</span> — UPPER / lower / Sentence.</span></li>
+        <li><span class="k">≡</span><span class="block"><b>Align</b> <span class="tag bl">whole box</span> — left / center / right.</span></li>
+        <li><span class="k">↕</span><span class="block"><b>Spacing</b> <span class="tag bl">whole box</span> — letter + line.</span></li>
+        <li><span class="k">✦</span><span class="block"><b>Effects</b> <span class="tag bl">whole box</span> — shadow depth for legibility on photos.</span></li>
+      </ul>
+      <div class="note"><b>Dropped from Canva's bar (ask if you want them):</b> Lists (not used in captions), Animate (still image), Position (you already drag on canvas). <br><br>Color ships today; everything else is new work in the publish compositor so what you see here bakes into the real post.</div>
+    </div>
+  </div>
+</div>
+
+<!-- toolbar -->
+<div class="seltool" id="seltool">
+  <button class="fontpill" data-act="font"><span id="fontname">Heading</span><span class="caret">▾</span></button>
+  <div class="sizebox">
+    <button data-act="size-">−</button>
+    <span class="sizeval" id="sizeval">26</span>
+    <button data-act="size+">+</button>
+  </div>
+  <button class="tbtn colorA" data-act="color" title="Text color">A<span class="bar" id="colorbar"></span></button>
+  <button class="tbtn bold" data-act="bold" title="Bold">B</button>
+  <button class="tbtn ital" data-act="italic" title="Italic">I</button>
+  <button class="tbtn under" data-act="underline" title="Underline">U</button>
+  <button class="tbtn strike" data-act="strike" title="Strikethrough">S</button>
+  <button class="tbtn" data-act="case" title="Case">aA</button>
+  <div class="div"></div>
+  <button class="tbtn" data-act="align" title="Align">≡</button>
+  <button class="tbtn" data-act="spacing" title="Spacing">↕</button>
+  <button class="tbtn" data-act="effects" title="Effects">✦</button>
+</div>
+
+<!-- popovers -->
+<div class="pop" id="pop-color">
+  <h4>Text color</h4>
+  <div class="swatchgrid">
+    <button class="swatch" style="background:#0c1a2e" data-color="#0c1a2e" title="Navy"></button>
+    <button class="swatch" style="background:#83957c" data-color="#83957c" title="Sage"></button>
+    <button class="swatch" style="background:#e8843c" data-color="#e8843c" title="Orange"></button>
+    <button class="swatch" style="background:#f6f4ef" data-color="#f6f4ef" title="Paper"></button>
+    <button class="swatch" style="background:#ffffff" data-color="#ffffff" title="White"></button>
+    <button class="swatch" style="background:#111111" data-color="#111111" title="Black"></button>
+    <button class="swatch custom" title="Custom"><input type="color" id="customColor" value="#7fd6dd"></button>
+  </div>
+</div>
+<div class="pop fontlist" id="pop-font">
+  <button data-font="heading" style="font-weight:800">Heading</button>
+  <button data-font="body" style="font-weight:500">Body</button>
+  <button data-font="serif" style="font-family:Georgia,serif">Serif accent</button>
+</div>
+<div class="pop" id="pop-spacing">
+  <div class="row"><label>Letter</label><input type="range" id="ls" min="-2" max="12" step="0.5" value="0"></div>
+  <div class="row"><label>Line</label><input type="range" id="lh" min="1" max="1.8" step="0.05" value="1.28"></div>
+</div>
+<div class="pop" id="pop-effects">
+  <h4>Shadow</h4>
+  <div class="effopts">
+    <button data-eff="none">None</button>
+    <button data-eff="soft" class="on">Soft</button>
+    <button data-eff="heavy">Heavy</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var tb = document.getElementById('tb');
+  var tool = document.getElementById('seltool');
+  var sizeval = document.getElementById('sizeval');
+  var colorbar = document.getElementById('colorbar');
+  var savedRange = null;
+  var BASE = 26, STEP = 2, MINPX = 12, MAXPX = 80;
+  var pops = { color: 'pop-color', font: 'pop-font', spacing: 'pop-spacing', effects: 'pop-effects' };
+
+  function currentRange() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    var r = sel.getRangeAt(0);
+    if (!tb.contains(r.commonAncestorContainer) || !r.toString().trim()) return null;
+    return r;
+  }
+  function restore() {
+    if (!savedRange) return null;
+    var sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(savedRange.cloneRange());
+    return currentRange();
+  }
+  function positionAt(el, rect) {
+    el.classList.add('show');
+    var w = el.offsetWidth, h = el.offsetHeight;
+    var left = Math.max(8, Math.min(rect.left + rect.width / 2 - w / 2, window.innerWidth - w - 8));
+    var top = rect.top - h - 10; if (top < 8) top = rect.bottom + 10;
+    el.style.left = left + 'px'; el.style.top = top + 'px';
+  }
+  function showTool() {
+    var r = currentRange();
+    if (!r) { hideAll(); savedRange = null; return; }
+    savedRange = r.cloneRange();
+    positionAt(tool, r.getBoundingClientRect());
+    syncState(r);
+  }
+  function hidePops() { Object.values(pops).forEach(function (id) { document.getElementById(id).classList.remove('show'); }); }
+  function hideAll() { tool.classList.remove('show'); hidePops(); }
+
+  function nearestSpan(node) {
+    while (node && node !== tb) { if (node.nodeType === 1 && node.tagName === 'SPAN') return node; node = node.parentNode; }
+    return null;
+  }
+  function effPx(r) {
+    var s = nearestSpan(r.startContainer);
+    if (s && s.style.fontSize) return parseFloat(s.style.fontSize);
+    return BASE;
+  }
+  function syncState(r) {
+    sizeval.textContent = Math.round(effPx(r));
+    var s = nearestSpan(r.startContainer);
+    if (s && s.style.color) colorbar.style.background = s.style.color;
+    ['bold','italic','underline','strike'].forEach(function (a) {
+      var btn = tool.querySelector('[data-act=' + a + ']');
+      var on = false;
+      if (s) {
+        if (a === 'bold') on = (s.style.fontWeight === '800' || s.style.fontWeight === 'bold');
+        if (a === 'italic') on = s.style.fontStyle === 'italic';
+        if (a === 'underline') on = (s.style.textDecorationLine || s.style.textDecoration || '').indexOf('underline') > -1;
+        if (a === 'strike') on = (s.style.textDecorationLine || s.style.textDecoration || '').indexOf('line-through') > -1;
+      }
+      btn.classList.toggle('on', on);
+    });
+  }
+
+  function styleSelection(apply) {
+    var r = restore() || currentRange();
+    if (!r) return;
+    var span = document.createElement('span');
+    try { r.surroundContents(span); }
+    catch (e) { var frag = r.extractContents(); span.appendChild(frag); r.insertNode(span); }
+    apply(span);
+    if (!span.getAttribute('style')) {
+      var p = span.parentNode; while (span.firstChild) p.insertBefore(span.firstChild, span);
+      p.removeChild(span); if (p.normalize) p.normalize();
+      return;
+    }
+    var sel = window.getSelection(); sel.removeAllRanges();
+    var nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
+    savedRange = nr.cloneRange();
+    positionAt(tool, nr.getBoundingClientRect());
+    syncState(nr);
+  }
+  function decoParts(span) {
+    var d = (span.style.textDecorationLine || span.style.textDecoration || '');
+    return { u: d.indexOf('underline') > -1, s: d.indexOf('line-through') > -1 };
+  }
+  function setDeco(span, u, s) {
+    var parts = []; if (u) parts.push('underline'); if (s) parts.push('line-through');
+    span.style.textDecorationLine = parts.join(' ') || 'none';
+  }
+  function toggleDeco(which) {
+    var r = restore() || currentRange(); if (!r) return;
+    var existing = nearestSpan(r.startContainer);
+    var cur = existing ? decoParts(existing) : { u: false, s: false };
+    styleSelection(function (span) {
+      var p = decoParts(span);
+      if (which === 'u') setDeco(span, !(cur.u || p.u), (cur.s || p.s));
+      else setDeco(span, (cur.u || p.u), !(cur.s || p.s));
+    });
+  }
+  function bumpSize(dir) {
+    var r = restore() || currentRange(); if (!r) return;
+    var px = Math.max(MINPX, Math.min(MAXPX, Math.round(effPx(r)) + dir * STEP));
+    styleSelection(function (span) { span.style.fontSize = px + 'px'; });
+    sizeval.textContent = px;
+  }
+  var CASES = ['none', 'uppercase', 'lowercase', 'capitalize'];
+  function cycleCase() {
+    var r = restore() || currentRange(); if (!r) return;
+    var s = nearestSpan(r.startContainer);
+    var cur = s && s.style.textTransform ? s.style.textTransform : 'none';
+    var next = CASES[(CASES.indexOf(cur) + 1) % CASES.length];
+    styleSelection(function (span) { span.style.textTransform = next; });
+  }
+
+  // toolbar clicks
+  tool.addEventListener('mousedown', function (e) { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+  tool.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-act]'); if (!btn) return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'size+') return bumpSize(1);
+    if (act === 'size-') return bumpSize(-1);
+    if (act === 'bold') return styleSelection(function (s) { s.style.fontWeight = (s.style.fontWeight === '800') ? '400' : '800'; });
+    if (act === 'italic') return styleSelection(function (s) { s.style.fontStyle = (s.style.fontStyle === 'italic') ? 'normal' : 'italic'; });
+    if (act === 'underline') return toggleDeco('u');
+    if (act === 'strike') return toggleDeco('s');
+    if (act === 'case') return cycleCase();
+    if (act === 'align') return cycleAlign();
+    if (act === 'color' || act === 'font' || act === 'spacing' || act === 'effects') return togglePop(act, btn);
+  });
+
+  function togglePop(name, anchor) {
+    var el = document.getElementById(pops[name]);
+    var wasShown = el.classList.contains('show');
+    hidePops();
+    if (wasShown) return;
+    positionAt(el, anchor.getBoundingClientRect());
+  }
+
+  // popover interactions
+  var alignState = 'center';
+  function cycleAlign() {
+    alignState = alignState === 'center' ? 'left' : alignState === 'left' ? 'right' : 'center';
+    tb.style.textAlign = alignState;
+  }
+  document.getElementById('pop-color').addEventListener('mousedown', function (e) { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+  document.getElementById('pop-color').addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-color]'); if (!sw) return;
+    var c = sw.getAttribute('data-color');
+    styleSelection(function (s) { s.style.color = c; });
+    colorbar.style.background = c; hidePops();
+  });
+  document.getElementById('customColor').addEventListener('input', function (e) {
+    styleSelection(function (s) { s.style.color = e.target.value; });
+    colorbar.style.background = e.target.value;
+  });
+  document.getElementById('pop-font').addEventListener('mousedown', function (e) { e.preventDefault(); });
+  document.getElementById('pop-font').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-font]'); if (!b) return;
+    var f = b.getAttribute('data-font');
+    var fam = f === 'serif' ? 'Georgia, serif' : (f === 'body' ? 'system-ui, sans-serif' : '"Helvetica Neue", Arial, sans-serif');
+    styleSelection(function (s) { s.style.fontFamily = fam; });
+    document.getElementById('fontname').textContent = b.textContent; hidePops();
+  });
+  document.getElementById('ls').addEventListener('input', function (e) { tb.style.letterSpacing = e.target.value + 'px'; });
+  document.getElementById('lh').addEventListener('input', function (e) { tb.style.lineHeight = e.target.value; });
+  document.getElementById('pop-effects').addEventListener('mousedown', function (e) { e.preventDefault(); });
+  document.getElementById('pop-effects').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-eff]'); if (!b) return;
+    document.querySelectorAll('#pop-effects [data-eff]').forEach(function (x) { x.classList.remove('on'); });
+    b.classList.add('on');
+    var eff = b.getAttribute('data-eff');
+    tb.style.textShadow = eff === 'none' ? 'none' : eff === 'heavy' ? '0 3px 14px rgba(0,0,0,.85)' : '0 2px 8px rgba(0,0,0,.6)';
+  });
+
+  tb.addEventListener('mouseup', function () { setTimeout(showTool, 0); });
+  tb.addEventListener('keyup', showTool);
+  document.addEventListener('selectionchange', function () { if (document.activeElement === tb) setTimeout(showTool, 0); });
+  document.addEventListener('mousedown', function (e) {
+    if (!tool.contains(e.target) && !e.target.closest('.pop') && e.target !== tb && !tb.contains(e.target)) hideAll();
+  });
+})();
+</script>

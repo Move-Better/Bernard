@@ -143,32 +143,80 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
 // colour assignment. Returns [{word,color}[]] — one sub-array per output line.
 // Spaces between words on the same line are drawn by the caller with the
 // following word's colour (invisible either way, but keeps the loop simple).
-function wrapRuns(ctx, runs, maxWidth, maxLines, uppercase) {
-  const words = [] // [{word, color}]
-  for (const r of runs) {
-    const color = r.color || null
-    const src = uppercase ? (r.text || '').toUpperCase() : (r.text || '')
-    for (const w of src.split(' ')) {
-      if (w) words.push({ word: w, color })
-    }
+const SERIF_STACK = 'Georgia, "Times New Roman", serif'
+
+// True when a run carries ANY per-word style override (not just colour). Gates
+// the rich-runs render path.
+function hasRunStyle(runs) {
+  return Array.isArray(runs) && runs.some((r) =>
+    r && (r.color || r.font || (Number.isFinite(r.sizeScale) && r.sizeScale !== 1)
+      || typeof r.bold === 'boolean' || typeof r.italic === 'boolean'
+      || r.underline || r.strike || r.case))
+}
+
+function applyCase(s, mode) {
+  if (mode === 'upper') return (s || '').toUpperCase()
+  if (mode === 'lower') return (s || '').toLowerCase()
+  if (mode === 'title') return (s || '').replace(/\b\w/g, (c) => c.toUpperCase())
+  return s || ''
+}
+
+// Resolve one run's style against the block's base typography (`base` carries
+// weight/size/family/italic/color/lineH/uppercase from roleTypography). Returns
+// a fully-resolved per-word style incl. the composed canvas `font` string.
+function resolveRunStyle(run, base, fonts) {
+  const r = run || {}
+  const scale = Number.isFinite(r.sizeScale) && r.sizeScale > 0 ? r.sizeScale : 1
+  const size = Math.max(8, Math.round(base.size * scale))
+  const weight = r.bold === true ? '800' : r.bold === false ? '400' : base.weight
+  const italic = r.italic === true ? true : r.italic === false ? false : base.italic
+  const family = r.font === 'heading' ? fonts.heading
+    : r.font === 'body' ? fonts.body
+    : r.font === 'serif' ? SERIF_STACK
+    : base.family
+  const caseMode = r.case || (base.uppercase ? 'upper' : null)
+  return {
+    font: `${italic ? 'italic ' : ''}${weight} ${size}px ${family}`,
+    size,
+    color: r.color || base.color,
+    underline: !!r.underline,
+    strike: !!r.strike,
+    caseMode,
+    // Scaled runs grow the line; default runs keep the block's tuned lineH so
+    // colour-only runs render byte-identically to the pre-rich path.
+    lineH: scale !== 1 ? Math.round(size * 1.18) : base.lineH,
+  }
+}
+
+// Wrap rich runs into lines of {word, style} tokens, measuring each word in its
+// OWN font. Each line also tracks its height (max lineH of its words).
+function wrapRichRuns(ctx, runs, base, fonts, maxWidth, maxLines) {
+  const words = []
+  for (const run of runs) {
+    const style = resolveRunStyle(run, base, fonts)
+    const src = applyCase(run?.text || '', style.caseMode)
+    for (const w of src.split(' ')) if (w) words.push({ word: w, style })
   }
   const lines = []
   let curLine = []
   let curW = 0
-  const spW = ctx.measureText(' ').width
-  for (const { word, color } of words) {
-    const ww = ctx.measureText(word).width
-    const gap = curLine.length ? spW : 0
+  for (const tok of words) {
+    ctx.font = tok.style.font
+    const ww = ctx.measureText(tok.word).width
+    const gap = curLine.length ? ctx.measureText(' ').width : 0
     if (curW > 0 && curW + gap + ww > maxWidth) {
       lines.push(curLine)
       if (lines.length >= maxLines) { curLine = []; break }
-      curLine = [{ word, color }]; curW = ww
+      curLine = [tok]; curW = ww
     } else {
-      curLine.push({ word, color }); curW += gap + ww
+      curLine.push(tok); curW += gap + ww
     }
   }
   if (curLine.length && lines.length < maxLines) lines.push(curLine)
-  return lines.slice(0, maxLines)
+  return lines.slice(0, maxLines).map((line) => ({
+    tokens: line,
+    height: line.reduce((h, t) => Math.max(h, t.style.lineH), 0),
+  }))
 }
 
 function drawRoundedRect(ctx, x, y, w, h, r) {
@@ -653,6 +701,11 @@ function roleTypography(role, brandStyle, themeBlock, blockStyle = null, H = SIZ
 
   return {
     font: `${italic ? 'italic ' : ''}${weight} ${size}px ${family}`,
+    // Decomposed parts so the rich-runs path can build per-word font variants
+    // (per-word size / weight / italic / family) without re-parsing `font`.
+    weight,
+    family,
+    italic,
     lineH,
     size,
     color,
@@ -804,30 +857,51 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     : typo.maxWidthFrac
   const maxW = Math.round(W * widthFrac)
 
-  // ── Multi-colour runs path ──────────────────────────────────────────────────
-  // When the block carries per-word colour data (from the inline colour picker),
-  // render each word in its own colour; fall back to the single-colour path when
-  // no run carries a colour override (runs with no colour = standard white text).
-  if (block.runs && block.runs.some((r) => r.color)) {
-    const runLines = wrapRuns(ctx, block.runs, maxW, typo.maxLines, typo.uppercase)
-    const lastLineOffset = (runLines.length - 1) * typo.lineH
+  // ── Rich per-word runs path ─────────────────────────────────────────────────
+  // When the block carries per-word style data (colour / font / size / weight /
+  // italic / underline / strikethrough / case — from the inline selection
+  // toolbar), render each word in its own resolved font. Colour-only runs render
+  // byte-identically to the pre-rich path (default runs inherit the block typo).
+  if (hasRunStyle(block.runs)) {
+    const fonts = brandFonts(brandStyle)
+    const base = {
+      weight: typo.weight, size: typo.size, family: typo.family, italic: typo.italic,
+      color: typo.color, uppercase: typo.uppercase, lineH: typo.lineH,
+    }
+    const runLines = wrapRichRuns(ctx, block.runs, base, fonts, maxW, typo.maxLines)
+    const heights = runLines.map((l) => l.height)
+    const totalGap = heights.slice(1).reduce((s, h) => s + h, 0)
     let y = vAnchor === 'top'    ? anchorY
-          : vAnchor === 'center' ? anchorY - lastLineOffset / 2
-          :                        anchorY - lastLineOffset
-    const defaultColor = typo.color
-    const spW = ctx.measureText(' ').width
-    for (const rl of runLines) {
-      const lineW = rl.reduce((s, { word }, i) => s + ctx.measureText(word).width + (i ? spW : 0), 0)
+          : vAnchor === 'center' ? anchorY - totalGap / 2
+          :                        anchorY - totalGap
+    ctx.textAlign = 'left'
+    for (let li = 0; li < runLines.length; li++) {
+      const { tokens } = runLines[li]
+      // Line width in each word's own font (+ per-word space gaps).
+      let lineW = 0
+      for (let i = 0; i < tokens.length; i++) {
+        ctx.font = tokens[i].style.font
+        lineW += ctx.measureText(tokens[i].word).width
+        if (i > 0) lineW += ctx.measureText(' ').width
+      }
       let x = align === 'left' ? anchorX : align === 'right' ? anchorX - lineW : anchorX - lineW / 2
-      for (let i = 0; i < rl.length; i++) {
-        const { word, color } = rl[i]
-        if (i > 0) { ctx.fillStyle = color || defaultColor; ctx.fillText(' ', x, y); x += spW }
-        ctx.fillStyle = color || defaultColor
+      for (let i = 0; i < tokens.length; i++) {
+        const { word, style } = tokens[i]
+        ctx.font = style.font
+        ctx.fillStyle = style.color
+        if (i > 0) { ctx.fillText(' ', x, y); x += ctx.measureText(' ').width }
+        const ww = ctx.measureText(word).width
         if (typo.shadow) drawTextWithShadow(ctx, word, x, y, typo.shadowLevel)
         else             ctx.fillText(word, x, y)
-        x += ctx.measureText(word).width
+        if (style.underline || style.strike) {
+          const th = Math.max(2, Math.round(style.size * 0.06))
+          ctx.fillStyle = style.color
+          if (style.underline) ctx.fillRect(x, y + Math.round(style.size * 0.14), ww, th)
+          if (style.strike)    ctx.fillRect(x, y - Math.round(style.size * 0.28), ww, th)
+        }
+        x += ww
       }
-      y += typo.lineH
+      if (li < runLines.length - 1) y += heights[li + 1]
     }
     ctx.textAlign = 'start'
     return
