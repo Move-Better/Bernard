@@ -11,7 +11,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
-import { fetchGA4Metrics, fetchGA4OutboundClickCount, urlToPagePath } from '../../_lib/ga4.js'
+import { fetchGA4Metrics, fetchGA4OutboundClickCount, fetchGA4TotalSessions, urlToPagePath } from '../../_lib/ga4.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -102,13 +102,28 @@ export default async function handler(req, res) {
     }
   }
 
+  // Property-wide total sessions — every page GA4 sees, not just our tracked
+  // content_items (see fetchGA4Metrics below, which is scoped to pagePaths).
+  // Best-effort, same reasoning as bookNowClicks above.
+  let totalSessions = null
+  try {
+    totalSessions = await fetchGA4TotalSessions({
+      serviceAccountJson,
+      propertyId: ws.ga4_property_id,
+      startDate: weekStartStr,
+      endDate: weekEndStr,
+    })
+  } catch (e) {
+    console.error('[engagement/website-by-week] total-sessions failed:', e?.message)
+  }
+
   const itemsRes = await sb(
     `content_items?workspace_id=eq.${ws.id}&status=eq.published&resolved_url=not.is.null` +
     `&select=resolved_url&order=published_at.desc.nullslast&limit=200`
   )
   const items = itemsRes.ok ? (await itemsRes.json().catch(() => [])) : []
   const pagePaths = [...new Set(items.map((i) => urlToPagePath(i.resolved_url)).filter(Boolean))]
-  if (pagePaths.length === 0) return res.status(200).json({ ...body, connected: true, sessions: 0, engagedSessions: 0, bookNowClicks })
+  if (pagePaths.length === 0) return res.status(200).json({ ...body, connected: true, sessions: 0, engagedSessions: 0, bookNowClicks, totalSessions })
 
   let metricsByPath
   try {
@@ -121,7 +136,7 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('[engagement/website-by-week]', e?.message)
-    return res.status(200).json({ ...body, connected: true, error: 'ga4_fetch_failed', bookNowClicks })
+    return res.status(200).json({ ...body, connected: true, error: 'ga4_fetch_failed', bookNowClicks, totalSessions })
   }
 
   let sessions = 0
@@ -138,5 +153,6 @@ export default async function handler(req, res) {
     engagedSessions,
     engagementRate: sessions > 0 ? engagedSessions / sessions : null,
     bookNowClicks,
+    totalSessions,
   })
 }

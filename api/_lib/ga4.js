@@ -132,6 +132,32 @@ export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePath
   return out
 }
 
+// Property-wide total sessions for a date range — no page/path filter, so
+// this includes every page GA4 sees (home, staff bios, service pages, etc.),
+// not just the workspace's tracked content_items. Distinct from
+// fetchGA4Metrics' per-pagePath pageviews, which only covers our own
+// published posts. Returns a single number (0 if the property had no
+// traffic in range).
+export async function fetchGA4TotalSessions({ serviceAccountJson, propertyId, startDate, endDate }) {
+  if (!propertyId) throw new Error('ga4: propertyId is required')
+  const token = await getAccessToken(serviceAccountJson)
+
+  const r = await fetch(REPORT_URL(propertyId), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dateRanges: [{ startDate, endDate }],
+      metrics:    [{ name: 'sessions' }],
+    }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new Error(`ga4: total-sessions report failed (${r.status}) — ${text.slice(0, 300)}`)
+  }
+  const data = await r.json()
+  return Number(data?.rows?.[0]?.metricValues?.[0]?.value) || 0
+}
+
 // Count outbound-link "click" events whose linkUrl contains `domainContains`
 // — e.g. workspaces.booking_url's hostname. GA4's Enhanced Measurement
 // auto-tracks clicks to off-domain links with no custom instrumentation
