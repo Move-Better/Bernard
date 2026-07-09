@@ -47,6 +47,7 @@ export const KEEP_FILES = [
   'integrations/drive/import.js',
   'publish/website.js',
   'interviews/detect-video-offset.js',
+  'music/upload.js',
   'handout/create.js',
 ]
 

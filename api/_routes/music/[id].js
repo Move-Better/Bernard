@@ -7,13 +7,13 @@
 
 export const config = { runtime: 'nodejs' }
 
-import { withSentry } from '../_lib/sentry.js'
+import { withSentry } from '../../_lib/sentry.js'
 import { del as blobDel } from '@vercel/blob'
-import { requireRole } from '../_lib/auth.js'
-import { ADMIN_ROLES } from '../_lib/roles.js'
-import { workspaceContext } from '../_lib/workspaceContext.js'
-import { enforceLimit } from '../_lib/ratelimit.js'
-import { MUSIC_MOODS } from '../_lib/musicLibrary.js'
+import { requireRole } from '../../_lib/auth.js'
+import { ADMIN_ROLES } from '../../_lib/roles.js'
+import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { enforceLimit } from '../../_lib/ratelimit.js'
+import { MUSIC_MOODS } from '../../_lib/musicLibrary.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
