@@ -132,6 +132,41 @@ export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePath
   return out
 }
 
+// Count outbound-link "click" events whose linkUrl contains `domainContains`
+// — e.g. workspaces.booking_url's hostname. GA4's Enhanced Measurement
+// auto-tracks clicks to off-domain links with no custom instrumentation
+// needed on the marketing site, so this approximates "Book Now" CTA clicks
+// for any workspace whose booking widget lives on a different domain.
+// Returns a single count for the date range (no dimension breakdown).
+export async function fetchGA4OutboundClickCount({ serviceAccountJson, propertyId, domainContains, startDate, endDate }) {
+  if (!propertyId) throw new Error('ga4: propertyId is required')
+  if (!domainContains) throw new Error('ga4: domainContains is required')
+  const token = await getAccessToken(serviceAccountJson)
+
+  const r = await fetch(REPORT_URL(propertyId), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dateRanges: [{ startDate, endDate }],
+      metrics:    [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            { filter: { fieldName: 'eventName', stringFilter: { value: 'click' } } },
+            { filter: { fieldName: 'linkUrl', stringFilter: { value: domainContains, matchType: 'CONTAINS' } } },
+          ],
+        },
+      },
+    }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new Error(`ga4: outbound-click count failed (${r.status}) — ${text.slice(0, 300)}`)
+  }
+  const data = await r.json()
+  return Number(data?.rows?.[0]?.metricValues?.[0]?.value) || 0
+}
+
 // Test-connection probe: verify a service-account JSON can actually read a
 // GA4 property. Exchanges the JWT for a token (proves the JSON is valid) and
 // runs a minimal property-wide totals report over the last 7 days (proves the

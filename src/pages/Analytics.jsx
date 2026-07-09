@@ -262,6 +262,11 @@ function ExitAnalysisRead({ data }) {
 }
 
 // Renders when Search Console is connected — top queries + keyword gaps.
+function fmtWeekOf(dateStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
 function SearchQueriesRead({ data }) {
   if (!data?.connected) {
     return (
@@ -295,6 +300,29 @@ function SearchQueriesRead({ data }) {
           <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
             Search Console · 28d
           </span>
+
+          {data.weeklyTotals?.length > 0 && (
+            <>
+              <p className="text-sm font-medium mt-3 mb-2">Clicks &amp; impressions by week</p>
+              <div className="space-y-1.5">
+                {data.weeklyTotals.map((w) => (
+                  <div key={w.weekStart} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-3 text-sm">
+                    <span className="text-muted-foreground">{w.isCurrent ? 'This week' : `Week of ${fmtWeekOf(w.weekStart)}`}</span>
+                    <span className="tabular-nums text-right">{w.clicks.toLocaleString()}</span>
+                    <span className="tabular-nums text-right text-muted-foreground">{w.impressions.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] gap-3 text-3xs text-muted-foreground pt-1 border-t border-border">
+                  <span />
+                  <span className="text-right">clicks</span>
+                  <span className="text-right">impr.</span>
+                </div>
+              </div>
+              <p className="text-2xs text-muted-foreground mt-1.5">
+                Google reports search data with a 1–3 day lag, so this week&rsquo;s total is still rising.
+              </p>
+            </>
+          )}
 
           {hasQueries && (
             <>
@@ -818,6 +846,12 @@ function WebsiteWeekCard({ data }) {
             {data?.connected && data?.engagementRate != null ? `${Math.round(data.engagementRate * 100)}%` : '—'}
           </span>
         </div>
+        {data?.connected && data?.bookNowClicks != null && (
+          <div className="flex justify-between items-baseline">
+            <span className="text-muted-foreground">Book Now clicks</span>
+            <span className="font-semibold tabular-nums">{fmtNum(data.bookNowClicks)}</span>
+          </div>
+        )}
         {!data?.connected && (
           <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
             Connect GA4 in Settings → Integrations to see weekly website sessions.
@@ -868,6 +902,17 @@ function DefinitionsModal({ onClose }) {
             <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
               <li><span className="font-medium text-foreground">Sessions</span> — Google Analytics 4 sessions on your published pages, for the selected week.</li>
               <li><span className="font-medium text-foreground">Engagement rate</span> — GA4&rsquo;s engaged sessions ÷ total sessions for that page.</li>
+              <li><span className="font-medium text-foreground">Book Now clicks</span> — clicks on your booking-widget link (from Settings → Workspace &rsquo;s Booking URL), counted via GA4&rsquo;s automatic outbound-link tracking. No custom tracking code needed — GA4 detects any click to a different domain on its own. Only shows once Booking URL is set and GA4 is connected.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><Search className="h-3 w-3 text-primary" /></span>
+              SEO — clicks &amp; impressions by week
+            </h3>
+            <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
+              <li><span className="font-medium text-foreground">Clicks</span> / <span className="font-medium text-foreground">Impressions</span> — Google Search Console&rsquo;s organic search totals, bucketed into the same Monday–Sunday weeks used elsewhere on this page.</li>
+              <li>Google reports search data with a 1–3 day lag, so the current week&rsquo;s total is always partial and will keep rising.</li>
             </ul>
           </div>
           <div>

@@ -11,7 +11,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
-import { fetchGA4Metrics, urlToPagePath } from '../../_lib/ga4.js'
+import { fetchGA4Metrics, fetchGA4OutboundClickCount, urlToPagePath } from '../../_lib/ga4.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -81,13 +81,34 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...body, connected: false, error: 'credential_decrypt_failed' })
   }
 
+  // "Book Now" clicks — GA4 Enhanced Measurement auto-tracks outbound clicks
+  // to off-domain links, so a workspace with a booking widget on a different
+  // domain (e.g. Jane App) gets this for free. Property-wide, so it doesn't
+  // depend on the workspace having any published pages. Best-effort: a
+  // failure here shouldn't block the sessions read below.
+  let bookNowClicks = null
+  if (ws.booking_url) {
+    try {
+      const bookingHost = new URL(ws.booking_url).hostname
+      bookNowClicks = await fetchGA4OutboundClickCount({
+        serviceAccountJson,
+        propertyId: ws.ga4_property_id,
+        domainContains: bookingHost,
+        startDate: weekStartStr,
+        endDate: weekEndStr,
+      })
+    } catch (e) {
+      console.error('[engagement/website-by-week] book-now click count failed:', e?.message)
+    }
+  }
+
   const itemsRes = await sb(
     `content_items?workspace_id=eq.${ws.id}&status=eq.published&resolved_url=not.is.null` +
     `&select=resolved_url&order=published_at.desc.nullslast&limit=200`
   )
   const items = itemsRes.ok ? (await itemsRes.json().catch(() => [])) : []
   const pagePaths = [...new Set(items.map((i) => urlToPagePath(i.resolved_url)).filter(Boolean))]
-  if (pagePaths.length === 0) return res.status(200).json({ ...body, connected: true, sessions: 0, engagedSessions: 0 })
+  if (pagePaths.length === 0) return res.status(200).json({ ...body, connected: true, sessions: 0, engagedSessions: 0, bookNowClicks })
 
   let metricsByPath
   try {
@@ -100,7 +121,7 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('[engagement/website-by-week]', e?.message)
-    return res.status(200).json({ ...body, connected: true, error: 'ga4_fetch_failed' })
+    return res.status(200).json({ ...body, connected: true, error: 'ga4_fetch_failed', bookNowClicks })
   }
 
   let sessions = 0
@@ -116,5 +137,6 @@ export default async function handler(req, res) {
     sessions,
     engagedSessions,
     engagementRate: sessions > 0 ? engagedSessions / sessions : null,
+    bookNowClicks,
   })
 }
