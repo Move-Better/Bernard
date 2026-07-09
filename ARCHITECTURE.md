@@ -249,6 +249,22 @@ provider's not-found error, not just create-when-null. Reference: `api/_routes/i
 bundle/connect.js` — on a bundle 404 "No team found" it recreates the team and retries once
 (`isMissingTeam`). Apply this to any handler that stores and later reuses an external id.
 
+**bundle.social analytics: the non-force response nests metrics in `items[]`, not `post.analytics`
+— and only a FORCED read ever advances that history.** Verified live against the real API
+(2026-07-09): `analyticsGetPostAnalytics` (no `force`) returns `{ post, profilePost, items: [...] }`
+where `items[]` is a time-series array of past forced reads; the metrics are NOT on `post.analytics`
+(that field doesn't exist — an earlier guess in `normalizeBundleAnalytics` read it anyway and
+silently normalized every non-force call to all-zero). `analyticsForcePostAnalytics` returns the
+metrics flat on the root object instead. Consequence: **nothing advances bundle's engagement
+history unless something calls `getAnalytics({..., force: true})`** — a plain read just returns
+whatever the last force call produced (or nothing, if there's never been one). Force-refresh is
+rate-limited to ~5/team/day, shared across every platform on one workspace's brand Team, so don't
+force every post daily — `api/_routes/cron/refresh-engagement.js`'s `processWorkspaceBundle` forces
+only at post-age checkpoints (1/3/7/30 days) plus a budget-capped one-time catch-up for posts never
+pulled, and writes the snapshot even when all-zero (a real reading) so catch-up doesn't re-queue the
+same post forever. Any new bundle analytics consumer must pass `force: true` explicitly — the
+default is a silent no-op, not a fresh read.
+
 **Core publish execution is reusable — call it, don't re-derive it.** `api/_routes/publish/
 buffer.js` exports `runBufferPublish({ workspaceId, token, platform, content, mediaUrls,
 scheduledAt, useQueue, locationIds, locationContents })` and `runBundlePublish(workspace, {...})`
