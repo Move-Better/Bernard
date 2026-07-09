@@ -50,6 +50,8 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
       fontScale: b.fontScale, color: b.color, fontWeight: b.fontWeight, uppercase: b.uppercase, font: b.font,
       italic: b.italic, underline: b.underline, runs: b.runs,
       letterSpacing: b.letterSpacing, lineHeight: b.lineHeight, shadow: b.shadow,
+      // WS3.2 text-effect preset — part of the baked pixels.
+      textEffect: b.textEffect, effectIntensity: b.effectIntensity, effectColor: b.effectColor,
     })),
     template: slide.template || null,
     photoUrl: photoUrl || null,
@@ -66,7 +68,8 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
     // aspect-parametric renderer). v4: dragged (custom {x,y}) text is centre-
     // anchored both axes so it matches the drag handle. v5: italic + underline.
     // v6: aspect selector — output dimensions are now user-controlled.
-    _renderV: 6,
+    // v7: text-effect presets (shadow/outline/glow/label) — WS3.2.
+    _renderV: 7,
     aspect: aspect || '4:5',
   }))
 }
