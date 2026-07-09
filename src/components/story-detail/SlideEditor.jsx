@@ -79,6 +79,10 @@ function normalizeSlide(s, idx) {
           ...(b?.font === 'heading' || b?.font === 'body' ? { font: b.font } : {}),
           ...(b?.italic === true ? { italic: true } : {}),
           ...(b?.underline === true ? { underline: true } : {}),
+          // Whole-box spacing + effects (P3).
+          ...(Number.isFinite(b?.letterSpacing) && b.letterSpacing !== 0 ? { letterSpacing: b.letterSpacing } : {}),
+          ...(Number.isFinite(b?.lineHeight) && b.lineHeight > 0 && b.lineHeight !== 1 ? { lineHeight: b.lineHeight } : {}),
+          ...(['none', 'soft', 'medium', 'heavy'].includes(b?.shadow) ? { shadow: b.shadow } : {}),
           // Per-word style runs (on-canvas selection toolbar). Keep when ANY run
           // carries a real override — not just colour — and whitelist run fields.
           ...(runsHaveStyle(b?.runs) ? { runs: b.runs.map(sanitizeRun) } : {}),
@@ -1811,6 +1815,43 @@ function TextStyleControls({ block, onSet, photoPalette = [] }) {
           })}
         </div>
       </div>
+
+      {/* Spacing — whole-box letter + line. 0 / 100% = Auto (role default). */}
+      <div>
+        <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Spacing</p>
+        <div className="mb-1 flex justify-between text-sm text-muted-foreground">
+          <span>Letter</span><span>{Number.isFinite(block.letterSpacing) ? block.letterSpacing : 0}</span>
+        </div>
+        <input
+          type="range" min="-10" max="40" step="1"
+          value={Number.isFinite(block.letterSpacing) ? block.letterSpacing : 0}
+          onChange={(e) => { const v = parseInt(e.target.value, 10); onSet('letterSpacing', v === 0 ? null : v) }}
+          className="h-5 w-full accent-primary" aria-label="Letter spacing"
+        />
+        <div className="mb-1 mt-2 flex justify-between text-sm text-muted-foreground">
+          <span>Line</span><span>{Math.round((Number.isFinite(block.lineHeight) && block.lineHeight > 0 ? block.lineHeight : 1) * 100)}%</span>
+        </div>
+        <input
+          type="range" min="0.8" max="2" step="0.05"
+          value={Number.isFinite(block.lineHeight) && block.lineHeight > 0 ? block.lineHeight : 1}
+          onChange={(e) => { const v = parseFloat(e.target.value); onSet('lineHeight', v === 1 ? null : v) }}
+          className="h-5 w-full accent-primary" aria-label="Line height"
+        />
+      </div>
+
+      {/* Effects — text shadow depth for legibility on photos. */}
+      <SegRow
+        label="Effects (shadow)"
+        options={[
+          { label: 'Auto', value: null },
+          { label: 'None', value: 'none' },
+          { label: 'Soft', value: 'soft' },
+          { label: 'Med', value: 'medium' },
+          { label: 'Heavy', value: 'heavy' },
+        ]}
+        value={block.shadow ?? null}
+        onPick={(v) => onSet('shadow', v)}
+      />
     </div>
   )
 }
@@ -2020,7 +2061,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   // Re-render the canvas when anything that affects the pixels changes.
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
-    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
+    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.letterSpacing || ''}:${b.lineHeight || ''}:${b.shadow || ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
     slide.photo_zoom || 1,
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',
