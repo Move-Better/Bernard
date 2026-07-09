@@ -349,6 +349,18 @@ All system-prompt functions in `prompts.js` return template literal strings (bac
 
 Rule: when editing prompt functions in `prompts.js`, use single quotes `'value'`, `[brackets]`, or plain text for any value you'd normally set in backtick-fenced formatting. Never use raw `` ` `` inside a template literal prompt unless you escape it as `` \` ``.
 
+## Verifying a prompt-QUALITY change — true before/after node harness
+
+A prompt edit whose acceptance criterion is "the output reads better" (CTA flows naturally, voice is warmer, less boilerplate) is normally shipped-and-eyeballed, but it CAN be verified rigorously before merge with a local harness — no deploy, no Chrome. The trick is to make OLD vs NEW differ by *only* your edit, on *identical real inputs*. Recipe (used 2026-07-08 for the campaign-CTA-flow fix, PR #1994):
+
+1. **Import the real post-fix functions** (`getAtomSystemPrompt` from `api/_lib/atomPrompts.js`, `getTentpolePromptContext` from `api/_lib/tentpoleCampaignContext.js` — both are pure/format-only given a campaign+workspace object; the DB work lives in the separate `loadCurrentTentpole`). Build the NEW system prompt.
+2. **Derive OLD by reverting exactly your edits via `String.replace` on the built NEW prompt string** — don't copy+revert whole source files (relative imports break in scratch, and reverting escaped `\n`/em-dash/apostrophe literals with `perl -pi` is error-prone). Assert each revert target `.includes()` before replacing so a stale revert map throws loudly instead of silently testing NEW-vs-NEW. Watch straight `'` vs curly `'` — grep the source (`grep -o "phrase" file | cat -v`) to get the exact byte.
+3. **Feed real prod data** pulled via Supabase MCP: the actual active campaign (`campaigns` row: `content_style`/`cta_pitch`/`cta_url`/`cta_label`) and a real interview transcript (`interviews.messages`) thematically matched to it. Never invent inputs — the whole point is to exercise the real read path (see "Probe AI-generation features with the REAL workspace data").
+4. **Call the same model the handler uses** — `generateText({ model: 'anthropic/claude-sonnet-4-6', instructions, messages })` via the AI SDK gateway. Set `process.env.AI_GATEWAY_API_KEY` from the 1Password scratch dump inside the harness (never print it).
+5. Run OLD + NEW across 2–3 platform/angle combos, print both, and look for the specific defect. The smoking-gun signal for the CTA fix: the campaign's raw `cta_pitch` sentence appeared **verbatim** in every BEFORE output and was **rephrased/bridged** in every AFTER — a concrete pass/fail, not a vibe.
+
+Gotchas: bare `import('ai')` needs repo `node_modules` — ESM does NOT honor `NODE_PATH`, so run the harness file from *inside the repo tree* (`cp` it to the repo root and `node ./_x.mjs`), not from the scratch dir. Clean up the harness AND the env dump (it holds a live key) when done.
+
 ## Lint ratchet
 The `npm run lint` script enforces a `--max-warnings <N>` ceiling (currently **0** — the ratchet has been driven all the way down from 152 at the pre-launch audit). The ratchet should drift **down** over time, not up. Rule:
 
