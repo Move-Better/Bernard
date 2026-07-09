@@ -24,9 +24,12 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/
 
 function validate(patch) {
   if (typeof patch !== 'object' || !patch) return { ok: false, error: 'invalid_body' }
-  const allowed = ['accent_color', 'secondary_colors', 'heading_font', 'body_font', 'grade']
+  const allowed = ['accent_color', 'secondary_colors', 'heading_font', 'body_font', 'grade', 'show_logo_on_editorial']
   for (const k of Object.keys(patch)) {
     if (!allowed.includes(k)) return { ok: false, error: 'invalid_field' }
+  }
+  if (patch.show_logo_on_editorial != null && typeof patch.show_logo_on_editorial !== 'boolean') {
+    return { ok: false, error: 'invalid_show_logo_on_editorial' }
   }
   // grade — the workspace "Brand look" colorist preset (canonical params). Read by
   // the video/photo editors as the Brand vibe. Validate the shape so a malformed

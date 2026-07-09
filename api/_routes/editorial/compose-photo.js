@@ -25,6 +25,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { renderEditorialPhoto } from '../../_lib/brandRender.js'
+import { resolveWorkspaceLogoForDarkSurface } from '../../_lib/workspaceLogo.js'
 import { renderWhoopPhoto, WHOOP_TEMPLATE_IDS } from '../../_lib/whoopTemplates.js'
 
 // Templates that render a full card without a source photo.
@@ -128,11 +129,19 @@ export default async function handler(req, res) {
 
   const fullTreatment = { ...treatment, sourceUrl }
 
+  // Editorial cards are designed graphics people screenshot and share, so the
+  // logo policy defaults to ON in the footer (per Brand Kit toggle). WHOOP
+  // templates carry their own furniture and are out of scope for this pass.
+  let logoUrl = null
+  if (!isWhoop && ws.brand_style?.show_logo_on_editorial !== false) {
+    logoUrl = await resolveWorkspaceLogoForDarkSurface(ws.id)
+  }
+
   let render
   try {
     render = isWhoop
       ? await renderWhoopPhoto({ photoUrl: sourceUrl || undefined, treatment: fullTreatment, workspace: ws, staffName })
-      : await renderEditorialPhoto({ photoUrl: sourceUrl, treatment: fullTreatment, workspace: ws, staffName })
+      : await renderEditorialPhoto({ photoUrl: sourceUrl, treatment: fullTreatment, workspace: ws, staffName, logoUrl })
   } catch (e) {
     console.error('[compose-photo] render failed:', e?.stack || e?.message || e)
     console.error('[handler] render_failed:', e?.message)

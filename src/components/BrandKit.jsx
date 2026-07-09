@@ -9,6 +9,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { FIXTURE_ASSETS, ROLE_DEFS, FIXTURE_STYLE } from '@/components/brandKitFixtures'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { uploadBrandAsset } from '@/lib/brandKitLib'
@@ -1082,6 +1083,19 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
                   <Input aria-label="Accent color hex value" value={style.accent_color || ''} onChange={(e) => setStyle((s) => ({ ...s, accent_color: e.target.value }))} className="h-8 text-xs font-mono" placeholder="#0a7f3f" />
                 </div>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2.5">
+              <div>
+                <Label htmlFor="editorial-logo-toggle" className="text-xs">Logo on editorial cards</Label>
+                <p className="text-2xs text-muted-foreground mt-0.5">
+                  Stamp your logo in the footer of quote cards and headline photos — the designed graphics people share and screenshot. Candid photos stay logo-free by default.
+                </p>
+              </div>
+              <Switch
+                id="editorial-logo-toggle"
+                checked={style.show_logo_on_editorial !== false}
+                onCheckedChange={(checked) => setStyle((s) => ({ ...s, show_logo_on_editorial: checked }))}
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
