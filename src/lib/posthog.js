@@ -23,6 +23,7 @@ export function initPosthog() {
     autocapture: true,                   // breadth: heatmaps + rage clicks everywhere
     capture_dead_clicks: true,           // separate from autocapture — off by default in posthog-js
     capture_performance: true,           // enables $web_vitals capture
+    capture_exceptions: true,            // $exception autocapture → lights up error-clicks (Sentry still holds full stacks)
     capture_pageview: false,             // we fire virtual pageviews manually on route change
     session_recording: {
       maskAllInputs: true,
