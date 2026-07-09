@@ -25,6 +25,7 @@ import SaveStatus from '@/components/editor/SaveStatus'
 import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
 import { useUndoHistory } from '@/lib/useUndoHistory'
 import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
+import { useVideoShortcuts } from '@/lib/useVideoShortcuts'
 import { useAutosave } from '@/lib/useAutosave'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -1004,6 +1005,26 @@ export default function VideoEditor() {
     setCurrentTime(nt)
     setScrubT(clamp(nt - startSec, 0, durationSec))
   }, [startSec, endSec, durationSec])
+  // Jump the playhead by ±N seconds (keyboard shuttle), clamped to the trim
+  // window. Keeps playback running if it was — only stepFrame pauses.
+  const seekBy = useCallback((delta) => {
+    const v = videoRef.current
+    const nt = clamp((v ? v.currentTime : startSec) + delta, startSec, endSec)
+    if (v) v.currentTime = nt
+    setCurrentTime(nt)
+    setScrubT(clamp(nt - startSec, 0, durationSec))
+  }, [startSec, endSec, durationSec])
+  const seekToClip = useCallback((clipT) => {
+    const v = videoRef.current
+    const nt = clamp(startSec + clipT, startSec, endSec)
+    if (v) v.currentTime = nt
+    setCurrentTime(nt)
+    setScrubT(clamp(nt - startSec, 0, durationSec))
+  }, [startSec, endSec, durationSec])
+  const toStart = useCallback(() => seekToClip(0), [seekToClip])
+  const toEnd = useCallback(() => seekToClip(durationSec), [seekToClip, durationSec])
+  // Standard editor keyboard transport (Space play/pause, arrows step, etc.).
+  useVideoShortcuts({ togglePlay, stepFrame, seekBy, toStart, toEnd })
 
   const selectKey = useCallback((k) => {
     if (typeof k === 'string' && k.startsWith('overlay:')) setSel({ type: 'overlay', id: k.split(':')[1] })
@@ -1244,16 +1265,16 @@ export default function VideoEditor() {
       >
         {/* Transport */}
         <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
-          <button onClick={() => stepFrame(-1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Previous frame" title="Previous frame"><ChevronLeft className="h-3.5 w-3.5" /></button>
+          <button onClick={() => stepFrame(-1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Previous frame" title="Previous frame (←)"><ChevronLeft className="h-3.5 w-3.5" /></button>
           <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={togglePlay} className="rounded p-0.5 hover:opacity-70 text-primary" aria-label={playing ? 'Pause' : 'Play'}>
                 {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
               </button>
             </TooltipTrigger>
-            <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
+            <TooltipContent>{playing ? 'Pause' : 'Play'} · Space</TooltipContent>
           </Tooltip>
-          <button onClick={() => stepFrame(1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Next frame" title="Next frame"><ChevronRight className="h-3.5 w-3.5" /></button>
+          <button onClick={() => stepFrame(1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Next frame" title="Next frame (→)"><ChevronRight className="h-3.5 w-3.5" /></button>
           <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(displayClipT)} / {fmt(durationSec)}</span>
         </div>
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
