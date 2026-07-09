@@ -289,7 +289,7 @@ function buildPromotional({ campaign, wsName, location, eventDate }) {
     lines.push('Use exactly this URL as the link target in any CTA — do not invent or alter it.')
   }
   if (campaign.cta_pitch) {
-    lines.push(`Workspace-supplied invitation sentence (use this verbatim or lightly adapted for platform tone as the body-copy CTA): "${campaign.cta_pitch}"`)
+    lines.push(`Workspace-supplied invitation — this is the offer/intent to convey, NOT a sentence to paste in: "${campaign.cta_pitch}". Rephrase it so the ask flows out of the specific point this piece just made; it should read as the natural next thought, never as a canned line dropped on the end.`)
   }
   if (campaign.cta_label) {
     lines.push(`Preferred CTA button text (for platforms with a literal button — Instagram overlay, GBP): "${campaign.cta_label}".`)
@@ -310,7 +310,7 @@ function buildReferral({ campaign, wsName, location }) {
     lines.push('Use exactly this URL as the link target in any CTA — do not invent or alter it.')
   }
   if (campaign.cta_pitch) {
-    lines.push(`Workspace-supplied invitation sentence (use verbatim or lightly adapted): "${campaign.cta_pitch}"`)
+    lines.push(`Workspace-supplied invitation — the intent to convey, NOT a sentence to paste in: "${campaign.cta_pitch}". Rephrase it so the referral ask grows naturally out of the point this piece makes, in a peer-to-peer voice — never a canned line tacked on at the end.`)
   }
   if (campaign.cta_label) lines.push(`Preferred CTA button text: "${campaign.cta_label}".`)
   if (!campaign.cta_pitch) {
@@ -331,7 +331,7 @@ function buildRelationship({ campaign, wsName, location }) {
     lines.push(`Optional action URL (use only if it serves the relationship, not as a hard sell): ${campaign.cta_url}`)
   }
   if (campaign.cta_pitch) {
-    lines.push(`Workspace-supplied phrasing (use verbatim or lightly adapted): "${campaign.cta_pitch}"`)
+    lines.push(`Workspace-supplied phrasing — the sentiment to convey, NOT a sentence to paste in: "${campaign.cta_pitch}". Weave it in so it flows from the moment the piece is celebrating; it should feel like part of the same warm thought, never a line appended at the end.`)
   }
   lines.push('Tone: warm, generous, human. The clinic is saying thank you, not selling.')
   return lines.join('\n')
