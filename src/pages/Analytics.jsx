@@ -2,19 +2,20 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Sparkles, MessageSquareText, TrendingUp, CalendarClock, Activity,
-  BarChart3, Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
+  Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
   Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink, MapPin,
-  ArrowUp, ArrowDown,
+  ArrowUp, ArrowDown, HelpCircle, X, Smartphone, Info, ChevronLeft,
+  ChevronRight, CalendarRange, LayoutGrid,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
   useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
-  useApplePerformance,
+  useApplePerformance, useSocialByWeek, useWebsiteByWeek,
 } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { deriveInsights, totalReach, sumField } from '@/lib/insightsReads'
+import { deriveInsights } from '@/lib/insightsReads'
 import { buildCostView, fmtUsd } from '@/lib/costEstimate'
 import PageSkeleton from '@/components/PageSkeleton'
 
@@ -599,6 +600,301 @@ function AppleInsightsRead({ data }) {
   )
 }
 
+// ── Channel tabs (Social Media / Website / Google Business / Apple / SEO) ────
+
+const fmtNum = (n) => Number(n || 0).toLocaleString()
+
+function TabButton({ active, onClick, icon: Icon, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap flex items-center gap-1.5 transition-colors ${
+        active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" /> {label}
+    </button>
+  )
+}
+
+// UTC-Monday week math for the shared Social/Website week picker — mirrors
+// YourWeek.jsx's convention (0 = this week, negative = past weeks) and the
+// server-side copies in social-by-week.js / website-by-week.js, so all agree
+// on what "week -1" means.
+const WEEK_NAV_BACK = 8
+function weekMondayDate(offset) {
+  const d = new Date()
+  const dow = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+function weekRangeLabel(offset) {
+  const mon = weekMondayDate(offset)
+  const sun = new Date(mon)
+  sun.setUTCDate(sun.getUTCDate() + 6)
+  const f = (dt, withMonth) => dt.toLocaleDateString('en-US', { month: withMonth ? 'short' : undefined, day: 'numeric', timeZone: 'UTC' })
+  return mon.getUTCMonth() === sun.getUTCMonth()
+    ? `${f(mon, true)} – ${f(sun, false)}`
+    : `${f(mon, true)} – ${f(sun, true)}`
+}
+function weekRelative(offset) {
+  if (offset === 0) return 'This week'
+  if (offset === -1) return 'Last week'
+  return `${-offset} weeks ago`
+}
+
+function WeekNav({ weekOffset, onPrev, onNext, onToday }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5 mb-4">
+      <button
+        type="button"
+        onClick={onPrev}
+        disabled={weekOffset <= -WEEK_NAV_BACK}
+        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Prev
+      </button>
+      <div className="flex items-center gap-2 text-center">
+        <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div>
+          <div className="text-sm font-bold leading-tight">{weekRangeLabel(weekOffset)}</div>
+          <div className="text-3xs font-semibold uppercase tracking-wide text-primary">{weekRelative(weekOffset)}</div>
+        </div>
+        {weekOffset !== 0 && (
+          <button
+            type="button"
+            onClick={onToday}
+            className="ml-1 rounded-md border border-border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
+          >
+            Back to this week
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={weekOffset >= 0}
+        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
+const PLATFORM_DOT = {
+  instagram: 'bg-gradient-to-br from-purple-500 to-orange-400',
+  instagram_story: 'bg-gradient-to-br from-purple-500 to-orange-400',
+  facebook: 'bg-blue-600',
+  linkedin: 'bg-sky-700',
+  twitter: 'bg-slate-800',
+  threads: 'bg-slate-800',
+  tiktok: 'bg-slate-900',
+  youtube: 'bg-red-600',
+  youtube_short: 'bg-red-600',
+  bluesky: 'bg-sky-500',
+  mastodon: 'bg-indigo-600',
+}
+
+function PlatformBadge({ platform }) {
+  const label = PLATFORM_LABELS[platform] || platform
+  const initials = label.slice(0, 2).toUpperCase()
+  return (
+    <span className="flex items-center gap-2">
+      <span className={`h-5 w-5 rounded-full flex items-center justify-center text-white text-3xs font-bold shrink-0 ${PLATFORM_DOT[platform] || 'bg-muted-foreground'}`}>
+        {initials}
+      </span>
+      <span className="text-sm font-medium">{label}</span>
+    </span>
+  )
+}
+
+function SocialTab({ data, loading, cost }) {
+  if (loading && !data) {
+    return (
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="h-40 rounded-2xl bg-muted animate-pulse" />
+        <div className="h-40 rounded-2xl bg-muted animate-pulse" />
+      </div>
+    )
+  }
+
+  const overall = data?.overall || { posts: 0, reach: 0, engagement: 0 }
+  const byPlatform = data?.byPlatform || []
+  const topPost = data?.topPost
+
+  return (
+    <>
+      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> Overall — social
+          </h3>
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Posts published</span>
+              <span className="font-semibold tabular-nums">{overall.posts}</span>
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Reach</span>
+              <span className="font-semibold tabular-nums">{overall.posts > 0 ? fmtNum(overall.reach) : '—'}</span>
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-muted-foreground">Engagement</span>
+              <span className="font-semibold tabular-nums">{overall.posts > 0 ? fmtNum(overall.engagement) : '—'}</span>
+            </div>
+            {cost && cost.weekTotal > 0 && (
+              <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
+                Estimated run cost this week: {fmtUsd(cost.weekTotal)}
+                {cost.perPost != null && <> (≈ {fmtUsd(cost.perPost)}/post)</>}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Award className="h-4 w-4 text-primary" /> Your top post this week
+          </h3>
+          {topPost ? (
+            <div className="text-sm mt-3">
+              <div className="font-medium truncate">{topPost.topic}</div>
+              <div className="text-2xs text-muted-foreground mt-0.5">{PLATFORM_LABELS[topPost.platform] || topPost.platform}</div>
+              <div className="mt-2 font-semibold tabular-nums">{fmtNum(topPost.reach)} reach · {fmtNum(topPost.engagement)} engagement</div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-3">No social posts published this week.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <LayoutGrid className="h-4 w-4 text-primary" /> By platform
+        </h3>
+        {byPlatform.length === 0 ? (
+          <p className="text-sm text-muted-foreground mt-3">No social posts published this week.</p>
+        ) : (
+          <>
+            <div className="divide-y divide-border mt-2">
+              {byPlatform.map((p) => (
+                <div key={p.platform} className="flex items-center justify-between py-3">
+                  <PlatformBadge platform={p.platform} />
+                  <div className="flex items-center gap-6 text-sm tabular-nums">
+                    <span>{fmtNum(p.reach)} reach</span>
+                    <span>{fmtNum(p.engagement)} engagement</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-2xs text-muted-foreground mt-3 pt-3 border-t border-border">
+              Only platforms you&rsquo;ve actually published to this week are shown.
+            </p>
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
+function WebsiteWeekCard({ data }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Globe className="h-4 w-4 text-primary" /> Website — this week
+      </h3>
+      <div className="mt-4 space-y-3 text-sm">
+        <div className="flex justify-between items-baseline">
+          <span className="text-muted-foreground">Sessions</span>
+          <span className="font-semibold tabular-nums">
+            {data?.connected && data?.sessions != null ? fmtNum(data.sessions) : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between items-baseline">
+          <span className="text-muted-foreground">Engagement rate</span>
+          <span className="font-semibold tabular-nums">
+            {data?.connected && data?.engagementRate != null ? `${Math.round(data.engagementRate * 100)}%` : '—'}
+          </span>
+        </div>
+        {!data?.connected && (
+          <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
+            Connect GA4 in Settings → Integrations to see weekly website sessions.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ChannelNotScopedNotice({ children }) {
+  return (
+    <div className="rounded-xl border border-dashed border-warning/40 bg-warning/5 p-3 text-2xs text-muted-foreground flex items-center gap-2 mb-4">
+      <Info className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden="true" />
+      {children}
+    </div>
+  )
+}
+
+function DefinitionsModal({ onClose }) {
+  return (
+    <div role="dialog" aria-modal="true" aria-label="How these numbers are calculated" className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-card rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground" aria-label="Close">
+          <X className="h-5 w-5" />
+        </button>
+        <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+          <HelpCircle className="h-5 w-5 text-primary" /> How these numbers are calculated
+        </h2>
+        <div className="space-y-5 text-sm">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><Smartphone className="h-3 w-3 text-primary" /></span>
+              Social Media (Instagram, Facebook, LinkedIn, etc.)
+            </h3>
+            <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
+              <li><span className="font-medium text-foreground">Reach</span> — unique accounts your connected platform reports having seen the post at least once.</li>
+              <li><span className="font-medium text-foreground">Engagement</span> — likes + comments + shares + saves, added together, as reported by the platform.</li>
+              <li>Numbers only update when Bernard pulls fresh stats — on a schedule (1, 3, 7, and 30 days after a post goes out), then it stops. A brand-new post can show 0 until its first pull.</li>
+              <li>If your workspace publishes through Buffer rather than bundle.social: Buffer&rsquo;s API doesn&rsquo;t provide per-post engagement data today, so Reach/Engagement won&rsquo;t be available.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><Globe className="h-3 w-3 text-primary" /></span>
+              Website
+            </h3>
+            <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
+              <li><span className="font-medium text-foreground">Sessions</span> — Google Analytics 4 sessions on your published pages, for the selected week.</li>
+              <li><span className="font-medium text-foreground">Engagement rate</span> — GA4&rsquo;s engaged sessions ÷ total sessions for that page.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><MapPin className="h-3 w-3 text-primary" /></span>
+              Google Business Profile
+            </h3>
+            <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
+              <li><span className="font-medium text-foreground">Impressions</span> / <span className="font-medium text-foreground">Directions</span> / <span className="font-medium text-foreground">Calls</span> / <span className="font-medium text-foreground">Website clicks</span> — as reported by Google&rsquo;s Business Profile Performance API.</li>
+              <li>Currently a rolling last-30-days window — not yet scoped to a specific week.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><AppleMark className="h-3 w-3 text-primary" /></span>
+              Apple Business Insights
+            </h3>
+            <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
+              <li>Whatever Apple reports in your uploaded monthly recap — Bernard displays these numbers as-is, no independent calculation.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Analytics() {
   useDocumentTitle('Insights')
   const ws = useWorkspace()
@@ -613,6 +909,12 @@ export default function Analytics() {
   const { data: gbpData }       = useGbpPerformance()
   const { data: appleData }     = useApplePerformance()
 
+  const [activeTab, setActiveTab] = useState('social')
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [defsOpen, setDefsOpen] = useState(false)
+  const { data: socialWeek, isLoading: socialWeekLoading } = useSocialByWeek(weekOffset)
+  const { data: websiteWeek } = useWebsiteByWeek(weekOffset)
+
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
 
@@ -620,26 +922,25 @@ export default function Analytics() {
 
   const assetName = ws?.display_name || 'This asset'
 
-  const { reads, facts } = deriveInsights({ stories, performers })
-
-  // ── Receipts (all real; deltas only where we can truly compute them) ──
-  const reach = totalReach(performers)
-  const engagement = sumField(performers, 'engagement')
-  const top3 = performers.slice(0, 3)
+  const { reads } = deriveInsights({ stories, performers })
   const cost = buildCostView(recap?.cost || {})
-
   const suggestions = (topics?.suggestions || []).slice(0, 3)
-
-  const fmtNum = (n) => Number(n || 0).toLocaleString()
 
   return (
     <div>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
             <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
             {assetName} — Insights
+            <button
+              type="button"
+              onClick={() => setDefsOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+            >
+              <HelpCircle className="h-3.5 w-3.5" /> How these numbers are calculated
+            </button>
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Bernard reads your performance like a content expert and tells you what&rsquo;s working and what
@@ -650,6 +951,8 @@ export default function Analytics() {
           <RefreshCw className="h-3 w-3" /> Updates as your posts gather data
         </div>
       </div>
+
+      {defsOpen && <DefinitionsModal onClose={() => setDefsOpen(false)} />}
 
       {/* GA4 pending banner — only when not yet connected */}
       {!ws?.ga4_property_id && (
@@ -674,166 +977,106 @@ export default function Analytics() {
         {reads.map((r) => <ReadCard key={r.id} read={r} />)}
       </div>
 
-      {/* SECTION 2 — the receipts */}
-      <div className="flex items-center gap-2 mt-8 mb-3 flex-wrap">
-        <BarChart3 className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h2 className="font-semibold">The numbers behind it</h2>
-        <span className="text-2xs text-muted-foreground">— just enough to trust the read</span>
-      </div>
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* This week vs last */}
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> This week
-          </h3>
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Posts published</span>
-              <span className="font-semibold tabular-nums">
-                {facts.thisWeek}
-                {facts.publishedDelta !== 0 && (
-                  <span className={facts.publishedDelta > 0 ? 'text-success' : 'text-muted-foreground'}>
-                    {' '}{facts.publishedDelta > 0 ? '▲' : '▼'} {facts.publishedDelta > 0 ? '+' : ''}{facts.publishedDelta} vs last
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Social reach (recent posts)</span>
-              <span className="font-semibold tabular-nums">{facts.hasReachData ? fmtNum(reach) : '—'}</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Engagement (likes + comments + shares)</span>
-              <span className="font-semibold tabular-nums">{facts.hasReachData ? fmtNum(engagement) : '—'}</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Website sessions (30d)</span>
-              <span className="font-semibold tabular-nums">
-                {websiteGA4?.connected && websiteGA4?.totalPageviews != null
-                  ? websiteGA4.totalPageviews.toLocaleString()
-                  : <span className="text-muted-foreground">—</span>}
-              </span>
-            </div>
-            {cost.weekTotal > 0 && (
-              <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
-                Estimated run cost this week: {fmtUsd(cost.weekTotal)}
-                {cost.perPost != null && <> (≈ {fmtUsd(cost.perPost)}/post)</>}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Top 3 */}
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" /> Your top {top3.length || 3} right now
-          </h3>
-          {top3.length === 0 ? (
-            <p className="text-sm text-muted-foreground mt-3">
-              Engagement ranking fills in as your posts gather reach (and the moment GA4 connects, website pages join the list).
-            </p>
-          ) : (
-            <ul className="mt-3 text-sm">
-              {top3.map((p) => {
-                const value = Number(p.reach ?? p.pageviews ?? 0)
-                const unit = p.source === 'ga4' ? 'visits' : 'reach'
-                return (
-                  <li key={p.id} className="flex items-center justify-between border-t border-border pt-3 mt-3 first:border-0 first:pt-0 first:mt-0">
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{p.topic || 'Untitled'}</div>
-                      <div className="text-2xs text-muted-foreground">{PLATFORM_LABELS[p.platform] || p.platform || ''}</div>
-                    </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <div className="font-semibold tabular-nums">{fmtNum(value)}</div>
-                      <div className="text-2xs text-muted-foreground">{unit}</div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
+      {/* Channel tabs */}
+      <div className="flex items-center gap-1 border-b border-border overflow-x-auto mt-8 mb-5">
+        <TabButton active={activeTab === 'social'} onClick={() => setActiveTab('social')} icon={Smartphone} label="Social Media" />
+        <TabButton active={activeTab === 'website'} onClick={() => setActiveTab('website')} icon={Globe} label="Website" />
+        <TabButton active={activeTab === 'gbp'} onClick={() => setActiveTab('gbp')} icon={MapPin} label="Google Business" />
+        <TabButton active={activeTab === 'apple'} onClick={() => setActiveTab('apple')} icon={AppleMark} label="Apple" />
+        <TabButton active={activeTab === 'seo'} onClick={() => setActiveTab('seo')} icon={Search} label="SEO" />
       </div>
 
-      {/* SECTION 3 — Google Business Profile */}
-      <div className="flex items-center gap-2 mt-8 mb-3">
-        <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h2 className="font-semibold">Google Business Profile</h2>
-      </div>
-      <GbpPerformanceRead data={gbpData} />
+      {(activeTab === 'social' || activeTab === 'website') && (
+        <WeekNav
+          weekOffset={weekOffset}
+          onPrev={() => setWeekOffset((o) => Math.max(-WEEK_NAV_BACK, o - 1))}
+          onNext={() => setWeekOffset((o) => Math.min(0, o + 1))}
+          onToday={() => setWeekOffset(0)}
+        />
+      )}
 
-      {/* SECTION 4 — Apple Business Insights (uploaded monthly recaps) */}
-      <div className="flex items-center gap-2 mt-8 mb-3">
-        <AppleMark className="h-4 w-4 text-primary" />
-        <h2 className="font-semibold">Apple Business Insights</h2>
-      </div>
-      <AppleInsightsRead data={appleData} />
+      {activeTab === 'social' && (
+        <SocialTab data={socialWeek} loading={socialWeekLoading} cost={weekOffset === 0 ? cost : null} />
+      )}
 
-      {/* SECTION 5 — tune up the website */}
-      <div className="flex items-center gap-2 mt-8 mb-1">
-        <Globe className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h2 className="font-semibold">Tune up the website</h2>
-      </div>
-      <p className="text-sm text-muted-foreground mb-3 max-w-2xl">
-        Not &ldquo;make more content&rdquo; — the actual changes to make on the site so visitors do something
-        once they land. Bernard spots them; you make them. These reads light up as each input connects.
-      </p>
-      <div className="space-y-3">
-        {/* Live-now: page-health check (no GA4 needed) */}
-        {health && health.checked > 0 && (
-          health.issues.length === 0 ? (
-            <div className="rounded-2xl border border-success/15 bg-success/10 p-4">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
-                <p className="text-sm">
-                  <span className="font-semibold">All {health.checked} of your published pages are loading fine.</span>{' '}
-                  <span className="text-muted-foreground">No broken links to fix right now — we&rsquo;ll flag any page that stops loading.</span>
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-warning/25 bg-warning/10 p-5">
-              <div className="flex items-start gap-3">
-                <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-2xs uppercase tracking-wide bg-success/15 text-success px-2 py-0.5 rounded-full font-medium">
-                    Live now · no GA4 needed
-                  </span>
-                  <p className="text-sm leading-relaxed mt-2">
-                    <span className="font-semibold">
-                      {health.issues.length} published {health.issues.length === 1 ? 'page isn’t' : 'pages aren’t'} loading.
-                    </span>{' '}
-                    <span className="text-muted-foreground">Readers who click through hit a dead end — worth fixing first.</span>
+      {activeTab === 'website' && (
+        <div className="space-y-3">
+          <WebsiteWeekCard data={websiteWeek} />
+          {/* Live-now: page-health check (no GA4 needed) */}
+          {health && health.checked > 0 && (
+            health.issues.length === 0 ? (
+              <div className="rounded-2xl border border-success/15 bg-success/10 p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+                  <p className="text-sm">
+                    <span className="font-semibold">All {health.checked} of your published pages are loading fine.</span>{' '}
+                    <span className="text-muted-foreground">No broken links to fix right now — we&rsquo;ll flag any page that stops loading.</span>
                   </p>
-                  <ul className="mt-3 space-y-2">
-                    {health.issues.map((it) => (
-                      <li key={it.contentItemId} className="text-sm rounded-lg border border-border bg-card px-3 py-2">
-                        <div className="font-medium truncate">{it.topic}</div>
-                        <div className="text-2xs text-muted-foreground mt-0.5">{it.issue}</div>
-                        <a
-                          href={it.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-2xs text-primary mt-1.5 hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" /> Open the page
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               </div>
-            </div>
-          )
-        )}
-        <LandingPageRead data={websiteGA4} />
-        <ExitAnalysisRead data={websiteGA4} />
-        <SearchQueriesRead data={searchData} />
-      </div>
+            ) : (
+              <div className="rounded-2xl border border-warning/25 bg-warning/10 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-2xs uppercase tracking-wide bg-success/15 text-success px-2 py-0.5 rounded-full font-medium">
+                      Live now · no GA4 needed
+                    </span>
+                    <p className="text-sm leading-relaxed mt-2">
+                      <span className="font-semibold">
+                        {health.issues.length} published {health.issues.length === 1 ? 'page isn’t' : 'pages aren’t'} loading.
+                      </span>{' '}
+                      <span className="text-muted-foreground">Readers who click through hit a dead end — worth fixing first.</span>
+                    </p>
+                    <ul className="mt-3 space-y-2">
+                      {health.issues.map((it) => (
+                        <li key={it.contentItemId} className="text-sm rounded-lg border border-border bg-card px-3 py-2">
+                          <div className="font-medium truncate">{it.topic}</div>
+                          <div className="text-2xs text-muted-foreground mt-0.5">{it.issue}</div>
+                          <a
+                            href={it.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-2xs text-primary mt-1.5 hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" /> Open the page
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+          <LandingPageRead data={websiteGA4} />
+          <ExitAnalysisRead data={websiteGA4} />
+        </div>
+      )}
 
-      {/* SECTION 6 — what Bernard already did */}
+      {activeTab === 'gbp' && (
+        <div>
+          <ChannelNotScopedNotice>Rolling last 30 days — not yet scoped to a specific week.</ChannelNotScopedNotice>
+          <GbpPerformanceRead data={gbpData} />
+        </div>
+      )}
+
+      {activeTab === 'apple' && (
+        <div>
+          <ChannelNotScopedNotice>Monthly recap (uploaded PDF) — not week-scoped.</ChannelNotScopedNotice>
+          <AppleInsightsRead data={appleData} />
+        </div>
+      )}
+
+      {activeTab === 'seo' && (
+        <div className="space-y-3">
+          <SearchQueriesRead data={searchData} />
+        </div>
+      )}
+
+      {/* SECTION — what Bernard already did */}
       {suggestions.length > 0 && (
         <>
           <div className="flex items-center gap-2 mt-8 mb-3">

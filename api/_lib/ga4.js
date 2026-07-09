@@ -77,11 +77,18 @@ async function getAccessToken(serviceAccountJson) {
 // (engagement_time is total userEngagementDuration in seconds, NOT the per-
 // session average — the cron computes per-session averaging downstream if it
 // needs it). Paths with no GA4 data simply don't appear in the map.
-export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePaths, days = 30 }) {
+//
+// Pass explicit `startDate`/`endDate` (YYYY-MM-DD) for a specific calendar
+// window (e.g. one week) — overrides the relative `days`-back default used
+// by the exemplar-scoring cron.
+export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePaths, days = 30, startDate, endDate }) {
   if (!propertyId) throw new Error('ga4: propertyId is required')
   if (!Array.isArray(pagePaths) || pagePaths.length === 0) return {}
 
   const token = await getAccessToken(serviceAccountJson)
+  const range = startDate && endDate
+    ? { startDate, endDate }
+    : { startDate: `${days}daysAgo`, endDate: 'today' }
   const r = await fetch(REPORT_URL(propertyId), {
     method:  'POST',
     headers: {
@@ -89,7 +96,7 @@ export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePath
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      dateRanges: [{ startDate: `${days}daysAgo`, endDate: 'today' }],
+      dateRanges: [range],
       dimensions: [{ name: 'pagePath' }],
       metrics: [
         { name: 'screenPageViews' },
