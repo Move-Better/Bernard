@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -29,6 +29,7 @@ import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import SaveStatus from '@/components/editor/SaveStatus'
+import { listRevisions, saveRevision } from '@/lib/editorRevisions'
 import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
 import { useAutosave } from '@/lib/useAutosave'
 import { useUndoHistory } from '@/lib/useUndoHistory'
@@ -2515,6 +2516,30 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   })
   useUndoRedoShortcut(undo, redo)
 
+  // Version history (WS5) — auto-snapshot the slide draft (throttled ~3 min,
+  // pruned to 30 server-side) + restore a past version.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [revisions, setRevisions] = useState([])
+  const lastRevRef = useRef(0)
+  function applyDoc(d) {
+    if (!d || typeof d !== 'object') return
+    if (Array.isArray(d.slides)) setSlides(d.slides)
+    if (d.themeId !== undefined) setThemeId(d.themeId)
+    if (d.aspect) setAspect(d.aspect)
+  }
+  useEffect(() => {
+    if (!piece?.id) return
+    const now = Date.now()
+    if (now - lastRevRef.current < 180000) return
+    lastRevRef.current = now
+    saveRevision('slides', piece.id, draftState).catch(() => {})
+  }, [draftState, piece?.id])
+  async function openHistory() {
+    if (historyOpen) { setHistoryOpen(false); return }
+    try { const r = await listRevisions('slides', piece.id); setRevisions(r?.revisions || []) } catch { setRevisions([]) }
+    setHistoryOpen(true)
+  }
+
   // Active slide derived values — used by the canvas and the inspector.
   const activeSlide = slides[activeSlideIdx] || slides[0]
   const activePhotoUrl = typeof activeSlide?.photo_idx === 'number' && mediaUrls[activeSlide.photo_idx]
@@ -2610,6 +2635,26 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         )}
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         <SaveStatus status={rendering ? 'saving' : saveStatus} />
+        {/* Version history — auto-snapshots + restore */}
+        <div className="relative">
+          <button onClick={openHistory} className="flex h-8 items-center gap-1 rounded-lg border px-2 text-sm text-muted-foreground hover:border-primary/60 hover:text-primary" style={{ borderColor: 'hsl(var(--border))' }} title="Version history" aria-label="Version history"><History className="h-4 w-4" /></button>
+          {historyOpen && (
+            <>
+              <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setHistoryOpen(false)} />
+              <div role="menu" aria-label="Version history" className="absolute right-0 top-full z-40 mt-1 max-h-72 w-64 overflow-auto rounded-lg border border-border bg-card p-1.5 shadow-lg">
+                <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Version history</p>
+                {revisions.length === 0 ? (
+                  <p className="px-1 py-2 text-xs text-muted-foreground">No saved versions yet — they appear as you edit.</p>
+                ) : revisions.map((rv) => (
+                  <button key={rv.id} onClick={() => { applyDoc(rv.doc); setHistoryOpen(false); toast.success('Restored a previous version') }} className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                    <span>{new Date(rv.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                    <span className="font-medium text-primary">Restore</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         {/* Approve · voice check · publish — inline, no modal or backing out.
             The full Publish panel (export, metrics, schedule details) stays one
             click away behind the sliders button for the cases the bar can't
