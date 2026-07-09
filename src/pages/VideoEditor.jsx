@@ -48,6 +48,12 @@ const fmt = (s) => {
   return `${m}:${String(ss).padStart(2, '0')}`
 }
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+// An overlay selection is the object { type:'overlay', id }; everything else
+// (inspector-key strings, or null when nothing is selected) is not. Guarding on
+// `sel != null` matters because typeof null === 'object' — a bare
+// `typeof sel === 'object'` would treat the deselected state as an overlay and
+// crash reading sel.id.
+const isOverlaySel = (s) => s != null && typeof s === 'object'
 // Clip window is capped to the server's MAX_RENDER_SECONDS (brandRenderVideo.js).
 // The timeline trim handles clamp to this so a clip can't silently truncate at render.
 const MAX_CLIP_SECONDS = 60
@@ -198,7 +204,7 @@ function Canvas({ ctx }) {
           {/* manual overlays */}
           {overlays.map((o) => {
             if (playClipT < o.in || playClipT > o.out) return null
-            const isSel = typeof sel === 'object' && sel.id === o.id
+            const isSel = isOverlaySel(sel) && sel.id === o.id
             const box = o.role === 'lower_third'
               ? { background: 'rgba(12,26,46,.62)', backdropFilter: 'blur(2px)', borderRadius: 8, padding: '6px 12px' }
               : o.role === 'callout'
@@ -740,7 +746,7 @@ function TranscriptInspector({ ctx }) {
 
 function IconRail({ ctx }) {
   const { sel, selectKey, overlays, addOverlay } = ctx
-  const selKey = typeof sel === 'object' ? 'overlay' : sel
+  const selKey = isOverlaySel(sel) ? 'overlay' : sel
   // 'overlay' selection lights the 'text' tool (overlays ARE the text layer).
   const active = selKey === 'overlay' ? 'text' : selKey
   const items = [
@@ -882,7 +888,7 @@ function HorizontalTimeline({ ctx }) {
         </div>
         <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           {overlays.length ? overlays.map((o) => {
-            const isSel = typeof sel === 'object' && sel.id === o.id
+            const isSel = isOverlaySel(sel) && sel.id === o.id
             return (
               <div key={o.id} onMouseDown={ovDown(o, 'move')} className="absolute inset-y-0 cursor-grab overflow-hidden rounded-md" style={{ left: `${f(startSec + o.in)}%`, width: `${Math.max(3, f(startSec + o.out) - f(startSec + o.in))}%`, background: 'linear-gradient(90deg,hsl(var(--action)/.9),hsl(var(--action)/.7))', boxShadow: isSel ? '0 0 0 2px hsl(var(--action))' : undefined }}>
                 <div onMouseDown={ovDown(o, 'l')} className="absolute inset-y-0 left-0 z-10 cursor-ew-resize" style={{ width: 9 }} />
@@ -1178,7 +1184,7 @@ export default function VideoEditor() {
     if (typeof k === 'string' && k.startsWith('overlay:')) setSel({ type: 'overlay', id: k.split(':')[1] })
     else setSel(k)
   }, [])
-  const curOverlay = typeof sel === 'object' ? overlays.find((o) => o.id === sel.id) : null
+  const curOverlay = isOverlaySel(sel) ? overlays.find((o) => o.id === sel.id) : null
 
   // overlay actions
   const addOverlay = useCallback(() => {
@@ -1186,11 +1192,11 @@ export default function VideoEditor() {
     setOverlays((prev) => [...prev, { id, role: 'callout', text: 'New text', x: 0.5, y: 0.5, size: 1, in: clamp(playClipT, 0, durationSec - 1), out: clamp(playClipT + 3, 1, durationSec), color: '#ffffff' }])
     setSel({ type: 'overlay', id })
   }, [playClipT, durationSec])
-  const setOverlay = useCallback((k, v) => setOverlays((prev) => prev.map((o) => (typeof sel === 'object' && o.id === sel.id ? { ...o, [k]: v } : o))), [sel])
-  const setOverlayTime = useCallback((k, v) => setOverlays((prev) => prev.map((o) => (typeof sel === 'object' && o.id === sel.id ? { ...o, [k]: clamp(Number(v) || 0, 0, durationSec) } : o))), [sel, durationSec])
+  const setOverlay = useCallback((k, v) => setOverlays((prev) => prev.map((o) => (isOverlaySel(sel) && o.id === sel.id ? { ...o, [k]: v } : o))), [sel])
+  const setOverlayTime = useCallback((k, v) => setOverlays((prev) => prev.map((o) => (isOverlaySel(sel) && o.id === sel.id ? { ...o, [k]: clamp(Number(v) || 0, 0, durationSec) } : o))), [sel, durationSec])
   // Set a specific overlay's in/out by id (used by the vertical timeline bar drag/resize).
   const setOverlayWindow = useCallback((id, inT, outT) => setOverlays((prev) => prev.map((o) => (o.id === id ? { ...o, in: clamp(inT, 0, durationSec), out: clamp(outT, 0, durationSec) } : o))), [durationSec])
-  const delOverlay = useCallback(() => { setOverlays((prev) => prev.filter((o) => !(typeof sel === 'object' && o.id === sel.id))); setSel('clip') }, [sel])
+  const delOverlay = useCallback(() => { setOverlays((prev) => prev.filter((o) => !(isOverlaySel(sel) && o.id === sel.id))); setSel('clip') }, [sel])
   const dragOverlay = useCallback((e, id) => {
     e.preventDefault(); e.stopPropagation()
     const frame = e.currentTarget.parentElement
@@ -1561,7 +1567,7 @@ export default function VideoEditor() {
               {sel === 'caption' && <CaptionInspector ctx={ctx} />}
               {sel === 'music' && <MusicInspector ctx={ctx} />}
               {sel === 'transcript' && <TranscriptInspector ctx={ctx} />}
-              {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
+              {isOverlaySel(sel) && <OverlayInspector ctx={ctx} />}
             </div>
           </aside>
           <Canvas ctx={ctx} />
