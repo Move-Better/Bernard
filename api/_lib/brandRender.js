@@ -459,6 +459,40 @@ export async function buildEditorialOverlaySvgSatori({
 }
 
 /**
+ * Fetches + rasterizes a Brand Kit logo asset (SVG or raster) and returns a
+ * Sharp composite descriptor positioned bottom-right of the editorial footer,
+ * vertically centered on the name-row band. Returns null on any failure —
+ * a missing/broken logo asset must never break a publish.
+ */
+async function buildLogoCompositeLayer(logoUrl, width, height) {
+  try {
+    const raw = await fetchSourcePhotoBuffer(logoUrl)
+    const baseDim = Math.min(width, height)
+    const pad = Math.round(width * 0.06)
+    const logoWidthPx = Math.round(width * 0.16)
+    const logo = await sharp(raw, { density: 300 })
+      .resize({ width: logoWidthPx })
+      .png()
+      .toBuffer()
+    const { height: logoH } = await sharp(logo).metadata()
+    // Match buildEditorialOverlaySvg's name-row geometry so the logo sits on
+    // the same visual band as the staff/workspace name text.
+    const bottomMargin = Math.round(height * 0.055)
+    const nameBaseline = height - bottomMargin
+    const nameFontSize = Math.round(baseDim * 0.026)
+    const bandCenterY = nameBaseline - Math.round(nameFontSize * 0.35)
+    return {
+      input: logo,
+      left: width - pad - logoWidthPx,
+      top: Math.max(0, bandCenterY - Math.round((logoH || logoWidthPx * 0.3) / 2)),
+    }
+  } catch (e) {
+    console.warn('[brandRender] logo composite failed, skipping:', e?.message || e)
+    return null
+  }
+}
+
+/**
  * Render one editorial composite from a source photo + treatment spec.
  * Applies a subtle grade (brightness/saturation) and a subject-aware ("smart")
  * crop, then composites the editorial overlay.
@@ -468,9 +502,11 @@ export async function buildEditorialOverlaySvgSatori({
  * @param {Object} params.treatment  — { headline, headlineSize, grade (0-100), aspect, scrim }
  * @param {Object} params.workspace
  * @param {string} [params.staffName]
+ * @param {string} [params.logoUrl] — Brand Kit logo asset to stamp in the footer, if the
+ *   workspace's "Logo on editorial cards" toggle is on. Skipped when absent.
  * @returns {Promise<{ buffer: Buffer, width: number, height: number }>}
  */
-export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace, staffName }) {
+export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace, staffName, logoUrl }) {
   await ensureFontconfig()
 
   const [width, height] = EDITORIAL_ASPECTS[treatment.aspect] || EDITORIAL_ASPECTS['4:5']
@@ -522,8 +558,14 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
     overlayInput = buildEditorialOverlaySvg(overlayParams)
   }
 
+  const layers = [{ input: overlayInput, top: 0, left: 0 }]
+  if (logoUrl) {
+    const logoLayer = await buildLogoCompositeLayer(logoUrl, width, height)
+    if (logoLayer) layers.push(logoLayer)
+  }
+
   const out = await sharp(photoLayer)
-    .composite([{ input: overlayInput, top: 0, left: 0 }])
+    .composite(layers)
     .jpeg({ quality: 90, progressive: true })
     .toBuffer()
 

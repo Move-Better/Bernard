@@ -54,6 +54,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8747", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/elated-ardinghelli-ab43a0/.claude/mockups"],
       "port": 8747
+    },
+    {
+      "name": "logo-on-posts-mock",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8749", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/affectionate-yonath-79931f/.claude/mockups"],
+      "port": 8749
     }
   ]
 }
