@@ -34,6 +34,9 @@ const MIN_SAMPLES   = 5
 const SCORE_MULT    = 2
 const SCAN_WINDOW_D = 60     // only consider posts published in the last N days
 const SNAPSHOT_MAX_AGE_H = 24 // skip refetch if we have a snapshot newer than this
+// bundle.social force-refresh decay schedule — see processWorkspaceBundle.
+const CHECKPOINT_DAYS = [1, 3, 7, 30]
+const MAX_BUNDLE_FORCES_PER_RUN = 4 // stay under bundle's ~5/team/day force-analytics cap
 // GA4 minimum traffic gate (Tier 3): a low-traffic clinic blog where the
 // median post gets 3 pageviews shouldn't auto-flag a "winner" at 6 views —
 // that's noise, not signal. Require at least this many pageviews before a
@@ -219,9 +222,9 @@ async function processWorkspace(ws, summary) {
 
 // bundle.social walker — same shape as processWorkspace (Buffer), different source.
 // Walks bundle workspaces only; called in parallel with the GA4 walker in the
-// main loop. Analytics for Twitter/GBP are known to return empty from bundle
-// (GBP: bundle has no data; Twitter: omitted from analytics enum) — empty
-// metrics are silently skipped, same as Buffer's "statistics always empty" guard.
+// main loop. Analytics for Twitter/GBP are known to be unavailable from bundle
+// (GBP: bundle has no data; Twitter: omitted from analytics enum) — those
+// throw inside getAnalytics and are caught/skipped below.
 async function processWorkspaceBundle(ws, summary) {
   if (ws.publish_provider !== 'bundle') return
 
@@ -253,8 +256,27 @@ async function processWorkspaceBundle(ws, summary) {
   }
 
   const freshCutoff = new Date(Date.now() - SNAPSHOT_MAX_AGE_H * 60 * 60 * 1000).toISOString()
-  let refreshed = 0
+  const now = Date.now()
+
+  // bundle.social only advances a post's analytics history on a FORCED read,
+  // and force-refresh is rate-limited to ~5/team/day, shared across every
+  // platform on this workspace's one brand Team (FB+IG+LinkedIn+...). Forcing
+  // every live post every day would blow that quota immediately (movebetter
+  // alone has 20+ posts in the scan window). Instead force only at a few
+  // fixed post-age checkpoints, then stop — engagement naturally front-loads,
+  // so day 1/3/7/30 captures the real curve without unbounded daily cost.
+  // A post that's never been pulled at all (pre-dates this rollout, or missed
+  // its checkpoint due to a cron gap) gets a rate-limited one-time catch-up
+  // instead, so the backlog drains gradually rather than in one quota-busting
+  // run.
+  const due = []
+  const catchUp = []
   for (const item of items) {
+    // GBP has no bundle analytics at all, and Twitter is omitted from bundle's
+    // analytics enum entirely — both always throw in getAnalytics, so never
+    // spend a scarce force-refresh slot queuing them.
+    if (item.platform === 'gbp' || item.platform === 'twitter') continue
+
     const latestRes = await sb(
       `engagement_snapshots?content_item_id=eq.${item.id}&workspace_id=eq.${ws.id}&source=eq.bundle&order=fetched_at.desc&limit=1&select=fetched_at,stats`
     )
@@ -265,18 +287,31 @@ async function processWorkspaceBundle(ws, summary) {
       continue
     }
 
+    const ageDays = Math.floor((now - new Date(item.published_at).getTime()) / (24 * 60 * 60 * 1000))
+    if (CHECKPOINT_DAYS.includes(ageDays)) {
+      due.push(item)
+    } else if (!latest) {
+      catchUp.push(item)
+    } else {
+      item._stats = latest.stats // off-checkpoint day, already have history — carry it forward, no bundle call
+    }
+  }
+
+  let refreshed = 0
+  for (const item of [...due, ...catchUp].slice(0, MAX_BUNDLE_FORCES_PER_RUN)) {
     let analytics
     try {
-      analytics = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform })
+      analytics = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force: true })
     } catch {
       // Platform unsupported for analytics (Twitter, GBP) or temporary error — skip.
       continue
     }
     const metrics = analytics?.metrics
-    const hasData = metrics && Object.values(metrics).some((v) => typeof v === 'number' && v > 0)
-    if (!hasData) continue
 
-    // Store under `statistics` key so scoreOf() sums correctly (same shape as Buffer walker).
+    // Write the snapshot even when every metric is 0 — a forced read genuinely
+    // checked and that's the real reading. Skipping it would leave `catchUp`
+    // re-queuing the same post forever, since it depends on `!latest` to know
+    // a post has never been pulled.
     const stats = { statistics: { ...metrics }, source: 'bundle', service: item.platform }
     const ins = await sb('engagement_snapshots', {
       method: 'POST',

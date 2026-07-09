@@ -6,9 +6,11 @@
 // so the user can pull the latest numbers without waiting for the cache to
 // expire.
 
+import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBufferMetrics, queryKeys } from '@/lib/queries'
+import { apiFetch } from '@/lib/api'
 
 function StatChip({ label, value }) {
   return (
@@ -22,9 +24,24 @@ function StatChip({ label, value }) {
 export default function BufferMetricsRow({ contentItemId }) {
   const { data, isLoading, isFetching } = useBufferMetrics(contentItemId)
   const qc = useQueryClient()
+  const [forcing, setForcing] = useState(false)
 
-  const handleRefresh = () => {
-    qc.invalidateQueries({ queryKey: queryKeys.bufferMetrics(contentItemId) })
+  // A plain invalidate/refetch re-runs the same non-forcing GET — for a
+  // bundle.social-provider workspace that returns the same cached-by-bundle
+  // reading, since bundle only advances its analytics history on a FORCED
+  // read. Call the endpoint directly with force=true so the click actually
+  // does something.
+  const handleRefresh = async () => {
+    setForcing(true)
+    try {
+      const res = await apiFetch(`/api/buffer-analytics?contentItemId=${encodeURIComponent(contentItemId)}&force=true`)
+      qc.setQueryData(queryKeys.bufferMetrics(contentItemId), res)
+    } catch {
+      // Leave the existing cached data in place — a transient failure here
+      // shouldn't blank out numbers the user could already see.
+    } finally {
+      setForcing(false)
+    }
   }
 
   // Don't render while loading the first time — avoid layout shift
@@ -53,12 +70,12 @@ export default function BufferMetricsRow({ contentItemId }) {
       <button
         type="button"
         onClick={handleRefresh}
-        disabled={isFetching}
+        disabled={isFetching || forcing}
         className="ml-auto inline-flex items-center text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
         aria-label="Refresh metrics"
         title="Refresh metrics"
       >
-        <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
+        <RefreshCw className={`h-3 w-3 ${isFetching || forcing ? 'animate-spin' : ''}`} />
       </button>
     </div>
   )
