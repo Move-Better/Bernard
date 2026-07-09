@@ -14,7 +14,29 @@
 // The model call is dependency-injected (`generate`) so a harness can run the
 // whole pipeline against real interview data with no gateway key.
 
+import { z } from 'zod'
 import { ATOM_DEFINITIONS } from './atomPlan.js'
+
+// One planned piece as the Strategist must return it. `brief` is REQUIRED and
+// non-empty — the whole point of the schema over a hand-parsed array is that the
+// model can no longer silently drop the brief (which left ~87% of atoms with a
+// null brief and every card in a channel looking identical). Kept short so the
+// backlog/calendar rows stay a scannable one-liner.
+// `brief` is a REQUIRED key (not .optional()) — that presence is what forces the
+// model to emit one per piece, which is the whole fix. Length is deliberately
+// NOT a schema constraint: a hard .max() makes generateObject reject the ENTIRE
+// response when a single brief runs long, silently zeroing the plan. We keep it
+// short via the prompt + describe() and truncate on store instead.
+const BRIEF_MAX = 90
+const candidateSchema = z.object({
+  interview_id: z.string().describe('The exact interview id this piece draws from, copied verbatim from the input.'),
+  platform: z.string().describe('The channel to publish on (one of the provided channels).'),
+  angle: z.string().describe('The angle key, chosen FROM THE PROVIDED PALETTE for that channel.'),
+  brief: z.string().describe(
+    "A concrete one-line brief (aim for under 90 characters): the specific subject + the clinician's own framing, NOT a generic angle name. E.g. \"Why sciatica isn't a back problem\", not \"Clinical Insight\".",
+  ),
+})
+const planSchema = z.object({ pieces: z.array(candidateSchema) })
 
 // Atom-level (social) channels the Strategist fills to cadence. blog / email /
 // landing_page / youtube / ads are single-output or digest-assembled and are
@@ -174,6 +196,15 @@ export function allocateToCadence(candidates, cadence, backlog = []) {
   return { thisWeek, held, promoted }
 }
 
+// Trim a model-written brief to a single clean line within BRIEF_MAX chars.
+// Returns null for an empty/whitespace brief so the UI's topic fallback kicks in
+// rather than showing a blank row.
+function normalizeBrief(brief) {
+  const t = String(brief || '').replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  return t.length > BRIEF_MAX ? `${t.slice(0, BRIEF_MAX - 1).trimEnd()}…` : t
+}
+
 // Shape a raw candidate ({interview_id, platform, angle, brief}) into a full
 // content_plan_atoms row, looking the angle label/description up in the palette.
 function toAtomRow(c, { workspaceId, planWeek, palette }) {
@@ -186,7 +217,7 @@ function toAtomRow(c, { workspaceId, planWeek, palette }) {
     angle: c.angle,
     angle_label: pal.label || c.angle,
     angle_description: pal.description || null,
-    brief: c.brief || null,
+    brief: normalizeBrief(c.brief),
     status: 'pending',
     planned_by: 'strategist',
     plan_week: planWeek,
@@ -207,35 +238,37 @@ export function buildStrategistPrompt({ interviews, channels, recentTopics, pale
   const system =
     `You are the content strategist for a clinical practice. From this week's clinician ` +
     `interviews, compose the strongest set of social pieces to publish. For each piece choose ` +
-    `the channel, an angle FROM THE PROVIDED PALETTE for that channel, and write a concrete ` +
-    `one-line brief (the specific subject + the clinician's own framing — not a generic angle). ` +
+    `the channel and an angle FROM THE PROVIDED PALETTE for that channel. EVERY piece must have ` +
+    `a concrete one-line brief: the specific subject + the clinician's own framing, never a ` +
+    `generic angle name — a reader should know exactly what the post is about from the brief ` +
+    `alone, and two pieces from the same interview must have distinct briefs. ` +
+    `NEVER begin a brief with the channel or angle name (e.g. do not write "Instagram hook:" ` +
+    `or "LinkedIn clinical perspective:") — the reader already sees both; open with the subject. ` +
     `Prefer variety across clinicians and topics. Do NOT repeat any subject in RECENT TOPICS. ` +
-    `Aim for roughly the per-channel weekly targets, but quality over quantity. ` +
-    `Return ONLY a JSON array of {interview_id, platform, angle, brief}.`
+    `Aim for roughly the per-channel weekly targets, but quality over quantity.`
   const user =
     `THIS WEEK'S INTERVIEWS:\n${interviewText}\n\n` +
     `CHANNELS + ANGLE PALETTE:\n${paletteText}\n\n` +
-    `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}\n\n` +
-    `Return the JSON array.`
+    `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}`
   return { system, user }
 }
 
 // Real model call (lazy-imports the AI SDK so a harness importing this module
-// doesn't need a gateway key). Returns parsed candidate objects.
+// doesn't need a gateway key). Returns validated candidate objects — the schema
+// forces a non-empty brief on every piece, so the model can't drop it.
 async function defaultGenerate({ system, user }) {
-  const { generateText } = await import('ai')
-  const { text } = await generateText({
-    model: 'anthropic/claude-sonnet-4-6',
-    system,
-    messages: [{ role: 'user', content: user }],
-    maxOutputTokens: 1500,
-  })
-  const jsonStr = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  const { generateObject } = await import('ai')
   try {
-    const parsed = JSON.parse(jsonStr)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    console.error('[strategist] defaultGenerate: failed to parse JSON response', jsonStr.slice(0, 200))
+    const { object } = await generateObject({
+      model: 'anthropic/claude-sonnet-4-6',
+      schema: planSchema,
+      instructions: system,
+      messages: [{ role: 'user', content: user }],
+      maxOutputTokens: 2000,
+    })
+    return Array.isArray(object?.pieces) ? object.pieces : []
+  } catch (e) {
+    console.error('[strategist] defaultGenerate: model call/validation failed:', e?.message)
     return []
   }
 }
