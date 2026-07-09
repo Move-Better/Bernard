@@ -1,11 +1,11 @@
 import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
 // GET /api/engagement/top-performers — returns top 5 content items by
-// engagement across both Buffer and GA4 sources.
+// engagement across Buffer, bundle.social, and GA4 sources.
 //
 // Queries engagement_snapshots (workspace-scoped) for the latest snapshot
 // per content item, scores each item by source-appropriate signal (reach for
-// Buffer, pageviews for GA4), and returns the top 5. This is the unified
+// Buffer/bundle, pageviews for GA4), and returns the top 5. This is the unified
 // reader for the "What's working" widget in HomeRightRail and the
 // topic-suggestion enrichment in /api/topic-suggestions.
 //
@@ -35,9 +35,18 @@ function scoreSnapshot(snap) {
     const pageviews = snap.stats?.pageviews ?? 0
     return { score: pageviews, pageviews, reach: 0, engagement: 0 }
   }
-  // Buffer (and any future social source)
   const stats = snap.stats?.statistics ?? {}
   const likes = stats.likes ?? stats.favorites ?? 0
+  if (snap.source === 'bundle') {
+    // bundle.social has no `reach` field — mirror the mapping used by
+    // buffer-analytics.js's mapBundleMetrics (impressionsUnique -> reach,
+    // likes+comments+shares+saves -> engagement), or every bundle row scores
+    // 0 and gets filtered out as a candidate before it's ever ranked.
+    const reach = stats.impressionsUnique ?? 0
+    const engagement = likes + (stats.comments ?? 0) + (stats.shares ?? 0) + (stats.saves ?? 0)
+    return { score: reach, reach, pageviews: 0, engagement }
+  }
+  // Buffer — API returns no engagement data today, so this legitimately scores 0.
   const reach  = stats.reach ?? 0
   const engagement = likes + (stats.comments ?? 0) + (stats.shares ?? 0)
   return { score: reach, reach, pageviews: 0, engagement }
