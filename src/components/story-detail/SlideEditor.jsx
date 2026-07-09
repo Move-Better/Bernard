@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, CalendarClock, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -26,6 +25,7 @@ import { deriveStory } from '@/lib/storyFields'
 import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
+import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import SaveStatus from '@/components/editor/SaveStatus'
@@ -2569,11 +2569,25 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         )}
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         <SaveStatus status={rendering ? 'saving' : saveStatus} />
+        {/* Approve · voice check · publish — inline, no modal or backing out.
+            The full Publish panel (export, metrics, schedule details) stays one
+            click away behind the sliders button for the cases the bar can't
+            cover (export-only channels, published metrics). */}
+        <EditorWorkflowBar piece={piece} />
         {scheduleNode && (
-          <Button size="sm" onClick={() => setScheduleOpen(true)} className="bg-action text-action-foreground hover:bg-action/90">
-            <CalendarClock className="mr-1 h-3.5 w-3.5" />
-            Schedule
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                className="rounded-lg border border-border px-2 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Full publish panel"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Full publish panel — export, metrics, schedule details</TooltipContent>
+          </Tooltip>
         )}
       </EditorChrome>
 

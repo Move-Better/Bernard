@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ShieldCheck, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+import { scoreTier, FLAG_LABELS, SEVERITY_DOT } from '@/lib/voiceFidelity'
 
 // Voice-fidelity audit surface (PR 3 — see
 // .claude/design-interview-output-voice-fidelity.md, section 6).
@@ -12,29 +13,9 @@ import { ShieldCheck, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-re
 // v1 is flag-only: we surface the score + the drift flags as suggestions for
 // human review. We do NOT auto-revert. Renders nothing until an audit lands so
 // the fire-and-forget pass doesn't leave a visible "pending" stub.
-
-const FLAG_LABELS = {
-  vocabulary_swap:   'Vocabulary swap',
-  imposed_structure: 'Imposed structure',
-  smoothed_opinion:  'Smoothed opinion',
-  fabricated_claim:  'Fabricated claim',
-}
-
-// Tier → semantic token. >=90 reads as the clinician; <50 has been translated
-// out of their voice. Uses the shared semantic tokens (see CLAUDE.md brand-
-// color checklist) rather than raw colors.
-function scoreTier(score) {
-  if (score >= 90) return { label: 'Faithful', text: 'text-success', bg: 'bg-success/10', border: 'border-success/30', Icon: ShieldCheck }
-  if (score >= 70) return { label: 'Mostly faithful', text: 'text-info', bg: 'bg-info/10', border: 'border-info/30', Icon: ShieldCheck }
-  if (score >= 50) return { label: 'Worth a look', text: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/30', Icon: AlertTriangle }
-  return { label: 'Doesn\'t sound like you', text: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30', Icon: AlertTriangle }
-}
-
-const SEVERITY_DOT = {
-  high:   'bg-destructive',
-  medium: 'bg-warning',
-  low:    'bg-muted-foreground',
-}
+//
+// Tier thresholds + flag labels + severity dots live in @/lib/voiceFidelity so
+// this full badge and the compact editor-header VoiceChip stay in lockstep.
 
 export default function VoiceFidelityBadge({ piece }) {
   const [open, setOpen] = useState(false)
@@ -55,7 +36,7 @@ export default function VoiceFidelityBadge({ piece }) {
 
   const tier = scoreTier(typeof score === 'number' ? score : (audit.score ?? 0))
   const flags = Array.isArray(audit.flags) ? audit.flags : []
-  const { Icon } = tier
+  const Icon = tier.iconName === 'shield' ? ShieldCheck : AlertTriangle
 
   return (
     <div className={`rounded-md border ${tier.border} ${tier.bg}`}>

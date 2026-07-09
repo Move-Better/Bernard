@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Check, Crop, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Send, Type, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
+import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import PostPreview from '@/components/PostPreview'
 import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
@@ -604,7 +605,11 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
         badge={{ icon: meta.icon, label: formatLabel || meta.label, sub: formatSub || cfg.label }}
         note={count != null ? (count === 0 ? 'no media' : `${count} ${count === 1 ? 'item' : 'items'}`) : null}
         aspect={!noMedia && cfg.canvas === 'visual' ? { value: aspect, options: aspectOptions, onChange: setAspect } : null}
-      />
+      >
+        {/* Approve · voice check · publish, inline in the bar. The rail's
+            Publish tab remains the full panel (export, metrics, next-up). */}
+        <EditorWorkflowBar piece={piece} />
+      </EditorChrome>
 
       {/* ── WORK AREA: rail | inspector | canvas ─────────────────────────── */}
       <div className="flex min-h-0 flex-1">
