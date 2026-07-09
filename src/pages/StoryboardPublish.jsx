@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import BackLink from '@/components/ui/BackLink'
@@ -16,6 +16,7 @@ import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import UnifiedEditor from '@/components/editor/UnifiedEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
 import { useContentItem, useContentItems } from '@/lib/queries'
+import { posthogCapture } from '@/lib/posthog'
 import { PLATFORM_META } from '@/lib/contentMeta'
 
 // Same predicate the Storyboard queue uses — a draft "needs media" when nothing
@@ -53,6 +54,14 @@ export default function StoryboardPublish() {
     () => worklist.filter((p) => p.id !== pieceId && NEEDS_MEDIA(p)),
     [worklist, pieceId],
   )
+
+  // Review→edit→publish funnel: fire once per piece open. Pairs with
+  // draft_reviewed (approve) + published to measure the loop where the real
+  // usage lives — the old capture_started→story_generated funnel tracked the
+  // retired capture-first flow and sat near-zero.
+  useEffect(() => {
+    if (piece?.id) posthogCapture('piece_opened', { pieceId: piece.id, platform: piece.platform })
+  }, [piece?.id, piece?.platform])
 
   if (isLoading) return <LoadingState />
   if (isError || !piece) {

@@ -105,6 +105,7 @@ export function useContentWorkflow(piece) {
         approvedBy: userEmail,
         approvedAt: new Date().toISOString(),
       })
+      posthogCapture('draft_reviewed', { pieceId: piece.id, platform: piece.platform })
       toast.success('Stories approved — ready for media')
     } catch (err) {
       toast.error('Failed to approve', { description: err.message })
