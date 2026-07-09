@@ -9,6 +9,20 @@
 
 import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.js'
 import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
+import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
+
+// P3 promo lane: how much of the feed campaign-attributed pieces may claim.
+// Ramps with event proximity — a far-off (or evergreen) campaign gets the floor,
+// an imminent seminar the ceiling. Derived from the shared campaignWeight ramp
+// (1..30) so the promo lane and the Slate slot allocation stay in lockstep.
+const PROMO_MIN = 0.15
+const PROMO_MAX = 0.40
+function promoShareFor(activeCampaigns, now) {
+  if (!activeCampaigns?.length) return 0
+  const maxW = Math.max(...activeCampaigns.map((c) => campaignWeight(c, now)))
+  const t = Math.min(1, Math.max(0, (maxW - 1) / (30 - 1))) // weight 1→0, 30→1
+  return Number((PROMO_MIN + t * (PROMO_MAX - PROMO_MIN)).toFixed(3))
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -44,9 +58,16 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   const ivRes = await sb(
     `interviews?workspace_id=eq.${wsId}&status=in.(completed,synthesized)` +
       `&created_at=gte.${weekStart}&created_at=lt.${weekEnd}` +
-      `&select=id,topic,staff_id,summary_text,created_at,region,theme`,
+      `&select=id,topic,staff_id,summary_text,created_at,region,theme,campaign_id`,
   )
   const interviews = ivRes.ok ? await ivRes.json() : []
+
+  // Live campaigns (date-window aware — excludes stale-active past end_at) drive
+  // the P3 promo lane. Their ids mark which pieces are campaign-attributed;
+  // event proximity sizes the promo share.
+  const activeCampaigns = await getActiveCampaigns(wsId)
+  const promoCampaignIds = activeCampaigns.map((c) => c.id)
+  const promoShare = promoShareFor(activeCampaigns, Date.now())
 
   // Recent topics already posted — for the LLM to avoid repeating.
   const since = new Date(Date.now() - RECENT_TOPIC_DAYS * 24 * 60 * 60 * 1000).toISOString()
@@ -79,10 +100,15 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   // the source interview's region so the allocator can cap-check backlog too.
   const bkRes = await sb(
     `content_plan_atoms?workspace_id=eq.${wsId}&held_at=not.is.null` +
-      `&select=id,platform,angle,angle_label,brief,held_at,interview_id,interviews(region)`,
+      `&select=id,platform,angle,angle_label,brief,held_at,interview_id,interviews(region,campaign_id)`,
   )
   const backlog = bkRes.ok
-    ? (await bkRes.json()).map((b) => ({ ...b, region: b.interviews?.region || null, interviews: undefined }))
+    ? (await bkRes.json()).map((b) => ({
+        ...b,
+        region: b.interviews?.region || null,
+        campaign_id: b.interviews?.campaign_id || null,
+        interviews: undefined,
+      }))
     : []
 
   // Cadence resolution. Auto (provenance !== 'user', the default) COMPUTES the
@@ -103,7 +129,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   if (!cadence || Object.keys(cadence).length === 0) cadence = RECOMMENDED_CADENCE
   const quietDays = policy?.quiet_days || ['sat', 'sun']
 
-  return { interviews, cadence, quietDays, recentTopics, recentRegionCounts, backlog }
+  return { interviews, cadence, quietDays, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog }
 }
 
 /**
@@ -177,7 +203,7 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
  */
 export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultSb, generate }) {
   const planWeek = weekMonday || mondayOf(new Date().toISOString())
-  const { interviews, cadence, quietDays, recentTopics, recentRegionCounts, backlog } = await getWeekInputs({
+  const { interviews, cadence, quietDays, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog } = await getWeekInputs({
     workspace,
     weekMonday: planWeek,
     sb,
@@ -196,6 +222,8 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     timezone: workspace.cadence_policy?.timezone || 'America/Los_Angeles',
     recentTopics,
     recentRegionCounts,
+    promoShare,
+    promoCampaignIds,
     backlog,
     weekMonday: planWeek,
     ...(generate ? { generate } : {}),
