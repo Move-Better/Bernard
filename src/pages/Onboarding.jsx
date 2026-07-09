@@ -500,11 +500,19 @@ function SignedInPrompt({ onContinue }) {
   })
   const clientMemberCount = userMemberships?.data?.length ?? 0
   const [state, setState] = useState({ status: 'loading', workspaces: [], suggested: [] })
-  // One-shot guard: the poll runs exactly once per mount. Without it, the
-  // paginated useOrganizationList subscription updating clientMemberCount
+  // retryKey increments when the user clicks "Check again" — resets the guard
+  // so the poll can run a second time.
+  const [retryKey, setRetryKey] = useState(0)
+  // One-shot guard: the poll runs exactly once per mount (or retry). Without it,
+  // the paginated useOrganizationList subscription updating clientMemberCount
   // mid-poll would re-enter the effect, cancel the in-flight run, and restart
   // from attempt 0 — extending latency or settling on the wrong state.
   const startedRef = useRef(false)
+
+  useEffect(() => {
+    // Reset the one-shot guard when the user hits "Check again".
+    startedRef.current = false
+  }, [retryKey])
 
   useEffect(() => {
     // Wait until Clerk's client-side membership list has loaded before deciding
@@ -566,7 +574,15 @@ function SignedInPrompt({ onContinue }) {
           // says the user belongs to an org the server hasn't surfaced yet.
           const shouldPoll = hasClientMembership && attempt < MAX_ATTEMPTS - 1
           if (!shouldPoll) {
-            setState({ status: 'done', workspaces, suggested })
+            // If the client session shows a membership but the server still
+            // returns nothing, the invite was accepted but Clerk's server-side
+            // list hasn't propagated. Show a retry state — never the wizard —
+            // so the user isn't dropped into new-workspace setup by mistake.
+            if (hasClientMembership && workspaces.length === 0) {
+              setState({ status: 'membership-pending', workspaces: [], suggested: [] })
+            } else {
+              setState({ status: 'done', workspaces, suggested })
+            }
             return
           }
           await new Promise((resolve) => { setTimeout(resolve, RETRY_MS) })
@@ -579,7 +595,7 @@ function SignedInPrompt({ onContinue }) {
       }
     })()
     return () => { cancelled = true }
-  }, [getToken, orgsLoaded, clientMemberCount])
+  }, [getToken, orgsLoaded, clientMemberCount, retryKey])
 
   if (state.status === 'loading') {
     return (
@@ -596,6 +612,28 @@ function SignedInPrompt({ onContinue }) {
       <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Taking you to {ws?.display_name || ws?.slug || 'your workspace'}…
+      </div>
+    )
+  }
+
+  if (state.status === 'membership-pending') {
+    return (
+      <div className="space-y-3 text-sm">
+        <p>
+          Your invitation was accepted — we&apos;re still finishing your account setup.
+          This usually takes a few seconds.
+        </p>
+        <button
+          onClick={() => { setState({ status: 'loading', workspaces: [], suggested: [] }); setRetryKey((k) => k + 1) }}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
+        >
+          <Loader2 className="h-3.5 w-3.5" aria-hidden="true" />
+          Check again
+        </button>
+        <p className="text-xs text-muted-foreground">
+          If this keeps happening, go directly to your workspace URL or contact{' '}
+          <a className="underline" href="mailto:support@withbernard.ai">support@withbernard.ai</a>.
+        </p>
       </div>
     )
   }
