@@ -12,6 +12,10 @@
 //                 Each gap also gets a `hasPost` flag: whether an existing
 //                 published post likely covers the topic (rough word overlap).
 //
+// For period-scoped clicks/impressions (the SEO tab's week/month/year
+// picker), see search-by-period.js — a separate endpoint, since this read's
+// rolling-28-day window is independent of whatever period the picker shows.
+//
 // Returns { connected: false } when Search Console isn't configured.
 //
 // Node runtime + Express-style (req, res).
@@ -21,7 +25,7 @@ import { workspaceContext }  from '../../_lib/workspaceContext.js'
 import { requireRole }       from '../../_lib/auth.js'
 import { enforceLimit }      from '../../_lib/ratelimit.js'
 import { decryptSecret }     from '../../_lib/credentialCrypto.js'
-import { fetchSearchQueries, fetchSearchTotalsByDate } from '../../_lib/searchConsole.js'
+import { fetchSearchQueries } from '../../_lib/searchConsole.js'
 
 const SUPABASE_URL       = process.env.SUPABASE_URL
 const SUPABASE_KEY       = process.env.SUPABASE_SERVICE_KEY
@@ -29,40 +33,6 @@ const GAP_MIN_IMPRESSIONS = 10   // ignore low-signal queries
 const GAP_MIN_POSITION    = 10   // below this = not on page 1
 const TOP_QUERIES         = 10
 const TOP_GAPS            = 5
-const WEEKLY_TOTALS_COUNT = 4    // trailing weeks (incl. current, partial) to report
-
-// UTC-Monday week math — mirrors website-by-week.js / social-by-week.js /
-// Analytics.jsx's WeekNav so "this week" means the same thing everywhere.
-function weekMondayDate(offset) {
-  const d = new Date()
-  const dow = (d.getUTCDay() + 6) % 7
-  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
-  d.setUTCHours(0, 0, 0, 0)
-  return d
-}
-
-// Bucket daily {date, clicks, impressions} rows into the trailing N UTC-Monday
-// weeks (oldest first, current partial week last).
-function bucketByWeek(dailyRows, weekCount) {
-  const buckets = []
-  for (let offset = -(weekCount - 1); offset <= 0; offset++) {
-    const start = weekMondayDate(offset)
-    const end = new Date(start)
-    end.setUTCDate(end.getUTCDate() + 7)
-    const startStr = start.toISOString().slice(0, 10)
-    const endStr = end.toISOString().slice(0, 10)
-    let clicks = 0
-    let impressions = 0
-    for (const row of dailyRows) {
-      if (row.date >= startStr && row.date < endStr) {
-        clicks += row.clicks
-        impressions += row.impressions
-      }
-    }
-    buckets.push({ weekStart: startStr, clicks, impressions, isCurrent: offset === 0 })
-  }
-  return buckets
-}
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -155,15 +125,5 @@ export default async function handler(req, res) {
       hasPost:     queryMatchesTopic(q.query, topics),
     }))
 
-  // Weekly clicks/impressions — best-effort; a failure here shouldn't take
-  // down topQueries/gaps, which already succeeded above.
-  let weeklyTotals = []
-  try {
-    const daily = await fetchSearchTotalsByDate({ credential, siteUrl: ws.gsc_site_url, days: 35 })
-    weeklyTotals = bucketByWeek(daily, WEEKLY_TOTALS_COUNT)
-  } catch (e) {
-    console.error('[insights/search-queries] weekly totals failed:', e?.message)
-  }
-
-  return res.status(200).json({ connected: true, topQueries, gaps, weeklyTotals })
+  return res.status(200).json({ connected: true, topQueries, gaps })
 }

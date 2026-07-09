@@ -1,22 +1,22 @@
 import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
-// GET /api/engagement/social-by-week?weekOffset=0 — per-platform social
-// reach/engagement for a single UTC-Monday week, for the Insights page's
-// Social Media tab + week picker.
+// GET /api/engagement/social-by-week?granularity=week&periodOffset=0 —
+// per-platform social reach/engagement for a single week/month/year period,
+// for the Insights page's Social Media tab + period picker.
 //
-// weekOffset mirrors YourWeek.jsx's convention (0 = this week, negative =
-// past weeks) so the two pages compute the same Monday for the same offset.
-// Only past/current weeks make sense for a read of what already happened —
-// clamped to [-WEEK_NAV_BACK, 0].
+// granularity+periodOffset mirror website-by-week.js's convention (0 = this
+// period, negative = past) so the two tabs compute the same boundaries for
+// the same selection. Only past/current periods make sense for a read of
+// what already happened — clamped in periodMath.js.
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { scoreSnapshot } from '../../_lib/engagementScoring.js'
+import { periodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const WEEK_NAV_BACK = 8
 
 // Platforms shown on the Social Media tab — everything bundle.social/Buffer
 // can post to, excluding GBP (its own tab) and website-ish platforms (blog,
@@ -35,16 +35,6 @@ function sb(path) {
   })
 }
 
-// UTC-Monday week math — mirrors YourWeek.jsx's weekMondayDate() exactly so
-// "week -1" means the same calendar week on both pages.
-function weekMondayDate(offset) {
-  const d = new Date()
-  const dow = (d.getUTCDay() + 6) % 7 // 0 = Monday
-  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
-  d.setUTCHours(0, 0, 0, 0)
-  return d
-}
-
 export default withSentry(async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -60,18 +50,16 @@ export default withSentry(async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const { searchParams } = new URL(req.url, 'http://localhost')
-  const rawOffset = Number.parseInt(searchParams.get('weekOffset') ?? '0', 10)
-  const weekOffset = Number.isFinite(rawOffset) ? Math.max(-WEEK_NAV_BACK, Math.min(0, rawOffset)) : 0
-
-  const weekStart = weekMondayDate(weekOffset)
-  const weekEnd = new Date(weekStart)
-  weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
+  const { start: periodStart, end: periodEnd, granularity, offset: periodOffset } = periodBounds(
+    searchParams.get('granularity'),
+    searchParams.get('periodOffset') ?? '0',
+  )
 
   const itemsRes = await sb(
     `content_items?workspace_id=eq.${ws.id}` +
     `&status=eq.published` +
-    `&published_at=gte.${encodeURIComponent(weekStart.toISOString())}` +
-    `&published_at=lt.${encodeURIComponent(weekEnd.toISOString())}` +
+    `&published_at=gte.${encodeURIComponent(periodStart.toISOString())}` +
+    `&published_at=lt.${encodeURIComponent(periodEnd.toISOString())}` +
     `&select=id,topic,platform`
   )
   if (!itemsRes.ok) return res.status(500).json({ error: 'Database error' })
@@ -79,9 +67,10 @@ export default withSentry(async function handler(req, res) {
   const items = (Array.isArray(allItems) ? allItems : []).filter((i) => SOCIAL_PLATFORMS.has(i.platform))
 
   const emptyBody = {
-    weekOffset,
-    weekStart: weekStart.toISOString().slice(0, 10),
-    weekEnd: new Date(weekEnd.getTime() - 1).toISOString().slice(0, 10),
+    granularity,
+    periodOffset,
+    periodStart: toDateStr(periodStart),
+    periodEnd: toDateStr(new Date(periodEnd.getTime() - 1)),
     overall: { posts: 0, reach: 0, engagement: 0 },
     byPlatform: [],
     topPost: null,
@@ -130,9 +119,10 @@ export default withSentry(async function handler(req, res) {
   }
 
   return res.status(200).json({
-    weekOffset,
-    weekStart: weekStart.toISOString().slice(0, 10),
-    weekEnd: new Date(weekEnd.getTime() - 1).toISOString().slice(0, 10),
+    granularity,
+    periodOffset,
+    periodStart: toDateStr(periodStart),
+    periodEnd: toDateStr(new Date(periodEnd.getTime() - 1)),
     overall: { posts: overallPosts, reach: overallReach, engagement: overallEngagement },
     byPlatform: [...byPlatform.values()].sort((a, b) => b.reach - a.reach),
     topPost,

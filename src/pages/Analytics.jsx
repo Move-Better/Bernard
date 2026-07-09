@@ -11,13 +11,14 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
   useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
-  useApplePerformance, useSocialByWeek, useWebsiteByWeek,
+  useApplePerformance, useSocialByPeriod, useWebsiteByPeriod, useSearchByPeriod,
 } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights } from '@/lib/insightsReads'
 import { buildCostView, fmtUsd } from '@/lib/costEstimate'
 import PageSkeleton from '@/components/PageSkeleton'
+import { GRANULARITIES, MAX_OFFSET, periodLabel, periodRelative } from '@/lib/periodMath'
 
 // ── Insights advisor ──────────────────────────────────────────────────────────
 //
@@ -261,12 +262,38 @@ function ExitAnalysisRead({ data }) {
   )
 }
 
-// Renders when Search Console is connected — top queries + keyword gaps.
-function fmtWeekOf(dateStr) {
-  const [y, m, d] = String(dateStr).split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+// SEO tab's period-scoped clicks/impressions — driven by the shared
+// Week/Month/Year picker, from /api/insights/search-by-period. Separate from
+// SearchQueriesRead below, whose topQueries/gaps always use a fixed rolling
+// 28-day window regardless of the picker.
+function SeoPeriodRead({ data, granularity }) {
+  if (!data?.connected) return null
+  if (data.error) return null
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Search className="h-4 w-4 text-primary" /> Search Console — {periodRelative(granularity, data.periodOffset).toLowerCase()}
+      </h3>
+      <div className="mt-4 space-y-3 text-sm">
+        <div className="flex justify-between items-baseline">
+          <span className="text-muted-foreground">Clicks</span>
+          <span className="font-semibold tabular-nums">{fmtNum(data.clicks)}</span>
+        </div>
+        <div className="flex justify-between items-baseline">
+          <span className="text-muted-foreground">Impressions</span>
+          <span className="font-semibold tabular-nums">{fmtNum(data.impressions)}</span>
+        </div>
+      </div>
+      {data.periodOffset === 0 && (
+        <p className="text-2xs text-muted-foreground mt-3 pt-3 border-t border-border">
+          Google reports search data with a 1–3 day lag, so this {granularity}&rsquo;s total is still rising.
+        </p>
+      )}
+    </div>
+  )
 }
 
+// Renders when Search Console is connected — top queries + keyword gaps.
 function SearchQueriesRead({ data }) {
   if (!data?.connected) {
     return (
@@ -300,29 +327,6 @@ function SearchQueriesRead({ data }) {
           <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
             Search Console · 28d
           </span>
-
-          {data.weeklyTotals?.length > 0 && (
-            <>
-              <p className="text-sm font-medium mt-3 mb-2">Clicks &amp; impressions by week</p>
-              <div className="space-y-1.5">
-                {data.weeklyTotals.map((w) => (
-                  <div key={w.weekStart} className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-3 text-sm">
-                    <span className="text-muted-foreground">{w.isCurrent ? 'This week' : `Week of ${fmtWeekOf(w.weekStart)}`}</span>
-                    <span className="tabular-nums text-right">{w.clicks.toLocaleString()}</span>
-                    <span className="tabular-nums text-right text-muted-foreground">{w.impressions.toLocaleString()}</span>
-                  </div>
-                ))}
-                <div className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] gap-3 text-3xs text-muted-foreground pt-1 border-t border-border">
-                  <span />
-                  <span className="text-right">clicks</span>
-                  <span className="text-right">impr.</span>
-                </div>
-              </div>
-              <p className="text-2xs text-muted-foreground mt-1.5">
-                Google reports search data with a 1–3 day lag, so this week&rsquo;s total is still rising.
-              </p>
-            </>
-          )}
 
           {hasQueries && (
             <>
@@ -646,68 +650,60 @@ function TabButton({ active, onClick, icon: Icon, label }) {
   )
 }
 
-// UTC-Monday week math for the shared Social/Website week picker — mirrors
-// YourWeek.jsx's convention (0 = this week, negative = past weeks) and the
-// server-side copies in social-by-week.js / website-by-week.js, so all agree
-// on what "week -1" means.
-const WEEK_NAV_BACK = 8
-function weekMondayDate(offset) {
-  const d = new Date()
-  const dow = (d.getUTCDay() + 6) % 7
-  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
-  d.setUTCHours(0, 0, 0, 0)
-  return d
-}
-function weekRangeLabel(offset) {
-  const mon = weekMondayDate(offset)
-  const sun = new Date(mon)
-  sun.setUTCDate(sun.getUTCDate() + 6)
-  const f = (dt, withMonth) => dt.toLocaleDateString('en-US', { month: withMonth ? 'short' : undefined, day: 'numeric', timeZone: 'UTC' })
-  return mon.getUTCMonth() === sun.getUTCMonth()
-    ? `${f(mon, true)} – ${f(sun, false)}`
-    : `${f(mon, true)} – ${f(sun, true)}`
-}
-function weekRelative(offset) {
-  if (offset === 0) return 'This week'
-  if (offset === -1) return 'Last week'
-  return `${-offset} weeks ago`
-}
+const GRANULARITY_LABELS = { week: 'Week', month: 'Month', year: 'Year' }
 
-function WeekNav({ weekOffset, onPrev, onNext, onToday }) {
+// Shared Social/Website/SEO period picker — Week/Month/Year granularity +
+// Prev/Next, backed by src/lib/periodMath.js (mirrored server-side in
+// api/_lib/periodMath.js so every tab agrees on period boundaries).
+function PeriodNav({ granularity, periodOffset, onGranularityChange, onPrev, onNext, onToday }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5 mb-4">
-      <button
-        type="button"
-        onClick={onPrev}
-        disabled={weekOffset <= -WEEK_NAV_BACK}
-        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Prev
-      </button>
-      <div className="flex items-center gap-2 text-center">
-        <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <div>
-          <div className="text-sm font-bold leading-tight">{weekRangeLabel(weekOffset)}</div>
-          <div className="text-3xs font-semibold uppercase tracking-wide text-primary">{weekRelative(weekOffset)}</div>
+    <div className="rounded-xl border border-border bg-card p-2.5 mb-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={periodOffset <= MAX_OFFSET[granularity]}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Prev
+        </button>
+        <div className="flex items-center gap-2 text-center">
+          <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div>
+            <div className="text-sm font-bold leading-tight">{periodLabel(granularity, periodOffset)}</div>
+            <div className="text-3xs font-semibold uppercase tracking-wide text-primary">{periodRelative(granularity, periodOffset)}</div>
+          </div>
+          {periodOffset !== 0 && (
+            <button
+              type="button"
+              onClick={onToday}
+              className="ml-1 rounded-md border border-border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
+            >
+              Back to this {granularity}
+            </button>
+          )}
         </div>
-        {weekOffset !== 0 && (
-          <button
-            type="button"
-            onClick={onToday}
-            className="ml-1 rounded-md border border-border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
-          >
-            Back to this week
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={periodOffset >= 0}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={weekOffset >= 0}
-        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
-      </button>
+      <div className="inline-flex p-1 rounded-lg bg-secondary mt-2.5">
+        {GRANULARITIES.map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => onGranularityChange(g)}
+            className={`px-3 py-1 rounded-md text-xs font-medium ${g === granularity ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
+          >
+            {GRANULARITY_LABELS[g]}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -739,7 +735,7 @@ function PlatformBadge({ platform }) {
   )
 }
 
-function SocialTab({ data, loading, cost }) {
+function SocialTab({ data, loading, cost, granularity = 'week' }) {
   if (loading && !data) {
     return (
       <div className="grid lg:grid-cols-2 gap-4">
@@ -752,6 +748,9 @@ function SocialTab({ data, loading, cost }) {
   const overall = data?.overall || { posts: 0, reach: 0, engagement: 0 }
   const byPlatform = data?.byPlatform || []
   const topPost = data?.topPost
+  // Run-cost is always a weekly figure (from the global recap, unrelated to
+  // the period picker) — only meaningful when actually viewing a week.
+  const showCost = granularity === 'week' && cost && cost.weekTotal > 0
 
   return (
     <>
@@ -773,7 +772,7 @@ function SocialTab({ data, loading, cost }) {
               <span className="text-muted-foreground">Engagement</span>
               <span className="font-semibold tabular-nums">{overall.posts > 0 ? fmtNum(overall.engagement) : '—'}</span>
             </div>
-            {cost && cost.weekTotal > 0 && (
+            {showCost && (
               <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
                 Estimated run cost this week: {fmtUsd(cost.weekTotal)}
                 {cost.perPost != null && <> (≈ {fmtUsd(cost.perPost)}/post)</>}
@@ -784,7 +783,7 @@ function SocialTab({ data, loading, cost }) {
 
         <div className="rounded-2xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" /> Your top post this week
+            <Award className="h-4 w-4 text-primary" /> Your top post this {granularity}
           </h3>
           {topPost ? (
             <div className="text-sm mt-3">
@@ -793,7 +792,7 @@ function SocialTab({ data, loading, cost }) {
               <div className="mt-2 font-semibold tabular-nums">{fmtNum(topPost.reach)} reach · {fmtNum(topPost.engagement)} engagement</div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground mt-3">No social posts published this week.</p>
+            <p className="text-sm text-muted-foreground mt-3">No social posts published this {granularity}.</p>
           )}
         </div>
       </div>
@@ -803,7 +802,7 @@ function SocialTab({ data, loading, cost }) {
           <LayoutGrid className="h-4 w-4 text-primary" /> By platform
         </h3>
         {byPlatform.length === 0 ? (
-          <p className="text-sm text-muted-foreground mt-3">No social posts published this week.</p>
+          <p className="text-sm text-muted-foreground mt-3">No social posts published this {granularity}.</p>
         ) : (
           <>
             <div className="divide-y divide-border mt-2">
@@ -818,7 +817,7 @@ function SocialTab({ data, loading, cost }) {
               ))}
             </div>
             <p className="text-2xs text-muted-foreground mt-3 pt-3 border-t border-border">
-              Only platforms you&rsquo;ve actually published to this week are shown.
+              Only platforms you&rsquo;ve actually published to this {granularity} are shown.
             </p>
           </>
         )}
@@ -828,10 +827,11 @@ function SocialTab({ data, loading, cost }) {
 }
 
 function WebsiteWeekCard({ data }) {
+  const granularity = data?.granularity || 'week'
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <h3 className="text-sm font-semibold flex items-center gap-2">
-        <Globe className="h-4 w-4 text-primary" /> Website — this week
+        <Globe className="h-4 w-4 text-primary" /> Website — {periodRelative(granularity, data?.periodOffset ?? 0).toLowerCase()}
       </h3>
       <div className="mt-4 space-y-3 text-sm">
         {data?.connected && data?.totalSessions != null && (
@@ -888,6 +888,11 @@ function DefinitionsModal({ onClose }) {
           <HelpCircle className="h-5 w-5 text-primary" /> How these numbers are calculated
         </h2>
         <div className="space-y-5 text-sm">
+          <p className="text-muted-foreground">
+            Social Media, Website, and SEO share one Week / Month / Year picker with Prev/Next — switch it and
+            all three update to the same period. Google Business Profile and Apple aren&rsquo;t on the picker yet
+            (see their own sections below).
+          </p>
           <div>
             <h3 className="font-semibold flex items-center gap-2 mb-1">
               <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><Smartphone className="h-3 w-3 text-primary" /></span>
@@ -906,8 +911,8 @@ function DefinitionsModal({ onClose }) {
               Website
             </h3>
             <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
-              <li><span className="font-medium text-foreground">Total site sessions</span> — every GA4 session on your whole property for the selected week, including pages Bernard doesn&rsquo;t track (home, staff bios, service pages, etc).</li>
-              <li><span className="font-medium text-foreground">Sessions on your posts</span> — GA4 sessions on just the pages tied to a published Bernard post, for the same week. Always ≤ total site sessions.</li>
+              <li><span className="font-medium text-foreground">Total site sessions</span> — every GA4 session on your whole property for the selected period, including pages Bernard doesn&rsquo;t track (home, staff bios, service pages, etc).</li>
+              <li><span className="font-medium text-foreground">Sessions on your posts</span> — GA4 sessions on just the pages tied to a published Bernard post, for the same period. Always ≤ total site sessions.</li>
               <li><span className="font-medium text-foreground">Engagement rate</span> — GA4&rsquo;s engaged sessions ÷ total sessions, for your posts&rsquo; pages.</li>
               <li><span className="font-medium text-foreground">Book Now clicks</span> — clicks on your booking-widget link (from Settings → Workspace &rsquo;s Booking URL), counted via GA4&rsquo;s automatic outbound-link tracking. No custom tracking code needed — GA4 detects any click to a different domain on its own. Only shows once Booking URL is set and GA4 is connected.</li>
             </ul>
@@ -915,11 +920,11 @@ function DefinitionsModal({ onClose }) {
           <div>
             <h3 className="font-semibold flex items-center gap-2 mb-1">
               <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><Search className="h-3 w-3 text-primary" /></span>
-              SEO — clicks &amp; impressions by week
+              SEO — clicks &amp; impressions
             </h3>
             <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
-              <li><span className="font-medium text-foreground">Clicks</span> / <span className="font-medium text-foreground">Impressions</span> — Google Search Console&rsquo;s organic search totals, bucketed into the same Monday–Sunday weeks used elsewhere on this page.</li>
-              <li>Google reports search data with a 1–3 day lag, so the current week&rsquo;s total is always partial and will keep rising.</li>
+              <li><span className="font-medium text-foreground">Clicks</span> / <span className="font-medium text-foreground">Impressions</span> — Google Search Console&rsquo;s organic search totals for the selected week, month, or year.</li>
+              <li>Google reports search data with a 1–3 day lag, so the current period&rsquo;s total is always partial and will keep rising.</li>
             </ul>
           </div>
           <div>
@@ -962,10 +967,17 @@ export default function Analytics() {
   const { data: appleData }     = useApplePerformance()
 
   const [activeTab, setActiveTab] = useState('social')
-  const [weekOffset, setWeekOffset] = useState(0)
+  const [granularity, setGranularity] = useState('week')
+  const [periodOffset, setPeriodOffset] = useState(0)
   const [defsOpen, setDefsOpen] = useState(false)
-  const { data: socialWeek, isLoading: socialWeekLoading } = useSocialByWeek(weekOffset)
-  const { data: websiteWeek } = useWebsiteByWeek(weekOffset)
+  const { data: socialPeriod, isLoading: socialPeriodLoading } = useSocialByPeriod(granularity, periodOffset)
+  const { data: websitePeriod } = useWebsiteByPeriod(granularity, periodOffset)
+  const { data: seoPeriod } = useSearchByPeriod(granularity, periodOffset)
+
+  const changeGranularity = (g) => {
+    setGranularity(g)
+    setPeriodOffset(0)
+  }
 
   // Owner/producer surface — individual clinicians use Home, not the asset board.
   if (!roleLoading && !isEditor) return <Navigate to="/" replace />
@@ -1038,22 +1050,24 @@ export default function Analytics() {
         <TabButton active={activeTab === 'seo'} onClick={() => setActiveTab('seo')} icon={Search} label="SEO" />
       </div>
 
-      {(activeTab === 'social' || activeTab === 'website') && (
-        <WeekNav
-          weekOffset={weekOffset}
-          onPrev={() => setWeekOffset((o) => Math.max(-WEEK_NAV_BACK, o - 1))}
-          onNext={() => setWeekOffset((o) => Math.min(0, o + 1))}
-          onToday={() => setWeekOffset(0)}
+      {(activeTab === 'social' || activeTab === 'website' || activeTab === 'seo') && (
+        <PeriodNav
+          granularity={granularity}
+          periodOffset={periodOffset}
+          onGranularityChange={changeGranularity}
+          onPrev={() => setPeriodOffset((o) => Math.max(MAX_OFFSET[granularity], o - 1))}
+          onNext={() => setPeriodOffset((o) => Math.min(0, o + 1))}
+          onToday={() => setPeriodOffset(0)}
         />
       )}
 
       {activeTab === 'social' && (
-        <SocialTab data={socialWeek} loading={socialWeekLoading} cost={weekOffset === 0 ? cost : null} />
+        <SocialTab data={socialPeriod} loading={socialPeriodLoading} cost={periodOffset === 0 ? cost : null} granularity={granularity} />
       )}
 
       {activeTab === 'website' && (
         <div className="space-y-3">
-          <WebsiteWeekCard data={websiteWeek} />
+          <WebsiteWeekCard data={websitePeriod} />
           {/* Live-now: page-health check (no GA4 needed) */}
           {health && health.checked > 0 && (
             health.issues.length === 0 ? (
@@ -1124,6 +1138,7 @@ export default function Analytics() {
 
       {activeTab === 'seo' && (
         <div className="space-y-3">
+          <SeoPeriodRead data={seoPeriod} granularity={granularity} />
           <SearchQueriesRead data={searchData} />
         </div>
       )}

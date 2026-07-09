@@ -1,7 +1,8 @@
-// GET /api/engagement/website-by-week?weekOffset=0 — GA4 pageviews across the
-// workspace's published pages for a single UTC-Monday week, feeding the
-// Insights page's Website tab + week picker (shares the same week math as
-// social-by-week.js so Prev/Next moves both tabs in lockstep).
+// GET /api/engagement/website-by-week?granularity=week&periodOffset=0 — GA4
+// pageviews across the workspace's published pages for a single week/month/
+// year period, feeding the Insights page's Website tab + period picker
+// (shares period math with social-by-week.js so Prev/Next moves both tabs
+// in lockstep).
 //
 // Returns { connected: false } when GA4 isn't configured — same contract as
 // website-ga4.js.
@@ -12,10 +13,10 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
 import { fetchGA4Metrics, fetchGA4OutboundClickCount, fetchGA4TotalSessions, urlToPagePath } from '../../_lib/ga4.js'
+import { periodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const WEEK_NAV_BACK = 8
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -26,16 +27,6 @@ function sb(path, init = {}) {
       ...init.headers,
     },
   })
-}
-
-// Mirrors YourWeek.jsx's weekMondayDate() / social-by-week.js's copy of it —
-// same UTC-Monday convention so all three pages agree on what "week -1" means.
-function weekMondayDate(offset) {
-  const d = new Date()
-  const dow = (d.getUTCDay() + 6) % 7
-  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
-  d.setUTCHours(0, 0, 0, 0)
-  return d
 }
 
 export default async function handler(req, res) {
@@ -50,18 +41,16 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'insights-website-ga4', ws.id))) return
 
   const { searchParams } = new URL(req.url, 'http://localhost')
-  const rawOffset = Number.parseInt(searchParams.get('weekOffset') ?? '0', 10)
-  const weekOffset = Number.isFinite(rawOffset) ? Math.max(-WEEK_NAV_BACK, Math.min(0, rawOffset)) : 0
+  const { start, end, granularity, offset: periodOffset } = periodBounds(
+    searchParams.get('granularity'),
+    searchParams.get('periodOffset') ?? '0',
+  )
+  const periodStartStr = toDateStr(start)
+  // GA4's endDate is inclusive, so use the last day IN the period, not the
+  // (exclusive) start of the following period.
+  const periodEndStr = toDateStr(new Date(end.getTime() - 1))
 
-  const weekStart = weekMondayDate(weekOffset)
-  const weekEnd = new Date(weekStart)
-  weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
-  const weekStartStr = weekStart.toISOString().slice(0, 10)
-  // GA4's endDate is inclusive, so use the last day IN the week, not the
-  // (exclusive) start of the following week.
-  const weekEndStr = new Date(weekEnd.getTime() - 1).toISOString().slice(0, 10)
-
-  const body = { weekOffset, weekStart: weekStartStr, weekEnd: weekEndStr }
+  const body = { granularity, periodOffset, periodStart: periodStartStr, periodEnd: periodEndStr }
 
   if (!ws.ga4_property_id) return res.status(200).json({ ...body, connected: false })
 
@@ -94,8 +83,8 @@ export default async function handler(req, res) {
         serviceAccountJson,
         propertyId: ws.ga4_property_id,
         domainContains: bookingHost,
-        startDate: weekStartStr,
-        endDate: weekEndStr,
+        startDate: periodStartStr,
+        endDate: periodEndStr,
       })
     } catch (e) {
       console.error('[engagement/website-by-week] book-now click count failed:', e?.message)
@@ -110,8 +99,8 @@ export default async function handler(req, res) {
     totalSessions = await fetchGA4TotalSessions({
       serviceAccountJson,
       propertyId: ws.ga4_property_id,
-      startDate: weekStartStr,
-      endDate: weekEndStr,
+      startDate: periodStartStr,
+      endDate: periodEndStr,
     })
   } catch (e) {
     console.error('[engagement/website-by-week] total-sessions failed:', e?.message)
@@ -131,8 +120,8 @@ export default async function handler(req, res) {
       serviceAccountJson,
       propertyId: ws.ga4_property_id,
       pagePaths,
-      startDate: weekStartStr,
-      endDate: weekEndStr,
+      startDate: periodStartStr,
+      endDate: periodEndStr,
     })
   } catch (e) {
     console.error('[engagement/website-by-week]', e?.message)
