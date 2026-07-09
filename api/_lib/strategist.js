@@ -152,18 +152,44 @@ export function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC') {
   return atoms
 }
 
+// Topic-balance (P2): keep any one body region from flooding a channel's feed.
+// The cap is evaluated against a ROLLING WINDOW per channel — the region mix of
+// what's recently gone out (`recentRegionCounts`, seeded from content_items over
+// the last ~21d) PLUS what we're adding this week. A candidate whose region
+// would exceed the cap is DEFERRED (banked as backlog) and a different-region
+// piece is slotted instead, so a burst of same-region interviews drips out over
+// several weeks rather than flooding two.
+export const REGION_CAP = 0.30        // no region past 30% of the rolling window
+const REGION_WINDOW_MIN = 4           // don't police until the window has ≥4 pieces
+const REGION_FLOOR = 2                // always allow at least this many per region
+
+// Would adding one more piece of `region` keep the channel within the cap?
+// `general` / unclassified (null) are exempt — they're a catch-all, not a theme.
+function regionWithinCap(regionCount, total, region) {
+  if (!region || region === 'general') return true
+  const projTotal = total + 1
+  if (projTotal < REGION_WINDOW_MIN) return true
+  const projRegion = (regionCount[region] || 0) + 1
+  const allowed = Math.max(REGION_FLOOR, Math.ceil(REGION_CAP * projTotal))
+  return projRegion <= allowed
+}
+
 /**
  * Allocate candidates + backlog to the week's cadence. Pure (no LLM, no DB).
  *
- * For each enabled channel:
- *   • take fresh candidates up to target_per_week  → THIS WEEK
- *   • fresh candidates beyond target               → HELD (banked surplus)
- *   • if fresh candidates < target, top up the gap from the backlog
- *     (FIFO by held_at)                            → PROMOTED (held→this week)
+ * For each enabled channel, filling up to target_per_week and respecting the
+ * per-region rolling-window cap:
+ *   • fresh candidates within cap + cadence         → THIS WEEK
+ *   • fresh candidates over cadence OR over the cap  → HELD (banked / deferred)
+ *   • gap under target topped up from the backlog
+ *     (FIFO by held_at, also cap-checked)            → PROMOTED (held→this week)
+ *
+ * `recentRegionCounts` = { [platform]: { [region]: count } } for the rolling
+ * window. Pass {} to disable balancing (behaves like the pre-P2 allocator).
  *
  * @returns {{ thisWeek: object[], held: object[], promoted: object[] }}
  */
-export function allocateToCadence(candidates, cadence, backlog = []) {
+export function allocateToCadence(candidates, cadence, backlog = [], recentRegionCounts = {}) {
   const thisWeek = []
   const held = []
   const promoted = []
@@ -179,14 +205,32 @@ export function allocateToCadence(candidates, cadence, backlog = []) {
     if (!cfg?.enabled) continue
     const target = cfg.target_per_week || 0
     const fresh = freshByCh[platform] || []
-    const take = fresh.slice(0, target)
-    const surplus = fresh.slice(target)
-    thisWeek.push(...take)
-    held.push(...surplus)
-    let gap = target - take.length
-    while (gap > 0 && (backlogByCh[platform] || []).length) {
-      promoted.push(backlogByCh[platform].shift())
-      gap--
+    // Seed the running per-region tally for this channel from the rolling window.
+    const regionCount = { ...(recentRegionCounts[platform] || {}) }
+    let total = Object.values(regionCount).reduce((s, n) => s + n, 0)
+
+    let added = 0
+    for (const c of fresh) {
+      if (added >= target) { held.push(c); continue }          // cadence surplus
+      if (regionWithinCap(regionCount, total, c.region)) {
+        thisWeek.push(c); added++
+        if (c.region) { regionCount[c.region] = (regionCount[c.region] || 0) + 1; total++ }
+      } else {
+        held.push(c)                                           // over-budget → defer
+      }
+    }
+    // Top up the remaining gap from the backlog (FIFO), also cap-checked. A
+    // backlog atom that's still over-budget is left untouched (stays held) and
+    // we try the next one, so we prefer promoting an under-represented region.
+    let gap = target - added
+    const bl = backlogByCh[platform] || []
+    while (gap > 0 && bl.length) {
+      const b = bl.shift()
+      if (regionWithinCap(regionCount, total, b.region)) {
+        promoted.push(b); gap--
+        if (b.region) { regionCount[b.region] = (regionCount[b.region] || 0) + 1; total++ }
+      }
+      // else: skipped this pass, remains a held atom in the DB (untouched).
     }
   }
   // Candidates for channels not in the cadence (or disabled) are banked, never dropped.
@@ -228,13 +272,29 @@ function toAtomRow(c, { workspaceId, planWeek, palette }) {
 
 // ── the LLM compose step (dependency-injected) ──────────────────────────────
 
-export function buildStrategistPrompt({ interviews, channels, recentTopics, palette }) {
+// Collapse the per-channel rolling-window region counts into a workspace-wide
+// "region mix" the LLM can use to bias toward under-represented body regions.
+// Returns [] when there's no window yet (new workspace).
+function summarizeRegionMix(recentRegionCounts) {
+  const agg = {}
+  for (const perRegion of Object.values(recentRegionCounts || {})) {
+    for (const [region, n] of Object.entries(perRegion || {})) agg[region] = (agg[region] || 0) + n
+  }
+  const total = Object.values(agg).reduce((s, n) => s + n, 0)
+  if (!total) return []
+  return Object.entries(agg)
+    .sort((a, b) => b[1] - a[1])
+    .map(([region, n]) => ({ region, pct: Math.round((n / total) * 100) }))
+}
+
+export function buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts = {}, palette }) {
   const paletteText = channels
     .map((ch) => `${ch}: ${(palette[ch] || []).map((p) => `${p.angle} (${p.label})`).join(', ')}`)
     .join('\n')
   const interviewText = interviews
     .map((i) => `- [${i.id}] ${i.staff_name || 'A clinician'} on "${i.topic}": ${(i.summary_text || '').slice(0, 600)}`)
     .join('\n')
+  const regionMix = summarizeRegionMix(recentRegionCounts)
   const system =
     `You are the content strategist for a clinical practice. From this week's clinician ` +
     `interviews, compose the strongest set of social pieces to publish. For each piece choose ` +
@@ -245,11 +305,14 @@ export function buildStrategistPrompt({ interviews, channels, recentTopics, pale
     `NEVER begin a brief with the channel or angle name (e.g. do not write "Instagram hook:" ` +
     `or "LinkedIn clinical perspective:") — the reader already sees both; open with the subject. ` +
     `Prefer variety across clinicians and topics. Do NOT repeat any subject in RECENT TOPICS. ` +
+    `Favor body regions that are UNDER-represented in the RECENT REGION MIX — don't pile more ` +
+    `pieces onto a region that's already heavy in the feed. ` +
     `Aim for roughly the per-channel weekly targets, but quality over quantity.`
   const user =
     `THIS WEEK'S INTERVIEWS:\n${interviewText}\n\n` +
     `CHANNELS + ANGLE PALETTE:\n${paletteText}\n\n` +
-    `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}`
+    `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}\n\n` +
+    `RECENT REGION MIX (already in the feed — favor the under-represented):\n${regionMix.length ? regionMix.map((r) => `- ${r.region}: ${r.pct}%`).join('\n') : '- (none yet)'}`
   return { system, user }
 }
 
@@ -285,6 +348,7 @@ export async function composeWeeklyPlan({
   interviews,
   cadence = RECOMMENDED_CADENCE,
   recentTopics = [],
+  recentRegionCounts = {},
   backlog = [],
   quietDays = ['sat', 'sun'],
   timezone = 'America/Los_Angeles',
@@ -297,7 +361,7 @@ export async function composeWeeklyPlan({
 
   let candidates = []
   if (interviews.length && channels.length) {
-    const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, palette })
+    const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts, palette })
     // The LLM echoes interview_id back and can corrupt it (e.g. inject a space),
     // which 400s the uuid insert. Normalize whitespace, then require an EXACT
     // match to a real input interview — this both repairs that corruption and
@@ -312,7 +376,13 @@ export async function composeWeeklyPlan({
         && (palette[c.platform] || []).some((p) => p.angle === c.angle))
   }
 
-  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlog)
+  // Attach each candidate's body region (from its interview) so the allocator's
+  // rolling-window cap can account for it. Backlog atoms already carry `.region`
+  // (attached in getWeekInputs via the interview join).
+  const regionByIv = new Map(interviews.map((i) => [i.id, i.region || null]))
+  candidates = candidates.map((c) => ({ ...c, region: regionByIv.get(c.interview_id) || null }))
+
+  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlog, recentRegionCounts)
 
   // Materialize this-week + held candidates into atom rows; assign slots to the
   // this-week set; mark held with held_at=now.
