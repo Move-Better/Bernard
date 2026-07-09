@@ -122,7 +122,8 @@ export default async function handler(req, res) {
   // arbitrary URL. An unknown/absent trackId → no music (byte-identical old path).
   let music
   if (body.music && typeof body.music === 'object' && !Array.isArray(body.music)) {
-    const track = resolveMusicTrack(String(body.music.trackId || ''))
+    // Resolve against the DB, scoped to this workspace (shared tracks + own only).
+    const track = await resolveMusicTrack(String(body.music.trackId || ''), ws.id)
     if (track) {
       const vol = Number(body.music.volume)
       music = {
