@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WS3 · Video Editor — Music bed + auto-duck</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --foreground:222 20% 12%;--muted:210 20% 96%;--muted-foreground:215 16% 42%;
+    --border:214 20% 90%;--primary:187 82% 27%;--action:38 92% 50%;
+  }
+  body{background:hsl(210 24% 94%);color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground))}
+  .chip{border:1px solid hsl(var(--border));background:#fff;border-radius:9px;padding:7px 9px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;transition:.12s}
+  .chip:hover{background:hsl(var(--muted))}
+  .chip.on{background:hsl(var(--primary)/.1);border-color:hsl(var(--primary)/.5);color:hsl(var(--primary))}
+  .legend{border:1px dashed hsl(var(--action)/.7);background:hsl(var(--action)/.06);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5}
+  .track{border:1px solid hsl(var(--border));border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:.12s}
+  .track:hover{border-color:hsl(var(--primary)/.5);background:hsl(var(--primary)/.05)}
+  .track.on{border-color:hsl(var(--primary));background:hsl(var(--primary)/.08)}
+  .mood{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:99px;background:hsl(var(--muted));color:hsl(var(--muted-foreground))}
+  input[type=range]{accent-color:hsl(var(--primary))}
+  .toggle{width:38px;height:22px;border-radius:99px;background:hsl(var(--border));position:relative;cursor:pointer;transition:.15s;flex:none}
+  .toggle.on{background:hsl(var(--primary))}
+  .toggle .knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:99px;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .toggle.on .knob{left:18px}
+  .phone{width:220px;aspect-ratio:9/16;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(160deg,#0f766e,#0f172a);box-shadow:0 10px 30px rgba(0,0,0,.3);margin:0 auto}
+  .bars{position:absolute;left:0;right:0;bottom:0;height:70%;display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:14px;opacity:.5}
+  .bars span{width:5px;background:rgba(255,255,255,.5);border-radius:3px;animation:eq 1.1s ease-in-out infinite}
+  @keyframes eq{0%,100%{height:12px}50%{height:44px}}
+  .cap{position:absolute;left:0;right:0;bottom:22%;text-align:center;color:#fff;font-weight:800;font-size:15px;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+  .waverow{position:relative;height:52px;border-radius:8px;overflow:hidden}
+</style>
+</head>
+<body class="p-4">
+<div class="max-w-[1180px] mx-auto">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h1 class="text-lg font-bold">Video Editor — Music bed + auto-duck <span class="text-xs font-semibold text-slate-500">(WS3.3 mockup)</span></h1>
+      <p class="text-xs text-slate-500">Curated licensed tracks · one-tap add · music auto-fades and <b>ducks under the voice</b> (server ffmpeg <code>sidechaincompress</code>).</p>
+    </div>
+    <button class="chip on" id="playBtn" onclick="togglePreview()"><i data-lucide="play" class="w-4 h-4"></i><span id="playLbl">Preview mix</span></button>
+  </div>
+
+  <div class="grid grid-cols-[240px_1fr_320px] gap-4 items-start">
+    <!-- PREVIEW -->
+    <div class="bg-white rounded-2xl p-4 border" style="border-color:hsl(var(--border))">
+      <div class="phone">
+        <div class="bars">
+          <span style="animation-delay:0s"></span><span style="animation-delay:.15s"></span><span style="animation-delay:.3s"></span><span style="animation-delay:.1s"></span><span style="animation-delay:.25s"></span><span style="animation-delay:.05s"></span><span style="animation-delay:.35s"></span>
+        </div>
+        <div class="cap" id="capLine">the fix isn't rest — it's <span style="color:hsl(38 92% 55%)">motion</span></div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2 text-center">9:16 reel · captions already ship</p>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="bg-white rounded-2xl p-4 border space-y-3" style="border-color:hsl(var(--border))">
+      <div class="flex items-center justify-between">
+        <p class="lbl">Timeline</p>
+        <p class="text-[11px] text-slate-400" id="clock">0.0s / 18.0s</p>
+      </div>
+
+      <div>
+        <p class="text-[10px] font-semibold text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="video" class="w-3 h-3"></i>Video</p>
+        <div class="waverow" style="background:linear-gradient(90deg,#334155,#475569,#334155)"></div>
+      </div>
+
+      <div>
+        <p class="text-[10px] font-semibold text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="mic" class="w-3 h-3"></i>Voice <span class="text-slate-400">(from the clip)</span></p>
+        <div class="waverow" style="background:hsl(210 20% 96%)"><canvas id="voiceWave" width="640" height="52" style="width:100%;height:100%"></canvas></div>
+      </div>
+
+      <div>
+        <p class="text-[10px] font-semibold text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="music" class="w-3 h-3"></i>Music <span id="musicName" class="text-slate-400">— none</span></p>
+        <div class="waverow" style="background:hsl(187 60% 96%)"><canvas id="musicWave" width="640" height="52" style="width:100%;height:100%"></canvas></div>
+        <p class="text-[10px] text-slate-400 mt-1">Blue = music level. It <b>dips where the voice speaks</b> (auto-duck) and fades in/out at the edges. The dashed line is the playhead during preview.</p>
+      </div>
+    </div>
+
+    <!-- MUSIC INSPECTOR -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl p-3.5 border" style="border-color:hsl(var(--border))">
+        <div class="flex items-center justify-between mb-2">
+          <p class="lbl">Music library</p>
+          <span class="text-[10px] text-slate-400">licensed · royalty-free</span>
+        </div>
+        <div class="flex gap-1.5 mb-2.5" id="moodRow">
+          <button class="mood on" data-mood="all" onclick="filterMood('all')">All</button>
+          <button class="mood" data-mood="calm" onclick="filterMood('calm')">Calm</button>
+          <button class="mood" data-mood="upbeat" onclick="filterMood('upbeat')">Upbeat</button>
+          <button class="mood" data-mood="warm" onclick="filterMood('warm')">Warm</button>
+          <button class="mood" data-mood="cinematic" onclick="filterMood('cinematic')">Cinematic</button>
+        </div>
+        <div class="space-y-1.5 max-h-[210px] overflow-y-auto pr-1" id="trackList"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-3.5 border" style="border-color:hsl(var(--border))" id="mixPanel">
+        <p class="lbl mb-2">Mix</p>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold">Auto-duck under voice</span>
+          <div class="toggle on" id="duckT" onclick="toggleDuck()"><div class="knob"></div></div>
+        </div>
+        <p class="text-[10px] text-slate-400 mb-3 -mt-1">Music drops ~12&nbsp;dB while anyone is speaking, lifts back in the gaps.</p>
+        <p class="lbl mb-1">Music volume <span id="volVal" class="text-slate-400 normal-case">28%</span></p>
+        <input type="range" min="0" max="60" value="28" class="w-full mb-3" id="volR" oninput="setVol(this.value)" />
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold">Fade in / out</span>
+          <div class="toggle on" id="fadeT" onclick="toggleFade()"><div class="knob"></div></div>
+        </div>
+        <p class="text-[10px] text-slate-400 -mt-1">1.2s fade at both ends so it never starts or stops abruptly.</p>
+      </div>
+
+      <div class="legend">
+        <b>What changed here</b>
+        <ul class="list-disc ml-4 mt-1 space-y-0.5 text-slate-600">
+          <li><b>Zero audio editing exists today</b> — this is the whole feature.</li>
+          <li><b>Buy-before-build:</b> curated self-hosted track set (Blob), no stock-audio API, no recurring cost.</li>
+          <li><b>Server mix:</b> ffmpeg <code>amix</code> + <code>sidechaincompress</code> (duck) + <code>afade</code>, added to the one render pass in <code>brandRenderVideo.js</code>.</li>
+          <li>If a clip has no voice track, music plays alone (fades only, nothing to duck).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DUR=18;
+const TRACKS=[
+  {id:'t1',name:'Open Road',mood:'upbeat',len:'2:14'},
+  {id:'t2',name:'Slow Morning',mood:'calm',len:'1:58'},
+  {id:'t3',name:'Steady Hands',mood:'warm',len:'2:40'},
+  {id:'t4',name:'First Light',mood:'cinematic',len:'2:05'},
+  {id:'t5',name:'Clean Start',mood:'upbeat',len:'1:44'},
+  {id:'t6',name:'Quiet Room',mood:'calm',len:'2:22'},
+  {id:'t7',name:'Warm Welcome',mood:'warm',len:'2:11'},
+  {id:'t8',name:'Rising',mood:'cinematic',len:'2:33'},
+  {id:'t9',name:'Sidewalk',mood:'upbeat',len:'1:51'},
+  {id:'t10',name:'Deep Breath',mood:'calm',len:'2:07'},
+  {id:'t11',name:'Homebound',mood:'warm',len:'2:29'},
+  {id:'t12',name:'Momentum',mood:'cinematic',len:'2:18'},
+];
+// voice envelope: 1 = speaking, 0 = gap. Drives the duck.
+const VOICE=[0,0,1,1,1,1,0,0,1,1,1,0,0,1,1,1,1,0].map((v,i,a)=>v);
+let state={track:null,vol:28,duck:true,fade:true,mood:'all'};
+
+// render track list
+function renderTracks(){
+  const list=document.getElementById('trackList');list.innerHTML='';
+  TRACKS.filter(t=>state.mood==='all'||t.mood===state.mood).forEach(t=>{
+    const d=document.createElement('div');
+    d.className='track'+(state.track===t.id?' on':'');
+    d.innerHTML=`<button class="w-8 h-8 rounded-md flex items-center justify-center" style="background:hsl(187 82% 27%/.1)"><i data-lucide="${state.track===t.id?'check':'play'}" class="w-4 h-4" style="color:hsl(187 82% 27%)"></i></button>
+      <div class="flex-1 min-w-0"><p class="text-xs font-semibold truncate">${t.name}</p><p class="text-[10px] text-slate-400">${t.len}</p></div>
+      <span class="mood">${t.mood}</span>`;
+    d.onclick=()=>{state.track=state.track===t.id?null:t.id;document.getElementById('musicName').textContent=state.track?('— '+t.name):'— none';renderTracks();drawWaves();};
+    list.appendChild(d);
+  });
+  lucide.createIcons();
+}
+function filterMood(m){state.mood=m;document.querySelectorAll('#moodRow .mood').forEach(b=>b.classList.toggle('on',b.dataset.mood===m));renderTracks();}
+
+// waveforms
+function drawVoice(){
+  const c=document.getElementById('voiceWave'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  const w=c.width,h=c.height,n=VOICE.length,bw=w/n;
+  for(let i=0;i<n;i++){
+    x.fillStyle=VOICE[i]?'hsl(187 82% 30%)':'hsl(214 20% 82%)';
+    const bars=6;
+    for(let j=0;j<bars;j++){
+      const amp=VOICE[i]?(0.35+Math.abs(Math.sin(i*1.7+j))*0.6):0.12;
+      const bh=amp*h*0.8;
+      x.fillRect(i*bw+j*(bw/bars)+1,(h-bh)/2,(bw/bars)-1.5,bh);
+    }
+  }
+}
+function drawMusic(){
+  const c=document.getElementById('musicWave'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  const w=c.width,h=c.height,n=VOICE.length,bw=w/n;
+  if(!state.track){x.fillStyle='hsl(214 15% 75%)';x.font='11px sans-serif';x.fillText('Pick a track to add a music bed',12,h/2+4);return;}
+  const base=state.vol/60; // 0..1
+  for(let i=0;i<n;i++){
+    // level = base, ducked while voice speaks
+    let lvl=base;
+    if(state.duck&&VOICE[i])lvl=base*0.28;
+    // fade edges
+    if(state.fade){if(i<2)lvl*=(i+1)/2;if(i>n-3)lvl*=(n-i)/2;}
+    const bars=6;
+    for(let j=0;j<bars;j++){
+      const amp=0.3+Math.abs(Math.sin(i*0.9+j*1.3))*0.7;
+      const bh=Math.max(2,amp*lvl*h);
+      x.fillStyle=(state.duck&&VOICE[i])?'hsl(187 40% 72%)':'hsl(187 82% 45%)';
+      x.fillRect(i*bw+j*(bw/bars)+1,(h-bh)/2,(bw/bars)-1.5,bh);
+    }
+  }
+  // duck envelope line
+  x.strokeStyle='hsl(38 92% 50%)';x.lineWidth=1.5;x.beginPath();
+  for(let i=0;i<n;i++){let lvl=base;if(state.duck&&VOICE[i])lvl=base*0.28;if(state.fade){if(i<2)lvl*=(i+1)/2;if(i>n-3)lvl*=(n-i)/2;}
+    const yy=h-lvl*h*0.9-2;const xx=i*bw+bw/2;if(i===0)x.moveTo(xx,yy);else x.lineTo(xx,yy);}
+  x.stroke();
+}
+let playhead=null;
+function drawWaves(){drawVoice();drawMusic();if(playhead!=null)drawPlayhead();}
+function drawPlayhead(){
+  const c=document.getElementById('musicWave'),x=c.getContext('2d');
+  const px=(playhead/DUR)*c.width;x.strokeStyle='#dc2626';x.setLineDash([4,3]);x.lineWidth=1.5;
+  x.beginPath();x.moveTo(px,0);x.lineTo(px,c.height);x.stroke();x.setLineDash([]);
+}
+
+// controls
+function setVol(v){state.vol=+v;document.getElementById('volVal').textContent=v+'%';drawWaves();}
+function toggleDuck(){state.duck=!state.duck;document.getElementById('duckT').classList.toggle('on',state.duck);drawWaves();}
+function toggleFade(){state.fade=!state.fade;document.getElementById('fadeT').classList.toggle('on',state.fade);drawWaves();}
+
+// preview animation
+let raf=null,t0=null;
+function togglePreview(){
+  if(raf){cancelAnimationFrame(raf);raf=null;playhead=null;document.getElementById('playLbl').textContent='Preview mix';drawWaves();return;}
+  document.getElementById('playLbl').textContent='Stop';t0=performance.now();
+  const loop=(ts)=>{playhead=((ts-t0)/1000)%DUR;document.getElementById('clock').textContent=playhead.toFixed(1)+'s / 18.0s';
+    const seg=Math.floor(playhead);const speaking=VOICE[seg];
+    document.getElementById('capLine').style.opacity=speaking?1:.25;
+    drawWaves();raf=requestAnimationFrame(loop);};
+  raf=requestAnimationFrame(loop);
+}
+
+renderTracks();drawWaves();lucide.createIcons();
+</script>
+</body>
+</html>

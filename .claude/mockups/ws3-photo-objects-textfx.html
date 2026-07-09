@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WS3 · Photo Editor — Objects + Text FX</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:0 0% 100%; --foreground:222 20% 12%;
+    --card:0 0% 100%; --muted:210 20% 96%; --muted-foreground:215 16% 42%;
+    --border:214 20% 90%; --primary:187 82% 27%; --primary-foreground:0 0% 100%;
+    --action:38 92% 50%; --accent:210 20% 94%;
+  }
+  body{background:hsl(210 24% 94%);color:hsl(var(--foreground));font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .stage{position:relative;width:100%;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:#334155;user-select:none;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .stage img.photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .scrim{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.42),rgba(0,0,0,.04) 26%,rgba(0,0,0,.04) 68%,rgba(0,0,0,.55))}
+  .el{position:absolute;transform:translate(-50%,-50%);cursor:grab;touch-action:none}
+  .el.selected{outline:2px solid hsl(var(--primary));outline-offset:3px;border-radius:6px}
+  .el.dragging{cursor:grabbing}
+  .txt{color:#fff;font-weight:800;line-height:1.06;text-align:center;padding:2px 4px;max-width:min-content;white-space:pre-wrap}
+  .snap{position:absolute;background:hsl(var(--action));pointer-events:none;opacity:.95;z-index:40}
+  .snap.v{width:1.5px;top:0;bottom:0}
+  .snap.h{height:1.5px;left:0;right:0}
+  .chip{border:1px solid hsl(var(--border));background:#fff;border-radius:9px;padding:7px 9px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;transition:.12s}
+  .chip:hover{background:hsl(var(--muted))}
+  .chip.on{background:hsl(var(--primary)/.10);border-color:hsl(var(--primary)/.5);color:hsl(var(--primary))}
+  .chip.soon{opacity:.55;border-style:dashed;cursor:not-allowed}
+  .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground))}
+  .legend{border:1px dashed hsl(var(--action)/.7);background:hsl(var(--action)/.06);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5}
+  .miniobj{width:44px;height:44px;border-radius:9px;border:1px solid hsl(var(--border));background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .miniobj:hover{border-color:hsl(var(--primary)/.6);background:hsl(var(--primary)/.06)}
+  input[type=range]{accent-color:hsl(var(--primary))}
+  .seg{display:flex;background:hsl(var(--muted));border-radius:9px;padding:3px;gap:3px}
+  .seg button{flex:1;font-size:11px;font-weight:600;padding:5px 6px;border-radius:6px;color:hsl(var(--muted-foreground))}
+  .seg button.on{background:#fff;color:hsl(var(--foreground));box-shadow:0 1px 2px rgba(0,0,0,.08)}
+</style>
+</head>
+<body class="p-4">
+<div class="max-w-[1280px] mx-auto">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h1 class="text-lg font-bold">Photo Editor — Objects layer + Text-effect presets <span class="text-xs font-semibold text-slate-500">(WS3.1 + WS3.2 mockup)</span></h1>
+      <p class="text-xs text-slate-500">Drag anything on the canvas · snapping guides appear · everything here bakes to the published image via the same renderer.</p>
+    </div>
+    <div class="flex gap-2">
+      <button class="chip" onclick="loadPhoto()"><i data-lucide="image" class="w-4 h-4"></i>Swap photo</button>
+      <button class="chip on"><i data-lucide="check" class="w-4 h-4"></i>WYSIWYG preview</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-[1fr_320px] gap-4 items-start">
+    <!-- CANVAS -->
+    <div class="bg-white rounded-2xl p-4 border" style="border-color:hsl(var(--border))">
+      <div class="stage" id="stage">
+        <img class="photo" id="photo" alt="" />
+        <div class="scrim"></div>
+        <!-- elements injected by JS -->
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2 text-center">Click an element to select · drag to move · double-click text to edit (mocked). Objects &amp; text share the drag+snap layer that already shipped.</p>
+    </div>
+
+    <!-- INSPECTOR -->
+    <div class="space-y-4">
+      <!-- ADD ROW -->
+      <div class="bg-white rounded-2xl p-3.5 border" style="border-color:hsl(var(--border))">
+        <p class="lbl mb-2">Add to slide</p>
+        <div class="grid grid-cols-4 gap-2">
+          <button class="chip justify-center" style="flex-direction:column;height:58px" onclick="addText()"><i data-lucide="type" class="w-4 h-4"></i><span class="text-[10px]">Text</span></button>
+          <button class="chip justify-center" style="flex-direction:column;height:58px" onclick="addLogo()"><i data-lucide="badge-check" class="w-4 h-4"></i><span class="text-[10px]">Logo</span></button>
+          <button class="chip justify-center soon" style="flex-direction:column;height:58px" title="Phase 2"><i data-lucide="shapes" class="w-4 h-4"></i><span class="text-[10px]">Shape</span></button>
+          <button class="chip justify-center soon" style="flex-direction:column;height:58px" title="Phase 2/3 — Elements library"><i data-lucide="sticker" class="w-4 h-4"></i><span class="text-[10px]">Sticker</span></button>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">PR1 ships <b>Logo/watermark</b> (+ existing Text). Shape &amp; Sticker are the phase-up.</p>
+      </div>
+
+      <!-- LOGO SOURCE (shown when a logo is selected) -->
+      <div id="logoPanel" class="bg-white rounded-2xl p-3.5 border hidden" style="border-color:hsl(var(--border))">
+        <p class="lbl mb-2">Logo / watermark</p>
+        <div class="grid grid-cols-3 gap-2 mb-3">
+          <button class="miniobj" style="height:44px;padding:6px" onclick="setLogoMark('wordmark')" title="Workspace wordmark"><span class="text-[10px] font-black tracking-tight" style="color:hsl(var(--primary))">move&nbsp;better</span></button>
+          <button class="miniobj" onclick="setLogoMark('icon')" title="Workspace icon"><span class="w-5 h-5 rounded-md" style="background:hsl(var(--primary))"></span></button>
+          <button class="miniobj" onclick="setLogoMark('upload')" title="Upload"><i data-lucide="upload" class="w-4 h-4 text-slate-500"></i></button>
+        </div>
+        <p class="lbl mb-1">Size</p>
+        <input type="range" min="6" max="40" value="16" class="w-full mb-3" oninput="setObjScale(this.value)" id="scaleR" />
+        <p class="lbl mb-1">Opacity <span id="opVal" class="text-slate-400">100%</span></p>
+        <input type="range" min="20" max="100" value="100" class="w-full mb-3" oninput="setObjOpacity(this.value)" />
+        <div class="seg mb-2">
+          <button onclick="alignObj('tl')">TL</button><button onclick="alignObj('tr')">TR</button>
+          <button onclick="alignObj('c')">Center</button><button onclick="alignObj('bl')">BL</button><button onclick="alignObj('br')">BR</button>
+        </div>
+        <div class="flex gap-2">
+          <button class="chip flex-1 justify-center" onclick="zFront()"><i data-lucide="bring-to-front" class="w-4 h-4"></i>Front</button>
+          <button class="chip flex-1 justify-center" onclick="delSel()" style="color:#b91c1c"><i data-lucide="trash-2" class="w-4 h-4"></i>Delete</button>
+        </div>
+      </div>
+
+      <!-- TEXT FX (shown when a text block is selected) -->
+      <div id="txtPanel" class="bg-white rounded-2xl p-3.5 border" style="border-color:hsl(var(--border))">
+        <p class="lbl mb-2">Text effect <span class="text-slate-400 normal-case">— pop over busy photos</span></p>
+        <div class="grid grid-cols-5 gap-1.5 mb-3">
+          <button class="chip soonless justify-center fx" data-fx="none" style="flex-direction:column;height:56px" onclick="setFx('none')"><span class="fxprev" style="color:#fff">Aa</span><span class="text-[9px]">None</span></button>
+          <button class="chip justify-center fx" data-fx="shadow" style="flex-direction:column;height:56px" onclick="setFx('shadow')"><span class="fxprev" style="color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.9)">Aa</span><span class="text-[9px]">Shadow</span></button>
+          <button class="chip justify-center fx" data-fx="outline" style="flex-direction:column;height:56px" onclick="setFx('outline')"><span class="fxprev" style="color:#fff;-webkit-text-stroke:1.4px #000">Aa</span><span class="text-[9px]">Outline</span></button>
+          <button class="chip justify-center fx" data-fx="glow" style="flex-direction:column;height:56px" onclick="setFx('glow')"><span class="fxprev" style="color:#fff;text-shadow:0 0 8px hsl(var(--primary)),0 0 4px hsl(var(--primary))">Aa</span><span class="text-[9px]">Glow</span></button>
+          <button class="chip justify-center fx" data-fx="label" style="flex-direction:column;height:56px" onclick="setFx('label')"><span class="fxprev" style="color:#111;background:#fff;border-radius:3px;padding:0 3px">Aa</span><span class="text-[9px]">Label</span></button>
+        </div>
+        <p class="lbl mb-1">Intensity</p>
+        <input type="range" min="1" max="3" value="2" class="w-full mb-3" oninput="setFxIntensity(this.value)" id="fxI" />
+        <p class="lbl mb-1">Effect color <span class="text-slate-400 normal-case">(outline / glow / label)</span></p>
+        <div class="flex gap-2">
+          <button class="w-7 h-7 rounded-full border" style="background:#000" onclick="setFxColor('#000000')"></button>
+          <button class="w-7 h-7 rounded-full border" style="background:#fff" onclick="setFxColor('#ffffff')"></button>
+          <button class="w-7 h-7 rounded-full border" style="background:hsl(var(--primary))" onclick="setFxColor('brand')"></button>
+          <button class="w-7 h-7 rounded-full border" style="background:hsl(var(--action))" onclick="setFxColor('action')"></button>
+        </div>
+      </div>
+
+      <div class="legend">
+        <b>What changed here</b>
+        <ul class="list-disc ml-4 mt-1 space-y-0.5 text-slate-600">
+          <li><b>Objects:</b> Logo/watermark is now an addable, draggable, snap-aware element (PR1). Shape/Sticker phase up next.</li>
+          <li><b>Text FX:</b> one-tap Shadow / Outline / Glow / Label — same renderer bakes preview <i>and</i> publish (no preview≠published drift).</li>
+          <li>Reuses the shipped <b>drag + centre/edge/element snapping</b> and the floating toolbar — objects aren't a new interaction model.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PHOTOS = [
+  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&q=70",
+  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=900&q=70",
+  "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=70"
+];
+let pIdx=0;
+const stage=document.getElementById('stage');
+const photo=document.getElementById('photo');
+function loadPhoto(){pIdx=(pIdx+1)%PHOTOS.length;photo.src=PHOTOS[pIdx];}
+photo.onerror=()=>{photo.style.display='none';stage.style.background='linear-gradient(135deg,#0f766e,#1e293b)';};
+photo.src=PHOTOS[0];
+
+// element model
+let els=[
+  {id:1,type:'text',text:"Stiff mornings\naren't just age",x:.5,y:.30,fx:'shadow',fxI:2,fxColor:'#000000',size:34,color:'#fff'},
+  {id:2,type:'text',text:"Move Better · Portland",x:.5,y:.90,fx:'shadow',fxI:1,fxColor:'#000000',size:15,color:'#fff'},
+];
+let seq=10, selId=1;
+
+function fxCss(e){
+  const i=e.fxI||2;
+  if(e.fx==='shadow'){const b=[4,7,12][i-1],y=[1,2,3][i-1];return `text-shadow:0 ${y}px ${b}px rgba(0,0,0,.9)`;}
+  if(e.fx==='outline'){const w=[1,1.6,2.4][i-1];return `-webkit-text-stroke:${w}px ${col(e.fxColor)};paint-order:stroke fill`;}
+  if(e.fx==='glow'){const b=[6,10,16][i-1];const c=col(e.fxColor);return `text-shadow:0 0 ${b}px ${c},0 0 ${b/2}px ${c}`;}
+  if(e.fx==='label'){return `background:${col(e.fxColor)};color:${lum(col(e.fxColor))>0.6?'#111':'#fff'};border-radius:6px;padding:3px 9px;box-decoration-break:clone;-webkit-box-decoration-break:clone`;}
+  return '';
+}
+function col(c){if(c==='brand')return 'hsl(187 82% 27%)';if(c==='action')return 'hsl(38 92% 50%)';return c||'#000';}
+function lum(c){if(c==='#fff'||c==='#ffffff')return 1;if(c.startsWith('hsl(38'))return .7;return 0;}
+
+function render(){
+  [...stage.querySelectorAll('.el')].forEach(n=>n.remove());
+  els.forEach(e=>{
+    const d=document.createElement('div');
+    d.className='el'+(e.id===selId?' selected':'');
+    d.style.left=(e.x*100)+'%';d.style.top=(e.y*100)+'%';d.dataset.id=e.id;
+    if(e.type==='text'){
+      d.innerHTML=`<div class="txt" style="font-size:${e.size}px;color:${e.color};${e.fx!=='label'?fxCss(e):''}">${e.fx==='label'?`<span style="${fxCss(e)}">${e.text.replace(/\n/g,'</span><br><span style=\''+fxCss(e)+'\'>')}</span>`:e.text.replace(/\n/g,'<br>')}</div>`;
+    } else if(e.type==='logo'){
+      d.style.opacity=(e.opacity??100)/100;
+      if(e.mark==='icon'){d.innerHTML=`<div style="width:${e.size*2.2}px;height:${e.size*2.2}px;border-radius:14px;background:hsl(187 82% 27%);display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-weight:900;font-size:${e.size}px">M</span></div>`;}
+      else if(e.mark==='upload'){d.innerHTML=`<div style="padding:6px 12px;border-radius:10px;background:rgba(255,255,255,.9);display:flex;align-items:center;gap:6px"><span style="font-size:${e.size*.9}px">🏷️</span><span style="font-weight:700;font-size:${e.size*.8}px;color:#111">Your logo</span></div>`;}
+      else{d.innerHTML=`<div style="background:rgba(255,255,255,.92);border-radius:10px;padding:6px 12px;font-weight:900;letter-spacing:-.02em;color:hsl(187 82% 27%);font-size:${e.size}px">move better</div>`;}
+    }
+    stage.appendChild(d);
+    attachDrag(d,e);
+  });
+  syncPanels();
+  lucide.createIcons();
+}
+function syncPanels(){
+  const e=els.find(x=>x.id===selId);
+  document.getElementById('logoPanel').classList.toggle('hidden',!(e&&e.type==='logo'));
+  document.getElementById('txtPanel').classList.toggle('hidden',!(e&&e.type==='text'));
+  if(e&&e.type==='text'){document.querySelectorAll('.fx').forEach(b=>b.classList.toggle('on',b.dataset.fx===e.fx));document.getElementById('fxI').value=e.fxI||2;}
+  if(e&&e.type==='logo'){document.getElementById('scaleR').value=e.size;document.getElementById('opVal').textContent=(e.opacity??100)+'%';}
+}
+
+// drag + snapping
+function attachDrag(node,e){
+  node.addEventListener('pointerdown',ev=>{
+    ev.preventDefault();selId=e.id;render();
+    node.classList.add('dragging');node.setPointerCapture(ev.pointerId);
+    const r=stage.getBoundingClientRect();
+    const move=mv=>{
+      let x=(mv.clientX-r.left)/r.width, y=(mv.clientY-r.top)/r.height;
+      x=Math.max(.04,Math.min(.96,x));y=Math.max(.04,Math.min(.96,y));
+      const snapped=applySnap(x,y,e.id);
+      e.x=snapped.x;e.y=snapped.y;
+      node.style.left=(e.x*100)+'%';node.style.top=(e.y*100)+'%';
+    };
+    const up=uv=>{node.classList.remove('dragging');clearSnap();node.releasePointerCapture(ev.pointerId);node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);};
+    node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);
+  });
+}
+const SNAP=.018;
+function applySnap(x,y,id){
+  clearSnap();
+  const targetsX=[.5,.08,.92,...els.filter(e=>e.id!==id).map(e=>e.x)];
+  const targetsY=[.5,.08,.92,...els.filter(e=>e.id!==id).map(e=>e.y)];
+  for(const t of targetsX){if(Math.abs(x-t)<SNAP){x=t;drawSnap('v',t);break;}}
+  for(const t of targetsY){if(Math.abs(y-t)<SNAP){y=t;drawSnap('h',t);break;}}
+  return {x,y};
+}
+function drawSnap(dir,frac){const s=document.createElement('div');s.className='snap '+dir;if(dir==='v')s.style.left=(frac*100)+'%';else s.style.top=(frac*100)+'%';stage.appendChild(s);}
+function clearSnap(){[...stage.querySelectorAll('.snap')].forEach(n=>n.remove());}
+
+// actions
+function addText(){const e={id:++seq,type:'text',text:'New text',x:.5,y:.55,fx:'shadow',fxI:2,fxColor:'#000',size:26,color:'#fff'};els.push(e);selId=e.id;render();}
+function addLogo(){const e={id:++seq,type:'logo',mark:'wordmark',x:.82,y:.9,size:16,opacity:100};els.push(e);selId=e.id;render();}
+function setLogoMark(m){const e=sel();if(e){e.mark=m;render();}}
+function setObjScale(v){const e=sel();if(e){e.size=+v;render();}}
+function setObjOpacity(v){const e=sel();if(e){e.opacity=+v;document.getElementById('opVal').textContent=v+'%';render();}}
+function alignObj(p){const e=sel();if(!e)return;const map={tl:[.10,.10],tr:[.90,.10],c:[.5,.5],bl:[.10,.90],br:[.90,.90]};[e.x,e.y]=map[p];render();}
+function zFront(){const e=sel();if(!e)return;els=els.filter(x=>x.id!==e.id);els.push(e);render();}
+function delSel(){els=els.filter(x=>x.id!==selId);selId=els[0]?.id;render();}
+function setFx(f){const e=sel();if(e&&e.type==='text'){e.fx=f;render();}}
+function setFxIntensity(v){const e=sel();if(e){e.fxI=+v;render();}}
+function setFxColor(c){const e=sel();if(e){e.fxColor=c;render();}}
+function sel(){return els.find(x=>x.id===selId);}
+stage.addEventListener('pointerdown',ev=>{if(ev.target===stage||ev.target.classList.contains('scrim')||ev.target.classList.contains('photo')){selId=null;render();}});
+
+render();
+</script>
+</body>
+</html>

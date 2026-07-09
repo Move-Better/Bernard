@@ -60,6 +60,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8749", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/affectionate-yonath-79931f/.claude/mockups"],
       "port": 8749
+    },
+    {
+      "name": "ws3-mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8751", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/optimistic-neumann-08d97a/.claude/mockups"],
+      "port": 8751
     }
   ]
 }

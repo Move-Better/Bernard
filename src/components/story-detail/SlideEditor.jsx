@@ -13,6 +13,8 @@ import {
   BLOCK_ROLES,
   SLIDE_TEMPLATES,
   TEMPLATE_DEFAULT_POSITIONS,
+  TEXT_EFFECTS,
+  textEffectCss,
   renderFreeformSlide,
   SLIDE_W,
   SLIDE_H,
@@ -84,6 +86,11 @@ function normalizeSlide(s, idx) {
           ...(Number.isFinite(b?.letterSpacing) && b.letterSpacing !== 0 ? { letterSpacing: b.letterSpacing } : {}),
           ...(Number.isFinite(b?.lineHeight) && b.lineHeight > 0 && b.lineHeight !== 1 ? { lineHeight: b.lineHeight } : {}),
           ...(['none', 'soft', 'medium', 'heavy'].includes(b?.shadow) ? { shadow: b.shadow } : {}),
+          // Text-effect preset (WS3.2): shadow / outline / glow / label + intensity
+          // + effect colour. Absent = legacy role/theme shadow (byte-identical).
+          ...(TEXT_EFFECTS.includes(b?.textEffect) ? { textEffect: b.textEffect } : {}),
+          ...([1, 2, 3].includes(b?.effectIntensity) ? { effectIntensity: b.effectIntensity } : {}),
+          ...(typeof b?.effectColor === 'string' && b.effectColor ? { effectColor: b.effectColor } : {}),
           // Per-word style runs (on-canvas selection toolbar). Keep when ANY run
           // carries a real override — not just colour — and whitelist run fields.
           ...(runsHaveStyle(b?.runs) ? { runs: b.runs.map(sanitizeRun) } : {}),
@@ -833,7 +840,9 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
                   fontWeight: b.fontWeight || 700,
                   fontStyle: b.italic ? 'italic' : 'normal',
                   textTransform: (typeof b.uppercase === 'boolean' ? b.uppercase : b.role === 'hook') ? 'uppercase' : 'none',
-                  textShadow: '0 2px 8px rgba(0,0,0,.6)',
+                  // WS3.2: mirror the block's text effect so editing stays WYSIWYG
+                  // with the baked canvas (falls back to a legible shadow).
+                  ...textEffectCss(b, {}, 40),
                 }}
               />
             ) : sel ? (
@@ -1840,19 +1849,60 @@ function TextStyleControls({ block, onSet, photoPalette = [] }) {
         />
       </div>
 
-      {/* Effects — text shadow depth for legibility on photos. */}
-      <SegRow
-        label="Effects (shadow)"
-        options={[
-          { label: 'Auto', value: null },
-          { label: 'None', value: 'none' },
-          { label: 'Soft', value: 'soft' },
-          { label: 'Med', value: 'medium' },
-          { label: 'Heavy', value: 'heavy' },
-        ]}
-        value={block.shadow ?? null}
-        onPick={(v) => onSet('shadow', v)}
-      />
+      {/* Text effect (WS3.2) — one-tap legibility over busy photos. The same
+          renderer bakes preview AND publish, so what you see here ships. */}
+      <div>
+        <SegRow
+          label="Text effect"
+          options={[
+            { label: 'None', value: 'none' },
+            { label: 'Shadow', value: 'shadow' },
+            { label: 'Outline', value: 'outline' },
+            { label: 'Glow', value: 'glow' },
+            { label: 'Label', value: 'label' },
+          ]}
+          value={block.textEffect ?? 'shadow'}
+          onPick={(v) => onSet('textEffect', v)}
+        />
+        {(block.textEffect ?? 'shadow') !== 'none' && (
+          <>
+            <div className="mb-1 mt-2 flex justify-between text-sm text-muted-foreground">
+              <span>Intensity</span>
+              <span>{['Soft', 'Medium', 'Strong'][(block.effectIntensity ?? 2) - 1]}</span>
+            </div>
+            <input
+              type="range" min="1" max="3" step="1"
+              value={block.effectIntensity ?? 2}
+              onChange={(e) => onSet('effectIntensity', parseInt(e.target.value, 10))}
+              className="h-5 w-full accent-primary" aria-label="Effect intensity"
+            />
+            {['outline', 'glow', 'label'].includes(block.textEffect) && (
+              <div className="mt-2">
+                <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Effect colour</p>
+                <div className="flex gap-2">
+                  {[
+                    { k: '#000000', bg: '#000000' },
+                    { k: '#ffffff', bg: '#ffffff' },
+                    { k: 'brand',   bg: 'hsl(var(--primary))' },
+                    { k: 'action',  bg: 'hsl(var(--action))' },
+                  ].map((sw) => {
+                    const active = (block.effectColor ?? (block.textEffect === 'label' ? '#ffffff' : block.textEffect === 'glow' ? 'brand' : '#000000')) === sw.k
+                    return (
+                      <button
+                        key={sw.k} type="button"
+                        onClick={() => onSet('effectColor', sw.k)}
+                        className={`h-7 w-7 rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-border hover:border-primary/50'}`}
+                        style={{ background: sw.bg }}
+                        aria-label={`Effect colour ${sw.k}`}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -2062,7 +2112,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   // Re-render the canvas when anything that affects the pixels changes.
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
-    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.letterSpacing || ''}:${b.lineHeight || ''}:${b.shadow || ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
+    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.letterSpacing || ''}:${b.lineHeight || ''}:${b.shadow || ''}:${b.textEffect || ''}:${b.effectIntensity || ''}:${b.effectColor || ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
     slide.photo_zoom || 1,
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',

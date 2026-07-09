@@ -627,6 +627,93 @@ const SHADOW_LEVELS = {
   strong: { color: 'rgba(0,0,0,0.80)', blur: 14, offsetY: 3 },
 }
 
+// ── Text-effect presets (WS3.2) ──────────────────────────────────────────────
+// One-tap legibility treatments so text pops over busy photos. The SAME resolver
+// feeds the canvas renderer (drawFreeformBlock → preview + thumbnails + publish
+// bake) AND the editor's DOM edit overlay (textEffectCss), so there is no
+// preview≠published drift. A block with no `textEffect` field renders
+// byte-identically to before (legacy `shadow` behaviour).
+export const TEXT_EFFECTS = ['none', 'shadow', 'outline', 'glow', 'label']
+
+// Amber "act-now" accent — matches the --action design token (hsl(38 92% 50%)).
+const ACTION_HEX = '#f59e0b'
+
+function effectColorHex(spec, brandStyle, fallback) {
+  if (!spec) return fallback
+  if (spec === 'brand' || spec === 'accent') return brandAccent(brandStyle)
+  if (spec === 'action') return ACTION_HEX
+  return spec // literal hex / css color
+}
+
+// Resolve a block's effect preset into concrete paint params. `typo` supplies the
+// glyph size (for stroke/glow scaling) and the legacy shadow fallback.
+function resolveTextEffect(block, typo, brandStyle) {
+  const size = typo?.size || 44
+  const mode = TEXT_EFFECTS.includes(block?.textEffect) ? block.textEffect : null
+  const i = [1, 2, 3].includes(block?.effectIntensity) ? block.effectIntensity : 2
+  // No explicit preset → preserve the legacy role/theme shadow byte-for-byte.
+  if (!mode) return typo?.shadow ? { mode: 'shadow', shadowLevel: typo.shadowLevel } : { mode: 'none' }
+  if (mode === 'none') return { mode: 'none' }
+  if (mode === 'shadow') return { mode: 'shadow', shadowLevel: ['soft', 'medium', 'strong'][i - 1] }
+  if (mode === 'outline') return { mode: 'outline', strokeW: Math.max(1.5, size * [0.035, 0.055, 0.085][i - 1]), strokeColor: effectColorHex(block.effectColor, brandStyle, '#000000') }
+  if (mode === 'glow') return { mode: 'glow', glowBlur: Math.round(size * [0.18, 0.30, 0.46][i - 1]), glowColor: effectColorHex(block.effectColor, brandStyle, brandAccent(brandStyle)) }
+  if (mode === 'label') {
+    const bg = effectColorHex(block.effectColor, brandStyle, '#ffffff')
+    return { mode: 'label', labelBg: bg, labelText: hexLum(bg) > 0.6 ? '#111111' : '#ffffff', padX: [10, 16, 22][i - 1], padY: [4, 7, 10][i - 1] }
+  }
+  return { mode: 'none' }
+}
+
+// Paint one text run applying the resolved effect. Mirrors textEffectCss (below)
+// so the canvas render matches the DOM edit overlay.
+function paintText(ctx, text, x, y, effect, fillColor) {
+  ctx.save()
+  if (effect.mode === 'glow') {
+    ctx.shadowColor = effect.glowColor
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
+    ctx.shadowBlur = effect.glowBlur
+    ctx.fillStyle = fillColor
+    ctx.fillText(text, x, y)
+    ctx.fillText(text, x, y) // second pass deepens the halo
+  } else if (effect.mode === 'outline') {
+    ctx.lineJoin = 'round'
+    ctx.miterLimit = 2
+    ctx.lineWidth = effect.strokeW
+    ctx.strokeStyle = effect.strokeColor
+    ctx.strokeText(text, x, y)
+    ctx.fillStyle = fillColor
+    ctx.fillText(text, x, y)
+  } else if (effect.mode === 'shadow') {
+    const s = SHADOW_LEVELS[effect.shadowLevel] || SHADOW_LEVELS.medium
+    ctx.shadowColor = s.color
+    ctx.shadowBlur = s.blur
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = s.offsetY
+    ctx.fillStyle = fillColor
+    ctx.fillText(text, x, y)
+  } else {
+    ctx.fillStyle = fillColor
+    ctx.fillText(text, x, y)
+  }
+  ctx.restore()
+}
+
+// CSS mirror of resolveTextEffect for the editor's contenteditable edit overlay,
+// so editing a block stays WYSIWYG with the baked canvas. `sizePx` scales the
+// stroke/glow like the canvas does. Returns a partial React style object.
+export function textEffectCss(block, brandStyle = {}, sizePx = 40) {
+  const eff = resolveTextEffect(block, { size: sizePx, shadow: true, shadowLevel: 'medium' }, brandStyle)
+  if (eff.mode === 'shadow') {
+    const s = SHADOW_LEVELS[eff.shadowLevel] || SHADOW_LEVELS.medium
+    return { textShadow: `0 ${s.offsetY}px ${s.blur}px ${s.color}` }
+  }
+  if (eff.mode === 'outline') return { WebkitTextStroke: `${eff.strokeW}px ${eff.strokeColor}`, paintOrder: 'stroke fill' }
+  if (eff.mode === 'glow') return { textShadow: `0 0 ${eff.glowBlur}px ${eff.glowColor}, 0 0 ${Math.round(eff.glowBlur / 2)}px ${eff.glowColor}` }
+  if (eff.mode === 'label') return { background: eff.labelBg, color: eff.labelText, borderRadius: '6px', padding: `${eff.padY}px ${eff.padX}px`, WebkitBoxDecorationBreak: 'clone', boxDecorationBreak: 'clone' }
+  return { textShadow: 'none' }
+}
+
 // Per-role typography defaults (no theme). Sizes tuned for 1080×1080 canvas.
 // Per-role defaults, decomposed into parts so per-block style overrides can be
 // applied cleanly. Assembling `${italic} ${weight} ${size}px ${family}` from
@@ -773,17 +860,6 @@ function resolvePosition(position, W = SIZE, H = SIZE) {
   return { anchorX: Math.round(x), anchorY: Math.round(y), align, vAnchor: rowName }
 }
 
-function drawTextWithShadow(ctx, text, x, y, level = 'medium') {
-  const s = SHADOW_LEVELS[level] || SHADOW_LEVELS.medium
-  ctx.save()
-  ctx.shadowColor   = s.color
-  ctx.shadowBlur    = s.blur
-  ctx.shadowOffsetX = 0
-  ctx.shadowOffsetY = s.offsetY
-  ctx.fillText(text, x, y)
-  ctx.restore()
-}
-
 // WHOOP layouts have a dedicated text surface (panel / scrim) — content text
 // (hook/body/caption/cta) should sit IN that surface, not float over the photo.
 // Returns [topFrac, bottomFrac] of the canvas for the layout's text zone, or
@@ -870,6 +946,14 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     : typo.maxWidthFrac
   const maxW = Math.round(W * widthFrac)
 
+  // Text-effect preset (WS3.2): shadow / outline / glow / label, or the legacy
+  // role/theme shadow when unset. `effect.mode==='label'` draws a solid block
+  // behind the text and paints the glyphs in a contrasting colour (so the text
+  // itself gets no shadow/stroke — the block provides the contrast).
+  const effect = resolveTextEffect(block, typo, brandStyle)
+  const glyphEffect = effect.mode === 'label' ? { mode: 'none' } : effect
+  const textFill = effect.mode === 'label' ? effect.labelText : typo.color
+
   // ── Rich per-word runs path ─────────────────────────────────────────────────
   // When the block carries per-word style data (colour / font / size / weight /
   // italic / underline / strikethrough / case — from the inline selection
@@ -887,6 +971,25 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
     let y = vAnchor === 'top'    ? anchorY
           : vAnchor === 'center' ? anchorY - totalGap / 2
           :                        anchorY - totalGap
+    // Label background (WS3.2): a solid block behind the whole run stack. Measure
+    // the widest line in its own per-word fonts, then draw one rounded rect.
+    if (effect.mode === 'label') {
+      let maxLineW = 0
+      for (const rl of runLines) {
+        let lw = 0
+        for (let i = 0; i < rl.tokens.length; i++) { ctx.font = rl.tokens[i].style.font; lw += ctx.measureText(rl.tokens[i].word).width; if (i > 0) lw += ctx.measureText(' ').width }
+        maxLineW = Math.max(maxLineW, lw)
+      }
+      const rectX = align === 'left' ? anchorX - effect.padX : align === 'right' ? anchorX - maxLineW - effect.padX : anchorX - maxLineW / 2 - effect.padX
+      const gm = ctx.measureText('Mg')
+      const asc = gm.actualBoundingBoxAscent || typo.lineH * 0.74
+      const desc = gm.actualBoundingBoxDescent || typo.lineH * 0.24
+      const rectY = y - asc - effect.padY
+      const rectH = asc + totalGap + desc + effect.padY * 2
+      ctx.fillStyle = effect.labelBg
+      drawRoundedRect(ctx, rectX, rectY, maxLineW + effect.padX * 2, rectH, Math.min(28, rectH / 2))
+      ctx.fill()
+    }
     ctx.textAlign = 'left'
     for (let li = 0; li < runLines.length; li++) {
       const { tokens } = runLines[li]
@@ -904,8 +1007,9 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
         ctx.fillStyle = style.color
         if (i > 0) { ctx.fillText(' ', x, y); x += ctx.measureText(' ').width }
         const ww = ctx.measureText(word).width
-        if (typo.shadow) drawTextWithShadow(ctx, word, x, y, typo.shadowLevel)
-        else             ctx.fillText(word, x, y)
+        // Label paints glyphs in the contrasting label colour; other effects use
+        // the run's own colour with the shadow/outline/glow treatment.
+        paintText(ctx, word, x, y, glyphEffect, effect.mode === 'label' ? textFill : style.color)
         if (style.underline || style.strike) {
           const th = Math.max(2, Math.round(style.size * 0.06))
           ctx.fillStyle = style.color
@@ -940,42 +1044,45 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   // reads as a floating blob (Q sign-off 2026-06-16, option B). The bubble stays
   // for plain-photo overlays (custom templates / free-positioned editor text),
   // where it's the only contrast. The CTA `pill` button is unaffected (above).
-  if (typo.background === 'rect' && !isWhoop) {
+  // Background block: the theme's `rect` chip OR the WS3.2 `label` effect. Label
+  // uses its own colour + tighter padding; the legacy rect keeps its behaviour.
+  const isLabel = effect.mode === 'label'
+  if ((typo.background === 'rect' && !isWhoop) || isLabel) {
     // A `rect` block with no explicit bgColor inherits the brand accent —
     // same `null = brand accent` semantic the pill background already uses.
-    const rectColor = typo.bgColor || brandAccent(brandStyle)
+    const rectColor = isLabel ? effect.labelBg : (typo.bgColor || brandAccent(brandStyle))
+    const padW = isLabel ? effect.padX : PAD_W
+    const padH = isLabel ? effect.padY : PAD_H
     // Width = widest wrapped line + even horizontal padding.
     const maxLineW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0)
-    const rectW = maxLineW + PAD_W * 2
+    const rectW = maxLineW + padW * 2
     let rectX
-    if (align === 'left')       rectX = anchorX - PAD_W
-    else if (align === 'right') rectX = anchorX - maxLineW - PAD_W
-    else                        rectX = anchorX - maxLineW / 2 - PAD_W
+    if (align === 'left')       rectX = anchorX - padW
+    else if (align === 'right') rectX = anchorX - maxLineW - padW
+    else                        rectX = anchorX - maxLineW / 2 - padW
     // Height bounds ALL wrapped lines via real glyph metrics: from the first
     // line's top (baseline − ascent) to the last line's bottom (last baseline +
-    // descent), with even PAD_H on both ends. Fixes the old box that hugged only
+    // descent), with even padH on both ends. Fixes the old box that hugged only
     // the first line and let wrapped lines spill outside it.
     const gm = ctx.measureText(lines[0] || 'Mg')
     const ascent  = gm.actualBoundingBoxAscent  || typo.lineH * 0.74
     const descent = gm.actualBoundingBoxDescent || typo.lineH * 0.24
-    const rectY = y - ascent - PAD_H
-    const rectH = ascent + (lines.length - 1) * typo.lineH + descent + PAD_H * 2
-    const radius = Math.min(36, rectH / 2)
+    const rectY = y - ascent - padH
+    const rectH = ascent + (lines.length - 1) * typo.lineH + descent + padH * 2
+    const radius = Math.min(isLabel ? 22 : 36, rectH / 2)
     ctx.fillStyle = rectColor
     drawRoundedRect(ctx, rectX, rectY, rectW, rectH, radius)
     ctx.fill()
   }
 
-  ctx.fillStyle = typo.color
   const firstLineY = y
   for (const l of lines) {
-    if (typo.shadow) drawTextWithShadow(ctx, l, anchorX, y, typo.shadowLevel)
-    else             ctx.fillText(l, anchorX, y)
+    paintText(ctx, l, anchorX, y, glyphEffect, textFill)
     y += typo.lineH
   }
   if (typo.underline) {
     ctx.save()
-    ctx.strokeStyle = typo.color
+    ctx.strokeStyle = textFill
     ctx.lineWidth = Math.max(2, Math.round(typo.size * 0.05))
     ctx.lineCap = 'round'
     for (let li = 0; li < lines.length; li++) {
