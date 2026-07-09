@@ -249,6 +249,22 @@ provider's not-found error, not just create-when-null. Reference: `api/_routes/i
 bundle/connect.js` — on a bundle 404 "No team found" it recreates the team and retries once
 (`isMissingTeam`). Apply this to any handler that stores and later reuses an external id.
 
+**Core publish execution is reusable — call it, don't re-derive it.** `api/_routes/publish/
+buffer.js` exports `runBufferPublish({ workspaceId, token, platform, content, mediaUrls,
+scheduledAt, useQueue, locationIds, locationContents })` and `runBundlePublish(workspace, {...})`
+— the channel-resolution + fan-out logic with the HTTP req/res stripped off, returning
+`{ status, body }`. Both the original `/api/publish/buffer` handler and
+`api/_routes/producer/retry-publish.js` call these directly. Any future caller that needs to
+(re)publish a `content_items` row (retry, a resend action, a cron) should call these, not
+duplicate the GraphQL/SDK sequence. GBP fan-out note for such callers: `content_items.
+location_overrides` is populated for **every** active GBP location at draft time
+(`buildGbpLocationVariants`), so `Object.keys(item.location_overrides)` already equals what
+`resolveGbpChannelIds`/`resolveBundleGbpTargets` default to when `locationIds` is omitted —
+safe to pass either way. What is NOT persisted anywhere on the row: a human narrowing a
+multi-location GBP publish down to a subset at publish-click time (that's ephemeral Review-
+picker UI state) — a retry/resend of such a post re-targets every active location, not the
+originally-picked subset.
+
 ---
 
 ## Router conventions (App.jsx)
