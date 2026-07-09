@@ -74,9 +74,10 @@ export default async function handler(req, res) {
   if (!ws) return res.status(404).json({ error: 'no_workspace' })
   const auth = await requireRole(req, ALL_KNOWN_ROLES, { orgId: ws.clerk_org_id })
   if (!auth.ok) {
-  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
     return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   }
+
+  if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   const { packageId, destination = 'publish' } = req.body || {}
   if (!packageId) return res.status(400).json({ error: 'packageId_required' })
