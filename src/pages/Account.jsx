@@ -11,6 +11,7 @@ import { UserProfile } from '@clerk/react'
 import { UserCircle } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
 
 export default function Account() {
   useDocumentTitle('Account & security')
@@ -32,7 +33,7 @@ export default function Account() {
           // rest of the app's design tokens (radius, background, borders)
           // rather than relying on Clerk's default gray card chrome.
           variables: {
-            colorPrimary: 'hsl(186 83% 27%)',
+            colorPrimary: `hsl(${BERNARD_PRIMARY_HSL})`,
             colorBackground: 'hsl(0 0% 100%)',
             borderRadius: '0.625rem',
           },

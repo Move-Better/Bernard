@@ -15,6 +15,7 @@ import {
 import Layout from '@/components/Layout'
 import Home from '@/pages/Home'
 import { getPendingAnnouncement } from '@/lib/announcements'
+import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
@@ -895,9 +896,9 @@ export default function App() {
           appearance={{
             // Brand-pass Clerk's default blue across every surface it renders
             // (UserProfile on /account, SignIn, UserButton menu) so it reads
-            // as part of Bernard rather than a third-party embed. hsl() must
-            // match src/index.css's --primary (Blue Spruce).
-            variables: { colorPrimary: 'hsl(186 83% 27%)' },
+            // as part of Bernard rather than a third-party embed. Sourced from
+            // brand.js, which mirrors src/index.css's --primary (Blue Spruce).
+            variables: { colorPrimary: `hsl(${BERNARD_PRIMARY_HSL})` },
           }}
         >
           <BrowserRouter>
