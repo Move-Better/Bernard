@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Insights reorg — Tabs vs Sections mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          background: 'hsl(220 22% 97%)',
+          foreground: 'hsl(222 47% 8%)',
+          card: 'hsl(0 0% 100%)',
+          'card-foreground': 'hsl(222 47% 8%)',
+          primary: 'hsl(186 83% 27%)',
+          'primary-foreground': 'hsl(0 0% 100%)',
+          muted: 'hsl(220 14% 96%)',
+          'muted-foreground': 'hsl(215 16% 47%)',
+          accent: 'hsl(160 60% 95%)',
+          'accent-foreground': 'hsl(160 84% 30%)',
+          border: 'hsl(214 32% 91%)',
+          success: 'hsl(152 76% 40%)',
+          warning: 'hsl(38 92% 50%)',
+          info: 'hsl(199 95% 40%)',
+          action: 'hsl(32 95% 44%)',
+        },
+        fontSize: { '3xs': ['0.625rem', {lineHeight:'1rem'}], '2xs': ['0.6875rem', {lineHeight:'1rem'}] },
+        borderRadius: { xl: '0.75rem', '2xl': '1rem' },
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Geist','Inter',system-ui,sans-serif; background: hsl(220 22% 97%); color: hsl(222 47% 8%); }
+  .changed { position: relative; }
+  .changed::before {
+    content: attr(data-changed);
+    position: absolute; top: -0.65rem; left: 0.75rem;
+    background: hsl(38 92% 50%); color: white; font-size: 0.625rem; font-weight: 700;
+    padding: 0.1rem 0.5rem; border-radius: 999px; z-index: 10;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .dashed-note { border: 1.5px dashed hsl(38 92% 50%); background: hsl(38 92% 50% / 0.06); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="max-w-6xl mx-auto p-6">
+
+  <!-- Mockup chrome — not part of the real app -->
+  <div class="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 mb-6">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wide text-primary">Mockup — not live data</div>
+        <div class="text-sm text-muted-foreground mt-0.5">Insights page reorg: channel breakdown (Social/Website/GBP/Apple/SEO), per-platform stats, weekly picker for EOS scorecard.</div>
+      </div>
+      <div class="flex items-center gap-2 bg-card border border-border rounded-full p-1">
+        <button onclick="setLayout('tabs')" id="btn-tabs" class="layout-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-colors">Tabs layout</button>
+        <button onclick="setLayout('sections')" id="btn-sections" class="layout-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-colors">Sections layout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real page header (unchanged) -->
+  <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <i data-lucide="sparkles" class="h-5 w-5 text-primary"></i>
+        Move Better — Insights
+        <button onclick="document.getElementById('defs-modal').classList.remove('hidden')" class="changed inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 ml-1" data-changed="NEW — definitions">
+          <i data-lucide="help-circle" class="h-3.5 w-3.5"></i> How these numbers are calculated
+        </button>
+      </h1>
+      <p class="text-sm text-muted-foreground mt-1 max-w-2xl">Bernard reads your performance like a content expert and tells you what's working and what to do next.</p>
+    </div>
+  </div>
+
+  <!-- ============ TABS LAYOUT ============ -->
+  <div id="layout-tabs">
+    <div class="relative changed mt-5 mb-5" data-changed="NEW — channel tabs">
+      <div class="flex items-center gap-1 border-b border-border overflow-x-auto">
+        <button onclick="setTab('social')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap"><i data-lucide="smartphone" class="h-4 w-4 inline -mt-0.5 mr-1"></i>Social Media</button>
+        <button onclick="setTab('website')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap"><i data-lucide="globe" class="h-4 w-4 inline -mt-0.5 mr-1"></i>Website</button>
+        <button onclick="setTab('gbp')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap"><i data-lucide="map-pin" class="h-4 w-4 inline -mt-0.5 mr-1"></i>Google Business</button>
+        <button onclick="setTab('apple')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap"><i data-lucide="apple" class="h-4 w-4 inline -mt-0.5 mr-1"></i>Apple</button>
+        <button onclick="setTab('seo')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap"><i data-lucide="search" class="h-4 w-4 inline -mt-0.5 mr-1"></i>SEO</button>
+      </div>
+    </div>
+
+    <div id="tab-social" class="tab-pane"></div>
+    <div id="tab-website" class="tab-pane hidden"></div>
+    <div id="tab-gbp" class="tab-pane hidden"></div>
+    <div id="tab-apple" class="tab-pane hidden"></div>
+    <div id="tab-seo" class="tab-pane hidden"></div>
+  </div>
+
+  <!-- ============ SECTIONS LAYOUT ============ -->
+  <div id="layout-sections" class="hidden space-y-8 mt-4">
+    <div>
+      <div class="flex items-center gap-2 mb-3 changed" data-changed="NEW — per-platform">
+        <i data-lucide="smartphone" class="h-4 w-4 text-primary"></i>
+        <h2 class="font-semibold">Social Media</h2>
+      </div>
+      <div id="sections-social"></div>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-3 changed" data-changed="NEW — split from 'This week'">
+        <i data-lucide="globe" class="h-4 w-4 text-primary"></i>
+        <h2 class="font-semibold">Website</h2>
+      </div>
+      <div id="sections-website"></div>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <i data-lucide="map-pin" class="h-4 w-4 text-primary"></i>
+        <h2 class="font-semibold">Google Business Profile</h2>
+      </div>
+      <div id="sections-gbp"></div>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <i data-lucide="apple" class="h-4 w-4 text-primary"></i>
+        <h2 class="font-semibold">Apple Business Insights</h2>
+      </div>
+      <div id="sections-apple"></div>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <i data-lucide="search" class="h-4 w-4 text-primary"></i>
+        <h2 class="font-semibold">SEO — tune up the website</h2>
+      </div>
+      <div id="sections-seo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TEMPLATES (rendered by JS into both layouts) ============ -->
+<template id="tpl-week-nav">
+  <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5 mb-4 changed" data-changed="NEW — per-week picker">
+    <button onclick="shiftWeek(-1)" class="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted">
+      <i data-lucide="chevron-left" class="h-4 w-4"></i> Prev
+    </button>
+    <div class="flex items-center gap-2 text-center">
+      <i data-lucide="calendar-range" class="h-4 w-4 shrink-0 text-muted-foreground"></i>
+      <div>
+        <div class="text-sm font-bold leading-tight" id="week-range-label">Jun 30 – Jul 6</div>
+        <div class="text-3xs font-semibold uppercase tracking-wide text-primary" id="week-relative-label">This week</div>
+      </div>
+      <button onclick="resetWeek()" id="back-to-week-btn" class="ml-1 rounded-md border border-border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted hidden">Back to this week</button>
+    </div>
+    <button onclick="shiftWeek(1)" class="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted">
+      Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+    </button>
+  </div>
+  <p class="text-2xs text-muted-foreground mb-4 -mt-2">For your EOS scorecard: read this week's numbers off the cards below, pick a past week with Prev/Next.</p>
+</template>
+
+<template id="tpl-social">
+  <div class="grid lg:grid-cols-2 gap-4 mb-4">
+    <div class="rounded-2xl border border-border bg-card p-5">
+      <h3 class="text-sm font-semibold flex items-center gap-2 mb-4"><i data-lucide="activity" class="h-4 w-4 text-primary"></i> Overall — social</h3>
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between items-baseline"><span class="text-muted-foreground">Posts published</span><span class="font-semibold tabular-nums" id="s-posts">7</span></div>
+        <div class="flex justify-between items-baseline"><span class="text-muted-foreground">Reach (recent posts)</span><span class="font-semibold tabular-nums" id="s-reach">610</span></div>
+        <div class="flex justify-between items-baseline"><span class="text-muted-foreground">Engagement (likes+comments+shares)</span><span class="font-semibold tabular-nums" id="s-eng">21</span></div>
+      </div>
+    </div>
+    <div class="rounded-2xl border border-border bg-card p-5">
+      <h3 class="text-sm font-semibold flex items-center gap-2 mb-4"><i data-lucide="award" class="h-4 w-4 text-primary"></i> Your top post this week</h3>
+      <div class="text-sm">
+        <div class="font-medium truncate">"Free upper body, not thinking about it, just going..."</div>
+        <div class="text-2xs text-muted-foreground mt-0.5">Facebook</div>
+        <div class="mt-2 font-semibold tabular-nums">340 reach · 14 engagement</div>
+      </div>
+    </div>
+  </div>
+  <div class="rounded-2xl border border-border bg-card p-5 changed" data-changed="NEW — by platform">
+    <h3 class="text-sm font-semibold flex items-center gap-2 mb-4"><i data-lucide="layout-grid" class="h-4 w-4 text-primary"></i> By platform</h3>
+    <div class="divide-y divide-border">
+      <div class="flex items-center justify-between py-3">
+        <div class="flex items-center gap-2"><span class="h-5 w-5 rounded-full bg-gradient-to-br from-purple-500 to-orange-400 flex items-center justify-center text-white text-3xs font-bold">IG</span> <span class="text-sm font-medium">Instagram</span></div>
+        <div class="flex items-center gap-6 text-sm tabular-nums"><span>240 reach</span><span>9 engagement</span></div>
+      </div>
+      <div class="flex items-center justify-between py-3">
+        <div class="flex items-center gap-2"><span class="h-5 w-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xs font-bold">FB</span> <span class="text-sm font-medium">Facebook</span></div>
+        <div class="flex items-center gap-6 text-sm tabular-nums"><span>340 reach</span><span>10 engagement</span></div>
+      </div>
+      <div class="flex items-center justify-between py-3">
+        <div class="flex items-center gap-2"><span class="h-5 w-5 rounded-full bg-sky-700 flex items-center justify-center text-white text-3xs font-bold">in</span> <span class="text-sm font-medium">LinkedIn</span></div>
+        <div class="flex items-center gap-6 text-sm tabular-nums"><span>30 reach</span><span>2 engagement</span></div>
+      </div>
+    </div>
+    <p class="text-2xs text-muted-foreground mt-3 pt-3 border-t border-border">Only platforms you've actually published to this week are shown.</p>
+  </div>
+</template>
+
+<template id="tpl-website">
+  <div class="rounded-2xl border border-border bg-card p-5 mb-4">
+    <h3 class="text-sm font-semibold flex items-center gap-2 mb-4"><i data-lucide="globe" class="h-4 w-4 text-primary"></i> Website — this week</h3>
+    <div class="space-y-3 text-sm">
+      <div class="flex justify-between items-baseline"><span class="text-muted-foreground">Sessions</span><span class="font-semibold tabular-nums">27</span></div>
+      <div class="flex justify-between items-baseline"><span class="text-muted-foreground">Engaged sessions</span><span class="font-semibold tabular-nums">18</span></div>
+      <div class="flex justify-between items-baseline"><span class="text-muted-foreground">Avg. engagement rate</span><span class="font-semibold tabular-nums">66%</span></div>
+    </div>
+  </div>
+  <div class="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">Top landing pages + underperformers (existing GA4 cards, unchanged) render below this — condensed for the mockup.</div>
+</template>
+
+<template id="tpl-gbp">
+  <div class="rounded-xl border border-dashed border-warning/40 bg-warning/5 p-3 mb-4 text-2xs text-muted-foreground flex items-center gap-2">
+    <i data-lucide="info" class="h-3.5 w-3.5 text-warning shrink-0"></i>
+    Rolling last 30 days — not week-scoped yet (needs a date-range param on the GBP endpoint). Unaffected by the week picker above.
+  </div>
+  <div class="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Existing Google Business Profile performance cards (views, actions, per-location) render here — unchanged from today.</div>
+</template>
+
+<template id="tpl-apple">
+  <div class="rounded-xl border border-dashed border-warning/40 bg-warning/5 p-3 mb-4 text-2xs text-muted-foreground flex items-center gap-2">
+    <i data-lucide="info" class="h-3.5 w-3.5 text-warning shrink-0"></i>
+    Monthly recap (uploaded PDF import) — month-only data, not week-scoped. Unaffected by the week picker above.
+  </div>
+  <div class="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Existing Apple Business Insights monthly recap cards render here — unchanged from today.</div>
+</template>
+
+<template id="tpl-seo">
+  <div class="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Existing "tune up the website" content — page-health check, search queries, topic suggestions — render here, unchanged from today.</div>
+</template>
+
+<!-- Definitions modal — matches Bernard's existing PageHelp chip+modal pattern -->
+<div id="defs-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+  <div class="bg-card rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 relative">
+    <button onclick="document.getElementById('defs-modal').classList.add('hidden')" class="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+      <i data-lucide="x" class="h-5 w-5"></i>
+    </button>
+    <h2 class="text-lg font-bold flex items-center gap-2 mb-4"><i data-lucide="help-circle" class="h-5 w-5 text-primary"></i> How these numbers are calculated</h2>
+
+    <div class="space-y-5 text-sm">
+      <div>
+        <h3 class="font-semibold flex items-center gap-2 mb-1"><span class="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="smartphone" class="h-3 w-3 text-primary"></i></span>Social Media (Instagram, Facebook, LinkedIn, etc.)</h3>
+        <ul class="list-disc pl-8 text-muted-foreground space-y-1.5">
+          <li><span class="font-medium text-foreground">Reach</span> — unique accounts your connected platform reports having seen the post at least once.</li>
+          <li><span class="font-medium text-foreground">Engagement</span> — likes + comments + shares + saves, added together, as reported by the platform.</li>
+          <li>Numbers only update when Bernard pulls fresh stats — on a schedule (1, 3, 7, and 30 days after a post goes out), then it stops. A brand-new post can show 0 until its first pull.</li>
+          <li>If your workspace publishes through Buffer rather than bundle.social: Buffer's API doesn't provide per-post engagement data today, so Reach/Engagement won't be available.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold flex items-center gap-2 mb-1"><span class="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="globe" class="h-3 w-3 text-primary"></i></span>Website</h3>
+        <ul class="list-disc pl-8 text-muted-foreground space-y-1.5">
+          <li><span class="font-medium text-foreground">Sessions</span> — Google Analytics 4 sessions on your published page, for the selected week.</li>
+          <li><span class="font-medium text-foreground">Engagement rate</span> — GA4's engaged sessions ÷ total sessions for that page.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold flex items-center gap-2 mb-1"><span class="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="map-pin" class="h-3 w-3 text-primary"></i></span>Google Business Profile</h3>
+        <ul class="list-disc pl-8 text-muted-foreground space-y-1.5">
+          <li><span class="font-medium text-foreground">Views</span> / <span class="font-medium text-foreground">Actions</span> (calls, direction requests, website clicks) — as reported by Google's Business Profile Performance API.</li>
+          <li>Currently a rolling last-30-days window — not yet scoped to a specific week.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold flex items-center gap-2 mb-1"><span class="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="apple" class="h-3 w-3 text-primary"></i></span>Apple Business Insights</h3>
+        <ul class="list-disc pl-8 text-muted-foreground space-y-1.5">
+          <li>Whatever Apple reports in your uploaded monthly recap — Bernard displays these numbers as-is, no independent calculation.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let layout = 'tabs'
+  let activeTab = 'social'
+  let weekOffset = 0
+  const WEEKS = { 0: ['Jun 30 – Jul 6', 'This week'], '-1': ['Jun 23 – Jun 29', 'Last week'], '-2': ['Jun 16 – Jun 22', '2 weeks ago'] }
+  // Illustrative only — numbers shift slightly per week so Prev/Next visibly does something.
+  const SOCIAL_BY_WEEK = {
+    0:  { posts: 7, reach: 610, eng: 21, ig: [240,9], fb: [340,10], li: [30,2] },
+    '-1': { posts: 3, reach: 210, eng: 8,  ig: [90,3],  fb: [110,4],  li: [10,1] },
+    '-2': { posts: 5, reach: 340, eng: 12, ig: [140,5], fb: [180,6],  li: [20,1] },
+  }
+
+  function setLayout(mode) {
+    layout = mode
+    document.getElementById('layout-tabs').classList.toggle('hidden', mode !== 'tabs')
+    document.getElementById('layout-sections').classList.toggle('hidden', mode !== 'sections')
+    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('bg-primary','text-primary-foreground'))
+    document.getElementById(mode === 'tabs' ? 'btn-tabs' : 'btn-sections').classList.add('bg-primary','text-primary-foreground')
+    renderAll()
+  }
+
+  function setTab(name) {
+    activeTab = name
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'))
+    document.getElementById('tab-' + name).classList.remove('hidden')
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('border-primary','text-primary')
+      b.classList.add('border-transparent','text-muted-foreground')
+    })
+    event?.target?.classList.add('border-primary','text-primary')
+    event?.target?.classList.remove('border-transparent','text-muted-foreground')
+  }
+
+  function shiftWeek(delta) {
+    const next = weekOffset + delta
+    if (next > 0 || next < -2) return
+    weekOffset = next
+    renderAll()
+  }
+  function resetWeek() { weekOffset = 0; renderAll() }
+
+  function weekNavHtml() {
+    const frag = document.getElementById('tpl-week-nav').content.cloneNode(true)
+    const wrap = document.createElement('div')
+    wrap.appendChild(frag)
+    return wrap.innerHTML
+  }
+
+  function socialHtml() {
+    const frag = document.getElementById('tpl-social').content.cloneNode(true)
+    const wrap = document.createElement('div')
+    wrap.appendChild(frag)
+    return wrap.innerHTML
+  }
+
+  function fillTemplate(id) {
+    const t = document.getElementById('tpl-' + id).content.cloneNode(true)
+    const wrap = document.createElement('div')
+    wrap.appendChild(t)
+    return wrap.innerHTML
+  }
+
+  function renderSocialInto(el) {
+    el.innerHTML = weekNavHtml() + socialHtml()
+    const d = SOCIAL_BY_WEEK[weekOffset]
+    el.querySelector('#s-posts').textContent = d.posts
+    el.querySelector('#s-reach').textContent = d.reach.toLocaleString()
+    el.querySelector('#s-eng').textContent = d.eng
+    const rows = el.querySelectorAll('.divide-y > div')
+    rows[0].querySelector('.tabular-nums').innerHTML = `<span>${d.ig[0]} reach</span><span>${d.ig[1]} engagement</span>`
+    rows[1].querySelector('.tabular-nums').innerHTML = `<span>${d.fb[0]} reach</span><span>${d.fb[1]} engagement</span>`
+    rows[2].querySelector('.tabular-nums').innerHTML = `<span>${d.li[0]} reach</span><span>${d.li[1]} engagement</span>`
+    const [label, rel] = WEEKS[weekOffset]
+    el.querySelector('#week-range-label').textContent = label
+    el.querySelector('#week-relative-label').textContent = rel
+    el.querySelector('#back-to-week-btn').classList.toggle('hidden', weekOffset === 0)
+  }
+
+  function renderWebsiteInto(el) {
+    el.innerHTML = weekNavHtml() + fillTemplate('website')
+    const [label, rel] = WEEKS[weekOffset]
+    el.querySelector('#week-range-label').textContent = label
+    el.querySelector('#week-relative-label').textContent = rel
+    el.querySelector('#back-to-week-btn').classList.toggle('hidden', weekOffset === 0)
+  }
+
+  function renderAll() {
+    if (layout === 'tabs') {
+      renderSocialInto(document.getElementById('tab-social'))
+      renderWebsiteInto(document.getElementById('tab-website'))
+      document.getElementById('tab-gbp').innerHTML = fillTemplate('gbp')
+      document.getElementById('tab-apple').innerHTML = fillTemplate('apple')
+      document.getElementById('tab-seo').innerHTML = fillTemplate('seo')
+    } else {
+      renderSocialInto(document.getElementById('sections-social'))
+      renderWebsiteInto(document.getElementById('sections-website'))
+      document.getElementById('sections-gbp').innerHTML = fillTemplate('gbp')
+      document.getElementById('sections-apple').innerHTML = fillTemplate('apple')
+      document.getElementById('sections-seo').innerHTML = fillTemplate('seo')
+    }
+    lucide.createIcons()
+  }
+
+  // init
+  document.getElementById('btn-tabs').classList.add('bg-primary','text-primary-foreground')
+  document.querySelector('.tab-btn').classList.add('border-primary','text-primary')
+  document.querySelectorAll('.tab-btn').forEach((b,i) => { if(i>0){ b.classList.add('border-transparent','text-muted-foreground') } })
+  renderAll()
+</script>
+
+</body>
+</html>
