@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   Settings, Mic2, Radio, Puzzle, Palette, Users, CreditCard, MapPin,
-  Sliders, Target, Zap, LayoutGrid, Shield, Compass, Brain,
+  Sliders, Target, Zap, LayoutGrid, Shield, Compass, Brain, Music,
 } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
 import { LoadingState } from '@/components/ui/LoadingState'
@@ -22,6 +22,7 @@ const MOBILE_NAV = [
   { to: '/settings/integrations',            label: 'Integrations',      icon: Puzzle },
   { to: '/settings/brand-identity',          label: 'Brand identity',    icon: Compass },
   { to: '/settings/brand-kit',               label: 'Brand kit',         icon: Palette },
+  { to: '/settings/music',                   label: 'Music',             icon: Music },
   { to: '/settings/photo-templates',          label: 'Photo templates',   icon: LayoutGrid },
   { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
   { to: '/settings/access',                  label: 'Access matrix',     icon: Shield },
@@ -48,6 +49,7 @@ const GROUPS = [
       { to: '/settings/integrations',        label: 'Integrations',       icon: Puzzle },
       { to: '/settings/brand-identity',      label: 'Brand identity',     icon: Compass },
       { to: '/settings/brand-kit',           label: 'Brand kit',          icon: Palette },
+      { to: '/settings/music',               label: 'Music',              icon: Music },
       { to: '/settings/photo-templates',      label: 'Photo templates',    icon: LayoutGrid },
     ],
   },
