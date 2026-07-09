@@ -543,8 +543,19 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
                 onInput={(e) => onSetText(idx, e.currentTarget.textContent)}
                 onBlur={() => setEditingIdx(null)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null) } else if (e.key === 'Escape') setEditingIdx(null) }}
-                className="w-full rounded bg-black/35 px-1 text-center text-lg font-bold text-white outline-none"
-                style={{ textShadow: '0 2px 8px rgba(0,0,0,.6)' }}
+                className="w-full rounded px-1 text-lg outline-none"
+                // Mirror the block's real style so double-click editing stays WYSIWYG —
+                // the canvas suppresses this block's text while editing, so this overlay
+                // is the sole render. A hardcoded white-on-black box (the old default)
+                // wrongly repainted coloured/aligned text (e.g. navy) as white-on-black.
+                style={{
+                  color: b.color || '#ffffff',
+                  textAlign: b.align === 'left' ? 'left' : b.align === 'right' ? 'right' : 'center',
+                  fontWeight: b.fontWeight || 700,
+                  fontStyle: b.italic ? 'italic' : 'normal',
+                  textTransform: (typeof b.uppercase === 'boolean' ? b.uppercase : b.role === 'hook') ? 'uppercase' : 'none',
+                  textShadow: '0 2px 8px rgba(0,0,0,.6)',
+                }}
                 aria-label="Edit text"
               />
             ) : sel ? (
