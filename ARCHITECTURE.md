@@ -840,6 +840,21 @@ reflect the actually-decoded frame, not the scrub target. Reuse this pattern (pa
 value + convergence-based handoff) for any future editor UI whose visual position is tied to an async
 media element's state.
 
+**Selection model — `sel` is a discriminated union; a null deselect needs a guard (#2045/#2048, 2026-07-09).**
+`VideoEditor`'s `sel` state is either an inspector-key string (`'clip'`, `'grade'`, `'caption'`,
+`'music'`, `'transcript'`, `'moments'`) OR an overlay object `{ type:'overlay', id }`. Overlay-selection
+is detected everywhere with the `isOverlaySel(sel)` helper — **NOT a bare `typeof sel === 'object'`**,
+because `typeof null === 'object'` is `true`. Clicking the empty stage backdrop deselects via
+`selectKey(null)` (a `Canvas` `<section>` `onClick` guarded by `e.target === e.currentTarget`, so a click
+bubbling up from the `<video>`/an overlay handle doesn't fire it). A bare `typeof sel === 'object'` then
+treated the deselected `null` as an overlay and crashed reading `sel.id` — the whole editor fell to the
+error boundary. The helper `(s) => s != null && typeof s === 'object'` makes `null` a first-class
+"nothing selected" state (no inspector, no ring, no rail highlight). **Any editor that both (a) uses a
+`typeof x === 'object'` discriminator and (b) can hold a null/deselected state must guard with `!= null`.**
+This class of runtime crash passes lint/typecheck/build clean — it only surfaced under the standard
+post-deploy Chrome verification (`SlideEditor` uses a different, `window.getSelection()`-based model and
+is unaffected).
+
 ## Practice-memory RAG — recency + supersession contract
 
 The "practice brain" (`api/_lib/practiceMemoryRag.js` + the `match_practice_memory_chunks` RPC + `practice_memory_chunks` / `practice_memory_supersessions`) is real pgvector retrieval, not a stub. Invariants to preserve:
