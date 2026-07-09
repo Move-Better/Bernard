@@ -655,6 +655,10 @@ function blockStyleOf(block) {
   if (block.font === 'heading' || block.font === 'body') s.font = block.font
   if (block.italic === true) s.italic = true
   if (block.underline === true) s.underline = true
+  // Whole-box spacing + effects (editor's block-level controls).
+  if (Number.isFinite(block.letterSpacing) && block.letterSpacing !== 0) s.letterSpacing = block.letterSpacing
+  if (Number.isFinite(block.lineHeight) && block.lineHeight > 0 && block.lineHeight !== 1) s.lineHeight = block.lineHeight
+  if (['none', 'soft', 'medium', 'heavy'].includes(block.shadow)) s.shadow = block.shadow
   return Object.keys(s).length ? s : null
 }
 
@@ -697,10 +701,15 @@ function roleTypography(role, brandStyle, themeBlock, blockStyle = null, H = SIZ
     if (typeof blockStyle.uppercase === 'boolean') uppercase = blockStyle.uppercase
     if (blockStyle.italic === true) italic = true
     if (blockStyle.underline === true) underline = true
+    // Whole-box line-height multiplier + shadow depth override.
+    if (Number.isFinite(blockStyle.lineHeight) && blockStyle.lineHeight > 0) lineH = Math.round(lineH * blockStyle.lineHeight)
+    if (blockStyle.shadow) shadowLevel = blockStyle.shadow
   }
+  const letterSpacing = blockStyle && Number.isFinite(blockStyle.letterSpacing) ? blockStyle.letterSpacing : 0
 
   return {
     font: `${italic ? 'italic ' : ''}${weight} ${size}px ${family}`,
+    letterSpacing,
     // Decomposed parts so the rich-runs path can build per-word font variants
     // (per-word size / weight / italic / family) without re-parsing `font`.
     weight,
@@ -826,6 +835,10 @@ function drawFreeformBlock(ctx, block, brandStyle, themeBlock, layout = null, pa
   ctx.fillStyle = typo.color
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = align === 'left' ? 'left' : align === 'right' ? 'right' : 'center'
+  // Whole-box letter spacing (canvas px). Set per-block so it can't leak to the
+  // next block; measureText honours it, so wrap math stays correct. Guarded for
+  // canvas impls without the property.
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${typo.letterSpacing || 0}px`
 
   if (typo.pill || typo.background === 'pill') {
     // Pill background — single line, rounded rect behind text
