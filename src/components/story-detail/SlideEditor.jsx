@@ -79,7 +79,9 @@ function normalizeSlide(s, idx) {
           ...(b?.font === 'heading' || b?.font === 'body' ? { font: b.font } : {}),
           ...(b?.italic === true ? { italic: true } : {}),
           ...(b?.underline === true ? { underline: true } : {}),
-          ...(Array.isArray(b?.runs) && b.runs.some((r) => r.color) ? { runs: b.runs } : {}),
+          // Per-word style runs (on-canvas selection toolbar). Keep when ANY run
+          // carries a real override — not just colour — and whitelist run fields.
+          ...(runsHaveStyle(b?.runs) ? { runs: b.runs.map(sanitizeRun) } : {}),
         }))
       : [],
   }
@@ -142,6 +144,318 @@ function serializeCE(el) {
     else merged.push(r.color ? { text: r.text, color: r.color } : { text: r.text })
   }
   return merged
+}
+
+// ── Rich per-word run helpers (on-canvas selection styling) ──────────────────
+// The inline editor persists per-word style as block.runs entries carrying any
+// of {color, sizeScale, bold, italic, underline, strike, case, font}. These map
+// 1:1 to what the shared canvas renderer (overlayTemplates) bakes, so what you
+// style on the canvas ships to the published post.
+const RICH_STYLE_KEYS = ['color', 'sizeScale', 'bold', 'italic', 'underline', 'strike', 'case', 'font']
+const RICH_SIZE_STEPS = [0.7, 0.85, 1, 1.25, 1.5, 2]
+const RICH_CASES = ['none', 'upper', 'lower', 'title']
+const RICH_FONTS = ['default', 'heading', 'body', 'serif']
+// Editor-side font display only — the real bake uses the workspace brand fonts.
+const RICH_FONT_CSS = {
+  heading: '"Trebuchet MS", "Segoe UI", sans-serif',
+  body: '"Helvetica Neue", Arial, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+}
+const RICH_CASE_CSS = { upper: 'uppercase', lower: 'lowercase', title: 'capitalize' }
+
+// Whitelist a run to {text, ...allowed style keys} — strips any stray DOM/serialize
+// artefacts before the row is persisted or hashed.
+function sanitizeRun(r) {
+  const out = { text: typeof r?.text === 'string' ? r.text : '' }
+  if (typeof r?.color === 'string' && r.color) out.color = r.color
+  if (Number.isFinite(r?.sizeScale) && r.sizeScale !== 1) out.sizeScale = r.sizeScale
+  if (r?.bold === true || r?.bold === false) out.bold = r.bold
+  if (r?.italic === true || r?.italic === false) out.italic = r.italic
+  if (r?.underline === true) out.underline = true
+  if (r?.strike === true) out.strike = true
+  if (r?.case === 'upper' || r?.case === 'lower' || r?.case === 'title') out.case = r.case
+  if (r?.font === 'heading' || r?.font === 'body' || r?.font === 'serif') out.font = r.font
+  return out
+}
+
+// True when any run carries a real per-word override (mirrors the renderer's
+// hasRunStyle gate) — used to drop all-bare runs so the row stays clean.
+function runsHaveStyle(runs) {
+  return Array.isArray(runs) && runs.some((r) => r && RICH_STYLE_KEYS.some((k) => {
+    if (k === 'sizeScale') return Number.isFinite(r.sizeScale) && r.sizeScale !== 1
+    if (k === 'color' || k === 'case' || k === 'font') return !!r[k]
+    return r[k] === true
+  }))
+}
+
+// block.runs → innerHTML for the contentEditable (styled spans).
+function richRunsToHTML(runs, text) {
+  if (!Array.isArray(runs) || !runs.length) return escapeHtml(text || '')
+  return runs.map((r) => {
+    const t = escapeHtml(r.text).replace(/\n/g, '<br>')
+    const styles = []
+    const data = []
+    if (r.color) styles.push(`color:${r.color}`)
+    if (Number.isFinite(r.sizeScale) && r.sizeScale !== 1) styles.push(`font-size:${r.sizeScale}em`)
+    if (r.bold === true) styles.push('font-weight:800')
+    else if (r.bold === false) styles.push('font-weight:400')
+    if (r.italic === true) styles.push('font-style:italic')
+    else if (r.italic === false) styles.push('font-style:normal')
+    const dec = [r.underline && 'underline', r.strike && 'line-through'].filter(Boolean).join(' ')
+    if (dec) styles.push(`text-decoration-line:${dec}`)
+    if (r.case) { styles.push(`text-transform:${RICH_CASE_CSS[r.case] || 'none'}`); data.push(`data-case="${r.case}"`) }
+    if (r.font && RICH_FONT_CSS[r.font]) { styles.push(`font-family:${RICH_FONT_CSS[r.font]}`); data.push(`data-font="${r.font}"`) }
+    if (!styles.length && !data.length) return t
+    return `<span style="${styles.join(';')}" ${data.join(' ')}>${t}</span>`
+  }).join('')
+}
+
+// Walk the contentEditable DOM → [{text, ...style}] runs, accumulating styles
+// from nested spans (inner wins). Merges adjacent identical-style runs.
+function serializeRichCE(el) {
+  const raw = []
+  function walk(node, inh) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent) raw.push({ ...inh, text: node.textContent })
+      return
+    }
+    if (node.nodeName === 'BR') { raw.push({ ...inh, text: '\n' }); return }
+    let cur = inh
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      cur = { ...inh }
+      const s = node.style || {}
+      const c = cssColorToHex(s.color)
+      if (c) cur.color = c
+      if (s.fontSize && s.fontSize.endsWith('em')) {
+        const v = parseFloat(s.fontSize)
+        if (Number.isFinite(v) && v !== 1) cur.sizeScale = Math.round(v * 100) / 100
+      }
+      if (s.fontWeight) { const w = parseInt(s.fontWeight, 10); if (w >= 700) cur.bold = true; else if (w) cur.bold = false }
+      if (s.fontStyle === 'italic') cur.italic = true
+      else if (s.fontStyle === 'normal') cur.italic = false
+      const dec = s.textDecorationLine || s.textDecoration || ''
+      if (dec.indexOf('underline') > -1) cur.underline = true
+      if (dec.indexOf('line-through') > -1) cur.strike = true
+      if (node.dataset?.case) cur.case = node.dataset.case
+      if (node.dataset?.font) cur.font = node.dataset.font
+    }
+    node.childNodes.forEach((ch) => walk(ch, cur))
+  }
+  el.childNodes.forEach((ch) => walk(ch, {}))
+  const merged = []
+  for (const r of raw) {
+    const last = merged[merged.length - 1]
+    const sameStyle = last && RICH_STYLE_KEYS.every((k) => last[k] === r[k])
+    if (sameStyle) last.text += r.text
+    else merged.push({ ...r })
+  }
+  // Strip false/undefined style keys so bare runs serialize to {text} only.
+  return merged.map((r) => {
+    const out = { text: r.text }
+    for (const k of RICH_STYLE_KEYS) {
+      if (k === 'sizeScale') { if (Number.isFinite(r.sizeScale) && r.sizeScale !== 1) out.sizeScale = r.sizeScale }
+      else if (k === 'color' || k === 'case' || k === 'font') { if (r[k]) out[k] = r[k] }
+      else if (r[k] === true || r[k] === false) out[k] = r[k]
+    }
+    return out
+  })
+}
+
+// Wrap the live selection in a fresh <span>; returns it (or null if collapsed).
+function wrapSelectionInSpan() {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
+  const range = sel.getRangeAt(0)
+  const span = document.createElement('span')
+  try { range.surroundContents(span) }
+  catch { const frag = range.extractContents(); span.appendChild(frag); range.insertNode(span) }
+  const nr = document.createRange()
+  nr.selectNodeContents(span)
+  sel.removeAllRanges(); sel.addRange(nr)
+  return span
+}
+function unwrapIfBare(span) {
+  if (!span) return
+  if (!span.getAttribute('style') && !span.dataset?.case && !span.dataset?.font) {
+    const p = span.parentNode
+    while (span.firstChild) p.insertBefore(span.firstChild, span)
+    p.removeChild(span); p.normalize?.()
+  }
+}
+// Resolve the effective per-word flags at the current selection start (nearest
+// span ancestors, inner-most wins) — drives toolbar active states + toggles.
+function richFlagsAt(editorEl) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return {}
+  let node = sel.getRangeAt(0).startContainer
+  const f = {}
+  while (node && node !== editorEl) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const s = node.style || {}
+      if (f.color == null && s.color) f.color = cssColorToHex(s.color)
+      if (f.scale == null && s.fontSize?.endsWith('em')) f.scale = parseFloat(s.fontSize)
+      if (f.bold == null && s.fontWeight) f.bold = parseInt(s.fontWeight, 10) >= 700
+      if (f.italic == null && s.fontStyle) f.italic = s.fontStyle === 'italic'
+      const dec = s.textDecorationLine || s.textDecoration || ''
+      if (dec.indexOf('underline') > -1) f.underline = true
+      if (dec.indexOf('line-through') > -1) f.strike = true
+      if (f.case == null && node.dataset?.case) f.case = node.dataset.case
+      if (f.font == null && node.dataset?.font) f.font = node.dataset.font
+    }
+    node = node.parentNode
+  }
+  return f
+}
+
+// The on-canvas inline rich-text editor. Double-click a block → this replaces
+// its canvas text (suppressed while editing) and shows a Canva-style selection
+// toolbar for per-word font / size / colour / B·I·U·S / case. Serializes to
+// block.runs on every change so the canvas + publish bake stay WYSIWYG.
+function RichTextEditOverlay({ block, idx, baseStyle, onCommit, onDone }) {
+  const ceRef = useRef(null)
+  const toolbarRef = useRef(null)
+  const savedRangeRef = useRef(null)
+  const initRef = useRef(false)
+  const [tb, setTb] = useState(null)
+  const [flags, setFlags] = useState({})
+
+  useEffect(() => {
+    const el = ceRef.current
+    if (!el || initRef.current) return
+    initRef.current = true
+    el.innerHTML = richRunsToHTML(block.runs, block.text)
+    el.focus()
+    const sel = window.getSelection()
+    const r = document.createRange()
+    r.selectNodeContents(el); r.collapse(false)
+    sel.removeAllRanges(); sel.addRange(r)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function commit() {
+    const el = ceRef.current
+    if (!el) return
+    const runs = serializeRichCE(el)
+    const text = runs.map((r) => r.text).join('')
+    onCommit(idx, { text, runs: runsHaveStyle(runs) ? runs : null })
+  }
+  function showToolbar() {
+    const el = ceRef.current
+    const sel = window.getSelection()
+    if (!el || !sel || sel.rangeCount === 0 || sel.isCollapsed || !sel.toString().trim() || !el.contains(sel.anchorNode)) {
+      setTb(null); return
+    }
+    savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+    const rect = sel.getRangeAt(0).getBoundingClientRect()
+    setTb({ top: Math.max(8, rect.top - 46), left: Math.max(8, Math.min(rect.left + rect.width / 2 - 150, window.innerWidth - 308)) })
+    setFlags(richFlagsAt(el))
+  }
+  function restoreRange() {
+    const r = savedRangeRef.current
+    if (!r) return
+    const sel = window.getSelection()
+    sel.removeAllRanges(); sel.addRange(r.cloneRange())
+  }
+  function styleSel(mutator) {
+    const el = ceRef.current
+    if (!el) return
+    restoreRange()
+    const span = wrapSelectionInSpan()
+    if (!span) return
+    mutator(span)
+    unwrapIfBare(span)
+    el.focus()
+    commit()
+    requestAnimationFrame(showToolbar)
+  }
+  function bumpSize(dir) {
+    const cur = richFlagsAt(ceRef.current).scale || 1
+    let i = RICH_SIZE_STEPS.reduce((best, s, k) => (Math.abs(s - cur) < Math.abs(RICH_SIZE_STEPS[best] - cur) ? k : best), 0)
+    i = Math.max(0, Math.min(RICH_SIZE_STEPS.length - 1, i + dir))
+    const v = RICH_SIZE_STEPS[i]
+    styleSel((s) => { if (v === 1) s.style.fontSize = ''; else s.style.fontSize = `${v}em` })
+  }
+  function cycleCase() {
+    const cur = richFlagsAt(ceRef.current).case || 'none'
+    const next = RICH_CASES[(RICH_CASES.indexOf(cur) + 1) % RICH_CASES.length]
+    styleSel((s) => {
+      if (next === 'none') { s.style.textTransform = ''; delete s.dataset.case }
+      else { s.style.textTransform = RICH_CASE_CSS[next]; s.dataset.case = next }
+    })
+  }
+  function cycleFont() {
+    const cur = richFlagsAt(ceRef.current).font || 'default'
+    const next = RICH_FONTS[(RICH_FONTS.indexOf(cur) + 1) % RICH_FONTS.length]
+    styleSel((s) => {
+      if (next === 'default') { s.style.fontFamily = ''; delete s.dataset.font }
+      else { s.style.fontFamily = RICH_FONT_CSS[next]; s.dataset.font = next }
+    })
+  }
+  function toggleDeco(which) {
+    const fl = richFlagsAt(ceRef.current)
+    const u = which === 'u' ? !fl.underline : !!fl.underline
+    const st = which === 's' ? !fl.strike : !!fl.strike
+    const parts = [u && 'underline', st && 'line-through'].filter(Boolean)
+    styleSel((s) => { s.style.textDecorationLine = parts.join(' ') || 'none' })
+  }
+  const btn = (active) => `flex h-7 min-w-[26px] items-center justify-center rounded px-1 text-sm font-semibold transition-colors ${active ? 'bg-primary/15 text-primary' : 'text-foreground/80 hover:bg-muted'}`
+  const stopMouse = (e) => { if (e.target.tagName !== 'INPUT') e.preventDefault() }
+  const fontLabel = flags.font && flags.font !== 'default' ? flags.font[0].toUpperCase() + flags.font.slice(1, 4) : 'Aa'
+
+  return (
+    <>
+      <div
+        ref={ceRef}
+        contentEditable
+        suppressContentEditableWarning
+        onPointerDown={(e) => e.stopPropagation()}
+        onInput={() => { commit(); showToolbar() }}
+        onMouseUp={() => setTimeout(showToolbar, 0)}
+        onKeyUp={showToolbar}
+        onBlur={() => setTimeout(() => {
+          if (toolbarRef.current?.contains(document.activeElement)) return
+          commit(); onDone()
+        }, 160)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); onDone() }
+          else if (e.key === 'Escape') { commit(); onDone() }
+        }}
+        className="w-full rounded px-1 text-lg outline-none"
+        style={baseStyle}
+        aria-label="Edit text — highlight a word to style it"
+      />
+      {tb && (
+        <div
+          ref={toolbarRef}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={stopMouse}
+          className="fixed z-50 flex items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg"
+          style={{ top: tb.top, left: tb.left }}
+        >
+          <button onClick={cycleFont} className={btn(!!flags.font && flags.font !== 'default')} title="Font" style={{ minWidth: 34 }}>{fontLabel}</button>
+          <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
+          <button onClick={() => bumpSize(-1)} className={btn(false)} title="Smaller">−</button>
+          <button onClick={() => bumpSize(1)} className={btn(false)} title="Bigger">+</button>
+          <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
+          <button onClick={() => styleSel((s) => { s.style.fontWeight = richFlagsAt(ceRef.current).bold ? '400' : '800' })} className={btn(flags.bold === true)} title="Bold" style={{ fontWeight: 800 }}>B</button>
+          <button onClick={() => styleSel((s) => { s.style.fontStyle = richFlagsAt(ceRef.current).italic ? 'normal' : 'italic' })} className={btn(flags.italic === true)} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
+          <button onClick={() => toggleDeco('u')} className={btn(flags.underline === true)} title="Underline" style={{ textDecoration: 'underline' }}>U</button>
+          <button onClick={() => toggleDeco('s')} className={btn(flags.strike === true)} title="Strikethrough" style={{ textDecoration: 'line-through' }}>S</button>
+          <button onClick={cycleCase} className={btn(!!flags.case)} title="Case">aA</button>
+          <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
+          {TEXT_COLORS.map((c) => (
+            <button
+              key={c.value}
+              onClick={() => styleSel((s) => { s.style.color = c.value })}
+              className={`h-5 w-5 shrink-0 rounded-full border ${flags.color?.toLowerCase() === c.value.toLowerCase() ? 'ring-2 ring-primary' : 'border-border'}`}
+              style={{ background: c.value }}
+              title={c.label}
+              aria-label={`Colour ${c.label}`}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  )
 }
 
 function defaultPositionFor(template, role) {
@@ -468,7 +782,7 @@ function FloatingTextToolbar({ block, idx, below, onSetStyle, stop }) {
 // skips that block's text while editing so there's no double-vision). When a
 // block is selected, the floating toolbar rides above it. The canvas underneath
 // is the true render.
-function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, onSetStyle, onSetText, editingIdx, setEditingIdx, onDragging, onSnap }) {
+function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, onSetStyle, onSetRuns, editingIdx, setEditingIdx, onDragging, onSnap }) {
   const rootRef = useRef(null)
   const stop = (e) => e.stopPropagation()
   function startDrag(e, idx, f) {
@@ -535,20 +849,15 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
             style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, width: `${w * 100}%`, minHeight: '8%' }}
           >
             {editing ? (
-              <div
-                contentEditable
-                suppressContentEditableWarning
-                ref={(el) => { if (el && document.activeElement !== el) { el.textContent = b.text || ''; el.focus() } }}
-                onPointerDown={stop}
-                onInput={(e) => onSetText(idx, e.currentTarget.textContent)}
-                onBlur={() => setEditingIdx(null)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null) } else if (e.key === 'Escape') setEditingIdx(null) }}
-                className="w-full rounded px-1 text-lg outline-none"
-                // Mirror the block's real style so double-click editing stays WYSIWYG —
-                // the canvas suppresses this block's text while editing, so this overlay
-                // is the sole render. A hardcoded white-on-black box (the old default)
-                // wrongly repainted coloured/aligned text (e.g. navy) as white-on-black.
-                style={{
+              // Mirror the block's own style so editing stays WYSIWYG — the canvas
+              // suppresses this block's text while editing, so this overlay is the
+              // sole render. Highlight a word for the per-word styling toolbar.
+              <RichTextEditOverlay
+                block={b}
+                idx={idx}
+                onCommit={onSetRuns}
+                onDone={() => setEditingIdx(null)}
+                baseStyle={{
                   color: b.color || '#ffffff',
                   textAlign: b.align === 'left' ? 'left' : b.align === 'right' ? 'right' : 'center',
                   fontWeight: b.fontWeight || 700,
@@ -556,7 +865,6 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
                   textTransform: (typeof b.uppercase === 'boolean' ? b.uppercase : b.role === 'hook') ? 'uppercase' : 'none',
                   textShadow: '0 2px 8px rgba(0,0,0,.6)',
                 }}
-                aria-label="Edit text"
               />
             ) : sel ? (
               <FloatingTextToolbar block={b} idx={idx} below={tbBelow} onSetStyle={onSetStyle} stop={stop} />
@@ -1747,7 +2055,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   // Re-render the canvas when anything that affects the pixels changes.
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
-    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.runs ? b.runs.map((r) => r.color || '').join(',') : ''}`).join('~'),
+    (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
     slide.photo_zoom || 1,
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',
@@ -2505,12 +2813,16 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                       return nb
                     }),
                   })}
-                  onSetText={(idx, text) => updateSlide(activeSlideIdx, {
+                  onSetRuns={(idx, { text, runs }) => updateSlide(activeSlideIdx, {
                     ...activeSlide,
                     blocks: activeSlide.blocks.map((b, i) => {
                       if (i !== idx) return b
                       const nb = { ...b, text }
-                      delete nb.runs   // inline edit is plain text — drop stale per-word colour runs
+                      // Per-word style lives in runs; drop the key when the edit
+                      // left no styled runs so the row stays clean (renderer falls
+                      // back to the block's base typography).
+                      if (runs && runs.length) nb.runs = runs
+                      else delete nb.runs
                       return nb
                     }),
                   })}
