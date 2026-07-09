@@ -15,6 +15,7 @@ export const config = { runtime: 'nodejs' }
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { scoreSnapshot } from '../../_lib/engagementScoring.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -27,29 +28,6 @@ function sb(path) {
       Authorization: `Bearer ${SUPABASE_KEY}`,
     },
   })
-}
-
-// Score a snapshot by its source. Returns { score, reach, pageviews, engagement }.
-function scoreSnapshot(snap) {
-  if (snap.source === 'ga4') {
-    const pageviews = snap.stats?.pageviews ?? 0
-    return { score: pageviews, pageviews, reach: 0, engagement: 0 }
-  }
-  const stats = snap.stats?.statistics ?? {}
-  const likes = stats.likes ?? stats.favorites ?? 0
-  if (snap.source === 'bundle') {
-    // bundle.social has no `reach` field — mirror the mapping used by
-    // buffer-analytics.js's mapBundleMetrics (impressionsUnique -> reach,
-    // likes+comments+shares+saves -> engagement), or every bundle row scores
-    // 0 and gets filtered out as a candidate before it's ever ranked.
-    const reach = stats.impressionsUnique ?? 0
-    const engagement = likes + (stats.comments ?? 0) + (stats.shares ?? 0) + (stats.saves ?? 0)
-    return { score: reach, reach, pageviews: 0, engagement }
-  }
-  // Buffer — API returns no engagement data today, so this legitimately scores 0.
-  const reach  = stats.reach ?? 0
-  const engagement = likes + (stats.comments ?? 0) + (stats.shares ?? 0)
-  return { score: reach, reach, pageviews: 0, engagement }
 }
 
 export default withSentry(async function handler(req, res) {
