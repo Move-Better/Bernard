@@ -325,17 +325,20 @@ export class BundlePublisher extends SocialPublisher {
 }
 
 // bundle reports a normalized engagement set across platforms. The force-analytics
-// response carries the metrics flat; the get-analytics response nests them. Read
-// the named fields from whichever container holds them, defaulting to 0.
-// ponytail: the exact get-response nesting is not yet spike-verified (GBP returns
-// none; FB/IG confirmed the field NAMES). Confirm the read path live in the GBP
-// analytics phase before surfacing these numbers in the UI.
+// response carries the metrics flat on the root object. The (non-force) get-analytics
+// response nests them one level deeper, in a top-level `items[]` time-series array —
+// verified live against the real API 2026-07-09: `analyticsGetPostAnalytics` returns
+// `{ post, profilePost, items: [{ impressions, likes, comments, ..., forced }] }`, with
+// no `post.analytics` field at all (the earlier guess here was wrong and meant every
+// non-force read silently normalized to all-zero metrics, regardless of the real
+// numbers bundle held in `items[]`). Read the LAST item (most recent poll) first.
 function normalizeBundleAnalytics(res) {
+  const items = Array.isArray(res?.items) ? res.items : null
   const candidates = [
     res,
+    items?.[items.length - 1],
     res?.post,
     res?.analytics,
-    Array.isArray(res?.post?.analytics) ? res.post.analytics[res.post.analytics.length - 1] : res?.post?.analytics,
   ].filter(Boolean)
   const num = (key) => {
     for (const c of candidates) {
