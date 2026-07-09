@@ -63,6 +63,13 @@ export default function StoryboardPublish() {
     if (piece?.id) posthogCapture('piece_opened', { pieceId: piece.id, platform: piece.platform })
   }, [piece?.id, piece?.platform])
 
+  // Advancing to the next piece must land at the top, not under the previous
+  // piece's scroll position — same review-queue pattern AnswerReview shipped in
+  // #1938. Keyed on the route param so it fires on every in-place advance.
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [pieceId])
+
   if (isLoading) return <LoadingState />
   if (isError || !piece) {
     return (
@@ -95,6 +102,19 @@ export default function StoryboardPublish() {
   const fmt = postFormat(piece)
   const photoCount = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
 
+  // Inline "next piece" advance — jump straight to the next draft still needing
+  // media instead of bouncing back through the /publish queue (which redirects
+  // to /week). PostHog showed up to 39 /week↔/publish round-trips in one session.
+  const nextPiece = remainingNeedsMedia[0]
+  const nextTitle = nextPiece
+    ? (nextPiece.topic || firstHeading(nextPiece.content) || 'Untitled draft')
+    : ''
+  const nextMeta = nextPiece
+    ? (PLATFORM_META[nextPiece.platform] || { label: nextPiece.platform || '—' })
+    : null
+  const queueTotal = worklist.length
+  const curIdx = worklist.findIndex((p) => p.id === pieceId)
+
   // Carousel + single visual + photo Story → the full-bleed SlideEditor. Breaks
   // out of the page's padding (the Layout `main` adds px/py) and fills the
   // content region so the editor canvas dominates. Publish/schedule fold into
@@ -104,23 +124,23 @@ export default function StoryboardPublish() {
     const scheduleNode = (
       <div className="space-y-4">
         <ApprovalPanel piece={piece} mode="publish" />
-        {remainingNeedsMedia.length > 0 && (
+        {nextPiece && (
           <Link
-            to="/publish"
+            to={`/publish/${nextPiece.id}`}
             className="group block rounded-lg border border-primary/20 bg-accent/20 p-3 transition-colors hover:border-primary/40"
           >
             <p className="mb-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Next up
+              Next up{curIdx >= 0 ? ` · ${curIdx + 1} of ${queueTotal}` : ''}
             </p>
-            <span className="flex items-center justify-between gap-2">
-              <span className="text-sm text-foreground">
-                <b className="font-medium">
-                  {remainingNeedsMedia.length} more draft{remainingNeedsMedia.length === 1 ? '' : 's'}
-                </b>{' '}
-                need media
+            <span className="flex items-center justify-between gap-3">
+              <span className="min-w-0 text-sm text-foreground">
+                <b className="block truncate font-medium">{nextTitle}</b>
+                <span className="text-xs text-muted-foreground">
+                  {nextMeta.label} · needs media
+                </span>
               </span>
               <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-                Publish <ArrowRight className="h-3.5 w-3.5" />
+                Open <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </span>
           </Link>
