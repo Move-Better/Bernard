@@ -20,6 +20,7 @@ import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import ProducerFeedStrip from '@/components/producer/ProducerFeedStrip'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
 
 // F2.3 — "Your week": the producer's plan/review hub (Phase 2).
 // 2b: workspace-tz time display.
@@ -143,6 +144,24 @@ function drillTo(item) {
   if (item.contentPieceId) return `/publish/${item.contentPieceId}`
   if (item.interviewId) return `/stories/${item.interviewId}`
   return '/stories'
+}
+
+// A single backlog ("banked") item — links through to its source draft/interview.
+function BacklogRow({ item, onNavigate }) {
+  const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
+  const Icon = meta.icon
+  return (
+    <Link
+      to={drillTo(item)}
+      onClick={onNavigate}
+      className="flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors hover:border-primary/40 hover:bg-primary/5"
+    >
+      {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
+      <span className="flex-1 truncate text-2xs font-medium">{item.brief || item.label}</span>
+      <span className="text-3xs text-muted-foreground">held</span>
+      <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </Link>
+  )
 }
 
 // Resolve the pill appearance for a card based on atom + content_item state.
@@ -296,6 +315,7 @@ export default function YourWeek() {
   const [scheduling, setScheduling] = useState(false)
   const [weekOffset, setWeekOffset] = useState(0) // 0 = this week; <0 past (read-only); >0 future (plannable)
   const [planningWeek, setPlanningWeek] = useState(false)
+  const [backlogOpen, setBacklogOpen] = useState(false)
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary', weekOffset],
     queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset)}` : ''}`),
@@ -733,20 +753,34 @@ export default function YourWeek() {
                   <p className="text-2xs text-muted-foreground">Surplus pieces get banked here and pulled in to fill thin weeks.</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {(data.held || []).slice(0, 6).map((item) => {
-                      const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
-                      const Icon = meta.icon
-                      return (
-                        <div key={item.id} className="flex items-center gap-2 rounded-lg border px-2 py-1.5">
-                          {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
-                          <span className="flex-1 truncate text-2xs font-medium">{item.brief || item.label}</span>
-                          <span className="text-3xs text-muted-foreground">held</span>
-                        </div>
-                      )
-                    })}
+                    {(data.held || []).slice(0, 6).map((item) => (
+                      <BacklogRow key={item.id} item={item} />
+                    ))}
+                    {data.heldCount > 6 && (
+                      <button
+                        type="button"
+                        onClick={() => setBacklogOpen(true)}
+                        className="w-full rounded-lg px-2 py-1.5 text-2xs font-semibold text-primary hover:underline"
+                      >
+                        View all {data.heldCount}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
+
+              <Drawer open={backlogOpen} onOpenChange={setBacklogOpen}>
+                <DrawerContent side="right">
+                  <DrawerHeader>
+                    <DrawerTitle>Backlog — {data.heldCount} banked</DrawerTitle>
+                  </DrawerHeader>
+                  <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
+                    {(data.held || []).map((item) => (
+                      <BacklogRow key={item.id} item={item} onNavigate={() => setBacklogOpen(false)} />
+                    ))}
+                  </div>
+                </DrawerContent>
+              </Drawer>
 
               {data.digest && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
