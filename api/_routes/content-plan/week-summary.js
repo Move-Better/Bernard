@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
   // This week's planned atoms (Strategist output for plan_week). Full detail so
   // the /week calendar can render cards + drill in to the per-piece review.
-  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,status,content_piece_id,interview_id'
+  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,status,content_piece_id,interview_id,interview:interviews!interview_id(topic)'
   const atomsRes = await sb(
     `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
   )
@@ -96,6 +96,7 @@ export default async function handler(req, res) {
       scheduled_at: a.scheduled_at,
       label: a.angle_label,
       brief: a.brief,
+      interviewTopic: a.interview?.topic || null,
       status: a.status,
       contentPieceId: a.content_piece_id,
       contentItemStatus: ci?.status || null,

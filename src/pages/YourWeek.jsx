@@ -146,10 +146,26 @@ function drillTo(item) {
   return '/stories'
 }
 
+// What the post is actually about: a real drafting brief beats the source
+// interview's topic, which beats the generic angle category (e.g. "The
+// Hook") — most atoms never get a per-atom brief, so without the interview
+// topic every card/row in a given angle looks identical regardless of what
+// interview it came from.
+function contentLabel(item) {
+  return item.brief || item.interviewTopic || item.label
+}
+// The angle category, shown as a secondary tag only when something more
+// specific is already carrying the primary label.
+function categoryTag(item) {
+  const primary = contentLabel(item)
+  return primary && primary !== item.label ? item.label : null
+}
+
 // A single backlog ("banked") item — links through to its source draft/interview.
 function BacklogRow({ item, onNavigate }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
+  const tag = categoryTag(item)
   return (
     <Link
       to={drillTo(item)}
@@ -157,8 +173,11 @@ function BacklogRow({ item, onNavigate }) {
       className="flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors hover:border-primary/40 hover:bg-primary/5"
     >
       {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
-      <span className="flex-1 truncate text-2xs font-medium">{item.brief || item.label}</span>
-      <span className="text-3xs text-muted-foreground">held</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-2xs font-medium">{contentLabel(item)}</span>
+        {tag && <span className="block truncate text-3xs text-muted-foreground">{tag}</span>}
+      </span>
+      <span className="shrink-0 text-3xs text-muted-foreground">held</span>
       <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
     </Link>
   )
@@ -214,8 +233,11 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
         </span>
       </div>
       <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
-        {item.brief || item.label}
+        {contentLabel(item)}
       </div>
+      {categoryTag(item) && (
+        <div className="-mt-1 mb-1.5 truncate text-3xs text-muted-foreground">{categoryTag(item)}</div>
+      )}
       {/* Pill and action stack on separate lines — side-by-side overflowed the
           button out of a narrow day column. */}
       <div className="flex flex-col items-start gap-1.5">
