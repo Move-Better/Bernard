@@ -27,6 +27,9 @@ function defaultSb(path, init = {}) {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const RECENT_TOPIC_DAYS = 30
+// Rolling window the topic-balance cap is evaluated against (P2). Kept as one
+// window across channels; allocateToCadence enforces the cap per channel.
+const RECENT_REGION_DAYS = 21
 
 /**
  * Read the inputs the Strategist composes from, for one workspace + week.
@@ -41,7 +44,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   const ivRes = await sb(
     `interviews?workspace_id=eq.${wsId}&status=in.(completed,synthesized)` +
       `&created_at=gte.${weekStart}&created_at=lt.${weekEnd}` +
-      `&select=id,topic,staff_id,summary_text,created_at`,
+      `&select=id,topic,staff_id,summary_text,created_at,region,theme`,
   )
   const interviews = ivRes.ok ? await ivRes.json() : []
 
@@ -55,12 +58,32 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
     ? [...new Set((await recRes.json()).map((r) => r.topic).filter(Boolean))]
     : []
 
-  // Backlog: banked atoms (held_at set) available to top up thin channels.
+  // Rolling-window region mix per channel (P2 topic-balance). Counts recent
+  // output (approved/scheduled/published) by platform × region so the allocator
+  // can keep any one region under the cap. Shape: { platform: { region: n } }.
+  const regionSince = new Date(Date.now() - RECENT_REGION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const rgRes = await sb(
+    `content_items?workspace_id=eq.${wsId}&status=in.(approved,scheduled,published)` +
+      `&created_at=gte.${regionSince}&region=not.is.null&select=platform,region&limit=1000`,
+  )
+  const recentRegionCounts = {}
+  if (rgRes.ok) {
+    for (const row of await rgRes.json()) {
+      if (!row.platform || !row.region) continue
+      ;(recentRegionCounts[row.platform] ||= {})[row.region] =
+        (recentRegionCounts[row.platform]?.[row.region] || 0) + 1
+    }
+  }
+
+  // Backlog: banked atoms (held_at set) available to top up thin channels. Embed
+  // the source interview's region so the allocator can cap-check backlog too.
   const bkRes = await sb(
     `content_plan_atoms?workspace_id=eq.${wsId}&held_at=not.is.null` +
-      `&select=id,platform,angle,angle_label,brief,held_at`,
+      `&select=id,platform,angle,angle_label,brief,held_at,interview_id,interviews(region)`,
   )
-  const backlog = bkRes.ok ? await bkRes.json() : []
+  const backlog = bkRes.ok
+    ? (await bkRes.json()).map((b) => ({ ...b, region: b.interviews?.region || null, interviews: undefined }))
+    : []
 
   // Cadence resolution. Auto (provenance !== 'user', the default) COMPUTES the
   // per-channel cadence from the workspace's enabled_outputs × the cold-start
@@ -80,7 +103,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   if (!cadence || Object.keys(cadence).length === 0) cadence = RECOMMENDED_CADENCE
   const quietDays = policy?.quiet_days || ['sat', 'sun']
 
-  return { interviews, cadence, quietDays, recentTopics, backlog }
+  return { interviews, cadence, quietDays, recentTopics, recentRegionCounts, backlog }
 }
 
 /**
@@ -154,7 +177,7 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
  */
 export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultSb, generate }) {
   const planWeek = weekMonday || mondayOf(new Date().toISOString())
-  const { interviews, cadence, quietDays, recentTopics, backlog } = await getWeekInputs({
+  const { interviews, cadence, quietDays, recentTopics, recentRegionCounts, backlog } = await getWeekInputs({
     workspace,
     weekMonday: planWeek,
     sb,
@@ -172,6 +195,7 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     quietDays,
     timezone: workspace.cadence_policy?.timezone || 'America/Los_Angeles',
     recentTopics,
+    recentRegionCounts,
     backlog,
     weekMonday: planWeek,
     ...(generate ? { generate } : {}),
