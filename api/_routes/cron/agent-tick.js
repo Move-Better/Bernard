@@ -312,10 +312,14 @@ async function handler(req, res) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Supabase env not configured' })
   if (process.env.PRODUCER_GLOBAL_DISABLED === '1') return res.status(200).json({ skipped: 'globally_disabled' })
 
-  // audience_options + story_type_options are read by draftAtom's label resolution
-  // — the interactive route gets them via workspaceContext's select=*, so the
-  // pre-draft path must select them too or the two callers diverge.
-  const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,brand_guidelines,audience_options,story_type_options,producer_config')
+  // audience_options + story_type_options are read by draftAtom's label resolution,
+  // and website is interpolated directly into the facebook/linkedin/gbp atom
+  // prompts (atomPrompts.js) — the interactive route gets all of these via
+  // workspaceContext's select=*, so the pre-draft path must select them too or
+  // the two callers diverge. A missing `website` here means `${workspace.website}`
+  // renders the literal string "undefined" into the prompt (and the model then
+  // echoes it verbatim into the caption) rather than just omitting the URL.
+  const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,website,brand_guidelines,audience_options,story_type_options,producer_config')
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
   const workspaces = await wsRes.json().catch(() => [])
   // Fetch-all + filter in JS (robust for a JSONB boolean; the enabled set is tiny).

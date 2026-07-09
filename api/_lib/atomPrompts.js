@@ -38,6 +38,14 @@ export function getAtomSystemPrompt(workspace, staffName, condition, platform, a
   const firstName = staffName.split(' ')[0]
   const isPersonal = voiceMode === 'personal'
 
+  // workspace.website is sometimes absent (e.g. a caller selecting a narrower
+  // workspace row) — guard every interpolation so a missing site degrades to
+  // "omit the URL" instead of leaking the literal string "undefined" into the
+  // prompt, which the model then echoes verbatim into the caption.
+  const website = workspace.website || ''
+  const linkedinUrlLine = website ? `Include URL ${website} at end. No hashtags.` : 'No hashtags. Do not include a URL.'
+  const facebookUrlLine = website ? `Include the full URL ${website} on its own line near the end.` : 'Do not include a URL.'
+
   // Appended to every Instagram prompt. Instructs the AI to plan a multi-slide
   // carousel with per-slide text blocks. draft.js parses this JSON block as
   // the canonical source for content_items.slides.
@@ -101,7 +109,7 @@ ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice — this is my clinical perspective.`
   : `Frame as ${workspace.display_name}'s team perspective: "At ${workspace.display_name}, we approach ${condition} differently…"`}
 Close with: "Happy to connect with colleagues working with patients dealing with ${condition}."
-Include URL ${workspace.website} at end. No hashtags.`,
+${linkedinUrlLine}`,
 
       referring_provider: `Write a LinkedIn post (~200 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Written specifically for referring providers — what should a GP, orthopedic surgeon, or sports medicine doc know before referring a ${condition} patient?
@@ -109,14 +117,14 @@ ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice.`
   : `Frame from ${workspace.display_name}'s clinical team perspective.`}
 Close with: "Happy to answer questions or discuss complex cases — reach out directly."
-Include URL ${workspace.website} at end. No hashtags.`,
+${linkedinUrlLine}`,
 
       movement_principle: `Write a LinkedIn post (~200 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Zoom out to the underlying movement principle or clinical reasoning that guides treatment. Educational for clinicians who don't specialize in this area.
 ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice.`
   : `Frame from ${workspace.display_name}'s clinical team perspective.`}
-Include URL ${workspace.website} at end. No hashtags.`,
+${linkedinUrlLine}`,
     },
 
     facebook: {
@@ -125,7 +133,7 @@ ANGLE: Community-first. Lead with the local angle — people in ${workspace.loca
 ${isPersonal
   ? `Write in ${firstName}'s first-person voice — a clinician who cares about the local community.`
   : `Write as ${workspace.display_name} the clinic.`}
-Include the full URL ${workspace.website} on its own line near the end.
+${facebookUrlLine}
 End with a question that sparks comments. 1–2 hashtags max.`,
 
       educational: `Write a Facebook post (~125 words) for ${workspace.display_name} about ${condition}.
@@ -133,7 +141,7 @@ ANGLE: Educational myth-buster or "did you know" format. One surprising or commo
 ${isPersonal
   ? `Write in ${firstName}'s first-person voice.`
   : `Write as ${workspace.display_name} the clinic.`}
-Include the full URL ${workspace.website} on its own line near the end.
+${facebookUrlLine}
 End with a question that invites comments. 1–2 hashtags max.`,
     },
 
@@ -143,7 +151,7 @@ ANGLE: Establish local authority.
 VOICE FIRST: Open with 1–2 sentences that use the clinician's distinctive diagnostic framing from the VOICE PHRASE ANCHORS above — their specific clinical insight or "how" explanation about ${condition}. Do NOT open with a generic "At [clinic] we treat..." line.
 Then connect that insight to the local context: what ${workspace.display_name} does differently for ${condition} patients in ${workspace.location_keyword ?? 'your area'}.
 Use "we" and "our team" throughout.
-Close with 1–2 sentences that echo the specific insight above before the booking ask — not a bare "book now." E.g. "If that pattern sounds familiar, a movement screen at ${workspace.display_name} is how we start untangling it: ${workspace.website}"
+Close with 1–2 sentences that echo the specific insight above before the booking ask — not a bare "book now." E.g. "If that pattern sounds familiar, a movement screen at ${workspace.display_name} is how we start untangling it: ${website || 'book online'}"
 No hashtags. Conversational, not salesy.`,
 
       patient_outcome: `Write a Google Business Profile post (~200 words) about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
@@ -151,7 +159,7 @@ ANGLE: Results framing.
 VOICE FIRST: Open with 1–2 sentences in the clinician's authentic voice — pull a specific clinical mechanism or patient insight from the VOICE PHRASE ANCHORS above rather than leading with a generic outcomes statement.
 Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? Include a specific, believable outcome ("patients typically find…" or "the goal is…").
 Use "we" and "our team" throughout.
-Close with 1–2 sentences that connect the outcome above to the next step — not a bare "book now." E.g. "If you're ready to find out what recovery actually looks like for your situation: ${workspace.website}"
+Close with 1–2 sentences that connect the outcome above to the next step — not a bare "book now." E.g. "If you're ready to find out what recovery actually looks like for your situation: ${website || 'book online'}"
 No hashtags. Conversational, results-focused.`,
     },
 
