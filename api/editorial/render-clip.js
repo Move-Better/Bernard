@@ -35,6 +35,7 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { renderPhotoChannel, CHANNEL_SPECS } from '../_lib/brandRender.js'
 import { renderVideoChannel, VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
 import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
+import { resolveMusicTrack } from '../_lib/musicLibrary.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -116,6 +117,22 @@ export default async function handler(req, res) {
   // Playback speed 0.5..2 (default 1 = no-op); clamped again in the renderer.
   const sp = Number(body.speed)
   const speed = Number.isFinite(sp) && sp >= 0.5 && sp <= 2 ? sp : undefined
+  // Music bed (WS3.3): the client sends a trackId (+ mix options); the URL is
+  // resolved HERE from the server-side library so the renderer never fetches an
+  // arbitrary URL. An unknown/absent trackId → no music (byte-identical old path).
+  let music
+  if (body.music && typeof body.music === 'object' && !Array.isArray(body.music)) {
+    const track = resolveMusicTrack(String(body.music.trackId || ''))
+    if (track) {
+      const vol = Number(body.music.volume)
+      music = {
+        url: track.url,
+        volume: Number.isFinite(vol) && vol >= 0 && vol <= 1 ? vol : 0.22,
+        duck: body.music.duck !== false,   // default ON
+        fade: body.music.fade !== false,   // default ON
+      }
+    }
+  }
   // Edited-captions override: when the editor sends caption words explicitly (the
   // user fixed a word), use them verbatim (already window-relative, 0-based)
   // instead of slicing the source's transcript_words.
@@ -231,6 +248,7 @@ export default async function handler(req, res) {
           ...(kenBurns ? { kenBurns } : {}),
           ...(overlays ? { overlays } : {}),
           ...(speed ? { speed } : {}),
+          ...(music ? { music } : {}),
         })
         // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
         const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.mp4`
