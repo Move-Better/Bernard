@@ -495,6 +495,33 @@ node-harnessed** — it uses `document`/`window`. Verification is post-deploy in
 This means subjective design sign-off for canvas changes requires a mockup, not a deploy-to-look
 loop. When the acceptance criterion is "looks right" and you are on the second ship-and-eyeball
 round on the same surface, stop and build an HTML mockup for Q to approve first.
+Refinement (2026-07-08): you can't render pixels in node, but you CAN verify the draw-path
+*logic* — stub `globalThis.document`/`window` and pass a mock 2D `ctx` (record `fillText`/`fillRect`
+calls + the current `font`/`fillStyle`, approximate `measureText` as `len * px * 0.5`) into
+`renderFreeformSlide({ sourceUrl: null, canvas })`. This confirmed per-word runs (distinct fonts/
+sizes/colors) and `ctx.letterSpacing` for the P1/P3 text-styling work without a browser. `document.
+createElement` is only hit when `canvas` is omitted, and `loadImage` only when `sourceUrl` is set —
+pass a mock canvas + `sourceUrl:null` to avoid both. Guard: `drawFreeformBlock` bails on empty
+`block.text`, so a runs-only harness block must still set `text` to the plain concatenation.
+
+**A slide text-styling field must be added in FOUR coordinated sites or it silently fails to bake
+or re-render.** The on-canvas text pipeline (per-block AND per-word `runs`) has one renderer shared
+by editor preview + client publish-bake, but the *plumbing* around it is spread out. When you add a
+new block/run style dimension (this session: per-word `font`/`sizeScale`/`bold`/`italic`/`underline`/
+`strike`/`case` runs, and whole-box `letterSpacing`/`lineHeight`/`shadow`), touch all of:
+1. **Renderer** — `overlayTemplates.js`: `blockStyleOf` (extract from block) + `roleTypography`
+   (apply/override) + the draw path. Per-word style gates on `hasRunStyle(runs)` (any override, not
+   just `color`) and renders via `wrapRichRuns`; a colour-only run must stay byte-identical to the
+   pre-rich path (default runs inherit the block typo).
+2. **`sanitizeSlide`** (`SlideEditor.jsx`) — whitelist the new field, or it's stripped on persist.
+3. **Editor `renderKey`** (`SlideEditor.jsx`) — hash it, or the preview canvas won't re-render.
+4. **`slideSignature`** (`renderSlides.js`) — hash it, or the cached `rendered_url` stays stale and
+   the wrong pixels publish.
+Miss #2/#3/#4 and gates stay green while the feature is invisible or unshipped. Corollary: `runs` is
+the single WYSIWYG source of per-word style — BOTH text editors (the on-canvas `RichTextEditOverlay`
+and the side-panel `BlockRow`) must serialize the SAME shape via the shared `serializeRichCE`/
+`richRunsToHTML`; a narrower serializer in one editor silently drops the dims it doesn't understand
+when the user edits there (the colour-only `serializeCE` clobber, #2001).
 
 **Brand colors live in the `workspaces.brand_style` JSONB — NOT a `brand_kit_style` column**
 (that column does not exist; the BrandKit "Style" `style` object maps to `brand_style`). Shape:
