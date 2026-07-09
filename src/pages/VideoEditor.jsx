@@ -29,6 +29,7 @@ import { useUndoHistory } from '@/lib/useUndoHistory'
 import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
 import { useVideoShortcuts } from '@/lib/useVideoShortcuts'
 import { useAutosave } from '@/lib/useAutosave'
+import { detectFaceCenterX } from '@/lib/faceReframe'
 import { listRevisions, saveRevision } from '@/lib/editorRevisions'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -272,7 +273,7 @@ const segBtn = (on) => on
 // recut the clip window (clamped to a ≤60s window). Distinct from the bottom
 // timeline, which is clip-relative (0..durationSec).
 function ClipInspector({ ctx }) {
-  const { startSec, endSec, durationSec, reframe, setReframe, kenBurns, setKenBurns, speed, setSpeed, selectKey, caption, formatDim } = ctx
+  const { startSec, endSec, durationSec, reframe, setReframe, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, selectKey, caption, formatDim } = ctx
   const kbMotion = kenBurns?.motion || 'none'
   return (
     <InspectorShell icon={Film} title="Clip & reframe" right={formatDim}>
@@ -284,6 +285,9 @@ function ClipInspector({ ctx }) {
       </div>
       <p className="mb-3 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Trim with the <b>Clip bar</b> on the timeline below · max {MAX_CLIP_SECONDS}s.</p>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Reframe · position in {formatDim}</p>
+      <button onClick={autoReframe} disabled={autoReframing} className="mb-2.5 flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-2xs font-semibold disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.08)', color: 'hsl(var(--action))' }}>
+        {autoReframing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Finding the speaker…</> : <><Sparkles className="h-3.5 w-3.5" />Auto-reframe to speaker</>}
+      </button>
       {[['zoom', 'Zoom', 100, 220], ['x', 'Horizontal', 0, 100], ['y', 'Vertical', 0, 100]].map(([k, lbl, lo, hi]) => (
         <div key={k} className="mb-2">
           <div className="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{lbl}</span><span>{reframe[k]}{k === 'zoom' ? '%' : ''}</span></div>
@@ -1109,6 +1113,19 @@ export default function VideoEditor() {
   const applyVibe = useCallback((p) => setGrade({ ...NEUTRAL_GRADE, ...p }), [])
   const resetGrade = useCallback(() => setGrade({ ...NEUTRAL_GRADE }), [])
   const setReframeKey = useCallback((k, v) => setReframe((r) => ({ ...r, [k]: v })), [])
+  // WS6 auto-reframe — detect the speaker's face in the current frame and centre
+  // the crop's horizontal position on them. Degrades to manual if no face / model.
+  const [autoReframing, setAutoReframing] = useState(false)
+  const autoReframe = useCallback(async () => {
+    setAutoReframing(true)
+    try {
+      const cx = await detectFaceCenterX(videoRef.current)
+      if (cx == null) { toast('No face detected — reframe manually'); return }
+      setReframeKey('x', Math.round(cx * 100))
+      toast('Centred on the speaker')
+    } catch { toast('Auto-reframe unavailable') }
+    finally { setAutoReframing(false) }
+  }, [setReframeKey])
   const setKenBurns = useCallback((k, v) => setKenBurnsState((s) => ({ ...s, [k]: v })), [])
   const setCaption = useCallback((k, v) => setCaptionState((c) => ({ ...c, [k]: v })), [])
   const setSpeed = useCallback((s) => setSpeedState(s), [])
@@ -1278,7 +1295,7 @@ export default function VideoEditor() {
   const ctx = {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
-    reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
+    reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
