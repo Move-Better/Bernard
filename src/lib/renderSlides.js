@@ -53,6 +53,10 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
       // WS3.2 text-effect preset — part of the baked pixels.
       textEffect: b.textEffect, effectIntensity: b.effectIntensity, effectColor: b.effectColor,
     })),
+    // WS3.1 objects layer (logo/watermark) — also baked into the published image.
+    objects: (slide.objects || []).map((o) => ({
+      type: o.type, src: o.src, x: o.x, y: o.y, scale: o.scale, opacity: o.opacity,
+    })),
     template: slide.template || null,
     photoUrl: photoUrl || null,
     themeId: slide.template_id || themeId || null,
@@ -69,7 +73,8 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
     // anchored both axes so it matches the drag handle. v5: italic + underline.
     // v6: aspect selector — output dimensions are now user-controlled.
     // v7: text-effect presets (shadow/outline/glow/label) — WS3.2.
-    _renderV: 7,
+    // v8: objects layer (logo/watermark) — WS3.1.
+    _renderV: 8,
     aspect: aspect || '4:5',
   }))
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History, BadgeCheck, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -15,6 +15,7 @@ import {
   TEMPLATE_DEFAULT_POSITIONS,
   TEXT_EFFECTS,
   textEffectCss,
+  OBJECT_TYPES,
   renderFreeformSlide,
   SLIDE_W,
   SLIDE_H,
@@ -96,6 +97,23 @@ function normalizeSlide(s, idx) {
           ...(runsHaveStyle(b?.runs) ? { runs: b.runs.map(sanitizeRun) } : {}),
         }))
       : [],
+    // Objects layer (WS3.1): addable elements (logo/watermark today). Optional;
+    // absent = no objects. Whitelist the shape so a stray field can't leak in.
+    ...(Array.isArray(s?.objects) && s.objects.length
+      ? { objects: s.objects
+          .filter((o) => o && OBJECT_TYPES.includes(o.type) && typeof o.src === 'string' && o.src)
+          .map((o) => ({
+            id: typeof o.id === 'string' && o.id ? o.id : `obj_${Math.random().toString(36).slice(2, 9)}`,
+            type: o.type,
+            ...(typeof o.mark === 'string' ? { mark: o.mark } : {}),
+            src: o.src,
+            x: Number.isFinite(o.x) ? Math.max(0, Math.min(1, o.x)) : 0.82,
+            y: Number.isFinite(o.y) ? Math.max(0, Math.min(1, o.y)) : 0.9,
+            scale: Number.isFinite(o.scale) ? Math.max(0.04, Math.min(0.9, o.scale)) : 0.16,
+            opacity: Number.isFinite(o.opacity) ? Math.max(0.05, Math.min(1, o.opacity)) : 1,
+          }))
+      }
+      : {}),
   }
 }
 
@@ -855,6 +873,137 @@ function TextDragLayer({ slide, theme, selection, onSelectBlock, onMoveBlock, on
   )
 }
 
+// ── Object drag layer (WS3.1) ────────────────────────────────────────────────
+// Transparent hit-targets over the canvas for the objects layer (logo/watermark
+// today). The canvas (renderFreeformSlide → drawSlideObject) is the truth; this
+// layer only handles selection + drag, reusing the SAME snap targets as text
+// (canvas centre, safe margins, and every other element's position) so objects
+// align to text and to each other. An invisible <img> sizes the hit box to the
+// logo's real footprint so the selection ring matches what's drawn.
+function ObjectDragLayer({ slide, selection, onSelectObject, onMoveObject, onDragging, onSnap }) {
+  const rootRef = useRef(null)
+  const objects = slide.objects || []
+  function startDrag(e, idx) {
+    e.stopPropagation()
+    e.preventDefault()
+    onSelectObject(idx)
+    const rect = rootRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const SNAP = 0.02
+    const others = [
+      ...(slide.blocks || []).filter((b) => (b.text || '').trim() && typeof b.position === 'object')
+        .map((b) => b.position),
+      ...objects.filter((_, i) => i !== idx).map((o) => ({ x: o.x, y: o.y })),
+    ].filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y))
+    const XT = [0.5, 0.08, 0.92, ...others.map((o) => o.x)]
+    const YT = [0.5, 0.08, 0.92, ...others.map((o) => o.y)]
+    let moved = false
+    function move(ev) {
+      if (!moved) { moved = true; onDragging?.(true) }
+      let x = Math.max(0.04, Math.min(0.96, (ev.clientX - rect.left) / rect.width))
+      let y = Math.max(0.04, Math.min(0.96, (ev.clientY - rect.top) / rect.height))
+      let gx = null, gy = null
+      for (const t of XT) { if (Math.abs(x - t) < SNAP) { x = t; gx = t; break } }
+      for (const t of YT) { if (Math.abs(y - t) < SNAP) { y = t; gy = t; break } }
+      onSnap?.({ x: gx, y: gy })
+      onMoveObject(idx, { x, y })
+    }
+    function up() {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      if (moved) { onDragging?.(false); onSnap?.({ x: null, y: null }) }
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  return (
+    <div ref={rootRef} className="pointer-events-none absolute inset-0 rounded-xl">
+      {objects.map((o, idx) => {
+        const sel = selection.type === 'object' && selection.idx === idx
+        return (
+          <div
+            key={o.id || idx}
+            onPointerDown={(e) => startDrag(e, idx)}
+            title="Drag to place"
+            className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move items-center justify-center rounded ${
+              sel ? 'border-2 border-dashed border-primary bg-primary/5' : 'border border-transparent hover:border-white/70 hover:bg-white/5'
+            }`}
+            style={{ left: `${(o.x ?? 0.82) * 100}%`, top: `${(o.y ?? 0.9) * 100}%`, width: `${(o.scale ?? 0.16) * 100}%` }}
+          >
+            {/* Invisible — the canvas draws the real logo; this only sizes the box. */}
+            <img src={o.src} alt="" draggable="false" className="pointer-events-none block h-auto w-full select-none opacity-0" />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Object inspector (WS3.1) — logo/watermark controls ───────────────────────
+function ObjectInspector({ slide, objIdx, onChange, onRemoved }) {
+  const obj = (slide.objects || [])[objIdx]
+  if (!obj) return null
+  function update(patch) {
+    const objects = (slide.objects || []).slice()
+    objects[objIdx] = { ...obj, ...patch }
+    onChange({ ...slide, objects })
+  }
+  function remove() {
+    const objects = (slide.objects || []).slice()
+    objects.splice(objIdx, 1)
+    const next = { ...slide }
+    if (objects.length) next.objects = objects
+    else delete next.objects
+    onChange(next)
+    onRemoved?.()
+  }
+  const CORNERS = [
+    { label: 'TL', x: 0.14, y: 0.12 }, { label: 'TR', x: 0.86, y: 0.12 },
+    { label: 'Center', x: 0.5, y: 0.5 },
+    { label: 'BL', x: 0.14, y: 0.9 }, { label: 'BR', x: 0.86, y: 0.9 },
+  ]
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
+        <BadgeCheck className="h-6 w-6 text-primary" />
+        <span className="text-lg font-bold text-primary">Logo / watermark</span>
+        <button type="button" onClick={remove} className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive" title="Remove" aria-label="Remove logo">
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-border bg-muted/30 p-3">
+        <img src={obj.src} alt="Logo" className="mx-auto max-h-14 w-auto" style={{ opacity: obj.opacity ?? 1 }} />
+      </div>
+
+      <div>
+        <div className="mb-1 flex justify-between text-sm text-muted-foreground"><span>Size</span><span>{Math.round((obj.scale ?? 0.16) * 100)}%</span></div>
+        <input type="range" min="6" max="60" step="1" value={Math.round((obj.scale ?? 0.16) * 100)}
+          onChange={(e) => update({ scale: parseInt(e.target.value, 10) / 100 })}
+          className="h-5 w-full accent-primary" aria-label="Logo size" />
+      </div>
+      <div>
+        <div className="mb-1 flex justify-between text-sm text-muted-foreground"><span>Opacity</span><span>{Math.round((obj.opacity ?? 1) * 100)}%</span></div>
+        <input type="range" min="20" max="100" step="1" value={Math.round((obj.opacity ?? 1) * 100)}
+          onChange={(e) => update({ opacity: parseInt(e.target.value, 10) / 100 })}
+          className="h-5 w-full accent-primary" aria-label="Logo opacity" />
+      </div>
+      <div>
+        <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Position</p>
+        <div className="flex gap-1.5">
+          {CORNERS.map((c) => (
+            <button key={c.label} type="button" onClick={() => update({ x: c.x, y: c.y })}
+              className="flex-1 rounded-lg border border-border bg-muted/30 px-1 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground">Or drag it anywhere on the slide — it snaps to the centre, edges, and your text.</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Caption section — post caption, collapsed by default (written last, like IG)
 // ── Real Quotes — verbatim lines from the source interview ────────────────────
 // Shows the actual words the clinician said that grounded this post.
@@ -1046,7 +1195,7 @@ function SlideInspector({
 }) {
   const [addOpen, setAddOpen] = useState(false)
   // Signature of everything (besides the theme) that changes a thumbnail's pixels.
-  const thumbSig = `${photoUrl || ''}|${slide.photo_zoom || 1}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}`
+  const thumbSig = `${photoUrl || ''}|${slide.photo_zoom || 1}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}|${(slide.objects || []).map((o) => `${o.src}:${o.x},${o.y}:${o.scale}`).join('~')}`
   return (
     <div className="space-y-5">
       {/* Slide management — reorder + delete this slide */}
@@ -2113,6 +2262,7 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
   const renderKey = [
     activeIdx, photoUrl || '', slide.template_id || themeId || '',
     (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.letterSpacing || ''}:${b.lineHeight || ''}:${b.shadow || ''}:${b.textEffect || ''}:${b.effectIntensity || ''}:${b.effectColor || ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
+    (slide.objects || []).map((o) => `${o.type}:${o.src}:${o.x},${o.y}:${o.scale}:${o.opacity}`).join('~'),
     slide.photo_zoom || 1,
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',
@@ -2287,8 +2437,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setTool(t)
     if (t === 'photo') setSelection({ type: 'photo' })
     else if (t === 'text') setSelection((s) => (s.type === 'text' ? s : { type: 'text', idx: 0 }))
+    else if (t === 'object') setSelection((s) => (s.type === 'object' ? s : { type: 'object', idx: 0 }))
     else setSelection({ type: null })
   }
+  // Workspace logo for the objects layer — same resolver PostPreview uses
+  // (primary_logo_url is derived by /api/workspace/me from brand_kit_roles).
+  const workspaceLogo = workspace?.primary_logo_url ?? workspace?.logo?.main ?? null
 
   // Re-seed ONLY on a genuine piece switch (piece?.id changing) — not on every
   // `piece.slides` change. StoryboardPublish already gates rendering until
@@ -2761,6 +2915,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
               { key: 'slide', icon: Layers, label: 'Slide' },
               { key: 'photo', icon: ImageIcon, label: 'Media' },
               { key: 'text', icon: Type, label: 'Text' },
+              { key: 'object', icon: BadgeCheck, label: 'Logo' },
             ]}
             active={tool}
             onPick={pickTool}
@@ -2901,6 +3056,57 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     </div>
                   </div>
                 )}
+
+                {tool === 'object' && (
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      disabled={!workspaceLogo}
+                      onClick={() => {
+                        const objects = (activeSlide.objects || []).concat({
+                          id: `obj_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+                          type: 'logo', mark: 'primary', src: workspaceLogo,
+                          x: 0.82, y: 0.9, scale: 0.16, opacity: 1,
+                        })
+                        updateSlide(activeSlideIdx, { ...activeSlide, objects })
+                        setSelection({ type: 'object', idx: objects.length - 1 })
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <BadgeCheck className="h-4 w-4" /> Add logo / watermark
+                    </button>
+                    {!workspaceLogo && (
+                      <p className="text-xs text-muted-foreground">No logo in your Brand Kit yet. Add one in Settings → Brand Kit and it&apos;ll appear here.</p>
+                    )}
+                    {(activeSlide.objects || []).length > 0 && (
+                      <div className="space-y-2">
+                        {(activeSlide.objects || []).map((o, i) => {
+                          const on = selection.type === 'object' && selection.idx === i
+                          return (
+                            <button
+                              key={o.id || i} type="button"
+                              onClick={() => setSelection({ type: 'object', idx: i })}
+                              className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
+                            >
+                              <img src={o.src} alt="" className="h-6 w-auto max-w-[60px] object-contain" />
+                              <span className="text-sm text-muted-foreground">Logo {i + 1}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {selection.type === 'object' && (activeSlide.objects || [])[selection.idx] && (
+                      <div className="border-t pt-4">
+                        <ObjectInspector
+                          slide={activeSlide}
+                          objIdx={selection.idx}
+                          onChange={(next) => updateSlide(activeSlideIdx, next)}
+                          onRemoved={() => setSelection({ type: null })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -2964,6 +3170,18 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                       else delete nb.runs
                       return nb
                     }),
+                  })}
+                />
+                {/* Draggable objects layer — logo/watermark hit-targets (WS3.1) */}
+                <ObjectDragLayer
+                  slide={activeSlide}
+                  selection={selection}
+                  onDragging={setDragging}
+                  onSnap={setSnap}
+                  onSelectObject={(idx) => { setSelection({ type: 'object', idx }); setTool('object') }}
+                  onMoveObject={(idx, pos) => updateSlide(activeSlideIdx, {
+                    ...activeSlide,
+                    objects: (activeSlide.objects || []).map((o, i) => (i === idx ? { ...o, x: pos.x, y: pos.y } : o)),
                   })}
                 />
                 {/* Drag-reveal guides — safe-zone margins appear while dragging text;
