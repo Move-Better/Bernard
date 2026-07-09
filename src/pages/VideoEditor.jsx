@@ -133,7 +133,13 @@ function Canvas({ ctx }) {
     }
   }
   return (
-    <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-muted p-4">
+    <section
+      className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-muted p-4"
+      // Click the empty stage backdrop (the letterbox gutter) to deselect. Guard on
+      // e.target === currentTarget so a click bubbling up from the video (togglePlay)
+      // or an overlay handle doesn't also clear the selection.
+      onClick={(e) => { if (e.target === e.currentTarget) selectKey(null) }}
+    >
       <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>
         <div
           className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
