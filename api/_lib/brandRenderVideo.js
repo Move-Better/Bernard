@@ -349,6 +349,9 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   // with auto-duck. null when no music is requested (byte-identical old path).
   let tmpMusic = (music && typeof music.url === 'string' && /^https:\/\//.test(music.url))
     ? `/tmp/vid-music-${id}.mp3` : null
+  // Preserved separately from tmpMusic (which gets nulled on a failed/partial
+  // download) so the finally block can still clean up a partial file on disk.
+  const musicTmpPath = tmpMusic
 
   // HEAD the source once to get declared size (used for cache-key logic).
   const headRes = await fetch(videoUrl, { method: 'HEAD' }).catch(() => null)
@@ -742,7 +745,8 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // tmpInput is ref-counted — release (and unlink when last render is done).
     releaseSourceFile({ videoUrl, declaredLen, clipStart, clipDur })
     // Per-render scratch files are always unique — unlink immediately.
-    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, tmpCut, ...(tmpMusic ? [tmpMusic] : []), ...overlayTmpPaths]) {
+    // musicTmpPath (not tmpMusic) so a partial/failed download still gets cleaned up.
+    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, tmpCut, ...(musicTmpPath ? [musicTmpPath] : []), ...overlayTmpPaths]) {
       await unlinkP(f).catch(() => {})
     }
   }

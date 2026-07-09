@@ -113,7 +113,7 @@ export default function MusicSettings() {
   const sectionLabel = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground'
 
   return (
-    <div className="py-6">
+    <div className="max-w-xl py-6">
       <audio ref={audioRef} onEnded={() => setPreviewId(null)} className="hidden" />
       <input
         ref={fileRef} type="file" accept="audio/mpeg,.mp3" multiple className="hidden"
@@ -124,7 +124,7 @@ export default function MusicSettings() {
         <Music className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Music</h1>
       </div>
-      <p className="mb-7 max-w-2xl text-sm text-muted-foreground">
+      <p className="mb-7 text-sm text-muted-foreground">
         Licensed background tracks for your video clips. Add one in the video editor and it&rsquo;s mixed under the voice with auto-duck.
       </p>
 

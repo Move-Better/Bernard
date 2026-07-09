@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, Sparkles, FolderOpen } from 'lucide-react'
+import { Search, Loader2, Filter, X, CheckSquare, Image as ImageIcon, Upload as UploadIcon, SearchX, ChevronDown, ChevronRight, HardDrive, Sparkles, FolderOpen, Film } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -512,8 +512,8 @@ export default function MediaHub() {
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
           {[
             { id: '',      label: 'All',      icon: null,  count: counts.total, group: 'kind' },
-            { id: 'video', label: 'Video',    icon: '🎬',  count: counts.video, group: 'kind' },
-            { id: 'photo', label: 'Photos',   icon: '📷',  count: counts.photo, group: 'kind' },
+            { id: 'video', label: 'Video',    icon: Film,  count: counts.video, group: 'kind' },
+            { id: 'photo', label: 'Photos',   icon: ImageIcon, count: counts.photo, group: 'kind' },
           ].map((k) => (
             <button
               key={k.id || 'all-kind'}
@@ -522,7 +522,7 @@ export default function MediaHub() {
                 kind === k.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
             >
-              {k.icon && <span>{k.icon}</span>}
+              {k.icon && <k.icon className="h-3 w-3" />}
               <span>{k.label}</span>
               {!loading && <span className="opacity-70">· {countLabel(k.count)}</span>}
             </button>

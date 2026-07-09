@@ -24,6 +24,7 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 30 }
 
+import { timingSafeEqual } from 'node:crypto'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { findSlugPrefixCollision, slugifyTitle, SLUG_MAX } from '../../src/lib/blogOutput.js'
 
@@ -72,17 +73,14 @@ function buildMarkdownFile(data) {
   return `---\n${fm.join('\n')}\n---\n\n${String(data.markdown).trimEnd()}\n`
 }
 
-function timingSafeEqual(a, b) {
-  // Constant-time string comparison for secret validation. Node has
-  // crypto.timingSafeEqual but it requires Buffer args of equal length;
-  // this version handles unequal lengths without short-circuiting.
-  if (typeof a !== 'string' || typeof b !== 'string') return false
-  const max = Math.max(a.length, b.length)
-  let mismatch = a.length === b.length ? 0 : 1
-  for (let i = 0; i < max; i++) {
-    mismatch |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
-  }
-  return mismatch === 0
+// Timing-safe secret comparison. Any mismatch (missing value, wrong length)
+// returns false — never throws.
+function secretsMatch(provided, expected) {
+  if (typeof provided !== 'string' || typeof expected !== 'string') return false
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
 
 const GH_HEADERS_BASE = {
@@ -144,7 +142,7 @@ export default async function handler(req, res) {
 
   const authHeader = req.headers['authorization'] || ''
   const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
-  if (!timingSafeEqual(provided, expectedSecret)) {
+  if (!secretsMatch(provided, expectedSecret)) {
     return res.status(401).json({ error: 'unauthorized' })
   }
 
