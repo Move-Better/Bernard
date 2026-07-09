@@ -305,7 +305,7 @@ function runFfmpeg(args) {
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed, cuts }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed, cuts, music }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -345,6 +345,10 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
   const overlayTmpPaths = []
   const tmpOutput  = `/tmp/vid-out-${id}.mp4`
   const tmpCut     = `/tmp/vid-cut-${id}.mp4`   // compacted clip when transcript cuts are present
+  // Music bed (WS3.3): a licensed track streamed to /tmp, mixed under the clip
+  // with auto-duck. null when no music is requested (byte-identical old path).
+  let tmpMusic = (music && typeof music.url === 'string' && /^https:\/\//.test(music.url))
+    ? `/tmp/vid-music-${id}.mp3` : null
 
   // HEAD the source once to get declared size (used for cache-key logic).
   const headRes = await fetch(videoUrl, { method: 'HEAD' }).catch(() => null)
@@ -635,6 +639,52 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     }
     const outDur = speedActive ? effDur / spd : effDur
 
+    // ── Music bed + auto-duck (WS3.3) ─────────────────────────────────────────
+    // Stream the licensed track to /tmp and mix it UNDER the clip. When the clip
+    // has spoken audio, the music auto-ducks beneath the voice via
+    // sidechaincompress keyed by the voice track (music drops while anyone speaks,
+    // lifts back in the gaps). No voice → music plays alone with edge fades. A
+    // failed download is non-fatal: the clip renders without music.
+    let musicInputIdx = null
+    let finalAudioLabel = audioOut  // voice map/label (possibly atempo'd), or null
+    if (tmpMusic) {
+      try {
+        const mr = await fetch(music.url)
+        if (!mr.ok) throw new Error(`music download ${mr.status}`)
+        await pipeline(Readable.fromWeb(mr.body), createWriteStream(tmpMusic))
+      } catch (e) {
+        console.error(`[brandRenderVideo] music download failed (${channel}):`, e.message)
+        tmpMusic = null
+      }
+    }
+    if (tmpMusic) {
+      musicInputIdx = 2 + renderOverlays.length  // after video(0) + brand overlay(1) + timed overlays(2..)
+      const rawVol = Number(music.volume)
+      const musicVol = Number.isFinite(rawVol) && rawVol > 0 ? Math.min(1, rawVol) : 0.22
+      const fadeD = music.fade === false ? 0 : Math.min(1.2, outDur / 3)
+      const fadeOutSt = Math.max(0, outDur - fadeD)
+      let mchain = `[${musicInputIdx}:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=${musicVol.toFixed(3)}`
+      if (fadeD > 0) mchain += `,afade=t=in:st=0:d=${fadeD.toFixed(2)},afade=t=out:st=${fadeOutSt.toFixed(2)}:d=${fadeD.toFixed(2)}`
+      mchain += `,atrim=0:${outDur.toFixed(3)}[music]`
+      filterComplex.push(mchain)
+      if (finalAudioLabel) {
+        const voiceRef = finalAudioLabel.startsWith('[') ? finalAudioLabel : `[${finalAudioLabel}]`
+        if (music.duck !== false) {
+          // Split the voice into the mix input + the sidechain key; the compressor
+          // lowers the music (~12dB) whenever the voice is above threshold.
+          filterComplex.push(`${voiceRef}aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[vmain][vkey]`)
+          filterComplex.push(`[music][vkey]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=350[musicduck]`)
+          filterComplex.push(`[vmain][musicduck]amix=inputs=2:normalize=0:dropout_transition=0[amixout]`)
+        } else {
+          filterComplex.push(`${voiceRef}aformat=sample_rates=44100:channel_layouts=stereo[vmain]`)
+          filterComplex.push(`[vmain][music]amix=inputs=2:normalize=0:dropout_transition=0[amixout]`)
+        }
+        finalAudioLabel = '[amixout]'
+      } else {
+        finalAudioLabel = '[music]'
+      }
+    }
+
     // ── 5. Run ffmpeg ────────────────────────────────────────────────────────
     // Input-seek to the clip window on input 0 (the video). The overlay PNG
     // (input 1) is a static image, unaffected by the seek. The subtitle SRT was
@@ -646,14 +696,22 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       '-i', renderInput,
       '-i', tmpOverlay,
       ...renderOverlays.flatMap((ov) => ['-loop', '1', '-i', ov.path]),  // inputs 2..(1+N): timed overlays (looped so the alpha fade has frames to ramp; output -t bounds them)
+      ...(tmpMusic ? ['-i', tmpMusic] : []),                             // input 2+N: music bed (WS3.3), mixed in the filtergraph above
       '-filter_complex', filterComplex.join(';'),
       '-map', finalOutput,
     )
-    // Map + transcode ONLY the first decodable audio stream. A blanket `-map 0:a?`
-    // would also pull in a present-but-undecodable track (iPhone spatial-audio
-    // `apac` → Audio: none) and abort the render at exit 234. When no stream is
-    // decodable, render the clip silently instead of failing the whole hand-off.
-    if (renderAudioMap) {
+    // Map + transcode the audio. With a music bed, map the mixed/ducked output.
+    // Otherwise map ONLY the first decodable source stream — a blanket `-map 0:a?`
+    // would pull in a present-but-undecodable track (iPhone spatial-audio `apac` →
+    // Audio: none) and abort the render at exit 234. No usable audio and no music →
+    // render silently rather than failing the whole hand-off.
+    if (tmpMusic) {
+      ffmpegArgs.push(
+        '-map', finalAudioLabel,          // [amixout] (voice+ducked music) or [music] (no voice)
+        '-c:a', 'aac',
+        '-b:a', '160k',
+      )
+    } else if (renderAudioMap) {
       ffmpegArgs.push(
         '-map', audioOut,                // decodable audio stream (atempo'd [aout] when sped)
         '-c:a', 'aac',
@@ -684,7 +742,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // tmpInput is ref-counted — release (and unlink when last render is done).
     releaseSourceFile({ videoUrl, declaredLen, clipStart, clipDur })
     // Per-render scratch files are always unique — unlink immediately.
-    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, tmpCut, ...overlayTmpPaths]) {
+    for (const f of [tmpAudio, tmpOverlay, tmpSrt, tmpAss, tmpOutput, tmpCut, ...(tmpMusic ? [tmpMusic] : []), ...overlayTmpPaths]) {
       await unlinkP(f).catch(() => {})
     }
   }
