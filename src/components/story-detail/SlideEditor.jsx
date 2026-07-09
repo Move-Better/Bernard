@@ -106,46 +106,6 @@ function escapeHtml(s) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// Convert block.runs → innerHTML for the contenteditable field.
-function runsToHTML(runs, text) {
-  if (!Array.isArray(runs) || !runs.some((r) => r.color)) return escapeHtml(text || '')
-  return runs.map((r) => {
-    const t = escapeHtml(r.text)
-    return r.color ? `<span style="color:${r.color}">${t}</span>` : t
-  }).join('')
-}
-
-// Walk a contenteditable element's DOM → [{text, color?}] runs.
-// Handles <font color="…"> (execCommand in most browsers) and <span style="color:…">.
-function serializeCE(el) {
-  const runs = []
-  function walk(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (node.textContent) runs.push({ text: node.textContent })
-      return
-    }
-    if (node.nodeName === 'BR') { runs.push({ text: '\n' }); return }
-    const color = node.nodeName === 'FONT' && node.getAttribute('color')
-      ? cssColorToHex(node.getAttribute('color'))
-      : node.style?.color ? cssColorToHex(node.style.color) : null
-    if (color) {
-      const text = node.textContent
-      if (text) runs.push({ text, color })
-    } else {
-      node.childNodes.forEach(walk)
-    }
-  }
-  el.childNodes.forEach(walk)
-  // Merge adjacent runs with identical colour
-  const merged = []
-  for (const r of runs) {
-    const last = merged[merged.length - 1]
-    if (last && last.color === (r.color || undefined)) { last.text += r.text }
-    else merged.push(r.color ? { text: r.text, color: r.color } : { text: r.text })
-  }
-  return merged
-}
-
 // ── Rich per-word run helpers (on-canvas selection styling) ──────────────────
 // The inline editor persists per-word style as block.runs entries carrying any
 // of {color, sizeScale, bold, italic, underline, strike, case, font}. These map
@@ -224,7 +184,9 @@ function serializeRichCE(el) {
     if (node.nodeType === Node.ELEMENT_NODE) {
       cur = { ...inh }
       const s = node.style || {}
-      const c = cssColorToHex(s.color)
+      // execCommand foreColor usually emits style.color (styleWithCSS on), but
+      // some browsers still produce <font color="…"> — read both.
+      const c = cssColorToHex(s.color) || (node.nodeName === 'FONT' ? cssColorToHex(node.getAttribute('color')) : null)
       if (c) cur.color = c
       if (s.fontSize && s.fontSize.endsWith('em')) {
         const v = parseFloat(s.fontSize)
@@ -482,7 +444,7 @@ function BlockRow({ block, onChange, onRemove }) {
   useEffect(() => {
     if (initRef.current || !ceRef.current) return
     initRef.current = true
-    ceRef.current.innerHTML = runsToHTML(block.runs, block.text)
+    ceRef.current.innerHTML = richRunsToHTML(block.runs, block.text)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-sync from EXTERNAL text changes (e.g. the on-canvas inline editor) when
@@ -491,7 +453,7 @@ function BlockRow({ block, onChange, onRemove }) {
   useEffect(() => {
     const el = ceRef.current
     if (!el || !initRef.current || document.activeElement === el) return
-    const html = runsToHTML(block.runs, block.text)
+    const html = richRunsToHTML(block.runs, block.text)
     if (el.innerHTML !== html) el.innerHTML = html
   }, [block.text, block.runs])
 
@@ -499,11 +461,13 @@ function BlockRow({ block, onChange, onRemove }) {
     if (suppressRef.current) return
     const el = ceRef.current
     if (!el) return
-    const runs = serializeCE(el)
+    // Rich serialize (all per-word dims), so editing text here NEVER drops
+    // per-word size/weight/italic/underline/strike/case set on the canvas — the
+    // old colour-only serialize would have silently clobbered them.
+    const runs = serializeRichCE(el)
     const text = runs.map((r) => r.text).join('')
-    const hasColor = runs.some((r) => r.color)
     const result = { ...block, text }
-    if (hasColor) result.runs = runs
+    if (runsHaveStyle(runs)) result.runs = runs.map(sanitizeRun)
     else delete result.runs
     onChange(result)
   }
@@ -523,6 +487,7 @@ function BlockRow({ block, onChange, onRemove }) {
     const sel = window.getSelection()
     if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
     ceRef.current?.focus()
+    document.execCommand('styleWithCSS', false, true) // emit <span style="color:…">, which serializeRichCE reads
     document.execCommand('foreColor', false, color)
     savedRangeRef.current = null
     serializeAndSync()
