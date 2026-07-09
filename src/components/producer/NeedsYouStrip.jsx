@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Pencil, Unplug, Mic, AlertTriangle } from 'lucide-react'
-import { useNeedsYou } from '@/lib/queries'
+import { useNeedsYou, useRetryPublishFailure } from '@/lib/queries'
 
 // "Needs you" (Standing Producer Phase 4). Bernard clears what he can on his own
 // and surfaces only the dead-ends he can't — each with the one action that
@@ -57,7 +57,7 @@ function detailFor(item) {
     case 'escalated_caption':
       return `I tried a faithfulness pass but couldn’t get it over the voice bar${item.redFlag ? ` — what’s off: ${item.redFlag}` : ''}. It needs your eye.`
     case 'publish_failed':
-      return item.detail || 'The connection expired. Reconnect and I’ll dispatch the queued post automatically.'
+      return item.detail || 'The connection expired. Reconnect, then retry the post.'
     case 'plan_gap':
       return `${typeof item.scheduled === 'number' && typeof item.target === 'number' ? `Your plan fills ${item.scheduled} of ${item.target} slots — ` : ''}a short capture from you fills the rest.`
     default:
@@ -65,11 +65,16 @@ function detailFor(item) {
   }
 }
 
-function NeedsYouRow({ item }) {
+function NeedsYouRow({ item, onRetry, retryingId }) {
   const meta = TYPE_META[item.type] || FALLBACK_META
   const tone = TONE[meta.tone] || TONE.muted
   const Icon = meta.icon
   const cta = meta.cta(item)
+  // Retry re-runs the same publish for this exact content item — only
+  // possible when we know which row failed (a small number of failures carry
+  // no content_item_id and can't be retried, only reconnected).
+  const canRetry = item.type === 'publish_failed' && !!item.contentItemId
+  const isRetrying = retryingId === item.contentItemId
   return (
     <div className={`flex items-start gap-3 rounded-xl border p-3 ${tone.ring}`}>
       <div className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg ${tone.chip}`}>
@@ -81,21 +86,36 @@ function NeedsYouRow({ item }) {
           <p className="mt-0.5 text-xs text-muted-foreground">{detailFor(item)}</p>
         )}
       </div>
-      <Link
-        to={cta.to}
-        className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-      >
-        {cta.label}
-      </Link>
+      <div className="flex shrink-0 items-center gap-2">
+        {canRetry && (
+          <button
+            type="button"
+            onClick={() => onRetry(item.contentItemId)}
+            disabled={isRetrying}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+          >
+            {isRetrying ? 'Retrying…' : 'Retry'}
+          </button>
+        )}
+        <Link
+          to={cta.to}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          {cta.label}
+        </Link>
+      </div>
     </div>
   )
 }
 
 export default function NeedsYouStrip() {
   const { data } = useNeedsYou()
+  const retryPublish = useRetryPublishFailure()
   if (!data?.enabled) return null
   const items = Array.isArray(data.items) ? data.items : []
   if (items.length === 0) return null
+
+  const retryingId = retryPublish.isPending ? retryPublish.variables?.contentItemId : null
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -109,7 +129,12 @@ export default function NeedsYouStrip() {
       </div>
       <div className="space-y-2">
         {items.map((item, i) => (
-          <NeedsYouRow key={item.id || `${item.type}-${item.contentItemId || i}`} item={item} />
+          <NeedsYouRow
+            key={item.id || `${item.type}-${item.contentItemId || i}`}
+            item={item}
+            onRetry={(contentItemId) => retryPublish.mutate({ contentItemId })}
+            retryingId={retryingId}
+          />
         ))}
       </div>
     </div>
