@@ -21,5 +21,13 @@ export const BERNARD_PRIMARY = '#0C7580' // Blue Spruce — HSL 186 83% 27%
 export const BERNARD_EMERALD = BERNARD_PRIMARY // alias kept for any remaining refs
 export const BERNARD_INK     = '#0F172A'
 
+// HSL triplet mirroring src/index.css's `--primary` custom property, in the
+// `h s% l%` form CSS's hsl() function expects. Clerk's `appearance.variables`
+// needs a literal CSS color string (not a var() passthrough it can safely
+// derive internal shades from), so this is the one place that string is
+// built — Account.jsx and App.jsx both import it instead of re-hardcoding
+// the triplet, so a rebrand only has to update it here (+ index.css).
+export const BERNARD_PRIMARY_HSL = '186 83% 27%'
+
 export const BERNARD_LOGO_URL = '/bernard-logo.svg' // horizontal wordmark
 export const BERNARD_ICON_URL = '/bernard-icon.svg' // square app mark / favicon
