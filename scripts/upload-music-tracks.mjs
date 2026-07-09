@@ -1,20 +1,20 @@
 #!/usr/bin/env node
-// Upload curated licensed music tracks to the bernard-prod Vercel Blob and print
-// the manifest entries to paste into api/_lib/musicLibrary.js (WS3.3).
+// Seed the SHARED music library (WS3.3-P2): upload curated licensed tracks to the
+// bernard-prod Vercel Blob AND insert them into public.music_tracks with
+// workspace_id = NULL (shared — every workspace sees them; per-tenant uploads go
+// through the Settings → Music UI instead).
 //
-// Usage (from the Bernard project root, with BLOB_READ_WRITE_TOKEN in env):
+// Usage (from the Bernard project root, with BLOB_READ_WRITE_TOKEN + SUPABASE_URL
+// + SUPABASE_SERVICE_KEY in env):
 //   node scripts/upload-music-tracks.mjs "Open Road|upbeat" ~/Downloads/open-road.mp3 \
 //                                         "Slow Morning|calm" ~/Downloads/slow-morning.mp3
 //
-// Each pair is:  "<Title>|<mood>"  <path-to-mp3>
-//   mood ∈ { calm, upbeat, warm, cinematic }
+// Each pair is:  "<Title>|<mood>"  <path-to-mp3>   (mood ∈ calm|upbeat|warm|cinematic)
 //
-// The tracks must be royalty-free with a redistribution-OK license (Pixabay
-// Music is the chosen source: commercial use OK, no attribution required). Do
-// NOT upload anything you don't have the right to host + let tenants publish over.
-//
-// After running, paste the printed entries into MUSIC_TRACKS in
-// api/_lib/musicLibrary.js and commit.
+// Tracks must be royalty-free with a redistribution-OK license (Pixabay Music:
+// commercial use OK, no attribution). Do NOT upload anything you don't have the
+// right to host + let tenants publish over. Re-running with the same title
+// overwrites the blob and inserts a fresh shared row.
 
 import { put as blobPut } from '@vercel/blob'
 import { readFile } from 'node:fs/promises'
@@ -42,9 +42,27 @@ function probeDuration(path) {
   })
 }
 
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+async function insertSharedRow({ title, mood, url, durationSec }) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/music_tracks`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    // workspace_id omitted → NULL → shared library.
+    body: JSON.stringify({ title, mood, blob_url: url, duration_sec: durationSec ?? null }),
+  })
+  if (!res.ok) throw new Error(`music_tracks insert ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  return (await res.json())[0]
+}
+
 async function main() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     console.error('BLOB_READ_WRITE_TOKEN not set. Source it from .env.bernard.1pw / 1Password first.')
+    process.exit(1)
+  }
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('SUPABASE_URL / SUPABASE_SERVICE_KEY not set. Source them from .env.bernard.1pw first.')
     process.exit(1)
   }
   const args = process.argv.slice(2)
@@ -70,14 +88,12 @@ async function main() {
       addRandomSuffix: false,
       allowOverwrite: true,
     })
-    entries.push({ id, title, mood, url, durationSec })
-    console.error(`✓ uploaded ${title} (${mood}, ${durationSec ?? '?'}s)`)
+    const row = await insertSharedRow({ title, mood, url, durationSec })
+    entries.push({ id: row?.id, title, mood, durationSec })
+    console.error(`✓ uploaded + seeded shared: ${title} (${mood}, ${durationSec ?? '?'}s) → ${row?.id}`)
   }
 
-  console.log('\n// Paste into MUSIC_TRACKS in api/_lib/musicLibrary.js:')
-  for (const e of entries) {
-    console.log(`  { id: '${e.id}', title: ${JSON.stringify(e.title)}, mood: '${e.mood}', url: '${e.url}', durationSec: ${e.durationSec ?? 0} },`)
-  }
+  console.log(`\nSeeded ${entries.length} shared track(s) into public.music_tracks (workspace_id=NULL). They now appear in every workspace's music picker.`)
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })

@@ -512,6 +512,16 @@
     "user_agent",
     "workspace_id"
   ],
+  "music_tracks": [
+    "blob_url",
+    "created_at",
+    "duration_sec",
+    "id",
+    "mood",
+    "title",
+    "uploaded_by",
+    "workspace_id"
+  ],
   "practice_memory_chunks": [
     "chunk_index",
     "created_at",
