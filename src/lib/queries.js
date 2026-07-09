@@ -914,6 +914,25 @@ export function useUpdateProducerConfig() {
   })
 }
 
+// Retry a failed publish from the "Needs you" strip (/api/producer/retry-publish).
+// Re-runs the exact same channel-resolution logic as the original publish
+// against the content_item's own stored platform/content/media. Refetches
+// needs-you on settle so a resolved failure card disappears (the endpoint
+// writes an agent_actions 'published' row that supersedes the failure).
+export function useRetryPublishFailure() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't retry that post",
+    mutationFn: ({ contentItemId }) =>
+      apiFetch('/api/producer/retry-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentItemId }),
+      }),
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.producerNeedsYou }),
+  })
+}
+
 // ── SEO Opportunities (/seo) ──────────────────────────────────────────────────
 //
 // Returns { connected, opportunities, summary, websiteSuggestions, locked,

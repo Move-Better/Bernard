@@ -118,6 +118,194 @@ function buildMetadata(platform, mediaUrls, _content = '') {
   return null
 }
 
+// Executes a Buffer (legacy provider) publish for already-resolved inputs.
+// Extracted from the HTTP handler below so the producer retry-publish route
+// (api/_routes/producer/retry-publish.js) can re-run the identical
+// channel-resolution + fan-out logic against a content_items row's own
+// stored fields, instead of duplicating this GraphQL sequence.
+export async function runBufferPublish({ workspaceId, token, platform, content, mediaUrls = [], scheduledAt, useQueue, locationIds, locationContents }) {
+  const service = PLATFORM_TO_SERVICE[platform]
+  if (!service) return { status: 400, body: { error: 'unsupported_platform' } }
+
+  // 1. Resolve target Buffer channel IDs.
+  //    GBP: stored per-location in workspace_locations.gbp_location_id.
+  //    Everything else: query the API and match by service name.
+  let gbpChannels = []
+  let channelIds  = []
+  if (platform === 'gbp') {
+    gbpChannels = await resolveGbpChannelIds(workspaceId, locationIds)
+    if (gbpChannels.length === 0) {
+      return {
+        status: 404,
+        body: { error: 'No Buffer GBP channel configured for the selected location(s). Open Workspace Settings → Locations and paste the Buffer GBP channel ID for each listing.' },
+      }
+    }
+  } else {
+    // Buffer's channels query requires an organizationId. Fetch the account's
+    // first organization and use that as the scope.
+    const acct = await gql(token, '{ account { organizations { id } } }')
+    if (!acct.ok || acct.errors) {
+      const errMsg = acct.errors?.[0]?.message || `Buffer account query returned ${acct.status}`
+      console.error('[publish/buffer] account query failed', acct.status, errMsg, JSON.stringify(acct.errors))
+      return { status: 502, body: { error: acct.status === 401 || acct.status === 403 ? 'buffer_auth_rejected' : 'buffer_account_query_failed' } }
+    }
+    const organizationId = acct.data?.account?.organizations?.[0]?.id
+    if (!organizationId) {
+      return { status: 502, body: { error: 'Buffer account has no organizations associated with this token.' } }
+    }
+    const result = await gql(
+      token,
+      'query Channels($input: ChannelsInput!) { channels(input: $input) { id service isDisconnected } }',
+      { input: { organizationId } },
+    )
+    if (!result.ok || result.errors) {
+      const errMsg = result.errors?.[0]?.message || `Buffer channels query returned ${result.status}`
+      console.error('[publish/buffer] channels query failed', result.status, errMsg, JSON.stringify(result.errors))
+      return { status: 502, body: { error: result.status === 401 || result.status === 403 ? 'buffer_auth_rejected' : 'buffer_channels_query_failed' } }
+    }
+    const channels = result.data?.channels ?? []
+    const match = channels.find((c) => c.service === service && !c.isDisconnected)
+    if (!match) {
+      return { status: 404, body: { error: 'no_buffer_channel' } }
+    }
+    channelIds = [match.id]
+  }
+
+  // 2. Build post payload. Mode resolution:
+  //    - scheduledAt set → customScheduled + dueAt (specific time we computed)
+  //    - useQueue truthy → shareNext (Buffer slots it into the next open queue
+  //                       position for the channel; ignores scheduledAt)
+  //    - otherwise      → shareNow (immediate publish)
+  const mode = useQueue ? 'shareNext' : (scheduledAt ? 'customScheduled' : 'shareNow')
+  const includeDueAt = mode === 'customScheduled'
+  const preparedMedia = await prepareMediaForBuffer(mediaUrls)
+  const assets = buildAssets(platform === 'gbp' ? preparedMedia.slice(0, 1) : preparedMedia)
+  const metadata = buildMetadata(platform, preparedMedia, content)
+
+  // 3. Create one post per channel (fan-out for GBP multi-location).
+  const fanOut = platform === 'gbp'
+    ? gbpChannels.map(({ id, channelId }) => ({ id, channelId }))
+    : channelIds.map((channelId) => ({ id: null, channelId }))
+  const posts = []
+  for (const { id: locationId, channelId } of fanOut) {
+    const rawText = (locationId && locationContents?.[locationId]) ? locationContents[locationId] : content
+    // GBP enforces a 1500-character hard cap on post summaries.
+    const postText = platform === 'gbp' ? rawText.slice(0, 1500) : rawText
+    const input = {
+      channelId,
+      text: postText,
+      schedulingType: 'automatic',
+      mode,
+      assets,
+      ...(metadata ? { metadata } : {}),
+      ...(includeDueAt ? { dueAt: new Date(scheduledAt).toISOString() } : {}),
+    }
+    const r = await gql(token, `
+      mutation CreatePost($input: CreatePostInput!) {
+        createPost(input: $input) {
+          __typename
+          ... on PostActionSuccess {
+            post { id status dueAt sentAt sharedNow }
+          }
+          ... on NotFoundError { message }
+          ... on UnauthorizedError { message }
+          ... on UnexpectedError { message }
+          ... on RestProxyError { message code link }
+          ... on LimitReachedError { message }
+          ... on InvalidInputError { message }
+        }
+      }
+    `, { input })
+    if (r.errors) {
+      console.error('[publish/buffer] createPost error', JSON.stringify(r.errors))
+      return { status: 502, body: { error: 'buffer_post_failed' } }
+    }
+    const payload = r.data?.createPost
+    if (payload && payload.__typename !== 'PostActionSuccess') {
+      console.error('[publish/buffer] createPost rejected', JSON.stringify(payload))
+      return { status: 502, body: { error: 'buffer_post_failed' } }
+    }
+    posts.push(payload?.post)
+  }
+
+  const first = posts[0]
+  return {
+    status: 200,
+    body: {
+      success: true,
+      bufferId: first?.id,
+      scheduledAt: first?.dueAt,
+      status: first?.status,
+      profileCount: fanOut.length,
+    },
+  }
+}
+
+// Bundle.social equivalent of runBufferPublish — extracted from
+// handleBundlePublish below for the same reason (shared with the retry route).
+export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents }) {
+  let publisher
+  try {
+    publisher = new BundlePublisher(workspace)
+  } catch (_e) {
+    return { status: 503, body: { error: 'bundle_not_configured' } }
+  }
+
+  // GBP fan-out: post to each active location that has its own connected bundle
+  // Team. See handleBundlePublish's header comment for the full rationale.
+  if (platform === 'gbp') {
+    try {
+      const targets = await resolveBundleGbpTargets(workspace.id, locationIds)
+      if (targets.length === 0) {
+        return {
+          status: 404,
+          body: { error: 'No Google Business location is connected to bundle.social. Open Settings → Integrations and connect each location’s Google Business listing.' },
+        }
+      }
+      const gbpMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.slice(0, 1) : mediaUrls
+      const posts = []
+      for (const loc of targets) {
+        const rawText = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
+        const text = rawText.slice(0, 1500)
+        const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
+        const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
+        posts.push(r)
+      }
+      const first = posts[0]
+      return {
+        status: 200,
+        body: {
+          success: true,
+          bufferId: first?.postId,
+          scheduledAt: first?.scheduledAt,
+          status: first?.status,
+          profileCount: posts.length,
+        },
+      }
+    } catch (e) {
+      console.error('[publish/bundle gbp] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
+      return { status: 502, body: { error: 'bundle_gbp_post_failed' } }
+    }
+  }
+
+  try {
+    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt })
+    return {
+      status: 200,
+      body: {
+        success: result.success,
+        bufferId: result.postId,
+        scheduledAt: result.scheduledAt,
+        status: result.status,
+        profileCount: result.profileCount,
+      },
+    }
+  } catch (e) {
+    console.error('[publish/bundle] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
+    return { status: 502, body: { error: 'bundle_post_failed' } }
+  }
+}
+
 async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'DELETE') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -222,124 +410,10 @@ async function handler(req, res) {
     }
   }
 
-  const service = PLATFORM_TO_SERVICE[platform]
-  if (!service) return res.status(400).json({ error: 'unsupported_platform' })
-
-  // 1. Resolve target Buffer channel IDs.
-  //    GBP: stored per-location in workspace_locations.gbp_location_id.
-  //    Everything else: query the API and match by service name.
-  // gbpChannels: { id: workspace_locations.id, channelId: Buffer channel id }[]
-  // channelIds: bare Buffer channel id strings for non-GBP platforms
-  let gbpChannels = []
-  let channelIds  = []
-  if (platform === 'gbp') {
-    gbpChannels = await resolveGbpChannelIds(workspaceId, locationIds)
-    if (gbpChannels.length === 0) {
-      return res.status(404).json({
-        error: 'No Buffer GBP channel configured for the selected location(s). Open Workspace Settings → Locations and paste the Buffer GBP channel ID for each listing.',
-      })
-    }
-  } else {
-    // Buffer's channels query requires an organizationId. Fetch the account's
-    // first organization and use that as the scope.
-    const acct = await gql(BUFFER_TOKEN, '{ account { organizations { id } } }')
-    if (!acct.ok || acct.errors) {
-      const errMsg = acct.errors?.[0]?.message || `Buffer account query returned ${acct.status}`
-      console.error('[publish/buffer] account query failed', acct.status, errMsg, JSON.stringify(acct.errors))
-      return res.status(502).json({ error: acct.status === 401 || acct.status === 403 ? 'buffer_auth_rejected' : 'buffer_account_query_failed' })
-    }
-    const organizationId = acct.data?.account?.organizations?.[0]?.id
-    if (!organizationId) {
-      return res.status(502).json({ error: 'Buffer account has no organizations associated with this token.' })
-    }
-    const result = await gql(
-      BUFFER_TOKEN,
-      'query Channels($input: ChannelsInput!) { channels(input: $input) { id service isDisconnected } }',
-      { input: { organizationId } },
-    )
-    if (!result.ok || result.errors) {
-      const errMsg = result.errors?.[0]?.message || `Buffer channels query returned ${result.status}`
-      console.error('[publish/buffer] channels query failed', result.status, errMsg, JSON.stringify(result.errors))
-      return res.status(502).json({ error: result.status === 401 || result.status === 403 ? 'buffer_auth_rejected' : 'buffer_channels_query_failed' })
-    }
-    const channels = result.data?.channels ?? []
-    const match = channels.find((c) => c.service === service && !c.isDisconnected)
-    if (!match) {
-      return res.status(404).json({ error: 'no_buffer_channel' })
-    }
-    channelIds = [match.id]
-  }
-
-  // 2. Build post payload. Mode resolution:
-  //    - scheduledAt set → customScheduled + dueAt (specific time we computed)
-  //    - useQueue truthy → shareNext (Buffer slots it into the next open queue
-  //                       position for the channel; ignores scheduledAt)
-  //    - otherwise      → shareNow (immediate publish)
-  // scheduledAt + useQueue together: useQueue wins, scheduledAt is ignored.
-  const mode = useQueue ? 'shareNext' : (scheduledAt ? 'customScheduled' : 'shareNow')
-  const includeDueAt = mode === 'customScheduled'
-  const preparedMedia = await prepareMediaForBuffer(mediaUrls)
-  // Google's Local Post API accepts at most one media item — carousels/video
-  // are rejected outright. Mirrors the same cap in the bundle.social GBP path below.
-  const assets = buildAssets(platform === 'gbp' ? preparedMedia.slice(0, 1) : preparedMedia)
-  const metadata = buildMetadata(platform, preparedMedia, content)
-
-  // 3. Create one post per channel (fan-out for GBP multi-location).
-  // GBP: iterate gbpChannels pairs so we can look up the per-location body override.
-  // Other platforms: iterate bare channelIds (single entry).
-  const fanOut = platform === 'gbp'
-    ? gbpChannels.map(({ id, channelId }) => ({ id, channelId }))
-    : channelIds.map((channelId) => ({ id: null, channelId }))
-  const posts = []
-  for (const { id: locationId, channelId } of fanOut) {
-    const rawText = (locationId && locationContents?.[locationId]) ? locationContents[locationId] : content
-    // GBP enforces a 1500-character hard cap on post summaries.
-    const postText = platform === 'gbp' ? rawText.slice(0, 1500) : rawText
-    const input = {
-      channelId,
-      text: postText,
-      schedulingType: 'automatic',
-      mode,
-      assets,
-      ...(metadata ? { metadata } : {}),
-      ...(includeDueAt ? { dueAt: new Date(scheduledAt).toISOString() } : {}),
-    }
-    const r = await gql(BUFFER_TOKEN, `
-      mutation CreatePost($input: CreatePostInput!) {
-        createPost(input: $input) {
-          __typename
-          ... on PostActionSuccess {
-            post { id status dueAt sentAt sharedNow }
-          }
-          ... on NotFoundError { message }
-          ... on UnauthorizedError { message }
-          ... on UnexpectedError { message }
-          ... on RestProxyError { message code link }
-          ... on LimitReachedError { message }
-          ... on InvalidInputError { message }
-        }
-      }
-    `, { input })
-    if (r.errors) {
-      console.error('[publish/buffer] createPost error', JSON.stringify(r.errors))
-      return res.status(502).json({ error: 'buffer_post_failed' })
-    }
-    const payload = r.data?.createPost
-    if (payload && payload.__typename !== 'PostActionSuccess') {
-      console.error('[publish/buffer] createPost rejected', JSON.stringify(payload))
-      return res.status(502).json({ error: 'buffer_post_failed' })
-    }
-    posts.push(payload?.post)
-  }
-
-  const first = posts[0]
-  return res.status(200).json({
-    success: true,
-    bufferId: first?.id,
-    scheduledAt: first?.dueAt,
-    status: first?.status,
-    profileCount: fanOut.length,
+  const result = await runBufferPublish({
+    workspaceId, token: BUFFER_TOKEN, platform, content, mediaUrls, scheduledAt, useQueue, locationIds, locationContents,
   })
+  return res.status(result.status).json(result.body)
 }
 
 // Bundle.social publish path — invoked for workspaces with publish_provider='bundle'.
@@ -384,60 +458,8 @@ async function handleBundlePublish(req, res, workspace) {
   const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents } = body
   if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
 
-  // GBP fan-out: post to each active location that has its own connected bundle
-  // Team. Each post uses the location's body override (locationContents keyed by
-  // workspace_locations.id) or the canonical content. teamId for each post is
-  // the location row's bundle_team_id — server-resolved, never client input.
-  if (platform === 'gbp') {
-    try {
-      const targets = await resolveBundleGbpTargets(workspace.id, locationIds)
-      if (targets.length === 0) {
-        return res.status(404).json({
-          error: 'No Google Business location is connected to bundle.social. Open Settings → Integrations and connect each location’s Google Business listing.',
-        })
-      }
-      // Google's Local Post API accepts at most one media item — carousels and
-      // video are rejected outright (400). Cap here as a last-resort guard even
-      // though the editor should already prevent multi-photo GBP posts.
-      const gbpMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.slice(0, 1) : mediaUrls
-      const posts = []
-      for (const loc of targets) {
-        const rawText = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
-        // bundle.social enforces the same 1500-char hard cap Google's Local Post
-        // API does (mirrors the Buffer GBP path above) — without this, bundle
-        // rejects the whole post with a 400 Request Validation Error.
-        const text = rawText.slice(0, 1500)
-        const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
-        const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
-        posts.push(r)
-      }
-      const first = posts[0]
-      return res.status(200).json({
-        success: true,
-        bufferId: first?.postId,
-        scheduledAt: first?.scheduledAt,
-        status: first?.status,
-        profileCount: posts.length,
-      })
-    } catch (e) {
-      console.error('[publish/bundle gbp] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
-      return res.status(502).json({ error: 'bundle_gbp_post_failed' })
-    }
-  }
-
-  try {
-    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt })
-    return res.status(200).json({
-      success: result.success,
-      bufferId: result.postId,
-      scheduledAt: result.scheduledAt,
-      status: result.status,
-      profileCount: result.profileCount,
-    })
-  } catch (e) {
-    console.error('[publish/bundle] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
-    return res.status(502).json({ error: 'bundle_post_failed' })
-  }
+  const result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
+  return res.status(result.status).json(result.body)
 }
 
 export default withSentry(handler)
