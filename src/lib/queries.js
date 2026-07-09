@@ -114,6 +114,8 @@ export const queryKeys = {
   },
   topicSuggestions: ['topic-suggestions'],
   topPerformers:    ['top-performers'],
+  socialByWeek:     (weekOffset = 0) => ['social-by-week', weekOffset],
+  websiteByWeek:    (weekOffset = 0) => ['website-by-week', weekOffset],
   websiteHealth:    ['website-health'],
   websiteGA4:       ['website-ga4'],
   searchQueries:    ['search-queries'],
@@ -806,6 +808,29 @@ export function useTopPerformers() {
       return data?.performers ?? []
     },
     staleTime: 1000 * 60 * 60, // 1h
+  })
+}
+
+// ── Per-platform / per-week social + website reads (Insights) ───────────────
+//
+// Feed the Insights page's Social Media + Website tabs and shared week picker.
+// weekOffset mirrors YourWeek.jsx (0 = this week, negative = past weeks).
+
+export function useSocialByWeek(weekOffset) {
+  return useQuery({
+    queryKey: queryKeys.socialByWeek(weekOffset),
+    queryFn: () =>
+      apiFetch(`/api/engagement/social-by-week?weekOffset=${weekOffset}`).catch(() => null),
+    staleTime: 1000 * 60 * 15,
+  })
+}
+
+export function useWebsiteByWeek(weekOffset) {
+  return useQuery({
+    queryKey: queryKeys.websiteByWeek(weekOffset),
+    queryFn: () =>
+      apiFetch(`/api/engagement/website-by-week?weekOffset=${weekOffset}`).catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 15,
   })
 }
 
