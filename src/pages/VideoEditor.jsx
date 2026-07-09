@@ -6,6 +6,7 @@ import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, Check, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
+  Music, Volume2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -521,6 +522,103 @@ function OverlayInspector({ ctx }) {
   )
 }
 
+// Module-scope so it isn't re-created each render (react-hooks/static-components).
+function MusicToggle({ on, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? 'bg-primary' : 'bg-muted'}`} role="switch" aria-checked={on}>
+      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${on ? 'left-[18px]' : 'left-0.5'}`} />
+    </button>
+  )
+}
+
+// Music bed (WS3.3) — curated licensed tracks, one-tap add, auto-duck under the
+// voice. Preview plays the raw track; the duck/mix happens server-side at export.
+function MusicInspector({ ctx }) {
+  const { music, setMusic } = ctx
+  const [mood, setMood] = useState('all')
+  const [previewId, setPreviewId] = useState(null)
+  const audioRef = useRef(null)
+  const { data, isLoading } = useQuery({
+    queryKey: ['music-tracks'],
+    queryFn: () => apiFetch('/api/editorial/music-tracks'),
+    staleTime: 5 * 60_000,
+  })
+  const tracks = data?.tracks || []
+  const moods = ['all', ...(data?.moods || [])]
+  const shown = tracks.filter((t) => mood === 'all' || t.mood === mood)
+  useEffect(() => () => { audioRef.current?.pause() }, [])
+  function preview(t) {
+    const a = audioRef.current
+    if (!a) return
+    if (previewId === t.id) { a.pause(); setPreviewId(null); return }
+    a.src = t.url; a.currentTime = 0; a.volume = 0.85
+    a.play().then(() => setPreviewId(t.id)).catch(() => setPreviewId(null))
+  }
+  const pick = (t) => setMusic((m) => ({ ...m, trackId: m.trackId === t.id ? null : t.id }))
+  return (
+    <div className="space-y-3">
+      <p className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Music library <span className="text-muted-foreground/70">· licensed</span></p>
+      <audio ref={audioRef} onEnded={() => setPreviewId(null)} className="hidden" />
+      <div className="flex flex-wrap gap-1.5">
+        {moods.map((mo) => (
+          <button key={mo} type="button" onClick={() => setMood(mo)} className={`rounded-full px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide transition-colors ${mood === mo ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'}`}>{mo}</button>
+        ))}
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" /></div>
+      ) : tracks.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-4 text-center text-2xs text-muted-foreground" style={{ borderColor: 'hsl(var(--border))' }}>
+          No music tracks yet — a curated licensed set is being added. Check back soon.
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {shown.map((t) => {
+            const on = music.trackId === t.id
+            const isPlaying = previewId === t.id
+            return (
+              <div key={t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${on ? 'border-primary bg-primary/5' : 'border-border'}`} style={on ? undefined : { borderColor: 'hsl(var(--border))' }}>
+                <button type="button" onClick={() => preview(t)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ background: 'hsl(var(--primary)/.1)' }} title={isPlaying ? 'Stop preview' : 'Preview'}>
+                  {isPlaying ? <Pause className="h-3.5 w-3.5 text-primary" /> : <Play className="h-3.5 w-3.5 text-primary" />}
+                </button>
+                <button type="button" onClick={() => pick(t)} className="min-w-0 flex-1 text-left">
+                  <p className="truncate text-2xs font-semibold text-foreground">{t.title}</p>
+                  <p className="text-3xs text-muted-foreground">{t.mood}{t.durationSec ? ` · ${fmt(t.durationSec)}` : ''}</p>
+                </button>
+                {on
+                  ? <Check className="h-4 w-4 shrink-0 text-primary" aria-label="Added" />
+                  : <button type="button" onClick={() => pick(t)} className="shrink-0 text-3xs font-semibold text-primary">Add</button>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {music.trackId && (
+        <div className="space-y-2.5 border-t pt-3" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-2xs font-semibold">Auto-duck under voice</p>
+              <p className="text-3xs text-muted-foreground">Music drops while anyone speaks.</p>
+            </div>
+            <MusicToggle on={music.duck} onClick={() => setMusic((m) => ({ ...m, duck: !m.duck }))} />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between text-3xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Volume2 className="h-3 w-3" />Music volume</span>
+              <span>{Math.round(music.volume * 100)}%</span>
+            </div>
+            <input type="range" min="0" max="60" value={Math.round(music.volume * 100)} onChange={(e) => setMusic((m) => ({ ...m, volume: parseInt(e.target.value, 10) / 100 }))} className="h-4 w-full accent-primary" aria-label="Music volume" />
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-2xs font-semibold">Fade in / out</p>
+            <MusicToggle on={music.fade} onClick={() => setMusic((m) => ({ ...m, fade: !m.fade }))} />
+          </div>
+          <p className="text-3xs text-muted-foreground">Music is mixed in when you export or publish this clip. The preview here plays the raw track.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Moments — the AI proposals picker (replaces SlateClipEditor's review lane).
 function MomentsInspector({ ctx }) {
   const { proposals, selectedSegmentId, applySegment, discardSegment, findMoments, findingMoments, segDetecting } = ctx
@@ -644,6 +742,7 @@ function IconRail({ ctx }) {
     { key: 'clip', icon: Film, label: 'Clip' },
     { key: 'grade', icon: Sparkles, label: 'Grade' },
     { key: 'caption', icon: Captions, label: 'Caps' },
+    { key: 'music', icon: Music, label: 'Music' },
     { key: 'transcript', icon: FileText, label: 'Script' },
     { key: 'text', icon: Type, label: 'Text' },
   ]
@@ -826,6 +925,8 @@ export default function VideoEditor() {
   const [speed, setSpeedState] = useState(1)
   const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none', style: 'bold' })
   const [overlays, setOverlays] = useState([])
+  // Music bed (WS3.3): trackId null = no music. volume 0..1; duck/fade default on.
+  const [music, setMusic] = useState({ trackId: null, volume: 0.22, duck: true, fade: true })
   const [cuts, setCuts] = useState([])   // edit-by-transcript: clip-relative removed ranges
   const [historyOpen, setHistoryOpen] = useState(false)
   const [revisions, setRevisions] = useState([])
@@ -1185,6 +1286,9 @@ export default function VideoEditor() {
     // EXACT (possibly edited) caption words so the bake matches the preview.
     captionWords: lines.flatMap((l) => l.words),
     overlays: overlays.map((o) => ({ role: o.role, text: o.text, x: o.x, y: o.y, size: o.size, color: o.color, in: o.in, out: o.out })),
+    // Music bed (WS3.3): the server resolves the URL from trackId (source of
+    // truth), so we send only the id + mix options. Omitted when no track picked.
+    ...(music.trackId ? { music: { trackId: music.trackId, volume: music.volume, duck: music.duck, fade: music.fade } } : {}),
   })
   async function doRenderClip() {
     const result = await apiFetch('/api/editorial/render-clip', {
@@ -1302,6 +1406,7 @@ export default function VideoEditor() {
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
     editingCap, setEditingCap,
+    music, setMusic,
     alignGuidesOn, flashAlignGuides,
     proposals, selectedSegmentId, applySegment, discardSegment,
     findMoments: () => findMomentsMutation.mutate(), findingMoments: findMomentsMutation.isPending, segDetecting: segData?.status === 'detecting',
@@ -1445,6 +1550,7 @@ export default function VideoEditor() {
               {sel === 'clip' && <ClipInspector ctx={ctx} />}
               {sel === 'grade' && <GradeInspector ctx={ctx} />}
               {sel === 'caption' && <CaptionInspector ctx={ctx} />}
+              {sel === 'music' && <MusicInspector ctx={ctx} />}
               {sel === 'transcript' && <TranscriptInspector ctx={ctx} />}
               {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
             </div>
