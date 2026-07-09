@@ -1051,6 +1051,7 @@ function RealQuotesSection({ pieceId, onInsertQuote }) {
 function CaptionPanel({ piece, onUseAsHook, updateItem }) {
   const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
   const savedRef = useRef(draft)
+  const taRef = useRef(null)
 
   useEffect(() => {
     const next = typeof piece?.content === 'string' ? piece.content : ''
@@ -1084,8 +1085,16 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
           <Type className="h-4 w-4" /> Caption
         </span>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+      {/* Clicking the panel's padding/gaps (outside the textarea's own box) used
+          to be a dead click; focus the field so any click in the caption area
+          lands the cursor in it. Guard on currentTarget so clicks on the button
+          row / warning don't steal focus. */}
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
+        onClick={(e) => { if (e.target === e.currentTarget) taRef.current?.focus() }}
+      >
         <textarea
+          ref={taRef}
           aria-label="Caption"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -3117,9 +3126,20 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
             overflowing either axis. Constants leave room for the top bar + the
             slide picker strip sitting directly under the photo (height), and the
             icon rail + inspector (width). */}
-        <section className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5" style={{ background: 'hsl(var(--muted))' }}>
+        <section
+          className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-5"
+          style={{ background: 'hsl(var(--muted))' }}
+          // Click the empty stage (letterbox/padding) to deselect — turns a dead
+          // zone into the standard Canva/Figma "click canvas to dismiss" gesture.
+          // e.target === e.currentTarget so bubbled clicks from the canvas, text /
+          // object handles, and the picker strip don't fire it.
+          onClick={(e) => { if (e.target === e.currentTarget && selection.type) setSelection({ type: null }) }}
+        >
           {activeSlide ? (
-            <div className="flex flex-col items-center">
+            <div
+              className="flex flex-col items-center"
+              onClick={(e) => { if (e.target === e.currentTarget && selection.type) setSelection({ type: null }) }}
+            >
               <div
                 className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-muted' : ''}`}
                 style={{ height: `min(calc(100vh - 210px), calc((100vw - 470px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
