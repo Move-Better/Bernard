@@ -81,7 +81,7 @@ export default async function handler(req, res) {
   try {
     // Fetch the interview (transcript = primary source; blog = editorial context)
     const ivRes = await sb(
-      `interviews?id=eq.${atom.interview_id}&${wsFilter}&select=outputs,topic,tone,voice_mode,staff_id,location_id,created_at,messages,audience,story_type`
+      `interviews?id=eq.${atom.interview_id}&${wsFilter}&select=outputs,topic,tone,voice_mode,staff_id,location_id,created_at,messages,audience,story_type,region,theme`
     )
     if (!ivRes.ok) throw new Error('Could not fetch interview')
     const ivRows = await ivRes.json()
@@ -116,6 +116,10 @@ export default async function handler(req, res) {
       staff_id:   interview.staff_id,
       staff_name: staffName,
       topic:          interview.topic,
+      // Inherit the body-region / theme tag classified at interview completion
+      // so the balance engine can account for this piece (see topicRegion.js).
+      region:         interview.region ?? null,
+      theme:          interview.theme ?? null,
       platform:       atom.platform,
       content:        caption,
       ai_original_content: caption,
