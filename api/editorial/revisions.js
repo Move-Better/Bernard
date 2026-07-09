@@ -69,7 +69,7 @@ export default async function handler(req, res) {
         const rows = await older.json()
         if (rows.length) {
           const list = rows.map((o) => `"${o.id}"`).join(',')
-          await sb(`editor_revisions?id=in.(${list})`, { method: 'DELETE' }).catch(() => {})
+          await sb(`editor_revisions?id=in.(${list})&workspace_id=eq.${ws.id}`, { method: 'DELETE' }).catch(() => {})
         }
       }
       return res.status(200).json({ id: row?.id })

@@ -5,7 +5,7 @@ import { posthogCapture } from '@/lib/posthog'
 import { useUser, useAuth } from '@clerk/react'
 import {
   ArrowLeft, ArrowRight, Loader2, TrendingUp, Sparkles, Plus,
-  ChevronDown, ChevronUp, Star, Check, Mic,
+  ChevronDown, ChevronUp, Star, Check, Mic, Settings2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -611,7 +611,7 @@ export default function NewInterview() {
 function RecipeDropdown({ recipes, selectedId, onSelect }) {
   const [open, setOpen] = useState(false)
   const selected = recipes.find((r) => r.id === selectedId)
-  const display = selected || { name: 'Custom (no recipe)', emoji: '⚙️' }
+  const display = selected || { name: 'Custom (no recipe)', emoji: null }
 
   return (
     <div className="space-y-1.5">
@@ -623,7 +623,9 @@ function RecipeDropdown({ recipes, selectedId, onSelect }) {
           className="w-full flex items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-left hover:border-primary/40 transition-colors"
         >
           <span className="inline-flex items-center gap-2 min-w-0">
-            <span className="text-base shrink-0">{display.emoji || '⭐'}</span>
+            {display.emoji
+              ? <span className="text-base shrink-0">{display.emoji}</span>
+              : <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground" />}
             <span className="text-sm font-medium truncate">{display.name}</span>
             {selected?.is_default && (
               <Star className="h-3.5 w-3.5 text-action fill-action shrink-0" />

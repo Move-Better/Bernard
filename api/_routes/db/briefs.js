@@ -85,6 +85,7 @@ async function handler(req, res) {
   // ── PATCH ─────────────────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
     if (!id) return err(res, 'Missing id')
+    if (!(await enforceLimit(req, res, 'media', ws.id))) return
     const patch = req.body || {}
     const allowed = {
       title:            patch.title,

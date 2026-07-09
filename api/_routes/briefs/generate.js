@@ -127,7 +127,7 @@ async function handler(req, res) {
 
   if (rows.length === 0) {
     // Mark brief failed and surface the error.
-    await sb(`briefs?id=eq.${brief.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) })
+    await sb(`briefs?id=eq.${brief.id}&workspace_id=eq.${ws.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) })
     return res.status(502).json({ error: 'Content generation failed for all channels' })
   }
 
@@ -142,7 +142,7 @@ async function handler(req, res) {
   const contentItems = await insertResp.json()
 
   // 4. Mark the brief done.
-  await sb(`briefs?id=eq.${brief.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) })
+  await sb(`briefs?id=eq.${brief.id}&workspace_id=eq.${ws.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) })
 
   // Log any skipped channels.
   const skipped = results
