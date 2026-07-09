@@ -527,6 +527,36 @@ throws on a failed insert) so the caller's fallback/logging fires instead of swa
 extends the existing "validate every query param with `UUID_RE` before interpolating" rule to
 LLM-echoed values, not just request params.
 
+## Prompt-building — an unguarded `${workspace.field}` becomes literal text the model obeys
+
+Interpolating a workspace field straight into an LLM system prompt (`atomPrompts.js`'s per-platform
+`instructions` templates) is a different risk class than interpolating it into a DB query or a UI
+string: if the field is `undefined`, the model doesn't error or render a blank — it receives the
+literal instruction *"Include the full URL undefined on its own line near the end"* and, being a
+good instruction-follower, writes "undefined" as its own line/paragraph in the generated caption.
+The bug is invisible in code review (a template literal with a missing value looks identical to one
+with a present value) and only surfaces in the model's output.
+
+This bit hardest at the exact seam `atomPrompts.js`'s own comments warn about: `draftAtom.js` is
+shared by **two callers** — the interactive `content-plan/draft.js` route (fetches the workspace via
+`workspaceContext(req)`, which selects `*`) and the Standing Producer's pre-draft cron
+(`agent-tick.js`, which hand-lists a `select=`). `agent-tick.js` already had a comment noting
+*"audience_options + story_type_options... the pre-draft path must select them too or the two
+callers diverge"* — and it still missed `website`, because that field wasn't part of the specific
+divergence someone had already hit and fixed. A comment documenting one instance of the pattern is
+not proof every field was audited.
+
+Rule: (1) any `${workspace.<field>}` interpolated directly into prompt text sent to an LLM needs an
+explicit fallback (`workspace.location_hashtag ?? '#physicaltherapy'` is the pattern already used
+for two fields in this file — `website` was the one field that had none); (2) when a core generation
+function is shared by an interactive route (`select=*`) and a background/cron path (a hand-written
+`select=`), don't trust a prior "make sure both paths select the same fields" comment — grep the
+downstream function (and everything it calls) for every `workspace.*`/`ws.*` read and confirm each
+one is either in the cron's `select=` or has a safe fallback. (2026-07-08, PR #2000: `website` was
+missing from `agent-tick.js`'s `select=`, so `getAtomSystemPrompt`'s facebook/linkedin/gbp templates
+rendered `${workspace.website}` as the string `"undefined"`, which the model dutifully wrote into
+four live captions across one pre-draft batch before a human review caught it.)
+
 ## AI SDK v6 — `maxOutputTokens`, not `maxTokens`
 
 AI SDK v6 (`generateText`/`generateObject`) uses `maxOutputTokens` to cap the completion length.
