@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, CalendarClock, Loader2, AlertCircle, Move,
-  FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight,
+  FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -551,6 +551,81 @@ function MomentsInspector({ ctx }) {
 // ── RAIL + VERTICAL TIMELINE (v3) ────────────────────────────────────────────
 // Thin icon rail (v3) — picks the inspector tool. "Text" selects the latest
 // overlay (or adds one). Replaces the old Layers/Transcript rail.
+// ── Edit-by-transcript (WS4) ──────────────────────────────────────────────────
+// Client mirror of api/_lib/transcriptCuts (keep in lockstep). Cuts are clip-
+// relative {start,end} ranges removed from the clip; the render trims+concats the
+// kept ranges and re-times the captions onto the compacted timeline.
+const FILLERS = new Set(['um', 'umm', 'uh', 'uhh', 'uhm', 'erm', 'hmm', 'mm', 'mhm'])
+const SILENCE_GAP = 0.6
+const fillerKey = (w) => w.toLowerCase().replace(/[^a-z]/g, '')
+function normCutsCli(cuts, dur) {
+  const cs = (cuts || []).map((c) => ({ start: Math.max(0, Math.min(dur, +c.start || 0)), end: Math.max(0, Math.min(dur, +c.end || 0)) }))
+    .filter((c) => c.end - c.start > 0.02).sort((a, b) => a.start - b.start)
+  const out = []
+  for (const c of cs) { const last = out[out.length - 1]; if (last && c.start <= last.end + 0.01) last.end = Math.max(last.end, c.end); else out.push({ ...c }) }
+  return out
+}
+const totalCutCli = (cuts, dur) => normCutsCli(cuts, dur).reduce((s, c) => s + (c.end - c.start), 0)
+const addRange = (cuts, r, dur) => normCutsCli([...cuts, r], dur)
+function subRange(cuts, r, dur) {
+  const out = []
+  for (const c of normCutsCli(cuts, dur)) {
+    if (r.end <= c.start || r.start >= c.end) { out.push(c); continue }
+    if (c.start < r.start) out.push({ start: c.start, end: r.start })
+    if (r.end < c.end) out.push({ start: r.end, end: c.end })
+  }
+  return out
+}
+const inCut = (t, cuts) => cuts.some((c) => t >= c.start && t < c.end)
+function silenceRanges(words, dur) {
+  const out = []
+  for (let i = 0; i < words.length - 1; i++) {
+    const gap = words[i + 1].start - words[i].end
+    if (gap > SILENCE_GAP) out.push({ start: +(words[i].end + 0.05).toFixed(2), end: +(words[i + 1].start - 0.05).toFixed(2) })
+  }
+  return out.filter((r) => r.end - r.start > 0.1 && r.end <= dur)
+}
+
+function TranscriptInspector({ ctx }) {
+  const { words, cuts, toggleWordCut, addCuts, clearCuts, durationSec, genCaptions, genCaptionsPending } = ctx
+  const kept = Math.max(0, durationSec - totalCutCli(cuts, durationSec))
+  const fillers = words.filter((w) => FILLERS.has(fillerKey(w.word)) && !inCut((w.start + w.end) / 2, cuts))
+  const sils = silenceRanges(words, durationSec).filter((r) => !inCut((r.start + r.end) / 2, cuts))
+  return (
+    <InspectorShell icon={FileText} title="Transcript" right={`${fmt(kept)} kept`}>
+      {words.length === 0 ? (
+        <>
+          <p className="mb-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No transcript yet — generate captions first, then cut words here.</p>
+          <button onClick={genCaptions} disabled={genCaptionsPending} className="flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs disabled:opacity-60" style={{ borderColor: 'hsl(var(--action))', background: 'hsl(var(--action)/0.06)', color: 'hsl(var(--action))' }}>
+            {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <button onClick={() => addCuts(fillers.map((w) => ({ start: w.start, end: w.end })))} disabled={!fillers.length} className="flex items-center gap-1 rounded-md border px-2 py-1 text-3xs disabled:opacity-40" style={{ borderColor: 'hsl(var(--border))' }}><span className="h-2 w-2 rounded-full" style={{ background: 'hsl(var(--action))' }} />Remove {fillers.length} fillers</button>
+            <button onClick={() => addCuts(sils)} disabled={!sils.length} className="flex items-center gap-1 rounded-md border px-2 py-1 text-3xs disabled:opacity-40" style={{ borderColor: 'hsl(var(--border))' }}><span className="h-2 w-2 rounded-full" style={{ background: 'hsl(0 60% 55%)' }} />Remove {sils.length} silences</button>
+            {cuts.length > 0 && <button onClick={clearCuts} className="ml-auto text-3xs underline-offset-2 hover:underline" style={{ color: 'hsl(var(--muted-foreground))' }}>Undo all</button>}
+          </div>
+          <p className="mb-2 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Click a word to cut it — the footage is removed at export.</p>
+          <div className="text-sm leading-loose">
+            {words.map((w, i) => {
+              const cut = inCut((w.start + w.end) / 2, cuts)
+              const filler = FILLERS.has(fillerKey(w.word))
+              return (
+                <span key={i} onClick={() => toggleWordCut(w)} className="cursor-pointer rounded px-0.5"
+                  style={{ textDecoration: cut ? 'line-through' : 'none', color: cut ? 'hsl(var(--muted-foreground))' : filler ? 'hsl(var(--action))' : 'inherit', opacity: cut ? 0.5 : 1, background: !cut && filler ? 'hsl(var(--action)/0.12)' : 'transparent' }}>
+                  {w.word}{' '}
+                </span>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </InspectorShell>
+  )
+}
+
 function IconRail({ ctx }) {
   const { sel, selectKey, overlays, addOverlay } = ctx
   const selKey = typeof sel === 'object' ? 'overlay' : sel
@@ -561,6 +636,7 @@ function IconRail({ ctx }) {
     { key: 'clip', icon: Film, label: 'Clip' },
     { key: 'grade', icon: Sparkles, label: 'Grade' },
     { key: 'caption', icon: Captions, label: 'Caps' },
+    { key: 'transcript', icon: FileText, label: 'Script' },
     { key: 'text', icon: Type, label: 'Text' },
   ]
   const pick = (k) => {
@@ -742,6 +818,7 @@ export default function VideoEditor() {
   const [speed, setSpeedState] = useState(1)
   const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none', style: 'bold' })
   const [overlays, setOverlays] = useState([])
+  const [cuts, setCuts] = useState([])   // edit-by-transcript: clip-relative removed ranges
   // Drag-reveal guides: safe-zone margins + centre snap lines appear while a text
   // overlay is being dragged (no persistent "safe zones" toggle). Mirrors the
   // photo editor's snapping guides.
@@ -796,6 +873,7 @@ export default function VideoEditor() {
         if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
         if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
         if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
+        if (Array.isArray(d.cuts)) setCuts(d.cuts)
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
@@ -804,8 +882,8 @@ export default function VideoEditor() {
 
   // Draft snapshot shared by autosave + undo/redo.
   const draftDoc = useMemo(
-    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec }),
-    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec],
+    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts }),
+    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts],
   )
 
   // localStorage mirror — immediate, undebounced offline copy. The server
@@ -835,6 +913,7 @@ export default function VideoEditor() {
     setCaptionState(snap.caption)
     setStartSec(snap.startSec)
     setEndSec(snap.endSec)
+    setCuts(snap.cuts || [])
   }, { enabled: hydrated })
   useUndoRedoShortcut(undo, redo)
 
@@ -978,6 +1057,13 @@ export default function VideoEditor() {
   const setKenBurns = useCallback((k, v) => setKenBurnsState((s) => ({ ...s, [k]: v })), [])
   const setCaption = useCallback((k, v) => setCaptionState((c) => ({ ...c, [k]: v })), [])
   const setSpeed = useCallback((s) => setSpeedState(s), [])
+  // Edit-by-transcript cut handlers (all clip-relative to durationSec).
+  const toggleWordCut = useCallback((w) => {
+    const mid = (w.start + w.end) / 2
+    setCuts((prev) => (inCut(mid, prev) ? subRange(prev, { start: w.start, end: w.end }, durationSec) : addRange(prev, { start: w.start, end: w.end }, durationSec)))
+  }, [durationSec])
+  const addCuts = useCallback((ranges) => setCuts((prev) => (ranges || []).reduce((acc, r) => addRange(acc, r, durationSec), prev)), [durationSec])
+  const clearCuts = useCallback(() => setCuts([]), [])
   const trimToLine = useCallback((l) => {
     const ns = startSec + l.start
     const ne = Math.min(startSec + l.end, startSec + 60)
@@ -996,7 +1082,7 @@ export default function VideoEditor() {
     assetId, channels: [(FORMATS[format] || FORMATS.reel).channel], startSec, durationSec, subtitles: caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
     captionAnim: caption.anim, captionStyle: caption.style,
-    grade, reframe, speed,
+    grade, reframe, speed, cuts,
     ...(kenBurns.motion && kenBurns.motion !== 'none' ? { kenBurns } : {}),
     // EXACT (possibly edited) caption words so the bake matches the preview.
     captionWords: lines.flatMap((l) => l.words),
@@ -1125,7 +1211,7 @@ export default function VideoEditor() {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, resetCaptions, captionsEdited, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
+    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
@@ -1233,6 +1319,7 @@ export default function VideoEditor() {
               {sel === 'clip' && <ClipInspector ctx={ctx} />}
               {sel === 'grade' && <GradeInspector ctx={ctx} />}
               {sel === 'caption' && <CaptionInspector ctx={ctx} />}
+              {sel === 'transcript' && <TranscriptInspector ctx={ctx} />}
               {typeof sel === 'object' && <OverlayInspector ctx={ctx} />}
             </div>
           </aside>
