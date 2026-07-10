@@ -737,6 +737,8 @@
     "story_package_id",
     "transcript_excerpt",
     "updated_at",
+    "visual_breakdown",
+    "visual_score",
     "why_it_stands_alone",
     "workspace_id"
   ],

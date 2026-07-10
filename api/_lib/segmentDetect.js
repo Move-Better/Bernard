@@ -28,6 +28,13 @@ import { z } from 'zod'
 import ffmpegPath from 'ffmpeg-static'
 import { transcribeToSegmentsAndWords } from './whisper.js'
 import { scoreSegments } from './scoreMoments.js'
+import { visualScoreSegments } from './scoreMomentsVisual.js'
+
+// F13 visual-scoring budget: how long the visual pass may run inside the shared
+// 300s detection window. Runs LAST (segments are already inserted + 'ready'), so
+// hitting this deadline just leaves later windows visual-unscored — they rank on
+// their transcript score and self-heal nothing (v1 scopes visual to new footage).
+const VISUAL_BUDGET_MS = 100_000
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -293,6 +300,7 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
     )
     const oldIds = oldSegRes.ok ? (await oldSegRes.json()).map((r) => r.id) : []
 
+    let insertedRows = []
     if (segments.length) {
       const rows = segments.map((s, i) => ({
         workspace_id: ws.id,
@@ -315,6 +323,9 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
         const text = await ins.text().catch(() => '')
         throw new Error(`video_segments insert failed: ${text.slice(0, 300)}`)
       }
+      // sb() sets Prefer: return=representation — capture the inserted rows so
+      // the F13 visual pass can PATCH each by id (mapped via order_index).
+      insertedRows = await ins.json().catch(() => [])
     }
 
     // Insert succeeded (or no new segments) — safe to delete prior proposals now.
@@ -344,6 +355,15 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
       }),
     })
 
+    // F13 — visual scoring. Runs LAST and best-effort: the segments above are
+    // already inserted + 'ready', so if this is cut off by the 300s wall (or
+    // fails), the feed still works and ranks on transcript scores. Only videos
+    // (a source with a real duration) are scored; never throws.
+    if (segments.length && asset.blob_url) {
+      await scoreSegmentsVisually({ ws, asset, segments, insertedRows }).catch((e) =>
+        console.error('[segmentDetect] visual scoring pass failed (non-fatal):', e?.message || e))
+    }
+
     return { status: 'ready', count: segments.length, note }
   } catch (e) {
     console.error('[segmentDetect] detection failed:', e?.stack || e?.message || e)
@@ -356,4 +376,39 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
     }).catch(() => {})
     return { status: 'failed', count: 0, note: null }
   }
+}
+
+/**
+ * F13 visual pass: score each newly-inserted segment on what the camera SEES and
+ * persist visual_score + visual_breakdown. Best-effort — swallows failures,
+ * persists per-segment as it completes, and self-limits to VISUAL_BUDGET_MS so a
+ * long source can't push the shared 300s detection function over its wall.
+ * Logs the window count + total cost (no silent bulk spend).
+ */
+async function scoreSegmentsVisually({ ws, asset, segments, insertedRows }) {
+  // Map order_index -> inserted row id so we PATCH the right segment.
+  const idByOrder = new Map((insertedRows || []).map((r) => [r.order_index, r.id]))
+  if (!idByOrder.size) return
+
+  const vis = await visualScoreSegments(segments, ws, asset.blob_url, {
+    concurrency: 3,
+    deadlineMs: Date.now() + VISUAL_BUDGET_MS,
+  })
+
+  let scored = 0
+  let cost = 0
+  await Promise.all(vis.map(async (v, i) => {
+    if (!v) return
+    const id = idByOrder.get(i)
+    if (!id) return
+    cost += v.costUsd || 0
+    const r = await sb(`video_segments?id=eq.${id}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ visual_score: v.visualScore, visual_breakdown: v.breakdown }),
+    }).catch(() => null)
+    if (r?.ok) scored++
+    else console.error('[segmentDetect] visual_score persist failed for segment', id)
+  }))
+
+  console.info(`[segmentDetect] F13 visual scored ${scored}/${segments.length} windows for asset ${asset.id} (~$${cost.toFixed(4)})`)
 }
