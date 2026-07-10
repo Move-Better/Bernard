@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Loader2, CheckCircle2, AlertCircle, Settings } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, Settings, ChevronRight } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
 import { SaveBar } from '@/components/settings/helpers'
 import { useUserRole } from '@/lib/useUserRole'
@@ -227,6 +227,8 @@ export default function WorkspaceSettings() {
         </div>
       </div>
 
+      {/* Lead with the two most-edited sections open; the rest collapse into
+          value-summary rows below (progressive disclosure — punch-list item 6). */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard
         title="Identity"
@@ -267,10 +269,15 @@ export default function WorkspaceSettings() {
           rows={2}
           hint="Shown when a link to your site is shared on social or in chat — one sentence under 130 chars." />
       </SectionCard>
+      </div>
 
-      <SectionCard
+      {/* Set-once / advanced settings — collapsed by default, each header shows
+          its current value so state is scannable without opening. */}
+      <div className="space-y-3">
+      <CollapsibleSectionCard
         title="Social handles"
         description="Used for @-mentions in generated copy and source-of-truth URLs."
+        summary={[form.social_instagram && `@${form.social_instagram}`, form.social_facebook].filter(Boolean).join(' · ') || 'Not set'}
       >
         <Grid>
           <Field label="Instagram handle"
@@ -278,11 +285,12 @@ export default function WorkspaceSettings() {
           <Field label="Facebook handle"
             value={form.social_facebook} onChange={set('social_facebook')} placeholder="yourpage" />
         </Grid>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
-      <SectionCard
+      <CollapsibleSectionCard
         title="Approval workflow"
         description="When off, drafts route through a reviewer (Send for review → Approve → Publish). Turn this on for single-user workspaces so the editor can publish directly."
+        summary={form.skip_review ? 'Skip review — editors publish directly' : 'Review required before publish'}
       >
         <label className="flex items-start gap-3 rounded-lg border border-input p-3.5 cursor-pointer hover:bg-accent/30 transition-colors">
           <input
@@ -298,11 +306,12 @@ export default function WorkspaceSettings() {
             </div>
           </div>
         </label>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
-      <SectionCard
+      <CollapsibleSectionCard
         title="Publish timing"
         description="Where the approve action sheet defaults when picking a publish time."
+        summary={form.buffer_use_queue ? 'Add to queue by default' : 'Suggested times by default'}
       >
         <label className="flex items-start gap-3 rounded-lg border border-input p-3.5 cursor-pointer hover:bg-accent/30 transition-colors">
           <input
@@ -318,12 +327,13 @@ export default function WorkspaceSettings() {
             </div>
           </div>
         </label>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       {ws.realtime_voice_enabled && (
-        <SectionCard
+        <CollapsibleSectionCard
           title="Live Interview daily cap"
           description="Maximum minutes of real-time voice conversation per day across this workspace. Helps cap OpenAI Realtime spend if a session loops or someone runs back-to-back calls. Resets at midnight UTC."
+          summary={`${form.realtime_voice_daily_cap_min ?? 60} min / day`}
         >
           <Field
             label="Daily cap (minutes)"
@@ -338,24 +348,24 @@ export default function WorkspaceSettings() {
             }}
             hint="Default 60. Set to 0 to block all Live Interview sessions temporarily."
           />
-        </SectionCard>
+        </CollapsibleSectionCard>
       )}
 
-      <SectionCard
+      <CollapsibleSectionCard
         title="Optimal posting times"
         description="Per-platform day/hour preferences that drive the suggested time on the approve action sheet and the optimal-time tint on the calendar."
-        className="lg:col-span-2"
+        summary="Per-platform day & hour preferences"
       >
         <SchedulePrefsSection
           value={form.schedule_prefs}
           onChange={(v) => setForm((f) => ({ ...f, schedule_prefs: v }))}
         />
-      </SectionCard>
+      </CollapsibleSectionCard>
 
-      <SectionCard
+      <CollapsibleSectionCard
         title="Content strings"
         description="Reusable phrases and links that flow into generated copy."
-        className="lg:col-span-2"
+        summary={[form.brand_hashtag, form.signature_system_name].filter(Boolean).join(' · ') || 'Links & phrases for generated copy'}
       >
         <Textarea2
           label="Internal links (Markdown)"
@@ -387,7 +397,7 @@ export default function WorkspaceSettings() {
           <Link to="/settings/workspace/locations" className="underline underline-offset-2 hover:text-foreground">Locations tab</Link>
           {' '}— the primary location&apos;s values flow into prompts automatically.
         </p>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       </div>
 
@@ -529,6 +539,37 @@ function SectionCard({ title, description, children, className = '' }) {
       <CardContent className="space-y-5">
         {children}
       </CardContent>
+    </Card>
+  )
+}
+
+// A collapsible SectionCard for the set-once / advanced settings. Collapsed by
+// default so the page leads with the fields you actually edit (Identity + Web
+// presence); the collapsed header shows a one-line summary of the current value
+// so state is scannable without opening. Editing state lives in the parent form,
+// so open/closed never affects saved values.
+function CollapsibleSectionCard({ title, description, summary, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <Card className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-accent/30 transition-colors"
+      >
+        <span className="text-lg font-bold shrink-0">{title}</span>
+        {!open && summary
+          ? <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{summary}</span>
+          : <span className="flex-1" />}
+        <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <CardContent className="space-y-5 border-t pt-5">
+          {description && <p className="-mt-1 text-xs text-muted-foreground">{description}</p>}
+          {children}
+        </CardContent>
+      )}
     </Card>
   )
 }
