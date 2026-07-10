@@ -111,7 +111,10 @@ async function processRecording({ iv, recordingUrl, authToken }) {
 
   // 2. Transcribe the recording (authed download).
   const basicAuth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${authToken}`).toString('base64')
-  const { messages } = await transcribeCallRecording({ recordingUrl, basicAuth })
+  const { messages, dualChannel } = await transcribeCallRecording({ recordingUrl, basicAuth })
+  if (!dualChannel) {
+    console.error(`[webhooks/twilio-recording] dual-channel split unavailable, mixed-transcript fallback used iv=${iv} — skipping speaker-attributed enrichment`)
+  }
 
   // 3. Generate outputs (browserless), same builders as the in-app interview.
   const outputs = await generateOutputsFromTranscript({ workspace, staff, topic: interview.topic, messages })
@@ -165,22 +168,30 @@ async function processRecording({ iv, recordingUrl, authToken }) {
 
   const turns = messages
   const interviewText = buildInterviewText(turns)
-  const clinicianTurns = turns
-    .filter((m) => m?.role === 'user' && typeof m.content === 'string' && m.content.trim())
-    .map((m) => m.content.trim())
-    .join('\n\n')
+  // The mixed-transcript fallback (dualChannel:false) tags its single blob
+  // 'user', but that blob contains BOTH speakers' words — it is NOT genuine
+  // clinician speech and must never feed voice-phrase learning or per-role
+  // style classification (see callTranscript.js's dualChannel doc comment).
+  const clinicianTurns = dualChannel
+    ? turns
+        .filter((m) => m?.role === 'user' && typeof m.content === 'string' && m.content.trim())
+        .map((m) => m.content.trim())
+        .join('\n\n')
+    : ''
 
   // 5b. Enrichment steps — each independently guarded; awaited (we're already
   // inside the webhook's waitUntil, so nested waitUntil would not be honored).
   const steps = [
     ['concepts', () => extractConcepts({ workspaceId: wsId, sourceKind: 'interview_turn', sourceId: iv, text: interviewText, staffId: staff.id, weightDelta: 1.0 })],
     ['summary', () => summarizeInterview({ interviewId: iv, workspaceId: wsId, staffId: staff.id, staffName: staff.name, topic: interview.topic, messages: turns })],
-    ['style', () => classifyAndStoreInterviewStyle({ workspaceId: wsId, staffId: staff.id, interviewId: iv, messages: turns })],
     ['rag', () => indexInterviewTranscriptFull({ workspaceId: wsId, staffId: staff.id, interviewId: iv, messages: turns, cleanedMessages: null, topic: interview.topic, createdAt: interview.created_at })],
     ['region', () => classifyAndStoreInterviewRegion({ interviewId: iv, workspaceId: wsId, topic: interview.topic })],
     ['book', () => markBookStale({ workspaceId: wsId })],
     ['strategist', () => replanWorkspaceWeek({ workspace: { id: wsId, cadence_policy: workspace.cadence_policy ?? null, enabled_outputs: workspace.enabled_outputs ?? null }, weekMonday: mondayOf(new Date().toISOString()) })],
   ]
+  if (dualChannel) {
+    steps.push(['style', () => classifyAndStoreInterviewStyle({ workspaceId: wsId, staffId: staff.id, interviewId: iv, messages: turns })])
+  }
   if (clinicianTurns) {
     steps.push(['voice', () => extractVoicePhrases({ workspaceId: wsId, staffId: staff.id, content: clinicianTurns, initialWeight: 0.5 })])
   }
