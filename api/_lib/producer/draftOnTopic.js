@@ -28,6 +28,20 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // sync with the client dropdown AND the request route's allowlist.
 const SUPPORTED_PLATFORMS = new Set(['instagram', 'facebook', 'linkedin', 'gbp'])
 
+// getAtomSystemPrompt's `angle` param is NOT free text — it's a fixed per-platform
+// content-style key (atomPrompts.js's `instructions` object; e.g. instagram has
+// hook/quick_win/clinical_insight/cta). The prompt's SUBJECT comes from
+// `interview.topic`, not `angle`. An ad-hoc request has no planned angle (unlike a
+// content_plan_atoms row, which the strategist assigns one), so pick one sensible
+// default per platform — "lead with the most interesting/surprising thing from the
+// conversation" is the best general-purpose framing for an open-ended human ask.
+const DEFAULT_ANGLE = {
+  instagram: 'hook',
+  facebook:  'educational',
+  linkedin:  'clinical_perspective',
+  gbp:       'local_authority',
+}
+
 // Background/lib reads; workspace_id is always supplied by the caller's ws and
 // every query below is scoped by it. (require-workspace-scope only lints _routes.)
 function sb(path, init = {}) {
@@ -111,11 +125,12 @@ export async function draftOnTopic({ ws, topic, platform, requestedBy, inboxItem
   }
 
   const wsFilter = `workspace_id=eq.${ws.id}`
-  // Synthesize an atom: the chosen platform + the user's topic as the ANGLE (their
-  // specific framing), grounded in the interview we matched. NO content_plan_atoms
-  // row is created — this is an ad-hoc piece, not a planned slot — so atom.id stays
-  // null and the ledger records no atom_id.
-  const atom = { id: null, platform, angle: cleanTopic, interview_id: interview.id }
+  // Synthesize an atom: the chosen platform + a sensible default angle (see
+  // DEFAULT_ANGLE above — angle is a fixed style key, not the human's topic text),
+  // grounded in the interview we matched. NO content_plan_atoms row is created —
+  // this is an ad-hoc piece, not a planned slot — so atom.id stays null and the
+  // ledger records no atom_id.
+  const atom = { id: null, platform, angle: DEFAULT_ANGLE[platform], interview_id: interview.id }
 
   let insertedContentPieceId = null
   try {
@@ -177,7 +192,7 @@ export async function draftOnTopic({ ws, topic, platform, requestedBy, inboxItem
       kind:           'draft_created',
       title:          `Drafted “${cleanTopic.slice(0, 60)}” for ${platform}${draftScore !== null ? ` — voice ${draftScore}/100` : ''} — you asked for this one`,
       detail:         {
-        platform, angle: cleanTopic, score: draftScore, attempts: voiceAttempts,
+        platform, requested_topic: cleanTopic, angle: atom.angle, score: draftScore, attempts: voiceAttempts,
         ad_hoc: true, requested_by: requestedBy || null, gate: voiceAudit?.gate ?? null,
         grounded_in_interview_id: interview.id, grounded_in_topic: interview.topic || null,
       },
@@ -202,4 +217,4 @@ export async function draftOnTopic({ ws, topic, platform, requestedBy, inboxItem
 }
 
 // Exported for reuse/testing.
-export { SUPPORTED_PLATFORMS, topicKeyword }
+export { SUPPORTED_PLATFORMS, DEFAULT_ANGLE, topicKeyword }
