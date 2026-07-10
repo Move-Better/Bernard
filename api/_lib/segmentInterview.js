@@ -12,9 +12,9 @@ function requireScope(scope) {
 // Phase 2 already produced (and the visual narrative when available) and
 // surfaces 1–5 "edit briefs" — moments worth turning into a finished, branded
 // clip. Each brief becomes a content_pieces row that the in-house contractor
-// (Philip, or whoever is on the Media page) reviews, accepts, takes to
-// CapCut Pro to edit, and uploads back. The edited media then lives in the
-// library and gets attached to posts in Content Hub.
+// (whoever is on the Media page) reviews, accepts, and edits into a finished
+// clip in Bernard's built-in video editor. The finished media then lives in
+// the library and gets attached to posts in Content Hub.
 //
 // Source = treatment sessions captured by an admin observer in clinic. The
 // camera person is filming clinicians treating patients: explanations, demos,
@@ -108,7 +108,7 @@ function buildSystemPrompt(speakerRole = 'clinician', scope) {
     '',
     role.setting,
     '',
-    'You are reading the transcript (and a brief visual narrative when present) of one such captured clip. Your job: identify the 1–5 strongest moments worth editing into finished, reusable social clips. Each moment becomes an "edit brief" the contractor reviews, accepts, and takes to CapCut Pro to produce a finished file. Lengthier sources yield more briefs (rough rule: one brief per 5–7 minutes of source). Pick fewer if the source is short, repetitive, or thin.',
+    'You are reading the transcript (and a brief visual narrative when present) of one such captured clip. Your job: identify the 1–5 strongest moments worth editing into finished, reusable social clips. Each moment becomes an "edit brief" the contractor reviews, accepts, and edits into a finished clip in Bernard\'s built-in video editor. Lengthier sources yield more briefs (rough rule: one brief per 5–7 minutes of source). Pick fewer if the source is short, repetitive, or thin.',
     '',
     `Clinic context: ${ws.clinic_context}`,
     '',

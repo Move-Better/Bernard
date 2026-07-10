@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
-import { X, Loader2, Sparkles, Upload as UploadIcon, Check, Trash2, AlertTriangle, Send } from 'lucide-react'
+import { X, Loader2, Sparkles, Upload as UploadIcon, Check, Trash2, AlertTriangle, Send, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -31,6 +32,7 @@ const PLATFORMS = [
 // is fired after any state change so the parent list refreshes.
 export default function ContentBriefDetail({ brief, onClose, onChange }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { user } = useUser()
   const [source, setSource] = useState(null)
   const [final, setFinal]   = useState(null)
@@ -242,6 +244,16 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
               </div>
             )}
 
+            {source?.kind === 'video' && brief.source_asset_id && (
+              <Button
+                size="sm"
+                className="w-full gap-1.5"
+                onClick={() => { onClose?.(); navigate(`/moments/clip/${brief.source_asset_id}`) }}
+              >
+                <Scissors className="h-3.5 w-3.5" /> Edit clip in Bernard
+              </Button>
+            )}
+
             {brief.source_quote && (
               <div className="rounded-md border bg-muted/40 p-3">
                 <div className="text-3xs uppercase tracking-wide text-muted-foreground mb-1">Source quote</div>
@@ -299,7 +311,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-medium">Finished edit</div>
-                  <div className="text-2xs text-muted-foreground">Upload the file Philip exported from CapCut. It lands in the library tied back to the source.</div>
+                  <div className="text-2xs text-muted-foreground">Finished in Bernard&apos;s editor, or edited elsewhere? Upload the final clip here. It lands in the library tied back to the source.</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <UploadIcon className="h-3.5 w-3.5 mr-1.5" />}

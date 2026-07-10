@@ -140,8 +140,8 @@ export function listVariants(parentId) {
 // family member was originally attached. Returns:
 //   { master, variants: [...] }
 // where `master` is the parent_id root and `variants` includes only rows with
-// a variant_label (filters out unrelated parent_id children like CapCut
-// returns).
+// a variant_label (filters out unrelated parent_id children like
+// externally-edited return-uploads).
 export async function getAssetFamily(id) {
   const self = await getMediaAsset(id)
   if (!self) return { master: null, variants: [] }
