@@ -1,14 +1,14 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle, SlidersHorizontal } from 'lucide-react'
+import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle, SlidersHorizontal, Search, ArrowDownUp } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { getPatientPrototypesUi } from '@/lib/prompts'
 import { PLATFORM_META } from '@/lib/contentMeta'
-import StoriesCardsView from '@/components/stories/StoriesCardsView'
+import StoriesTableView from '@/components/stories/StoriesTableView'
 import CampaignProgressStrip from '@/components/stories/CampaignProgressStrip'
 import StoriesAtAGlance from '@/components/stories/StoriesAtAGlance'
 import PageHelp from '@/components/PageHelp'
@@ -108,6 +108,10 @@ export default function Stories() {
   // attention instead of the unfiltered list.
   const statusFilter   = searchParams.get('status')   || ''
   const failedOnly     = statusFilter === 'failed'
+  // Free-text search over the story subject/topic, and chronological sort —
+  // the two primitives that make the list usable once it grows past a screenful.
+  const searchQuery    = searchParams.get('q')    || ''
+  const sortAsc        = searchParams.get('sort') === 'oldest'
 
   // How many of the six advanced (popover) filters are applied — drives the
   // count badge on the Filters button. (Status tabs, Mine, and the failed-triage
@@ -196,6 +200,15 @@ export default function Stories() {
     }, { replace: true })
   }
 
+  function toggleSort() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (sortAsc) next.delete('sort')          // back to default (newest first)
+      else next.set('sort', 'oldest')
+      return next
+    }, { replace: true })
+  }
+
   function clearAllAdvanced() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -204,7 +217,7 @@ export default function Stories() {
     }, { replace: true })
   }
 
-  if (isLoading) return <PageSkeleton variant="grid" />
+  if (isLoading) return <PageSkeleton variant="list" />
 
   return (
     <div className="py-6 px-6 flex flex-col gap-4">
@@ -293,6 +306,41 @@ export default function Stories() {
             }`}
           >
             Mine
+          </button>
+        </div>
+
+        {/* Search + sort — the two primitives that keep the list scannable as it
+            grows. Search filters by subject; sort flips chronological order
+            (titles are date-first, so newest→oldest reads naturally). */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0 max-w-sm">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setParam('q', e.target.value)}
+              placeholder="Search stories by subject…"
+              aria-label="Search stories by subject"
+              className="w-full rounded-lg border border-border bg-muted/40 pl-8 pr-8 py-1.5 text-xs font-medium text-foreground placeholder:text-muted-foreground/70 hover:border-primary/30 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setParam('q', '')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={toggleSort}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary/30 hover:bg-muted transition-colors"
+          >
+            <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            {sortAsc ? 'Oldest first' : 'Newest first'}
           </button>
         </div>
 
@@ -421,10 +469,11 @@ export default function Stories() {
         <CampaignProgressStrip campaign={activeCampaignObj} staff={staff} />
       ) : null}
 
-      {/* Cards only. The Pipeline / Calendar / Themes lenses moved to the
-          clinic-wide Overview board (Phase 5 of the pipeline UX redesign); the
-          producer's Stories list stays a clean place to do the words. */}
-      <StoriesCardsView stories={stories} isLoading={isLoading} />
+      {/* Dense table — replaces the card grid so the catalog stays fast to
+          scan/search/filter as it grows to thousands of stories across
+          clinicians. Pipeline / Calendar / Themes lenses live on the
+          clinic-wide Overview board. */}
+      <StoriesTableView stories={stories} isLoading={isLoading} />
 
       {/* At-a-glance KPI footer — derived from the same `stories` data the
           views above are rendering, so no extra fetch. Auto-hides when the

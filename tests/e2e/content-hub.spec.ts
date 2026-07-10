@@ -73,18 +73,17 @@ test('pipeline card links contain valid UUIDs, not /undefined or /null', async (
 // ── 3. Story detail loads correctly (data-conditional) ─────────────────────
 
 test('clicking a story card navigates to a valid story detail page', async ({ page }) => {
-  // Stories is cards-only now (the Pipeline/Calendar/Themes toggle moved to
-  // Overview in the pipeline UX redesign), so the list always renders
-  // /stories/<interview-id> story-card links.
+  // Stories is a dense table now (the card grid was replaced so the catalog
+  // scales; Pipeline/Calendar/Themes live on Overview), so each row renders a
+  // /stories/<interview-id> subject link.
   await page.goto('/stories')
   await expect(
     page.getByRole('heading', { name: /^stories$/i }),
   ).toBeVisible({ timeout: 30_000 })
 
-  // Find story card links — each StoryCard is a <Link to="/stories/:id">
-  // wrapping the whole card. Use count() so an empty workspace skips
-  // cleanly instead of hanging .first().getAttribute() until the test-level
-  // timeout fires.
+  // Find story links — each table row's subject cell is a <Link to="/stories/:id">.
+  // Use count() so an empty workspace skips cleanly instead of hanging
+  // .first().getAttribute() until the test-level timeout fires.
   const storyCardLinks = page.locator('a[href^="/stories/"]')
   if ((await storyCardLinks.count()) === 0) {
     console.log('[content-hub] No story cards found in prod — skipping navigation check.')
@@ -124,7 +123,7 @@ test('clicking a story card navigates to a valid story detail page', async ({ pa
 // ── 4. Story detail content pieces render without auth error (data-conditional)
 
 test('story detail renders content pieces without auth error', async ({ page }) => {
-  // Stories is cards-only now — see test 3.
+  // Stories is a dense table now — see test 3.
   await page.goto('/stories')
   await expect(
     page.getByRole('heading', { name: /^stories$/i }),
