@@ -6,6 +6,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { ROLE_ADMIN } from '@/lib/roles'
 import WorkdayFeed from '@/components/producer/WorkdayFeed'
 import NeedsYouStrip from '@/components/producer/NeedsYouStrip'
+import AskBernardBox from '@/components/producer/AskBernardBox'
 
 // /producer — "Bernard's workday" (Standing Producer Phase 0). The append-only
 // feed of what Bernard has done for this workspace. Read-only in Phase 0;
@@ -50,6 +51,10 @@ export default function Producer() {
           )}
         </div>
       </div>
+
+      {/* F20 — ask Bernard to draft a topic on demand. Only shown once Bernard is
+          hired and not paused (same gate as the rest of the workday page). */}
+      {enabled && !paused && <div className="mt-4"><AskBernardBox /></div>}
 
       {/* Needs you — the things Bernard couldn't clear on his own (self-hides when
           the producer is off or nothing is outstanding). */}

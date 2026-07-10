@@ -950,6 +950,22 @@ export function useUpdateProducerConfig() {
   })
 }
 
+// F20 — enqueue a human-typed "draft something about X" request
+// (/api/producer/request). Lands as one agent_inbox row the next agent-tick
+// claims; doesn't touch the feed directly (the draft/escalation shows up once
+// the tick runs), so the call site owns its own "queued" confirmation state.
+export function useRequestDraft() {
+  return useAppMutation({
+    errorMessage: "Couldn't queue that draft request",
+    mutationFn: ({ topic, platform }) =>
+      apiFetch('/api/producer/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, platform }),
+      }),
+  })
+}
+
 // Retry a failed publish from the "Needs you" strip (/api/producer/retry-publish).
 // Re-runs the exact same channel-resolution logic as the original publish
 // against the content_item's own stored platform/content/media. Refetches

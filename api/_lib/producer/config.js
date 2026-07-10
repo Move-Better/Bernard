@@ -37,6 +37,10 @@ export const LANE_DEFAULTS = {
   pre_draft_week:         false,  // P3  — pre-draft the week: OPT-IN, default OFF
   escalation_email:       true,   // P4  — surfacing default-on; NO email sender exists yet
   author_answers:         false,  // P2  — draft answer-library gaps into clinician queues: OPT-IN, default OFF
+  ad_hoc_drafts:          true,   // F20 — human-typed "draft something about X" on /producer.
+                                  // Defaults ON (unlike the autonomous lanes): every draft here is
+                                  // explicitly requested by a person via the box, so there's no
+                                  // surprise autonomous spend — the request IS the consent.
 }
 
 /**

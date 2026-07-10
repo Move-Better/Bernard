@@ -1,0 +1,302 @@
+<title>F20 — Ask Bernard to draft something</title>
+<style>
+  :root{
+    /* Bernard's real tokens (src/index.css) — Blue Spruce primary, amber action */
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --border:214 32% 91%; --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+    --info:199 95% 40%; --destructive:0 84% 60%; --ring:160 84% 39%;
+    --success:160 84% 30%;
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:hsl(var(--background)); color:hsl(var(--foreground));
+    -webkit-font-smoothing:antialiased; padding:32px 20px 64px; line-height:1.5;
+  }
+  .page{max-width:1180px;margin:0 auto}
+  .doc-head{max-width:760px;margin:0 auto 28px}
+  .doc-eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:hsl(var(--primary))}
+  .doc-title{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:6px 0 8px}
+  .doc-sub{font-size:15px;color:hsl(var(--muted-foreground));margin:0}
+  .doc-sub b{color:hsl(var(--foreground));font-weight:600}
+
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;align-items:start}
+  @media (max-width:920px){.grid{grid-template-columns:1fr}}
+
+  .panel{display:flex;flex-direction:column;gap:0}
+  .panel-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:hsl(var(--muted-foreground));text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+  .panel-num{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:hsl(var(--primary));color:#fff;font-size:11px;font-weight:800}
+
+  /* App frame — mimics Bernard's Layout main area */
+  .app{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:16px;padding:20px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.10)}
+
+  .ph-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .ph-title{font-size:20px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;margin:0}
+  .ph-sub{font-size:13px;color:hsl(var(--muted-foreground));margin:4px 0 0;max-width:38ch}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:hsl(var(--info)/.10);color:hsl(var(--info))}
+  .dot{width:6px;height:6px;border-radius:999px;background:hsl(var(--info))}
+  .btn-ghost{display:inline-flex;align-items:center;gap:6px;border:1px solid hsl(var(--border));border-radius:10px;padding:6px 12px;font-size:13px;font-weight:600;background:hsl(var(--card));color:hsl(var(--foreground))}
+
+  /* The NEW box */
+  .ask{margin-top:16px;border:1px solid hsl(var(--primary)/.28);background:linear-gradient(hsl(var(--accent)/.5),hsl(var(--card)));border-radius:14px;padding:16px}
+  .ask-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .ask-title{font-size:14px;font-weight:700}
+  .ask-hint{font-size:12px;color:hsl(var(--muted-foreground));margin:0 0 12px}
+  .ask-field{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:10px;padding:10px 12px;font-size:14px;color:hsl(var(--foreground));min-height:64px}
+  .ask-field.placeholder{color:hsl(var(--muted-foreground))}
+  .ask-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .select{display:inline-flex;align-items:center;gap:8px;border:1px solid hsl(var(--border));border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;background:hsl(var(--card))}
+  .select .chev{color:hsl(var(--muted-foreground))}
+  .btn-primary{margin-left:auto;display:inline-flex;align-items:center;gap:7px;background:hsl(var(--primary));color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:14px;font-weight:700}
+  .cap-note{font-size:11px;color:hsl(var(--muted-foreground));margin:9px 2px 0}
+
+  /* queued confirmation state */
+  .ask.queued{border-color:hsl(var(--primary)/.4)}
+  .queued-box{display:flex;align-items:center;gap:10px;background:hsl(var(--accent)/.6);border:1px solid hsl(var(--primary)/.25);border-radius:10px;padding:12px 14px}
+  .queued-box .txt{font-size:13px}
+  .queued-box .txt b{font-weight:700}
+  .queued-box .sub{color:hsl(var(--muted-foreground));font-size:12px}
+  .spin{width:16px;height:16px;border-radius:999px;border:2px solid hsl(var(--primary)/.25);border-top-color:hsl(var(--primary))}
+
+  /* Needs-you strip */
+  .needs{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+  .need-row{display:flex;align-items:flex-start;gap:12px;border:1px solid hsl(var(--action)/.35);background:hsl(var(--action)/.05);border-radius:12px;padding:12px}
+  .need-ic{margin-top:1px;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:hsl(var(--action)/.15);color:hsl(var(--action));flex:0 0 auto}
+  .need-body{min-width:0;flex:1}
+  .need-title{font-size:13.5px;font-weight:600}
+  .need-desc{font-size:12.5px;color:hsl(var(--muted-foreground));margin-top:2px}
+  .need-cta{flex:0 0 auto;align-self:center;font-size:12.5px;font-weight:700;color:hsl(var(--action));border:1px solid hsl(var(--action)/.4);border-radius:9px;padding:6px 11px;white-space:nowrap}
+
+  /* Workday feed */
+  .feed{margin-top:16px;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:16px}
+  .feed-h{font-size:12px;font-weight:700;color:hsl(var(--muted-foreground));text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
+  .frow{display:flex;gap:12px;padding:2px 0}
+  .frow + .frow{margin-top:14px}
+  .fic{flex:0 0 auto;display:grid;place-items:center;width:28px;height:28px;border-radius:999px}
+  .fic.primary{background:hsl(var(--primary)/.10);color:hsl(var(--primary))}
+  .fic.success{background:hsl(var(--success)/.12);color:hsl(var(--success))}
+  .fic.muted{background:hsl(var(--muted));color:hsl(var(--muted-foreground))}
+  .ftxt{min-width:0;flex:1}
+  .ftxt p{margin:0;font-size:13.5px;line-height:1.35}
+  .fmeta{display:flex;align-items:center;gap:8px;margin-top:3px}
+  .fmeta .ago{font-size:11px;color:hsl(var(--muted-foreground))}
+  .fmeta .chan{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:hsl(var(--muted));color:hsl(var(--muted-foreground))}
+  .frow.fresh .ftxt p{font-weight:600}
+  .live{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:hsl(var(--primary))}
+
+  /* legend */
+  .legend{margin-top:12px;border:1px dashed hsl(var(--primary)/.5);border-radius:10px;padding:11px 13px;background:hsl(var(--primary)/.03)}
+  .legend b{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:hsl(var(--primary));font-weight:800}
+  .legend ul{margin:6px 0 0;padding-left:17px}
+  .legend li{font-size:12.5px;color:hsl(var(--muted-foreground));margin:3px 0}
+  .legend li b{text-transform:none;letter-spacing:0;color:hsl(var(--foreground));font-weight:600}
+
+  .flow{max-width:760px;margin:30px auto 0;border-top:1px solid hsl(var(--border));padding-top:20px}
+  .flow h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:hsl(var(--muted-foreground));margin:0 0 12px}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media (max-width:760px){.steps{grid-template-columns:1fr 1fr}}
+  .step{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:12px;padding:12px}
+  .step .n{font-size:11px;font-weight:800;color:hsl(var(--primary))}
+  .step .t{font-size:13px;font-weight:700;margin:4px 0 3px}
+  .step .d{font-size:12px;color:hsl(var(--muted-foreground))}
+  .guard{max-width:760px;margin:20px auto 0}
+  .guard .g{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:hsl(var(--muted-foreground));margin:7px 0}
+  .guard .g svg{flex:0 0 auto;margin-top:2px;color:hsl(var(--success))}
+  .guard .g b{color:hsl(var(--foreground));font-weight:600}
+</style>
+
+<div class="wrap">
+<div class="page">
+
+  <div class="doc-head">
+    <div class="doc-eyebrow">F20 · Standing Producer</div>
+    <h1 class="doc-title">Ask Bernard to draft something about&nbsp;X</h1>
+    <p class="doc-sub">A free-text box on <b>/producer</b>. You hand Bernard an open topic; he grounds it in a real interview, drafts one piece for the channel you pick, and lands it as a <b>draft on /week</b> for your sign-off. Same durable queue that already powers change-request revisions — <b>no new table.</b></p>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ PANEL 1 : the box ============ -->
+    <div class="panel">
+      <div class="panel-label"><span class="panel-num">1</span> The box on /producer</div>
+      <div class="app">
+        <div class="ph-head">
+          <div>
+            <h2 class="ph-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg>
+              Bernard&rsquo;s workday
+            </h2>
+            <p class="ph-sub">Everything Bernard does for you, as it happens.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="pill"><span class="dot"></span> Always on</span>
+            <span class="btn-ghost">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Settings
+            </span>
+          </div>
+        </div>
+
+        <div class="ask">
+          <div class="ask-top">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.7L18.6 9l-4.7 1.9L12 15l-1.9-4.1L5.4 9l4.7-1.3z"/><path d="M18 15l.8 2 2 .8-2 .8L18 21l-.8-2-2-.8 2-.8z"/></svg>
+            <span class="ask-title">Ask Bernard to draft something</span>
+          </div>
+          <p class="ask-hint">Hand him a topic. He&rsquo;ll pull from a real interview and draft it for the channel you choose.</p>
+          <div class="ask-field placeholder">e.g. winter running injuries &mdash; and why rest isn&rsquo;t the fix</div>
+          <div class="ask-row">
+            <span class="select">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#db2777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+              Instagram
+              <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+            <button class="btn-primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+              Draft it
+            </button>
+          </div>
+          <p class="cap-note">Channels: Instagram &middot; Facebook &middot; LinkedIn &middot; Google Business. Counts against Bernard&rsquo;s daily draft cap.</p>
+        </div>
+      </div>
+      <div class="legend">
+        <b>What changed here</b>
+        <ul>
+          <li>New card at the top of <b>/producer</b> (page was read-only before).</li>
+          <li><b>You pick the channel</b> (dropdown, defaults to Instagram) &mdash; per your call.</li>
+          <li>Only appears when Bernard is <b>hired &amp; not paused</b>; the lane is <b>on by default</b> so it works immediately.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 2 : just submitted ============ -->
+    <div class="panel">
+      <div class="panel-label"><span class="panel-num">2</span> You hit &ldquo;Draft it&rdquo;</div>
+      <div class="app">
+        <div class="ask queued">
+          <div class="ask-top">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.7L18.6 9l-4.7 1.9L12 15l-1.9-4.1L5.4 9l4.7-1.3z"/></svg>
+            <span class="ask-title">Ask Bernard to draft something</span>
+          </div>
+          <div class="queued-box">
+            <div class="spin"></div>
+            <div class="txt">
+              <div><b>Queued</b> &mdash; Bernard will draft &ldquo;winter running injuries&rdquo; for Instagram.</div>
+              <div class="sub">It&rsquo;ll appear on /week within a few minutes. Nothing publishes without you.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed">
+          <p class="feed-h">Today</p>
+          <div class="frow fresh">
+            <div class="fic primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            </div>
+            <div class="ftxt">
+              <p>Drafting &ldquo;winter running injuries&rdquo; &mdash; you asked for this one.</p>
+              <div class="fmeta"><span class="live"><span class="dot" style="background:hsl(var(--primary))"></span> in progress</span><span class="chan">instagram</span></div>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fic primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+            </div>
+            <div class="ftxt"><p>Planned next week &mdash; 6 posts across 3 channels.</p><div class="fmeta"><span class="ago">2h ago</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="legend">
+        <b>What changed here</b>
+        <ul>
+          <li>Box confirms instantly (optimistic) &mdash; <b>one row enqueued</b> to <code style="font-size:11px">agent_inbox</code> (kind <code style="font-size:11px">draft_on_topic</code>).</li>
+          <li>A live feed entry shows Bernard picked it up on the next 5-min tick.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 3 : draft landed ============ -->
+    <div class="panel">
+      <div class="panel-label"><span class="panel-num">3</span> The draft lands (next tick)</div>
+      <div class="app">
+        <div class="feed">
+          <p class="feed-h">Today</p>
+          <div class="frow fresh">
+            <div class="fic primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            </div>
+            <div class="ftxt">
+              <p>Drafted &ldquo;winter running injuries&rdquo; for Instagram &mdash; voice 84/100. It&rsquo;s waiting on /week.</p>
+              <div class="fmeta"><span class="ago">just now</span><span class="chan">instagram</span></div>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fic muted">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.7L18.6 9l-4.7 1.9L12 15l-1.9-4.1L5.4 9l4.7-1.3z"/></svg>
+            </div>
+            <div class="ftxt"><p>Grounded it in Dr. Reed&rsquo;s Jan 8 interview on cold-weather training load.</p><div class="fmeta"><span class="ago">just now</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="legend">
+        <b>What changed here</b>
+        <ul>
+          <li>Reuses the exact <b>draftAtom</b> path &mdash; grounded in a real interview, voice-judged, <b>status=draft</b>.</li>
+          <li>Records a <code style="font-size:11px">draft_created</code> action, tagged &ldquo;you asked for this,&rdquo; so the feed reads honestly.</li>
+          <li>Never auto-approves or publishes &mdash; it&rsquo;s a normal draft on /week.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 4 : no coverage ============ -->
+    <div class="panel">
+      <div class="panel-label"><span class="panel-num">4</span> Nothing from the team yet</div>
+      <div class="app">
+        <div class="needs">
+          <div class="need-row">
+            <div class="need-ic">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+            </div>
+            <div class="need-body">
+              <div class="need-title">Nothing from the team on &ldquo;kettlebell deadlifts&rdquo; yet</div>
+              <div class="need-desc">I couldn&rsquo;t find an interview to ground this in, so I didn&rsquo;t guess. A 2-minute capture and I&rsquo;ll draft it properly.</div>
+            </div>
+            <span class="need-cta">Record a topic</span>
+          </div>
+        </div>
+        <p style="font-size:12px;color:hsl(var(--muted-foreground));margin:14px 2px 0">Surfaces in the existing <b>&ldquo;Needs you&rdquo;</b> strip &mdash; the same place escalations already live.</p>
+      </div>
+      <div class="legend">
+        <b>What changed here</b>
+        <ul>
+          <li>No matching interview &rarr; <b>escalate honestly</b>, never fabricate &mdash; per your call &amp; the grounding moat.</li>
+          <li>One click &rarr; <b>/new</b> to record the missing topic. The request finalizes as handled (not failed).</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- flow strip -->
+  <div class="flow">
+    <h2>Under the hood</h2>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="t">Enqueue</div><div class="d">POST /api/producer/request drops one row in agent_inbox, scoped to your workspace.</div></div>
+      <div class="step"><div class="n">02</div><div class="t">Claim</div><div class="d">The 5-min agent-tick claims it, inside the same daily draft budget as every other lane.</div></div>
+      <div class="step"><div class="n">03</div><div class="t">Ground &amp; draft</div><div class="d">Finds the best-fit interview, runs draftAtom, writes a status=draft piece.</div></div>
+      <div class="step"><div class="n">04</div><div class="t">You decide</div><div class="d">It waits on /week. You edit, approve, or bin it. Bernard never publishes on his own.</div></div>
+    </div>
+  </div>
+
+  <div class="guard">
+    <div class="g"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>No new database table.</b> The agent_inbox queue already accepts any <code>kind</code> &mdash; no migration needed.</div></div>
+    <div class="g"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Draft-on-topic only.</b> This is not a general chat/intent router &mdash; it handles exactly one thing and routes to the existing draft path.</div></div>
+    <div class="g"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Tenant-scoped &amp; capped.</b> Workspace-filtered like an authz check; a flood of requests can&rsquo;t blow the daily cap.</div></div>
+  </div>
+
+</div>
+</div>

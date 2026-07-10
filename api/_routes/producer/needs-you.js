@@ -2,14 +2,16 @@
 //
 // The read behind Bernard's "needs you" surface (Standing Producer Phase 4).
 // Aggregates the things the producer CAN'T resolve on its own and hands back to
-// the human — read-only, all workspace-scoped. Three categories (from the sprint
-// plan §Phase 4 / the answer-graph mockup screen 3):
-//   1. escalated_caption — a held draft the voice-repair pass couldn't lift
+// the human — read-only, all workspace-scoped. Four categories (from the sprint
+// plan §Phase 4 / the answer-graph mockup screen 3, + F20's grounded-only miss):
+//   1. escalated_caption   — a held draft the voice-repair pass couldn't lift
 //      (voice_audit.escalated = true); the human needs to rewrite it.
-//   2. publish_failed    — a recent publish failure not superseded by a later
+//   2. publish_failed      — a recent publish failure not superseded by a later
 //      success for the same piece; the human reconnects/retries.
-//   3. plan_gap          — the upcoming week's plan is under the cadence target;
+//   3. plan_gap            — the upcoming week's plan is under the cadence target;
 //      "your week is N short — a fresh capture fills the rest."
+//   4. draft_request_unmet — a human typed a topic into the F20 box on /producer
+//      but no interview grounds it (draftOnTopic.js); "record a quick interview?"
 //
 // Returns { enabled: producerActive(config), items: [] }. When the producer is
 // disabled OR paused, returns { enabled:false, items:[] } so the UI renders an
@@ -124,6 +126,26 @@ async function unresolvedPublishFailures(wsId) {
     }))
 }
 
+// F20 — a human asked Bernard to draft a topic that no interview covers
+// (draftOnTopic.js's grounded-only escalation). Show recent unmet requests within
+// the window; no supersession tracking yet (the human records an interview and
+// naturally stops re-requesting it — see TODO below for real resolution logic).
+async function draftRequestsUnmet(wsId) {
+  const since = new Date(Date.now() - FAILURE_WINDOW_MS).toISOString()
+  const r = await sb(
+    `agent_actions?workspace_id=eq.${wsId}&kind=eq.draft_request_unmet&created_at=gte.${since}` +
+    `&select=id,title,detail,created_at&order=created_at.desc&limit=${MAX_PER_CATEGORY}`
+  )
+  if (!r.ok) { console.error('[producer/needs-you] draft-request fetch failed:', r.status); return [] }
+  const rows = (await r.json().catch(() => [])) || []
+  return rows.map((a) => ({
+    type:     'draft_request_unmet',
+    topic:    a.detail?.requested_topic || null,
+    platform: a.detail?.platform || null,
+    at:       a.created_at || null,
+  }))
+}
+
 // Plan gap: the upcoming week's plan is UNDER the workspace's cadence target —
 // the strategist filled fewer slots than the cadence asks for, so the human's
 // input (a fresh capture) is needed to fill the rest.
@@ -184,12 +206,13 @@ export default async function handler(req, res) {
   // and add any per-category metadata (e.g. thread age, retry count) then.
   let items = []
   try {
-    const [escalated, failures, gaps] = await Promise.all([
+    const [escalated, failures, gaps, unmet] = await Promise.all([
       escalatedCaptions(ws.id),
       unresolvedPublishFailures(ws.id),
       planGaps(ws.id, ws),
+      draftRequestsUnmet(ws.id),
     ])
-    items = [...escalated, ...failures, ...gaps]
+    items = [...escalated, ...failures, ...gaps, ...unmet]
   } catch (e) {
     console.error('[producer/needs-you] aggregate failed:', e?.message)
     return res.status(500).json({ error: 'needs_you_fetch_failed' })
@@ -199,9 +222,10 @@ export default async function handler(req, res) {
     enabled: true,
     items,
     counts: {
-      escalated_caption: items.filter((i) => i.type === 'escalated_caption').length,
-      publish_failed:    items.filter((i) => i.type === 'publish_failed').length,
-      plan_gap:          items.filter((i) => i.type === 'plan_gap').length,
+      escalated_caption:   items.filter((i) => i.type === 'escalated_caption').length,
+      publish_failed:      items.filter((i) => i.type === 'publish_failed').length,
+      plan_gap:            items.filter((i) => i.type === 'plan_gap').length,
+      draft_request_unmet: items.filter((i) => i.type === 'draft_request_unmet').length,
     },
     pausedAt: ws.producer_config?.paused_at ?? null,
   })

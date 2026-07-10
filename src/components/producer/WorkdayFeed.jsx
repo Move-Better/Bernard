@@ -1,4 +1,4 @@
-import { PenLine, CalendarRange, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react'
+import { PenLine, CalendarRange, CheckCircle2, AlertTriangle, Sparkles, Mic } from 'lucide-react'
 import { formatTimeAgo } from '@/lib/utils'
 
 // Bernard's workday feed (Standing Producer Phase 0). Renders the agent_actions
@@ -14,6 +14,7 @@ const KIND_META = {
   week_planned:   { icon: CalendarRange, cls: 'bg-primary/10 text-primary' },
   published:      { icon: CheckCircle2,  cls: 'bg-success/10 text-success' },
   publish_failed: { icon: AlertTriangle, cls: 'bg-destructive/10 text-destructive' },
+  draft_request_unmet: { icon: Mic,      cls: 'bg-action/15 text-action' },
 }
 const FALLBACK_META = { icon: Sparkles, cls: 'bg-muted text-muted-foreground' }
 
