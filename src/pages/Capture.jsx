@@ -503,9 +503,9 @@ export default function Capture() {
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary shrink-0" />
             <div>
-              <p className="text-sm font-medium">Get iOS Shortcut</p>
+              <p className="text-sm font-medium">Record from your phone</p>
               <p className="text-xs text-muted-foreground">
-                Native 4K · one tap · no browser
+                High-quality video in one tap, straight from your home screen
               </p>
             </div>
           </div>

@@ -617,19 +617,29 @@ export default function MomentMiner() {
               <span className="opacity-70">{inProgressVideos.length}</span>
             )}
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'coverage'}
-            onClick={() => setView('coverage')}
-            className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
-              view === 'coverage'
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <BarChart3 className="h-3.5 w-3.5" />Coverage
-          </button>
+          {/* Divider — the three tabs above filter your footage by pipeline
+              stage; Coverage is a different lens (a report), so it's set apart. */}
+          <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === 'coverage'}
+                onClick={() => setView('coverage')}
+                className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
+                  view === 'coverage'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" />Coverage &amp; gaps
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[240px] text-center leading-snug">
+              See which staff and topics your footage covers — and where the gaps are, so you know what to capture next.
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Search — right side on desktop, full-width below tabs on mobile */}

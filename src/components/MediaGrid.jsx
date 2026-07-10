@@ -32,16 +32,22 @@ function initials(value) {
 // so screen readers still get something useful.
 function Thumb({ asset }) {
   const alt = asset.alt_text || asset.filename || 'Media asset'
+  // A thumbnail_url can be set but dead (generation failed / blob 404s). Track a
+  // load error so a broken <img> falls back to the placeholder instead of the
+  // browser's broken-image glyph.
+  const [imgError, setImgError] = useState(false)
   if (asset.kind === 'photo') {
     const src = asset.thumbnail_url || asset.blob_url
-    if (src) return <img src={src} alt={alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+    if (src && !imgError) {
+      return <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setImgError(true)} className="w-full h-full object-cover" />
+    }
     return <div className="h-full bg-muted flex items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>
   }
   // video
   return (
     <div className="relative h-full w-full">
-      {asset.thumbnail_url ? (
-        <img src={asset.thumbnail_url} alt={alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+      {asset.thumbnail_url && !imgError ? (
+        <img src={asset.thumbnail_url} alt={alt} loading="lazy" decoding="async" onError={() => setImgError(true)} className="w-full h-full object-cover" />
       ) : (
         <div className="h-full bg-foreground/80 flex flex-col items-center justify-center gap-1 px-1">
           <Video className="h-6 w-6 text-card/50 shrink-0" />

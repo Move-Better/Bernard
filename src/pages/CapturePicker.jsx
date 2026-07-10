@@ -258,8 +258,8 @@ export default function CapturePicker() {
       >
         <Zap className="h-4 w-4 text-primary shrink-0" />
         <div>
-          <p className="text-sm font-medium">Get iOS Shortcut</p>
-          <p className="text-xs text-muted-foreground">Native 4K · one tap · no browser</p>
+          <p className="text-sm font-medium">Record from your phone</p>
+          <p className="text-xs text-muted-foreground">High-quality video in one tap, straight from your home screen</p>
         </div>
       </button>
 
