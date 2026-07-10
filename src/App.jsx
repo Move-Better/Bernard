@@ -13,9 +13,9 @@ import {
   useSession,
 } from '@clerk/react'
 import Layout from '@/components/Layout'
-import Home from '@/pages/Home'
 import { getPendingAnnouncement } from '@/lib/announcements'
 import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
+const Home = lazy(() => import('@/pages/Home'))
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
@@ -869,9 +869,14 @@ function VersionUpdateHost() {
   )
 }
 
-// Init PostHog once at module load so the first pageview is captured even if
-// the React tree mounts slowly. Safe to call multiple times (posthog-js guards).
-initPosthog()
+// Init PostHog off the critical path. posthog.js dynamic-imports the SDK, so
+// deferring to idle keeps ~66 KB gzip of analytics JS out of the LCP path. Early
+// pageviews/identifies fired before it loads are buffered + flushed on init.
+if (typeof requestIdleCallback === 'function') {
+  requestIdleCallback(() => initPosthog(), { timeout: 3000 })
+} else {
+  setTimeout(initPosthog, 1)
+}
 
 export default function App() {
   useEffect(() => {
