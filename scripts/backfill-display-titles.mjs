@@ -2,7 +2,7 @@
 // Backfill display_title on existing media_assets rows.
 //
 // Migration 127 added display_title (the human-readable name that replaces
-// IMG_*.mov across Slate / Library / picker). New uploads get a title from
+// IMG_*.mov across Moment Miner / Library / picker). New uploads get a title from
 // tagAsset at tag time; this script covers everything tagged before that.
 //
 // Text-only generation: titles derive from the metadata the tagger already

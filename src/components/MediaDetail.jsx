@@ -916,7 +916,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
             {/* One door to the cutting desk. The drawer used to stack three
                 create-lanes here (Repurpose / Find clips / Whole video) — three
                 buttons meaning "make content from this video" via different
-                machinery. All of that lives on Slate now: the clip editor
+                machinery. All of that lives on Moment Miner now: the clip editor
                 shows AI-proposed moments, can find more, repurpose, or keep
                 the whole video. Shelf stores & finds; desks create. */}
             {asset.kind === 'video' && (

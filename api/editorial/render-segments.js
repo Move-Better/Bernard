@@ -1,14 +1,14 @@
 // POST /api/editorial/render-segments
 //
-// Slate Slate — AI "Find clips" output (Option 2).
+// Moment Miner — AI "Find clips" output (Option 2).
 //
 // Turns kept proposed segments into rendered media_assets b-roll clips — one
 // media_assets row per segment, parent_asset_id set to the source video, exactly
-// the shape the manual "Library b-roll" path produces (saveSlateBroll). This is
-// what the reworked Slate surfaces: source-video cards with an "X clips cut"
+// the shape the manual "Library b-roll" path produces (saveBroll). This is
+// what Moment Miner surfaces: source-video cards with an "X clips cut"
 // badge (api/editorial/clip-counts counts media_assets with parent_asset_id) and
 // the Library b-roll pool. The old story_packages output was invisible on the
-// new Slate; this path no longer creates packages.
+// new Moment Miner; this path no longer creates packages.
 //
 // Per segment: render the ≤60s window into an instagram_reel MP4 (voice-faithful
 // caption burned in, Whisper subtitles), upload to Blob, insert a media_assets
@@ -37,12 +37,12 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
 import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
 import { generateCaption } from '../_lib/captionGen.js'
-import { saveSlateBroll } from '../_lib/saveSlateBroll.js'
+import { saveBroll } from '../_lib/saveBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-// One clip → one reel-format b-roll asset. Mirrors SlateClipEditor's
+// One clip → one reel-format b-roll asset. Mirrors the reel editor's
 // DEFAULT_CHANNEL so the AI path and the manual workshop produce the same shape.
 const CLIP_CHANNEL = 'instagram_reel'
 
@@ -124,11 +124,11 @@ async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
     })
 
     // Insert the b-roll media_assets row (parent_asset_id = source) + index it.
-    const saved = await saveSlateBroll({
+    const saved = await saveBroll({
       ws,
       renders: [{ blobUrl: blob.url, width, height, sizeBytes: buffer.length }],
       staffId: seg.staff_id || null,
-      notes: `Slate AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
+      notes: `AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
       parentAssetId: asset.id,
     })
     const newAssetId = saved?.[0]?.id || null

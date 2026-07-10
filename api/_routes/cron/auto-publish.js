@@ -271,7 +271,7 @@ async function processWorkspace(ws, summary) {
     const result = evaluate({ pkg, sourceAsset: pkg.source_asset, workspace: ws })
 
     if (!result.eligible || result.channels.length === 0) {
-      // Held / ineligible: refresh the evaluation snapshot for the Slate badge
+      // Held / ineligible: refresh the evaluation snapshot for the Moment Miner badge
       // but PRESERVE any durable published_channels / retry_count from a prior
       // run (a package can flip eligible→held — e.g. consent revoked — between
       // runs; wiping its posted-set would let a later re-dispatch double-post

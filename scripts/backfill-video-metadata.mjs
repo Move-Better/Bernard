@@ -6,7 +6,7 @@
 //
 // WHY: ~85% of library videos landed with null width/height (Mux `ready` webhooks
 // frequently omit `data.tracks`, and the local-import path never probed). The
-// Library/Slate grid can't shape a tile without dimensions, so portrait clips get
+// Library/Moment Miner grid can't shape a tile without dimensions, so portrait clips get
 // object-cover-cropped into landscape tiles and read as "rotated / wrong". This
 // fills the missing metadata so the grid can render each tile at its true aspect.
 //

@@ -28,7 +28,7 @@ import {
  * @property {boolean}     isStaff     tier === 'clinician'
  * @property {boolean}     isViewer        tier === 'viewer'
  * @property {boolean}     isProducerOnly  True iff this user should get the
- *                                         restricted producer-only UX (Slate
+ *                                         restricted producer-only UX (Moment Miner
  *                                         is home, no settings/billing/integrations
  *                                         nav). False for everyone else.
  * @property {boolean}     canManageSettings  False only for producers + viewers.

@@ -239,7 +239,7 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
 // not a photo carousel — Instagram/Buffer can't mix photo + video in one post.
 // Shows the video in portrait with a Reel marker; the play-over-thumbnail
 // treatment matches MediaCarousel (real inline playback isn't needed for a
-// preview, and any on-clip text was already baked upstream in Slate).
+// preview, and any on-clip text was already baked upstream in Moment Miner).
 function ReelPreview({ video }) {
   const src = mediaSrc(video)
   return (

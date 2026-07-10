@@ -18,12 +18,12 @@ import { queryKeys } from '@/lib/queries'
 //
 // Dismissable from any step (closes + marks onboarded). 4 steps:
 //   1. Welcome — who you are in this workspace
-//   2. Tabs — what the 4 Slate tabs do
+//   2. Tabs — what the 4 Moment Miner tabs do
 //   3. Approve flow — what happens when you click Approve
 //   4. Done — quick reminder where help lives
 
 const STEPS = [
-  { key: 'welcome',  title: 'Welcome to Slate' },
+  { key: 'welcome',  title: 'Welcome to Moment Miner' },
   { key: 'tabs',     title: 'Your four tabs' },
   { key: 'approve',  title: 'Approving a package' },
   { key: 'done',     title: "You're set" },
@@ -49,7 +49,7 @@ export default function ProducerOnboarding({ onComplete }) {
     } catch (err) {
       if (!silent) toast.error(err?.message || 'Could not save. You can dismiss and try again.')
       // Still close the modal so the user isn't trapped — they can re-open
-      // from the Slate header's "Take the tour" link.
+      // from the Moment Miner header's "Take the tour" link.
       onComplete?.()
     } finally {
       setSaving(false)
@@ -131,7 +131,7 @@ export default function ProducerOnboarding({ onComplete }) {
               {saving ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Saving…</>
               ) : isLast ? (
-                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Start using Slate</>
+                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Start using Moment Miner</>
               ) : (
                 <>Next <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
               )}
@@ -150,7 +150,7 @@ function WelcomeStep({ workspaceName }) {
     <div className="flex flex-col gap-3">
       <p>
         {`You're set up as the `}<strong>Producer</strong>{` for `}
-        <strong>{workspaceName}</strong>{`. Slate is where you'll spend most of your time.`}
+        <strong>{workspaceName}</strong>{`. Moment Miner is where you'll spend most of your time.`}
       </p>
       <p>
         Every morning the AI brain proposes a few story packages based on the
@@ -169,7 +169,7 @@ function WelcomeStep({ workspaceName }) {
 function TabsStep() {
   return (
     <div className="flex flex-col gap-3">
-      <p>{`Slate has four tabs. Each one shows packages in a different state:`}</p>
+      <p>{`Moment Miner has four tabs. Each one shows packages in a different state:`}</p>
       <ul className="space-y-2.5">
         <TabRow
           Icon={Clapperboard}
@@ -252,7 +252,7 @@ function DoneStep() {
         </li>
         <li>
           {`• You can re-open this tour any time from the `}
-          <strong>{"Take the tour"}</strong>{` link in the Slate header.`}
+          <strong>{"Take the tour"}</strong>{` link in the Moment Miner header.`}
         </li>
         <li>
           {`• Questions? Ping the workspace owner directly — they can

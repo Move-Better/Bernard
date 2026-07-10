@@ -1,6 +1,6 @@
 // PATCH /api/media/:id/consent
 //
-// Phase 3 PR 5: per-asset consent management for the Story Director Slate.
+// Phase 3 PR 5: per-asset consent management for the Story Director Moment Miner.
 //
 // Open to all workspace members (clinicians manage consent — they're the ones
 // with the patient relationship). Updates four fields atomically:

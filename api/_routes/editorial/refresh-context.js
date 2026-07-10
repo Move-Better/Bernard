@@ -1,7 +1,7 @@
 // POST /api/editorial/refresh-context
 //
 // Re-runs fetchFusedRagContext for a story package and PATCHes rag_context.
-// Powers the "Re-read prior thinking" button in the Slate package card.
+// Powers the "Re-read prior thinking" button in the Moment Miner package card.
 //
 // Body: { packageId: string }
 //

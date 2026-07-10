@@ -107,7 +107,7 @@ async function handler(req, res) {
       // Three concerns, three queries:
       //   • published   — content_items from last 7 days, for the "what
       //                   shipped" section
-      //   • weekPackages — story_packages from last 7 days, for slate STATS
+      //   • weekPackages — story_packages from last 7 days, for Moment Miner STATS
       //                    only (generated/approved/skipped/failed counts)
       //   • triagePool  — story_packages from last 30 days that may be in
       //                   triage state (failed any age, complete+low-conf,
@@ -159,8 +159,8 @@ async function handler(req, res) {
       }
       const queuedWithNames = queued.map((q) => ({ ...q, staff_name: cMap[q.staff_id] }))
 
-      // Roll up slate stats from last-week window only.
-      const slateStats = {
+      // Roll up Moment Miner stats from last-week window only.
+      const momentStats = {
         generated: weekPackages.length,
         approved:  weekPackages.filter((p) => p.status === 'approved').length,
         skipped:   weekPackages.filter((p) => p.status === 'skipped').length,
@@ -168,7 +168,7 @@ async function handler(req, res) {
         complete_awaiting: weekPackages.filter((p) => p.status === 'complete').length,
       }
 
-      // Triage from the wider 30-day pool. Mirrors src/pages/Slate.jsx →
+      // Triage from the wider 30-day pool. Mirrors src/pages/MomentMiner.jsx →
       // triageReasonFor(): failed any age; complete+low-confidence;
       // complete+stale (>36h since created_at).
       const triageFailed = triagePool.filter((p) => p.status === 'failed').length
@@ -228,7 +228,7 @@ async function handler(req, res) {
       const { subject, html, text } = buildDigest({
         workspace: ws,
         published,
-        slateStats,
+        momentStats,
         triage,
         queued: queuedWithNames,
         weekStart,

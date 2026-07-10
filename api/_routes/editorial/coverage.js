@@ -2,7 +2,7 @@
 //
 // Phase 3 PR 6: Capture Coverage Dashboard data.
 //
-// Two parallel rollups for the Slate's Coverage tab:
+// Two parallel rollups for the Moment Miner's Coverage tab:
 //
 //   1. Per-staff capture activity — total assets, assets in last 14 days,
 //      last capture timestamp. Drives "Who needs to capture more?"

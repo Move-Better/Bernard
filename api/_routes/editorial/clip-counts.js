@@ -1,8 +1,8 @@
 // GET /api/editorial/clip-counts
 //
 // Returns a map of { [parentAssetId]: count } for media_assets rows where
-// parent_asset_id is set (i.e. clips cut from a source video via Slate).
-// Used by the Slate workshop to show "X clips cut" badges on source video cards.
+// parent_asset_id is set (i.e. clips cut from a source video via Moment Miner).
+// Used by the Moment Miner workshop to show "X clips cut" badges on source video cards.
 //
 // Auth: any workspace role.
 

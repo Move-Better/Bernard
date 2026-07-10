@@ -2,7 +2,7 @@
 //
 // Returns { counts: { [sourceAssetId]: number } } — the count of unreviewed
 // (status='proposed') video_segments per source asset for the current workspace.
-// Used by the Slate "Clips to review" tab to badge cards and populate the queue.
+// Used by the Moment Miner "Clips to review" tab to badge cards and populate the queue.
 //
 // Auth: any workspace role.
 
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
   // Fetch all proposed segments for this workspace in one query. hook +
-  // window ride along so the Slate's review rows can show the first proposed
+  // window ride along so the Moment Miner's review rows can show the first proposed
   // moment inline (the badge promise pays off before the click).
   const r = await sb(
     `video_segments?workspace_id=eq.${ws.id}&status=eq.proposed&select=source_asset_id,hook,start_sec,end_sec,order_index&order=order_index.asc`,

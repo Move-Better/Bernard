@@ -227,7 +227,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
       })
       // Rendering now runs in the background (202) — a large source can take a
       // minute. Optimistically flip the card to 'generating' and clear any prior
-      // error so it shows progress; the Slate polls the row until it settles to
+      // error so it shows progress; the Moment Miner polls the row until it settles to
       // complete/failed (no flicker back to the old failed state).
       onUpdate?.({
         ...pkg,

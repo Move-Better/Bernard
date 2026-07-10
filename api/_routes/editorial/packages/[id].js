@@ -2,7 +2,7 @@
 //
 // Update a single story package. Supports:
 //   - status transitions (skip / cancel)
-//   - caption_text edits (inline edit from Slate)
+//   - caption_text edits (inline edit from Moment Miner)
 //
 // Body (PATCH):
 //   { status?: 'skipped' | 'complete' | 'canceled' }
@@ -12,7 +12,7 @@
 // Cancel ('canceled') is cooperative: it only applies while the package is
 // still generating (status in generating/pending/pending_broll). It can't kill
 // the in-flight Vercel waitUntil render, but it (a) unblocks the producer
-// immediately — the Slate drops canceled cards — and (b) the background render's
+// immediately — the Moment Miner drops canceled cards — and (b) the background render's
 // terminal PATCH is guarded (renderPackageChannels.js / syntheticBroll.js) so a
 // late finish can't resurrect a canceled card to complete/failed. Canceling a
 // package that has already settled returns 409 already_settled.

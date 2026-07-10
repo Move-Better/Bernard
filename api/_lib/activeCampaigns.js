@@ -7,8 +7,8 @@
 //
 // Used by:
 //   • api/editorial/generate-package.js (consumer — accepts campaignId)
-//   • api/workspace/me.js (embeds the active list for the Slate client)
-//   • src/pages/Slate.jsx via the workspace response (does slot allocation
+//   • api/workspace/me.js (embeds the active list for the Moment Miner client)
+//   • src/pages/Moment Miner.jsx via the workspace response (does slot allocation
 //     CLIENT-SIDE so each generate-package call can be made with the
 //     resolved campaignId)
 

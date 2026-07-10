@@ -1,8 +1,8 @@
-// Shared helper: save a rendered Slate clip as a b-roll media_assets row
+// Shared helper: save a rendered clip as a b-roll media_assets row
 // and kick off visual-memory indexing in the background.
 //
 // Called from:
-//   • api/editorial/clip-to-broll.js  (new manual Slate output)
+//   • api/editorial/clip-to-broll.js  (new manual b-roll output)
 //   • api/editorial/approve-package.js library branch (existing package path)
 //
 // params:
@@ -35,11 +35,11 @@ function sb(path, init = {}) {
   })
 }
 
-export async function saveSlateBroll({ ws, renders, staffId, notes, parentAssetId }) {
+export async function saveBroll({ ws, renders, staffId, notes, parentAssetId }) {
   const assetRows = renders.map((r) => {
     const isVideo = String(r.blobUrl || '').toLowerCase().endsWith('.mp4')
     const kind = isVideo ? 'video' : 'photo'
-    const filename = (r.blobUrl || '').split('/').pop().split('?')[0] || `slate-broll.mp4`
+    const filename = (r.blobUrl || '').split('/').pop().split('?')[0] || `broll.mp4`
     const blobPathname = (() => {
       try { return new URL(r.blobUrl).pathname } catch { return filename }
     })()

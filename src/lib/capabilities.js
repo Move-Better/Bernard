@@ -81,8 +81,8 @@ export function capabilityShortLabel(cap) {
     [CAP_INTERVIEW_EDIT_OTHERS]:'Edit others’ interviews',
     [CAP_CONTENT_APPROVE]:      'Approve content',
     [CAP_CONTENT_PUBLISH]:      'Publish content',
-    [CAP_SLATE_GENERATE]:       'Generate slate',
-    [CAP_SLATE_APPROVE]:        'Approve slate',
+    [CAP_SLATE_GENERATE]:       'Generate clips',
+    [CAP_SLATE_APPROVE]:        'Approve clips',
     [CAP_CAMPAIGNS_EDIT]:       'Plan campaigns',
   }[cap] || cap
 }

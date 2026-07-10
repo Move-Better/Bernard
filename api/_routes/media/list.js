@@ -41,7 +41,7 @@ async function handler(req, res) {
   const speakerRole = searchParams.get('speakerRole')  // clinician | admin | patient_guest
   const sources     = searchParams.get('sources')      // 'true' → parent_id IS NULL (sources only)
   const parent      = searchParams.get('parent')       // parent_id — rotation/crop/edit variants of one upload
-  // clipParent: parent_asset_id — clips CUT FROM a source video (Slate/AI provenance).
+  // clipParent: parent_asset_id — clips CUT FROM a source video (Moment Miner/AI provenance).
   // Distinct from `parent` (parent_id): clips are first-class b-roll masters
   // (parent_id IS NULL, so they still appear in the grid + Suggested media);
   // parent_asset_id only records which source they were derived from.

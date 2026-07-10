@@ -17,7 +17,7 @@
 //
 // This function NEVER throws when called via detectSegmentsForAsset — any
 // failure is captured onto media_assets.segment_status='failed' + segment_error
-// so the Slate surfaces it cleanly. Safe in waitUntil: it talks to Supabase with
+// so the Moment Miner surfaces it cleanly. Safe in waitUntil: it talks to Supabase with
 // the service key, so it needs no caller token.
 
 import { spawn } from 'node:child_process'

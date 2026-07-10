@@ -2,7 +2,7 @@
 //
 // Single source of truth for the story_packages statuses that count as "still in
 // flight." A package in one of these states is (a) cancelable by the producer
-// (Slate "Stop" → packages/[id].js flips it to status='canceled') and (b) the
+// (Moment Miner "Stop" → packages/[id].js flips it to status='canceled') and (b) the
 // ONLY set of statuses a background render's TERMINAL write may land on.
 //
 // Cooperative cancel (see MEMORY: "Cooperative cancel for Vercel waitUntil jobs"):

@@ -37,7 +37,7 @@ export const ALL_KNOWN_ROLES = [
 // to work unchanged for admin/publisher/clinician.
 //
 //   owner     — workspace owner; same capabilities as legacy ROLE_ADMIN
-//   producer  — operational editor; reviews/approves/publishes Slate
+//   producer  — operational editor; reviews/approves/publishes Moment Miner
 //               packages, blocked from workspace settings/billing/integrations
 //   clinician — default tier; voice owner (matches legacy ROLE_CLINICIAN)
 //   viewer    — read-only (defined for future use, no consumers yet)

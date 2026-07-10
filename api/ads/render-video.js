@@ -2,7 +2,7 @@
 //
 // Ad-creative export, video (Phase 2). Renders ONE ad aspect ratio of a clip
 // from the SOURCE video using the clip's start/duration window, reusing the
-// same ffmpeg pipeline Slate uses for clips (renderVideoChannel). One aspect
+// same ffmpeg pipeline Moment Miner uses for clips (renderVideoChannel). One aspect
 // per call — each is a full re-encode, so a 4-pack is 4 sequential calls
 // (client-driven) to stay within the function budget.
 //

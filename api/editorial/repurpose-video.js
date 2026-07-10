@@ -4,7 +4,7 @@
 // "Repurpose: <filename>" campaign, kicks the keep-whole long-form master render
 // via kickLongformRender (with that campaign tagged), and kicks social-clip
 // detection via detectSegmentsForAsset (also tagged). Both backgrounds run off
-// the request path; the Slate and the ClipFinder panel each poll their own
+// the request path; the Moment Miner and the ClipFinder panel each poll their own
 // story_packages / segment_status columns.
 //
 // This replaces the A1 client double-call (renderWholeVideo + findClips) with a

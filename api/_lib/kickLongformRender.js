@@ -92,7 +92,7 @@ export async function kickLongformRender({ ws, asset, baseUrl, campaignId = null
   }
   captionText = String(captionText || '').slice(0, 500)
 
-  // Create the story package row (status='generating') so the Slate card
+  // Create the story package row (status='generating') so the Moment Miner card
   // appears immediately with a spinner. campaign_id wires this package into
   // the repurpose campaign (null for standalone renders).
   const insRes = await sb('story_packages', {

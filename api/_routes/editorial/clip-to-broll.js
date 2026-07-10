@@ -1,6 +1,6 @@
 // POST /api/editorial/clip-to-broll
 //
-// Slate Slate — "Library b-roll" output.
+// Moment Miner — "Library b-roll" output.
 //
 // Saves a rendered clip as a media_assets broll row and kicks off
 // visual-memory indexing so it surfaces in ranked Suggested media.
@@ -16,7 +16,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
-import { saveSlateBroll } from '../../_lib/saveSlateBroll.js'
+import { saveBroll } from '../../_lib/saveBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -80,15 +80,15 @@ export default async function handler(req, res) {
 
   let savedAssets
   try {
-    savedAssets = await saveSlateBroll({
+    savedAssets = await saveBroll({
       ws,
       renders: [{ blobUrl: renderedBlobUrl, width: width || null, height: height || null, sizeBytes: sizeBytes || null }],
       staffId: asset.staff_id || null,
-      notes: `Slate clip from asset ${assetId}${captionText ? ` — "${String(captionText).slice(0, 80)}"` : ''}`,
+      notes: `B-roll clip from asset ${assetId}${captionText ? ` — "${String(captionText).slice(0, 80)}"` : ''}`,
       parentAssetId: assetId,
     })
   } catch (e) {
-    console.error('[clip-to-broll] saveSlateBroll failed:', e.message)
+    console.error('[clip-to-broll] saveBroll failed:', e.message)
     return res.status(500).json({ error: 'insert_failed' })
   }
 
