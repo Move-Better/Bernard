@@ -5,6 +5,7 @@ import { useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { getStoryArchetypes } from '@/lib/topicSuggestions'
 import { getStageToken } from '@/lib/stageTokens'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 import { StaffChip } from '@/components/StaffChip'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -26,8 +27,12 @@ function firstSentence(text) {
 function groupByTopic(stories) {
   const map = new Map()
   for (const story of stories) {
-    const key = (story.topic || '').trim().toLowerCase()
-    const canonical = (story.topic || '').trim() || 'Untitled'
+    // Group by the pure SUBJECT — strip any leading date so date-first titles
+    // (and outbound-call baked dates) don't fragment every story into its own
+    // single-item theme.
+    const subject = stripStoryDatePrefix(story.topic)
+    const key = subject.toLowerCase()
+    const canonical = subject || 'Untitled'
     if (!map.has(key)) {
       map.set(key, { topic: canonical, stories: [] })
     }

@@ -7,6 +7,7 @@ import { PLATFORM_META } from '@/lib/contentMeta'
 import { isOptimalSlot, isOptimalDay } from '@/lib/scheduleHeuristics'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useContentItems } from '@/lib/queries'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // A piece "has media" when at least one entry is attached — drives the
 // unscheduled rail's "Schedule" target (Publish if media is on, else the
@@ -51,7 +52,9 @@ export default function StoriesCalendarView({ stories, isLoading, hideRail = fal
         .filter((p) => p.scheduled_at)
         .map((p) => ({
           ...p,
-          topic: story.topic,
+          // Calendar cells are already date-organized, so show the pure subject
+          // (strip any leading date-first prefix) to avoid a redundant date.
+          topic: stripStoryDatePrefix(story.topic),
           storyId: story.id,
           staffName: p.staff_name || story.staff_name,
         })),

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Flag, Loader2 } from 'lucide-react'
 import EmptyState from '@/components/EmptyState'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 /**
  * StoriesCampaignsView — the clinic board's "Campaigns" lens (portfolio mockup).
@@ -93,7 +94,7 @@ export default function StoriesCampaignsView({ stories = [], campaigns: campaign
                   onClick={() => navigate(`/stories/${s.id}`)}
                   className="rounded-full border px-2 py-1 text-2xs transition-colors hover:border-primary hover:text-primary"
                 >
-                  {(s.topic || 'Untitled').slice(0, 28)}
+                  {(stripStoryDatePrefix(s.topic) || 'Untitled').slice(0, 28)}
                 </button>
               ))}
               {c.stories.length > 8 && (

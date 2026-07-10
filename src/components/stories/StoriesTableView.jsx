@@ -7,6 +7,7 @@ import { StaffChip } from '@/components/StaffChip'
 import EmptyState from '@/components/EmptyState'
 import { getStageToken } from '@/lib/stageTokens'
 import { queryKeys, fetchStory } from '@/lib/queries'
+import { formatStoryDate, stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Rows per page — bounds the rendered DOM so the list scales to thousands of
 // stories without ever mounting thousands of rows (Q: "won't scale").
@@ -26,13 +27,11 @@ function storyDateMs(s) {
   return iso ? new Date(iso).getTime() : 0
 }
 
+// Date column — uses the SAME shared UTC formatter as the date-first display
+// title (src/lib/storyTitle.js) so the list's date and StoryDetail's title
+// never disagree by a timezone day.
 function fmtShortDate(ms) {
-  if (!ms) return '—'
-  const d = new Date(ms)
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const yy = String(d.getFullYear()).slice(2)
-  return `${mm}/${dd}/${yy}`
+  return ms ? formatStoryDate(ms) || '—' : '—'
 }
 
 function monthLabel(ms) {
@@ -40,15 +39,14 @@ function monthLabel(ms) {
   return new Date(ms).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-// Titles are becoming date-first ("MM/DD/YY — subject"); the table has its own
-// Date column, so strip a leading date prefix from the topic to keep the Subject
-// column clean and non-redundant. (Title LOGIC proper lives in a shared helper
-// owned by a sibling task; this is a defensive display-only strip for the list.)
-const DATE_PREFIX_RE = /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*[—–-]\s*/
+// Titles are date-first ("MM/DD/YY — subject"); the table has its own Date
+// column, so strip a leading date prefix from the topic to keep the Subject
+// column clean and non-redundant. Uses the shared helper (single source of
+// truth for the title format) rather than a local copy of the regex.
 function storySubject(s) {
   const t = (s.topic || '').trim()
   if (!t) return ''
-  return t.replace(DATE_PREFIX_RE, '').trim() || t
+  return stripStoryDatePrefix(t) || t
 }
 
 /**
