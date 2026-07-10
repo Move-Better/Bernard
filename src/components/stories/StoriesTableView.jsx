@@ -40,11 +40,13 @@ function monthLabel(ms) {
   return new Date(ms).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-// Titles are becoming date-first ("MM/DD/YY — subject"); the table has its own
-// Date column, so strip a leading date prefix from the topic to keep the Subject
-// column clean and non-redundant. (Title LOGIC proper lives in a shared helper
-// owned by a sibling task; this is a defensive display-only strip for the list.)
-const DATE_PREFIX_RE = /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*[—–-]\s*/
+// Titles are becoming date-first; the table has its own Date column, so strip a
+// leading date prefix from the topic to keep the Subject column clean and
+// non-redundant. Handles both the canonical numeric form ("MM/DD/YY — subject")
+// and the long-form month-name form ("July 10, 2026 — subject") that legacy
+// auto-titles use. (Title LOGIC proper lives in a shared helper owned by a
+// sibling task; this is a defensive display-only strip for the list.)
+const DATE_PREFIX_RE = /^\s*(?:\d{1,2}\/\d{1,2}\/\d{2,4}|[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4})\s*[—–-]\s*/
 function storySubject(s) {
   const t = (s.topic || '').trim()
   if (!t) return ''
