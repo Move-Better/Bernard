@@ -30,7 +30,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
             <span className="text-base w-6 text-center shrink-0">{proto.emoji || '👤'}</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">
-                {proto.label || <em className="font-normal text-muted-foreground">Untitled archetype</em>}
+                {proto.label || <em className="font-normal text-muted-foreground">Untitled patient type</em>}
               </p>
               {proto.coreDesire && (
                 <p className="text-xs text-muted-foreground truncate">{proto.coreDesire}</p>
@@ -86,7 +86,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
               className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm"
               value={proto.coreDesire || ''}
               onChange={e => onChange({ coreDesire: e.target.value })}
-              placeholder="What does this archetype most want?"
+              placeholder="What does this patient type most want?"
               aria-label="Core desire"
             />
           </div>
@@ -98,14 +98,14 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
               onChange({ characteristics: v.split('\n').map(l => l.trim()).filter(Boolean) })
             }}
             rows={4}
-            hint="Bernard uses these to calibrate tone when generating for this archetype."
+            hint="Bernard uses these to calibrate tone when generating for this patient type."
           />
           <button
             type="button"
             onClick={onRemove}
             className="text-xs text-destructive hover:underline"
           >
-            Remove this archetype
+            Remove this patient type
           </button>
           </AccordionContent>
         </AccordionItem>
@@ -117,7 +117,7 @@ export function PrototypeCard({ proto, onChange, onRemove, defaultExpanded = tru
 function buildArchetypeProbeText(proto, interviewerName) {
   const chars = (proto.characteristics || []).slice(0, 4)
   if (chars.length === 0 && !proto.coreDesire) {
-    return `Click to add what ${interviewerName} should probe for this archetype.`
+    return `Click to add what ${interviewerName} should probe for this patient type.`
   }
   const parts = []
   if (chars.length > 0) {
@@ -156,12 +156,12 @@ export function ArchetypeCardsSection({ value, onChange, interviewerName }) {
   return (
     <div className="space-y-3">
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Patient archetypes {interviewerName} knows
+        Patient types {interviewerName} knows
       </p>
 
       {prototypes.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">
-          No archetypes yet — add one to help {interviewerName} frame content for different patient groups.
+          No patient types yet — add one to help {interviewerName} frame content for different patient groups.
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -194,7 +194,7 @@ export function ArchetypeCardsSection({ value, onChange, interviewerName }) {
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-lg shrink-0">{proto.emoji || '👤'}</span>
                   <span className="text-sm font-semibold flex-1">
-                    {proto.label || <em className="font-normal text-muted-foreground">Untitled archetype</em>}
+                    {proto.label || <em className="font-normal text-muted-foreground">Untitled patient type</em>}
                   </span>
                   <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 </div>
@@ -208,7 +208,7 @@ export function ArchetypeCardsSection({ value, onChange, interviewerName }) {
       )}
 
       <button type="button" onClick={addPrototype} className="text-xs text-primary hover:underline">
-        + Add an archetype {interviewerName} should learn
+        + Add a patient type {interviewerName} should learn
       </button>
     </div>
   )

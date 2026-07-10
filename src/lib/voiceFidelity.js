@@ -8,6 +8,11 @@
 // voice audit (api/_routes/content-items/voice-audit.js). >=90 reads as the
 // clinician; <50 has been translated out of their voice.
 
+// Plain-language definition of the score, surfaced as a hover tooltip on both
+// the full badge and the compact chip so the number is never unexplained.
+export const VOICE_FIDELITY_TOOLTIP =
+  'How closely this draft reads like you actually talk. Bernard scores it 0–100 by comparing the draft against your real words — 90+ sounds like you, under 50 has drifted out of your voice.'
+
 export const FLAG_LABELS = {
   vocabulary_swap:   'Vocabulary swap',
   imposed_structure: 'Imposed structure',

@@ -18,14 +18,14 @@ const MOBILE_NAV = [
   { to: '/settings/workspace/locations',      label: 'Locations',        icon: MapPin },
   { to: '/settings/workspace/channels',       label: 'Channels',  icon: Radio },
   { to: '/settings/campaigns',               label: 'Campaigns',         icon: Target },
-  { to: '/settings/practice-brain',          label: 'Practice Brain',    icon: Brain },
+  { to: '/settings/practice-brain',          label: 'Clinic knowledge',    icon: Brain },
   { to: '/settings/integrations',            label: 'Integrations',      icon: Puzzle },
   { to: '/settings/brand-identity',          label: 'Brand identity',    icon: Compass },
   { to: '/settings/brand-kit',               label: 'Brand kit',         icon: Palette },
   { to: '/settings/music',                   label: 'Music',             icon: Music },
   { to: '/settings/photo-templates',          label: 'Photo templates',   icon: LayoutGrid },
   { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
-  { to: '/settings/access',                  label: 'Access matrix',     icon: Shield },
+  { to: '/settings/access',                  label: 'Permissions',     icon: Shield },
   { to: '/settings/workspace/billing',       label: 'Plan & billing',    icon: CreditCard },
 ]
 
@@ -45,7 +45,7 @@ const GROUPS = [
       { to: '/settings/workspace/locations', label: 'Locations',          icon: MapPin },
       { to: '/settings/workspace/channels',  label: 'Channels',    icon: Radio },
       { to: '/settings/campaigns',           label: 'Campaigns',          icon: Target },
-      { to: '/settings/practice-brain',      label: 'Practice Brain',     icon: Brain },
+      { to: '/settings/practice-brain',      label: 'Clinic knowledge',     icon: Brain },
       { to: '/settings/integrations',        label: 'Integrations',       icon: Puzzle },
       { to: '/settings/brand-identity',      label: 'Brand identity',     icon: Compass },
       { to: '/settings/brand-kit',           label: 'Brand kit',          icon: Palette },
@@ -57,7 +57,7 @@ const GROUPS = [
     label: 'People',
     items: [
       { to: '/settings/members',            label: 'Members & roles',    icon: Users },
-      { to: '/settings/access',             label: 'Access matrix',      icon: Shield },
+      { to: '/settings/access',             label: 'Permissions',      icon: Shield },
     ],
   },
   {

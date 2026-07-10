@@ -214,10 +214,10 @@ export default function VoiceTonePage() {
           />
         </Section>
 
-        {/* Patient archetypes — span both columns */}
+        {/* Patient types — span both columns */}
         <Section
-          title="Patient archetypes"
-          description={`The types of patients ${clinicName} serves. ${interviewerName} sharpens questions toward the archetype chosen at interview start.`}
+          title="Patient types"
+          description={`The types of patients ${clinicName} serves. ${interviewerName} sharpens questions toward the patient type chosen at interview start.`}
           className="lg:col-span-2"
         >
           <ArchetypeCardsSection

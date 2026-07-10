@@ -18,7 +18,6 @@ import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { toast } from '@/lib/toast'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
-import ProducerFeedStrip from '@/components/producer/ProducerFeedStrip'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
 
@@ -464,6 +463,20 @@ export default function YourWeek() {
     if (byDay[k]) byDay[k].push(item)
   }
 
+  // Stage breakdown of the visible week — computed from the SAME cardState() the
+  // day-column cards render, so the banner's numbers reconcile with what's on
+  // screen (the old "N of M ready to review" headline conflated the pre-drafted
+  // count with the review count and contradicted the ~handful of review cards).
+  const weekStages = scheduled.reduce(
+    (acc, item) => {
+      const st = cardState(item)
+      if (st.reviewable) acc.review += 1
+      else if (st.label === 'Scheduled' || st.label === 'Live' || st.label === 'approved') acc.scheduled += 1
+      return acc
+    },
+    { review: 0, scheduled: 0 },
+  )
+
   // Approved pieces ready to batch-schedule (social platforms with a piece).
   const approvedSchedulable = scheduled.filter(
     (item) =>
@@ -610,9 +623,6 @@ export default function YourWeek() {
         onToday={() => setWeekOffset(0)}
       />
 
-      {/* Bernard's workday — recent activity (renders only when the producer is enabled) */}
-      <ProducerFeedStrip />
-
       {/* Pre-drafted week (Phase 3): when Bernard drafted the week ahead, /week
           opens as a review session — this banner sets the frame. */}
       {data?.predraftSummary?.predrafted > 0 && (
@@ -622,11 +632,11 @@ export default function YourWeek() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold">
-              Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} ready to review
+              Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} planned posts
             </div>
             <div className="text-xs text-muted-foreground">
-              {data.predraftSummary.ready} ready to review
-              {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} needs a closer look (flagged below)` : ''}
+              {weekStages.review} ready to review · {weekStages.scheduled} scheduled · {data.heldCount} in backlog
+              {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} flagged for a closer look` : ''}
               {' · '}nothing publishes without your yes.
             </div>
           </div>
@@ -691,7 +701,7 @@ export default function YourWeek() {
           {Object.keys(cadence).length > 0 && (
             <div className="rounded-xl border bg-card p-3">
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Filled to your cadence</span>
+                <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Posting schedule</span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-3xs font-semibold text-primary">
                   <Sparkles className="h-3 w-3" aria-hidden="true" /> {data.scheduledTotal} scheduled
                 </span>

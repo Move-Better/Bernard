@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useStaffSummaries } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
@@ -106,9 +107,16 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           <div className="flex items-start gap-2">
             <p className="text-sm font-semibold leading-snug flex-1">&ldquo;{m.quote}&rdquo;</p>
             {m.score != null && (
-              <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10" title="Quotability score">
-                <Gem className="h-2.5 w-2.5" />{m.score}
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10 cursor-help">
+                    <Gem className="h-2.5 w-2.5" />{m.score}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-center leading-snug">
+                  Quotability score (0–100): how strong this moment is as shareable content — how clear, punchy, and on-message the quote is. The feed ranks highest-first.
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">

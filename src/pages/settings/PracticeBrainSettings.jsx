@@ -11,14 +11,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/ui/PageHeader'
 
 export default function PracticeBrainSettings() {
-  useDocumentTitle('Practice Brain')
+  useDocumentTitle('Clinic knowledge')
   const { data: items = [], isLoading } = usePracticeBrainSupersessions()
 
   return (
     <div className="space-y-4 max-w-3xl">
       <PageHeader
         icon={Brain}
-        title="Practice Brain"
+        title="Clinic knowledge"
         subtitle="Bernard learns from every interview and post. When your thinking on a topic looks like it changed, it asks before letting the newer take win — so generated content reflects how you practice today."
       />
 
@@ -27,7 +27,7 @@ export default function PracticeBrainSettings() {
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center">
           <Brain className="h-6 w-6 mx-auto text-muted-foreground mb-2" aria-hidden="true" />
-          <p className="text-sm font-medium">Your practice brain is up to date</p>
+          <p className="text-sm font-medium">Your clinic knowledge is up to date</p>
           <p className="text-xs text-muted-foreground mt-1">
             No conflicting takes to resolve. Bernard will nudge you here if your thinking on a topic shifts.
           </p>

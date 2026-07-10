@@ -388,14 +388,14 @@ export default function Stories() {
           </FilterSelect>
         ) : null}
 
-        {/* Archetype — only when workspace has defined prototypes */}
+        {/* Patient type — only when workspace has defined prototypes */}
         {showArchetypes ? (
           <FilterSelect
-            ariaLabel="Filter by archetype"
+            ariaLabel="Filter by patient type"
             value={searchParams.get('archetype') || ''}
             onChange={(e) => setParam('archetype', e.target.value)}
           >
-            <option value="">Archetype: All</option>
+            <option value="">Patient type: All</option>
             {prototypes.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.emoji ? `${p.emoji} ${p.label}` : p.label}

@@ -189,11 +189,11 @@ export default function AccessMatrix() {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <p className="text-2xs text-muted-foreground/80">Settings &middot; {wsName} &middot; Access matrix</p>
+        <p className="text-2xs text-muted-foreground/80">Settings &middot; {wsName} &middot; Permissions</p>
         <div className="flex items-start justify-between gap-3 mt-0.5">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-            Team access matrix
+            Team permissions
           </h1>
           <button
             onClick={() => setShowInvite((v) => !v)}
@@ -278,7 +278,7 @@ export default function AccessMatrix() {
       </div>
 
       {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading team&hellip;</div>}
-      {error && <div className="text-sm text-destructive py-8 text-center">Could not load the access matrix. Try refreshing.</div>}
+      {error && <div className="text-sm text-destructive py-8 text-center">Could not load permissions. Try refreshing.</div>}
 
       {/* Matrix */}
       {!isLoading && !error && (
