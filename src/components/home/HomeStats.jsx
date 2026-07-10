@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
@@ -129,8 +130,26 @@ export default function HomeStats({ stories = [], compact = false }) {
         <div className="text-4xl font-extrabold tracking-tight nx-grad-text tabular-nums">
           {typeof metrics.voiceMatch === 'number' ? `${metrics.voiceMatch}%` : '—'}
         </div>
-        <div className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
-          {typeof metrics.voiceMatch === 'number' ? 'your words · your voice' : 'Run an interview to start tracking'}
+        {/* A next step for the number: a low score has somewhere to go
+            (tune voice guidance); no score yet points at the first interview. */}
+        <div className="text-sm mt-1">
+          {typeof metrics.voiceMatch === 'number' ? (
+            <Link
+              to="/settings/workspace/voice"
+              className="inline-flex items-center gap-1 hover:underline"
+              style={{ color: 'rgba(255,255,255,0.85)' }}
+            >
+              Improve voice match <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          ) : (
+            <Link
+              to="/new"
+              className="inline-flex items-center gap-1 hover:underline"
+              style={{ color: 'rgba(255,255,255,0.85)' }}
+            >
+              Run an interview to start tracking <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          )}
         </div>
       </div>
 

@@ -262,7 +262,13 @@ export default function Home() {
       : callFirst
         ? 'call'
         : 'none'
-  const secondaryCompact = heroState !== 'none'
+  // Progressive disclosure: whenever the top of the page has something that
+  // needs the user — a hero (call/resume/onboarding) OR pending attention items
+  // — collapse the stat/summary rows (pipeline stats, "what to talk about next")
+  // to their one-line compact form with an expander, so Home leads with the
+  // 1–2 things to act on instead of a stack of full-size cards. With nothing
+  // urgent and no hero, the fuller view is fine (there's nothing to lead over).
+  const secondaryCompact = heroState !== 'none' || attentionTotal > 0
 
   if (isLoading) return <HomeSkeleton greeting={greeting} callFirst={callFirst} />
 

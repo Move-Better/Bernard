@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PhoneCall, Mic, ArrowRight } from 'lucide-react'
+import { PhoneCall, Mic, ArrowRight, CalendarClock } from 'lucide-react'
 
 /**
  * WeeklyCallHero — F1 Phase A. The call-first Home hero.
@@ -10,10 +10,10 @@ import { PhoneCall, Mic, ArrowRight } from 'lucide-react'
  * keep today's "Start an interview" ribbon CTA with no broken link). The full
  * capture picker stays one click away via "All capture modes".
  *
- * "Schedule it" (Phase B) and "Have Bernard call me" (Phase C, outbound
- * telephony) aren't built yet — kept as small de-weighted text links below the
- * primary CTA rather than full-size disabled buttons, so the hero doesn't
- * spend equal visual weight advertising unshipped features every day.
+ * "Schedule your call" (Phase B) and "Bernard calls you" (Phase C, outbound
+ * telephony) aren't built yet — shown as explicit dashed "Coming soon" chips
+ * below the primary CTA so they read as upcoming features, not broken/disabled
+ * controls, without spending equal visual weight on unshipped features.
  *
  * @param {number|null} lastOwnCallAt - epoch ms of the current user's most
  *   recent completed interview, or null. Drives the "N days since your last"
@@ -67,10 +67,18 @@ export default function WeeklyCallHero({ lastOwnCallAt = null }) {
               Prefer to type or upload? All capture modes
               <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
-            <span className="text-muted-foreground/40" aria-hidden="true">·</span>
-            <span title="Coming soon" className="cursor-default">Schedule it (soon)</span>
-            <span className="text-muted-foreground/40" aria-hidden="true">·</span>
-            <span title="Coming soon" className="cursor-default">Have Bernard call me (soon)</span>
+          </div>
+          {/* Unshipped features (scheduled + outbound calls) shown as explicit
+              "coming soon" chips — dashed, tagged, non-interactive — so they read
+              as upcoming rather than broken/disabled controls. */}
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground/60">Coming soon</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-2xs text-muted-foreground/70">
+              <CalendarClock className="h-3 w-3" aria-hidden="true" /> Schedule your call
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-2xs text-muted-foreground/70">
+              <PhoneCall className="h-3 w-3" aria-hidden="true" /> Bernard calls you
+            </span>
           </div>
         </div>
       </div>
