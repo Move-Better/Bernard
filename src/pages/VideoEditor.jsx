@@ -57,6 +57,7 @@ const isOverlaySel = (s) => s != null && typeof s === 'object'
 // Clip window is capped to the server's MAX_RENDER_SECONDS (brandRenderVideo.js).
 // The timeline trim handles clamp to this so a clip can't silently truncate at render.
 const MAX_CLIP_SECONDS = 60
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
 const CAPTION_STYLE_OPTS = [
@@ -919,6 +920,15 @@ export default function VideoEditor() {
   // Moment Miner.
   const goBack = useSmartBack(() => (location.pathname.startsWith('/slate') ? '/slate' : '/moments'))
   const videoRef = useRef(null)
+  // When opened from a Media Hub edit brief ("Edit clip in Bernard"), the brief
+  // id rides along as ?briefId=. Saving this clip to the Library then closes
+  // that brief server-side (final_asset_id + status 'returned') — the in-app
+  // replacement for the contractor "Upload final" round-trip. Query param (not
+  // router state) so it survives the reloads the draft-resume flow invites.
+  const briefId = useMemo(() => {
+    const v = new URLSearchParams(location.search).get('briefId')
+    return v && UUID_RE.test(v) ? v : null
+  }, [location.search])
 
   const { data: asset, isLoading, error } = useQuery({ queryKey: ['media-asset', assetId], queryFn: () => getMediaAsset(assetId), enabled: !!assetId, retry: 1 })
   const { data: segData } = useQuery({ queryKey: ['video-segments', assetId], queryFn: () => getSegments(assetId), enabled: !!assetId, staleTime: 30_000 })
@@ -1320,17 +1330,22 @@ export default function VideoEditor() {
   // path moved inline (finalizeToPost above), so this no longer navigates away.
   const exportMutation = useAppMutation({
     mutationFn: async () => {
+      let briefReturned = false
       if (dest.broll) {
         const render = await doRenderClip()
-        await apiFetch('/api/editorial/clip-to-broll', {
+        // Pass briefId only when this clip was opened from a brief; the server
+        // closes that brief (scoped to workspace + this exact source asset) and
+        // reports back whether a brief row actually matched.
+        const r = await apiFetch('/api/editorial/clip-to-broll', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary() }),
+          body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary(), ...(briefId ? { briefId } : {}) }),
         })
+        briefReturned = !!r?.briefReturned
       }
-      return {}
+      return { briefReturned }
     },
-    onSuccess: () => {
-      if (dest.broll) toast('Saved to Library')
+    onSuccess: ({ briefReturned }) => {
+      if (dest.broll) toast(briefReturned ? 'Saved to Library · brief marked returned' : 'Saved to Library')
       setExportOpen(false)
       // Ad export is an interactive download modal — open it and STAY here.
       if (dest.ad) { setAdExportOpen(true) }
@@ -1555,6 +1570,15 @@ export default function VideoEditor() {
           )}
         </div>
       </EditorChrome>
+      {/* Brief-origin hint — this clip was opened from a Media Hub edit brief.
+          "Save to Library" is the action that closes the brief (marks it
+          returned), so point the user at it. */}
+      {briefId && (
+        <div className="flex shrink-0 items-center gap-1.5 border-b bg-primary/5 px-4 py-1.5 text-2xs text-primary" style={{ borderColor: 'hsl(var(--border))' }}>
+          <FolderOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>Editing a Media Hub brief — <b>Save to Library</b> to mark it returned.</span>
+        </div>
+      )}
       {/* WORK AREA: rail | inspector | canvas on top, timeline spanning full width below */}
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1">

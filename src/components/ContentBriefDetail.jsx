@@ -248,7 +248,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
               <Button
                 size="sm"
                 className="w-full gap-1.5"
-                onClick={() => { onClose?.(); navigate(`/moments/clip/${brief.source_asset_id}`) }}
+                onClick={() => { onClose?.(); navigate(`/moments/clip/${brief.source_asset_id}?briefId=${encodeURIComponent(brief.id)}`) }}
               >
                 <Scissors className="h-3.5 w-3.5" /> Edit clip in Bernard
               </Button>

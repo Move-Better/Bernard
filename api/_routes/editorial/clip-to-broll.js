@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
-  const { assetId, renderedBlobUrl, width, height, sizeBytes, captionText = '' } = req.body || {}
+  const { assetId, renderedBlobUrl, width, height, sizeBytes, captionText = '', briefId } = req.body || {}
   if (!assetId) return res.status(400).json({ error: 'assetId_required' })
   if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
   if (!renderedBlobUrl) return res.status(400).json({ error: 'renderedBlobUrl_required' })
@@ -92,5 +92,44 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'insert_failed' })
   }
 
-  return res.status(200).json({ assetId: savedAssets[0]?.id })
+  const savedAssetId = savedAssets[0]?.id
+
+  // Brief close-out — when this clip was opened from a Media Hub edit brief
+  // ("Edit clip in Bernard"), saving it to the Library is the in-app equivalent
+  // of the contractor "Upload final" round-trip: stamp the finished asset onto
+  // the brief and flip it to 'returned'. Mirrors the return-upload write in
+  // recordUploadedAsset.js. Scoped hard — the PATCH filter requires the brief to
+  // be in THIS workspace AND to have this exact asset as its source, so a stray
+  // or tampered briefId can never touch another brief. An id that matches no row
+  // just no-ops (briefReturned=false); a bad save never fails over a brief link.
+  let briefReturned = false
+  if (briefId && savedAssetId) {
+    if (!UUID_RE.test(briefId)) {
+      console.warn('[clip-to-broll] ignoring non-UUID briefId')
+    } else {
+      try {
+        const pr = await sb(
+          `content_pieces?id=eq.${briefId}&workspace_id=eq.${ws.id}&source_asset_id=eq.${assetId}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              final_asset_id: savedAssetId,
+              status: 'returned',
+              returned_at: new Date().toISOString(),
+            }),
+          },
+        )
+        if (pr.ok) {
+          const rows = await pr.json().catch(() => [])
+          briefReturned = Array.isArray(rows) && rows.length > 0
+        } else {
+          console.error('[clip-to-broll] brief close PATCH failed:', pr.status)
+        }
+      } catch (e) {
+        console.error('[clip-to-broll] brief close failed:', e?.message)
+      }
+    }
+  }
+
+  return res.status(200).json({ assetId: savedAssetId, briefReturned })
 }
