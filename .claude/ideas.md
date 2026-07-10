@@ -163,3 +163,11 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 - **Effort:** ~2–3 days (one mock round + sign-off + phased build)
 - **Trigger to revisit:** next dedicated design/UX session, OR a clinician complains about Stories filter clutter / blank Library thumbnails / onboarding drop-off. Source: `.claude/audit-history/2026-06-09-0829-full.md`
 - **Status:** Parked
+
+## Idea: Moment Miner poll cap may be too short for real detection duration
+- **Surfaced:** 2026-07-02 (live-verifying the #1873 "Ready to review" polling fix)
+- **Area:** `src/pages/MomentMiner.jsx` (`POLL_CEILING_MS` = 5 min), `api/_lib/segmentDetect.js`
+- **TLDR:** #1873 fixed the missing `refetchInterval` on the moments feed (write-side always worked, UI just never re-polled). But live-testing the fix against two real uncut videos on the movebetter workspace, both took longer than the existing 5-min poll cap to finish detection — polling correctly gave up before the result was ready, so a user who doesn't re-trigger "Find moments" could still see a stalled card. Not confirmed as a real recurring problem yet — could be a one-off backlog artifact (95+ queued uncut videos at test time), and one test video also legitimately returned zero moments (a content outcome, not a cap issue).
+- **Effort:** ~30 min to bump the cap or make it duration-aware (e.g. scale by video length) if it does turn out to be a real problem
+- **Trigger to revisit:** Q reports "still stuck on 'finding moments...' after waiting a few minutes" again post-#1873 — check actual detection duration vs the 5-min cap before assuming it's a fresh UI bug.
+- **Status:** Parked
