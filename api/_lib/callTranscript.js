@@ -62,7 +62,7 @@ function interleaveChannels(userSegs, assistantSegs) {
  * @param {object} p
  * @param {string} p.recordingUrl  - Twilio RecordingUrl (we append .mp3)
  * @param {string} [p.basicAuth]   - base64 "sid:token" for the authed download
- * @returns {Promise<{ messages: Array<{role,content}>, fullText: string }>}
+ * @returns {Promise<{ messages: Array<{role,content}>, fullText: string, dualChannel: boolean }>}
  */
 export async function transcribeCallRecording({ recordingUrl, basicAuth }) {
   if (!recordingUrl) throw new Error('no_recording_url')
@@ -98,17 +98,22 @@ export async function transcribeCallRecording({ recordingUrl, basicAuth }) {
       ])
       const messages = interleaveChannels(userSegs, assistantSegs)
       const fullText = messages.map((m) => m.content).join(' ').trim()
-      if (fullText) return { messages, fullText }
+      if (fullText) return { messages, fullText, dualChannel: true }
       // else fall through to mixed fallback
     } catch (e) {
       console.error(`[callTranscript] dual-channel split failed, falling back to mixed: ${e?.message}`)
     }
 
-    // Fallback: transcribe the mixed recording as one combined user turn.
+    // Fallback: transcribe the mixed recording as one combined turn. This turn
+    // contains BOTH speakers' words with no way to attribute who said what —
+    // callers must NOT treat its role as a genuine speaker label (it's tagged
+    // 'user' only so a transcript still renders/summarizes; dualChannel:false
+    // is the signal to skip any enrichment that assumes real speaker turns,
+    // e.g. clinician-voice-phrase extraction or assistant-turn style scoring).
     const segments = await transcribeToSegments(mixedPath)
     const fullText = segments.map((s) => s.text).join(' ').trim()
     if (!fullText) throw new Error('empty_transcript')
-    return { messages: [{ role: 'user', content: fullText }], fullText }
+    return { messages: [{ role: 'user', content: fullText }], fullText, dualChannel: false }
   } finally {
     await cleanup()
   }
