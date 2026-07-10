@@ -98,6 +98,10 @@ export function buildOpeningDirective({ firstName, styleMemory, shippedTitles = 
     )
   }
   lines.push('If they say now is not a good time, acknowledge warmly, tell them you\'ll catch them another time, and end the call — do not push.')
+  // Time-box: keep the call to ~6 minutes and land it. Without this the model
+  // interviews open-endedly and the call runs long (the pilot hit ~10 min and
+  // the session went quiet). Go deep on little, then wrap.
+  lines.push('KEEP IT SHORT — aim for about six minutes total. Go deep on ONE, at most two things; do NOT try to cover everything. Give them room to finish their thoughts — never cut them off mid-sentence; wait for a clear, full stop before you respond. When you have enough for a good piece, WRAP UP warmly: thank them by name, tell them you\'ve got a great story out of this and it\'ll be drafting the moment they hang up, then say goodbye. Do not let the call drift past ~6–7 minutes or sit in silence.')
   return `\n\n${lines.join('\n')}\n`
 }
 
@@ -199,4 +203,55 @@ export async function generateOutputsFromTranscript({ workspace, staff, topic, m
   if (!generated.trim()) throw new Error('No content returned from generation')
 
   return { blogPost: generated, generatedAt: new Date().toISOString() }
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/** Full date, e.g. "July 10, 2026" (UTC). Q's chosen story-title date format. */
+export function formatFullDate(dateInput) {
+  const d = dateInput ? new Date(dateInput) : new Date()
+  if (Number.isNaN(d.getTime())) return ''
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
+}
+
+/**
+ * Auto-title a weekly-call story. Unlike a normal interview (where the clinician
+ * picks the topic upfront), the outbound call has no chosen subject, so the
+ * placeholder title ("Your weekly call") is meaningless once there's more than
+ * one. This derives a short topic from the transcript and prefixes the full
+ * call date → e.g. "July 10, 2026 — Hip extension and opposite-shoulder stability".
+ *
+ * @param {object} p
+ * @param {Array}  p.messages   - transcript turns
+ * @param {string} [p.callDate] - ISO date of the call (defaults to now)
+ * @returns {Promise<string>}
+ */
+export async function generateCallStoryTitle({ messages, callDate }) {
+  const dateStr = formatFullDate(callDate)
+  const transcript = (Array.isArray(messages) ? messages : [])
+    .map((m) => (typeof m?.content === 'string' ? m.content : ''))
+    .join('\n')
+    .slice(0, 6000)
+
+  let topic = ''
+  if (transcript.trim() && process.env.AI_GATEWAY_API_KEY) {
+    try {
+      const { text } = await generateText({
+        model: 'anthropic/claude-haiku-4-5',
+        instructions:
+          'You name clinical content stories from an interview transcript. Return ONLY a 3–6 word topic phrase capturing the main subject discussed — natural capitalization, no surrounding quotes, no trailing punctuation, no date. Example: "Hip extension and opposite-shoulder stability".',
+        messages: [{ role: 'user', content: transcript }],
+        maxOutputTokens: 40,
+      })
+      topic = String(text || '')
+        .trim()
+        .replace(/^["'`]+|["'`]+$/g, '')
+        .replace(/[.\s]+$/, '')
+        .slice(0, 90)
+    } catch {
+      topic = ''
+    }
+  }
+  const prefix = dateStr ? `${dateStr} — ` : ''
+  return topic ? `${prefix}${topic}` : `${prefix}Weekly call`
 }

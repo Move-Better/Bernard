@@ -1,6 +1,12 @@
 # F1 — "Bernard picks up the phone" (outbound call) · v1 runbook
 
-**Status:** code shipped, **provisioning-gated + smoke-pending**. Nothing dials until the env below is set AND the pilot workspace is allowlisted. The generation core is verified on real data; the telephony + completion legs need one live provisioned call to confirm.
+**Status:** ✅ **LIVE-VERIFIED 2026-07-10.** First provisioned call ran end-to-end: Bernard dialed Q, interviewed him, and autonomously produced an on-brand blog draft — dial → SIP-bridge → OpenAI accept (SIP-header correlation + webhook signatures all confirmed) → dual-channel recording → transcribe → generate → completion cascade. **v1.1 shipped** to fix three things the pilot surfaced (below). Env is provisioned on prod; `movebetter` is allowlisted.
+
+**Pilot-call learnings → v1.1 fixes:**
+- Cut the clinician off on a mid-thought pause → `turn_detection` switched to **semantic_vad, eagerness 'low'** (model decides end-of-turn by meaning, not a silence timer).
+- Ran to ~10 min and the OpenAI session went quiet → **~6-min prompt time-box** (Bernard wraps up warmly) + **`<Dial timeLimit="480">`** 8-min hard cap so a call can never dead-air.
+- Transcript came through as one merged block → **dual-channel split** (ffmpeg; ch0=user/left, ch1=assistant/right — mapping confirmed on the real recording) → proper speaker-separated turns.
+- Story titled with the generic placeholder "Your weekly call" → **auto-title** from the transcript: `"July 10, 2026 — <derived topic>"` (full date + Haiku-derived subject).
 
 **Decided (Q, 2026-07-10):** Provider = **Twilio SIP + OpenAI Realtime** (Bernard owns the loop). Pilot rings **Dr. Q** on **movebetter**. Opener = **ultra-light / standing-consent**. No-answer = **silent → in-app nudge only**. Trigger = **manual** (cadence automation is a fast-follow).
 
