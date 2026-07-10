@@ -30,8 +30,18 @@ describe('stripStoryDatePrefix', () => {
     expect(stripStoryDatePrefix('01/02/26 - Hyphen')).toBe('Hyphen')
   })
 
-  it('leaves an un-dated subject untouched', () => {
+  it('strips the long-form month-name date used by legacy auto-titles', () => {
+    expect(stripStoryDatePrefix('July 10, 2026 — Hip and shoulder')).toBe('Hip and shoulder')
+    expect(stripStoryDatePrefix('Jan. 5, 2026 – Abbreviated month')).toBe('Abbreviated month')
+  })
+
+  it('strips lenient numeric variants (1-2 digit, 2-4 year)', () => {
+    expect(stripStoryDatePrefix('7/5/2026 — Single digits')).toBe('Single digits')
+  })
+
+  it('leaves an un-dated subject untouched (including a plain month word)', () => {
     expect(stripStoryDatePrefix('Just a subject')).toBe('Just a subject')
+    expect(stripStoryDatePrefix('July recap of the quarter')).toBe('July recap of the quarter')
   })
 
   it('is idempotent and null-safe', () => {

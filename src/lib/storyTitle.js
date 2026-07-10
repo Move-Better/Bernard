@@ -24,8 +24,13 @@
 // Mirrors the UTC MM/DD/YY logic in api/_lib/outboundCall.js `formatStoryDate`
 // so the phone-call auto-title and the display helper agree to the character.
 
-// Leading `MM/DD/YY — ` (em-dash, en-dash, or hyphen; any surrounding space).
-const DATE_PREFIX_RE = /^\s*\d{2}\/\d{2}\/\d{2}\s*[—–-]\s*/
+// Leading date prefix (em-dash, en-dash, or hyphen separator; any surrounding
+// space). Matches both the canonical numeric form ("MM/DD/YY — ", also lenient
+// on 1–2 digit / 2–4 year variants) and the long-form month-name form
+// ("July 10, 2026 — ") that legacy auto-titles used, so the strip stays a
+// single source of truth for every historical title shape.
+const DATE_PREFIX_RE =
+  /^\s*(?:\d{1,2}\/\d{1,2}\/\d{2,4}|[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4})\s*[—–-]\s*/
 
 /**
  * UTC MM/DD/YY for a story's date. Empty string on a missing/invalid date so
