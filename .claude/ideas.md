@@ -30,10 +30,10 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 ## Idea: FFmpeg video text overlay
 - **Surfaced:** 2026-05-13
 - **Area:** new `api/_lib/videoOverlay.js`, would wire into TikTok/Reels atom flow
-- **TLDR:** Use `@ffmpeg-installer/ffmpeg` on Vercel Functions to bake hook/CTA text onto short videos via the `drawtext` filter. Today we punt to CapCut via `[ON SCREEN TEXT: ...]` markers in atomPrompts.
+- **TLDR:** Use `@ffmpeg-installer/ffmpeg` on Vercel Functions to bake hook/CTA text onto short videos via the `drawtext` filter.
 - **Effort:** ~1 day (drawtext, font handling, Vercel function size constraints)
-- **Trigger to revisit:** Clinicians actually start producing video at meaningful volume and the CapCut handoff becomes a bottleneck.
-- **Status:** Parked (canonical pattern per CLAUDE.md is to keep video out of app and use CapCut)
+- **Trigger to revisit:** —
+- **Status:** SHIPPED — superseded by Bernard's built-in video editor (Moment Miner → VideoEditor), which bakes captions/overlays via the editorial render pipeline (`/api/editorial/render-clip`). The external CapCut handoff is retired.
 
 ## Idea: Cloudinary as overlay render engine
 - **Surfaced:** 2026-05-13

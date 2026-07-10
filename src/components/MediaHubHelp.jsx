@@ -59,7 +59,7 @@ export default function MediaHubHelp() {
               </div>
 
               <p className="text-muted-foreground">
-                The Media Hub is where raw clinic capture and finished edits live together. The system suggests what each clip could become; your editor takes accepted suggestions into a video editor like CapCut, brings the finished files back, then attaches them to posts in Content Hub.
+                The Media Hub is where raw clinic capture and finished edits live together. The system suggests what each clip could become; your editor takes accepted suggestions into Bernard&apos;s built-in video editor to cut, caption, and brand-wrap them — no external app needed — then attaches the finished clips to posts in Content Hub.
               </p>
 
               <ol className="space-y-3">
@@ -75,11 +75,11 @@ export default function MediaHubHelp() {
                 <Step icon={<Icon as={Pencil} size="md" />} num={4} title="Spot one AI missed? Create manually.">
                   AI is a head-start, not a gate. If a moment caught your eye that AI didn&apos;t surface, open the source clip&apos;s detail and click &quot;New brief&quot; — fill in your own caption, suggested platform, and the source range you want to edit.
                 </Step>
-                <Step icon={<Icon as={Pencil} size="md" />} num={5} title="Edit in CapCut Pro">
-                  For each accepted brief: open it, copy the suggested clip range and caption, then jump to CapCut Pro to do the actual cut, captioning, and brand wrap. The brief stays open in the queue so you can come back.
+                <Step icon={<Icon as={Pencil} size="md" />} num={5} title="Edit in Bernard's built-in editor">
+                  For each accepted brief, open its source clip in Bernard&apos;s built-in video editor to do the actual cut, captioning, brand wrap, and music — right here, no external app. Use &quot;Edit clip in Bernard&quot; on the brief, or open any clip from Moment Miner or its Library detail. The brief stays in the queue so you can come back.
                 </Step>
-                <Step icon={<Icon as={Upload} size="md" />} num={6} title="Bring the finished file back">
-                  In the same brief, click &quot;Upload final&quot; and select the file you exported from CapCut. It lands in the library tied to the original source — and the brief flips to &quot;returned&quot; status so you know it&apos;s ready to publish.
+                <Step icon={<Icon as={Upload} size="md" />} num={6} title="Save or publish the finished clip">
+                  The built-in editor saves your finished clip to the Library and can publish it straight to a post. Prefer to close the loop on the brief? Click &quot;Upload final&quot; to attach the finished clip back — it lands in the library tied to the original source and the brief flips to &quot;returned&quot; status, ready to publish.
                 </Step>
                 <Step icon={<Icon as={Send} size="md" />} num={7} title="Attach to a post in Content Hub">
                   Finished media is reusable. The same edited clip can power a Reel today, a story next week, and a newsletter banner next month. Open Content Hub, create or pick a post, and attach the media via the Library tab in the media picker.

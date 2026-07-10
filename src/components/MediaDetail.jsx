@@ -248,7 +248,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   // produced via Edit (variant_label IS NOT NULL is enforced server-side via
   // the list filter — the API returns whatever parent_id matches, so we filter
   // here to keep this strip focused on rotation/crop variants and not other
-  // child rows like CapCut return-uploads).
+  // child rows like externally-edited return-uploads).
   const refreshVariants = useCallback(async () => {
     if (asset.parent_id) {
       // Variants of a variant don't render their own strip — keep the model flat.

@@ -32,7 +32,7 @@ const MODEL = 'google/gemini-2.5-flash'
 // argument". Workaround: for videos at or above PROXY_TRIGGER_BYTES, download
 // + transcode to a 720p/CRF30/64k-mono proxy capped at 18 MB, then hand the
 // model the proxy bytes. Original blob is untouched — editors still get full
-// quality in CapCut downstream.
+// quality when editing downstream.
 const PROXY_TRIGGER_BYTES = 15 * 1024 * 1024
 const PROXY_MAX_OUTPUT    = '18000000'                          // ffmpeg -fs
 
