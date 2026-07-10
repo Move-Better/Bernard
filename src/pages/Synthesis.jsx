@@ -16,7 +16,7 @@ import { apiFetch } from '@/lib/api'
 // ── Kind metadata ─────────────────────────────────────────────────────────────
 
 const KIND_META = {
-  archetype:  { label: 'Patient archetypes',   color: 'bg-info/10 text-info border-info/30',   dot: 'bg-info' },
+  archetype:  { label: 'Patient types',        color: 'bg-info/10 text-info border-info/30',   dot: 'bg-info' },
   condition:  { label: 'Conditions treated',   color: 'bg-success/10 text-success border-success/30',  dot: 'bg-success' },
   paradigm:   { label: 'Practice philosophy',  color: 'bg-scheduled/10 text-scheduled border-scheduled/30', dot: 'bg-scheduled' },
   value:      { label: 'Core values',          color: 'bg-action/10 text-action border-action/30',     dot: 'bg-action' },

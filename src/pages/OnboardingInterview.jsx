@@ -1259,7 +1259,7 @@ function SynthesisStateCard({ status, error, counts, result, dryRun, onRetry, on
             <p className="text-sm text-muted-foreground">
               {dryRun
                 ? 'About a minute. The model is producing the synthesis JSON; nothing will be written.'
-                : "About a minute. We're reading your transcript and writing your workspace's voice guidance, patient archetype, topic queue, and phrase bank. Hang tight."}
+                : "About a minute. We're reading your transcript and writing your workspace's voice guidance, patient types, topic queue, and phrase bank. Hang tight."}
             </p>
           </div>
         </CardContent>
