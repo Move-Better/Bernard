@@ -20,6 +20,7 @@ import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 // F2.3 — "Your week": the producer's plan/review hub (Phase 2).
 // 2b: workspace-tz time display.
@@ -29,10 +30,13 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 const DAYS = [
   ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
 ]
+// Trust modes, shown as a segmented control (not a breadcrumb — it displays
+// which mode you're currently in, it isn't a step-by-step trail). Keys are the
+// stored cadence_policy.trust_stage values; labels + helper are user-facing.
 const LADDER = [
-  ['approve_all', 'Approve everything'],
-  ['approve_exception', 'Approve by exception'],
-  ['manage_by_goals', 'Manage by goals'],
+  ['approve_all', 'Approve each post', 'You approve every post before it publishes. Bernard takes more off your plate as you greenlight more.'],
+  ['approve_exception', 'Auto-approve routine', 'Bernard auto-approves routine posts and only asks you about the exceptions — taking on more as you greenlight more.'],
+  ['manage_by_goals', 'Run by goals', 'Bernard runs to your goals and publishes on its own, surfacing only the posts that need your eyes.'],
 ]
 
 // Week navigation (F2): page back through finished weeks (read-only, up to 8) or
@@ -593,25 +597,32 @@ export default function YourWeek() {
       {/* Clinician review slice (2d) */}
       {YourReviewSlice}
 
-      {/* Trust ladder */}
+      {/* Trust mode — a segmented control showing which automation mode you're
+          in (not a breadcrumb trail). Display-only here; the mode is set in
+          Auto-publish settings. The helper line explains the CURRENT mode. */}
       {isEditor && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3">
-          <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">You&apos;re here</span>
-          <div className="flex items-center gap-2 text-xs">
-            {LADDER.map(([s, lbl], i) => (
-              <span key={s} className="flex items-center gap-2">
-                {i === stageIdx ? (
-                  <span className="rounded-md bg-primary/10 text-primary px-2 py-0.5 font-semibold">{lbl}</span>
-                ) : (
-                  <span className="text-muted-foreground/60">{lbl}</span>
-                )}
-                {i < LADDER.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
-              </span>
-            ))}
+        <div className="rounded-xl border bg-card p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Your mode</span>
+            <div
+              role="group"
+              aria-label="Current automation mode"
+              className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5 text-xs"
+            >
+              {LADDER.map(([s, lbl], i) => (
+                <span
+                  key={s}
+                  aria-current={i === stageIdx ? 'true' : undefined}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${
+                    i === stageIdx ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+                  }`}
+                >
+                  {lbl}
+                </span>
+              ))}
+            </div>
           </div>
-          {/* basis-full below lg keeps the sentence on its own tidy row instead of
-              orphaning mid-ladder when the flex row wraps at narrow widths */}
-          <span className="basis-full lg:basis-auto lg:ml-auto text-2xs text-muted-foreground">I take more off your plate as I learn what you greenlight</span>
+          <p className="mt-2 text-2xs text-muted-foreground">{LADDER[stageIdx]?.[2]}</p>
         </div>
       )}
 
@@ -710,6 +721,9 @@ export default function YourWeek() {
                   {tzLabel(tz)}
                 </span>
               </div>
+              <p className="mb-2 text-3xs text-muted-foreground">
+                Each channel shows posts <b className="font-semibold text-foreground">scheduled this week</b> / your <b className="font-semibold text-foreground">weekly target</b>.
+              </p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {Object.entries(cadence).filter(([, c]) => c?.enabled).map(([platform, cfg]) => {
                   const meta = PLATFORM_META[platform] || { label: platform, icon: null }
@@ -722,7 +736,14 @@ export default function YourWeek() {
                         <span className="flex items-center gap-1.5 font-semibold">
                           {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />} {meta.label}
                         </span>
-                        <span className="text-muted-foreground"><b className="text-foreground">{got}</b>/{target}</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-muted-foreground cursor-help"><b className="text-foreground">{got}</b>/{target}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {got} scheduled this week · target {target}/week
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-primary" style={{ width: `${target ? Math.min(100, (got / target) * 100) : 0}%` }} />
