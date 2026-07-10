@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History, BadgeCheck, Trash2 } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History, BadgeCheck, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
+import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { brandSwatches, NEUTRAL_SWATCHES } from '@/lib/brandSwatches'
@@ -39,7 +39,6 @@ import {
   richRunsToHTML,
   serializeRichCE,
   runsHaveStyle,
-  sanitizeRun,
   richFlagsAt,
   wrapSelectionInSpan,
   unwrapIfBare,
@@ -55,6 +54,13 @@ import {
   TEXT_COLORS,
   ASPECT_STAGE,
 } from './slide-editor/shared'
+import MiniSlideCanvas from './slide-editor/MiniSlideCanvas'
+import ThemeTile from './slide-editor/ThemeTile'
+import SegRow from './slide-editor/SegRow'
+import SuggestionThumb from './slide-editor/SuggestionThumb'
+import FloatingTextToolbar from './slide-editor/FloatingTextToolbar'
+import RealQuotesSection from './slide-editor/RealQuotesSection'
+import BlockRow from './slide-editor/BlockRow'
 
 // The on-canvas inline rich-text editor. Double-click a block → this replaces
 // its canvas text (suppressed while editing) and shows a Canva-style selection
@@ -207,175 +213,6 @@ function RichTextEditOverlay({ block, idx, baseStyle, onCommit, onDone }) {
   )
 }
 
-// ── Block row ─────────────────────────────────────────────────────────────────
-
-function BlockRow({ block, onChange, onRemove }) {
-  const meta = ROLE_META[block.role] || ROLE_META.body
-  const workspace = useWorkspace()
-  const ceRef = useRef(null)
-  const [toolbarPos, setToolbarPos] = useState(null)
-  const savedRangeRef = useRef(null)
-  const initRef = useRef(false)
-  const suppressRef = useRef(false)
-
-  // Initialise contenteditable once on mount from block data
-  useEffect(() => {
-    if (initRef.current || !ceRef.current) return
-    initRef.current = true
-    ceRef.current.innerHTML = richRunsToHTML(block.runs, block.text)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Re-sync from EXTERNAL text changes (e.g. the on-canvas inline editor) when
-  // this field isn't focused — keeps the side panel in step without clobbering
-  // active typing here.
-  useEffect(() => {
-    const el = ceRef.current
-    if (!el || !initRef.current || document.activeElement === el) return
-    const html = richRunsToHTML(block.runs, block.text)
-    if (el.innerHTML !== html) el.innerHTML = html
-  }, [block.text, block.runs])
-
-  function serializeAndSync() {
-    if (suppressRef.current) return
-    const el = ceRef.current
-    if (!el) return
-    // Rich serialize (all per-word dims), so editing text here NEVER drops
-    // per-word size/weight/italic/underline/strike/case set on the canvas — the
-    // old colour-only serialize would have silently clobbered them.
-    const runs = serializeRichCE(el)
-    const text = runs.map((r) => r.text).join('')
-    const result = { ...block, text }
-    if (runsHaveStyle(runs)) result.runs = runs.map(sanitizeRun)
-    else delete result.runs
-    onChange(result)
-  }
-
-  function checkSelection() {
-    const sel = window.getSelection()
-    const el = ceRef.current
-    if (!sel || sel.isCollapsed || !sel.toString().trim() || !el?.contains(sel.anchorNode)) {
-      setToolbarPos(null); return
-    }
-    const rect = sel.getRangeAt(0).getBoundingClientRect()
-    const mid = rect.left + rect.width / 2
-    setToolbarPos({ top: rect.top - 52, left: Math.max(8, Math.min(mid - 130, window.innerWidth - 268)) })
-  }
-
-  function applyColor(color) {
-    const sel = window.getSelection()
-    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
-    ceRef.current?.focus()
-    document.execCommand('styleWithCSS', false, true) // emit <span style="color:…">, which serializeRichCE reads
-    document.execCommand('foreColor', false, color)
-    savedRangeRef.current = null
-    serializeAndSync()
-    setToolbarPos(null)
-  }
-
-  function clearColor() {
-    const sel = window.getSelection()
-    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
-    ceRef.current?.focus()
-    document.execCommand('removeFormat', false, null)
-    savedRangeRef.current = null
-    serializeAndSync()
-    setToolbarPos(null)
-  }
-
-  const bSwatches = useMemo(() => brandSwatches(workspace), [workspace])
-
-  return (
-    <div className="flex items-start gap-2 rounded-lg border bg-background/50 p-3">
-      <div className="flex-1 min-w-0">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <select
-            value={block.role}
-            onChange={(e) => onChange({ ...block, role: e.target.value })}
-            aria-label="Text block role"
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
-          >
-            {BLOCK_ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
-            ))}
-          </select>
-          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive" aria-label="Delete block">
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Floating colour toolbar — fixed above the text selection */}
-        {toolbarPos && (
-          <div
-            className="fixed z-50 flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1.5 shadow-xl"
-            style={{ top: toolbarPos.top, left: toolbarPos.left }}
-            onMouseDown={(e) => {
-              const sel = window.getSelection()
-              if (sel && sel.rangeCount > 0 && sel.toString().trim()) {
-                savedRangeRef.current = sel.getRangeAt(0).cloneRange()
-              }
-              // Prevent focus steal for all children except the ColorPickerPopover trigger
-              if (!e.target.closest('[data-picker-trigger]')) e.preventDefault()
-            }}
-          >
-            {bSwatches.length > 0 && (
-              <span className="pr-0.5 text-3xs font-semibold uppercase tracking-wider text-zinc-500">Brand</span>
-            )}
-            {bSwatches.slice(0, 5).map((color) => (
-              <button
-                key={color} type="button" aria-label={color} onClick={() => applyColor(color)}
-                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
-                style={{ background: color }}
-              />
-            ))}
-            {bSwatches.length > 0 && <span className="mx-0.5 h-4 w-px bg-zinc-700" />}
-            {['#FFFFFF', '#000000'].map((c) => (
-              <button
-                key={c} type="button" aria-label={c === '#FFFFFF' ? 'White' : 'Black'} onClick={() => applyColor(c)}
-                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
-                style={{ background: c }}
-              />
-            ))}
-            <span className="mx-0.5 h-4 w-px bg-zinc-700" />
-            <button
-              type="button" onClick={clearColor}
-              className="px-1 text-3xs font-medium text-zinc-400 transition-colors hover:text-white"
-            >Clear</button>
-            <span data-picker-trigger>
-              <ColorPickerPopover
-                value="#888888"
-                onChange={applyColor}
-                swatches={bSwatches}
-                swatchClassName="h-5 w-5 rounded-full"
-                ariaLabel="Custom colour"
-              />
-            </span>
-          </div>
-        )}
-
-        <div
-          ref={ceRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={serializeAndSync}
-          onMouseUp={checkSelection}
-          onKeyUp={checkSelection}
-          onBlur={() => { setTimeout(() => setToolbarPos(null), 150) }}
-          onPaste={(e) => {
-            e.preventDefault()
-            document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
-          }}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
-          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2.5rem' }}
-          data-placeholder={`${meta.label} text…`}
-        />
-        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Move className="h-4 w-4 shrink-0" /> Drag the text on the canvas to place it. Highlight text to pick a colour.
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // ── Slide card ────────────────────────────────────────────────────────────────
 
 function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className, aspect }) {
@@ -457,37 +294,6 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
       title={canReframe ? 'Click to select · drag to reposition · scroll to zoom' : 'Click to select the photo layer'}
       className={className || `w-full aspect-[4/5] rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
-  )
-}
-
-// Floating contextual toolbar — appears above (or below, near the top edge) the
-// selected text block, carrying the PRIMARY per-element controls (font · weight ·
-// italic · align · colour). Advanced controls (size, width, underline, role) stay
-// in the side panel. `stop` swallows pointerdown so clicking the toolbar doesn't
-// start a drag on the block box beneath it.
-function FloatingTextToolbar({ block, idx, below, onSetStyle, stop }) {
-  const btn = (active) => `flex h-7 min-w-[26px] items-center justify-center rounded px-1 text-sm font-semibold transition-colors ${active ? 'bg-primary/15 text-primary' : 'text-foreground/80 hover:bg-muted'}`
-  const set = (k, v) => (e) => { e.stopPropagation(); onSetStyle(idx, k, v) }
-  const div = <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
-  return (
-    <div
-      onPointerDown={stop}
-      className={`absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg ${below ? 'top-full mt-2' : 'bottom-full mb-2'}`}
-    >
-      <button onPointerDown={stop} onClick={set('font', block.font === 'body' ? 'heading' : 'body')} className={btn(false)} title="Toggle font">{block.font === 'body' ? 'Body' : 'Head'}</button>
-      {div}
-      <button onPointerDown={stop} onClick={set('fontWeight', block.fontWeight === '700' ? null : '700')} className={btn(block.fontWeight === '700')} title="Bold" style={{ fontWeight: 800 }}>B</button>
-      <button onPointerDown={stop} onClick={set('italic', block.italic ? null : true)} className={btn(block.italic === true)} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
-      {div}
-      <button onPointerDown={stop} onClick={set('align', 'left')} className={btn(block.align === 'left')} title="Align left" aria-label="Align left">⇤</button>
-      <button onPointerDown={stop} onClick={set('align', null)} className={btn(!block.align || block.align === 'center')} title="Align center" aria-label="Align center">⇔</button>
-      <button onPointerDown={stop} onClick={set('align', 'right')} className={btn(block.align === 'right')} title="Align right" aria-label="Align right">⇥</button>
-      {div}
-      {TEXT_COLORS.slice(0, 3).map((c) => (
-        <button key={c.value} onPointerDown={stop} onClick={set('color', c.value)} title={c.label} aria-label={`Colour ${c.label}`}
-          className={`h-5 w-5 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary' : 'border-border'}`} style={{ background: c.value }} />
-      ))}
-    </div>
   )
 }
 
@@ -724,45 +530,6 @@ function ObjectInspector({ slide, objIdx, onChange, onRemoved }) {
 }
 
 // ── Caption section — post caption, collapsed by default (written last, like IG)
-// ── Real Quotes — verbatim lines from the source interview ────────────────────
-// Shows the actual words the clinician said that grounded this post.
-// Tapping a quote inserts it as a body text block on the active slide.
-function RealQuotesSection({ pieceId, onInsertQuote }) {
-  const { data: quotes = [], isLoading } = useVerbatimQuotes(pieceId)
-
-  if (!isLoading && quotes.length === 0) return null
-
-  return (
-    <div>
-      <div className="pb-2 flex items-center justify-between">
-        <span className="text-sm font-bold uppercase tracking-wide text-foreground/80 flex items-center gap-1.5">
-          <Type className="h-4 w-4" /> Real quotes
-        </span>
-        <span className="text-xs text-muted-foreground">from your interview · tap to add</span>
-      </div>
-      {isLoading ? (
-        <div className="pb-1 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {quotes.map((q) => (
-            <button
-              key={q.id}
-              type="button"
-              onClick={() => onInsertQuote?.(q.quote)}
-              className="w-full text-left rounded-lg border border-l-[3px] border-l-verbatim-accent bg-card px-3 py-2.5 text-sm leading-snug text-foreground hover:bg-verbatim-accent/5 transition-colors"
-            >
-              <span className="text-xs font-bold uppercase tracking-wide text-verbatim-accent block mb-1">● verbatim</span>
-              &ldquo;{q.quote}&rdquo;
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Accordion layer row ────────────────────────────────────────────────────────
 // ── Caption panel (the "Words" rail tool) ─────────────────────────────────────
 // Renders inside the inspector when the Words tool is selected.
@@ -851,67 +618,6 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
         </div>
       </div>
     </div>
-  )
-}
-
-// ── Mini slide render — a real renderFreeformSlide miniature for the theme grid
-// (so theme tiles look like what they actually produce, not a placeholder). The
-// canvas bitmap is set by the renderer; CSS scales it down. `renderKey` gates
-// re-renders so we don't redraw 6 canvases on every keystroke.
-
-function MiniSlideCanvas({ renderSlide, photoUrl, brandStyle, theme, renderKey }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    const c = ref.current
-    if (!c) return
-    renderFreeformSlide({
-      sourceUrl: photoUrl || null,
-      slide: renderSlide,
-      brandStyle: brandStyle || {},
-      canvas: c,
-      theme,
-      width: SLIDE_W,
-      height: SLIDE_H,
-    }).catch(() => { /* thumbnail render best-effort */ })
-    // renderKey encodes every input that affects the pixels — intentional sole dep.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderKey])
-  return <canvas ref={ref} className="block h-full w-full" />
-}
-
-// One template tile — a real rendered miniature of the active slide in that
-// template. Module scope (react-hooks/static-components); reused by both the
-// Photo-templates and Text-cards groups in the picker.
-function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onChange }) {
-  const resolved = resolveTheme(t.id, customThemes)
-  const selected = slide.template_id === t.id
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={() => onChange({ ...slide, template_id: t.id })}
-          className={`group relative overflow-hidden rounded-md border text-left transition-all ${
-            selected ? 'border-verbatim-accent ring-1 ring-verbatim-accent/40' : 'border-border hover:border-primary/40'
-          }`}
-        >
-          <div className="aspect-[4/5] w-full bg-muted">
-            <MiniSlideCanvas
-              renderSlide={slide}
-              photoUrl={photoUrl}
-              brandStyle={brandStyle}
-              theme={resolved}
-              renderKey={`${t.id}|${thumbSig}`}
-            />
-          </div>
-          <div className="px-2 py-1.5 text-xs font-medium truncate text-foreground">{t.name}</div>
-          {selected && (
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>{`${t.name}${selected ? ' (this slide only)' : ''}`}</TooltipContent>
-    </Tooltip>
   )
 }
 
@@ -1047,34 +753,6 @@ function SlideInspector({
 // Library/Upload picker (MediaPicker). Selecting any of them ATTACHES the photo
 // to media_urls and rebinds the active slide via onAttach. Photos only here —
 // the carousel renderer only draws stills (videos publish as Reels).
-
-// One lightweight suggestion thumbnail (avoids importing the heavy CandidateCard).
-function SuggestionThumb({ clip, attached, attaching, onAttach }) {
-  const thumb = clip.thumbnailUrl || clip.blobUrl || clip.url
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          disabled={attaching}
-          onClick={onAttach}
-          className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
-            attached ? 'border-primary' : 'border-border hover:border-primary'
-          }`}
-        >
-          {thumb
-            ? <img src={thumb} alt="" className="h-full w-full object-cover" />
-            : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>}
-          <span className="absolute left-2 top-2 rounded-md bg-primary px-1.5 py-0.5 text-xs font-bold leading-tight text-primary-foreground">AI</span>
-          <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            {attaching ? <Loader2 className="h-7 w-7 animate-spin" /> : attached ? <Check className="h-7 w-7" /> : <Plus className="h-7 w-7" />}
-          </span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>{attached ? 'Already in this post — click to use it on this slide' : 'Use this photo'}</TooltipContent>
-    </Tooltip>
-  )
-}
 
 function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
   const [tab, setTab] = useState('ai')          // 'ai' | 'library'
@@ -1548,30 +1226,6 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
 // Per-block text styling — Size / Colour / Weight / Case / Font. All optional;
 // "Auto" clears the override so the block inherits the role + theme (renderer
 // precedence: block > theme > role). The swatch palette is the brand set.
-function SegRow({ label, options, value, onPick }) {
-  return (
-    <div>
-      <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="flex gap-1.5">
-        {options.map((o) => {
-          const active = value === o.value || (value == null && o.value == null)
-          return (
-            <button
-              key={o.label}
-              type="button"
-              onClick={() => onPick(o.value)}
-              className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
-                active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
-              }`}
-            >
-              {o.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
 function TextStyleControls({ block, onSet, photoPalette = [] }) {
   const workspace = useWorkspace()
   const swatches = useMemo(() => [...brandSwatches(workspace), ...photoPalette, ...NEUTRAL_SWATCHES], [workspace, photoPalette])
