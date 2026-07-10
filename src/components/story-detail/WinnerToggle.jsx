@@ -3,7 +3,7 @@
 // V5 (engagement loop): published pieces carry a `performed_well` boolean. A
 // story director flips it on when the audience responded — comments, shares,
 // bookings, a partner mentioning it in clinic. That flag is the producer end
-// of the loop: the Slate's Coverage tab rolls winners up per topic/clinician,
+// of the loop: the Moment Miner's Coverage tab rolls winners up per topic/clinician,
 // and the daily slate resurfaces proven topics first (see getSuggestedTopics'
 // provenTopics param). When GA4 / Buffer metrics eventually flow, the
 // refresh-engagement cron can auto-set the same flag — this toggle is the

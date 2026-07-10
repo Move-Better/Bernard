@@ -8,14 +8,14 @@ import { HELP_CONTENT } from '@/lib/helpContent'
 // Generic per-page Help affordance. Content comes from helpContent.jsx keyed
 // by `pageKey`. Two ways to surface, matching the original MediaHubHelp:
 //   1. First-visit auto-open — fires once per browser session (sessionStorage),
-//      so a new user navigating Home → Slate → Stories doesn't get three
+//      so a new user navigating Home → Moment Miner → Stories doesn't get three
 //      stacked modals. Subsequent page visits in the same session skip auto-open.
 //   2. A "?" chip next to the page title (always available for on-demand access)
 //
 // variant:
 //   'default'    — primary-tinted chip, for light page headers (e.g. Stories)
 //   'onGradient' — white translucent chip, for the nx-grad-ribbon gradient
-//                  header used on Home and Slate
+//                  header used on Home and Moment Miner
 const SESSION_WELCOMED_KEY = 'pagehelp:session:welcomed'
 
 export default function PageHelp({ pageKey, variant = 'default' }) {

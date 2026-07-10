@@ -1,7 +1,7 @@
 // GET /api/editorial/shot-list
 //
 // V10: the "shooting director." Closes the loop between distribution demand
-// and capture supply. The Slate's Coverage tab measures which topics still
+// and capture supply. The Moment Miner's Coverage tab measures which topics still
 // need source material; this endpoint turns those gaps into concrete, voiced
 // capture directives a clinician can act on from the Capture page:
 //

@@ -5,7 +5,7 @@
  * V1 of the "Deepen the video build" extension set. Scores caption_text +
  * topic (thumbnail title equivalent) on story_packages against the owning
  * clinician's voice phrase corpus. Persists the score on the row so:
- *   1. The Story Director Slate can render a fidelity badge per card.
+ *   1. The Story Director Moment Miner can render a fidelity badge per card.
  *   2. The CI gate (scripts/verify-caption-fidelity.mjs) can refuse to
  *      ship when average fidelity dips below baseline.
  *

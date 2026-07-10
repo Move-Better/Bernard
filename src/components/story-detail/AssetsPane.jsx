@@ -1858,7 +1858,7 @@ export default function AssetsPane({
             )}
 
             {/* V5 engagement loop: human "this worked" signal on published pieces.
-                Feeds the Slate's Coverage winners + proven-topic resurfacing. */}
+                Feeds the Moment Miner's Coverage winners + proven-topic resurfacing. */}
             {active.status === 'published' && <WinnerToggle piece={active} />}
 
             <ApprovalPanel piece={active} mode="workflow" />

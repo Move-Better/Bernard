@@ -2,7 +2,7 @@
 //
 // L2 of the slop-safe auto-clip flow: when a source video lands in a
 // video-pipeline-enabled workspace, automatically run AI clip DETECTION so the
-// clinician finds standalone-clip PROPOSALS already waiting in the Slate review
+// clinician finds standalone-clip PROPOSALS already waiting in the Moment Miner review
 // queue — instead of having to open each video and click "Find clips".
 //
 // DETECTION ONLY — this is the deliberate product line. It transcribes + runs one
@@ -44,7 +44,7 @@ const MAX_SEGMENTS = 8
 // (instance recycled before waitUntil flushed); re-claim it.
 const STALE_DETECTING_MS = 15 * 60 * 1000
 // Sources to auto-detect, by source type. Derived clips (parent_asset_id set)
-// and rendered Slate outputs are excluded.
+// and rendered Moment Miner outputs are excluded.
 const SOURCE_TYPES = '(upload,capture_companion,local-import)'
 
 function sb(path, init = {}) {

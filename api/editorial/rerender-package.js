@@ -1,7 +1,7 @@
 // POST /api/editorial/rerender-package
 //
 // Phase 3 PR 3: Re-render a story package's channel outputs with an updated caption.
-// Used by the inline edit flow on the Slate when the clinician changes the caption
+// Used by the inline edit flow on the Moment Miner when the clinician changes the caption
 // and wants the visual renders updated to match.
 //
 // Body:
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     : (isVideo ? ['linkedin_video', 'instagram_reel', 'blog_hero_video'] : ['linkedin_feed', 'instagram_reel_still', 'blog_hero'])
 
   // --- Mark the package as rendering, clearing any prior failure ---
-  // The Slate treats status='generating' as in-progress and keeps polling, so
+  // The Moment Miner treats status='generating' as in-progress and keeps polling, so
   // the card flips to "complete"/"failed" once the background render settles.
   const claimRes = await sb(`story_packages?id=eq.${packageId}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
@@ -139,7 +139,7 @@ export default async function handler(req, res) {
   // the HTTP request open raced the 300s function ceiling AND the caller's
   // short-lived Clerk token (→ "invalid-token"). waitUntil keeps the function
   // alive to finish server-side while the client gets an instant 202 and the
-  // Slate polls the row for completion.
+  // Moment Miner polls the row for completion.
   waitUntil(
     renderAndPatchPackage({
       workspace:     ws,

@@ -632,7 +632,7 @@ function MusicInspector({ ctx }) {
   )
 }
 
-// Moments — the AI proposals picker (replaces SlateClipEditor's review lane).
+// Moments — the AI proposals picker (replaces the old clip-review lane).
 function MomentsInspector({ ctx }) {
   const { proposals, selectedSegmentId, applySegment, discardSegment, findMoments, findingMoments, segDetecting } = ctx
   const loading = findingMoments || segDetecting

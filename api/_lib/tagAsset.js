@@ -253,7 +253,7 @@ export async function tagAndPersist(asset, scope) {
       patch.transcription = transcription
       patch.visual_narrative = visual_narrative
     }
-    // AI title replaces IMG_*.mov as the display name across Slate / Library /
+    // AI title replaces IMG_*.mov as the display name across Moment Miner / Library /
     // picker; the filename stays as metadata. Never overwrite a title a human
     // (or earlier run) already set.
     if (display_title && !asset.display_title) patch.display_title = display_title

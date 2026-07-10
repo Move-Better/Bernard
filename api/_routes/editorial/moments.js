@@ -2,7 +2,7 @@
 //
 // Moment Miner feed: every PROPOSED video_segment across ALL source videos in
 // the workspace, FLATTENED and RANKED by quotability score (strongest first) —
-// the moment-first redesign of Slate's per-video "Ready to review" rows.
+// the moment-first redesign of Moment Miner's per-video "Ready to review" rows.
 //
 // Self-healing: any proposed segment still missing a score (detected before the
 // scoring pass shipped) is scored + classified inline on first load and

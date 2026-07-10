@@ -9,7 +9,7 @@
 const PRIORITY_RANK = { high: 3, medium: 2, low: 1 }
 
 /**
- * Rank a workspace's configured topic suggestions for the Slate / coverage views.
+ * Rank a workspace's configured topic suggestions for the Moment Miner / coverage views.
  *
  * V5 (engagement loop): `provenTopics` is an optional array of topic-title
  * strings whose past published content was flagged `performed_well` (the

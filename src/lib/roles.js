@@ -68,7 +68,7 @@ export function roleLabel(role) {
 // the existing role gates continue to work unchanged.
 //
 //   owner     — workspace owner; effectively unrestricted
-//   producer  — operational editor; Slate-only nav, no settings/billing/integrations
+//   producer  — operational editor; Moment Miner-only nav, no settings/billing/integrations
 //   clinician — default tier; full clinician UX
 //   viewer    — read-only (defined for future use, no consumers yet)
 export const TIER_OWNER     = 'owner'

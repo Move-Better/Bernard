@@ -2,7 +2,7 @@
 //
 // One-time backfill: run AI clip DETECTION over the existing library so every
 // genuine source video that has never been processed gets standalone-clip
-// PROPOSALS waiting in the Slate/ClipFinder review queue — "use the content we
+// PROPOSALS waiting in the Moment Miner/ClipFinder review queue — "use the content we
 // already have."
 //
 // DETECTION ONLY. This is deliberate and matches the product stance:

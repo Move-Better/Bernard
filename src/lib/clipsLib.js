@@ -59,7 +59,7 @@ export function updateSegment(segmentId, status) {
  * parent_asset_id = source video). Returns 202 with { clips, skipped }; the
  * segments flip to status='rendering' then 'rendered' (poll getSegments). The
  * finished clips land in the Library and bump the source's "clips cut" count on
- * the Slate.
+ * the Moment Miner.
  * @param {string[]} segmentIds
  */
 export function renderSegments(segmentIds) {
@@ -73,7 +73,7 @@ export function renderSegments(segmentIds) {
 /**
  * Render the WHOLE source video as one keep-whole, landscape long-form story
  * package — the other explicit choice next to "Find clips". Returns 202 with
- * { packageId, status, channels }; the Slate polls story_packages for
+ * { packageId, status, channels }; the Moment Miner polls story_packages for
  * completion. Anything over the 120s long-form cap is trimmed until the
  * chunked-render follow-up.
  * @param {string} assetId
@@ -91,7 +91,7 @@ export function renderWholeVideo(assetId) {
  * "Repurpose: <filename>" campaign, kicks the keep-whole long-form master render
  * AND social-clip detection — both tagged to the same campaign. Returns 202 with
  * { campaignId, campaignName, masterPackageId, clipsStatus, mode, channels }.
- * Track the master in the Slate; review proposed clips in the ClipFinder panel.
+ * Track the master in the Moment Miner; review proposed clips in the ClipFinder panel.
  * @param {string} assetId
  * @param {number} [maxSegments]
  */

@@ -12,7 +12,7 @@
 //
 // Why capabilities rather than tier-based gates:
 //   Move Better's Producer needs near-admin access. Generic clinic's Producer
-//   needs the locked-down Slate-only experience. Same code, two different
+//   needs the locked-down Moment Miner-only experience. Same code, two different
 //   permission sets, configured per-workspace by editing role_templates.
 //
 // Adding a new capability:
@@ -41,7 +41,7 @@ export const CAP_INTERVIEW_EDIT_OTHERS   = 'interview.edit_others'
 export const CAP_CONTENT_APPROVE         = 'content.approve'
 export const CAP_CONTENT_PUBLISH         = 'content.publish'
 
-// Slate (Phase 3)
+// Moment Miner (Phase 3)
 export const CAP_SLATE_GENERATE = 'slate.generate'
 export const CAP_SLATE_APPROVE  = 'slate.approve'
 
@@ -88,7 +88,7 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     capabilities: [...ALL_CAPABILITIES],  // unrestricted
   },
   producer: {
-    // Default Producer = locked-down Slate operator (the generic-clinic case).
+    // Default Producer = locked-down Moment Miner operator (the generic-clinic case).
     // Workspaces that want a fuller Producer (Move Better) override this
     // template in workspaces.role_templates.
     label: 'Producer',

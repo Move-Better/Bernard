@@ -14,7 +14,7 @@ import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
 // P3 promo lane: how much of the feed campaign-attributed pieces may claim.
 // Ramps with event proximity — a far-off (or evergreen) campaign gets the floor,
 // an imminent seminar the ceiling. Derived from the shared campaignWeight ramp
-// (1..30) so the promo lane and the Slate slot allocation stay in lockstep.
+// (1..30) so the promo lane and the Moment Miner slot allocation stay in lockstep.
 const PROMO_MIN = 0.15
 const PROMO_MAX = 0.40
 function promoShareFor(activeCampaigns, now) {

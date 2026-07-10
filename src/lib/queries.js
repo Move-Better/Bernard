@@ -455,7 +455,7 @@ export function useUpdateContentItem() {
       qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
       qc.invalidateQueries({ queryKey: queryKeys.stories.all })
       qc.invalidateQueries({ queryKey: queryKeys.contentPlan.all })
-      // V5: a winner toggle changes performed_well, which the Slate's Coverage
+      // V5: a winner toggle changes performed_well, which the Moment Miner's Coverage
       // tab rolls up into per-topic / per-clinician winner counts.
       qc.invalidateQueries({ queryKey: ['editorial-coverage'] })
       // Media suggestions rank against the draft's words, so a words change

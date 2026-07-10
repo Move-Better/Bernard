@@ -1,6 +1,6 @@
 // POST /api/editorial/approve-package
 //
-// Approve a story package from the Story Director Slate.
+// Approve a story package from the Story Director Moment Miner.
 //
 // Body: { packageId: string, destination?: 'publish' | 'library' }
 //
@@ -23,7 +23,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
-import { saveSlateBroll } from '../../_lib/saveSlateBroll.js'
+import { saveBroll } from '../../_lib/saveBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -163,10 +163,10 @@ export default async function handler(req, res) {
 
   if (destination === 'library') {
     // Each rendered clip lands in the Library as reusable broll for future posts.
-    // saveSlateBroll handles the media_assets insert + waitUntil(indexMediaAsset).
+    // saveBroll handles the media_assets insert + waitUntil(indexMediaAsset).
     let assets
     try {
-      assets = await saveSlateBroll({
+      assets = await saveBroll({
         ws,
         renders,
         staffId: pkg.staff_id || null,
@@ -174,7 +174,7 @@ export default async function handler(req, res) {
         parentAssetId: pkg.source_asset_id || null,
       })
     } catch (e) {
-      console.error('[approve-package] saveSlateBroll failed:', e.message)
+      console.error('[approve-package] saveBroll failed:', e.message)
       return res.status(500).json({ error: 'media_assets_insert_failed' })
     }
 
@@ -217,7 +217,7 @@ export default async function handler(req, res) {
     }),
     status:         'approved',
     approved_at:    now,
-    notes:          `Approved from Slate (package ${packageId})`,
+    notes:          `Approved from review (package ${packageId})`,
     provenance:     {
       source:       'story_package',
       package_id:   packageId,

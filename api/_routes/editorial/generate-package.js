@@ -214,7 +214,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create package row immediately so the Slate card appears with a spinner.
+    // Create package row immediately so the Moment Miner card appears with a spinner.
     let brollPackageId
     try {
       const insRes = await sb('story_packages', {
@@ -259,7 +259,7 @@ export default async function handler(req, res) {
     }
 
     // Fire-and-forget: generate → render → patch package. Runs within
-    // the Vercel function's waitUntil budget (up to 300s). The Slate
+    // the Vercel function's waitUntil budget (up to 300s). The Moment Miner
     // polls packages with broll_status='generating' every few seconds.
     waitUntil(
       generateSyntheticBroll({
@@ -384,7 +384,7 @@ export default async function handler(req, res) {
   // The row is already status='generating'. Render in the background instead of
   // awaiting it inside the request: a large source (downscaled on ingest) can
   // take minutes, which raced both the 300s function ceiling and the caller's
-  // short-lived Clerk token (→ "invalid-token"). The Slate polls the row until
+  // short-lived Clerk token (→ "invalid-token"). The Moment Miner polls the row until
   // status flips to complete/failed. Mirrors the b-roll path's waitUntil + 202.
   waitUntil(
     renderAndPatchPackage({

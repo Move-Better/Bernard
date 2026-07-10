@@ -51,7 +51,7 @@ export const HELP_CONTENT = {
     ],
   },
 
-  slate: {
+  moments: {
     title: 'Moment Miner — how it works',
     intro:
       'Moment Miner is where you turn raw source videos into short, polished clips. Pick a video from your library, trim the best moment, add a caption, and send it forward — either as a post draft ready for Words, or as b-roll saved back to the Library.',

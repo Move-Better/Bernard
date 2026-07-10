@@ -12,7 +12,7 @@
  *   6. patchPackage()          — update story_packages: status=complete, renders, broll_*
  *
  * Error contract: this function does NOT throw. It catches all errors and patches
- * the package to broll_status='failed' so the Slate can surface it cleanly.
+ * the package to broll_status='failed' so the Moment Miner can surface it cleanly.
  * The generate-package endpoint returns 202 immediately — generation is fully async.
  *
  * Env required:

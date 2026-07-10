@@ -11,7 +11,7 @@ import { findClips, getSegments, updateSegment, renderSegments } from '@/lib/cli
 // clinician taps a clip's thumbnail to preview that exact window in the source
 // video (seeks to start_sec, auto-pauses at end_sec), then keeps or discards.
 // Kept segments render into media_assets b-roll clips (parent_asset_id = source).
-// Clips land in the Library and bump the source's "clips cut" count on the Slate.
+// Clips land in the Library and bump the source's "clips cut" count on the Moment Miner.
 
 function mmss(sec) {
   const s = Math.max(0, Math.round(Number(sec) || 0))

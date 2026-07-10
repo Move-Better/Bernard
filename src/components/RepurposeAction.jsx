@@ -8,7 +8,7 @@ import { repurposeVideo } from '@/lib/clipsLib'
 // /api/editorial/repurpose-video endpoint which: creates (or reuses) a
 // "Repurpose: <filename>" campaign, kicks the keep-whole master render, and
 // kicks social-clip detection — all tagged to the same campaign so the Story
-// Slate's campaign chip groups master + clips together.
+// Moment Miner's campaign chip groups master + clips together.
 //
 // The granular "Full-length video" and "Find clips" buttons remain available in
 // MediaDetail for one-off use; this card is the "do both + bundle" shortcut.

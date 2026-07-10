@@ -3,7 +3,7 @@
 // Multi-clip video v1 (Phase 1). Kicks off transcript-based segment detection
 // for one long source video: transcribe (Whisper, timestamped) → one LLM pass
 // proposing standalone ≤60s moments → persist as video_segments rows. The
-// clinician reviews + keeps/discards on the Slate; each kept segment renders
+// clinician reviews + keeps/discards on the Moment Miner; each kept segment renders
 // into its own story_package (Phase 2).
 //
 // Body:
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
   })
   if (!patchRes.ok) return res.status(500).json({ error: 'db_error' })
 
-  // Detect off the request path; the Slate polls segment_status.
+  // Detect off the request path; the Moment Miner polls segment_status.
   waitUntil(
     detectSegmentsForAsset({ workspace: ws, asset, maxSegments }),
   )

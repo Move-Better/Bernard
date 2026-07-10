@@ -1,7 +1,7 @@
 // PATCH /api/editorial/segments/:id
 //
 // Multi-clip video v1 (Phase 2). Updates the review status of one proposed
-// segment — keep or discard — from the Slate segment picker. Rendering a kept
+// segment — keep or discard — from the Moment Miner segment picker. Rendering a kept
 // segment is a separate step (POST /api/editorial/render-segments), so this
 // endpoint only moves review state.
 //

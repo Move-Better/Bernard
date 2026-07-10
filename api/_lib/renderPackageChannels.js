@@ -11,11 +11,11 @@
 // — a re-render of a 562MB source surfaced "invalid-token" and never patched
 // the row (found 2026-05-29 during the V-series smoke test). Both endpoints now
 // validate synchronously, mark the row status='generating', then invoke this
-// via waitUntil and return 202; the Slate polls the row until status flips to
+// via waitUntil and return 202; the Moment Miner polls the row until status flips to
 // complete/failed.
 //
 // This function NEVER throws — any failure is captured onto the row's
-// status='failed' + error_message so the Slate surfaces it cleanly. Safe in
+// status='failed' + error_message so the Moment Miner surfaces it cleanly. Safe in
 // waitUntil: it talks to Supabase with the service key, so it needs no caller
 // token.
 
@@ -202,7 +202,7 @@ export async function renderAndPatchPackage({
     return { finalStatus, renders, errors }
   } catch (e) {
     // Defensive: never let the background task reject unhandled. Mark the row
-    // failed so the Slate shows an actionable error instead of spinning forever.
+    // failed so the Moment Miner shows an actionable error instead of spinning forever.
     console.error('[renderPackageChannels] fatal:', e?.stack || e?.message || e)
     // Same cancel guard as the success path — don't flip a canceled card to failed.
     await sb(

@@ -1,7 +1,7 @@
 // GET /api/editorial/segments?assetId=<id>
 //
 // Multi-clip video v1 (Phase 1). Returns the detection lifecycle status for a
-// source asset plus its proposed/kept/rendered video_segments, for the Slate
+// source asset plus its proposed/kept/rendered video_segments, for the Moment Miner
 // segment picker to poll while find-clips runs and to render the review list.
 //
 // Query params:

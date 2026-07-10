@@ -2,7 +2,7 @@
 //
 // Renders a self-contained HTML email summarizing a workspace's last 7 days:
 //   • Published content (top 5 by platform variety)
-//   • Slate stats (generated / approved / skipped / failed)
+//   • Moment Miner stats (generated / approved / skipped / failed)
 //   • Triage queue at time-of-send (failed + low-confidence + stale)
 //   • What's queued — complete packages awaiting approval
 //
@@ -38,7 +38,7 @@ function pluralize(n, singular, plural) {
  *     primary_logo_url?: string, colors?: { primary?: string }
  *   },
  *   published:     Array<{ id, topic, platform, published_at, staff_name? }>,
- *   slateStats:    { generated, approved, skipped, failed, complete_awaiting: number },
+ *   momentStats:    { generated, approved, skipped, failed, complete_awaiting: number },
  *   triage:        { failed, lowConfidence, stale: number },
  *   queued:        Array<{ id, topic, similarity?, staff_name?, created_at }>,
  *   weekStart:     string  // ISO start of the reporting week
@@ -46,13 +46,13 @@ function pluralize(n, singular, plural) {
  * }} input
  * @returns {{ subject: string, html: string, text: string }}
  */
-export function buildDigest({ workspace, published, slateStats, triage, queued, weekStart, weekEnd }) {
+export function buildDigest({ workspace, published, momentStats, triage, queued, weekStart, weekEnd }) {
   const wsName = workspace.display_name || workspace.name || 'your workspace'
   const accent = (workspace.colors?.primary) || '#e36525'
   const ribbonGradient = `linear-gradient(135deg, ${accent}, ${shade(accent, -22)})`
   const subject = `${wsName} — last week's content + this week's queue`
   const baseUrl = `https://${workspace.slug}.withbernard.ai`
-  const slateUrl = `${baseUrl}/slate`
+  const momentsUrl = `${baseUrl}/moments`
 
   const publishedCount = published.length
   const queuedCount    = queued.length
@@ -82,7 +82,7 @@ export function buildDigest({ workspace, published, slateStats, triage, queued, 
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
               ${statCell({ n: publishedCount, label: 'Published', color: '#059669' })}
-              ${statCell({ n: slateStats.approved, label: 'Approved', color: '#0284c7' })}
+              ${statCell({ n: momentStats.approved, label: 'Approved', color: '#0284c7' })}
               ${statCell({ n: queuedCount, label: 'Queued', color: '#d97706' })}
               ${statCell({ n: triageTotal, label: 'Need attention', color: triageTotal > 0 ? '#dc2626' : '#71717a' })}
             </tr>
@@ -90,15 +90,15 @@ export function buildDigest({ workspace, published, slateStats, triage, queued, 
         </td></tr>
 
         ${section('Published last week', publishedSection(published, baseUrl))}
-        ${section('Ready for your review', queuedSection(queued, slateUrl, queuedCount))}
-        ${triageTotal > 0 ? section('Triage queue', triageSection(triage, slateUrl)) : ''}
-        ${section('Slate this week', slateRecap(slateStats))}
+        ${section('Ready for your review', queuedSection(queued, momentsUrl, queuedCount))}
+        ${triageTotal > 0 ? section('Triage queue', triageSection(triage, momentsUrl)) : ''}
+        ${section('Moment Miner this week', momentRecap(momentStats))}
 
         <!-- CTA -->
         <tr><td style="padding:18px 24px 28px;text-align:center;">
-          <a href="${escapeHtml(slateUrl)}"
+          <a href="${escapeHtml(momentsUrl)}"
              style="display:inline-block;background:${accent};color:#fff;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;font-size:14px;">
-            Open Slate →
+            Open Moment Miner →
           </a>
         </td></tr>
 
@@ -119,11 +119,11 @@ export function buildDigest({ workspace, published, slateStats, triage, queued, 
     `${wsName} — ${fmtDate(weekStart)}-${fmtDate(weekEnd)}`,
     ``,
     `Published last week: ${publishedCount}`,
-    `Approved from Slate: ${slateStats.approved}`,
+    `Approved from Moment Miner: ${momentStats.approved}`,
     `Queued for review: ${queuedCount}`,
     `Need attention (triage): ${triageTotal}`,
     ``,
-    `Open Slate: ${slateUrl}`,
+    `Open Moment Miner: ${momentsUrl}`,
   ].join('\n')
 
   return { subject, html, text }
@@ -165,9 +165,9 @@ function publishedSection(items, _baseUrl) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>${more}`
 }
 
-function queuedSection(items, slateUrl, totalCount) {
+function queuedSection(items, momentsUrl, totalCount) {
   if (items.length === 0) {
-    return `<div style="font-size:13px;color:#71717a;font-style:italic;">No packages waiting. Generate today's slate when you're ready.</div>`
+    return `<div style="font-size:13px;color:#71717a;font-style:italic;">No packages waiting. Generate today's clips when you're ready.</div>`
   }
   const rows = items.slice(0, 5).map((it) => `
     <tr><td style="padding:6px 0;border-bottom:1px solid #f0eee9;">
@@ -177,23 +177,23 @@ function queuedSection(items, slateUrl, totalCount) {
       </div>
     </td></tr>`).join('')
   const more = totalCount > 5
-    ? `<div style="font-size:12px;color:#71717a;margin-top:6px;">+ ${totalCount - 5} more in <a href="${escapeHtml(slateUrl)}" style="color:#52525b;">Slate</a></div>`
+    ? `<div style="font-size:12px;color:#71717a;margin-top:6px;">+ ${totalCount - 5} more in <a href="${escapeHtml(momentsUrl)}" style="color:#52525b;">Moment Miner</a></div>`
     : ''
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>${more}`
 }
 
-function triageSection(triage, slateUrl) {
+function triageSection(triage, momentsUrl) {
   const lines = []
   if (triage.failed > 0)        lines.push(`${pluralize(triage.failed, 'render')} failed`)
   if (triage.lowConfidence > 0) lines.push(`${pluralize(triage.lowConfidence, 'low-confidence package')}`)
   if (triage.stale > 0)         lines.push(`${pluralize(triage.stale, 'stale package')}`)
   return `
     <div style="background:#fef7f0;border:1px solid #f5d9b3;border-radius:8px;padding:11px 14px;font-size:13px;color:#92400e;">
-      ${lines.join(' · ')} — <a href="${escapeHtml(slateUrl)}?view=triage" style="color:#7c2d12;font-weight:600;">open triage</a>
+      ${lines.join(' · ')} — <a href="${escapeHtml(momentsUrl)}?view=triage" style="color:#7c2d12;font-weight:600;">open triage</a>
     </div>`
 }
 
-function slateRecap(stats) {
+function momentRecap(stats) {
   return `<div style="font-size:13px;color:#52525b;line-height:1.6;">
     Generated ${stats.generated}, approved ${stats.approved}, skipped ${stats.skipped}${stats.failed > 0 ? `, ${stats.failed} render failures` : ''}.
   </div>`

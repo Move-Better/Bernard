@@ -1,6 +1,6 @@
 // GET /api/cron/sweep-stuck-segment-renders  (Vercel cron, every 5 minutes)
 //
-// Safety-net for the Slate "Find clips" render lane. The happy path flips
+// Safety-net for the Moment Miner "Find clips" render lane. The happy path flips
 // video_segments.status 'rendering' → 'rendered' (or back to 'proposed' on a
 // caught failure) inside render-segments' waitUntil worker pool. But a Vercel
 // SIGKILL at the 300s wall runs no code — the per-segment catch never fires —

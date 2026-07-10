@@ -444,9 +444,9 @@ async function handler(req, res) {
       current_user_capabilities = resolveCapabilities(current_user_tier, workspace, current_user_capability_overrides)
     }
 
-    // Phase 4 Tentpole PR B: embed currently-active campaigns so the Slate
+    // Phase 4 Tentpole PR B: embed currently-active campaigns so the Moment Miner
     // client can do slot allocation against them without a separate fetch.
-    // Non-fatal on failure — Slate falls back to legacy non-campaign
+    // Non-fatal on failure — Moment Miner falls back to legacy non-campaign
     // generation when the field is absent or empty.
     let active_campaigns = []
     try {

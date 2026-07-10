@@ -1,10 +1,10 @@
 // POST /api/editorial/clip-to-post
 //
-// Slate Slate — "As a post" output.
+// Moment Miner — "As a post" output.
 //
 // Takes a rendered clip blob URL and creates a content_items draft so the
 // clip flows into the normal Storyboard → publish pipeline.
-// Slate never publishes directly.
+// Moment Miner never publishes directly.
 //
 // Body: { assetId, renderedBlobUrl, captionText, platform }
 //
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     content:      caption,
     overlay_text: caption,
     staff_id:     asset.staff_id || null,
-    notes:        `Slate clip from asset ${assetId}`,
+    notes:        `Clip from asset ${assetId}`,
   }
 
   const insertRes = await sb('content_items', {

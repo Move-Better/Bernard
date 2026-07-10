@@ -15,19 +15,19 @@ import { listMedia } from '@/lib/mediaLib'
 import { findClips, listMoments, updateSegment, renderSegments } from '@/lib/clipsLib'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import CoveragePanel from '@/components/slate/CoveragePanel'
+import CoveragePanel from '@/components/moments/CoveragePanel'
 import PageSkeleton from '@/components/PageSkeleton'
 import ErrorState from '@/components/ErrorState'
 
 const REFETCH_INTERVAL_MS = 30_000
-// Hard cap on every Slate poll loop. Detection of a long seminar can run for
+// Hard cap on every Moment Miner poll loop. Detection of a long seminar can run for
 // minutes (see api/_lib/segmentDetect.js), so the ceiling sits well above a
 // single job; its job is to stop a row stuck in 'detecting' from polling
 // forever once the tab is left open.
 const POLL_CEILING_MS = 5 * 60_000
 
 // True when any source video is mid-detection. This is the only background
-// job-state the Slate page can observe — auto-detect flips segment_status
+// job-state the Moment Miner page can observe — auto-detect flips segment_status
 // null → 'detecting' → 'ready' | 'failed'. The proposal/clip count maps carry
 // no state of their own, but they only change while a detection (or its
 // follow-on render) is in flight, so all three poll loops gate on this.
@@ -365,7 +365,7 @@ export default function MomentMiner() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['slate-source-videos', searchQ],
+    queryKey: ['moments-source-videos', searchQ],
     queryFn: () => listMedia({ kind: 'video', limit: 100, q: searchQ || undefined }),
     enabled: !!ws,
     refetchInterval: (q) => {
@@ -381,7 +381,7 @@ export default function MomentMiner() {
 
   // Clip counts per source asset (rendered clips already cut from this source)
   const { data: clipCounts } = useQuery({
-    queryKey: ['slate-clip-counts'],
+    queryKey: ['moments-clip-counts'],
     queryFn: () => apiFetch('/api/editorial/clip-counts'),
     enabled: !!ws,
     refetchInterval: () => {
@@ -399,7 +399,7 @@ export default function MomentMiner() {
 
   // Unreviewed proposal counts per source asset (video_segments status='proposed')
   const { data: proposalCounts } = useQuery({
-    queryKey: ['slate-proposal-counts'],
+    queryKey: ['moments-proposal-counts'],
     queryFn: () => apiFetch('/api/editorial/proposal-counts'),
     enabled: !!ws,
     refetchInterval: () => {
@@ -455,7 +455,7 @@ export default function MomentMiner() {
     return needsCuttingVideos
   }, [view, needsCuttingVideos, clipsToReviewVideos, inProgressVideos])
 
-  // Review-first: Slate opens on the decisions the AI already prepared, not
+  // Review-first: Moment Miner opens on the decisions the AI already prepared, not
   // the uncut backlog. Seed once when counts first arrive; never fight a tab
   // the user has clicked.
   const viewSeededRef = useRef(false)
@@ -514,7 +514,7 @@ export default function MomentMiner() {
 
   function refreshMoments() {
     queryClient.invalidateQueries({ queryKey: ['moments'] })
-    queryClient.invalidateQueries({ queryKey: ['slate-proposal-counts'] })
+    queryClient.invalidateQueries({ queryKey: ['moments-proposal-counts'] })
   }
 
   // "Looks good — save": keep the segment + render it into a Library clip.
