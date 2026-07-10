@@ -174,7 +174,7 @@ function ThemeCard({ topic, stories, workspace }) {
           has no patient_context.prototypes[]. */}
       {showMix && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-3xs uppercase tracking-wide text-muted-foreground mr-1">Archetypes</span>
+          <span className="text-3xs uppercase tracking-wide text-muted-foreground mr-1">Patient types</span>
           {byArchetype.map((row) => (
             <span
               key={row.id}

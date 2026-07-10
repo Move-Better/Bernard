@@ -481,7 +481,7 @@ export default function NewInterview() {
               />
               {PATIENT_PROTOTYPES_UI.length > 1 && (
                 <SimpleSlotPicker
-                  label="Patient archetype"
+                  label="Patient type"
                   options={PATIENT_PROTOTYPES_UI}
                   value={prototype}
                   onChange={(v) => { setPrototype(v); markDrift() }}

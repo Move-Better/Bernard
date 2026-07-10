@@ -147,7 +147,7 @@ export default function OnboardingCard({ onVisibilityChange } = {}) {
               <>
                 <p className="font-semibold text-sm">Synthesizing your workspace voice…</p>
                 <p className="text-sm text-muted-foreground">
-                  We&apos;re reading your transcript and writing your voice guidance, patient archetype, topic queue, and phrase bank. About a minute.
+                  We&apos;re reading your transcript and writing your voice guidance, patient types, topic queue, and phrase bank. About a minute.
                 </p>
               </>
             ) : isContinuing ? (
