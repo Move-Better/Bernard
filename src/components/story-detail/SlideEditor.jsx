@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from 'sonner'
-import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Move, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Check, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History, BadgeCheck, Trash2 } from 'lucide-react'
+import { X, Plus, Image as ImageIcon, ImagePlus, Repeat, Layers, Megaphone, Smartphone, SlidersHorizontal, Instagram, Type, ChevronLeft, ChevronRight, Wand2, Sparkles, FolderOpen, Upload, Search, Loader2, Heart, MessageCircle, Send, Bookmark, Facebook, Linkedin, ThumbsUp, Repeat2, MapPin, Lock, AlertTriangle, History, BadgeCheck, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions, useVerbatimQuotes } from '@/lib/queries'
+import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { brandSwatches, NEUTRAL_SWATCHES } from '@/lib/brandSwatches'
@@ -11,11 +11,7 @@ import { apiFetch } from '@/lib/api'
 import MediaPicker from '@/components/MediaPicker'
 import {
   BLOCK_ROLES,
-  SLIDE_TEMPLATES,
-  TEMPLATE_DEFAULT_POSITIONS,
-  TEXT_EFFECTS,
   textEffectCss,
-  OBJECT_TYPES,
   renderFreeformSlide,
   SLIDE_W,
   SLIDE_H,
@@ -37,267 +33,34 @@ import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
 import { useAutosave } from '@/lib/useAutosave'
 import { useUndoHistory } from '@/lib/useUndoHistory'
 import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
-
-// Role label + chip colors. Mirrors the mockup palette.
-const ROLE_META = {
-  hook:        { label: 'Hook',        chip: 'bg-action/10 text-action' },
-  body:        { label: 'Body',        chip: 'bg-primary/10 text-primary' },
-  caption:     { label: 'Caption',     chip: 'bg-primary/10 text-primary' },
-  cta:         { label: 'CTA',         chip: 'bg-muted text-muted-foreground' },
-  attribution: { label: 'Attribution', chip: 'bg-muted text-muted-foreground' },
-  page:        { label: 'Page #',      chip: 'bg-muted text-muted-foreground' },
-}
-
-// Normalize a slide loaded from the DB so the editor never has to defensively
-// re-check shape. Missing fields get sensible defaults.
-function normalizeSlide(s, idx) {
-  return {
-    photo_idx: typeof s?.photo_idx === 'number' ? s.photo_idx : idx,
-    template:  typeof s?.template === 'string' && SLIDE_TEMPLATES[s.template] ? s.template : 'custom',
-    // Preserve the per-slide theme override on load — without this it was
-    // stripped when slides were read back from the DB, so a saved per-slide
-    // theme never survived a reload (the load-side half of the P0 fix).
-    template_id: s?.template_id || null,
-    // Photo reframe — focal pan + crop zoom of the bound photo. Optional;
-    // absent = centered cover at 1×.
-    ...(s?.photo_zoom > 1 ? { photo_zoom: s.photo_zoom } : {}),
-    ...(s?.photo_offset && (Number.isFinite(s.photo_offset.x) || Number.isFinite(s.photo_offset.y))
-      ? { photo_offset: { x: Number(s.photo_offset.x) || 0, y: Number(s.photo_offset.y) || 0 } }
-      : {}),
-    // Per-slide colorist grade (AI Photo Editor). Optional; absent = ungraded.
-    ...(s?.grade && !isNeutralGrade(s.grade) ? { grade: normalizeGrade(s.grade) } : {}),
-    blocks: Array.isArray(s?.blocks)
-      ? s.blocks.map((b) => ({
-          role:     typeof b?.role === 'string' && ROLE_META[b.role] ? b.role : 'body',
-          text:     typeof b?.text === 'string' ? b.text : '',
-          position: b?.position ?? 'center',
-          // Per-block wrap width (fraction of canvas), set by the editor's resize
-          // handle. Optional — renderer falls back to the role default when absent.
-          ...(Number.isFinite(b?.width) ? { width: b.width } : {}),
-          // Per-block text styling (Text-layer inspector). All optional; absent =
-          // inherit the role + theme. Renderer precedence: block > theme > role.
-          ...(Number.isFinite(b?.fontScale) && b.fontScale > 0 && b.fontScale !== 1 ? { fontScale: b.fontScale } : {}),
-          ...(typeof b?.color === 'string' && b.color ? { color: b.color } : {}),
-          ...(b?.fontWeight ? { fontWeight: b.fontWeight } : {}),
-          ...(typeof b?.uppercase === 'boolean' ? { uppercase: b.uppercase } : {}),
-          ...(b?.font === 'heading' || b?.font === 'body' ? { font: b.font } : {}),
-          ...(b?.italic === true ? { italic: true } : {}),
-          ...(b?.underline === true ? { underline: true } : {}),
-          // Whole-box spacing + effects (P3).
-          ...(Number.isFinite(b?.letterSpacing) && b.letterSpacing !== 0 ? { letterSpacing: b.letterSpacing } : {}),
-          ...(Number.isFinite(b?.lineHeight) && b.lineHeight > 0 && b.lineHeight !== 1 ? { lineHeight: b.lineHeight } : {}),
-          ...(['none', 'soft', 'medium', 'heavy'].includes(b?.shadow) ? { shadow: b.shadow } : {}),
-          // Text-effect preset (WS3.2): shadow / outline / glow / label + intensity
-          // + effect colour. Absent = legacy role/theme shadow (byte-identical).
-          ...(TEXT_EFFECTS.includes(b?.textEffect) ? { textEffect: b.textEffect } : {}),
-          ...([1, 2, 3].includes(b?.effectIntensity) ? { effectIntensity: b.effectIntensity } : {}),
-          ...(typeof b?.effectColor === 'string' && b.effectColor ? { effectColor: b.effectColor } : {}),
-          // Per-word style runs (on-canvas selection toolbar). Keep when ANY run
-          // carries a real override — not just colour — and whitelist run fields.
-          ...(runsHaveStyle(b?.runs) ? { runs: b.runs.map(sanitizeRun) } : {}),
-        }))
-      : [],
-    // Objects layer (WS3.1): addable elements (logo/watermark today). Optional;
-    // absent = no objects. Whitelist the shape so a stray field can't leak in.
-    ...(Array.isArray(s?.objects) && s.objects.length
-      ? { objects: s.objects
-          .filter((o) => o && OBJECT_TYPES.includes(o.type) && typeof o.src === 'string' && o.src)
-          .map((o) => ({
-            id: typeof o.id === 'string' && o.id ? o.id : `obj_${Math.random().toString(36).slice(2, 9)}`,
-            type: o.type,
-            ...(typeof o.mark === 'string' ? { mark: o.mark } : {}),
-            src: o.src,
-            x: Number.isFinite(o.x) ? Math.max(0, Math.min(1, o.x)) : 0.82,
-            y: Number.isFinite(o.y) ? Math.max(0, Math.min(1, o.y)) : 0.9,
-            scale: Number.isFinite(o.scale) ? Math.max(0.04, Math.min(0.9, o.scale)) : 0.16,
-            opacity: Number.isFinite(o.opacity) ? Math.max(0.05, Math.min(1, o.opacity)) : 1,
-          }))
-      }
-      : {}),
-  }
-}
-
-// ── Inline colour-run helpers ────────────────────────────────────────────────
-
-function cssColorToHex(color) {
-  if (!color) return null
-  const v = color.trim()
-  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase()
-  if (/^#[0-9a-f]{3}$/i.test(v)) {
-    const [, r, g, b] = v.split('')
-    return ('#' + r + r + g + g + b + b).toUpperCase()
-  }
-  const m = v.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/)
-  if (!m) return null
-  return '#' + [m[1], m[2], m[3]].map((n) => parseInt(n, 10).toString(16).padStart(2, '0')).join('').toUpperCase()
-}
-
-function escapeHtml(s) {
-  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// ── Rich per-word run helpers (on-canvas selection styling) ──────────────────
-// The inline editor persists per-word style as block.runs entries carrying any
-// of {color, sizeScale, bold, italic, underline, strike, case, font}. These map
-// 1:1 to what the shared canvas renderer (overlayTemplates) bakes, so what you
-// style on the canvas ships to the published post.
-const RICH_STYLE_KEYS = ['color', 'sizeScale', 'bold', 'italic', 'underline', 'strike', 'case', 'font']
-const RICH_SIZE_STEPS = [0.7, 0.85, 1, 1.25, 1.5, 2]
-const RICH_CASES = ['none', 'upper', 'lower', 'title']
-const RICH_FONTS = ['default', 'heading', 'body', 'serif']
-// Editor-side font display only — the real bake uses the workspace brand fonts.
-const RICH_FONT_CSS = {
-  heading: '"Trebuchet MS", "Segoe UI", sans-serif',
-  body: '"Helvetica Neue", Arial, sans-serif',
-  serif: 'Georgia, "Times New Roman", serif',
-}
-const RICH_CASE_CSS = { upper: 'uppercase', lower: 'lowercase', title: 'capitalize' }
-
-// Whitelist a run to {text, ...allowed style keys} — strips any stray DOM/serialize
-// artefacts before the row is persisted or hashed.
-function sanitizeRun(r) {
-  const out = { text: typeof r?.text === 'string' ? r.text : '' }
-  if (typeof r?.color === 'string' && r.color) out.color = r.color
-  if (Number.isFinite(r?.sizeScale) && r.sizeScale !== 1) out.sizeScale = r.sizeScale
-  if (r?.bold === true || r?.bold === false) out.bold = r.bold
-  if (r?.italic === true || r?.italic === false) out.italic = r.italic
-  if (r?.underline === true) out.underline = true
-  if (r?.strike === true) out.strike = true
-  if (r?.case === 'upper' || r?.case === 'lower' || r?.case === 'title') out.case = r.case
-  if (r?.font === 'heading' || r?.font === 'body' || r?.font === 'serif') out.font = r.font
-  return out
-}
-
-// True when any run carries a real per-word override (mirrors the renderer's
-// hasRunStyle gate) — used to drop all-bare runs so the row stays clean.
-function runsHaveStyle(runs) {
-  return Array.isArray(runs) && runs.some((r) => r && RICH_STYLE_KEYS.some((k) => {
-    if (k === 'sizeScale') return Number.isFinite(r.sizeScale) && r.sizeScale !== 1
-    if (k === 'color' || k === 'case' || k === 'font') return !!r[k]
-    return r[k] === true
-  }))
-}
-
-// block.runs → innerHTML for the contentEditable (styled spans).
-function richRunsToHTML(runs, text) {
-  if (!Array.isArray(runs) || !runs.length) return escapeHtml(text || '')
-  return runs.map((r) => {
-    const t = escapeHtml(r.text).replace(/\n/g, '<br>')
-    const styles = []
-    const data = []
-    if (r.color) styles.push(`color:${r.color}`)
-    if (Number.isFinite(r.sizeScale) && r.sizeScale !== 1) styles.push(`font-size:${r.sizeScale}em`)
-    if (r.bold === true) styles.push('font-weight:800')
-    else if (r.bold === false) styles.push('font-weight:400')
-    if (r.italic === true) styles.push('font-style:italic')
-    else if (r.italic === false) styles.push('font-style:normal')
-    const dec = [r.underline && 'underline', r.strike && 'line-through'].filter(Boolean).join(' ')
-    if (dec) styles.push(`text-decoration-line:${dec}`)
-    if (r.case) { styles.push(`text-transform:${RICH_CASE_CSS[r.case] || 'none'}`); data.push(`data-case="${r.case}"`) }
-    if (r.font && RICH_FONT_CSS[r.font]) { styles.push(`font-family:${RICH_FONT_CSS[r.font]}`); data.push(`data-font="${r.font}"`) }
-    if (!styles.length && !data.length) return t
-    return `<span style="${styles.join(';')}" ${data.join(' ')}>${t}</span>`
-  }).join('')
-}
-
-// Walk the contentEditable DOM → [{text, ...style}] runs, accumulating styles
-// from nested spans (inner wins). Merges adjacent identical-style runs.
-function serializeRichCE(el) {
-  const raw = []
-  function walk(node, inh) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (node.textContent) raw.push({ ...inh, text: node.textContent })
-      return
-    }
-    if (node.nodeName === 'BR') { raw.push({ ...inh, text: '\n' }); return }
-    let cur = inh
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      cur = { ...inh }
-      const s = node.style || {}
-      // execCommand foreColor usually emits style.color (styleWithCSS on), but
-      // some browsers still produce <font color="…"> — read both.
-      const c = cssColorToHex(s.color) || (node.nodeName === 'FONT' ? cssColorToHex(node.getAttribute('color')) : null)
-      if (c) cur.color = c
-      if (s.fontSize && s.fontSize.endsWith('em')) {
-        const v = parseFloat(s.fontSize)
-        if (Number.isFinite(v) && v !== 1) cur.sizeScale = Math.round(v * 100) / 100
-      }
-      if (s.fontWeight) { const w = parseInt(s.fontWeight, 10); if (w >= 700) cur.bold = true; else if (w) cur.bold = false }
-      if (s.fontStyle === 'italic') cur.italic = true
-      else if (s.fontStyle === 'normal') cur.italic = false
-      const dec = s.textDecorationLine || s.textDecoration || ''
-      if (dec.indexOf('underline') > -1) cur.underline = true
-      if (dec.indexOf('line-through') > -1) cur.strike = true
-      if (node.dataset?.case) cur.case = node.dataset.case
-      if (node.dataset?.font) cur.font = node.dataset.font
-    }
-    node.childNodes.forEach((ch) => walk(ch, cur))
-  }
-  el.childNodes.forEach((ch) => walk(ch, {}))
-  const merged = []
-  for (const r of raw) {
-    const last = merged[merged.length - 1]
-    const sameStyle = last && RICH_STYLE_KEYS.every((k) => last[k] === r[k])
-    if (sameStyle) last.text += r.text
-    else merged.push({ ...r })
-  }
-  // Strip false/undefined style keys so bare runs serialize to {text} only.
-  return merged.map((r) => {
-    const out = { text: r.text }
-    for (const k of RICH_STYLE_KEYS) {
-      if (k === 'sizeScale') { if (Number.isFinite(r.sizeScale) && r.sizeScale !== 1) out.sizeScale = r.sizeScale }
-      else if (k === 'color' || k === 'case' || k === 'font') { if (r[k]) out[k] = r[k] }
-      else if (r[k] === true || r[k] === false) out[k] = r[k]
-    }
-    return out
-  })
-}
-
-// Wrap the live selection in a fresh <span>; returns it (or null if collapsed).
-function wrapSelectionInSpan() {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
-  const range = sel.getRangeAt(0)
-  const span = document.createElement('span')
-  try { range.surroundContents(span) }
-  catch { const frag = range.extractContents(); span.appendChild(frag); range.insertNode(span) }
-  const nr = document.createRange()
-  nr.selectNodeContents(span)
-  sel.removeAllRanges(); sel.addRange(nr)
-  return span
-}
-function unwrapIfBare(span) {
-  if (!span) return
-  if (!span.getAttribute('style') && !span.dataset?.case && !span.dataset?.font) {
-    const p = span.parentNode
-    while (span.firstChild) p.insertBefore(span.firstChild, span)
-    p.removeChild(span); p.normalize?.()
-  }
-}
-// Resolve the effective per-word flags at the current selection start (nearest
-// span ancestors, inner-most wins) — drives toolbar active states + toggles.
-function richFlagsAt(editorEl) {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0) return {}
-  let node = sel.getRangeAt(0).startContainer
-  const f = {}
-  while (node && node !== editorEl) {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const s = node.style || {}
-      if (f.color == null && s.color) f.color = cssColorToHex(s.color)
-      if (f.scale == null && s.fontSize?.endsWith('em')) f.scale = parseFloat(s.fontSize)
-      if (f.bold == null && s.fontWeight) f.bold = parseInt(s.fontWeight, 10) >= 700
-      if (f.italic == null && s.fontStyle) f.italic = s.fontStyle === 'italic'
-      const dec = s.textDecorationLine || s.textDecoration || ''
-      if (dec.indexOf('underline') > -1) f.underline = true
-      if (dec.indexOf('line-through') > -1) f.strike = true
-      if (f.case == null && node.dataset?.case) f.case = node.dataset.case
-      if (f.font == null && node.dataset?.font) f.font = node.dataset.font
-    }
-    node = node.parentNode
-  }
-  return f
-}
+import {
+  ROLE_META,
+  normalizeSlide,
+  richRunsToHTML,
+  serializeRichCE,
+  runsHaveStyle,
+  richFlagsAt,
+  wrapSelectionInSpan,
+  unwrapIfBare,
+  RICH_SIZE_STEPS,
+  RICH_CASES,
+  RICH_CASE_CSS,
+  RICH_FONTS,
+  RICH_FONT_CSS,
+  defaultPositionFor,
+  emptyBlockFor,
+  WHOOP_CONTENT,
+  blockFraction,
+  TEXT_COLORS,
+  ASPECT_STAGE,
+} from './slide-editor/shared'
+import MiniSlideCanvas from './slide-editor/MiniSlideCanvas'
+import ThemeTile from './slide-editor/ThemeTile'
+import SegRow from './slide-editor/SegRow'
+import SuggestionThumb from './slide-editor/SuggestionThumb'
+import FloatingTextToolbar from './slide-editor/FloatingTextToolbar'
+import RealQuotesSection from './slide-editor/RealQuotesSection'
+import BlockRow from './slide-editor/BlockRow'
 
 // The on-canvas inline rich-text editor. Double-click a block → this replaces
 // its canvas text (suppressed while editing) and shows a Canva-style selection
@@ -450,184 +213,6 @@ function RichTextEditOverlay({ block, idx, baseStyle, onCommit, onDone }) {
   )
 }
 
-function defaultPositionFor(template, role) {
-  const map = TEMPLATE_DEFAULT_POSITIONS[template] || {}
-  return map[role] || 'center'
-}
-
-function emptyBlockFor(template, role) {
-  return { role, text: '', position: defaultPositionFor(template, role) }
-}
-
-// ── Block row ─────────────────────────────────────────────────────────────────
-
-function BlockRow({ block, onChange, onRemove }) {
-  const meta = ROLE_META[block.role] || ROLE_META.body
-  const workspace = useWorkspace()
-  const ceRef = useRef(null)
-  const [toolbarPos, setToolbarPos] = useState(null)
-  const savedRangeRef = useRef(null)
-  const initRef = useRef(false)
-  const suppressRef = useRef(false)
-
-  // Initialise contenteditable once on mount from block data
-  useEffect(() => {
-    if (initRef.current || !ceRef.current) return
-    initRef.current = true
-    ceRef.current.innerHTML = richRunsToHTML(block.runs, block.text)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Re-sync from EXTERNAL text changes (e.g. the on-canvas inline editor) when
-  // this field isn't focused — keeps the side panel in step without clobbering
-  // active typing here.
-  useEffect(() => {
-    const el = ceRef.current
-    if (!el || !initRef.current || document.activeElement === el) return
-    const html = richRunsToHTML(block.runs, block.text)
-    if (el.innerHTML !== html) el.innerHTML = html
-  }, [block.text, block.runs])
-
-  function serializeAndSync() {
-    if (suppressRef.current) return
-    const el = ceRef.current
-    if (!el) return
-    // Rich serialize (all per-word dims), so editing text here NEVER drops
-    // per-word size/weight/italic/underline/strike/case set on the canvas — the
-    // old colour-only serialize would have silently clobbered them.
-    const runs = serializeRichCE(el)
-    const text = runs.map((r) => r.text).join('')
-    const result = { ...block, text }
-    if (runsHaveStyle(runs)) result.runs = runs.map(sanitizeRun)
-    else delete result.runs
-    onChange(result)
-  }
-
-  function checkSelection() {
-    const sel = window.getSelection()
-    const el = ceRef.current
-    if (!sel || sel.isCollapsed || !sel.toString().trim() || !el?.contains(sel.anchorNode)) {
-      setToolbarPos(null); return
-    }
-    const rect = sel.getRangeAt(0).getBoundingClientRect()
-    const mid = rect.left + rect.width / 2
-    setToolbarPos({ top: rect.top - 52, left: Math.max(8, Math.min(mid - 130, window.innerWidth - 268)) })
-  }
-
-  function applyColor(color) {
-    const sel = window.getSelection()
-    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
-    ceRef.current?.focus()
-    document.execCommand('styleWithCSS', false, true) // emit <span style="color:…">, which serializeRichCE reads
-    document.execCommand('foreColor', false, color)
-    savedRangeRef.current = null
-    serializeAndSync()
-    setToolbarPos(null)
-  }
-
-  function clearColor() {
-    const sel = window.getSelection()
-    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
-    ceRef.current?.focus()
-    document.execCommand('removeFormat', false, null)
-    savedRangeRef.current = null
-    serializeAndSync()
-    setToolbarPos(null)
-  }
-
-  const bSwatches = useMemo(() => brandSwatches(workspace), [workspace])
-
-  return (
-    <div className="flex items-start gap-2 rounded-lg border bg-background/50 p-3">
-      <div className="flex-1 min-w-0">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <select
-            value={block.role}
-            onChange={(e) => onChange({ ...block, role: e.target.value })}
-            aria-label="Text block role"
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${meta.chip} border border-transparent cursor-pointer`}
-          >
-            {BLOCK_ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_META[r]?.label || r}</option>
-            ))}
-          </select>
-          <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive" aria-label="Delete block">
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Floating colour toolbar — fixed above the text selection */}
-        {toolbarPos && (
-          <div
-            className="fixed z-50 flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1.5 shadow-xl"
-            style={{ top: toolbarPos.top, left: toolbarPos.left }}
-            onMouseDown={(e) => {
-              const sel = window.getSelection()
-              if (sel && sel.rangeCount > 0 && sel.toString().trim()) {
-                savedRangeRef.current = sel.getRangeAt(0).cloneRange()
-              }
-              // Prevent focus steal for all children except the ColorPickerPopover trigger
-              if (!e.target.closest('[data-picker-trigger]')) e.preventDefault()
-            }}
-          >
-            {bSwatches.length > 0 && (
-              <span className="pr-0.5 text-3xs font-semibold uppercase tracking-wider text-zinc-500">Brand</span>
-            )}
-            {bSwatches.slice(0, 5).map((color) => (
-              <button
-                key={color} type="button" aria-label={color} onClick={() => applyColor(color)}
-                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
-                style={{ background: color }}
-              />
-            ))}
-            {bSwatches.length > 0 && <span className="mx-0.5 h-4 w-px bg-zinc-700" />}
-            {['#FFFFFF', '#000000'].map((c) => (
-              <button
-                key={c} type="button" aria-label={c === '#FFFFFF' ? 'White' : 'Black'} onClick={() => applyColor(c)}
-                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
-                style={{ background: c }}
-              />
-            ))}
-            <span className="mx-0.5 h-4 w-px bg-zinc-700" />
-            <button
-              type="button" onClick={clearColor}
-              className="px-1 text-3xs font-medium text-zinc-400 transition-colors hover:text-white"
-            >Clear</button>
-            <span data-picker-trigger>
-              <ColorPickerPopover
-                value="#888888"
-                onChange={applyColor}
-                swatches={bSwatches}
-                swatchClassName="h-5 w-5 rounded-full"
-                ariaLabel="Custom colour"
-              />
-            </span>
-          </div>
-        )}
-
-        <div
-          ref={ceRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={serializeAndSync}
-          onMouseUp={checkSelection}
-          onKeyUp={checkSelection}
-          onBlur={() => { setTimeout(() => setToolbarPos(null), 150) }}
-          onPaste={(e) => {
-            e.preventDefault()
-            document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
-          }}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
-          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2.5rem' }}
-          data-placeholder={`${meta.label} text…`}
-        />
-        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Move className="h-4 w-4 shrink-0" /> Drag the text on the canvas to place it. Highlight text to pick a colour.
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // ── Slide card ────────────────────────────────────────────────────────────────
 
 function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className, aspect }) {
@@ -709,66 +294,6 @@ function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectP
       title={canReframe ? 'Click to select · drag to reposition · scroll to zoom' : 'Click to select the photo layer'}
       className={className || `w-full aspect-[4/5] rounded-md border bg-muted ${canReframe ? 'cursor-move' : ''}`}
     />
-  )
-}
-
-// Where a text block's anchor sits as a fraction of the canvas — mirrors the
-// renderer's resolvePosition + the WHOOP panel auto-zone, so the drag handle
-// starts over the actual text. A user-dragged custom {x,y} is used verbatim.
-const WHOOP_CONTENT = new Set(['hook', 'body', 'caption', 'cta'])
-// `skipZone` mirrors the renderer (overlayTemplates.drawFreeformBlock): a
-// multi-content full-bleed `photo` slide does NOT pull its blocks into the
-// bottom scrim zone (they'd overlap), so the drag handle must sit at the block's
-// natural top/center/bottom position to stay aligned with the rendered text.
-function blockFraction(block, theme, skipZone = false) {
-  const pos = block.position
-  if (pos && typeof pos === 'object' && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
-    return { x: Math.max(0, Math.min(1, pos.x)), y: Math.max(0, Math.min(1, pos.y)) }
-  }
-  const preset = typeof pos === 'string' ? pos : 'center'
-  const [vert, horiz] = preset.includes('-') ? preset.split('-') : [preset, null]
-  const col = horiz || 'center'
-  let x = col === 'left' ? 0.1 : col === 'right' ? 0.9 : 0.5
-  const row = (vert === 'top' || vert === 'bottom' || vert === 'center') ? vert : 'center'
-  let y = row === 'top' ? 0.12 : row === 'bottom' ? 0.88 : 0.5
-  const layout = theme?.layout, palette = theme?.palette
-  const zone = layout === 'split' ? [0.70, 0.95]
-    : layout === 'badge' ? (palette === 'dark' ? [0.60, 0.93] : [0.61, 0.93])
-    : layout === 'photo' ? [0.58, 0.92] : null
-  if (zone && WHOOP_CONTENT.has(block.role) && !skipZone) {
-    y = row === 'top' ? zone[0] : row === 'bottom' ? zone[1] : (zone[0] + zone[1]) / 2
-  }
-  return { x, y }
-}
-
-// Floating contextual toolbar — appears above (or below, near the top edge) the
-// selected text block, carrying the PRIMARY per-element controls (font · weight ·
-// italic · align · colour). Advanced controls (size, width, underline, role) stay
-// in the side panel. `stop` swallows pointerdown so clicking the toolbar doesn't
-// start a drag on the block box beneath it.
-function FloatingTextToolbar({ block, idx, below, onSetStyle, stop }) {
-  const btn = (active) => `flex h-7 min-w-[26px] items-center justify-center rounded px-1 text-sm font-semibold transition-colors ${active ? 'bg-primary/15 text-primary' : 'text-foreground/80 hover:bg-muted'}`
-  const set = (k, v) => (e) => { e.stopPropagation(); onSetStyle(idx, k, v) }
-  const div = <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
-  return (
-    <div
-      onPointerDown={stop}
-      className={`absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg ${below ? 'top-full mt-2' : 'bottom-full mb-2'}`}
-    >
-      <button onPointerDown={stop} onClick={set('font', block.font === 'body' ? 'heading' : 'body')} className={btn(false)} title="Toggle font">{block.font === 'body' ? 'Body' : 'Head'}</button>
-      {div}
-      <button onPointerDown={stop} onClick={set('fontWeight', block.fontWeight === '700' ? null : '700')} className={btn(block.fontWeight === '700')} title="Bold" style={{ fontWeight: 800 }}>B</button>
-      <button onPointerDown={stop} onClick={set('italic', block.italic ? null : true)} className={btn(block.italic === true)} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
-      {div}
-      <button onPointerDown={stop} onClick={set('align', 'left')} className={btn(block.align === 'left')} title="Align left" aria-label="Align left">⇤</button>
-      <button onPointerDown={stop} onClick={set('align', null)} className={btn(!block.align || block.align === 'center')} title="Align center" aria-label="Align center">⇔</button>
-      <button onPointerDown={stop} onClick={set('align', 'right')} className={btn(block.align === 'right')} title="Align right" aria-label="Align right">⇥</button>
-      {div}
-      {TEXT_COLORS.slice(0, 3).map((c) => (
-        <button key={c.value} onPointerDown={stop} onClick={set('color', c.value)} title={c.label} aria-label={`Colour ${c.label}`}
-          className={`h-5 w-5 rounded-full border ${block.color === c.value ? 'ring-2 ring-primary' : 'border-border'}`} style={{ background: c.value }} />
-      ))}
-    </div>
   )
 }
 
@@ -1005,45 +530,6 @@ function ObjectInspector({ slide, objIdx, onChange, onRemoved }) {
 }
 
 // ── Caption section — post caption, collapsed by default (written last, like IG)
-// ── Real Quotes — verbatim lines from the source interview ────────────────────
-// Shows the actual words the clinician said that grounded this post.
-// Tapping a quote inserts it as a body text block on the active slide.
-function RealQuotesSection({ pieceId, onInsertQuote }) {
-  const { data: quotes = [], isLoading } = useVerbatimQuotes(pieceId)
-
-  if (!isLoading && quotes.length === 0) return null
-
-  return (
-    <div>
-      <div className="pb-2 flex items-center justify-between">
-        <span className="text-sm font-bold uppercase tracking-wide text-foreground/80 flex items-center gap-1.5">
-          <Type className="h-4 w-4" /> Real quotes
-        </span>
-        <span className="text-xs text-muted-foreground">from your interview · tap to add</span>
-      </div>
-      {isLoading ? (
-        <div className="pb-1 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {quotes.map((q) => (
-            <button
-              key={q.id}
-              type="button"
-              onClick={() => onInsertQuote?.(q.quote)}
-              className="w-full text-left rounded-lg border border-l-[3px] border-l-verbatim-accent bg-card px-3 py-2.5 text-sm leading-snug text-foreground hover:bg-verbatim-accent/5 transition-colors"
-            >
-              <span className="text-xs font-bold uppercase tracking-wide text-verbatim-accent block mb-1">● verbatim</span>
-              &ldquo;{q.quote}&rdquo;
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Accordion layer row ────────────────────────────────────────────────────────
 // ── Caption panel (the "Words" rail tool) ─────────────────────────────────────
 // Renders inside the inspector when the Words tool is selected.
@@ -1132,67 +618,6 @@ function CaptionPanel({ piece, onUseAsHook, updateItem }) {
         </div>
       </div>
     </div>
-  )
-}
-
-// ── Mini slide render — a real renderFreeformSlide miniature for the theme grid
-// (so theme tiles look like what they actually produce, not a placeholder). The
-// canvas bitmap is set by the renderer; CSS scales it down. `renderKey` gates
-// re-renders so we don't redraw 6 canvases on every keystroke.
-
-function MiniSlideCanvas({ renderSlide, photoUrl, brandStyle, theme, renderKey }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    const c = ref.current
-    if (!c) return
-    renderFreeformSlide({
-      sourceUrl: photoUrl || null,
-      slide: renderSlide,
-      brandStyle: brandStyle || {},
-      canvas: c,
-      theme,
-      width: SLIDE_W,
-      height: SLIDE_H,
-    }).catch(() => { /* thumbnail render best-effort */ })
-    // renderKey encodes every input that affects the pixels — intentional sole dep.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderKey])
-  return <canvas ref={ref} className="block h-full w-full" />
-}
-
-// One template tile — a real rendered miniature of the active slide in that
-// template. Module scope (react-hooks/static-components); reused by both the
-// Photo-templates and Text-cards groups in the picker.
-function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes, thumbSig, onChange }) {
-  const resolved = resolveTheme(t.id, customThemes)
-  const selected = slide.template_id === t.id
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={() => onChange({ ...slide, template_id: t.id })}
-          className={`group relative overflow-hidden rounded-md border text-left transition-all ${
-            selected ? 'border-verbatim-accent ring-1 ring-verbatim-accent/40' : 'border-border hover:border-primary/40'
-          }`}
-        >
-          <div className="aspect-[4/5] w-full bg-muted">
-            <MiniSlideCanvas
-              renderSlide={slide}
-              photoUrl={photoUrl}
-              brandStyle={brandStyle}
-              theme={resolved}
-              renderKey={`${t.id}|${thumbSig}`}
-            />
-          </div>
-          <div className="px-2 py-1.5 text-xs font-medium truncate text-foreground">{t.name}</div>
-          {selected && (
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>{`${t.name}${selected ? ' (this slide only)' : ''}`}</TooltipContent>
-    </Tooltip>
   )
 }
 
@@ -1328,34 +753,6 @@ function SlideInspector({
 // Library/Upload picker (MediaPicker). Selecting any of them ATTACHES the photo
 // to media_urls and rebinds the active slide via onAttach. Photos only here —
 // the carousel renderer only draws stills (videos publish as Reels).
-
-// One lightweight suggestion thumbnail (avoids importing the heavy CandidateCard).
-function SuggestionThumb({ clip, attached, attaching, onAttach }) {
-  const thumb = clip.thumbnailUrl || clip.blobUrl || clip.url
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          disabled={attaching}
-          onClick={onAttach}
-          className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
-            attached ? 'border-primary' : 'border-border hover:border-primary'
-          }`}
-        >
-          {thumb
-            ? <img src={thumb} alt="" className="h-full w-full object-cover" />
-            : <div className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>}
-          <span className="absolute left-2 top-2 rounded-md bg-primary px-1.5 py-0.5 text-xs font-bold leading-tight text-primary-foreground">AI</span>
-          <span className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            {attaching ? <Loader2 className="h-7 w-7 animate-spin" /> : attached ? <Check className="h-7 w-7" /> : <Plus className="h-7 w-7" />}
-          </span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>{attached ? 'Already in this post — click to use it on this slide' : 'Use this photo'}</TooltipContent>
-    </Tooltip>
-  )
-}
 
 function SwapAddPhoto({ pieceId, attachedKeys, onAttach, onCancel }) {
   const [tab, setTab] = useState('ai')          // 'ai' | 'library'
@@ -1829,38 +1226,6 @@ function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onA
 // Per-block text styling — Size / Colour / Weight / Case / Font. All optional;
 // "Auto" clears the override so the block inherits the role + theme (renderer
 // precedence: block > theme > role). The swatch palette is the brand set.
-const TEXT_COLORS = [
-  { label: 'White',  value: '#ffffff' },
-  { label: 'Navy',   value: '#0c1a2e' },
-  { label: 'Sage',   value: '#83957c' },
-  { label: 'Orange', value: '#e8843c' },
-  { label: 'Paper',  value: '#f6f4ef' },
-  { label: 'Black',  value: '#111111' },
-]
-function SegRow({ label, options, value, onPick }) {
-  return (
-    <div>
-      <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="flex gap-1.5">
-        {options.map((o) => {
-          const active = value === o.value || (value == null && o.value == null)
-          return (
-            <button
-              key={o.label}
-              type="button"
-              onClick={() => onPick(o.value)}
-              className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
-                active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40'
-              }`}
-            >
-              {o.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
 function TextStyleControls({ block, onSet, photoPalette = [] }) {
   const workspace = useWorkspace()
   const swatches = useMemo(() => [...brandSwatches(workspace), ...photoPalette, ...NEUTRAL_SWATCHES], [workspace, photoPalette])
@@ -2363,14 +1728,6 @@ function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brandStyle, themeId,
       <p className="mt-4 text-xs text-white/45">← → to navigate · Esc to close · the real rendered slide — exactly what publishes</p>
     </div>
   )
-}
-
-// Canvas stage dimensions for each output aspect ratio. Tailwind's scanner
-// needs the full class strings present in source to include them in the bundle.
-const ASPECT_STAGE = {
-  '1:1':  { twAspect: 'aspect-[1/1]',  hFactor: 1.0 },
-  '4:5':  { twAspect: 'aspect-[4/5]',  hFactor: 1.25 },
-  '9:16': { twAspect: 'aspect-[9/16]', hFactor: 1.778 },
 }
 
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
