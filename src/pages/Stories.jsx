@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle } from 'lucide-react'
+import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle, SlidersHorizontal } from 'lucide-react'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -37,17 +38,43 @@ const SELECT_CLS =
   'cursor-pointer hover:border-primary/30 hover:bg-muted transition-colors ' +
   'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
 
-function FilterSelect({ ariaLabel, value, onChange, children }) {
+// A labelled full-width select — the form the advanced filters take inside the
+// Filters popover.
+function FilterField({ label, value, onChange, children }) {
   return (
-    <div className="relative shrink-0">
-      <select aria-label={ariaLabel} value={value} onChange={onChange} className={SELECT_CLS}>
-        {children}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground"
-        aria-hidden="true"
-      />
-    </div>
+    <label className="block">
+      <span className="mb-1 block text-2xs font-semibold text-muted-foreground">{label}</span>
+      <div className="relative">
+        <select value={value} onChange={onChange} className={SELECT_CLS}>
+          {children}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground"
+          aria-hidden="true"
+        />
+      </div>
+    </label>
+  )
+}
+
+// Removable pill for an applied advanced filter — shown beside the Filters
+// button so what's active stays visible without opening the popover.
+function ActiveFilterChip({ icon: Icon, label, onClear, tone = 'muted' }) {
+  const tones = {
+    muted: 'border-foreground/15 bg-muted text-foreground hover:bg-muted/70',
+    primary: 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+    destructive: 'border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${tones[tone]}`}
+    >
+      {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
+      {label}
+      <X className="h-3 w-3" aria-hidden="true" />
+    </button>
   )
 }
 
@@ -75,11 +102,18 @@ export default function Stories() {
   // 'real' = voice_memo + seminar captures only (Real moments filter)
   const captureFilter  = searchParams.get('capture')  || ''
   const realOnly       = captureFilter === 'real'
+  const archetypeFilter = searchParams.get('archetype') || ''
   // status=failed — Home's failed-publish banner deep-links here when 2+
   // posts failed, so the user lands on the specific stories that need
   // attention instead of the unfiltered list.
   const statusFilter   = searchParams.get('status')   || ''
   const failedOnly     = statusFilter === 'failed'
+
+  // How many of the six advanced (popover) filters are applied — drives the
+  // count badge on the Filters button. (Status tabs, Mine, and the failed-triage
+  // deep link are separate surfaces, not counted here.)
+  const advancedCount = [realOnly, campaignFilter, staffFilter, platformFilter, locationFilter, archetypeFilter]
+    .filter(Boolean).length
 
   const { data: storiesAll = [], isLoading } = useStories()
   const stories = useMemo(() => {
@@ -158,6 +192,14 @@ export default function Stories() {
       const next = new URLSearchParams(prev)
       if (realOnly) next.delete('capture')
       else next.set('capture', 'real')
+      return next
+    }, { replace: true })
+  }
+
+  function clearAllAdvanced() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      for (const k of ['capture', 'campaign', 'staff', 'platform', 'location', 'archetype']) next.delete(k)
       return next
     }, { replace: true })
   }
@@ -254,155 +296,122 @@ export default function Stories() {
           </button>
         </div>
 
-        {/* Advanced filter bar — horizontal scroll on mobile so chips do not wrap
-            into 3+ rows and crowd the sticky header. */}
+        {/* Advanced filters — collapsed into one popover so the sticky header
+            isn't a wall of dropdowns. Applied filters show as removable chips
+            beside the button so what's active stays visible without opening it.
+            (Status tabs + Mine live in the pill row above; the failed-triage
+            deep link keeps its own destructive chip.) */}
         <div className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Failed-to-publish — active chip only, no selector. Reached via a
-            deep link from Home's failed-publish banner (status=failed); there
-            is no UI affordance to turn it on manually since it's a triage
-            state, not a browsing filter. */}
-        {failedOnly ? (
-          <button
-            type="button"
-            onClick={clearStatus}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-destructive bg-destructive text-destructive-foreground px-3 py-1.5 text-xs font-semibold hover:bg-destructive/90 transition-colors"
-          >
-            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-            Failed to publish
-            <X className="h-3 w-3" aria-hidden="true" />
-          </button>
-        ) : null}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  advancedCount > 0
+                    ? 'border-primary/40 bg-primary/5 text-foreground hover:bg-primary/10'
+                    : 'border-border bg-muted/40 text-foreground hover:border-primary/30 hover:bg-muted'
+                }`}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                Filters
+                {advancedCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-primary text-primary-foreground text-2xs font-bold">
+                    {advancedCount}
+                  </span>
+                )}
+                <ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 space-y-3 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Filters</span>
+                {advancedCount > 0 && (
+                  <button type="button" onClick={clearAllAdvanced} className="text-2xs font-semibold text-primary hover:underline">
+                    Clear all
+                  </button>
+                )}
+              </div>
 
-        {/* Owner — "Mine only" active chip. No selector form because the only
-            two states are "all" and "me"; non-me staff filtering is
-            handled by the existing /staff/:id page. */}
-        {mineOnly ? (
-          <button
-            type="button"
-            onClick={clearOwner}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:bg-primary/90 transition-colors"
-          >
-            <User className="h-3 w-3" aria-hidden="true" />
-            Mine only
-            <X className="h-3 w-3" aria-hidden="true" />
-          </button>
-        ) : null}
+              <FilterField label="Real moments" value={captureFilter} onChange={(e) => setParam('capture', e.target.value)}>
+                <option value="">All stories</option>
+                <option value="real">Real moments only</option>
+              </FilterField>
 
-        {/* Real moments — filters to voice_memo + seminar captures. Follows
-            the same model as Campaign/Mine only: a removable chip when active,
-            a select when not, so the whole bar shares one interaction model
-            (select to choose, chip to clear) instead of mixing a lone toggle
-            button with native selects. */}
-        {realOnly ? (
-          <button
-            type="button"
-            onClick={toggleRealOnly}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:bg-primary/90 transition-colors"
-          >
-            <Mic className="h-3 w-3" aria-hidden="true" />
-            Real moments
-            <X className="h-3 w-3" aria-hidden="true" />
-          </button>
-        ) : (
-          <FilterSelect
-            ariaLabel="Filter by real moments"
-            value=""
-            onChange={(e) => setParam('capture', e.target.value)}
-          >
-            <option value="">Real moments: All</option>
-            <option value="real">Real moments only</option>
-          </FilterSelect>
-        )}
+              {selectableCampaigns.length > 0 && (
+                <FilterField label="Campaign" value={campaignFilter} onChange={(e) => setParam('campaign', e.target.value)}>
+                  <option value="">All campaigns</option>
+                  {selectableCampaigns.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </FilterField>
+              )}
 
-        {/* Campaign — active chip or selector */}
-        {activeCampaignObj ? (
-          <button
-            type="button"
-            onClick={clearCampaign}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
-          >
-            <Target className="h-3 w-3" aria-hidden="true" />
-            Campaign: {activeCampaignObj.name}
-            <X className="h-3 w-3" aria-hidden="true" />
-          </button>
-        ) : selectableCampaigns.length > 0 ? (
-          <FilterSelect
-            ariaLabel="Filter by campaign"
-            value=""
-            onChange={(e) => setParam('campaign', e.target.value)}
-          >
-            <option value="">Campaign: All</option>
-            {selectableCampaigns.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </FilterSelect>
-        ) : null}
+              {staffAll.length > 1 && (
+                <FilterField label="Author" value={staffFilter} onChange={(e) => setParam('staff', e.target.value)}>
+                  <option value="">All authors</option>
+                  {staffAll.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </FilterField>
+              )}
 
-        {/* Staff / author — active chip or selector */}
-        {activeStaffObj ? (
-          <button
-            type="button"
-            onClick={clearStaff}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/70 transition-colors"
-          >
-            <User className="h-3 w-3" aria-hidden="true" />
-            {activeStaffObj.name}
-            <X className="h-3 w-3" aria-hidden="true" />
-          </button>
-        ) : staffAll.length > 1 ? (
-          <FilterSelect
-            ariaLabel="Filter by author"
-            value=""
-            onChange={(e) => setParam('staff', e.target.value)}
-          >
-            <option value="">Author: All</option>
-            {staffAll.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </FilterSelect>
-        ) : null}
+              <FilterField label="Platform" value={platformFilter} onChange={(e) => setParam('platform', e.target.value)}>
+                <option value="">All platforms</option>
+                {PLATFORMS.map((p) => (
+                  <option key={p} value={p}>{PLATFORM_META[p].label}</option>
+                ))}
+              </FilterField>
 
-        {/* Platform */}
-        <FilterSelect
-          ariaLabel="Filter by platform"
-          value={platformFilter}
-          onChange={(e) => setParam('platform', e.target.value)}
-        >
-          <option value="">Platform: All</option>
-          {PLATFORMS.map((p) => (
-            <option key={p} value={p}>{PLATFORM_META[p].label}</option>
-          ))}
-        </FilterSelect>
+              {showLocations && (
+                <FilterField label="Location" value={locationFilter} onChange={(e) => setParam('location', e.target.value)}>
+                  <option value="">All locations</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.label || loc.city}</option>
+                  ))}
+                </FilterField>
+              )}
 
-        {/* Location — only when workspace has multiple */}
-        {showLocations ? (
-          <FilterSelect
-            ariaLabel="Filter by location"
-            value={locationFilter}
-            onChange={(e) => setParam('location', e.target.value)}
-          >
-            <option value="">Location: All</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>{loc.label || loc.city}</option>
-            ))}
-          </FilterSelect>
-        ) : null}
+              {showArchetypes && (
+                <FilterField label="Patient type" value={archetypeFilter} onChange={(e) => setParam('archetype', e.target.value)}>
+                  <option value="">All patient types</option>
+                  {prototypes.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.emoji ? `${p.emoji} ${p.label}` : p.label}
+                    </option>
+                  ))}
+                </FilterField>
+              )}
+            </PopoverContent>
+          </Popover>
 
-        {/* Patient type — only when workspace has defined prototypes */}
-        {showArchetypes ? (
-          <FilterSelect
-            ariaLabel="Filter by patient type"
-            value={searchParams.get('archetype') || ''}
-            onChange={(e) => setParam('archetype', e.target.value)}
-          >
-            <option value="">Patient type: All</option>
-            {prototypes.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.emoji ? `${p.emoji} ${p.label}` : p.label}
-              </option>
-            ))}
-          </FilterSelect>
-        ) : null}
+          {/* Applied-filter chips (removable) — click to clear */}
+          {failedOnly && (
+            <ActiveFilterChip icon={AlertTriangle} label="Failed to publish" tone="destructive" onClear={clearStatus} />
+          )}
+          {realOnly && (
+            <ActiveFilterChip icon={Mic} label="Real moments" tone="primary" onClear={toggleRealOnly} />
+          )}
+          {activeCampaignObj && (
+            <ActiveFilterChip icon={Target} label={`Campaign: ${activeCampaignObj.name}`} onClear={clearCampaign} />
+          )}
+          {activeStaffObj && (
+            <ActiveFilterChip icon={User} label={activeStaffObj.name} onClear={clearStaff} />
+          )}
+          {platformFilter && (
+            <ActiveFilterChip label={`Platform: ${PLATFORM_META[platformFilter]?.label || platformFilter}`} onClear={() => setParam('platform', '')} />
+          )}
+          {locationFilter && (
+            <ActiveFilterChip
+              label={`Location: ${locations.find((l) => l.id === locationFilter)?.label || locations.find((l) => l.id === locationFilter)?.city || locationFilter}`}
+              onClear={() => setParam('location', '')}
+            />
+          )}
+          {archetypeFilter && (
+            <ActiveFilterChip
+              label={`Patient type: ${prototypes.find((p) => p.id === archetypeFilter)?.label || archetypeFilter}`}
+              onClear={() => setParam('archetype', '')}
+            />
+          )}
         </div>
       </div>
 
