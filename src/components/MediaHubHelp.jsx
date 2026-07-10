@@ -59,30 +59,30 @@ export default function MediaHubHelp() {
               </div>
 
               <p className="text-muted-foreground">
-                The Media Hub is where raw clinic capture and finished edits live together. The system suggests what each clip could become; your editor takes accepted suggestions into Bernard&apos;s built-in video editor to cut, caption, and brand-wrap them — no external app needed — then attaches the finished clips to posts in Content Hub.
+                Raw clinic footage and finished edits live here together. Bernard suggests what each clip could become; your editor cuts, captions, and brand-wraps the good ones in the built-in editor, then attaches them to posts in Content Hub.
               </p>
 
               <ol className="space-y-3">
-                <Step icon={<Icon as={Camera} size="md" />} num={1} title="Capture (in clinic)">
-                  Film treatment moments, demonstrations, and clinician explanations. Aim for 30–90s segments where something specific is being taught or shown. Patient consent (verbal at minimum, written when published as a piece featuring them) is required for anything that goes public.
+                <Step icon={<Icon as={Camera} size="md" />} num={1} title="Capture in clinic">
+                  Film 30–90s treatment moments, demos, or explanations — anything where something specific is taught or shown. Get patient consent for anything that&apos;ll go public.
                 </Step>
                 <Step icon={<Icon as={Upload} size="md" />} num={2} title="Upload">
-                  Drop files into the uploader at the top of this page. Pick &quot;Who&apos;s speaking?&quot; — Clinician (default for in-clinic capture), Admin staff (operations/business interviews), or Patient guest (consent required). Within ~60s the system will tag what&apos;s shown and transcribe what&apos;s said.
+                  Drop files into the uploader above and pick who&apos;s speaking — Clinician, Admin staff, or Patient guest. Bernard tags and transcribes within ~60s.
                 </Step>
-                <Step icon={<Icon as={Sparkles} size="md" />} num={3} title="Review AI-suggested briefs">
-                  After tagging completes, the system surfaces 1–5 &quot;edit briefs&quot; per clip — moments worth turning into a finished, reusable post. Each brief includes a draft caption, a suggested platform, and a verbatim source quote. Open the Edit Briefs section below to review. Accept the strong ones, reject the rest.
+                <Step icon={<Icon as={Sparkles} size="md" />} num={3} title="Review AI briefs">
+                  Bernard surfaces 1–5 edit briefs per clip, each with a draft caption, suggested platform, and source quote. Accept the strong ones, reject the rest.
                 </Step>
-                <Step icon={<Icon as={Pencil} size="md" />} num={4} title="Spot one AI missed? Create manually.">
-                  AI is a head-start, not a gate. If a moment caught your eye that AI didn&apos;t surface, open the source clip&apos;s detail and click &quot;New brief&quot; — fill in your own caption, suggested platform, and the source range you want to edit.
+                <Step icon={<Icon as={Pencil} size="md" />} num={4} title="Add one AI missed">
+                  Spotted a moment AI didn&apos;t surface? Open the clip and click &quot;New brief&quot; to add your own caption, platform, and source range.
                 </Step>
-                <Step icon={<Icon as={Pencil} size="md" />} num={5} title="Edit in Bernard's built-in editor">
-                  For each accepted brief, open its source clip in Bernard&apos;s built-in video editor to do the actual cut, captioning, brand wrap, and music — right here, no external app. Use &quot;Edit clip in Bernard&quot; on the brief, or open any clip from Moment Miner or its Library detail. The brief stays in the queue so you can come back.
+                <Step icon={<Icon as={Pencil} size="md" />} num={5} title="Edit in Bernard">
+                  Open an accepted brief&apos;s clip in the built-in editor to cut, caption, brand-wrap, and add music — no external app. The brief waits in the queue.
                 </Step>
-                <Step icon={<Icon as={Upload} size="md" />} num={6} title="Save or publish the finished clip">
-                  The built-in editor saves your finished clip to the Library and can publish it straight to a post. Prefer to close the loop on the brief? Click &quot;Upload final&quot; to attach the finished clip back — it lands in the library tied to the original source and the brief flips to &quot;returned&quot; status, ready to publish.
+                <Step icon={<Icon as={Upload} size="md" />} num={6} title="Save or publish">
+                  The editor saves the finished clip to your Library and can publish it straight to a post — or click &quot;Upload final&quot; to attach it back to the brief.
                 </Step>
-                <Step icon={<Icon as={Send} size="md" />} num={7} title="Attach to a post in Content Hub">
-                  Finished media is reusable. The same edited clip can power a Reel today, a story next week, and a newsletter banner next month. Open Content Hub, create or pick a post, and attach the media via the Library tab in the media picker.
+                <Step icon={<Icon as={Send} size="md" />} num={7} title="Reuse in Content Hub">
+                  Finished media is reusable — the same clip can power a Reel today and a newsletter banner next month. Attach it from the Library tab in any post&apos;s media picker.
                 </Step>
               </ol>
 

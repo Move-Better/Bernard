@@ -238,7 +238,7 @@ export default function WorkspaceSettings() {
           <Field label="Tagline"
             value={form.tagline} onChange={set('tagline')} />
         </Grid>
-        <Field label="Sign-in blurb"
+        <Field label="Text on your sign-in page"
           value={form.sign_in_blurb} onChange={set('sign_in_blurb')}
           hint="Shown below the workspace name on the sign-in screen." />
         <Field label="App name"
@@ -262,10 +262,10 @@ export default function WorkspaceSettings() {
           value={form.booking_url} onChange={set('booking_url')}
           placeholder="https://..." type="url" autoComplete="off"
           hint="Primary call-to-action URL. Used in blog CTAs, email buttons, and social bios in generated copy." />
-        <Textarea2 label="Link preview blurb"
+        <Textarea2 label="Summary for shared links"
           value={form.link_preview_blurb} onChange={set('link_preview_blurb')}
           rows={2}
-          hint="OG / link-preview blurb — one sentence under 130 chars." />
+          hint="Shown when a link to your site is shared on social or in chat — one sentence under 130 chars." />
       </SectionCard>
 
       <SectionCard
