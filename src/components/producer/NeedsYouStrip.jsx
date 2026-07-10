@@ -10,9 +10,11 @@ import { useNeedsYou, useRetryPublishFailure } from '@/lib/queries'
 //
 // Item shape from /api/producer/needs-you (fields are best-effort — the strip is
 // defensive so a partial payload still renders):
-//   escalated_caption { contentItemId, platform, topic, score, red_flag }
-//   publish_failed    { contentItemId?, platform?, detail }
-//   plan_gap          { slot?, topicSuggestion?, week? }
+//   escalated_caption   { contentItemId, platform, topic, score, red_flag }
+//   publish_failed      { contentItemId?, platform?, detail }
+//   plan_gap            { slot?, topicSuggestion?, week? }
+//   draft_request_unmet { topic, platform } — F20: no interview grounds a
+//     human-typed draft request (draftOnTopic.js's grounded-only escalation).
 
 const TYPE_META = {
   escalated_caption: {
@@ -26,6 +28,11 @@ const TYPE_META = {
     cta: () => ({ to: '/settings/integrations', label: 'Reconnect' }),
   },
   plan_gap: {
+    icon: Mic,
+    tone: 'action',
+    cta: () => ({ to: '/new', label: 'Record a topic' }),
+  },
+  draft_request_unmet: {
     icon: Mic,
     tone: 'action',
     cta: () => ({ to: '/new', label: 'Record a topic' }),
@@ -47,6 +54,7 @@ function titleFor(item) {
     case 'escalated_caption': return `Couldn’t get “${topic}” to your voice`
     case 'publish_failed':    return `${item.platform ? `${item.platform} ` : ''}publish failed — needs a reconnect`
     case 'plan_gap':          return `Next week is ${item.short || 'a few'} post${item.short === 1 ? '' : 's'} short`
+    case 'draft_request_unmet': return `Nothing from the team on “${topic}” yet`
     default:                  return 'Something needs you'
   }
 }
@@ -60,6 +68,8 @@ function detailFor(item) {
       return item.detail || 'The connection expired. Reconnect, then retry the post.'
     case 'plan_gap':
       return `${typeof item.scheduled === 'number' && typeof item.target === 'number' ? `Your plan fills ${item.scheduled} of ${item.target} slots — ` : ''}a short capture from you fills the rest.`
+    case 'draft_request_unmet':
+      return `I couldn’t find an interview to ground this in, so I didn’t guess. A quick capture and I’ll draft it properly.`
     default:
       return item.detail || ''
   }

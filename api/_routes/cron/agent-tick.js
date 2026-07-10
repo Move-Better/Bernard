@@ -22,6 +22,7 @@ import { reviseContentItem } from '../../_lib/producer/reviseContentItem.js'
 import { regradeContentItem } from '../../_lib/producer/regradeContentItem.js'
 import { predraftWeek } from '../../_lib/producer/predraftWeek.js'
 import { authorAnswersForGaps } from '../../_lib/producer/authorAnswers.js'
+import { draftOnTopic } from '../../_lib/producer/draftOnTopic.js'
 import { producerActive, laneEnabled } from '../../_lib/producer/config.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -196,6 +197,16 @@ async function dispatch(ws, item) {
       inboxItemId:   item.id,
     })
   }
+  if (item.kind === 'draft_on_topic') {
+    if (!laneEnabled(cfg, 'ad_hoc_drafts')) return { status: 'skipped', reason: 'lane_disabled' }
+    return draftOnTopic({
+      ws,
+      topic:        p.topic || '',
+      platform:     p.platform || '',
+      requestedBy:  p.requested_by || null,
+      inboxItemId:  item.id,
+    })
+  }
   return { status: 'skipped', reason: `unknown_kind:${item.kind}` }
 }
 
@@ -225,7 +236,7 @@ async function processWorkspace(ws, deadline, summary) {
   if (!pendRes.ok) { summary.push({ slug: ws.slug, error: 'pending_fetch_failed' }); return }
   const pending = await pendRes.json().catch(() => [])
 
-  const wsResult = { slug: ws.slug, claimed: 0, revised: 0, passed: 0, escalated: 0, skipped: 0, failed: 0 }
+  const wsResult = { slug: ws.slug, claimed: 0, revised: 0, passed: 0, escalated: 0, drafted: 0, skipped: 0, failed: 0 }
   let remaining = dailyCap - spent
   for (const item of pending) {
     if (Date.now() > deadline) { wsResult.partial = true; break }
@@ -243,6 +254,7 @@ async function processWorkspace(ws, deadline, summary) {
       if (st === 'revised') { wsResult.revised++; await finishItem(claimed.id, 'done', res) }
       else if (st === 'passed') { wsResult.passed++; await finishItem(claimed.id, 'done', res) }
       else if (st === 'escalated') { wsResult.escalated++; await finishItem(claimed.id, 'done', res) }
+      else if (st === 'drafted') { wsResult.drafted++; await finishItem(claimed.id, 'done', res) }
       else { wsResult.skipped++; await finishItem(claimed.id, 'skipped', res) }
     } catch (e) {
       console.error('[agent-tick]', ws.slug, claimed.id, e?.message)
