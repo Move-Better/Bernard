@@ -29,6 +29,7 @@ import {
   defaultStoryTypeSlots,
 } from '@/lib/interviewOptionsCatalog'
 import { getCleanupLevel } from '@/lib/cleanupLevels'
+import { formatStoryDisplayTitle, stripStoryDatePrefix } from '@/lib/storyTitle'
 
 /**
  * Inline-edit pill for the story header — renders as the existing muted
@@ -86,7 +87,7 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
   )
 }
 
-function EditableTitle({ value, canEdit, disabled, onSave }) {
+function EditableTitle({ value, displayValue, canEdit, disabled, onSave }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
   const [saving, setSaving] = useState(false)
@@ -142,7 +143,7 @@ function EditableTitle({ value, canEdit, disabled, onSave }) {
 
   return (
     <h1 className="group text-2xl font-bold tracking-tight text-foreground leading-snug flex items-center min-w-0">
-      <span className="truncate">{value || 'Untitled interview'}</span>
+      <span className="truncate">{displayValue || value || 'Untitled interview'}</span>
       {canEdit && (
         <button
           type="button"
@@ -259,7 +260,8 @@ export default function StoryDetail() {
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <EditableTitle
-                value={story.topic || ''}
+                value={stripStoryDatePrefix(story.topic)}
+                displayValue={formatStoryDisplayTitle(story)}
                 canEdit={user?.id === story.owner_id}
                 disabled={updateInterview.isPending}
                 onSave={(next) => updateInterview.mutateAsync({ id: story.id, patch: { topic: next } })}
