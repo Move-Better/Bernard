@@ -482,6 +482,21 @@ graphic, baked text), grep the renderer's callers — if it is called only in `*
 The renderer needs a real produce-and-upload step on the publish path reusing the SAME renderer
 so it stays WYSIWYG.
 
+### `interviews.messages` contract — alternating role turns, and consumers that can't assume it
+Most downstream consumers of an interview's transcript — `api/_lib/interviewStyleClassifier.js`
+(`buildTranscript`, filters `role === 'assistant'`), the clinician-turn extraction feeding
+`extractVoicePhrases` (filters `role === 'user'`), `summarizeInterview`, and the RAG indexer —
+assume `messages` (and `cleaned_messages`) is an array of alternating `{role, content}` turns, one
+per speaker exchange. That assumption doesn't always hold: a capture path can legitimately only
+produce a single mixed blob (e.g. `transcribeCallRecording` in `api/_lib/callTranscript.js` falls
+back to one combined turn when the dual-channel audio split fails or a channel transcribes empty —
+there's no way to attribute who said what after the fact). The fix for that case is NOT to force
+the fallback into a fake alternating shape; it's to make the capability explicit (`dualChannel:
+boolean`) and have every role-sensitive consumer branch on it, skipping enrichment it can't
+honestly do rather than silently mis-attributing content. When adding a new transcript-capture
+path, check whether it can guarantee real per-speaker turns — if not, thread through an explicit
+flag rather than tagging a combined blob with a role that looks legitimate to downstream filters.
+
 ---
 
 ## Streaming chat
