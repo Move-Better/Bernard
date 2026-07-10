@@ -75,7 +75,6 @@ export default function VoicePlaybackCard({ staffMember }) {
       await patchStaff.mutateAsync({
         id: staffMember.id,
         patch: { tts_settings: next },
-        userId: staffMember.created_by_id,
       })
       toast.success('Voice pace saved')
     } catch (e) {

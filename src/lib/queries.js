@@ -328,7 +328,7 @@ export function useDeleteStaff() {
   const qc = useQueryClient()
   return useAppMutation({
     silent: true,
-    mutationFn: ({ id, userId, mergeTo, force }) => deleteStaff(id, userId, { mergeTo, force }),
+    mutationFn: ({ id, mergeTo, force }) => deleteStaff(id, { mergeTo, force }),
     onSuccess: (_data, { id }) => {
       // Wipe the list cache + the specific detail so a re-fetch sees fresh
       // state. Also flush anything interview-shaped since deleted clinicians
@@ -344,7 +344,7 @@ export function usePatchStaff() {
   const qc = useQueryClient()
   return useAppMutation({
     errorMessage: "Couldn't save staff member",
-    mutationFn: ({ id, patch, userId }) => patchStaff(id, patch, userId),
+    mutationFn: ({ id, patch }) => patchStaff(id, patch),
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.staff.detail(id) })
       qc.invalidateQueries({ queryKey: queryKeys.staff.list() })

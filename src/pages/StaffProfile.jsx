@@ -118,7 +118,7 @@ export default function StaffProfile() {
 
   async function handleDeleteStaff({ mergeTo, force } = {}) {
     try {
-      await deleteStaffMut.mutateAsync({ id: staffId, userId: user.id, mergeTo, force })
+      await deleteStaffMut.mutateAsync({ id: staffId, mergeTo, force })
       toast.success(mergeTo
         ? `Merged ${staffMember?.name || 'staff member'} and deleted`
         : `Deleted ${staffMember?.name || 'staff member'}`)
@@ -763,7 +763,6 @@ function PublishedPostRow({ post }) {
 // ── Default tone card ─────────────────────────────────────────────────────────
 
 function DefaultToneCard({ staffMember }) {
-  const { user } = useUser()
   const patchStaff = usePatchStaff()
   const tones = TONES
   const current = staffMember.default_tone || 'smart'
@@ -773,7 +772,7 @@ function DefaultToneCard({ staffMember }) {
   const isDirty = selected !== current
 
   async function handleSave() {
-    await patchStaff.mutateAsync({ id: staffMember.id, patch: { default_tone: selected }, userId: user?.id })
+    await patchStaff.mutateAsync({ id: staffMember.id, patch: { default_tone: selected } })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -1059,7 +1058,6 @@ function CaptureCompanionCard({ staffMember }) {
 // ── Blog review card (admin-only) ─────────────────────────────────────────────
 
 function BlogReviewCard({ staffMember }) {
-  const { user } = useUser()
   const patchStaff = usePatchStaff()
   const [enabled, setEnabled] = useState(staffMember.blog_review_enabled ?? false)
   const [saved, setSaved] = useState(false)
@@ -1067,7 +1065,7 @@ function BlogReviewCard({ staffMember }) {
   const isDirty = enabled !== (staffMember.blog_review_enabled ?? false)
 
   async function handleSave() {
-    await patchStaff.mutateAsync({ id: staffMember.id, patch: { blog_review_enabled: enabled }, userId: user?.id })
+    await patchStaff.mutateAsync({ id: staffMember.id, patch: { blog_review_enabled: enabled } })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
