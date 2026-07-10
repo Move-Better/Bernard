@@ -21,7 +21,7 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 import { timingSafeEqual, createHmac } from 'node:crypto'
 import { waitUntil } from '@vercel/functions'
 import { transcribeCallRecording } from '../../_lib/callTranscript.js'
-import { generateOutputsFromTranscript } from '../../_lib/outboundCall.js'
+import { generateOutputsFromTranscript, generateCallStoryTitle } from '../../_lib/outboundCall.js'
 import { extractConcepts, buildInterviewText } from '../../_lib/conceptExtractor.js'
 import { summarizeInterview } from '../../_lib/interviewSummarizer.js'
 import { classifyAndStoreInterviewStyle } from '../../_lib/interviewStyleClassifier.js'
@@ -116,11 +116,17 @@ async function processRecording({ iv, recordingUrl, authToken }) {
   // 3. Generate outputs (browserless), same builders as the in-app interview.
   const outputs = await generateOutputsFromTranscript({ workspace, staff, topic: interview.topic, messages })
 
-  // 4. Write transcript + outputs to the interview row.
+  // 3b. Auto-title the story from the conversation. The trigger seeds a generic
+  // placeholder ("Your weekly call"); replace it with a full-date + derived-topic
+  // title (e.g. "July 10, 2026 — Hip extension and opposite-shoulder stability")
+  // so each weekly call is uniquely, meaningfully named.
+  const storyTitle = await generateCallStoryTitle({ messages, callDate: interview.created_at })
+
+  // 4. Write transcript + outputs + title to the interview row.
   await sb(`interviews?id=eq.${iv}&workspace_id=eq.${wsId}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ messages, outputs, status: 'completed', session_state: null, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ messages, outputs, topic: storyTitle, status: 'completed', session_state: null, updated_at: new Date().toISOString() }),
   })
 
   // 5. Enrichment — mirrors api/_routes/db/interviews.js completion cascade.
@@ -140,7 +146,7 @@ async function processRecording({ iv, recordingUrl, authToken }) {
           interview_id: iv,
           staff_id: staff.id,
           staff_name: staff.name,
-          topic: interview.topic ?? '',
+          topic: storyTitle,
           platform: 'blog',
           content: outputs.blogPost,
           ai_original_content: outputs.blogPost,

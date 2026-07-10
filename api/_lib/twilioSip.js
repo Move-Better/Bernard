@@ -81,9 +81,12 @@ export async function originateOutboundCall({ toNumber, interviewId }) {
 
   // record-from-answer-dual → stereo recording, one leg per channel, so the
   // transcript step can attribute turns by channel (see callTranscript.js).
+  // timeLimit=480 (8 min): a hard backstop so a call can never dead-air the way
+  // the pilot ran to ~10 min. The ~6-min prompt time-box lands it first; this
+  // guarantees the call ends (and the recording webhook fires) if it doesn't.
   const twiml =
     `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<Response><Dial record="record-from-answer-dual" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed">` +
+    `<Response><Dial record="record-from-answer-dual" timeLimit="480" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed">` +
     `<Sip>${xmlEscape(sipUri)}</Sip></Dial></Response>`
 
   const body = new URLSearchParams({
@@ -138,12 +141,16 @@ export async function acceptOpenAiCall({ callId, instructions }) {
       output: { voice: REALTIME_VOICE },
       input: {
         transcription: { model: 'gpt-4o-mini-transcribe' },
+        // Semantic VAD (v1.1): a model decides when the clinician has actually
+        // FINISHED a thought, instead of a fixed silence timer. The pilot's
+        // server_vad @ 2500ms silence still cut the clinician off on a
+        // mid-sentence pause. eagerness 'low' waits the longest before Bernard
+        // responds — best for a thoughtful interviewee. Fallback if this
+        // misbehaves: server_vad with silence_duration_ms ≥ 3500.
         turn_detection: {
-          type: 'server_vad',
-          threshold: 0.7,            // less sensitive than the in-app 0.65 — autonomous mode
-          prefix_padding_ms: 300,
-          silence_duration_ms: 2500, // longer than in-app 2000 — ride out phone-line pauses
-          create_response: true,     // AUTONOMOUS: no client to fire response.create
+          type: 'semantic_vad',
+          eagerness: 'low',
+          create_response: true,    // AUTONOMOUS: no client to fire response.create
           interrupt_response: true,
         },
       },
