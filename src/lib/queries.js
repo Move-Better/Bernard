@@ -124,6 +124,7 @@ export const queryKeys = {
   seoCitations:     ['seo-citations'],
   producerFeed:     (limit = 30) => ['producer-feed', limit],
   producerNeedsYou: ['producer-needs-you'],
+  relationshipCard: ['home-relationship-card'],
   gbpPerformance:   ['gbp-performance'],
   bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
   gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
@@ -916,6 +917,19 @@ export function useNeedsYou() {
       apiFetch('/api/producer/needs-you').catch(() => ({ enabled: false, items: [] })),
     staleTime: 60_000,
     refetchOnWindowFocus: true,
+  })
+}
+
+// F18 — "What I noticed about you" Home card. { available: false } when the
+// logged-in user has no interview history yet (new clinician, or an admin
+// with no staff row of their own) — the component renders nothing in that case.
+export function useRelationshipCard() {
+  return useQuery({
+    queryKey: queryKeys.relationshipCard,
+    queryFn: () =>
+      apiFetch('/api/home/relationship-card').catch(() => ({ available: false })),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   })
 }
 

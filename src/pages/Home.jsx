@@ -20,6 +20,7 @@ import HomeStats from '@/components/home/HomeStats'
 import ResumeStrip from '@/components/home/ResumeStrip'
 import PlanNextInterview from '@/components/home/PlanNextInterview'
 import PostsLiveCard from '@/components/home/PostsLiveCard'
+import RelationshipCard from '@/components/home/RelationshipCard'
 import PageHelp from '@/components/PageHelp'
 import InstallBanner from '@/components/home/InstallBanner'
 
@@ -350,6 +351,13 @@ export default function Home() {
       )}
 
       <InstallBanner />
+
+      {/* F18 — the disclosure beat: what Bernard has quietly noticed about how
+          this clinician's interviews have evolved, plus a receipt of what
+          shipped for them this week. Sits between the to-do strip and the
+          reward card: acknowledgment → receipt → celebration. Self-gated
+          (renders nothing with no interview history), so no empty state. */}
+      <RelationshipCard />
 
       {/* Reward — pieces that went live this week. Reinforces "you talked → published." */}
       <PostsLiveCard stories={stories} userId={user?.id} />
