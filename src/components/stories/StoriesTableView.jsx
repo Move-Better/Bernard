@@ -39,10 +39,12 @@ function monthLabel(ms) {
   return new Date(ms).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-// Titles are date-first ("MM/DD/YY — subject"); the table has its own Date
-// column, so strip a leading date prefix from the topic to keep the Subject
-// column clean and non-redundant. Uses the shared helper (single source of
-// truth for the title format) rather than a local copy of the regex.
+// Titles are date-first; the table has its own Date column, so strip a leading
+// date prefix from the topic to keep the Subject column clean and non-redundant.
+// Uses the shared helper (single source of truth for the title format) — which
+// covers both the canonical numeric form ("MM/DD/YY — subject") and the
+// long-form month-name form ("July 10, 2026 — subject") legacy auto-titles use —
+// rather than a local copy of the regex.
 function storySubject(s) {
   const t = (s.topic || '').trim()
   if (!t) return ''
