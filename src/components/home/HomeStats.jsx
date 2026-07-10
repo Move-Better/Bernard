@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, ChevronDown } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+
+// Plain-language definition surfaced as a hover tooltip on the Voice match KPI.
+const VOICE_MATCH_TOOLTIP =
+  'The share of your published words that are genuinely yours — spoken verbatim or lightly paraphrased from your captures — averaged across your recent posts. Higher means Bernard rewrote less.'
 
 // HomeStats — 3-tile pipeline story: interviews captured → voice match → published.
 // Tells the "I talked → in my voice → it's out there" narrative at a glance.
@@ -107,7 +112,14 @@ export default function HomeStats({ stories = [], compact = false }) {
         style={{ background: 'hsl(var(--foreground))', borderColor: 'hsl(var(--foreground))', color: 'white' }}
       >
         <div className="flex items-center justify-between mb-2">
-          <div className="text-2xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.65)' }}>Voice match</div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="text-2xs font-bold uppercase tracking-widest cursor-help" style={{ color: 'rgba(255,255,255,0.65)' }}>Voice match</div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[240px] text-center leading-snug">
+              {VOICE_MATCH_TOOLTIP}
+            </TooltipContent>
+          </Tooltip>
           {typeof metrics.voiceMatch === 'number' ? (
             <span className="inline-flex items-center justify-center rounded-full text-2xs font-bold px-2 py-0.5 bg-agreement-signal/20 text-agreement-signal">
               {metrics.voiceMatch >= 60 ? 'strong' : metrics.voiceMatch >= 40 ? 'fair' : 'building'}

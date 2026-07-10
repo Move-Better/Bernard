@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ShieldCheck, AlertTriangle, ChevronDown } from 'lucide-react'
-import { scoreTier, FLAG_LABELS, SEVERITY_DOT } from '@/lib/voiceFidelity'
+import { scoreTier, FLAG_LABELS, SEVERITY_DOT, VOICE_FIDELITY_TOOLTIP } from '@/lib/voiceFidelity'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 // VoiceChip — the compact, header-sized voice-fidelity read for the editor.
 //
@@ -25,20 +26,26 @@ export default function VoiceChip({ piece }) {
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 rounded-full border ${tier.border} ${tier.bg} px-2.5 py-1 ${tier.text}`}
-        title="Bernard’s voice read — click for details"
-        aria-expanded={open}
-      >
-        <Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="hidden text-2xs font-semibold sm:inline">Sounds like you</span>
-        <span className="text-2xs font-bold tabular-nums">{shown}</span>
-        {flags.length > 0 && (
-          <ChevronDown className={`h-3 w-3 opacity-70 transition-transform ${open ? 'rotate-180' : ''}`} />
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-full border ${tier.border} ${tier.bg} px-2.5 py-1 ${tier.text}`}
+            aria-expanded={open}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden text-2xs font-semibold sm:inline">Sounds like you</span>
+            <span className="text-2xs font-bold tabular-nums">{shown}</span>
+            {flags.length > 0 && (
+              <ChevronDown className={`h-3 w-3 opacity-70 transition-transform ${open ? 'rotate-180' : ''}`} />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[240px] text-center leading-snug">
+          {VOICE_FIDELITY_TOOLTIP} Click for details.
+        </TooltipContent>
+      </Tooltip>
 
       {open && (
         <>

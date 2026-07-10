@@ -96,7 +96,7 @@ export function PracticeBrainCard() {
     <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
         <Brain className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h2 className="text-sm font-semibold">Practice Brain</h2>
+        <h2 className="text-sm font-semibold">Clinic knowledge</h2>
         <span className="text-3xs font-semibold rounded-full px-2 py-0.5 bg-action/10 text-action">
           {items.length} update{items.length === 1 ? '' : 's'} to review
         </span>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ShieldCheck, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
-import { scoreTier, FLAG_LABELS, SEVERITY_DOT } from '@/lib/voiceFidelity'
+import { scoreTier, FLAG_LABELS, SEVERITY_DOT, VOICE_FIDELITY_TOOLTIP } from '@/lib/voiceFidelity'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 // Voice-fidelity audit surface (PR 3 — see
 // .claude/design-interview-output-voice-fidelity.md, section 6).
@@ -40,26 +41,33 @@ export default function VoiceFidelityBadge({ piece }) {
 
   return (
     <div className={`rounded-md border ${tier.border} ${tier.bg}`}>
-      <button
-        type="button"
-        onClick={() => flags.length && setOpen((v) => !v)}
-        className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left ${flags.length ? 'cursor-pointer' : 'cursor-default'}`}
-      >
-        <Icon className={`h-3.5 w-3.5 shrink-0 ${tier.text}`} />
-        <span className={`text-xs font-medium ${tier.text}`}>
-          Voice fidelity {typeof score === 'number' ? score : audit.score}/100 · {tier.label}
-        </span>
-        {flags.length > 0 && (
-          <span className="text-2xs text-muted-foreground">
-            {flags.length} {flags.length === 1 ? 'thing to check' : 'things to check'}
-          </span>
-        )}
-        {flags.length > 0 && (
-          open
-            ? <ChevronDown className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
-            : <ChevronRight className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => flags.length && setOpen((v) => !v)}
+            className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left ${flags.length ? 'cursor-pointer' : 'cursor-default'}`}
+          >
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${tier.text}`} />
+            <span className={`text-xs font-medium ${tier.text}`}>
+              Voice fidelity {typeof score === 'number' ? score : audit.score}/100 · {tier.label}
+            </span>
+            {flags.length > 0 && (
+              <span className="text-2xs text-muted-foreground">
+                {flags.length} {flags.length === 1 ? 'thing to check' : 'things to check'}
+              </span>
+            )}
+            {flags.length > 0 && (
+              open
+                ? <ChevronDown className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+                : <ChevronRight className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[240px] text-center leading-snug">
+          {VOICE_FIDELITY_TOOLTIP}
+        </TooltipContent>
+      </Tooltip>
 
       {audit.summary && (
         <p className="px-2.5 pb-1.5 -mt-0.5 text-2xs text-muted-foreground leading-snug">
