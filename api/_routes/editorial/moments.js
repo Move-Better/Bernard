@@ -21,6 +21,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { scoreSegments, MOMENT_TYPE_LABELS } from '../../_lib/scoreMoments.js'
+import { blendMomentScore } from '../../_lib/scoreMomentsVisual.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
   // 1. All proposed segments for the workspace.
   const segRes = await sb(
     `video_segments?workspace_id=eq.${ws.id}&status=eq.proposed` +
-    `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,score,moment_type,order_index` +
+    `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,score,moment_type,visual_score,visual_breakdown,order_index` +
     `&order=order_index.asc`,
   )
   if (!segRes.ok) {
@@ -113,11 +114,14 @@ export default async function handler(req, res) {
   const srcMap = Object.fromEntries(sources.map((a) => [a.id, a]))
   const staffMap = Object.fromEntries(staff.map((s) => [s.id, s.name]))
 
-  // 4. Shape + rank (strongest first; ties keep detection order).
+  // 4. Shape + rank. F13: rank on the BLENDED score (transcript + what the
+  // camera sees), not transcript alone. Segments without a visual_score (older
+  // footage, or a source still being visually scored) fall back to transcript.
   const moments = segments.map((s) => {
     const src = srcMap[s.source_asset_id] || {}
     const start = Number(s.start_sec) || 0
     const end = Number(s.end_sec) || 0
+    const visualScore = s.visual_score ?? null
     return {
       id: s.id,
       sourceAssetId: s.source_asset_id,
@@ -134,10 +138,13 @@ export default async function handler(req, res) {
       excerpt: s.transcript_excerpt || '',
       why: s.why_it_stands_alone || '',
       score: s.score ?? null,
+      visualScore,
+      visualBreakdown: s.visual_breakdown || null,
+      rankScore: blendMomentScore(s.score, visualScore),
       momentType: s.moment_type || 'insight',
       momentTypeLabel: MOMENT_TYPE_LABELS[s.moment_type] || 'Moment',
     }
-  }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.startSec - b.startSec)
+  }).sort((a, b) => (b.rankScore ?? -1) - (a.rankScore ?? -1) || a.startSec - b.startSec)
 
   return res.status(200).json({ moments, ...(scorePersistFailed ? { scorePersistFailed: true } : {}) })
 }
