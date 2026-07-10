@@ -41,14 +41,30 @@ export const CAP_INTERVIEW_EDIT_OTHERS   = 'interview.edit_others'
 export const CAP_CONTENT_APPROVE         = 'content.approve'
 export const CAP_CONTENT_PUBLISH         = 'content.publish'
 
-// Moment Miner (Phase 3)
-export const CAP_SLATE_GENERATE = 'slate.generate'
-export const CAP_SLATE_APPROVE  = 'slate.approve'
+// Moment Miner (Phase 3). Keys renamed from the retired 'slate.*' scheme
+// 2026-07-10; LEGACY_CAP_ALIASES below maps any stored 'slate.*' grant forward
+// so the rename is safe regardless of deploy/backfill ordering.
+export const CAP_MOMENTS_GENERATE = 'moments.generate'
+export const CAP_MOMENTS_APPROVE  = 'moments.approve'
 
 // Tentpole planner (Phase 4 PR 4) — campaign window management. Granted to
 // producer by default so the operator can plan themed content blocks without
 // needing settings.edit (which would unlock the whole workspace admin surface).
 export const CAP_CAMPAIGNS_EDIT = 'campaigns.edit'
+
+// Forward-map for capability keys that were renamed. Stored grants
+// (workspaces.role_templates, staff.capability_overrides) may still carry the
+// old key until the backfill migration runs; normalizeCap() maps them to the
+// current key so enforcement + display stay correct in any deploy order.
+// Safe to delete once no stored grant references a legacy key.
+export const LEGACY_CAP_ALIASES = {
+  'slate.generate': CAP_MOMENTS_GENERATE,
+  'slate.approve':  CAP_MOMENTS_APPROVE,
+}
+
+export function normalizeCap(cap) {
+  return LEGACY_CAP_ALIASES[cap] || cap
+}
 
 export const ALL_CAPABILITIES = [
   CAP_SETTINGS_VIEW,
@@ -62,8 +78,8 @@ export const ALL_CAPABILITIES = [
   CAP_INTERVIEW_EDIT_OTHERS,
   CAP_CONTENT_APPROVE,
   CAP_CONTENT_PUBLISH,
-  CAP_SLATE_GENERATE,
-  CAP_SLATE_APPROVE,
+  CAP_MOMENTS_GENERATE,
+  CAP_MOMENTS_APPROVE,
   CAP_CAMPAIGNS_EDIT,
 ]
 
@@ -93,8 +109,8 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     // template in workspaces.role_templates.
     label: 'Producer',
     capabilities: [
-      CAP_SLATE_GENERATE,
-      CAP_SLATE_APPROVE,
+      CAP_MOMENTS_GENERATE,
+      CAP_MOMENTS_APPROVE,
       CAP_CONTENT_APPROVE,
       CAP_CONTENT_PUBLISH,
       CAP_INTEGRATIONS_CONNECT,
@@ -107,7 +123,7 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     capabilities: [
       CAP_INTERVIEW_START,
       CAP_CONTENT_APPROVE,
-      CAP_SLATE_APPROVE,
+      CAP_MOMENTS_APPROVE,
     ],
   },
   viewer: {
@@ -135,7 +151,7 @@ export function resolveTemplate(tier, workspace) {
   if (!override) return { ...def, capabilities: [...def.capabilities] }
   return {
     label: typeof override.label === 'string' ? override.label : def.label,
-    capabilities: Array.isArray(override.capabilities) ? [...override.capabilities] : [...def.capabilities],
+    capabilities: Array.isArray(override.capabilities) ? override.capabilities.map(normalizeCap) : [...def.capabilities],
   }
 }
 
@@ -152,7 +168,8 @@ export function resolveCapabilities(tier, workspace, staffOverrides = {}) {
   // Per-person deltas: true = custom grant, false = custom revoke. Unknown
   // keys are ignored so a stale client can't inject arbitrary strings.
   if (staffOverrides && typeof staffOverrides === 'object') {
-    for (const [cap, granted] of Object.entries(staffOverrides)) {
+    for (const [rawCap, granted] of Object.entries(staffOverrides)) {
+      const cap = normalizeCap(rawCap)
       if (!ALL_CAPABILITIES.includes(cap)) continue
       if (granted) base.add(cap)
       else base.delete(cap)

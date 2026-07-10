@@ -10,7 +10,7 @@
 // Pipeline:
 //   1. Rank the workspace's topic_suggestions by coverage gap + priority,
 //      with proven topics (past published winners) floated up — the same
-//      signal V5 feeds into the daily slate.
+//      signal V5 feeds into the daily lineup.
 //   2. Take the top few gap topics and ask Haiku to phrase each as a single
 //      concrete shot directive (format + one-sentence instruction), in the
 //      workspace's voice.

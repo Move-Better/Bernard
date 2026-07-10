@@ -3,7 +3,7 @@
 // Two responsibilities:
 //   1. Fetch currently-active campaigns for a workspace (status='active'
 //      AND inside any configured date window).
-//   2. Allocate today's N slate slots across them, weighted by event proximity.
+//   2. Allocate today's N lineup slots across them, weighted by event proximity.
 //
 // Used by:
 //   • api/editorial/generate-package.js (consumer — accepts campaignId)
@@ -41,7 +41,7 @@ export async function getActiveCampaigns(workspaceId) {
   // PostgREST OR filter: (start_at IS NULL OR start_at <= now)
   //                   AND (end_at IS NULL OR end_at >= now)
   // encodeURIComponent is required: colons in ISO timestamps (e.g. 2026-05-28T12:00:00.000Z)
-  // are ambiguous inside PostgREST or() groups and can produce wrong slates silently.
+  // are ambiguous inside PostgREST or() groups and can produce wrong lineups silently.
   const nowEnc = encodeURIComponent(nowIso)
   const startFilter = `or=(start_at.is.null,start_at.lte.${nowEnc})`
   const endFilter   = `or=(end_at.is.null,end_at.gte.${nowEnc})`

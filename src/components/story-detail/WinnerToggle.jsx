@@ -4,7 +4,7 @@
 // story director flips it on when the audience responded — comments, shares,
 // bookings, a partner mentioning it in clinic. That flag is the producer end
 // of the loop: the Moment Miner's Coverage tab rolls winners up per topic/clinician,
-// and the daily slate resurfaces proven topics first (see getSuggestedTopics'
+// and the daily lineup resurfaces proven topics first (see getSuggestedTopics'
 // provenTopics param). When GA4 / Buffer metrics eventually flow, the
 // refresh-engagement cron can auto-set the same flag — this toggle is the
 // manual seed that makes the loop real today.
@@ -38,7 +38,7 @@ export default function WinnerToggle({ piece }) {
         title={
           isWinner
             ? 'Marked as a winner — the audience responded. Click to unmark.'
-            : 'Mark as a winner if the audience responded. Resurfaces this topic on the daily slate.'
+            : 'Mark as a winner if the audience responded. Resurfaces this topic on the daily lineup.'
         }
       >
         <Trophy className={`h-3.5 w-3.5 ${isWinner ? 'fill-success' : ''}`} />

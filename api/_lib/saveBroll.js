@@ -47,7 +47,7 @@ export async function saveBroll({ ws, renders, staffId, notes, parentAssetId }) 
       workspace_id:     ws.id,
       kind,
       asset_purpose:    kind === 'video' ? 'broll' : 'photo',
-      source:           'slate',
+      source:           'moments',
       status:           'approved',
       blob_url:         r.blobUrl,
       blob_pathname:    blobPathname,

@@ -84,7 +84,7 @@ export function filterCampaignsForStaff(campaigns, staffId) {
  * Returns null when nothing is active.
  *
  * The "most-relevant" pick is the highest-weighted active campaign per the
- * same weighting used by the slate slot allocator — so an event 3 days out
+ * same weighting used by the lineup slot allocator — so an event 3 days out
  * wins over an evergreen, etc.
  *
  * @param {string}      workspaceId

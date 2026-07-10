@@ -14,7 +14,7 @@ const PRIORITY_RANK = { high: 3, medium: 2, low: 1 }
  * V5 (engagement loop): `provenTopics` is an optional array of topic-title
  * strings whose past published content was flagged `performed_well` (the
  * audience responded). Within the same coverage/priority tier, proven topics
- * float up so the daily slate resurfaces formats the audience has rewarded.
+ * float up so the daily lineup resurfaces formats the audience has rewarded.
  * Defaults to `[]` — a no-op — so existing callers are unaffected.
  */
 export function getSuggestedTopics(workspace, existingTopics = [], selectedPrototypeId = null, provenTopics = []) {
