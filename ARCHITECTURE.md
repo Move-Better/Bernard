@@ -631,6 +631,22 @@ missing from `agent-tick.js`'s `select=`, so `getAtomSystemPrompt`'s facebook/li
 rendered `${workspace.website}` as the string `"undefined"`, which the model dutifully wrote into
 four live captions across one pre-draft batch before a human review caught it.)
 
+**`draftAtom`'s `angle` param is a fixed per-platform enum key, not free text — the prompt SUBJECT
+comes from `interview.topic`, not `angle`.** A third caller of `draftAtom` (F20, `draftOnTopic.js`,
+PR #2073/#2077) synthesized an ad-hoc atom by setting `atom.angle` to a human-typed topic string,
+reasoning "angle sounds like the framing the user wants." It doesn't — `angle` looks up a specific
+key in `atomPrompts.js`'s `instructions[platform]` object (e.g. instagram only has
+`hook`/`quick_win`/`clinical_insight`/`cta`), and any other value throws `"No prompt defined for
+<platform>/<angle>"`. This shipped and passed every static gate (lint/typecheck/build/bundle-smoke)
+because the value is just a string at that layer — it only surfaces at runtime, on the actual
+`generateText` call. Caught by the prod smoke test (per `CLAUDE.md`'s standard verification
+procedure), not by any automated check. Rule: before adding a **third** (or Nth) caller of a shared
+generation core, don't infer a parameter's semantics from its name — grep the function's body for
+where that parameter is actually consumed downstream (here: `getAtomSystemPrompt`'s
+`instructions[platform][angle]` lookup) and confirm it accepts the kind of value your new caller
+intends to pass, especially for any param that reads like free text but is secretly a fixed
+vocabulary.
+
 ## AI SDK v6 — `maxOutputTokens`, not `maxTokens`
 
 AI SDK v6 (`generateText`/`generateObject`) uses `maxOutputTokens` to cap the completion length.
