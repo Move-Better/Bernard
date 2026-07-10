@@ -61,6 +61,37 @@ The 4 `voice-clone/{opt-out,revoke,create,resume}` routes had this gap (PR #1806
 flagged it as a P0 because opt-out/revoke call ElevenLabs `deleteVoice()` (irreversible). The
 class recurs by copy-paste — apply this gate to any new staff-row-scoped destructive route.
 
+### Capability keys are PERSISTED — renaming one is a data migration, not a code edit
+
+The capability-id strings in `ALL_CAPABILITIES` (`api/_lib/capabilities.js` + its `src/lib/`
+mirror — e.g. `'content.approve'`, `'moments.generate'`) are **stored in the DB**, not just
+compared in code: `workspaces.role_templates` (migration 092, per-workspace role→caps override,
+JSON arrays) and `staff.capability_overrides` (migration 107, per-person `{capId: bool}` deltas).
+So renaming or removing a capability key is a **data migration**, not a code-only change.
+
+The trap: `resolveCapabilities()` silently **drops any stored key not in `ALL_CAPABILITIES`**
+(`if (!ALL_CAPABILITIES.includes(cap)) continue` — a deliberate guard against a stale client
+injecting arbitrary strings). So a naive rename `X`→`Y` makes every stored `X` grant resolve to
+*nothing* — the permission is silently revoked for exactly the workspaces/staff that had it. If a
+route gates on that cap via `requireCapability`, the feature goes invisible (the "permission-gated
+feature at zero usage" failure mode).
+
+Safe rename procedure (used 2026-07-10 for `slate.*`→`moments.*`, migration 167):
+1. Rename the constant value in **both** `capabilities.js` mirrors.
+2. Add a `LEGACY_CAP_ALIASES` forward-map + `normalizeCap()`, applied in `resolveTemplate`
+   (override caps) and `resolveCapabilities` (the `staffOverrides` loop) — and in the client
+   `capabilityLabel`/`capabilityShortLabel` lookups so AccessMatrix renders legacy keys correctly.
+   This makes the rename **deploy-order-independent**: stored old keys keep resolving.
+3. Ship a backfill migration that rewrites the stored keys in `workspaces.role_templates` +
+   `staff.capability_overrides` (quoted-string `replace()` on the `::text` cast handles both the
+   array-element and object-key shapes). Data-only → `expected-schema.json` unaffected.
+4. Once the backfill is confirmed (`0` rows carry the legacy key), the alias map can be deleted.
+
+Blast radius is small (the Move Better seed workspaces + a couple of producer staff carry custom
+`role_templates`/overrides; most rows are `null` → fall back to code `DEFAULT_TEMPLATES`), and no
+route currently enforces the Moment Miner caps — but the silent-drop behavior is the thing to
+respect for any capability the *next* rename touches.
+
 ### Platform-admin gate — cross-tenant surfaces
 
 A *cross-tenant* route (one that deliberately reads across ALL workspaces, e.g. the global
