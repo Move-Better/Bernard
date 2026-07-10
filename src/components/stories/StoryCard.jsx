@@ -111,10 +111,12 @@ export default function StoryCard({ story }) {
         />
       </div>
 
-      {/* Voice fidelity badge — blog only, renders nothing if no audit data */}
+      {/* Voice fidelity — blog only, renders nothing if no audit data. Compact
+          one-line chip so it never stretches the card; the full audit opens
+          when the card is clicked through to the story. */}
       {blogPiece && (
         <div className="mb-3">
-          <VoiceFidelityBadge piece={blogPiece} />
+          <VoiceFidelityBadge piece={blogPiece} compact />
         </div>
       )}
 

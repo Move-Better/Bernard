@@ -18,7 +18,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 // Tier thresholds + flag labels + severity dots live in @/lib/voiceFidelity so
 // this full badge and the compact editor-header VoiceChip stay in lockstep.
 
-export default function VoiceFidelityBadge({ piece }) {
+export default function VoiceFidelityBadge({ piece, compact = false }) {
   const [open, setOpen] = useState(false)
   const audit = piece?.voice_audit
   const score = piece?.voice_fidelity_score
@@ -28,6 +28,7 @@ export default function VoiceFidelityBadge({ piece }) {
 
   // A pass ran but failed / had nothing to compare against.
   if (audit.error) {
+    if (compact) return null
     return (
       <div className="text-2xs text-muted-foreground italic">
         Voice fidelity check unavailable for this draft.
@@ -38,6 +39,24 @@ export default function VoiceFidelityBadge({ piece }) {
   const tier = scoreTier(typeof score === 'number' ? score : (audit.score ?? 0))
   const flags = Array.isArray(audit.flags) ? audit.flags : []
   const Icon = tier.iconName === 'shield' ? ShieldCheck : AlertTriangle
+  const shown = typeof score === 'number' ? score : audit.score
+
+  // Compact one-line chip for card grids (StoryCard) — fixed height so it never
+  // stretches the card. Display-only; the full audit (flags/suggestions) opens
+  // when the user clicks through to the story. High tiers read "Sounds like
+  // you"; lower tiers keep the honest tier label ("Worth a look", etc.).
+  if (compact) {
+    const shortLabel = tier.tone === 'success' || tier.tone === 'info' ? 'Sounds like you' : tier.label
+    return (
+      <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full border ${tier.border} ${tier.bg} px-2 py-0.5 text-2xs font-semibold ${tier.text}`}>
+        <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+        <span className="truncate">{shortLabel} · {shown}/100</span>
+        {flags.length > 0 && (
+          <span className="shrink-0 font-medium text-muted-foreground">· {flags.length} to check</span>
+        )}
+      </span>
+    )
+  }
 
   return (
     <div className={`rounded-md border ${tier.border} ${tier.bg}`}>
