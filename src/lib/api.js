@@ -268,22 +268,24 @@ export function syncStaffName(name) {
   }))
 }
 
-/** @param {string} id @param {string} userId @param {{ mergeTo?: string, force?: boolean }} [opts] @returns {Promise<unknown>} */
-export function deleteStaff(id, userId, opts = {}) {
+// Actor identity is derived server-side from the verified Clerk token
+// (requireRole in api/_routes/db/staff.js); the route ignores any client
+// header. The old x-user-id header here was an unauthenticated, load-bearing-
+// for-nothing leftover from a pre-launch authz model — removed so it can't be
+// mistaken for a trust boundary again (Vigil audit 2026-07-09).
+/** @param {string} id @param {{ mergeTo?: string, force?: boolean }} [opts] @returns {Promise<unknown>} */
+export function deleteStaff(id, opts = {}) {
   const params = new URLSearchParams({ id })
   if (opts.mergeTo) params.set('mergeTo', opts.mergeTo)
   if (opts.force) params.set('force', 'true')
-  return apiFetch(`/api/db/staff?${params}`, {
-    method: 'DELETE',
-    headers: { 'x-user-id': userId },
-  })
+  return apiFetch(`/api/db/staff?${params}`, { method: 'DELETE' })
 }
 
-/** @param {string} id @param {Record<string, unknown>} patch @param {string} userId @returns {Promise<unknown>} */
-export function patchStaff(id, patch, userId) {
+/** @param {string} id @param {Record<string, unknown>} patch @returns {Promise<unknown>} */
+export function patchStaff(id, patch) {
   return apiFetch(`/api/db/staff?id=${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   })
 }
