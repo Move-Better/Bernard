@@ -81,12 +81,15 @@ export async function originateOutboundCall({ toNumber, interviewId }) {
 
   // record-from-answer-dual → stereo recording, one leg per channel, so the
   // transcript step can attribute turns by channel (see callTranscript.js).
-  // timeLimit=480 (8 min): a hard backstop so a call can never dead-air the way
-  // the pilot ran to ~10 min. The ~6-min prompt time-box lands it first; this
-  // guarantees the call ends (and the recording webhook fires) if it doesn't.
+  // timeLimit=1500 (25 min): a GENEROUS runaway guard, NOT a flow limit. Q's
+  // ruling — do not cap calls strictly; a hard 8-min cut broke good conversations.
+  // Bernard self-manages length (soft wrap-up in the prompt); this only exists so
+  // a stalled/dead-air call (OpenAI session went quiet, line still up) can't bill
+  // forever. No real conversation hits it. (Truly killing dead-air the instant
+  // the session ends needs the live WS observer — a separate follow-up.)
   const twiml =
     `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<Response><Dial record="record-from-answer-dual" timeLimit="480" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed">` +
+    `<Response><Dial record="record-from-answer-dual" timeLimit="1500" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed">` +
     `<Sip>${xmlEscape(sipUri)}</Sip></Dial></Response>`
 
   const body = new URLSearchParams({

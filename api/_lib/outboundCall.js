@@ -98,10 +98,10 @@ export function buildOpeningDirective({ firstName, styleMemory, shippedTitles = 
     )
   }
   lines.push('If they say now is not a good time, acknowledge warmly, tell them you\'ll catch them another time, and end the call — do not push.')
-  // Time-box: keep the call to ~6 minutes and land it. Without this the model
-  // interviews open-endedly and the call runs long (the pilot hit ~10 min and
-  // the session went quiet). Go deep on little, then wrap.
-  lines.push('KEEP IT SHORT — aim for about six minutes total. Go deep on ONE, at most two things; do NOT try to cover everything. Give them room to finish their thoughts — never cut them off mid-sentence; wait for a clear, full stop before you respond. When you have enough for a good piece, WRAP UP warmly: thank them by name, tell them you\'ve got a great story out of this and it\'ll be drafting the moment they hang up, then say goodbye. Do not let the call drift past ~6–7 minutes or sit in silence.')
+  // Soft length guidance (Q's ruling: do NOT cap calls strictly — a hard cut
+  // breaks flow). Bernard self-manages: efficient but unhurried, follows the
+  // clinician's lead, wraps at a natural close. No rigid minute limit.
+  lines.push('PACING — be efficient but UNHURRIED. Most of these calls land in about 5–8 minutes, but follow the clinician\'s lead: if they\'re in a good flow, let it run; if they\'re brief, don\'t pad it. Go deep on ONE or two things rather than trying to cover everything. Give them room to finish their thoughts — never cut them off mid-sentence; wait for a clear, full stop before you respond. When the conversation reaches a natural close and you have enough for a strong piece, WRAP UP warmly: thank them by name, tell them you\'ve got a great story out of this and it\'ll be drafting the moment they hang up, then say goodbye — don\'t just go silent.')
   return `\n\n${lines.join('\n')}\n`
 }
 
@@ -205,21 +205,27 @@ export async function generateOutputsFromTranscript({ workspace, staff, topic, m
   return { blogPost: generated, generatedAt: new Date().toISOString() }
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-/** Full date, e.g. "July 10, 2026" (UTC). Q's chosen story-title date format. */
-export function formatFullDate(dateInput) {
+/**
+ * Story-title date, MM/DD/YY (Q's chosen format — date-first so titles stay
+ * unique + chronological across thousands of pieces even when the topic repeats).
+ * UTC for now; a workspace-timezone refinement is a follow-up for late-evening
+ * calls that cross midnight UTC.
+ */
+export function formatStoryDate(dateInput) {
   const d = dateInput ? new Date(dateInput) : new Date()
   if (Number.isNaN(d.getTime())) return ''
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const yy = String(d.getUTCFullYear()).slice(-2)
+  return `${mm}/${dd}/${yy}`
 }
 
 /**
  * Auto-title a weekly-call story. Unlike a normal interview (where the clinician
  * picks the topic upfront), the outbound call has no chosen subject, so the
  * placeholder title ("Your weekly call") is meaningless once there's more than
- * one. This derives a short topic from the transcript and prefixes the full
- * call date → e.g. "July 10, 2026 — Hip extension and opposite-shoulder stability".
+ * one. This derives a SPECIFIC topic from the transcript and prefixes the call
+ * date → e.g. "07/10/26 — Hip extension driving opposite-shoulder stability".
  *
  * @param {object} p
  * @param {Array}  p.messages   - transcript turns
@@ -227,7 +233,7 @@ export function formatFullDate(dateInput) {
  * @returns {Promise<string>}
  */
 export async function generateCallStoryTitle({ messages, callDate }) {
-  const dateStr = formatFullDate(callDate)
+  const dateStr = formatStoryDate(callDate)
   const transcript = (Array.isArray(messages) ? messages : [])
     .map((m) => (typeof m?.content === 'string' ? m.content : ''))
     .join('\n')
@@ -239,7 +245,7 @@ export async function generateCallStoryTitle({ messages, callDate }) {
       const { text } = await generateText({
         model: 'anthropic/claude-haiku-4-5',
         instructions:
-          'You name clinical content stories from an interview transcript. Return ONLY a 3–6 word topic phrase capturing the main subject discussed — natural capitalization, no surrounding quotes, no trailing punctuation, no date. Example: "Hip extension and opposite-shoulder stability".',
+          'You name clinical content stories from an interview transcript. Return ONLY a 4–7 word topic phrase capturing the SPECIFIC angle discussed — not a broad category. This clinician revisits the same general concepts often, so the title must pin down THIS conversation\'s particular point. Prefer "Hip extension driving opposite-shoulder stability" over "Hip and shoulder". Natural capitalization, no surrounding quotes, no trailing punctuation, no date.',
         messages: [{ role: 'user', content: transcript }],
         maxOutputTokens: 40,
       })
