@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Scissors, Loader2, BarChart3, Film, ShieldAlert,
-  ShieldCheck, PlayCircle, Search, Sparkles, Gem, Check,
+  ShieldCheck, PlayCircle, Search, Sparkles, Gem, Check, Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -79,6 +79,22 @@ const MOMENT_FILTERS = [
 // One mined moment — the moment-first card the Ready-to-review feed ranks
 // strongest-first by quotability score. Real footage + real audio; "Looks good"
 // saves it as an approved clip into the Library (Storyboard & Ads pull from there).
+// F13 on-camera pill colour ramp — a quality signal, so semantic (not the
+// accent): teal reads "films well", amber "films weak", slate in between.
+function camPillClasses(v) {
+  if (v >= 65) return 'text-primary bg-primary/10'
+  if (v < 40) return 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
+  return 'text-muted-foreground bg-muted'
+}
+
+const CAM_DIMS = [
+  ['Energy', 'energy'],
+  ['Eye contact', 'eye_contact'],
+  ['Gesture', 'gesture'],
+  ['Framing', 'framing'],
+  ['B-roll', 'broll_worthiness'],
+]
+
 function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
   const m = moment
   const dur = m.durationSec ? `${Math.round(m.durationSec)}s` : null
@@ -106,17 +122,45 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
           )}
           <div className="flex items-start gap-2">
             <p className="text-sm font-semibold leading-snug flex-1">&ldquo;{m.quote}&rdquo;</p>
-            {m.score != null && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10 cursor-help">
-                    <Gem className="h-2.5 w-2.5" />{m.score}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[240px] text-center leading-snug">
-                  Quotability score (0–100): how strong this moment is as shareable content — how clear, punchy, and on-message the quote is. The feed ranks highest-first.
-                </TooltipContent>
-              </Tooltip>
+            {(m.score != null || m.visualScore != null) && (
+              <div className="shrink-0 flex items-center gap-1">
+                {m.score != null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold text-primary bg-primary/10 cursor-help">
+                        <Gem className="h-2.5 w-2.5" />{m.score}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[240px] text-center leading-snug">
+                      Quotability score (0–100): how strong this moment is as shareable content — how clear, punchy, and on-message the quote is. The feed ranks highest-first.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {m.visualScore != null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs font-bold cursor-help ${camPillClasses(m.visualScore)}`}>
+                        <Video className="h-2.5 w-2.5" />{m.visualScore}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[240px] leading-snug">
+                      <div className="font-semibold mb-1">On-camera score: {m.visualScore}/100</div>
+                      {m.visualBreakdown && (
+                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 tabular-nums mb-1.5">
+                          {CAM_DIMS.map(([label, key]) => (
+                            <div key={key} className="contents">
+                              <span className="text-left">{label}</span>
+                              <span className="font-semibold text-right">{m.visualBreakdown[key]}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {m.visualBreakdown?.note && <div className="italic opacity-90">{m.visualBreakdown.note}</div>}
+                      {!m.visualBreakdown && <div>How well this moment films — energy, eye contact, gesture, framing, and b-roll value. Blended with the quotability score to rank the feed.</div>}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
