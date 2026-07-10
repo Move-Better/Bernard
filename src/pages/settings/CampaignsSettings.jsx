@@ -20,7 +20,7 @@ import { formatRelativeDate } from '@/lib/utils'
 
 // Phase 4 Tentpole PR A — Multi-campaign admin surface.
 //
-// Lets workspace admins create + edit time-windowed campaigns. The slate
+// Lets workspace admins create + edit time-windowed campaigns. The daily-lineup
 // generator (PR B) will read currently-active campaigns and bias today's
 // package selection accordingly.
 
@@ -384,7 +384,7 @@ function CampaignEditor({ initial, onCancel, onSaved }) {
         </button>
       </div>
 
-      <Field label="Name" hint="Short, distinctive — appears on slate packages.">
+      <Field label="Name" hint="Short, distinctive — appears on generated packages.">
         <Input
           value={form.name}
           onChange={(e) => set('name', e.target.value)}

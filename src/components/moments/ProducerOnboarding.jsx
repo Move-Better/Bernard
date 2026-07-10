@@ -230,7 +230,7 @@ function ApproveStep() {
           {`The workspace admin can then push to your connected publishing
           channels — that part is owned by them, not you.`}
         </li>
-        <li>{`The package leaves the slate and won't reappear tomorrow.`}</li>
+        <li>{`The package leaves the lineup and won't reappear tomorrow.`}</li>
       </ol>
       <p>
         {`If a package isn't right — wrong clip, off-tone caption — use `}
@@ -247,8 +247,8 @@ function DoneStep() {
       <p>{`You're all set. A few things to know:`}</p>
       <ul className="space-y-2 text-muted-foreground">
         <li>
-          {`• Today's slate auto-generates 3–4 packages when you click `}
-          <strong>{"Generate today's slate"}</strong>{`.`}
+          {`• Today's lineup auto-generates 3–4 packages when you click `}
+          <strong>{"Generate today's lineup"}</strong>{`.`}
         </li>
         <li>
           {`• You can re-open this tour any time from the `}

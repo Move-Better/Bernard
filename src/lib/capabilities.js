@@ -22,11 +22,25 @@ export const CAP_INTERVIEW_EDIT_OTHERS   = 'interview.edit_others'
 export const CAP_CONTENT_APPROVE         = 'content.approve'
 export const CAP_CONTENT_PUBLISH         = 'content.publish'
 
-export const CAP_SLATE_GENERATE = 'slate.generate'
-export const CAP_SLATE_APPROVE  = 'slate.approve'
+// Keys renamed from the retired 'slate.*' scheme 2026-07-10; normalizeCap()
+// below maps any stored 'slate.*' grant forward so display stays correct until
+// the backfill migration runs.
+export const CAP_MOMENTS_GENERATE = 'moments.generate'
+export const CAP_MOMENTS_APPROVE  = 'moments.approve'
 
 // Tentpole planner (Phase 4 PR 4) — campaign window management.
 export const CAP_CAMPAIGNS_EDIT = 'campaigns.edit'
+
+// Forward-map for renamed capability keys (mirror of api/_lib/capabilities.js).
+// Safe to delete once no stored grant references a legacy key.
+export const LEGACY_CAP_ALIASES = {
+  'slate.generate': CAP_MOMENTS_GENERATE,
+  'slate.approve':  CAP_MOMENTS_APPROVE,
+}
+
+export function normalizeCap(cap) {
+  return LEGACY_CAP_ALIASES[cap] || cap
+}
 
 export const ALL_CAPABILITIES = [
   CAP_SETTINGS_VIEW,
@@ -40,8 +54,8 @@ export const ALL_CAPABILITIES = [
   CAP_INTERVIEW_EDIT_OTHERS,
   CAP_CONTENT_APPROVE,
   CAP_CONTENT_PUBLISH,
-  CAP_SLATE_GENERATE,
-  CAP_SLATE_APPROVE,
+  CAP_MOMENTS_GENERATE,
+  CAP_MOMENTS_APPROVE,
   CAP_CAMPAIGNS_EDIT,
 ]
 
@@ -61,7 +75,7 @@ export const OWNER_ONLY_CAPABILITIES = new Set([
 export const CAPABILITY_GROUPS = [
   { label: 'Interviews',          caps: [CAP_INTERVIEW_START, CAP_INTERVIEW_EDIT_OTHERS] },
   { label: 'Content',             caps: [CAP_CONTENT_APPROVE, CAP_CONTENT_PUBLISH] },
-  { label: 'Moment Miner',        caps: [CAP_SLATE_GENERATE, CAP_SLATE_APPROVE] },
+  { label: 'Moment Miner',        caps: [CAP_MOMENTS_GENERATE, CAP_MOMENTS_APPROVE] },
   { label: 'Brand & Campaigns',   caps: [CAP_BRAND_KIT_EDIT, CAP_CAMPAIGNS_EDIT, CAP_INTEGRATIONS_CONNECT] },
   { label: 'Workspace & Billing', caps: [CAP_SETTINGS_VIEW, CAP_SETTINGS_EDIT, CAP_BILLING_VIEW, CAP_BILLING_EDIT, CAP_MEMBERS_INVITE] },
 ]
@@ -81,10 +95,10 @@ export function capabilityShortLabel(cap) {
     [CAP_INTERVIEW_EDIT_OTHERS]:'Edit others’ interviews',
     [CAP_CONTENT_APPROVE]:      'Approve content',
     [CAP_CONTENT_PUBLISH]:      'Publish content',
-    [CAP_SLATE_GENERATE]:       'Generate clips',
-    [CAP_SLATE_APPROVE]:        'Approve clips',
+    [CAP_MOMENTS_GENERATE]:       'Generate clips',
+    [CAP_MOMENTS_APPROVE]:        'Approve clips',
     [CAP_CAMPAIGNS_EDIT]:       'Plan campaigns',
-  }[cap] || cap
+  }[normalizeCap(cap)] || cap
 }
 
 // ─── Default templates (UI display only — server is authoritative) ───────────
@@ -97,8 +111,8 @@ export const DEFAULT_TEMPLATES = Object.freeze({
   producer: {
     label: 'Producer',
     capabilities: [
-      CAP_SLATE_GENERATE,
-      CAP_SLATE_APPROVE,
+      CAP_MOMENTS_GENERATE,
+      CAP_MOMENTS_APPROVE,
       CAP_CONTENT_APPROVE,
       CAP_CONTENT_PUBLISH,
       CAP_INTEGRATIONS_CONNECT,
@@ -111,7 +125,7 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     capabilities: [
       CAP_INTERVIEW_START,
       CAP_CONTENT_APPROVE,
-      CAP_SLATE_APPROVE,
+      CAP_MOMENTS_APPROVE,
     ],
   },
   viewer: {
@@ -137,8 +151,8 @@ export function capabilityLabel(cap) {
     [CAP_INTERVIEW_EDIT_OTHERS]:'Edit others’ interviews',
     [CAP_CONTENT_APPROVE]:      'Approve content drafts',
     [CAP_CONTENT_PUBLISH]:      'Publish content',
-    [CAP_SLATE_GENERATE]:       'Generate Moment Miner clips',
-    [CAP_SLATE_APPROVE]:        'Approve Moment Miner clips',
+    [CAP_MOMENTS_GENERATE]:       'Generate Moment Miner clips',
+    [CAP_MOMENTS_APPROVE]:        'Approve Moment Miner clips',
     [CAP_CAMPAIGNS_EDIT]:       'Plan tentpole campaigns',
-  }[cap] || cap
+  }[normalizeCap(cap)] || cap
 }
