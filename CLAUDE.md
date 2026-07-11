@@ -1,5 +1,9 @@
 # Bernard — Project Notes
 
+## Product strategy lives in Vigil — read it before big packaging/tiering changes
+
+Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO analytics, onboarding/activation, what's tenant-product vs Move-Better-private) is tracked in the **Vigil** repo, not here: `specs/bernard-saas-productization.md` (plus follow-on specs `specs/bernard-tier-assignment.md` and `specs/bernard-onboarding-path.md` as they land). Vigil is the read-only oversight layer that authors these specs and hands them to Bernard. Key decisions as of 2026-07-11: per-location flat pricing + free trial; jobs-based tiers (Get Found → Grow → Scale/Pro); base-tier analytics is *managed* (OAuth channel data + bought SEO data), never make a clinic wire up GA4/GSC/PostHog. Before building anything tiering-, pricing-, onboarding-, or feature-gating-shaped, read that spec so you don't build against the plan.
+
 ## API handler checklist — 5 rules every new route must follow
 
 These five patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt explicitly checks all five. But check them manually before opening a PR:
