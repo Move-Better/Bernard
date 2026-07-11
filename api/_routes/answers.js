@@ -8,11 +8,12 @@ import { draftAnswer } from '../_lib/producer/draftAnswer.js'
 import { publishAnswerToMovebetter } from '../_lib/publishAnswer.js'
 import { scoreAnswerFidelity } from '../_lib/scoreAnswerFidelity.js'
 
-// Explicit gate for going live to the public site. Default OFF: approve just
-// marks 'approved' until an operator flips ANSWER_PUBLISH_ENABLED=true (after the
-// answer library + receiver are live on movebetter.co). Prevents a premature
-// prod publish; the operator's flip is the deliberate "go".
-const PUBLISH_ENABLED = process.env.ANSWER_PUBLISH_ENABLED === 'true'
+// Going live to the public site is per-workspace (F16 Phase 2). An approved
+// answer publishes to movebetter.co only when the workspace has
+// answer_publish_enabled = true — which replaced the old global
+// ANSWER_PUBLISH_ENABLED env flag. Publishing stays TRIPLE-gated:
+//   workspace-enabled  AND  cleared the voice-fidelity gate  AND  human-approved.
+// Defaults false; each tenant is flipped live deliberately (movebetter first).
 
 /**
  * /api/answers — the clinician's answer-review queue for the public answer library.
@@ -151,10 +152,11 @@ export default async function handler(req, res) {
           voice_audit: scored.voiceAudit,
         })
       }
-      // PASSED — record the fresh score, then publish (if enabled) or mark approved.
+      // PASSED the voice gate — record the fresh score, then publish IF this
+      // workspace is live (per-workspace go-live), else just mark approved.
       patch.voice_fidelity_score = scored.score100
       patch.voice_audit = scored.voiceAudit
-      if (PUBLISH_ENABLED) {
+      if (ws.answer_publish_enabled) {
         const pub = await publishAnswerToMovebetter({ ws, answer: row })
         if (pub.ok) {
           patch.status = 'published'

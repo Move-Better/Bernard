@@ -847,6 +847,7 @@
     "activity_context",
     "ai_topics_cache",
     "ai_topics_generated_at",
+    "answer_publish_enabled",
     "app_name",
     "audience_description",
     "audience_options",
