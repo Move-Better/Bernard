@@ -297,13 +297,51 @@ async function processWorkspaceBundle(ws, summary) {
     }
   }
 
+  // Round-robin the scarce force budget ACROSS platforms. The candidate order
+  // is due (checkpoint-age) then catchUp (never-pulled), which within a single
+  // platform is the right priority — but taking a flat `slice(0, MAX)` of that
+  // list lets one busy platform consume the entire per-run budget every run and
+  // permanently starve the others (movebetter's LinkedIn backlog was eating all
+  // 4 slots daily, so Instagram/Facebook analytics were NEVER fetched despite
+  // being the clinic's strongest channels). Instead, bucket candidates by
+  // platform (due-first order preserved inside each bucket) and pick one from
+  // each bucket in turn until the budget is spent.
+  const candidatesByPlatform = new Map()
+  for (const item of [...due, ...catchUp]) {
+    if (!candidatesByPlatform.has(item.platform)) candidatesByPlatform.set(item.platform, [])
+    candidatesByPlatform.get(item.platform).push(item)
+  }
+  const buckets = [...candidatesByPlatform.values()]
+  const selected = []
+  let rr = 0
+  while (selected.length < MAX_BUNDLE_FORCES_PER_RUN && buckets.some((b) => b.length)) {
+    const bucket = buckets[rr % buckets.length]
+    const next = bucket.shift()
+    if (next) selected.push(next)
+    rr++
+  }
+
+  // Per-platform outcome tally — surfaced in the summary so a genuine all-zero
+  // reading (post measured, really got 0) can be told apart from a platform we
+  // simply never reached or that errors on every force. Without this the two
+  // are indistinguishable downstream (both show 0 in the UI).
+  const platformOutcomes = {}
+  const bump = (platform, key) => {
+    const o = (platformOutcomes[platform] ||= { forced: 0, wrote: 0, allZero: 0, errored: 0 })
+    o[key]++
+  }
+
   let refreshed = 0
-  for (const item of [...due, ...catchUp].slice(0, MAX_BUNDLE_FORCES_PER_RUN)) {
+  for (const item of selected) {
+    bump(item.platform, 'forced')
     let analytics
     try {
       analytics = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force: true })
-    } catch {
-      // Platform unsupported for analytics (Twitter, GBP) or temporary error — skip.
+    } catch (e) {
+      // Platform unsupported for analytics (Twitter, GBP) or temporary error — skip,
+      // but log which platform/why so a silently-failing channel is visible.
+      bump(item.platform, 'errored')
+      console.warn(`[cron/refresh-engagement] bundle getAnalytics failed ws=${ws.slug} platform=${item.platform}:`, e?.message)
       continue
     }
     const metrics = analytics?.metrics
@@ -313,12 +351,15 @@ async function processWorkspaceBundle(ws, summary) {
     // re-queuing the same post forever, since it depends on `!latest` to know
     // a post has never been pulled.
     const stats = { statistics: { ...metrics }, source: 'bundle', service: item.platform }
+    const nonZero = Object.values(stats.statistics).some((v) => typeof v === 'number' && v > 0)
+    if (!nonZero) bump(item.platform, 'allZero')
     const ins = await sb('engagement_snapshots', {
       method: 'POST',
       body: JSON.stringify({ workspace_id: ws.id, content_item_id: item.id, source: 'bundle', stats }),
     })
     if (ins.ok) {
       refreshed++
+      bump(item.platform, 'wrote')
       item._stats = stats
     }
   }
@@ -352,6 +393,7 @@ async function processWorkspaceBundle(ws, summary) {
   summary.workspaces.push({
     id: ws.id, slug: ws.slug, source: 'bundle',
     items: items.length, refreshed, flagged: flagged.length, flagged_detail: flagged,
+    platform_outcomes: platformOutcomes,
   })
 }
 
