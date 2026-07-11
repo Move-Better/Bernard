@@ -23,6 +23,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../../_lib/atomPrompts.js'
+import { hasPublishedBlogArticle } from '../../_lib/blogLinkStatus.js'
 import { getContextBlock } from '../../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
 import { loadCurrentTentpole, getTentpolePromptContext } from '../../_lib/tentpoleCampaignContext.js'
@@ -200,6 +201,7 @@ export default async function handler(req, res) {
     // no campaign is active. Clinician scope honors per-clinician targeting.
     const activeCampaign = await loadCurrentTentpole(ws.id, interview.staff_id || null)
     const campaignContext = await getTentpolePromptContext(activeCampaign, ws)
+    const hasPublishedArticle = await hasPublishedBlogArticle(sb, ws.id, interview.id)
     const systemPrompt = getAtomSystemPrompt(
       ws,
       staffName,
@@ -215,6 +217,7 @@ export default async function handler(req, res) {
       storyTypeLabel,
       campaignContext,
       ownHistoryBlock,
+      hasPublishedArticle,
     )
     if (!systemPrompt) {
       return err(res, 'no_prompt_defined', 422)

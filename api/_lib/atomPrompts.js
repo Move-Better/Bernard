@@ -33,7 +33,14 @@ function buildVoicePhrasesBlock(phrases) {
 // formatting) flexes per platform. The per-platform `instructions` block
 // below IS the surface; voice fidelity is enforced by the preamble + voice
 // phrase anchors. See .claude/design-interview-output-voice-fidelity.md.
-export function getAtomSystemPrompt(workspace, staffName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '', voicePhrases = [], audienceLabel = null, storyTypeLabel = null, campaignContext = '', ownHistoryBlock = '') {
+// hasPublishedArticle — is THIS interview's blog piece actually live
+// (content_items: platform='blog', status='published', resolved_url set)?
+// The Instagram/TikTok "link in bio" CTA is a fabricated claim otherwise —
+// there was never a bio-link mechanism in Bernard for it to point at. Callers
+// resolve this via hasPublishedBlogArticle() in blogLinkStatus.js and pass it
+// straight through; default false so an unverified caller never emits a claim
+// that can't be substantiated.
+export function getAtomSystemPrompt(workspace, staffName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '', voicePhrases = [], audienceLabel = null, storyTypeLabel = null, campaignContext = '', ownHistoryBlock = '', hasPublishedArticle = false) {
   void tone; void audienceLabel; void storyTypeLabel
   const firstName = staffName.split(' ')[0]
   const isPersonal = voiceMode === 'personal'
@@ -43,6 +50,32 @@ export function getAtomSystemPrompt(workspace, staffName, condition, platform, a
   // "omit the URL" instead of leaking the literal string "undefined" into the
   // prompt, which the model then echoes verbatim into the caption.
   const website = workspace.website || ''
+
+  // The "link in bio" landing page (see LinkPage.jsx / api/link-page.js)
+  // always lists the workspace's live booking link when workspace.website is
+  // set, so the BOOKING flavor of "link in bio" is true whenever a website
+  // exists. The ARTICLE flavor is only true when this specific interview's
+  // blog post is actually published — gated on hasPublishedArticle, never
+  // assumed. Both fall back to a CTA that makes no link claim at all.
+  const bioLinkForBooking = Boolean(website)
+  const articleCtaLine = hasPublishedArticle
+    ? 'Close with: "Full article at the link in bio 👆"'
+    : 'Close with a scroll-stopping callback to the hook — no link claim (e.g. "Save this for later" or "Follow for more like this").'
+  const quickWinCtaLine = hasPublishedArticle
+    ? 'Close with: "More in the full article — link in bio 👆"'
+    : 'Close with an encouragement to try it, no link claim (e.g. "Give it a try and let us know how it goes").'
+  const clinicalInsightCtaLine = hasPublishedArticle
+    ? 'Close with: "Full breakdown at the link in bio 👆"'
+    : 'Close with a follow-for-more callback, no link claim (e.g. "Follow for more insights like this").'
+  const bookingCtaLine = bioLinkForBooking
+    ? 'End with: "Book your assessment — link in bio 👆"'
+    : 'End with a booking invitation that does NOT claim a link (e.g. "DM us to book your assessment").'
+  const tiktokMythBusterCloseLine = bioLinkForBooking
+    ? `"If you're dealing with ${condition} in ${workspace.location_keyword ?? 'your area'}, follow for more — link in bio to book at ${workspace.display_name}."`
+    : `"If you're dealing with ${condition} in ${workspace.location_keyword ?? 'your area'}, follow for more from ${workspace.display_name}."`
+  const tiktokProcessCloseLine = bioLinkForBooking
+    ? '"Book your first assessment — link in bio."'
+    : '"Reach out to book your first assessment."'
   const linkedinUrlLine = website ? `Include URL ${website} at end. No hashtags.` : 'No hashtags. Do not include a URL.'
   const facebookUrlLine = website ? `Include the full URL ${website} on its own line near the end.` : 'Do not include a URL.'
 
@@ -76,28 +109,28 @@ Example shape (do NOT copy verbatim — write fresh text per the caption):
       hook: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Open with the most scroll-stopping moment from the conversation — a myth-buster, bold claim, or surprising fact ${firstName ? `${firstName} actually said` : 'the clinician actually said'}. Make it impossible to scroll past.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
-Close with: "Full article at the link in bio 👆"
+${articleCtaLine}
 Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
       quick_win: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Lead with one actionable tip or self-test the viewer can try right now at home — something concrete that ${firstName ? `${firstName} mentioned` : 'the clinician mentioned'} in the conversation. Make it genuinely useful on its own. Do NOT reference any specific patient, case, or individual's story — keep it general and educational (no PHI).
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
-Close with: "More in the full article — link in bio 👆"
+${quickWinCtaLine}
 Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
       clinical_insight: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Lead with "The one thing most people get wrong about ${condition} is…" and deliver the key clinical insight ${firstName ? `${firstName} surfaced` : 'the clinician surfaced'} in the conversation.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
-Close with: "Full breakdown at the link in bio 👆"
+${clinicalInsightCtaLine}
 Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
       cta: `Write a single Instagram caption (~125 words) for ${workspace.display_name} about ${condition}.
 ANGLE: Direct invitation to book. Lead with a one-line hook that mirrors back the specific pattern or experience of someone dealing with ${condition} — not a generic "Are you suffering from pain?" opener. Briefly describe what the assessment at ${workspace.display_name} actually involves (movement screen, not just "a consult"). Make the ask feel like the natural next step after the insight you led with.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
-End with: "Book your assessment — link in bio 👆"
+${bookingCtaLine}
 Add a blank line, then 5–6 targeted local hashtags: ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}, plus condition tags.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
     },
@@ -174,7 +207,7 @@ One punchy sentence starting with tension or a myth. Example: "Everything you've
 3–4 short punchy points. 1–2 sentences each. Plain language. Add [ON SCREEN TEXT: ...] for text overlays.
 
 [CLOSE — 10 seconds]
-"If you're dealing with ${condition} in ${workspace.location_keyword ?? 'your area'}, follow for more — link in bio to book at ${workspace.display_name}."
+${tiktokMythBusterCloseLine}
 
 CAPTION:
 50–80 word TikTok caption with 5–6 hashtags. Brand as ${workspace.display_name}.`,
@@ -189,7 +222,7 @@ One punchy sentence that promises a clear answer. Example: "Here's what actually
 Walk through: assessment → first session → what improves first → full recovery. Short steps. Add [ON SCREEN TEXT: ...] for key steps.
 
 [CLOSE — 10 seconds]
-"Book your first assessment — link in bio."
+${tiktokProcessCloseLine}
 
 CAPTION:
 50–80 word TikTok caption with 5–6 hashtags. Brand as ${workspace.display_name}.`,
