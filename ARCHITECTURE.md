@@ -322,7 +322,22 @@ force every post daily — `api/_routes/cron/refresh-engagement.js`'s `processWo
 only at post-age checkpoints (1/3/7/30 days) plus a budget-capped one-time catch-up for posts never
 pulled, and writes the snapshot even when all-zero (a real reading) so catch-up doesn't re-queue the
 same post forever. Any new bundle analytics consumer must pass `force: true` explicitly — the
-default is a silent no-op, not a fresh read.
+default is a silent no-op, not a fresh read. The force selection round-robins across platforms
+(not a flat `slice(0,N)` in DB order) so one busy platform can't starve the others out of the
+per-run budget.
+
+**Instagram must be connected via the DIRECT method or per-post analytics 400 forever.**
+`BundlePublisher.connect()` pins `instagramConnectionMethod: 'INSTAGRAM'` (+ `forceBrowserOAuth: true`)
+on the portal link whenever Instagram is among the requested networks. The Facebook-linked method
+(`instagramConnectionMethod: 'FACEBOOK'`) posts fine but every
+`analyticsGetPostAnalytics({platformType:'INSTAGRAM'})` returns a 400 "not available" — including for
+plain single-image posts, so the error's "carousel/story" wording is a red herring; carousels work
+under the direct method (confirmed live 2026-07-11). **Guard those two fields to IG-only** — the
+per-location GBP connect calls `connect({networks:['gbp']})` and must not receive Instagram-only
+params. A bundle 400 on IG analytics is now classified as structurally unavailable and written as a
+sentinel snapshot (`stats.unavailable=true`) so the UI shows "not available" instead of a phantom 0,
+and catchUp stops re-forcing it. Old posts published under a prior connection are orphaned (the direct
+reconnect mints a new account `externalId`) and can't be retro-linked.
 
 **Core publish execution is reusable — call it, don't re-derive it.** `api/_routes/publish/
 buffer.js` exports `runBufferPublish({ workspaceId, token, platform, content, mediaUrls,
