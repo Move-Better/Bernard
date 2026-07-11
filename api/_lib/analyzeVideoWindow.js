@@ -120,6 +120,46 @@ async function sampleFrames(source, startSec, endSec, count) {
   }
 }
 
+/**
+ * Sample `count` stills spread evenly across [startSec, endSec] of a source,
+ * grabbing them CONCURRENTLY (each grab is an independent fast seek). Returns
+ * `[{ t, jpeg }]` in timestamp order, so a caller can label each frame with its
+ * time. Used by the F13 visual NOMINATOR to scan a whole source cheaply — a
+ * concurrency pool keeps a 24-frame scan of a 3GB 4K source to ~20s wall.
+ * Skips frames that fail (seek past EOF, transient blob hiccup).
+ *
+ * @param {string} source            blob URL (range-read) or local path
+ * @param {number} startSec
+ * @param {number} endSec
+ * @param {number} count
+ * @param {object} [opts]
+ * @param {number} [opts.concurrency=4]
+ * @returns {Promise<Array<{ t:number, jpeg:Buffer }>>}
+ */
+export async function sampleFramesAcross(source, startSec, endSec, count, opts = {}) {
+  const concurrency = Math.max(1, opts.concurrency || 4)
+  const stamps = frameTimestamps(startSec, endSec, count)
+  const dir = await mkdtemp(join(tmpdir(), 'vidscan-'))
+  const out = new Array(stamps.length).fill(null)
+  let cursor = 0
+  async function worker() {
+    while (cursor < stamps.length) {
+      const i = cursor++
+      try {
+        out[i] = { t: stamps[i], jpeg: await grabFrame(source, stamps[i], dir, i) }
+      } catch (e) {
+        console.error(`[sampleFramesAcross] frame @ ${stamps[i]}s failed:`, e?.message || e)
+      }
+    }
+  }
+  try {
+    await Promise.all(Array.from({ length: Math.min(concurrency, stamps.length) }, worker))
+    return out.filter(Boolean)
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
 function estimateCostUsd(model, usage) {
   const rate = RATE_CARD[model]
   if (!rate || !usage) return null

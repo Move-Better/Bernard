@@ -29,12 +29,23 @@ import ffmpegPath from 'ffmpeg-static'
 import { transcribeToSegmentsAndWords } from './whisper.js'
 import { scoreSegments } from './scoreMoments.js'
 import { visualScoreSegments } from './scoreMomentsVisual.js'
+import { nominateVisualWindows } from './visualNominate.js'
 
 // F13 visual-scoring budget: how long the visual pass may run inside the shared
 // 300s detection window. Runs LAST (segments are already inserted + 'ready'), so
 // hitting this deadline just leaves later windows visual-unscored — they rank on
 // their transcript score and self-heal nothing (v1 scopes visual to new footage).
 const VISUAL_BUDGET_MS = 100_000
+
+// F13 fast-follow — video-nominates-its-own-windows. Flag-gated per workspace
+// (comma-separated slugs) so it pilots on movebetter before widening. Adds a
+// whole-source visual scan to the pre-insert path, so it's opt-in by design.
+const NOMINATE_WORKSPACES = new Set(
+  (process.env.F13_VISUAL_NOMINATE_WORKSPACES || '').split(',').map((s) => s.trim()).filter(Boolean),
+)
+function visualNominateEnabled(ws) {
+  return NOMINATE_WORKSPACES.has(ws?.slug)
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -287,9 +298,28 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
     })
 
     const segments = normalizeSegments(object.segments || [], maxSegments, durationSec)
+    segments.forEach((s) => { s.nomination_source = 'transcript' })
+
+    // F13 fast-follow — let the CAMERA nominate moments the transcript missed
+    // (flag-gated). Runs a bounded visual scan of the whole source and appends
+    // any strong visual-only windows, deduped against the transcript picks.
+    // Best-effort: returns [] on failure, so detection still ships the words.
+    if (visualNominateEnabled(ws)) {
+      const visualWins = await nominateVisualWindows({
+        source: asset.blob_url,
+        workspace: ws,
+        durationSec,
+        cues,
+        transcriptWindows: segments,
+      })
+      for (const v of visualWins) segments.push({ ...v, nomination_source: 'visual' })
+      if (visualWins.length) console.info(`[segmentDetect] F13 visual nominator added ${visualWins.length} window(s) for asset ${asset.id}`)
+    }
 
     // Score + classify each proposed moment (the gem rating + type the
     // Moment Miner feed ranks on). Aligned to `segments` order; never throws.
+    // Visual-nominated windows get a transcript-style score too (from their
+    // drafted hook/excerpt); their on-camera score comes from the F13 pass.
     const scores = segments.length ? await scoreSegments(segments, ws) : []
 
     // Fetch old proposed/rendering IDs BEFORE inserting so we can delete
@@ -316,6 +346,7 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
         detection_model: MODEL,
         score: scores[i]?.score ?? null,
         moment_type: scores[i]?.moment_type ?? null,
+        nomination_source: s.nomination_source || 'transcript',
         ...(campaignId ? { campaign_id: campaignId } : {}),
       }))
       const ins = await sb('video_segments', { method: 'POST', body: JSON.stringify(rows) })

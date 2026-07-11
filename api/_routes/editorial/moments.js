@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   // 1. All proposed segments for the workspace.
   const segRes = await sb(
     `video_segments?workspace_id=eq.${ws.id}&status=eq.proposed` +
-    `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,score,moment_type,visual_score,visual_breakdown,order_index` +
+    `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,score,moment_type,visual_score,visual_breakdown,nomination_source,order_index` +
     `&order=order_index.asc`,
   )
   if (!segRes.ok) {
@@ -140,6 +140,7 @@ export default async function handler(req, res) {
       score: s.score ?? null,
       visualScore,
       visualBreakdown: s.visual_breakdown || null,
+      nominationSource: s.nomination_source || 'transcript',
       rankScore: blendMomentScore(s.score, visualScore),
       momentType: s.moment_type || 'insight',
       momentTypeLabel: MOMENT_TYPE_LABELS[s.moment_type] || 'Moment',
