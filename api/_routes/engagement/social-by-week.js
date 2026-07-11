@@ -95,6 +95,7 @@ export default withSentry(async function handler(req, res) {
 
   const byPlatform = new Map()
   let overallPosts = 0
+  let overallMeasured = 0
   let overallReach = 0
   let overallEngagement = 0
   let topPost = null
@@ -102,29 +103,56 @@ export default withSentry(async function handler(req, res) {
   for (const item of items) {
     overallPosts++
     const snap = latestByItem.get(item.id)
-    const { reach, engagement } = snap ? scoreSnapshot(snap) : { reach: 0, engagement: 0 }
+    // A sentinel snapshot with `unavailable:true` means the provider structurally
+    // can't return analytics for this post (e.g. bundle.social + an IG carousel/
+    // story). It is NOT a measured zero — treat it as "no data", so a phantom 0
+    // never gets presented as a real reading. A post with no snapshot at all is
+    // "pending" (not yet pulled). Only a real snapshot counts as measured.
+    const isUnavailable = snap?.stats?.unavailable === true
+    const measured = !!snap && !isUnavailable
+    const { reach, engagement } = measured ? scoreSnapshot(snap) : { reach: 0, engagement: 0 }
 
-    overallReach += reach
-    overallEngagement += engagement
+    if (measured) {
+      overallMeasured++
+      overallReach += reach
+      overallEngagement += engagement
+    }
 
-    const bucket = byPlatform.get(item.platform) || { platform: item.platform, posts: 0, reach: 0, engagement: 0 }
+    const bucket = byPlatform.get(item.platform) ||
+      { platform: item.platform, posts: 0, measured: 0, unavailable: 0, reach: 0, engagement: 0 }
     bucket.posts++
-    bucket.reach += reach
-    bucket.engagement += engagement
+    if (measured) {
+      bucket.measured++
+      bucket.reach += reach
+      bucket.engagement += engagement
+    } else if (isUnavailable) {
+      bucket.unavailable++
+    }
     byPlatform.set(item.platform, bucket)
 
-    if (!topPost || reach > topPost.reach) {
+    // Rank the top post only among measured posts — a "top post" with no real
+    // reading is meaningless.
+    if (measured && (!topPost || reach > topPost.reach)) {
       topPost = { id: item.id, topic: item.topic || 'Untitled', platform: item.platform, reach, engagement }
     }
   }
+
+  // Per-platform status: measured (has a real reading, even if genuinely 0) >
+  // unavailable (provider can't report it) > pending (published, not yet pulled).
+  const platformRows = [...byPlatform.values()].map((b) => ({
+    ...b,
+    status: b.measured > 0 ? 'measured' : b.unavailable > 0 ? 'unavailable' : 'pending',
+  }))
+  const statusRank = { measured: 0, pending: 1, unavailable: 2 }
+  platformRows.sort((a, b) => (statusRank[a.status] - statusRank[b.status]) || (b.reach - a.reach))
 
   return res.status(200).json({
     granularity,
     periodOffset,
     periodStart: toDateStr(periodStart),
     periodEnd: toDateStr(new Date(periodEnd.getTime() - 1)),
-    overall: { posts: overallPosts, reach: overallReach, engagement: overallEngagement },
-    byPlatform: [...byPlatform.values()].sort((a, b) => b.reach - a.reach),
+    overall: { posts: overallPosts, measuredPosts: overallMeasured, reach: overallReach, engagement: overallEngagement },
+    byPlatform: platformRows,
     topPost,
   })
 })

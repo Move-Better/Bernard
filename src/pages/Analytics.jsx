@@ -745,7 +745,7 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
     )
   }
 
-  const overall = data?.overall || { posts: 0, reach: 0, engagement: 0 }
+  const overall = data?.overall || { posts: 0, measuredPosts: 0, reach: 0, engagement: 0 }
   const byPlatform = data?.byPlatform || []
   const topPost = data?.topPost
   // Run-cost is always a weekly figure (from the global recap, unrelated to
@@ -766,12 +766,17 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
             </div>
             <div className="flex justify-between items-baseline">
               <span className="text-muted-foreground">Reach</span>
-              <span className="font-semibold tabular-nums">{overall.posts > 0 ? fmtNum(overall.reach) : '—'}</span>
+              <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
             </div>
             <div className="flex justify-between items-baseline">
               <span className="text-muted-foreground">Engagement</span>
-              <span className="font-semibold tabular-nums">{overall.posts > 0 ? fmtNum(overall.engagement) : '—'}</span>
+              <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
             </div>
+            {overall.posts > 0 && overall.measuredPosts === 0 && (
+              <p className="text-2xs text-muted-foreground pt-1">
+                Reach/engagement for this {granularity}&rsquo;s posts isn&rsquo;t available yet — see per-platform below.
+              </p>
+            )}
             {showCost && (
               <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
                 Estimated run cost this week: {fmtUsd(cost.weekTotal)}
@@ -791,6 +796,8 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
               <div className="text-2xs text-muted-foreground mt-0.5">{PLATFORM_LABELS[topPost.platform] || topPost.platform}</div>
               <div className="mt-2 font-semibold tabular-nums">{fmtNum(topPost.reach)} reach · {fmtNum(topPost.engagement)} engagement</div>
             </div>
+          ) : overall.posts > 0 ? (
+            <p className="text-sm text-muted-foreground mt-3">No measured reach yet for this {granularity}&rsquo;s posts.</p>
           ) : (
             <p className="text-sm text-muted-foreground mt-3">No social posts published this {granularity}.</p>
           )}
@@ -809,15 +816,26 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
               {byPlatform.map((p) => (
                 <div key={p.platform} className="flex items-center justify-between py-3">
                   <PlatformBadge platform={p.platform} />
-                  <div className="flex items-center gap-6 text-sm tabular-nums">
-                    <span>{fmtNum(p.reach)} reach</span>
-                    <span>{fmtNum(p.engagement)} engagement</span>
-                  </div>
+                  {p.status === 'measured' ? (
+                    <div className="flex items-center gap-6 text-sm tabular-nums">
+                      <span>{fmtNum(p.reach)} reach</span>
+                      <span>{fmtNum(p.engagement)} engagement</span>
+                    </div>
+                  ) : (
+                    <span className="text-2xs text-muted-foreground">
+                      {p.status === 'unavailable'
+                        ? 'Analytics not available (carousels/stories)'
+                        : 'Not measured yet'}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
             <p className="text-2xs text-muted-foreground mt-3 pt-3 border-t border-border">
               Only platforms you&rsquo;ve actually published to this {granularity} are shown.
+              {byPlatform.some((p) => p.status === 'unavailable') && (
+                <> Some platforms can&rsquo;t report per-post analytics for carousels or stories.</>
+              )}
             </p>
           </>
         )}
