@@ -246,10 +246,9 @@ export default function EditorWorkflowBar({ piece }) {
             disabled={wf.statusPending}
             loading={wf.statusPending}
             onClick={wf.approve}
-            title="Approve this text — it sounds like you"
           >
             {!wf.statusPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
-            Sounds like me
+            Approve
           </Button>
           <PublishControl wf={wf} piece={piece} enabled={false} />
         </>
