@@ -28,7 +28,8 @@ export default function LinkPage() {
 
   if (!data) return <div className="min-h-screen bg-background" />
 
-  const { displayName, logo, bookingUrl, website, posts } = data
+  const { displayName, logo, accentColor, accentIsLight, bookingUrl, website, posts } = data
+  const accentTextColor = accentIsLight ? '#000000' : '#ffffff'
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -44,7 +45,8 @@ export default function LinkPage() {
               href={bookingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full rounded-xl border-2 border-primary bg-primary text-primary-foreground font-semibold py-3 px-4 hover:opacity-90 transition-opacity"
+              className="block w-full rounded-xl font-semibold py-3 px-4 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: accentColor, color: accentTextColor, border: `2px solid ${accentColor}` }}
             >
               Book an Assessment
             </a>
@@ -62,7 +64,9 @@ export default function LinkPage() {
               href={post.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full rounded-xl border border-border text-left py-3 px-4 hover:border-primary transition-colors"
+              className="block w-full rounded-xl border border-border text-left py-3 px-4 transition-colors"
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = accentColor }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
             >
               <span className="text-sm font-medium">{post.title}</span>
             </a>
