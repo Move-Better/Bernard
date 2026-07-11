@@ -10,6 +10,7 @@
 
 import { generateText } from 'ai'
 import { buildTopicScopedHistoryBlock } from '../practiceMemory.js'
+import { scoreAnswerFidelity } from '../scoreAnswerFidelity.js'
 
 const MODEL = 'anthropic/claude-sonnet-4-6'
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -69,7 +70,13 @@ function parseOutput(text) {
 
 /**
  * Draft (or re-draft) an answer in a clinician's voice, grounded in their
- * practice memory. Returns { answer_lead, body, staffName } or null on failure.
+ * practice memory, and SCORE it for voice fidelity (F16 Phase 1). If the first
+ * draft is 'held' (below the hard bar), takes ONE coached regenerate focused on
+ * faithfulness + non-diagnostic safety and keeps the higher-scoring attempt.
+ *
+ * Returns { answer_lead, body, staffName, voiceFidelityScore, voiceAudit } — the
+ * last two are persist-ready (voice_fidelity_score smallint + voice_audit jsonb).
+ * Returns null only when generation itself yields nothing usable.
  *
  * @param {object}  args
  * @param {object}  args.ws            resolved workspace ({ id, ... })
@@ -114,10 +121,78 @@ export async function draftAnswer({ ws, staffId, question, condition, existing, 
     maxOutputTokens: 1400,
   })
 
-  const { answer_lead, body } = parseOutput(text)
+  let { answer_lead, body } = parseOutput(text)
   if (!answer_lead || !body) {
     console.error('[draftAnswer] unparseable output for question:', question?.slice(0, 60))
     return null
   }
-  return { answer_lead, body, staffName }
+
+  // ---- Voice-fidelity score (F16 Phase 1) ----
+  // Reuse the grounding we already fetched (no second RAG call). Score the draft;
+  // if it's held below the hard bar, take ONE coached regenerate focused on
+  // faithfulness + non-diagnostic safety and keep whichever attempt scores higher.
+  const grounding = { staffName, voiceNotes, voicePhrases, historyBlock }
+  let attempts = 1
+  let voiceScore = await scoreAnswerFidelity({
+    ws, staffId, question, condition, answerLead: answer_lead, body, grounding,
+  })
+
+  if (voiceScore.ok && voiceScore.gate === 'held') {
+    const redFlag = voiceScore.breakdown?.red_flag || 'voice drift or an ungrounded/unsafe claim'
+    try {
+      const { text: text2 } = await generateText({
+        model: MODEL,
+        instructions: SYSTEM,
+        messages: [
+          { role: 'user', content: userPrompt },
+          { role: 'assistant', content: text.trim() },
+          {
+            role: 'user',
+            content:
+              `That draft was flagged: "${redFlag}". Rewrite it — stay much closer to what ` +
+              `${staffName} actually said in their own prior thinking above, invent no clinical ` +
+              `claims, studies, or specifics they didn't express, and keep it strictly ` +
+              `non-diagnostic (speak in patterns, never tell the reader what they have; no ` +
+              `prescriptions or dosing). Return the same [LEAD] / [BODY] format.`,
+          },
+        ],
+        maxOutputTokens: 1400,
+      })
+      const p2 = parseOutput(text2)
+      if (p2.answer_lead && p2.body) {
+        const score2 = await scoreAnswerFidelity({
+          ws, staffId, question, condition, answerLead: p2.answer_lead, body: p2.body, grounding,
+        })
+        // Keep attempt 2 only if it scored AND is at least as good as attempt 1
+        // (or attempt 1 never scored). Never swap in a rewrite that scored worse.
+        if (score2.ok && (!voiceScore.ok || score2.overall >= voiceScore.overall)) {
+          answer_lead = p2.answer_lead
+          body = p2.body
+          voiceScore = score2
+        }
+        attempts = 2
+      }
+    } catch (e) {
+      console.warn('[draftAnswer] coached regenerate failed:', e?.message)
+    }
+  }
+
+  // Shape the persist-ready fidelity fields. A scoring failure/outage → gate
+  // 'unscored' so the approve path fails closed and re-checks (never publishes
+  // an unverified public answer).
+  let voiceFidelityScore = null
+  let voiceAudit
+  if (voiceScore.ok) {
+    voiceFidelityScore = voiceScore.score100
+    voiceAudit = { ...voiceScore.voiceAudit, attempts }
+  } else {
+    voiceAudit = {
+      gate: 'unscored',
+      reason: voiceScore.reason || 'not_scored',
+      attempts,
+      scored_at: new Date().toISOString(),
+    }
+  }
+
+  return { answer_lead, body, staffName, voiceFidelityScore, voiceAudit }
 }

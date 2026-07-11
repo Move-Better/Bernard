@@ -1,0 +1,290 @@
+<title>Answer voice-fidelity gate — review card</title>
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 8%;
+    --primary: 186 83% 27%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --accent-foreground: 160 84% 30%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 8%;
+    --action: 32 95% 44%;
+    --destructive: 0 72% 46%;
+    --radius: 0.625rem;
+    --legend: 262 52% 47%;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 222 30% 9%;
+      --foreground: 220 20% 92%;
+      --card: 222 26% 13%;
+      --card-foreground: 220 20% 92%;
+      --primary: 186 70% 45%;
+      --muted: 222 20% 18%;
+      --muted-foreground: 215 18% 62%;
+      --accent: 160 40% 18%;
+      --accent-foreground: 160 60% 70%;
+      --border: 220 18% 24%;
+      --success: 152 60% 48%;
+      --action: 32 90% 55%;
+      --destructive: 0 70% 60%;
+      --legend: 262 60% 72%;
+    }
+  }
+  :root[data-theme="dark"] {
+    --background: 222 30% 9%; --foreground: 220 20% 92%; --card: 222 26% 13%;
+    --card-foreground: 220 20% 92%; --primary: 186 70% 45%; --muted: 222 20% 18%;
+    --muted-foreground: 215 18% 62%; --accent: 160 40% 18%; --accent-foreground: 160 60% 70%;
+    --border: 220 18% 24%; --success: 152 60% 48%; --action: 32 90% 55%;
+    --destructive: 0 70% 60%; --legend: 262 60% 72%;
+  }
+  :root[data-theme="light"] {
+    --background: 220 22% 97%; --foreground: 222 47% 8%; --card: 0 0% 100%;
+    --card-foreground: 222 47% 8%; --primary: 186 83% 27%; --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%; --accent: 160 60% 95%; --accent-foreground: 160 84% 30%;
+    --border: 214 32% 91%; --success: 152 76% 40%; --action: 32 95% 44%;
+    --destructive: 0 72% 46%; --legend: 262 52% 47%;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  header.pagehdr { margin-bottom: 8px; }
+  .kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--primary)); }
+  h1.page { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 4px; text-wrap: balance; }
+  .sub { color: hsl(var(--muted-foreground)); font-size: 14px; max-width: 68ch; }
+
+  .cols { display: grid; grid-template-columns: 1fr; gap: 28px; margin-top: 28px; }
+  @media (min-width: 900px) { .cols { grid-template-columns: minmax(0,1fr) minmax(0,1.25fr); align-items: start; } }
+
+  .colhdr { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .colhdr .tag { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+  .tag.today { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .tag.new { background: hsl(var(--primary) / 0.12); color: hsl(var(--primary)); }
+  .colhdr p { margin: 0; font-size: 13px; color: hsl(var(--muted-foreground)); }
+
+  /* Review card — mirrors AnswerReview.jsx */
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
+  .card + .card { margin-top: 16px; }
+  .card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid hsl(var(--border)); padding: 11px 16px; }
+  .pill { font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 999px; }
+  .pill.cond { background: hsl(var(--primary) / 0.10); color: hsl(var(--primary)); }
+  .pill.mbco { background: transparent; color: hsl(var(--muted-foreground)); font-weight: 600; padding-left: 0; }
+  .card-body { padding: 20px; }
+  h2.q { font-size: 18px; font-weight: 800; margin: 0 0 12px; letter-spacing: -0.01em; }
+  .lead { border-left: 3px solid hsl(var(--primary)); padding-left: 14px; font-weight: 500; font-size: 14px; margin: 0 0 12px; }
+  .prose h3 { font-size: 14px; font-weight: 700; margin: 14px 0 4px; }
+  .prose p { font-size: 13.5px; color: hsl(var(--muted-foreground)); margin: 0 0 10px; }
+  .ground { display: flex; align-items: center; gap: 8px; background: hsl(var(--muted)); border-radius: 9px; padding: 8px 12px; font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 14px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; padding: 9px 15px; border-radius: 9px; border: 1px solid transparent; cursor: pointer; }
+  .btn.approve { background: hsl(var(--success)); color: #fff; }
+  .btn.ghost { background: transparent; border-color: hsl(var(--border)); color: hsl(var(--foreground)); }
+  .btn.approve.blocked { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); cursor: not-allowed; border: 1px dashed hsl(var(--border)); }
+  .btn.revise-emph { background: hsl(var(--action) / 0.12); border-color: hsl(var(--action) / 0.4); color: hsl(var(--action)); font-weight: 700; }
+  svg { width: 15px; height: 15px; stroke-width: 2; flex: none; }
+
+  /* Voice-check chip (passing) — quiet, in the header */
+  .vchip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 2px 9px 2px 7px; border-radius: 999px; background: hsl(var(--success) / 0.12); color: hsl(var(--success)); margin-left: auto; }
+  .vchip svg { width: 13px; height: 13px; }
+
+  /* Voice-check banner (held) — loud, above the actions (severity ramp) */
+  .vbanner { border-radius: 10px; padding: 12px 14px; margin-top: 16px; border: 1px solid hsl(var(--destructive) / 0.35); background: hsl(var(--destructive) / 0.06); }
+  .vbanner .row1 { display: flex; align-items: center; gap: 8px; }
+  .vbanner .sev { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: hsl(var(--destructive)); }
+  .vbanner .score { margin-left: auto; font-size: 12px; font-weight: 800; color: hsl(var(--destructive)); font-variant-numeric: tabular-nums; }
+  .vbanner .flag { font-size: 13px; margin: 7px 0 0; }
+  .vbanner .flag b { font-weight: 700; }
+  .vbanner .dims { display: flex; gap: 12px; margin-top: 9px; flex-wrap: wrap; }
+  .dim { font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 4px; }
+  .dim .bad { color: hsl(var(--destructive)); }
+  .dim .ok { color: hsl(var(--success)); }
+  .vbanner .hint { font-size: 12px; color: hsl(var(--muted-foreground)); margin: 9px 0 0; }
+
+  /* scoring shimmer state */
+  .vscoring { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+  .dotpulse { width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--muted-foreground)); animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .3 } 50% { opacity: 1 } }
+  @media (prefers-reduced-motion: reduce) { .dotpulse { animation: none; } }
+
+  .statelabel { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin: 20px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .statelabel::after { content: ""; height: 1px; flex: 1; background: hsl(var(--border)); }
+
+  /* What-changed legend */
+  .legend { margin-top: 30px; border: 1px dashed hsl(var(--legend) / 0.5); border-radius: 12px; padding: 18px 20px; background: hsl(var(--legend) / 0.05); }
+  .legend h3 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: hsl(var(--legend)); }
+  .legend ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+  .legend li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 13.5px; }
+  .legend li .n { font-weight: 800; color: hsl(var(--legend)); font-variant-numeric: tabular-nums; }
+  .legend li b { font-weight: 700; }
+  .legend li .muted { color: hsl(var(--muted-foreground)); }
+
+  .flowline { margin-top: 26px; font-size: 13px; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); border-radius: 10px; padding: 14px 16px; }
+  .flowline b { color: hsl(var(--foreground)); font-weight: 700; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: hsl(var(--muted)); padding: 1px 5px; border-radius: 5px; }
+</style>
+
+<div class="wrap">
+  <header class="pagehdr">
+    <div class="kicker">F16 · Practice Answer Graph — Phase 1</div>
+    <h1 class="page">Voice-fidelity hard gate on public answers</h1>
+    <p class="sub">Before a "why here, why you" answer can go live on movebetter.co with your name on it, it's scored against how <em>you</em> actually speak and think. Below the bar, it can't publish until you fix it. Here's where that shows up in <b>Answers to review</b>.</p>
+  </header>
+
+  <div class="cols">
+    <!-- ===================== TODAY ===================== -->
+    <section>
+      <div class="colhdr"><span class="tag today">Today</span><p>No voice signal anywhere — you approve blind.</p></div>
+
+      <div class="card">
+        <div class="card-top">
+          <span class="pill cond">Low back pain</span>
+          <span class="pill mbco">for movebetter.co/answers</span>
+        </div>
+        <div class="card-body">
+          <h2 class="q">Why does my lower back hurt on one side only?</h2>
+          <p class="lead">One-sided low back pain usually isn't about the spot that hurts — it's about how you load that side. Two people with the same scan can have completely different reasons. The only way to know yours is to watch you move.</p>
+          <div class="prose">
+            <h3>Why one side and not the other</h3>
+            <p>Your body finds the path of least resistance. If one hip does more of the work when you stand, sit, or lift, that side takes the wear — and that's individual to how you're built and what you do all day.</p>
+          </div>
+          <div class="ground">
+            <svg viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            Drafted in Dr. Zach's voice from their practice memory.
+          </div>
+          <div class="actions">
+            <button class="btn approve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg> Looks right — approve</button>
+            <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit inline</button>
+            <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg> Ask Bernard to revise</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PROPOSED ===================== -->
+    <section>
+      <div class="colhdr"><span class="tag new">Proposed</span><p>A voice check rides with every answer. Quiet when it passes, loud when it doesn't.</p></div>
+
+      <!-- STATE A — PASSED -->
+      <div class="statelabel">Passes the bar (≥ 7.5)</div>
+      <div class="card">
+        <div class="card-top">
+          <span class="pill cond">Low back pain</span>
+          <span class="pill mbco">for movebetter.co/answers</span>
+          <span class="vchip" title="Voice check: faithful to what you've said, in your voice, non-diagnostic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            Voice check 8.4
+          </span>
+        </div>
+        <div class="card-body">
+          <h2 class="q">Why does my lower back hurt on one side only?</h2>
+          <p class="lead">One-sided low back pain usually isn't about the spot that hurts — it's about how you load that side. Two people with the same scan can have completely different reasons. The only way to know yours is to watch you move.</p>
+          <div class="prose">
+            <h3>Why one side and not the other</h3>
+            <p>Your body finds the path of least resistance. If one hip does more of the work when you stand, sit, or lift, that side takes the wear — and that's individual to how you're built and what you do all day.</p>
+          </div>
+          <div class="ground">
+            <svg viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            Drafted in Dr. Zach's voice from their practice memory.
+          </div>
+          <div class="actions">
+            <button class="btn approve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg> Looks right — approve</button>
+            <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit inline</button>
+            <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg> Ask Bernard to revise</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATE B — HELD -->
+      <div class="statelabel">Below the bar — publish blocked</div>
+      <div class="card">
+        <div class="card-top">
+          <span class="pill cond">Sciatica</span>
+          <span class="pill mbco">for movebetter.co/answers</span>
+          <span class="vchip" style="background:hsl(var(--destructive)/0.12);color:hsl(var(--destructive))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            Voice check 6.2
+          </span>
+        </div>
+        <div class="card-body">
+          <h2 class="q">Is sciatica always caused by a herniated disc?</h2>
+          <p class="lead">No — a herniated disc is one cause, but sciatica is a symptom, not a diagnosis. In most people we see, the nerve is irritated by how the hip and low back share load, and an MRI showing a disc bulge often isn't the whole story.</p>
+          <div class="prose">
+            <h3>What's actually going on</h3>
+            <p>A pinched L5-S1 disc herniation compresses the sciatic nerve root and requires decompression therapy to resolve within 6 weeks…</p>
+          </div>
+
+          <!-- The loud, act-now banner (severity ramp: solid, not a faint tint) -->
+          <div class="vbanner">
+            <div class="row1">
+              <span class="sev">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Held — can't publish yet
+              </span>
+              <span class="score">6.2 / 10 · your bar is 7.5</span>
+            </div>
+            <p class="flag"><b>What drifted:</b> invents a specific "L5-S1 herniation / decompression therapy / 6 weeks" claim you never made — reads as a diagnosis + treatment plan.</p>
+            <div class="dims">
+              <span class="dim">Faithful to you <span class="bad">6</span></span>
+              <span class="dim">Sounds like you <span class="ok">8</span></span>
+              <span class="dim">Non-diagnostic &amp; safe <span class="bad">4</span></span>
+            </div>
+            <p class="hint">Fix it with <b>Edit inline</b>, or <b>Ask Bernard to revise</b> — it'll re-draft in your voice and re-score. Approve unlocks once it clears 7.5.</p>
+          </div>
+
+          <div class="actions">
+            <button class="btn approve blocked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Approve — fix the voice check first</button>
+            <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit inline</button>
+            <button class="btn revise-emph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg> Ask Bernard to revise</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATE C — SCORING -->
+      <div class="statelabel">Just landed — scoring</div>
+      <div class="card">
+        <div class="card-top">
+          <span class="pill cond">Neck pain</span>
+          <span class="pill mbco">for movebetter.co/answers</span>
+          <span class="vscoring"><span class="dotpulse"></span> Checking voice…</span>
+        </div>
+        <div class="card-body" style="padding-bottom:16px">
+          <h2 class="q" style="margin-bottom:6px">Why does my neck hurt more at the end of the day?</h2>
+          <p style="font-size:12.5px;color:hsl(var(--muted-foreground));margin:0">Approve stays disabled for the ~3s it takes to score, so nothing goes out unchecked.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- What changed & why -->
+  <div class="legend">
+    <h3>What changed here &amp; why</h3>
+    <ul>
+      <li><span class="n">1</span><span><b>A voice check rides with every answer.</b> <span class="muted">Scored at draft time by the same Haiku judge the content pieces use — faithfulness to your captured thinking, sounds-like-you, and a non-diagnostic-safety dimension specific to public medical content.</span></span></li>
+      <li><span class="n">2</span><span><b>Quiet when it passes, loud when it doesn't</b> <span class="muted">(the severity-ramp rule). A pass is a small emerald chip in the header — reassurance, not noise. A hold is a solid banner with the exact drift and the failing dimensions.</span></span></li>
+      <li><span class="n">3</span><span><b>Below 7.5, Approve is genuinely blocked</b> <span class="muted">— not just a warning you can click past. A low-fidelity answer with your name on it can't reach the public site. The server re-scores the live text on approve, so an inline edit can't sneak a stale pass through.</span></span></li>
+      <li><span class="n">4</span><span><b>The fix path is the one you already have.</b> <span class="muted">Edit inline (re-scores on save) or Ask Bernard to revise (re-drafts in your voice + re-scores). No new screen. When it clears 7.5, Approve lights up.</span></span></li>
+    </ul>
+  </div>
+
+  <div class="flowline">
+    <b>The gate, end to end:</b> Bernard drafts → scores → if low, tries one tighter re-draft automatically → persists the score. You open the queue: pass → approve → (Phase 2) publishes live. Hold → the answer can't leave until you edit or revise it back over <code>7.5</code>. Human approval is still required on top of the gate — the check never approves anything for you.
+  </div>
+</div>

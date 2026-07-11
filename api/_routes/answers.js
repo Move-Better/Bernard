@@ -6,6 +6,7 @@ import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { draftAnswer } from '../_lib/producer/draftAnswer.js'
 import { publishAnswerToMovebetter } from '../_lib/publishAnswer.js'
+import { scoreAnswerFidelity } from '../_lib/scoreAnswerFidelity.js'
 
 // Explicit gate for going live to the public site. Default OFF: approve just
 // marks 'approved' until an operator flips ANSWER_PUBLISH_ENABLED=true (after the
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
     const r = await sb(
       `answers?workspace_id=eq.${ws.id}&staff_id=eq.${me.id}` +
         `&status=in.(needs_review,changes_requested)` +
-        `&select=id,question,slug,answer_lead,body,condition,seo_title,summary,status,review_notes,grounding_source,updated_at` +
+        `&select=id,question,slug,answer_lead,body,condition,seo_title,summary,status,review_notes,grounding_source,voice_fidelity_score,voice_audit,updated_at` +
         `&order=updated_at.desc`,
     )
     if (!r.ok) return dbErr(res, r, 'list')
@@ -110,7 +111,49 @@ export default async function handler(req, res) {
 
     const patch = { updated_at: new Date().toISOString() }
     if (action === 'approve') {
-      // Publish to the public site if enabled; otherwise just mark approved.
+      // ---- HARD voice-fidelity gate (F16 Phase 1) ----
+      // Re-score the LIVE text about to publish — a public answer carrying the
+      // clinician's name must clear the bar. Below it (or unverifiable) → block:
+      // persist the fresh score, keep it in review, publish nothing. This is the
+      // authoritative gate; the disabled client button is only the first line.
+      const scored = await scoreAnswerFidelity({
+        ws, staffId: row.staff_id, question: row.question, condition: row.condition,
+        answerLead: row.answer_lead, body: row.body,
+      })
+      if (!scored.ok) {
+        // Couldn't verify (scorer outage / no key) → fail closed, mark unscored,
+        // let the clinician retry. Never publish an unverified public answer.
+        await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${id}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            voice_audit: { gate: 'unscored', reason: scored.reason, scored_at: new Date().toISOString() },
+            updated_at: new Date().toISOString(),
+          }),
+        }).catch(() => {})
+        return res.status(200).json({ blocked: true, gate: 'unscored', reason: scored.reason })
+      }
+      if (scored.gate !== 'passed') {
+        const held = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            voice_fidelity_score: scored.score100,
+            voice_audit: scored.voiceAudit,
+            status: 'needs_review',
+            updated_at: new Date().toISOString(),
+          }),
+        })
+        if (!held.ok) return dbErr(res, held, 'gate_persist')
+        return res.status(200).json({
+          blocked: true,
+          gate: scored.gate,
+          voice_fidelity_score: scored.score100,
+          voice_audit: scored.voiceAudit,
+        })
+      }
+      // PASSED — record the fresh score, then publish (if enabled) or mark approved.
+      patch.voice_fidelity_score = scored.score100
+      patch.voice_audit = scored.voiceAudit
       if (PUBLISH_ENABLED) {
         const pub = await publishAnswerToMovebetter({ ws, answer: row })
         if (pub.ok) {
@@ -130,6 +173,22 @@ export default async function handler(req, res) {
       if (typeof body === 'string') patch.body = body
       if (typeof question === 'string' && question.trim()) patch.question = question.trim()
       patch.status = 'needs_review'
+      // Re-score the edited text so the queue's gate/chip reflects what's now
+      // there (and a later approve gates on a current score, not a stale pass).
+      const nextLead = typeof answer_lead === 'string' ? answer_lead : row.answer_lead
+      const nextBody = typeof body === 'string' ? body : row.body
+      const nextQuestion =
+        typeof question === 'string' && question.trim() ? question.trim() : row.question
+      const scored = await scoreAnswerFidelity({
+        ws, staffId: row.staff_id, question: nextQuestion, condition: row.condition,
+        answerLead: nextLead, body: nextBody,
+      })
+      if (scored.ok) {
+        patch.voice_fidelity_score = scored.score100
+        patch.voice_audit = scored.voiceAudit
+      } else {
+        patch.voice_audit = { gate: 'unscored', reason: scored.reason, scored_at: new Date().toISOString() }
+      }
     } else if (action === 'revise') {
       const note = typeof req.body?.note === 'string' ? req.body.note.trim() : ''
       if (!note) return res.status(400).json({ error: 'note_required' })
@@ -183,6 +242,8 @@ export default async function handler(req, res) {
         status: 'needs_review',
         source: 'manual',
         grounding_source: `Drafted in ${drafted.staffName}'s voice from their practice memory.`,
+        voice_fidelity_score: drafted.voiceFidelityScore,
+        voice_audit: drafted.voiceAudit,
       }),
     })
     if (ins.status === 409) return res.status(409).json({ error: 'answer_exists', slug })
@@ -217,6 +278,8 @@ async function reDraftAnswer(ws, id, row, note) {
         body: drafted.body,
         status: 'needs_review',
         review_notes: null,
+        voice_fidelity_score: drafted.voiceFidelityScore,
+        voice_audit: drafted.voiceAudit,
         updated_at: new Date().toISOString(),
       }),
     })
