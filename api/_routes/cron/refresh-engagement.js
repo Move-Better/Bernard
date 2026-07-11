@@ -327,7 +327,7 @@ async function processWorkspaceBundle(ws, summary) {
   // are indistinguishable downstream (both show 0 in the UI).
   const platformOutcomes = {}
   const bump = (platform, key) => {
-    const o = (platformOutcomes[platform] ||= { forced: 0, wrote: 0, allZero: 0, errored: 0 })
+    const o = (platformOutcomes[platform] ||= { forced: 0, wrote: 0, allZero: 0, errored: 0, unavailable: 0 })
     o[key]++
   }
 
@@ -338,8 +338,24 @@ async function processWorkspaceBundle(ws, summary) {
     try {
       analytics = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force: true })
     } catch (e) {
-      // Platform unsupported for analytics (Twitter, GBP) or temporary error — skip,
-      // but log which platform/why so a silently-failing channel is visible.
+      // A 400 from bundle means analytics are STRUCTURALLY unavailable for this
+      // post — IG carousels/stories are the common case (bundle literally can't
+      // read them: "unsupported type (e.g. story, carousel)"). Write a sentinel
+      // snapshot so the UI can say "not available" instead of a phantom 0, and so
+      // catchUp stops burning a scarce force slot re-trying it every run. A 500 /
+      // network error is transient — skip and let the next run retry.
+      if (e?.status === 400) {
+        bump(item.platform, 'unavailable')
+        const stats = { statistics: {}, source: 'bundle', service: item.platform, unavailable: true, reason: 'unsupported_type' }
+        const ins = await sb('engagement_snapshots', {
+          method: 'POST',
+          body: JSON.stringify({ workspace_id: ws.id, content_item_id: item.id, source: 'bundle', stats }),
+        })
+        if (ins.ok) item._stats = stats
+        console.warn(`[cron/refresh-engagement] bundle analytics unavailable ws=${ws.slug} platform=${item.platform}: ${e?.message}`)
+        continue
+      }
+      // Temporary error (bundle 500, network) — skip; the next run retries.
       bump(item.platform, 'errored')
       console.warn(`[cron/refresh-engagement] bundle getAnalytics failed ws=${ws.slug} platform=${item.platform}:`, e?.message)
       continue
