@@ -90,3 +90,42 @@ export async function publishAnswerToMovebetter({ ws, answer }) {
   console.error('[publishAnswer] upstream', upstream.status, JSON.stringify(data).slice(0, 200))
   return { ok: false, error: `upstream_${upstream.status}` }
 }
+
+/**
+ * Retract a published answer from the workspace's public site — take the live page
+ * DOWN (delete the .md), the inverse of publish. Sends kind:'answer-retract' to the
+ * same astro_github receiver, which deletes src/content/answers/<slug>.md.
+ * Idempotent on the receiver side (already-absent = success).
+ * @param {object} args.ws      resolved workspace ({ id, ... })
+ * @param {object} args.answer  answers-table row (needs slug / movebetterco_slug)
+ * @returns {Promise<{ok:true, slug}|{ok:false, error}>}
+ */
+export async function retractAnswerFromMovebetter({ ws, answer }) {
+  const cred = await getCredential(ws.id, 'astro_github')
+  if (!cred?.config?.url || !cred?.secret) {
+    return { ok: false, error: 'not_configured' }
+  }
+  const slug = answer.movebetterco_slug || answer.slug
+  if (!slug) return { ok: false, error: 'no_slug' }
+
+  let upstream
+  try {
+    upstream = await fetch(cred.config.url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cred.secret}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'answer-retract', slug }),
+    })
+  } catch (e) {
+    console.error('[publishAnswer] retract network error:', e?.message)
+    return { ok: false, error: 'network_error' }
+  }
+
+  let data = {}
+  try { data = await upstream.json() } catch { /* empty */ }
+
+  if (upstream.status === 200 && data.success) {
+    return { ok: true, slug }
+  }
+  console.error('[publishAnswer] retract upstream', upstream.status, JSON.stringify(data).slice(0, 200))
+  return { ok: false, error: `upstream_${upstream.status}` }
+}

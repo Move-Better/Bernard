@@ -1,0 +1,129 @@
+<title>F16 Phase 3 — Superseded answer review</title>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --destructive:0 84% 60%; --border:214 32% 91%; --success:152 76% 40%;
+    --action:32 95% 44%;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --background:222 30% 9%; --foreground:210 20% 96%; --card:222 25% 12%;
+      --muted:222 18% 18%; --muted-foreground:215 16% 62%; --border:222 18% 22%; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:hsl(var(--background));color:hsl(var(--foreground));
+    -webkit-font-smoothing:antialiased;line-height:1.5;padding:2rem 1.25rem 4rem}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:1.35rem;font-weight:800;letter-spacing:-0.02em;margin:0 0 .25rem}
+  .sub{color:hsl(var(--muted-foreground));font-size:.9rem;margin:0 0 2rem}
+  .lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    color:hsl(var(--muted-foreground));margin:2.25rem 0 .6rem;display:flex;align-items:center;gap:.5rem}
+  .lbl::after{content:"";flex:1;height:1px;background:hsl(var(--border))}
+  .card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:.85rem;overflow:hidden}
+  .card-hd{display:flex;align-items:center;gap:.5rem;padding:.7rem 1rem;border-bottom:1px solid hsl(var(--border))}
+  .chip{border-radius:99px;padding:.15rem .6rem;font-size:.68rem;font-weight:700}
+  .chip-cond{background:hsl(var(--primary)/.1);color:hsl(var(--primary))}
+  .chip-live{background:hsl(var(--action)/.15);color:hsl(var(--action));text-transform:uppercase;letter-spacing:.04em;font-size:.6rem}
+  .chip-voice{margin-left:auto;display:inline-flex;align-items:center;gap:.3rem;
+    background:hsl(var(--success)/.1);color:hsl(var(--success));font-size:.6rem}
+  .tiny{font-size:.68rem;color:hsl(var(--muted-foreground))}
+  .body{padding:1.15rem 1.25rem}
+  .q{font-size:1.05rem;font-weight:800;margin:0 0 .75rem}
+  .lead{border-left:3px solid hsl(var(--primary));padding-left:.85rem;font-weight:500;font-size:.9rem;margin:0 0 .75rem}
+  .para{font-size:.9rem;color:hsl(var(--muted-foreground));margin:0 0 .7rem}
+  .ground{margin-top:.9rem;display:flex;gap:.5rem;align-items:center;background:hsl(var(--muted));
+    border-radius:.5rem;padding:.5rem .7rem;font-size:.68rem;color:hsl(var(--muted-foreground))}
+  /* superseded banner — amber act-now, informational (not alarm) */
+  .super{margin-top:1rem;border:1px solid hsl(var(--action)/.35);background:hsl(var(--action)/.06);
+    border-radius:.6rem;padding:.7rem .85rem}
+  .super-hd{display:flex;align-items:center;gap:.4rem;font-size:.65rem;font-weight:800;
+    text-transform:uppercase;letter-spacing:.05em;color:hsl(var(--action))}
+  .super p{margin:.45rem 0 0;font-size:.72rem;color:hsl(var(--foreground))}
+  .super .was{color:hsl(var(--muted-foreground))}
+  .actions{margin-top:1.05rem;display:flex;flex-wrap:wrap;gap:.5rem}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;border-radius:.55rem;padding:.5rem .85rem;
+    font-size:.82rem;font-weight:650;border:1px solid transparent;cursor:pointer}
+  .btn-approve{background:hsl(var(--success));color:#fff}
+  .btn-ghost{background:transparent;border-color:hsl(var(--border));color:hsl(var(--foreground))}
+  .btn-retract{margin-left:auto;background:transparent;border-color:hsl(var(--destructive)/.4);color:hsl(var(--destructive))}
+  .ico{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  /* confirm dialog */
+  .dlg-note{margin-top:2.25rem;border:1px dashed hsl(var(--border));border-radius:.6rem;padding:.5rem .8rem;
+    font-size:.7rem;color:hsl(var(--muted-foreground))}
+  .dlg{max-width:420px;margin:.75rem 0 0;background:hsl(var(--card));border:1px solid hsl(var(--border));
+    border-radius:.75rem;padding:1.1rem 1.2rem;box-shadow:0 12px 40px -12px hsl(222 47% 8% / .35)}
+  .dlg h3{margin:0 0 .4rem;font-size:.98rem;font-weight:800}
+  .dlg p{margin:0 0 .9rem;font-size:.82rem;color:hsl(var(--muted-foreground))}
+  .dlg .actions{margin:0;justify-content:flex-end}
+  .btn-danger{background:hsl(var(--destructive));color:#fff}
+  .callout{margin-top:.5rem;font-size:.72rem;color:hsl(var(--muted-foreground));border-left:2px solid hsl(var(--action));padding-left:.7rem}
+</style>
+<div class="wrap">
+  <h1>Answer review — when your thinking changes</h1>
+  <p class="sub">F16 Phase 3. A confirmed supersession in the practice brain re-drafts the affected public answer and drops it back here. Nothing on the site changes until you act.</p>
+
+  <div class="lbl">Today — a normal drafted answer (unchanged)</div>
+  <div class="card">
+    <div class="card-hd">
+      <span class="chip chip-cond">Low back pain</span>
+      <span class="tiny">for movebetter.co/answers</span>
+      <span class="chip chip-voice"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Voice check 8.1</span>
+    </div>
+    <div class="body">
+      <p class="q">Why does my low back hurt when I sit?</p>
+      <p class="lead">Sitting isn't the enemy — it's that one position, held. Your back wants variety more than it wants "good posture."</p>
+      <p class="para">When we see this at Move Better, it's rarely a weak core. It's a hip that stopped sharing the load…</p>
+      <div class="actions">
+        <button class="btn btn-approve"><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Looks right — approve</button>
+        <button class="btn btn-ghost"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit inline</button>
+        <button class="btn btn-ghost"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>Ask Bernard to revise</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl">Proposed — a re-drafted answer after a confirmed supersession</div>
+  <div class="card">
+    <div class="card-hd">
+      <span class="chip chip-cond">Low back pain</span>
+      <span class="chip chip-live">● Live on your site</span>
+      <span class="chip chip-voice"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Voice check 8.4</span>
+    </div>
+    <div class="body">
+      <p class="q">Why does my low back hurt when I sit?</p>
+
+      <div class="super">
+        <div class="super-hd">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
+          Your thinking on this changed
+        </div>
+        <p>You confirmed a shift in how you approach load-sharing for low back pain. The draft below is re-written in your <span class="was">updated</span> voice and cleared the voice check. <strong>The old version is still live on movebetter.co</strong> — approve to replace it, or take it down.</p>
+      </div>
+
+      <p class="lead" style="margin-top:1rem">Sitting isn't the problem — bracing against it is. Your back is asking for load it can share, not a posture it has to hold.</p>
+      <p class="para">The update: I've stopped leading with "hip mobility" here. What actually moves the needle is teaching the back to accept load again…</p>
+
+      <div class="ground"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg>Re-drafted from your practice memory — the superseded note is no longer used as grounding.</div>
+
+      <div class="actions">
+        <button class="btn btn-approve"><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Approve — replace the live page</button>
+        <button class="btn btn-ghost"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit inline</button>
+        <button class="btn btn-ghost"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>Ask Bernard to revise</button>
+        <button class="btn btn-retract"><svg class="ico" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Retract from site</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dlg-note">↓ What "Retract from site" opens (AlertDialog — the app's existing confirm pattern)</div>
+  <div class="dlg">
+    <h3>Take this answer off your site?</h3>
+    <p>This removes <strong>“Why does my low back hurt when I sit?”</strong> from movebetter.co/answers. The page comes down and the URL will 404. You can always re-author it later. This doesn't delete your practice memory.</p>
+    <div class="actions">
+      <button class="btn btn-ghost">Keep it up</button>
+      <button class="btn btn-danger">Retract from site</button>
+    </div>
+  </div>
+
+  <p class="callout">Retract is <strong>your click only</strong> — Bernard never pulls a page down on its own. It only re-drafts and surfaces it here for you to decide.</p>
+</div>

@@ -10,11 +10,14 @@ import {
   ShieldCheck,
   Lock,
   AlertTriangle,
+  Radio,
+  Trash2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { useAppMutation } from '@/lib/useAppMutation.js'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Markdown element styling (module scope — never define components inside render).
 const MD_COMPONENTS = {
@@ -131,7 +134,37 @@ function HeldBanner({ answer }) {
   )
 }
 
+// "Live on your site" chip — shown when the answer is currently published on
+// movebetter.co (it re-surfaced here for review but the public page is still up).
+function LiveChip() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-action/15 px-2 py-0.5 text-3xs font-bold uppercase tracking-wide text-action">
+      <Radio className="h-3 w-3" /> Live on your site
+    </span>
+  )
+}
+
+// The informational banner shown when a confirmed supersession re-drafted a
+// still-live answer (F16 Phase 3). Amber act-now, not an alarm — the page stays
+// up until the clinician approves the replacement or retracts it.
+function SupersededBanner() {
+  return (
+    <div className="mt-4 rounded-lg border border-action/30 bg-action/[0.06] px-3.5 py-3">
+      <div className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-action">
+        <RotateCcw className="h-3.5 w-3.5" /> Your thinking on this changed
+      </div>
+      <p className="mt-1.5 text-2xs text-foreground">
+        You confirmed a shift in how you approach this topic. The draft below is re-written in your
+        updated voice and cleared the voice check.{' '}
+        <span className="font-semibold">The current version is still live on movebetter.co</span> —
+        approve to replace it, or take it down.
+      </p>
+    </div>
+  )
+}
+
 export default function AnswerReview() {
+  const confirm = useConfirm()
   // Reached from PipelineKanban, StoryDetail, Home, and MediaHub, so the
   // fallback (used only with no real history to go back to) can't be a
   // single hardcoded destination.
@@ -205,6 +238,12 @@ export default function AnswerReview() {
           )
           setOpenId(null)
         }
+      } else if (payload.action === 'retract') {
+        toast.success('Taken off your site')
+        queryClient.setQueryData(['answers-review'], (prev) =>
+          prev?.answers ? { ...prev, answers: prev.answers.filter((a) => a.id !== payload.id) } : prev,
+        )
+        setOpenId(null)
       } else if (payload.action === 'edit') toast.success('Your edits saved')
       else if (payload.action === 'revise') toast.success('Sent to Bernard — it will revise in your voice')
       setMode(null)
@@ -217,6 +256,16 @@ export default function AnswerReview() {
   function startEdit(a) {
     setDraft({ question: a.question || '', answer_lead: a.answer_lead || '', body: a.body || '' })
     setMode('edit')
+  }
+
+  async function handleRetract(a) {
+    const okd = await confirm({
+      title: 'Take this answer off your site?',
+      description: `This removes “${a.question}” from movebetter.co/answers — the page comes down and the URL will 404. You can re-author it later. This doesn't delete your practice memory.`,
+      confirmLabel: 'Retract from site',
+    })
+    if (!okd) return
+    mutation.mutate({ id: a.id, action: 'retract' })
   }
 
   const busy = mutation.isPending
@@ -294,11 +343,14 @@ export default function AnswerReview() {
                     Revising
                   </span>
                 )}
+                {active.movebetterco_slug && <LiveChip />}
                 <VoiceCheckChip answer={active} />
               </div>
 
               <div className="px-5 py-5">
                 <h2 className="mb-3 text-lg font-bold text-foreground">{active.question}</h2>
+
+                {mode !== 'edit' && active.review_reason === 'superseded' && <SupersededBanner />}
 
                 {mode === 'edit' ? (
                   <div className="space-y-3">
@@ -430,7 +482,8 @@ export default function AnswerReview() {
                           onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                         >
-                          <Check className="h-4 w-4" /> Looks right — approve
+                          <Check className="h-4 w-4" />{' '}
+                          {active.movebetterco_slug ? 'Approve — replace the live page' : 'Looks right — approve'}
                         </button>
                       )}
                       <button
@@ -451,6 +504,17 @@ export default function AnswerReview() {
                       >
                         <RotateCcw className="h-4 w-4" /> Ask Bernard to revise
                       </button>
+                      {active.movebetterco_slug && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleRetract(active)}
+                          title="Take this answer off movebetter.co"
+                          className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" /> Retract from site
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
