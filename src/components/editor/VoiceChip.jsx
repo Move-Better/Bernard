@@ -93,7 +93,7 @@ export default function VoiceChip({ piece }) {
               </p>
             )}
             <p className="mt-2.5 border-t border-border/60 pt-2 text-3xs text-muted-foreground">
-              Bernard’s read, to inform your call. You decide with “Sounds like me”.
+              Bernard’s read, to inform your call. You decide with “Approve”.
             </p>
           </div>
         </>

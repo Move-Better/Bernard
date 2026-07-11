@@ -1532,7 +1532,7 @@ export default function VideoEditor() {
                 onClick={() => finalizeToPost.mutate()}
               >
                 {!finalizeToPost.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                {finalizeToPost.isPending ? 'Rendering clip…' : 'Sounds like me'}
+                {finalizeToPost.isPending ? 'Rendering clip…' : 'Approve'}
               </Button>
             </TooltipTrigger>
             <TooltipContent>Renders this clip into a post and approves it — then publish right here</TooltipContent>

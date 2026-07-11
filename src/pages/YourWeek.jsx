@@ -308,7 +308,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
               className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-3xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {approving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Check className="h-3 w-3" aria-hidden="true" />}
-              Sounds like me
+              Approve
             </button>
             <Link
               to={drillTo(item)}
