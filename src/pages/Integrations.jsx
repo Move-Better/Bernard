@@ -466,6 +466,9 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                     <ExternalLink className="h-3.5 w-3.5" />
                   </button>
                 </div>
+                <p className="text-3xs text-muted-foreground px-3 pb-2">
+                  Bernard connects Instagram <strong>directly</strong> (not through Facebook) so it can read your post reach &amp; engagement. If your Instagram was connected through Facebook, use <strong>Manage</strong> to reconnect it directly.
+                </p>
                 {accounts.length > 0 && (
                   <div className="border-t border-border px-3 py-2 space-y-1.5">
                     {accounts.map((a, i) => (

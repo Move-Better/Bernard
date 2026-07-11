@@ -144,11 +144,24 @@ export class BundlePublisher extends SocialPublisher {
   // optional `redirectUrl` is where bundle returns the tenant afterward.
   async connect({ networks, redirectUrl, disableAutoLogin = false } = {}) {
     const socialAccountTypes = (networks?.length ? networks : CLINIC_NETWORKS).map((n) => this._bundleType(n))
+    // When Instagram is among the networks, pin the DIRECT Instagram connection
+    // method. The Facebook-linked method ("connect IG via Facebook") does NOT
+    // expose per-post Media Insights through bundle — every
+    // analyticsGetPostAnalytics({platformType:'INSTAGRAM'}) 400s — while the
+    // direct method returns them (incl. carousels; confirmed live 2026-07-11).
+    // This is the whole multi-tenant analytics fix: every tenant's IG connect
+    // defaults to the working method, no per-tenant setup. `forceBrowserOAuth`
+    // avoids the Instagram iOS-app deep-link bug on mobile connects. The two
+    // fields are Instagram-only, so only send them when IG is requested (the
+    // per-location GBP connect passes ['gbp'] and must not carry them).
+    // See memory/project-bundle-social.md "RESOLVED — IG analytics".
+    const wantsInstagram = socialAccountTypes.includes('INSTAGRAM')
     const res = await this.sdk.socialAccount.socialAccountCreatePortalLink({
       requestBody: {
         teamId: this.teamId,
         socialAccountTypes,
         disableAutoLogin,
+        ...(wantsInstagram ? { instagramConnectionMethod: 'INSTAGRAM', forceBrowserOAuth: true } : {}),
         ...(redirectUrl ? { redirectUrl } : {}),
       },
     })

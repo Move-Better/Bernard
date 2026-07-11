@@ -1420,7 +1420,7 @@ function PublishIntentScreen({ form, setForm, onBack, onContinue }) {
         <IntentOption selected={intent.social === 'bundle'} onClick={() => set('social', 'bundle')}
           icon={Share2} badge="Recommended"
           title="Let Bernard post for me — bundle.social"
-          body="Connect your accounts once. Bernard posts directly to Instagram, Facebook & Google Business — and reads back real performance stats. No third-party tool to manage." />
+          body="Connect your accounts once. Bernard posts directly to Instagram, Facebook & Google Business — and reads back real performance stats (Instagram connects directly, so post reach & engagement come through). No third-party tool to manage." />
         <IntentOption selected={intent.social === 'buffer'} onClick={() => set('social', 'buffer')}
           icon={Rss}
           title="I already use Buffer"
