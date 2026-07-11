@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 
+// src/index.css applies `a { @apply text-primary }` globally (Bernard's own
+// app color) — every anchor on this page needs an explicit override to
+// `accentColor`, the tenant's own brand color, or it silently inherits
+// Bernard's teal regardless of the workspace's actual brand.
+function hexToRgba(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '')
+  if (!m) return `rgba(0,0,0,${alpha})`
+  const n = parseInt(m[1], 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+}
+
 // Public "link in bio" landing page — <slug>.withbernard.ai/link. No auth,
 // no app chrome. This is what an Instagram/TikTok bio link actually points
 // at, so it must always be reachable and always reflect real published
@@ -64,9 +75,10 @@ export default function LinkPage() {
               href={post.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full rounded-xl border border-border text-left py-3 px-4 transition-colors"
+              className="block w-full rounded-xl text-left py-3 px-4 transition-colors"
+              style={{ border: `1px solid ${hexToRgba(accentColor, 0.35)}`, color: accentColor }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = accentColor }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = hexToRgba(accentColor, 0.35) }}
             >
               <span className="text-sm font-medium">{post.title}</span>
             </a>
@@ -78,7 +90,8 @@ export default function LinkPage() {
             href={website}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block mt-8 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-block mt-8 text-sm transition-colors"
+            style={{ color: accentColor }}
           >
             See all posts →
           </a>
