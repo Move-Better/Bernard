@@ -727,6 +727,7 @@
     "hook",
     "id",
     "moment_type",
+    "nomination_source",
     "order_index",
     "rendered_asset_id",
     "score",
