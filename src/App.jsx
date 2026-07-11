@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react'
 import PrivacyPolicy from '@/pages/PrivacyPolicy'
 import TermsOfService from '@/pages/TermsOfService'
 import DemoExperience from '@/pages/DemoExperience'
+import LinkPage from '@/pages/LinkPage'
 import {
   ClerkProvider,
   SignIn,
@@ -915,6 +916,10 @@ export default function App() {
               {/* Public pages — no auth required */}
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              {/* Instagram/TikTok "link in bio" landing page — public, no auth,
+                  resolved by subdomain (movebetter.withbernard.ai/link). See
+                  api/_routes/link-page.js. */}
+              <Route path="/link" element={<LinkPage />} />
               {/* No-login live demo. Lives at /demo/try (NOT /demo — that path is
                   the static marketing page public/demo.html, which wins Vercel's
                   filesystem phase before this SPA rewrite). Leaf route, fixed path

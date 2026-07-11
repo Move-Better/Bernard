@@ -22,6 +22,7 @@
 
 import { generateText } from 'ai'
 import { getAtomSystemPrompt } from '../atomPrompts.js'
+import { hasPublishedBlogArticle } from '../blogLinkStatus.js'
 import { getContextBlock } from '../conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../practiceMemory.js'
 import {
@@ -153,6 +154,9 @@ export async function draftAtom({ ws, atom, interview }) {
       })
     : ''
 
+  // Ground the "link in bio" article claim in reality — see blogLinkStatus.js.
+  const hasPublishedArticle = await hasPublishedBlogArticle(sb, ws.id, interview.id)
+
   // Build the focused atom prompt
   const systemPrompt = getAtomSystemPrompt(
     ws,
@@ -169,6 +173,7 @@ export async function draftAtom({ ws, atom, interview }) {
     storyTypeLabel,
     campaignContext,
     ownHistoryBlock,
+    hasPublishedArticle,
   )
   if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 
