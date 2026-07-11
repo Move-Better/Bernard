@@ -6,10 +6,11 @@
 //                Citations arrive as url_citation annotations on the output.
 //   perplexity — perplexity/sonar via the Vercel AI Gateway (AI_GATEWAY_API_KEY).
 //                Citations arrive as result.sources.
-//   google     — NOT wired: Google AI Overview needs a SERP provider or a
-//                Gemini key with search grounding; neither credential exists.
-//                availableEngines() reports it absent so callers render an
-//                honest "not connected" state instead of fake data.
+//   google     — Google AI Overviews via SerpApi (SERPAPI_KEY). Citations arrive
+//                as ai_overview.references[].link; when Google defers the overview
+//                behind a page_token, a second SerpApi call resolves it. Absent
+//                credential → availableEngines() reports it off (honest "not
+//                connected", never fake data).
 //
 // Pure transform + fetch — no workspace context, no Supabase. Verified locally
 // (2026-07-02 spike): both live engines return extractable citation URLs for
@@ -24,6 +25,7 @@ export function availableEngines() {
   const engines = []
   if (process.env.OPENAI_API_KEY) engines.push('chatgpt')
   if (process.env.AI_GATEWAY_API_KEY) engines.push('perplexity')
+  if (process.env.SERPAPI_KEY) engines.push('google')
   return engines
 }
 
@@ -134,9 +136,78 @@ export async function probePerplexity(question, location) {
   return { urls: [...new Set(urls)], excerpt: (result.text || '').slice(0, 400) }
 }
 
+// Google AI Overviews via SerpApi. The `google` engine returns an `ai_overview`
+// block for queries that trigger one; its `references` are the sources Google's
+// AI answer cites. Google sometimes defers the overview behind a `page_token`
+// (references not inline) — resolve it with a second call to the
+// `google_ai_overview` engine. A query with NO AI Overview → no citations (the
+// clinic simply isn't in an answer that doesn't exist) → cited:false, which is
+// the honest scoreboard state.
+const SERPAPI_URL = 'https://serpapi.com/search.json'
+
+function extractAioRefs(ai) {
+  if (!ai || typeof ai !== 'object') return []
+  const urls = []
+  for (const r of ai.references || []) {
+    if (r && typeof r.link === 'string') urls.push(r.link)
+  }
+  // Some payloads also carry links inside text_blocks list items — pick up any.
+  const walk = (blocks) => {
+    for (const b of blocks || []) {
+      if (b?.link) urls.push(b.link)
+      if (Array.isArray(b?.list)) walk(b.list)
+      if (Array.isArray(b?.text_blocks)) walk(b.text_blocks)
+    }
+  }
+  walk(ai.text_blocks)
+  return urls.filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u))
+}
+
+function aioText(ai) {
+  const parts = []
+  const walk = (blocks) => {
+    for (const b of blocks || []) {
+      if (typeof b?.snippet === 'string') parts.push(b.snippet)
+      if (Array.isArray(b?.list)) walk(b.list)
+      if (Array.isArray(b?.text_blocks)) walk(b.text_blocks)
+    }
+  }
+  walk(ai?.text_blocks)
+  return parts.join(' ')
+}
+
+export async function probeGoogleAIO(question, location) {
+  const key = process.env.SERPAPI_KEY
+  if (!key) throw new Error('serpapi_no_key')
+
+  const first = new URLSearchParams({
+    engine: 'google', q: probePrompt(question, location), api_key: key, hl: 'en', gl: 'us', num: '10',
+  })
+  const res = await fetch(`${SERPAPI_URL}?${first}`, { signal: AbortSignal.timeout(60_000) })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`serpapi_${res.status}: ${body.slice(0, 160)}`)
+  }
+  const j = await res.json()
+  let ai = j.ai_overview || null
+
+  // Deferred overview — references live behind a page_token; resolve them.
+  if (ai?.page_token && !(ai.references?.length) && !(ai.text_blocks?.length)) {
+    const second = new URLSearchParams({ engine: 'google_ai_overview', page_token: ai.page_token, api_key: key })
+    const r2 = await fetch(`${SERPAPI_URL}?${second}`, { signal: AbortSignal.timeout(60_000) })
+    if (r2.ok) {
+      const j2 = await r2.json().catch(() => ({}))
+      if (j2.ai_overview) ai = j2.ai_overview
+    }
+  }
+
+  return { urls: [...new Set(extractAioRefs(ai))], excerpt: aioText(ai).slice(0, 400) }
+}
+
 export async function probeEngine(engine, question, location) {
   if (engine === 'chatgpt') return probeChatGPT(question, location)
   if (engine === 'perplexity') return probePerplexity(question, location)
+  if (engine === 'google') return probeGoogleAIO(question, location)
   throw new Error(`unsupported_engine: ${engine}`)
 }
 
