@@ -9,10 +9,12 @@
 
 export const config = { runtime: 'nodejs' }
 
+import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { sweepSupersededAnswers } from '../../_lib/sweepSupersededAnswers.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -74,6 +76,15 @@ export default async function handler(req, res) {
     }
     const [row] = await r.json()
     if (!row) return err(res, 'not_found', 404)
+
+    // F16 Phase 3 — confirming a supersession means this clinician's thinking on a
+    // topic changed. Sweep their PUBLISHED public answers on that topic, re-draft
+    // the affected ones in the updated voice, and re-queue for review (the live
+    // page stays up until they approve/retract). Runs after the response.
+    if (action === 'confirm') {
+      waitUntil(sweepSupersededAnswers({ ws, supersessionId: id }))
+    }
+
     return ok(res, row)
   }
 

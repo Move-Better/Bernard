@@ -5,7 +5,7 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { draftAnswer } from '../_lib/producer/draftAnswer.js'
-import { publishAnswerToMovebetter } from '../_lib/publishAnswer.js'
+import { publishAnswerToMovebetter, retractAnswerFromMovebetter } from '../_lib/publishAnswer.js'
 import { scoreAnswerFidelity } from '../_lib/scoreAnswerFidelity.js'
 
 // Going live to the public site is per-workspace (F16 Phase 2). An approved
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     const r = await sb(
       `answers?workspace_id=eq.${ws.id}&staff_id=eq.${me.id}` +
         `&status=in.(needs_review,changes_requested)` +
-        `&select=id,question,slug,answer_lead,body,condition,seo_title,summary,status,review_notes,grounding_source,voice_fidelity_score,voice_audit,updated_at` +
+        `&select=id,question,slug,answer_lead,body,condition,seo_title,summary,status,review_notes,grounding_source,voice_fidelity_score,voice_audit,movebetterco_slug,review_reason,superseded_at,updated_at` +
         `&order=updated_at.desc`,
     )
     if (!r.ok) return dbErr(res, r, 'list')
@@ -97,13 +97,13 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     const { id, action } = req.body || {}
     if (!UUID_RE.test(id || '')) return res.status(400).json({ error: 'invalid_id' })
-    if (!['approve', 'edit', 'revise'].includes(action)) return res.status(400).json({ error: 'invalid_action' })
+    if (!['approve', 'edit', 'revise', 'retract'].includes(action)) return res.status(400).json({ error: 'invalid_action' })
     if (!me) return res.status(403).json({ error: 'forbidden' })
 
     // Ownership gate — fetch the row (workspace-scoped) and confirm it's the caller's.
     const cur = await sb(
       `answers?workspace_id=eq.${ws.id}&id=eq.${id}` +
-        `&select=id,staff_id,status,question,slug,condition,answer_lead,body,summary,seo_title,chat_prompts,display_order&limit=1`,
+        `&select=id,staff_id,status,question,slug,condition,answer_lead,body,summary,seo_title,chat_prompts,display_order,movebetterco_slug&limit=1`,
     )
     if (!cur.ok) return dbErr(res, cur, 'fetch')
     const row = (await cur.json())[0]
@@ -196,6 +196,20 @@ export default async function handler(req, res) {
       if (!note) return res.status(400).json({ error: 'note_required' })
       patch.status = 'changes_requested'
       patch.review_notes = note.slice(0, 2000)
+    } else if (action === 'retract') {
+      // Take a currently-live answer DOWN off the public site. Only meaningful for
+      // one that's actually published — retract removes the .md via the receiver,
+      // then marks it retracted. On receiver failure, change nothing (retryable).
+      if (!row.movebetterco_slug) return res.status(409).json({ error: 'not_published' })
+      const pulled = await retractAnswerFromMovebetter({ ws, answer: row })
+      if (!pulled.ok) {
+        console.error('[answers] retract failed:', pulled.error, id)
+        return res.status(502).json({ error: 'retract_failed' })
+      }
+      patch.status = 'retracted'
+      patch.review_reason = null
+      patch.superseded_at = null
+      patch.movebetterco_slug = null
     }
 
     const upd = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${id}`, {
@@ -210,6 +224,13 @@ export default async function handler(req, res) {
     // while the answer is changes_requested and shows the re-draft when it lands.
     if (action === 'revise') {
       waitUntil(reDraftAnswer(ws, id, row, patch.review_notes))
+    }
+
+    // Retracting means the clinician no longer stands behind this public answer,
+    // so the question flips back to an OPEN coverage gap on /seo — it can resurface
+    // as a future interview/answer prompt. Best-effort (never blocks the retract).
+    if (action === 'retract') {
+      waitUntil(reopenQuestionAsGap(ws.id, row.question, row.condition))
     }
 
     return res.status(200).json((await upd.json())[0] || { ok: true })
@@ -287,6 +308,42 @@ async function reDraftAnswer(ws, id, row, note) {
     })
   } catch (e) {
     console.error('[answers] re-draft failed:', e?.message, e?.stack)
+  }
+}
+
+// Re-open a retracted answer's question as an active tracked coverage gap on /seo
+// (source='manual'), reactivating it if it was previously dismissed. Case-insensitive
+// dedup against the workspace's tracked set; the DB UNIQUE (workspace_id, question)
+// is the backstop. Best-effort — a failure here must not affect the retract.
+async function reopenQuestionAsGap(wsId, question, topic) {
+  try {
+    const q = String(question || '').trim().slice(0, 160)
+    if (!q) return
+    const existRes = await sb(
+      `seo_tracked_questions?workspace_id=eq.${wsId}&select=id,question,active&limit=500`,
+    )
+    const existing = (existRes.ok ? await existRes.json().catch(() => []) : []).find(
+      (r) => String(r.question || '').trim().toLowerCase() === q.toLowerCase(),
+    )
+    if (existing) {
+      if (!existing.active) {
+        await sb(`seo_tracked_questions?id=eq.${existing.id}&workspace_id=eq.${wsId}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ active: true }),
+        })
+      }
+      return
+    }
+    await sb('seo_tracked_questions?on_conflict=workspace_id,question', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify([
+        { workspace_id: wsId, question: q, topic: (topic || '').slice(0, 60) || null, source: 'manual', active: true },
+      ]),
+    })
+  } catch (e) {
+    console.error('[answers] reopenQuestionAsGap failed:', e?.message)
   }
 }
 
