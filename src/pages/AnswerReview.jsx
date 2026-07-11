@@ -8,6 +8,8 @@ import {
   RotateCcw,
   ChevronLeft,
   ShieldCheck,
+  Lock,
+  AlertTriangle,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { apiFetch } from '@/lib/api'
@@ -47,6 +49,85 @@ function QueueRow({ answer, index, total, onOpen }) {
         {index + 1} of {total}
       </span>
     </button>
+  )
+}
+
+// --- Voice-fidelity gate (F16 Phase 1) -------------------------------------
+// The gate lives in voice_audit.gate: 'passed' | 'held' | 'unscored'. A held
+// answer can't publish until it's edited/revised back over the bar.
+function voiceGate(a) {
+  const va = a?.voice_audit
+  return va && typeof va === 'object' ? va.gate || null : null
+}
+function voiceScore10(a) {
+  return typeof a?.voice_fidelity_score === 'number' ? (a.voice_fidelity_score / 10).toFixed(1) : null
+}
+
+// Header chip — quiet emerald when it passes, red when held (severity ramp).
+function VoiceCheckChip({ answer }) {
+  const gate = voiceGate(answer)
+  const s = voiceScore10(answer)
+  if (gate === 'passed') {
+    return (
+      <span
+        className="ml-auto inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-3xs font-bold text-success"
+        title="Faithful to what you've said, in your voice, and non-diagnostic"
+      >
+        <ShieldCheck className="h-3 w-3" /> Voice check{s ? ` ${s}` : ''}
+      </span>
+    )
+  }
+  if (gate === 'held') {
+    return (
+      <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-3xs font-bold text-destructive">
+        <AlertTriangle className="h-3 w-3" /> Voice check{s ? ` ${s}` : ''}
+      </span>
+    )
+  }
+  return null
+}
+
+// The loud, act-now banner shown above the actions when an answer is held.
+function HeldBanner({ answer }) {
+  const va = answer?.voice_audit || {}
+  const s = voiceScore10(answer)
+  const threshold = typeof va.threshold === 'number' ? va.threshold : 7.5
+  const dims = [
+    { label: 'Faithful to you', v: va.said_fidelity },
+    { label: 'Sounds like you', v: va.voice_match },
+    { label: 'Non-diagnostic & safe', v: va.safety },
+  ].filter((d) => typeof d.v === 'number')
+  return (
+    <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-destructive">
+          <Lock className="h-3.5 w-3.5" /> Held — can&rsquo;t publish yet
+        </span>
+        <span className="ml-auto text-2xs font-bold tabular-nums text-destructive">
+          {s ? `${s} / 10 · ` : ''}bar is {threshold}
+        </span>
+      </div>
+      {va.red_flag && va.red_flag !== 'none' && (
+        <p className="mt-2 text-2xs text-foreground">
+          <span className="font-bold">What drifted:</span> {va.red_flag}
+        </p>
+      )}
+      {dims.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {dims.map((d) => (
+            <span key={d.label} className="inline-flex items-center gap-1 text-3xs font-bold text-muted-foreground">
+              {d.label}
+              <span className={d.v < threshold ? 'text-destructive' : 'text-success'}>{d.v}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-2xs text-muted-foreground">
+        Fix it with <span className="font-semibold text-foreground">Edit inline</span>, or{' '}
+        <span className="font-semibold text-foreground">Ask Bernard to revise</span> — it re-drafts in
+        your voice and re-scores. Approve unlocks once it clears {threshold}.
+      </p>
+    </div>
   )
 }
 
@@ -104,16 +185,26 @@ export default function AnswerReview() {
       }),
     onSuccess: (res, payload) => {
       if (payload.action === 'approve') {
-        toast.success(res?.status === 'published' ? 'Published to movebetter.co ✓' : 'Approved — ready to publish')
-        // Approve moves the answer out of the review queue (approved/published),
-        // so drop it from the cache immediately. Without this the screen only
-        // advances once refetch() round-trips — which read as "nothing happened
-        // after publish". setOpenId(null) lets `active` fall through to the next
-        // queued answer instead of clinging to the now-gone id.
-        queryClient.setQueryData(['answers-review'], (prev) =>
-          prev?.answers ? { ...prev, answers: prev.answers.filter((a) => a.id !== payload.id) } : prev,
-        )
-        setOpenId(null)
+        if (res?.blocked) {
+          // The hard voice gate refused to publish. Stay on this answer so its
+          // held banner is visible; refetch() pulls the fresh score/flag in.
+          toast.error(
+            res.gate === 'unscored'
+              ? "Couldn't check the voice on this one — try again in a moment"
+              : 'Held — tighten it back to your voice before it can go public',
+          )
+        } else {
+          toast.success(res?.status === 'published' ? 'Published to movebetter.co ✓' : 'Approved — ready to publish')
+          // Approve moves the answer out of the review queue (approved/published),
+          // so drop it from the cache immediately. Without this the screen only
+          // advances once refetch() round-trips — which read as "nothing happened
+          // after publish". setOpenId(null) lets `active` fall through to the next
+          // queued answer instead of clinging to the now-gone id.
+          queryClient.setQueryData(['answers-review'], (prev) =>
+            prev?.answers ? { ...prev, answers: prev.answers.filter((a) => a.id !== payload.id) } : prev,
+          )
+          setOpenId(null)
+        }
       } else if (payload.action === 'edit') toast.success('Your edits saved')
       else if (payload.action === 'revise') toast.success('Sent to Bernard — it will revise in your voice')
       setMode(null)
@@ -203,6 +294,7 @@ export default function AnswerReview() {
                     Revising
                   </span>
                 )}
+                <VoiceCheckChip answer={active} />
               </div>
 
               <div className="px-5 py-5">
@@ -319,30 +411,48 @@ export default function AnswerReview() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      <Check className="h-4 w-4" /> Looks right — approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(active)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
-                    >
-                      <Pencil className="h-4 w-4" /> Edit inline
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode('revise')}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
-                    >
-                      <RotateCcw className="h-4 w-4" /> Ask Bernard to revise
-                    </button>
-                  </div>
+                  <>
+                    {voiceGate(active) === 'held' && <HeldBanner answer={active} />}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {voiceGate(active) === 'held' ? (
+                        <button
+                          type="button"
+                          disabled
+                          title="Fix the voice check first — edit it or ask Bernard to revise"
+                          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-dashed border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground"
+                        >
+                          <Lock className="h-4 w-4" /> Approve — fix the voice check first
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                        >
+                          <Check className="h-4 w-4" /> Looks right — approve
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => startEdit(active)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
+                      >
+                        <Pencil className="h-4 w-4" /> Edit inline
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMode('revise')}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold ${
+                          voiceGate(active) === 'held'
+                            ? 'border-action/40 bg-action/10 text-action'
+                            : 'border-border text-foreground'
+                        }`}
+                      >
+                        <RotateCcw className="h-4 w-4" /> Ask Bernard to revise
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

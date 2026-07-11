@@ -65,6 +65,8 @@
     "status",
     "summary",
     "updated_at",
+    "voice_audit",
+    "voice_fidelity_score",
     "workspace_id"
   ],
   "app_config": [
@@ -352,6 +354,15 @@
     "slot",
     "status",
     "updated_at",
+    "workspace_id"
+  ],
+  "editor_revisions": [
+    "created_at",
+    "doc",
+    "id",
+    "label",
+    "subject_id",
+    "subject_type",
     "workspace_id"
   ],
   "engagement_snapshots": [
