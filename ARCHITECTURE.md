@@ -18,11 +18,39 @@ Bernard is a single Vercel deployment serving multiple workspaces by subdomain. 
 - Background paths (cron, webhooks) without a `Host` header: `workspaceById(id)` from the same
   module
 
-**Tenant isolation is enforced at the API layer, not the database.** There is no RLS on the
-public schema (service_role bypasses it anyway). Every route that reads or writes tenant-scoped
-data must call `workspaceContext(req)` and include `workspace_id` in every query filter. Treat
-the workspace_id filter the same way you'd treat an authorization check — missing it is a
-cross-tenant data leak, not just a bug.
+**Tenant isolation is enforced at the API layer, not the database.** Every route that reads or
+writes tenant-scoped data must call `workspaceContext(req)` and include `workspace_id` in every
+query filter. Treat the workspace_id filter the same way you'd treat an authorization check —
+missing it is a cross-tenant data leak, not just a bug.
+
+### Decision: no database-level RLS (deliberate — do not re-flag)
+
+There is deliberately **no RLS on the public schema**, and turning it on today would be a no-op.
+Every serverless handler connects to Supabase over PostgREST as **`service_role`**
+(`SUPABASE_SERVICE_KEY`, sent as both `apikey` and `Bearer`). `service_role` carries the Postgres
+`BYPASSRLS` attribute, so RLS policies are never evaluated on any query the app makes — writing
+`CREATE POLICY … USING (workspace_id = …)` would enforce nothing and would falsely imply a DB
+backstop exists.
+
+This follows from the architecture, not from oversight. RLS's job is to protect the DB from an
+**untrusted client** (browser → Supabase with the `anon` key + a per-user JWT, `auth.uid()` in
+policies). Bernard is the opposite shape: the **browser never touches Supabase**. It goes
+browser → `apiFetch` (Clerk Bearer) → Vercel function → Supabase-as-`service_role`. Tenant
+identity lives in the HTTP request (`Host` → subdomain → workspace), which only the function
+sees — Postgres has no per-user session and no way to know the tenant. So the API handler is the
+only layer that *has* the information to enforce isolation, and it is therefore *the* enforcement
+layer by design.
+
+**Accepted tradeoff:** there is exactly one enforcement layer, and it is hand-written per route.
+The compensating controls are `workspaceContext` being mandatory, the `tenant-isolation-auditor`
+agent, and the `/audit` cadence. Auditors should verify *that layer* (every tenant query is
+filtered), **not** re-flag the absence of RLS as a finding — it is a known, accepted decision.
+
+**When this decision would change (revisit RLS only then):** if any code path starts talking to
+Supabase as a **non-`service_role`** identity — e.g. the browser querying Supabase directly with
+the `anon` key, or handlers switching to per-request user JWTs / a non-superuser DB role with
+`SET LOCAL app.workspace_id`. At that point RLS becomes real defense-in-depth and should be
+added. Absent that architectural shift, "add RLS" is not an actionable finding.
 
 **Per-tenant publish credentials** (Buffer, Facebook, GBP, WordPress, etc.) live in the
 `workspace_credentials` table, encrypted at the column level with `WORKSPACE_CREDENTIALS_KEY`.
