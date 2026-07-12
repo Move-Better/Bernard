@@ -4,12 +4,15 @@ import { Video, Image as ImageIcon, Play, Check, Download, Link2 } from 'lucide-
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
+// `rail` is the status-colored left bar on each card (matches the pill tone) —
+// same status-rail language as Stories / Your Week, so a status reads the same
+// color everywhere. Sky = tagged/ready, violet = rendered/approved, faint = raw/archived.
 const STATUS_LABEL = {
-  raw:      { label: 'Raw',      tone: 'bg-muted text-muted-foreground' },
-  tagged:   { label: 'Tagged',   tone: 'bg-info/10 text-info' },
-  rendered: { label: 'Rendered', tone: 'bg-scheduled/10 text-scheduled' },
-  approved: { label: 'Approved', tone: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled' },
-  archived: { label: 'Archived', tone: 'bg-muted text-muted-foreground' },
+  raw:      { label: 'Raw',      tone: 'bg-muted text-muted-foreground', rail: 'bg-muted-foreground/40' },
+  tagged:   { label: 'Tagged',   tone: 'bg-info/10 text-info', rail: 'bg-info' },
+  rendered: { label: 'Rendered', tone: 'bg-scheduled/10 text-scheduled', rail: 'bg-scheduled' },
+  approved: { label: 'Approved', tone: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', rail: 'bg-scheduled' },
+  archived: { label: 'Archived', tone: 'bg-muted text-muted-foreground', rail: 'bg-muted-foreground/40' },
 }
 
 // Derive up to 2 initials from a Clerk user ID or display name.
@@ -169,6 +172,9 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
       }`}
     >
       <Thumb asset={asset} />
+
+      {/* Status rail — left edge, keyed to asset status (matches the pill) */}
+      <span aria-hidden="true" className={`absolute left-0 top-0 bottom-0 w-1 ${statusMeta.rail}`} />
 
       {/* Status pill — top left */}
       <div className="absolute top-1.5 left-1.5">
