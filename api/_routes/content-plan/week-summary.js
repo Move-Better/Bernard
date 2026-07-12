@@ -88,12 +88,29 @@ export default async function handler(req, res) {
     return text ? (text.length > 180 ? `${text.slice(0, 180)}…` : text) : null
   }
 
+  // First renderable media entry → a thumbnail for the Day-view cards. media_urls
+  // is the canonical [{url,type,kind,thumbnailUrl,...}] shape; for a video we only
+  // use its poster (thumbnailUrl), never the raw video URL in an <img>.
+  const thumbOf = (ci) => {
+    const list = Array.isArray(ci?.media_urls) ? ci.media_urls : []
+    for (const m of list) {
+      if (!m) continue
+      const isVideo = m.type === 'video' || m.kind === 'video'
+      const src = isVideo ? m.thumbnailUrl : (m.url || m.thumbnailUrl)
+      if (src) return { url: src, kind: isVideo ? 'video' : 'image' }
+    }
+    return null
+  }
+
   const shape = (a) => {
     const ci = a.content_piece_id ? itemStatusMap[a.content_piece_id] : null
+    const thumb = thumbOf(ci)
     return {
       id: a.id,
       platform: a.platform,
       scheduled_at: a.scheduled_at,
+      thumbnailUrl: thumb?.url || null,
+      mediaKind: thumb?.kind || null,
       label: a.angle_label,
       brief: a.brief,
       interviewTopic: a.interview?.topic || null,

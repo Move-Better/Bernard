@@ -5,7 +5,7 @@ import { useUser } from '@clerk/react'
 import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus,
   Check, Loader2, Clock, Eye, Send, BookOpen, ChevronDown, AlertTriangle, Pencil,
-  History, CalendarPlus, Bot,
+  History, CalendarPlus, Bot, Image as ImageIcon, Play,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -348,8 +348,23 @@ function DayPlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOn
     : (state.action === 'open' || state.action === 'schedule')
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] transition-shadow hover:shadow-md">
+    <div className="relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] transition-shadow hover:shadow-md">
       <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
+      {/* Media thumbnail — the drafted post's first image (a video shows its
+          poster + play badge); a muted placeholder when there's no media yet. */}
+      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+        {item.thumbnailUrl ? (
+          <img src={item.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <ImageIcon className="h-5 w-5 text-muted-foreground/40" aria-hidden="true" />
+        )}
+        {item.mediaKind === 'video' && item.thumbnailUrl && (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+            <Play className="h-4 w-4 text-white" fill="currentColor" aria-hidden="true" />
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
       <div className="mb-1.5 flex items-center gap-2">
         <span
           className={`inline-flex h-6 w-6 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}
@@ -412,6 +427,7 @@ function DayPlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOn
             {canApprove ? <><Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Open to change</> : <><Eye className="h-3.5 w-3.5" aria-hidden="true" /> Open</>}
           </Link>
         )}
+      </div>
       </div>
     </div>
   )
