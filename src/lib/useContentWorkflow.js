@@ -15,7 +15,7 @@ import { publishBlogToWebsite, sendBlogToBeehiiv, cancelBufferPost } from '@/lib
 import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
-import { slugifyTitle, deriveSeoTitle, cleanBlogMarkdown } from '@/lib/blogOutput'
+import { slugifyTitle, deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown } from '@/lib/blogOutput'
 import { canDirectPublishPlatform } from '@/lib/outputChannels'
 import { toast, runWithToast } from '@/lib/toast'
 
@@ -172,9 +172,12 @@ export function useContentWorkflow(piece) {
         const { headline, body } = cleanBlogMarkdown(markdown)
         const title = headline || (piece.topic || 'Blog Post')
         const slug = slugifyTitle(title)
-        const seoTitle = deriveSeoTitle(title)
-        const descLine = body.split('\n').find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
-        const description = descLine?.trim().slice(0, 200) || seoTitle
+        // A manual override (Words > SEO panel) wins; otherwise fall back to
+        // the same deterministic derivation the SEO panel shows as a
+        // placeholder, so what the author saw before leaving it blank is
+        // exactly what gets published.
+        const seoTitle = (piece.seo_title || '').trim() || deriveSeoTitle(title)
+        const description = (piece.meta_description || '').trim() || deriveMetaDescription(body, seoTitle)
         const pubDate = new Date().toISOString().slice(0, 10)
         const manifest = buildImagesManifest({ markdown: body, mediaUrls: piece.media_urls, slug })
         const payload = { contentItemId: piece.id, slug, title, seoTitle, headline: title, description, pubDate, markdown: body, ...manifest }

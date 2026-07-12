@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, Crop, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Send, Type, Video, X } from 'lucide-react'
+import { ArrowRight, Check, Crop, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Search, Send, Type, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
@@ -16,6 +16,7 @@ import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/Bl
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
+import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
 import { PLATFORM_META } from '@/lib/contentMeta'
 
 // UnifiedEditor — the single-shell editor body for every archetype that isn't a
@@ -40,6 +41,7 @@ const RAIL_META = {
   photo: { icon: ImageIcon, label: 'Media' },
   text: { icon: Type, label: 'Text' },
   grade: { icon: Palette, label: 'Grade' },
+  seo: { icon: Search, label: 'SEO' },
 }
 
 const ASPECTS = ['1:1', '4:5', '16:9']
@@ -114,6 +116,89 @@ function WordsPanel({ piece, updateItem }) {
             : 'Saves when you click away. The live preview updates as you type.'}
         </p>
         {isBlog && <BlogGenerationActions piece={piece} interview={interview} />}
+      </div>
+    </div>
+  )
+}
+
+// SEO title / meta description overrides — doc archetype only (blog,
+// landing_page). api/publish/website.js already expects `seoTitle` and
+// `description` in its payload; useContentWorkflow.js always auto-derives
+// both (deriveSeoTitle / deriveMetaDescription in blogOutput.js) unless
+// piece.seo_title / piece.meta_description are set. Blank here = keep
+// auto-deriving — the placeholder shows exactly what that auto-derived
+// value currently is, so leaving a field blank is a deliberate choice, not
+// an accident.
+function SeoPanel({ piece, updateItem }) {
+  const [seoTitle, setSeoTitle] = useState(() => piece?.seo_title || '')
+  const [metaDescription, setMetaDescription] = useState(() => piece?.meta_description || '')
+  const savedRef = useRef({ seoTitle, metaDescription })
+
+  useEffect(() => {
+    const next = { seoTitle: piece?.seo_title || '', metaDescription: piece?.meta_description || '' }
+    setSeoTitle(next.seoTitle)
+    setMetaDescription(next.metaDescription)
+    savedRef.current = next
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [piece?.id])
+
+  const { headline, body } = cleanBlogMarkdown(typeof piece?.content === 'string' ? piece.content : '')
+  const titlePlaceholder = deriveSeoTitle(headline || piece?.topic || '')
+  const descPlaceholder = deriveMetaDescription(body, titlePlaceholder)
+
+  async function save() {
+    if (seoTitle === savedRef.current.seoTitle && metaDescription === savedRef.current.metaDescription) return
+    try {
+      await updateItem.mutateAsync({ id: piece.id, patch: { seoTitle, metaDescription } })
+      savedRef.current = { seoTitle, metaDescription }
+    } catch (e) {
+      toast.error('SEO save failed', { description: e.message })
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b px-3 py-2">
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">SEO</span>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label htmlFor="seo-title" className="text-2xs font-medium text-foreground">SEO title</label>
+            <span className="text-3xs text-muted-foreground">{seoTitle.length}/{SEO_TITLE_MAX}</span>
+          </div>
+          <input
+            id="seo-title"
+            type="text"
+            value={seoTitle}
+            onChange={(e) => setSeoTitle(e.target.value)}
+            onBlur={save}
+            placeholder={titlePlaceholder || 'Drives the page <title> / og:title'}
+            maxLength={SEO_TITLE_MAX}
+            className="w-full rounded-md border bg-muted/40 px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
+          />
+          <p className="text-3xs text-muted-foreground/70">
+            Blank = auto-derived from the headline{titlePlaceholder ? ` ("${titlePlaceholder}")` : ''}.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label htmlFor="seo-desc" className="text-2xs font-medium text-foreground">Meta description</label>
+            <span className="text-3xs text-muted-foreground">{metaDescription.length}/{META_DESC_MAX}</span>
+          </div>
+          <textarea
+            id="seo-desc"
+            value={metaDescription}
+            onChange={(e) => setMetaDescription(e.target.value)}
+            onBlur={save}
+            placeholder={descPlaceholder || 'The SERP snippet under the title'}
+            maxLength={META_DESC_MAX}
+            className="min-h-[110px] w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
+          />
+          <p className="text-3xs text-muted-foreground/70">
+            Blank = auto-derived from the opening line. Saves when you click away.
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -653,6 +738,8 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
             <TextPanel piece={piece} />
           ) : activeKey === 'grade' ? (
             <GradePanel piece={piece} aspect={aspect} />
+          ) : activeKey === 'seo' ? (
+            <SeoPanel piece={piece} updateItem={updateItem} />
           ) : (
             <PublishPanel piece={piece} remainingNeedsMedia={remainingNeedsMedia} isReel={isReel} />
           )}

@@ -21,6 +21,7 @@
 
 export const SLUG_MAX = 60
 export const SEO_TITLE_MAX = 60
+export const META_DESC_MAX = 200
 
 // ── Slugs ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,15 @@ export function deriveSeoTitle(headline, maxLen = SEO_TITLE_MAX) {
   const h = String(headline || '').trim().replace(/\s+/g, ' ')
   if (h.length <= maxLen) return h
   return smartTruncate(h, maxLen)
+}
+
+// Derive a meta description from a cleaned body: the first non-heading,
+// non-image line, capped at maxLen. `fallback` (typically the SEO title) is
+// used when the body has no such line yet (e.g. a fresh empty draft).
+export function deriveMetaDescription(body, fallback = '', maxLen = META_DESC_MAX) {
+  const line = String(body || '').split('\n').find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
+  const text = line?.trim() || fallback
+  return smartTruncate(text, maxLen)
 }
 
 // Compose a page <title> with an optional brand suffix, never exceeding maxLen.
