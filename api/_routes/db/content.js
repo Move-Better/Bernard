@@ -71,7 +71,7 @@ const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,cont
 // that the list views don't render — full row is still available via id-fetch
 // or the per-piece review screen. See buildStories() in src/lib/stories.js for
 // the consuming shape.
-const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,scheduled_at,published_at,updated_at,provenance,series_id,series_part,series_total,voice_fidelity_score,voice_audit'
+const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,scheduled_at,published_at,updated_at,provenance,series_id,series_part,series_total,voice_fidelity_score,voice_audit,performed_well'
 
 // Slim shape for the "What's working" top-performers widget. Only needs
 // metrics + display fields — drops content body, media_urls, notes, etc.

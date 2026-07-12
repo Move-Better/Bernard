@@ -64,6 +64,7 @@ function summarizePiece(row) {
     provenance: row.provenance ?? null,
     voice_fidelity_score: row.voice_fidelity_score ?? null,
     voice_audit: row.voice_audit ?? null,
+    performed_well: row.performed_well ?? false,
   }
 }
 
