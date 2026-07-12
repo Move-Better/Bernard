@@ -50,6 +50,7 @@ import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { rewriteMarkdownImageUrls } from '../_lib/publishImageMirror.js'
 import { findBodyH1, deriveSeoTitle, SEO_TITLE_MAX } from '../../src/lib/blogOutput.js'
+import { checkWordsApproved } from '../_lib/wordsApprovalGate.js'
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
@@ -95,6 +96,11 @@ async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'publish', scope.workspace.id))) return
   const workspaceId = scope?.workspace?.id
   const workspaceSlug = scope?.workspace?.slug
+
+  // Words-approval gate (Phase 3, story-monitor redesign) — the piece's
+  // parent interview must have its words approved before this can publish.
+  const gate = await checkWordsApproved(payload.contentItemId, workspaceId)
+  if (!gate.ok) return res.status(gate.status).json(gate.body)
 
   const wpCred = await getCredential(workspaceId, 'wordpress')
   if (wpCred?.secret && wpCred?.config?.user) {

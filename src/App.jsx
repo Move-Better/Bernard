@@ -65,6 +65,7 @@ const AdminUsage = lazy(() => import('@/pages/AdminUsage'))
 const Producer = lazy(() => import('@/pages/Producer'))
 const ProducerSettings = lazy(() => import('@/pages/ProducerSettings'))
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'))
+const WordsApproval = lazy(() => import('@/pages/WordsApproval'))
 const StoryboardPublish = lazy(() => import('@/pages/StoryboardPublish'))
 const Synthesis = lazy(() => import('@/pages/Synthesis'))
 const PreVisitMessage = lazy(() => import('@/pages/PreVisitMessage'))
@@ -649,6 +650,11 @@ function AppRoutes() {
                 (non-admins redirect to /producer). */}
             <Route path="/producer/settings" element={guarded(<ProducerSettings />)} />
             <Route path="/stories/:storyId" element={guarded(<StoryDetail />)} />
+            {/* Keystone words-approval screen (Phase 3, story-monitor redesign) —
+                a sibling of /stories/:storyId, not nested inside it. Both are flat,
+                non-splat routes registered directly here, so this is safe from the
+                parent-consumes-the-whole-path footgun (see CLAUDE.md router notes). */}
+            <Route path="/stories/:storyId/words" element={guarded(<WordsApproval />)} />
             <Route path="/synthesis" element={guarded(<Synthesis />)} />
             <Route path="/write" element={guarded(<AuthorMode />)} />
             <Route path="/book"  element={guarded(<Book />)} />

@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     if (id) {
       if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
       const r = await sb(
-        `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,campaign_id,created_at,updated_at`
+        `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,campaign_id,summary_text,summary_generated_at,words_approved_at,words_approved_by,created_at,updated_at`
       )
       if (!r.ok) return dbErr(res, r)
       const data = await r.json()
@@ -244,6 +244,25 @@ export default async function handler(req, res) {
     if (body.campaignId !== undefined) {
       if (body.campaignId && !UUID_RE.test(body.campaignId)) return err(res, 'Invalid campaignId', 400)
       patch.campaign_id = body.campaignId || null
+    }
+    // summaryText — the channel-neutral "story in your words" the keystone
+    // words-approval screen reads/edits (every post is written from it).
+    // Editing it after approval invalidates the approval: the gate exists to
+    // confirm THESE exact words, so a stale approval must never silently
+    // cover different text. If the same request also sets approveWords
+    // below, that block runs after and re-approves the freshly-saved text —
+    // supports a single "Approve the words" click that saves + approves.
+    if (body.summaryText !== undefined) {
+      patch.summary_text = typeof body.summaryText === 'string' ? body.summaryText.trim() || null : null
+      patch.words_approved_at = null
+      patch.words_approved_by = null
+    }
+    // approveWords — the keystone gate. Approver identity is ALWAYS derived
+    // server-side from the verified Clerk session, never trusted from the
+    // client (same pattern as content_items.approved_by in db/content.js).
+    if (body.approveWords === true) {
+      patch.words_approved_at = new Date().toISOString()
+      patch.words_approved_by = userId
     }
     // topic — story title. Trim and reject empty strings (a story must
     // always have a title visible in the header / lists). Length-capped to

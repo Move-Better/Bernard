@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Check, CheckCircle2, CalendarClock, ChevronDown, ListPlus, Send,
-  Clock, RotateCcw, XCircle,
+  Clock, RotateCcw, XCircle, Lock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useContentWorkflow } from '@/lib/useContentWorkflow'
+import { useInterview } from '@/lib/queries'
 import VoiceChip from './VoiceChip'
 
 // EditorWorkflowBar — approve, voice-check, and publish, inline in the editor's
@@ -162,9 +164,32 @@ export default function EditorWorkflowBar({ piece }) {
     (status === 'in_review' && wf.canReview)
   const canSendForReview = status === 'draft' && !wf.skipReview && wf.canReview
 
+  // Words-approval gate (Phase 3, story-monitor redesign) — mirrors the
+  // server-side check in api/_lib/wordsApprovalGate.js so publish/retry are
+  // visibly disabled with a reason instead of a raw 403. The real
+  // enforcement lives server-side; this is a UX nicety, not the boundary —
+  // so default to NOT blocking while the interview is still loading rather
+  // than flash-disabling the button on every editor open.
+  const { data: interview, isLoading: interviewLoading } = useInterview(piece?.interview_id)
+  const wordsGateBlocked = !interviewLoading && !!piece?.interview_id && !interview?.words_approved_at
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <VoiceChip piece={piece} />
+
+      {/* Only the states where Publish/Retry actually matters — the gate
+          doesn't block approving-to-publish or sending-for-review, so no
+          banner there (see the file-level comment above). */}
+      {wordsGateBlocked && (status === 'failed' || status === 'approved') && (
+        <Link
+          to={`/stories/${piece.interview_id}/words`}
+          className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-xs font-medium text-warning hover:bg-warning/20"
+          title="This story's words haven't been approved yet — publishing is blocked until they are."
+        >
+          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+          Approve the story&rsquo;s words first
+        </Link>
+      )}
 
       {/* Published — terminal state */}
       {status === 'published' && (
@@ -181,10 +206,10 @@ export default function EditorWorkflowBar({ piece }) {
       {status === 'failed' && (
         <Button
           size="sm"
-          disabled={wf.publishing}
+          disabled={wf.publishing || wordsGateBlocked}
           loading={wf.publishing}
           onClick={() => wf.publish({})}
-          title={piece.publish_error || 'Retry publishing'}
+          title={wordsGateBlocked ? "Approve the story's words before retrying" : (piece.publish_error || 'Retry publishing')}
           className="bg-action text-action-foreground hover:bg-action/90"
         >
           {!wf.publishing && <RotateCcw className="mr-1.5 h-3.5 w-3.5" />}
@@ -233,7 +258,7 @@ export default function EditorWorkflowBar({ piece }) {
               undo
             </button>
           </span>
-          <PublishControl wf={wf} piece={piece} enabled />
+          <PublishControl wf={wf} piece={piece} enabled={!wordsGateBlocked} />
         </>
       )}
 
