@@ -30,6 +30,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 const DAYS = [
   ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
 ]
+const DAY_FULL = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' }
 // Trust modes, shown as a segmented control (not a breadcrumb — it displays
 // which mode you're currently in, it isn't a step-by-step trail). Keys are the
 // stored cadence_policy.trust_stage values; labels + helper are user-facing.
@@ -330,6 +331,92 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
   )
 }
 
+// DayPlanCard — the roomy, full-width variant of PlanCard used in Day view.
+// Same status language (rail + chip + pill) and the SAME handlers as the week
+// card, but with space to show the draft excerpt inline and lay the working
+// actions out in a row — the "sit down and clear this day" surface.
+function DayPlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
+  const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
+  const Icon = meta.icon
+  const state = cardState(item)
+  const time = item.scheduled_at ? timeLabel(item.scheduled_at, tz) : null
+  const tag = categoryTag(item)
+  const showExcerpt = !!item.excerpt && (state.reviewable || state.action === 'schedule')
+  const canApprove = !readOnly && state.reviewable && !!item.contentPieceId && !!item.excerpt
+  const showOpen = readOnly
+    ? (!!item.contentPieceId || !!item.interviewId)
+    : (state.action === 'open' || state.action === 'schedule')
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] transition-shadow hover:shadow-md">
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
+      <div className="mb-1.5 flex items-center gap-2">
+        <span
+          className={`inline-flex h-6 w-6 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}
+          title={meta.label}
+        >
+          {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+        </span>
+        <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">{meta.label}</span>
+        {time && <span className="text-2xs font-semibold text-muted-foreground/70">· {time}</span>}
+        <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-3xs font-semibold ${state.cls}`}>
+          {state.label}
+        </span>
+        {item.predrafted && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-semibold text-muted-foreground" title="Bernard drafted this ahead of the week">
+            <Bot className="h-2.5 w-2.5" aria-hidden="true" /> drafted ahead
+          </span>
+        )}
+      </div>
+      <h3 className="text-sm font-bold leading-snug text-foreground">{contentLabel(item)}</h3>
+      {tag && <p className="mt-0.5 text-xs text-muted-foreground">{tag}</p>}
+      {showExcerpt && (
+        <p className="mt-2 rounded-lg border-l-2 border-border bg-muted/40 px-3 py-2 text-xs italic leading-relaxed text-muted-foreground line-clamp-4">
+          &ldquo;{item.excerpt}&rdquo;
+        </p>
+      )}
+      {item.voiceGate === 'held' && (
+        <div className="mt-2 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 shrink-0 text-action" aria-hidden="true" />
+          <span className="text-2xs text-action">{item.voiceFlag ? `Voice flag: ${item.voiceFlag}` : 'Voice — open draft to review'}</span>
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {!readOnly && state.action === 'draft' && (
+          <button
+            type="button"
+            disabled={drafting}
+            onClick={() => onDraft(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-action px-3 py-2 text-xs font-semibold text-action-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {drafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+            Draft this
+          </button>
+        )}
+        {canApprove && (
+          <button
+            type="button"
+            disabled={approving}
+            onClick={() => onApprove(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+            Approve
+          </button>
+        )}
+        {(canApprove || showOpen) && (
+          <Link
+            to={drillTo(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
+          >
+            {canApprove ? <><Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Open to change</> : <><Eye className="h-3.5 w-3.5" aria-hidden="true" /> Open</>}
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function YourWeek() {
   useDocumentTitle('Your week')
   const { user } = useUser()
@@ -348,6 +435,8 @@ export default function YourWeek() {
   const [weekOffset, setWeekOffset] = useState(0) // 0 = this week; <0 past (read-only); >0 future (plannable)
   const [planningWeek, setPlanningWeek] = useState(false)
   const [backlogOpen, setBacklogOpen] = useState(false)
+  const [viewMode, setViewMode] = useState('week')   // 'week' board | 'day' focused work surface
+  const [selectedDay, setSelectedDay] = useState(null) // day key ('mon'..'sun'); null = auto (today/first)
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary', weekOffset],
     queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset)}` : ''}`),
@@ -488,6 +577,14 @@ export default function YourWeek() {
     ? new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz }).format(new Date()).toLowerCase().slice(0, 3)
     : null
 
+  // Day view: per-day calendar dates for the strip, and the resolved active day.
+  const weekMondayForStrip = weekMondayDate(weekOffset)
+  const dayDates = DAYS.map(([, ], i) => new Date(weekMondayForStrip.getTime() + i * 86400000).getUTCDate())
+  const firstDayWithItems = DAYS.find(([k]) => (byDay[k] || []).length > 0)?.[0]
+  // Auto-pick: today if it has posts, else the first populated day, else today/Mon.
+  const autoDay = (todayKey && (byDay[todayKey] || []).length > 0) ? todayKey : (firstDayWithItems || todayKey || 'mon')
+  const activeDay = selectedDay || autoDay
+
   // Stage breakdown of the visible week — computed from the SAME cardState() the
   // day-column cards render, so the banner's numbers reconcile with what's on
   // screen (the old "N of M ready to review" headline conflated the pre-drafted
@@ -619,6 +716,24 @@ export default function YourWeek() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Week / Day view toggle — Day is a focused per-day work surface. */}
+          {data?.hasPlan && (
+            <div role="group" aria-label="View" className="inline-flex items-center rounded-lg border bg-card p-0.5 text-xs">
+              {['week', 'day'].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setViewMode(m)}
+                  aria-pressed={viewMode === m}
+                  className={`rounded-md px-3 py-1 font-semibold capitalize transition-colors ${
+                    viewMode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
           {!isPast && approvedSchedulable.length > 0 && (
             <button
               type="button"
@@ -802,6 +917,81 @@ export default function YourWeek() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
             {/* Calendar */}
             <div className="min-w-0 flex-1">
+              {viewMode === 'day' ? (
+                <div>
+                  {/* Day strip — pick a day; shows date + post count. */}
+                  <div className="mb-4 grid grid-cols-7 gap-1.5 sm:gap-2">
+                    {DAYS.map(([key, label], i) => {
+                      const count = (byDay[key] || []).length
+                      const isSel = key === activeDay
+                      const isTod = key === todayKey
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setSelectedDay(key)}
+                          aria-pressed={isSel}
+                          className={`rounded-xl border px-1 py-2 text-center transition-colors ${
+                            isSel ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                                  : `bg-card hover:border-primary/40 ${isTod ? 'border-primary/40' : 'border-border'}`
+                          }`}
+                        >
+                          <div className={`text-2xs font-bold uppercase tracking-wide ${isSel ? '' : isTod ? 'text-primary' : 'text-muted-foreground'}`}>{label}</div>
+                          <div className={`text-lg font-extrabold tabular-nums leading-tight ${isSel ? '' : count ? 'text-foreground' : 'text-muted-foreground/40'}`}>{dayDates[i]}</div>
+                          <div className={`text-3xs font-semibold ${isSel ? 'text-primary-foreground/80' : count ? 'text-muted-foreground/70' : 'text-muted-foreground/40'}`}>
+                            {count ? `${count} post${count === 1 ? '' : 's'}` : '—'}{isTod ? ' · today' : ''}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {/* Selected day's posts as roomy working cards. */}
+                  {(() => {
+                    const dayItems = byDay[activeDay] || []
+                    if (dayItems.length === 0) {
+                      return (
+                        <div className="rounded-xl border border-dashed border-border bg-card py-14 text-center">
+                          <Moon className="mx-auto h-7 w-7 text-muted-foreground/50" aria-hidden="true" />
+                          <p className="mt-2 text-sm font-medium text-foreground">Nothing planned {DAY_FULL[activeDay]}</p>
+                          {!isPast && data.heldCount > 0 && (
+                            <button type="button" onClick={() => setBacklogOpen(true)} className="mt-1 text-xs font-semibold text-primary hover:underline">
+                              Pull from backlog
+                            </button>
+                          )}
+                        </div>
+                      )
+                    }
+                    const needDraft = dayItems.filter((it) => cardState(it).action === 'draft').length
+                    const inReview = dayItems.filter((it) => cardState(it).reviewable).length
+                    return (
+                      <div>
+                        <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <h2 className="text-base font-bold tracking-tight">{DAY_FULL[activeDay]}</h2>
+                          <span className="text-xs text-muted-foreground">
+                            {dayItems.length} post{dayItems.length === 1 ? '' : 's'}
+                            {needDraft ? ` · ${needDraft} need drafting` : ''}
+                            {inReview ? ` · ${inReview} in review` : ''}
+                          </span>
+                        </div>
+                        <div className="space-y-2.5">
+                          {dayItems.map((item) => (
+                            <DayPlanCard
+                              key={item.id}
+                              item={item}
+                              tz={tz}
+                              onDraft={handleDraft}
+                              drafting={draftingAtom === item.id}
+                              onApprove={handleApprove}
+                              approving={approvingAtom === item.id}
+                              readOnly={isPast}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
                 {DAYS.map(([key, label]) => {
                   const isQuiet = quiet.has(key)
@@ -857,6 +1047,7 @@ export default function YourWeek() {
                   )
                 })}
               </div>
+              )}
             </div>
 
             {/* Right rail: backlog + digest */}
