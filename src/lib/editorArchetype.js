@@ -97,7 +97,9 @@ export const ARCHETYPES = Object.freeze({
   },
   textad: {
     label: 'Text ad', surface: SURFACE.NONE, canvas: CANVAS.TEXTAD,
-    rail: ['words', 'seo'],
+    // No 'seo' here — a paid text ad has no meta-description/SERP concept
+    // the way a webpage does; the Seo panel is doc-only (blog/landing_page).
+    rail: ['words'],
     aspects: [], mediaTier: MEDIA_TIER.NONE,
   },
 })
