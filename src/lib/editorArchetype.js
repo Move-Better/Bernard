@@ -85,7 +85,9 @@ export const ARCHETYPES = Object.freeze({
   },
   email: {
     label: 'Rich email', surface: SURFACE.NONE, canvas: CANVAS.EMAIL,
-    rail: ['email', 'text', 'media'],
+    // 'text' (on-image overlay text) doesn't apply to a block-based email
+    // template — dropped rather than left to route to the wrong panel.
+    rail: ['words', 'media'],
     aspects: [], mediaTier: MEDIA_TIER.OPTIONAL,
   },
   ad: {

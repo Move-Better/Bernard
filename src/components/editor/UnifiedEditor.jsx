@@ -48,6 +48,18 @@ const ASPECTS = ['1:1', '4:5', '16:9']
 const hasPhotoEntry = (media) =>
   Array.isArray(media) && media.some((m) => m && !isVideoEntry(m) && (m.url || m.sourceUrl || m.thumbnailUrl))
 
+// Email content is a plain string with `---SECTION---` markers — the exact
+// shape getNewsletterSystemPrompt (prompts.js) emits and PostPreview.jsx's
+// parseEmailSections/fillTemplate consume. Shown as placeholder text (a
+// starter template) when the field is empty, and as a persistent hint below
+// it, since the marker syntax isn't otherwise discoverable from a bare
+// textarea.
+const EMAIL_SECTION_TEMPLATE = [
+  'SUBJECT LINE', 'PREVIEW TEXT', 'HEADLINE', 'PULL QUOTE',
+  'BODY PARAGRAPH 1', 'BODY PARAGRAPH 2', 'BODY PARAGRAPH 3',
+  'CTA TEXT', 'CTA URL', 'PS',
+].map((label) => `---${label}---\n`).join('\n')
+
 // Caption editor — mirrors SlideEditor's CaptionPanel (textarea + onBlur save).
 // For blog (the `doc` archetype's only live platform besides landing_page),
 // also carries the generation controls that had no home after the
@@ -56,6 +68,7 @@ function WordsPanel({ piece, updateItem }) {
   const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
   const savedRef = useRef(draft)
   const isBlog = piece?.platform === 'blog'
+  const isEmail = piece?.platform === 'email'
   const { data: interview } = useInterview(isBlog ? piece?.interview_id : null)
 
   useEffect(() => {
@@ -75,25 +88,30 @@ function WordsPanel({ piece, updateItem }) {
     }
   }
 
+  const label = isBlog ? 'Words' : isEmail ? 'Email' : 'Caption'
+  const placeholder = isBlog
+    ? 'Write the blog post…'
+    : isEmail ? EMAIL_SECTION_TEMPLATE : 'Caption visible to followers…'
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b px-3 py-2">
-        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {isBlog ? 'Words' : 'Caption'}
-        </span>
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         {isBlog && <BlogStyleSwitcher piece={piece} interview={interview} />}
         <textarea
-          aria-label={isBlog ? 'Body' : 'Caption'}
+          aria-label={label}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={handleBlur}
-          placeholder={isBlog ? 'Write the blog post…' : 'Caption visible to followers…'}
-          className={`${isBlog ? 'min-h-[240px]' : 'min-h-[200px]'} flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none`}
+          placeholder={placeholder}
+          className={`${isBlog || isEmail ? 'min-h-[240px]' : 'min-h-[200px]'} flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none`}
         />
         <p className="shrink-0 text-3xs text-muted-foreground/70">
-          Saves when you click away. The live preview updates as you type.
+          {isEmail
+            ? 'Each section needs its own ---SECTION---  marker on its own line (SUBJECT LINE, PREVIEW TEXT, HEADLINE, PULL QUOTE, BODY PARAGRAPH 1-3, CTA TEXT, CTA URL, PS). Saves when you click away.'
+            : 'Saves when you click away. The live preview updates as you type.'}
         </p>
         {isBlog && <BlogGenerationActions piece={piece} interview={interview} />}
       </div>
