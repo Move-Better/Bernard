@@ -1,21 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
-  FileText, CheckCircle2, XCircle, Send, Loader2,
-  ChevronDown, MessageSquare, Eye, RotateCcw, ExternalLink, Quote,
-  Calendar, Clock, AlertTriangle, Layers, Copy, Download, Lock,
-  Image as ImageIcon, ArrowRight, Bot,
+  CheckCircle2, XCircle, Send, Loader2,
+  ChevronDown, MessageSquare, RotateCcw, ExternalLink, Quote,
+  Calendar, Clock, AlertTriangle, Copy, Download, Lock,
+  Bot,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StaffChip } from '@/components/StaffChip'
-import ReadAloudButton from '@/components/ReadAloudButton'
 import { PLATFORM_META, STATUS_META } from '@/lib/contentMeta'
-import { getStageToken, getStatusDot } from '@/lib/stageTokens'
-import { getPatientPrototypesUi } from '@/lib/prompts'
-import { LENGTH_PRESETS, resolveLengthPreset } from '@/lib/lengthPresets'
+import { getStageToken } from '@/lib/stageTokens'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { canDirectPublishPlatform, exportShapeForPlatform, EXPORT_SHAPES } from '@/lib/outputChannels'
@@ -23,24 +20,13 @@ import {
   useComments,
   useAddComment,
   useStaff,
-  useUpdateContentItem,
-  useRegenerateContentItem,
-  useRegenerateBlogStreamed,
-  useSplitBlogIntoSeries,
   queryKeys,
 } from '@/lib/queries'
 import { explainPlatformSlot, findScheduleConflict } from '@/lib/scheduleHeuristics'
-import { extractProvenanceBlock } from '@/lib/provenance'
 import { toast } from '@/lib/toast'
 import { useContentWorkflow } from '@/lib/useContentWorkflow'
-import { apiFetch } from '@/lib/api'
-import BufferMetricsRow from './BufferMetricsRow'
-import GbpInsightsRow from './GbpInsightsRow'
-import WinnerToggle from './WinnerToggle'
-import VoiceFidelityBadge from './VoiceFidelityBadge'
-import SplitSuggestionBanner from './SplitSuggestionBanner'
-import { extractMarkerSuggestions, markersToOverlay } from './OverlayTextEditor'
-import PostPreview from '@/components/PostPreview'
+import PostStatusRow from './PostStatusRow'
+import StoryCommentsFeed from './StoryCommentsFeed'
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
@@ -199,744 +185,6 @@ function CommentThread({ pieceId, interviewId }) {
           {addComment.isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <MessageSquare className="h-3 w-3" aria-hidden="true" />}
         </Button>
       </form>
-    </div>
-  )
-}
-
-// Inline editor for a content_item's body. Always-editable textarea that
-// auto-grows with content. Save / Reset only appear when the local buffer
-// differs from the saved value, so the unedited path stays clean.
-// ── AttributedView ────────────────────────────────────────────────────────────
-// Read-mode paragraph view that color-codes each block by its provenance type
-// and fires a transcript highlight on click. Replaces the textarea in
-// "attributed" view mode.
-
-const BLOCK_BORDER = {
-  verbatim:         'border-l-emerald-400',
-  close_paraphrase: 'border-l-sky-400',
-  prior_corpus:     'border-l-info/60',
-  synthesis:        'border-l-slate-300',
-}
-
-function AttributedView({ content, blocks, onHighlight }) {
-  const paragraphs = (typeof content === 'string' ? content : '')
-    .split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-
-  return (
-    <div className="rounded-md border bg-muted/20 p-3 space-y-3 text-xs leading-relaxed text-foreground/90">
-      {paragraphs.map((para, i) => {
-        const block  = blocks?.[i]
-        const border = BLOCK_BORDER[block?.source_type] ?? 'border-l-transparent'
-        const clickable = block?.source_msg_index != null
-        return (
-          <p
-            key={i}
-            className={`pl-3 border-l-2 ${border} py-0.5 whitespace-pre-wrap transition-colors duration-150 ${
-              clickable ? 'cursor-pointer hover:bg-muted/40 rounded-r' : ''
-            }`}
-            title={clickable ? 'Click to see source in transcript' : undefined}
-            onClick={clickable ? () => onHighlight?.({
-              msgIndex: block.source_msg_index,
-              start: block.source_span?.[0] ?? null,
-              end:   block.source_span?.[1] ?? null,
-            }) : undefined}
-          >
-            {para}
-          </p>
-        )
-      })}
-      <div className="flex items-center gap-3 pt-1 border-t border-border/50 text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-agreement-signal" />Verbatim</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-info" />Paraphrase</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 rounded bg-muted-foreground/40" />Synthesis</span>
-        <span className="ml-auto italic">Click a paragraph to jump to its source in the transcript</span>
-      </div>
-    </div>
-  )
-}
-
-function ContentEditor({ piece, onProvenanceHighlight }) {
-  // JSONB platforms (rare — currently none in production) round-trip through
-  // a JSON string so the textarea isn't [object Object]. Edits stay as plain
-  // text — we don't try to re-parse on save; if the user mangled the JSON,
-  // the backend will store the string and Plan/Preview will fall back.
-  //
-  // Defense-in-depth: strip any <PROVENANCE>…</PROVENANCE> trailer that
-  // leaked into stored content from older generation paths. Server-side
-  // strip lives in draft.js + regenerate.js, but legacy rows still carry
-  // the trailer and would otherwise render as raw JSON in the editor.
-  const rawInitial = typeof piece.content === 'string'
-    ? piece.content
-    : piece.content == null ? '' : JSON.stringify(piece.content, null, 2)
-  const initial = typeof rawInitial === 'string'
-    ? extractProvenanceBlock(rawInitial).content
-    : rawInitial
-
-  const hasProvenance = !!(piece.provenance?.blocks?.length)
-  const [value, setValue] = useState(initial)
-  const [viewMode, setViewMode] = useState(() => {
-    if (!hasProvenance) return 'edit'
-    try {
-      const saved = localStorage.getItem('bernard:readMode')
-      if (saved === 'plain') return 'edit'
-    } catch { /* private browsing */ }
-    return 'attributed'
-  })
-  // Track the last-saved text so learn-from-edit always compares against what
-  // was on disk before this edit session, not the in-memory initial. Updated
-  // only after a successful save so a failed save doesn't shift the baseline.
-  const originalRef = useRef(initial)
-  const [learnNote, setLearnNote] = useState(null) // e.g. "AI noted 2 phrase(s)"
-  const taRef = useRef(null)
-  const updateItem = useUpdateContentItem()
-
-  // Re-sync local buffer when the saved row changes from elsewhere
-  // (regenerate, server roundtrip after Save). Without this the textarea
-  // would stay pinned to the user's stale buffer after a Regenerate.
-  useEffect(() => {
-    setValue(initial)
-    originalRef.current = initial
-  }, [initial])
-
-  // Auto-grow textarea to fit content, clamped so very long posts stay
-  // scrollable instead of pushing the rest of the pane off-screen.
-  useEffect(() => {
-    const ta = taRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = `${Math.min(ta.scrollHeight, 480)}px`
-  }, [value])
-
-  const dirty = value !== initial
-  const saving = updateItem.isPending
-
-  const handleSave = async () => {
-    try {
-      // Body is the single source of truth for overlay text. When the draft
-      // contains `[ON SCREEN TEXT: …]` markers, derive overlay_text from them
-      // so it stays in sync with the body — and null it out when markers are
-      // removed. When there are no markers at all (clean body + overlay
-      // seeded from the AI's separate ---OVERLAY--- block), leave overlay_text
-      // alone so we don't wipe a pre-existing overlay on every save.
-      const patch = { content: value }
-      const markers = extractMarkerSuggestions(value)
-      if (markers.length > 0) {
-        patch.overlayText = markersToOverlay(markers)
-      } else if (piece.overlay_text && /\[ON\s*SCREEN\s*TEXT:/i.test(piece.content || '')) {
-        // User removed the markers from a body that previously had them →
-        // clear the derived overlay too.
-        patch.overlayText = null
-      }
-      await updateItem.mutateAsync({ id: piece.id, patch })
-      toast.success('Saved')
-
-      // Phase 8 — fire-and-forget voice learning. Capture any new phrases the
-      // clinician wrote into the voice library. This MUST NOT block or fail the
-      // save — it's a best-effort enrichment. We capture the baseline before
-      // updating originalRef so the comparison is always "what was on disk" vs
-      // "what was just saved".
-      if (piece.staff_id) {
-        const baselineText = originalRef.current
-        const savedText = value
-        originalRef.current = savedText
-        apiFetch('/api/editorial/learn-from-edit', {
-          method: 'POST',
-          body: JSON.stringify({
-            original: baselineText,
-            edited: savedText,
-            staff_id: piece.staff_id,
-            piece_id: piece.id,
-          }),
-        }).then((result) => {
-          if (result?.captured > 0) {
-            setLearnNote(`AI noted ${result.captured} phrase${result.captured === 1 ? '' : 's'} from your edits`)
-          }
-        }).catch(() => {
-          // Swallow — voice learning is non-blocking; the save already succeeded.
-        })
-      } else {
-        originalRef.current = value
-      }
-    } catch (e) {
-      toast.error('Save failed', { description: e.message })
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      {/* Voice-fidelity audit (PR 3) — blog only. The two-pass guard scores the
-          draft against the transcript + voice profile and flags drift for human
-          review. Renders nothing until the audit lands. */}
-      {piece.platform === 'blog' && <VoiceFidelityBadge piece={piece} />}
-      {/* Multi-piece extract proposal (PR 4) — blog only, non-blocking. Detects
-          when the source interview holds enough distinct threads to justify a
-          split into a linked series and offers it. Renders nothing unless the
-          server recommends >=2 parts and the user hasn't dismissed it. */}
-      {piece.platform === 'blog' && <SplitSuggestionBanner piece={piece} />}
-      {/* View-mode toggle — always visible; Attributed only when provenance exists.
-          Read-aloud (Phase 5 F#3 audio caller) sits on the right; uses this
-          piece's staff_id so the voice clone is auto-resolved server-side. */}
-      <div className="flex items-center gap-1">
-        {([...(hasProvenance ? ['attributed'] : []), 'edit']).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => {
-              setViewMode(mode)
-              try {
-                localStorage.setItem('bernard:readMode', mode === 'edit' ? 'plain' : mode)
-              } catch { /* private browsing */ }
-            }}
-            className={`px-2 py-0.5 rounded text-xs transition-colors ${
-              viewMode === mode
-                ? 'bg-muted text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {mode === 'edit' ? 'Plain Text' : 'Attributed'}
-          </button>
-        ))}
-        <div className="ml-auto">
-          <ReadAloudButton
-            text={value}
-            staffId={piece.staff_id}
-            size="sm"
-            variant="ghost"
-            className="h-6 text-xs"
-          />
-        </div>
-      </div>
-
-      {viewMode === 'attributed' && hasProvenance ? (
-        <AttributedView
-          content={value}
-          blocks={piece.provenance.blocks}
-          onHighlight={onProvenanceHighlight}
-        />
-      ) : (
-        <textarea
-          ref={taRef}
-          aria-label="Draft body"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          spellCheck
-          className="w-full min-h-[160px] max-h-[480px] rounded-md border bg-muted/20 p-3 text-xs leading-relaxed font-mono whitespace-pre-wrap text-foreground/90 break-words resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
-          placeholder="No draft content yet."
-        />
-      )}
-      {dirty && viewMode === 'edit' && (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            onClick={() => { setValue(initial); setLearnNote(null) }}
-            disabled={saving}
-          >
-            Reset
-          </Button>
-          <Button
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleSave}
-            disabled={saving}
-            loading={saving}
-          >
-            {saving ? 'Saving…' : 'Save changes'}
-          </Button>
-        </div>
-      )}
-      {/* AI-learns hint — shown when the editor is dirty (prompts the clinician)
-          or after a save that captured phrases (confirms learning happened). */}
-      {viewMode === 'edit' && (dirty || learnNote) && (
-        <p className="text-2xs text-muted-foreground mt-1">
-          {learnNote ?? 'When you edit, AI learns your phrasing — next drafts sound more like you.'}
-        </p>
-      )}
-      {/* Handoff to Storyboard: media is reviewed + attached at full size there,
-          and the carousel composer + publish actions live on the publish step. */}
-      <Link
-        to={`/publish/${piece.id}`}
-        className="flex items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs transition-colors hover:border-primary/40 hover:bg-accent/20"
-      >
-        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-          <ImageIcon className="h-3.5 w-3.5" />
-          {Array.isArray(piece.media_urls) ? piece.media_urls.length : 0} media attached
-        </span>
-        <span className="inline-flex items-center gap-1 font-medium text-primary">
-          Open in Publish <ArrowRight className="h-3.5 w-3.5" />
-        </span>
-      </Link>
-    </div>
-  )
-}
-
-// Pill-pair switcher for the blog-piece generation style. Lives above the
-// ContentEditor so it reads as a primary affordance, not a hidden setting.
-// Active pill = the style the draft is currently in (read from
-// story.generation_style, default 'blog_post'). Clicking the inactive pill
-// pops a confirm dialog and, on confirm, fires the regenerate mutation with
-// the new style. Approval audit is wiped server-side (same path as length
-// preset regen) so the freshly-styled draft requires fresh review.
-//
-// Rendered only for blog pieces (the only platform with two prompt
-// styles); atoms (social, video, marketing) always derive from the blog
-// editorial summary, so a style choice doesn't make sense there.
-const GENERATION_STYLE_LABELS = {
-  blog_post: 'Full blog post',
-  minimal_edits: 'Cleaned transcript',
-}
-const GENERATION_STYLE_DESCRIPTIONS = {
-  blog_post: 'A structured blog post rewritten from your interview — headlines, sections, links.',
-  minimal_edits: 'Your exact words, cleaned of filler and broken into paragraphs. No restructuring.',
-}
-
-function GenerationStyleSwitcher({ piece, story }) {
-  // Blog regen routes through the streamed pipeline (prepare → /api/stream →
-  // finalize) to escape the 60–180s function-cap dance that Opus 4.7 + the
-  // practice-memory block were pushing /regenerate past.
-  const regenerate = useRegenerateBlogStreamed()
-  const currentStyle = story?.generation_style || 'blog_post'
-  const [pending, setPending] = useState(null) // 'blog_post' | 'minimal_edits' | null
-
-  if (piece.platform !== 'blog') return null
-  if (piece.series_id && piece.series_part !== 1) return null
-
-  const handleSwitch = async (nextStyle) => {
-    setPending(null)
-    try {
-      await regenerate.mutateAsync({ id: piece.id, generationStyle: nextStyle })
-      toast.success(
-        `Switched to ${GENERATION_STYLE_LABELS[nextStyle]}`,
-        { description: 'Draft regenerated and reset for review.' },
-      )
-    } catch (e) {
-      toast.error('Switch failed', { description: e.message })
-    }
-  }
-
-  if (regenerate.isPending) {
-    return (
-      <div role="status" className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-        Regenerating in the new style — this can take 30–60 seconds…
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <div
-        role="radiogroup"
-        aria-label="Draft style"
-        className="inline-flex rounded-lg border bg-muted/20 p-0.5"
-      >
-        {(['blog_post', 'minimal_edits']).map((style) => {
-          const active = style === currentStyle
-          return (
-            <button
-              key={style}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => { if (!active) setPending(style) }}
-              disabled={active}
-              className={`rounded-md px-3 py-1 text-xs transition ${
-                active
-                  ? 'bg-background text-foreground shadow-sm font-medium cursor-default'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-              }`}
-              title={GENERATION_STYLE_DESCRIPTIONS[style]}
-            >
-              {GENERATION_STYLE_LABELS[style]}
-            </button>
-          )
-        })}
-      </div>
-      <p className="text-2xs text-muted-foreground italic">
-        {GENERATION_STYLE_DESCRIPTIONS[currentStyle]}
-      </p>
-
-      {pending && (
-        <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs space-y-2">
-          <p className="text-warning">
-            Switch to <span className="font-medium">{GENERATION_STYLE_LABELS[pending]}</span>?
-            The current draft and approval state will be replaced with a fresh AI generation.
-          </p>
-          <p className="text-warning/80">
-            {GENERATION_STYLE_DESCRIPTIONS[pending]}
-          </p>
-          <div className="flex gap-1.5 justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
-              onClick={() => handleSwitch(pending)}
-            >
-              Switch &amp; regenerate
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs"
-              onClick={() => setPending(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function RegenerateButton({ piece, story }) {
-  // Blog → streamed pipeline (no function-cap timeouts). Atoms stay on the
-  // non-streaming /regenerate endpoint (Sonnet 4.6 @ 1500 tokens, well under
-  // 60s). Hook choice is by platform; either hook exposes the same
-  // mutateAsync({ id, lengthPreset?, generationStyle? }) shape.
-  const isBlogPiece = piece.platform === 'blog'
-  const blogRegen = useRegenerateBlogStreamed()
-  const atomRegen = useRegenerateContentItem()
-  const regenerate = isBlogPiece ? blogRegen : atomRegen
-  const workspace = useWorkspace()
-  const [confirming, setConfirming] = useState(false)
-
-  // Length preset is only meaningful for blog (the only long-form piece with a
-  // server-side regenerate prompt today). Seeded from the piece's persisted
-  // preset, then the staff member's preferred default, then 'standard'.
-  const isBlog = piece.platform === 'blog'
-  const initialLengthPreset = resolveLengthPreset(
-    piece.length_preset,
-    story?.staff_preferred_length,
-  )
-  const [lengthPreset, setLengthPreset] = useState(initialLengthPreset)
-
-  const handleRegenerate = async () => {
-    setConfirming(false)
-    try {
-      await regenerate.mutateAsync({
-        id: piece.id,
-        ...(isBlog ? { lengthPreset } : {}),
-      })
-      toast.success('Regenerated', { description: 'Content rewritten and reset to draft.' })
-    } catch (e) {
-      toast.error('Regeneration failed', { description: e.message })
-    }
-  }
-
-  // Build the resting-state context chip. Lists each piece of voice context
-  // the regeneration will apply, so the user knows what's behind the button
-  // before they click — no surprise about why output sounds the way it does.
-  const contextBullets = (() => {
-    const bullets = []
-    // Voice notes: piece.staff_id implies the clinician has a profile.
-    // We don't have voice_notes content on the piece, so this is a heuristic
-    // signal ("a clinician profile is bound, which may carry voice notes").
-    if (piece.staff_id || story?.staff_id) bullets.push('Voice notes')
-    const echoCount = piece.provenance?.summary?.voice_phrase_echo_count ?? 0
-    if (echoCount > 0) bullets.push(`${echoCount} exemplar${echoCount === 1 ? '' : 's'}`)
-    if (story?.prototype_id && workspace) {
-      const proto = getPatientPrototypesUi(workspace).find((p) => p.id === story.prototype_id)
-      if (proto?.label) bullets.push(`'${proto.label}' prototype`)
-    }
-    if (story?.tone) bullets.push(`${story.tone} tone`)
-    if (isBlog) {
-      const preset = LENGTH_PRESETS.find((p) => p.id === lengthPreset)
-      if (preset) bullets.push(`${preset.label} length`)
-    }
-    return bullets
-  })()
-
-  if (regenerate.isPending) {
-    return (
-      <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-        Regenerating — this can take 30–60 seconds…
-      </div>
-    )
-  }
-
-  if (confirming) {
-    return (
-      <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs space-y-2">
-        <div className="flex items-start gap-2">
-          <span className="text-warning">
-            Replace this draft with a fresh AI generation? Current text and approval state will be lost.
-            {piece.staff_name && (
-              <span className="block mt-0.5 text-warning/80">
-                Bernard will apply {piece.staff_name}&rsquo;s voice settings.
-              </span>
-            )}
-          </span>
-        </div>
-        {isBlog && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-warning/30">
-            <span className="text-warning font-medium mr-1">Length:</span>
-            {LENGTH_PRESETS.map((p) => {
-              const selected = p.id === lengthPreset
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setLengthPreset(p.id)}
-                  title={`${p.description} (${p.targetWords} words)`}
-                  className={`rounded-full border px-2 py-0.5 text-xs transition ${
-                    selected
-                      ? 'border-warning/60 bg-warning/30 text-warning font-medium'
-                      : 'border-warning/30 bg-card text-warning hover:bg-warning/10'
-                  }`}
-                >
-                  {p.emoji} {p.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        <div className="flex gap-1.5 justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
-            onClick={handleRegenerate}
-          >
-            Regenerate
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            onClick={() => setConfirming(false)}
-          >
-            Cancel
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-1">
-      {contextBullets.length > 0 && (
-        <div className="text-2xs text-muted-foreground italic">
-          {contextBullets.join(' · ')}
-        </div>
-      )}
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 text-xs gap-1.5"
-        onClick={() => setConfirming(true)}
-      >
-        <RotateCcw className="h-3 w-3" />
-        Regenerate
-      </Button>
-    </div>
-  )
-}
-
-// "Part X of Y" badge + quick-jump links to sibling parts. Rendered on any
-// content_item that has series_id populated. Siblings are computed from the
-// pieces array already in scope (no extra fetch — sibling parts are inserted
-// against the same interview and arrive together).
-function SeriesBadge({ active, pieces, onJump }) {
-  // React Compiler memoizes this — no manual useMemo needed.
-  const siblings = active?.series_id
-    ? pieces
-        .filter((p) => p.series_id === active.series_id)
-        .sort((a, b) => (a.series_part || 0) - (b.series_part || 0))
-    : []
-
-  if (siblings.length === 0) return null
-  const total = active.series_total || siblings.length
-
-  return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[hsl(var(--scheduled)/0.12)] text-scheduled">
-      <Layers className="h-3.5 w-3.5" />
-      <span className="text-xs font-medium">
-        Part {active.series_part || '?'} of {total}
-      </span>
-      {siblings.length > 1 && (
-        <span className="ml-1 flex items-center gap-0.5">
-          {siblings.map((s) => {
-            const isActive = s.id === active.id
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => !isActive && onJump(s.id)}
-                disabled={isActive}
-                title={isActive ? `You are on Part ${s.series_part}` : `Jump to Part ${s.series_part}`}
-                className={`min-w-[1.25rem] rounded px-1 text-xs font-medium transition ${
-                  isActive
-                    ? 'bg-[hsl(var(--scheduled)/0.3)] text-foreground cursor-default'
-                    : 'bg-card text-scheduled hover:bg-[hsl(var(--scheduled)/0.2)] border border-[hsl(var(--scheduled)/0.25)]'
-                }`}
-              >
-                {s.series_part}
-              </button>
-            )
-          })}
-        </span>
-      )}
-    </div>
-  )
-}
-
-// Split a long-interview blog into a 2- to 4-part series. Only rendered on
-// blog pieces that are not already part of a series. On confirm, the server
-// runs cluster + write passes; the original blog is archived and N new draft
-// pieces appear under the same interview.
-function SplitIntoSeriesButton({ piece }) {
-  const split = useSplitBlogIntoSeries()
-  const [, setSearchParams] = useSearchParams()
-  const [confirming, setConfirming] = useState(false)
-  const [parts, setParts] = useState(2)
-
-  if (piece.platform !== 'blog') return null
-  if (piece.series_id) return null
-
-  const handleSplit = async () => {
-    setConfirming(false)
-    try {
-      const result = await split.mutateAsync({ id: piece.id, parts })
-      const n = result?.parts?.length ?? parts
-      // The source piece (`piece.id`) is now archived; the URL's `?piece=`
-      // param still points to it, so AssetsPane would either resolve to
-      // -1 → 0 (jumps to whatever's at index 0) or stay on the stale id.
-      // Navigate to the new Part 1 explicitly so the UI lands on a real piece.
-      const part1 = result?.parts?.find?.((p) => p.series_part === 1)
-      if (part1?.id) {
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev)
-          next.set('piece', part1.id)
-          return next
-        }, { replace: true })
-      }
-      toast.success(
-        `Split into ${n}-part series`,
-        { description: 'New drafts created. Original blog archived for rollback.' },
-      )
-    } catch (e) {
-      toast.error('Series generation failed', {
-        description: e?.message || 'Try again — the planner sometimes needs a second pass.',
-      })
-    }
-  }
-
-  if (split.isPending) {
-    return (
-      <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-        Planning + writing — this can take 1–3 minutes (one Opus pass to plan, one per part).
-      </div>
-    )
-  }
-
-  if (confirming) {
-    return (
-      <div className="rounded-md border border-[hsl(var(--scheduled)/0.4)] bg-[hsl(var(--scheduled)/0.06)] px-3 py-2 text-xs space-y-2">
-        <div className="text-foreground">
-          <div className="font-medium mb-0.5">Split this blog into a series?</div>
-          <div className="text-scheduled/80">
-            The full interview will be re-planned and written as multiple linked posts, each focused on one thread. Your current blog will be archived (kept for rollback). Each new part is a fresh draft and needs review before publish.
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[hsl(var(--scheduled)/0.25)]">
-          <span className="text-foreground font-medium mr-1">Parts:</span>
-          {[2, 3, 4].map((n) => {
-            const selected = n === parts
-            return (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setParts(n)}
-                className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
-                  selected
-                    ? 'border-[hsl(var(--scheduled)/0.6)] bg-[hsl(var(--scheduled)/0.2)] text-foreground font-medium'
-                    : 'border-[hsl(var(--scheduled)/0.4)] bg-card text-scheduled hover:bg-[hsl(var(--scheduled)/0.12)]'
-                }`}
-              >
-                {n} parts
-              </button>
-            )
-          })}
-          <span className="ml-auto text-2xs text-scheduled/70 italic">
-            The planner may return fewer parts if there isn&rsquo;t enough material.
-          </span>
-        </div>
-        <div className="flex gap-1.5 justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs border-[hsl(var(--scheduled)/0.5)] text-scheduled hover:bg-[hsl(var(--scheduled)/0.12)]"
-            onClick={handleSplit}
-          >
-            Split into {parts} parts
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            onClick={() => setConfirming(false)}
-          >
-            Cancel
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <Button
-      size="sm"
-      variant="outline"
-      className="h-7 text-xs gap-1.5"
-      onClick={() => setConfirming(true)}
-    >
-      <Layers className="h-3 w-3" />
-      Split into series
-    </Button>
-  )
-}
-
-// ── InspectDrawer ─────────────────────────────────────────────────────────────
-// Collapsible drawer housing Regenerate + live channel preview. Collapsed by
-// default so the primary write loop (body → approval) is uncluttered — expand
-// only when you want to audit voice or sanity-check the post layout.
-function InspectDrawer({ piece, story }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="rounded-md border bg-card">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-      >
-        <span className="inline-flex items-center gap-1.5">
-          <Eye className="h-3.5 w-3.5" />
-          Regenerate &amp; preview
-        </span>
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="border-t p-3 space-y-3">
-          <RegenerateButton piece={piece} story={story} />
-          <SplitIntoSeriesButton piece={piece} />
-          <div>
-            <p className="mb-2 text-2xs font-medium uppercase tracking-wide text-muted-foreground">Preview</p>
-            <PostPreview
-              platform={piece.platform}
-              content={typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)}
-              mediaUrls={Array.isArray(piece.media_urls) ? piece.media_urls : []}
-              slides={Array.isArray(piece.slides) ? piece.slides : null}
-              overlayText={piece.overlay_text || null}
-              locationOverrides={piece.location_overrides || null}
-              photoTemplateId={piece.photo_template_id || null}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -1231,15 +479,20 @@ function WhenToPublishCard({
   )
 }
 
-// mode='workflow' (default, in the Stories editor): review workflow only —
-//   send-for-review / approve / request-changes / unapprove + comments. NO
-//   publish/schedule/export (those moved to the dedicated publish page).
-// mode='publish' (on /publish/:id/publish): the schedule/publish/export
-//   actions + scheduled/published state. NO review workflow / comments.
-// One component, one source of truth — the mode just gates which sections show.
+// mode='publish' is the only live caller as of the story-monitor redesign
+// (StoryComposer, UnifiedEditor, StoryboardPublish) — schedule/publish/export
+// actions + scheduled/published state, plus Approve (draft+skipReview or
+// in_review) and Unapprove. mode='workflow' (the default) has no remaining
+// caller: AssetsPane (the Stories-step monitor) used to render it for the
+// earlier review-only stage (send-for-review/request-changes/comments), but
+// that moved to the monitor itself (PostStatusRow's RequestChangesControl +
+// StoryCommentsFeed) so publishing is never triggered from a screen that
+// only shows raw text. The `!isPublish` branches below are therefore dead
+// code kept for now rather than risk a cross-file `mode` removal across the
+// 3 live callers in the same PR that rebuilt the monitor — worth deleting in
+// a followup once nothing depends on the distinction.
 export function ApprovalPanel({ piece, mode = 'workflow' }) {
   const isPublish = mode === 'publish'
-  const navigate = useNavigate()
   const { canReview } = useUserRole()
   const workspace = useWorkspace()
   const skipReview = !!workspace?.skip_review
@@ -1351,37 +604,6 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           </span>
         )}
       </div>
-
-      {/* Words-approved handoff — the single, primary next step in the workflow
-          (Words) view. Approving no longer silently redirects to Storyboard; it
-          rests here and shows an unmistakable primary "Add media in Publish →"
-          CTA (plus Undo), matching the Words-screen redesign. */}
-      {!isPublish && piece.status === 'approved' && canReview && (
-        <div className="rounded-lg border border-success/30 bg-success/10 p-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="inline-flex items-center gap-2 text-sm font-medium text-success">
-            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            Stories approved — ready for media
-          </p>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleUnapprove}
-              disabled={isBusy}
-              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-            >
-              Undo
-            </button>
-            <Button
-              size="sm"
-              onClick={() => navigate(`/publish/${piece.id}`)}
-              className="bg-primary text-primary-foreground"
-            >
-              Add media in Publish
-              <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* When-to-publish action sheet — shown on approved pieces. The reviewer
           can accept the suggested time (one click), pick a custom time, or
@@ -1637,90 +859,77 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 
 // ── AssetsPane ──────────────────────────────────────────────────────────────
 //
-// Paragraph-level attribution now lives inside ContentEditor's "Attributed"
-// view-mode toggle — see AttributedView above. The earlier ProvenanceTracePanel
-// duplicated that surface as a list below the editor and was removed for clarity.
+// AssetsPane is the per-story MONITOR — review and watch, not compose and
+// publish. It shows the keystone words-approval state, then every post as a
+// status row (channel, state, a rendered preview, and once published, its
+// performance + Mark as winner). Nothing here can edit words, regenerate,
+// approve-to-publish, retry, or schedule — every verb that changes or sends
+// a post lives behind "Open in editor" on its row (PostStatusRow). See
+// .claude/mockups/story-monitor-redesign.html + .claude/story-monitor-redesign-plan.md.
 
-/**
- * AssetsPane — tabbed list of content pieces for a story.
- *
- * Each tab shows platform + status + draft snippet and an approval panel
- * with role-gated actions (send for review, approve, request changes, publish).
- * The full ReviewPost editor remains accessible via the "Open for editing" link.
- */
+// Keystone bar — Phase 1 ships a STATIC, derived-only read of what already
+// happened (no gate, no action yet), since interviews.words_approved_at
+// doesn't exist until Phase 3 adds the real approve/pending flow + a
+// dedicated words screen. This just tells the truth in the meantime.
+function KeystoneBar({ pieces }) {
+  const anyApproved = pieces.some((p) => (
+    p.approved_by || ['approved', 'scheduled', 'published'].includes(p.status)
+  ))
+  return (
+    <div className={`flex items-center gap-3 rounded-lg border p-3.5 ${
+      anyApproved ? 'border-primary/20 bg-primary/5' : 'border-dashed bg-muted/40'
+    }`}
+    >
+      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+        anyApproved
+          ? 'bg-primary text-primary-foreground'
+          : 'border-2 border-dashed border-muted-foreground/40 text-muted-foreground'
+      }`}
+      >
+        {anyApproved ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <span className="text-xs font-bold">1</span>}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">
+          {anyApproved ? 'Words approved' : 'Words not yet reviewed'}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Validates the clinician&rsquo;s voice — every post below is written from these words.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function AssetsPane({
   story,
-  onProvenanceHighlight,
   className = '',
 }) {
   const workspace = useWorkspace()
-  // pieceParam must be declared before pieces so the useMemo can include a
-  // filtered-out piece when navigated to (e.g. a social atom draft whose
-  // platform isn't in the story's selected_outputs channel list).
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const pieceParam = searchParams.get('piece')
 
-  // Sort so series parts appear in series_part order within their series.
-  // The content API returns rows by created_at.desc, which doesn't match
-  // series_part ordering, so without this the tabs would render as e.g.
-  // [Part 2, Part 1, Part 3] while the SeriesBadge below shows the true part.
-  // Also filter to only channels active in this story's plan (selected_outputs
-  // overrides workspace enabled_outputs; fall back to showing all if unknown).
+  // Filter to channels active in this story's plan (selected_outputs
+  // overrides workspace enabled_outputs; fall back to showing all if
+  // unknown), but always include a piece being linked to directly even if
+  // its platform was filtered — otherwise a direct ?piece= link to a stray
+  // atom draft would silently show nothing. Sort so series parts appear in
+  // series_part order (the content API returns rows by created_at.desc).
   const pieces = useMemo(() => {
     const base = story?.pieces ?? []
     const activeChannels = story?.selected_outputs ?? workspace?.enabled_outputs ?? null
     const filtered = activeChannels
       ? base.filter((p) => activeChannels.includes(p.platform))
       : base
-    // Always include the piece being navigated to, even if its platform is
-    // filtered (e.g. an Instagram atom draft when only youtube/gbp/blog are
-    // active). Without this, handleSelectPiece can't find the piece and
-    // silently falls through to the first tab (wrong piece shown).
-    if (pieceParam && !filtered.some((p) => p.id === pieceParam)) {
-      const extra = base.find((p) => p.id === pieceParam)
-      if (extra) return [...filtered, extra].sort((a, b) => {
-        if (a.series_id && a.series_id === b.series_id) {
-          return (a.series_part || 0) - (b.series_part || 0)
-        }
-        return 0
-      })
-    }
-    return [...filtered].sort((a, b) => {
+    const withParam = (pieceParam && !filtered.some((p) => p.id === pieceParam))
+      ? [...filtered, ...(base.filter((p) => p.id === pieceParam))]
+      : filtered
+    return [...withParam].sort((a, b) => {
       if (a.series_id && a.series_id === b.series_id) {
         return (a.series_part || 0) - (b.series_part || 0)
       }
       return 0
     })
   }, [story?.pieces, story?.selected_outputs, workspace?.enabled_outputs, pieceParam])
-  const initialIdx = pieceParam
-    ? Math.max(0, pieces.findIndex((p) => p.id === pieceParam))
-    : 0
-  const [activeIdx, setActiveIdx] = useState(initialIdx)
-  // If the ?piece=<id> param resolves after pieces load (async story fetch),
-  // sync the active tab once the matching piece appears.
-  useEffect(() => {
-    if (!pieceParam) return
-    const idx = pieces.findIndex((p) => p.id === pieceParam)
-    if (idx >= 0 && idx !== activeIdx) {
-      setActiveIdx(idx)
-    }
-  }, [pieceParam, pieces, activeIdx])
-
-  const handleSelectPiece = (pieceId) => {
-    const idx = pieces.findIndex((p) => p.id === pieceId)
-    if (idx >= 0) {
-      setActiveIdx(idx)
-    }
-    // Always update the URL param. If the piece was filtered out (e.g. a
-    // social atom draft not in selected_outputs), the pieces useMemo will
-    // recompute to include it, and the sync useEffect below will then set
-    // activeIdx + switch to edit mode correctly.
-    if (pieceId && pieceId !== pieceParam) {
-      const next = new URLSearchParams(searchParams)
-      next.set('piece', pieceId)
-      setSearchParams(next, { replace: true })
-    }
-  }
 
   if (pieces.length === 0) {
     return (
@@ -1732,139 +941,20 @@ export default function AssetsPane({
     )
   }
 
-  const active = pieces[activeIdx] ?? pieces[0]
-  const pm = PLATFORM_META[active?.platform] || { label: active?.platform || 'Unknown', icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
-  const PlatformIcon = pm.icon
-
   return (
-    <div className={`rounded-xl border bg-card overflow-hidden ${className}`}>
-      {/* Tab row — numbers same-platform pieces (e.g. "Facebook 2 of 5") and
-          shows a status dot so multiple drafts on the same channel are
-          distinguishable without clicking through each tab. */}
-      <div className="flex gap-1 px-3 pt-3 pb-0 overflow-x-auto border-b">
-        {(() => {
-          const platformCounts = {}
-          for (const p of pieces) {
-            platformCounts[p.platform] = (platformCounts[p.platform] || 0) + 1
-          }
-          const platformIdx = {}
-          return pieces.map((piece, i) => {
-            const meta = PLATFORM_META[piece.platform] || { label: piece.platform, icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
-            const Icon = meta.icon
-            const isActive = i === activeIdx
-            const total = platformCounts[piece.platform]
-            platformIdx[piece.platform] = (platformIdx[piece.platform] || 0) + 1
-            const nth = platformIdx[piece.platform]
-            // For series pieces, label with the canonical series_part/series_total
-            // so the tab number matches the SeriesBadge in the active panel.
-            const seriesLabel = piece.series_id && piece.series_part && (piece.series_total || total)
-              ? `${meta.label} ${piece.series_part}/${piece.series_total || total}`
-              : null
-            const label = seriesLabel
-              || (total > 1 ? `${meta.label} ${nth}/${total}` : meta.label)
-            const statusDot = getStatusDot(piece.status)
-            const statusLabel = STATUS_META[piece.status]?.label ?? piece.status
-            const preview = typeof piece.content === 'string' ? piece.content.slice(0, 80) : ''
-            const title = `${statusLabel}${preview ? ` — ${preview}${preview.length >= 80 ? '…' : ''}` : ''}`
-            return (
-              <button
-                key={piece.id}
-                type="button"
-                onClick={() => handleSelectPiece(piece.id)}
-                title={title}
-                className={`flex items-center gap-1.5 shrink-0 px-3 py-2 text-xs rounded-t border-b-2 transition-colors ${
-                  isActive
-                    ? 'border-primary text-primary font-medium bg-primary/5'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-3 w-3" />
-                {label}
-                <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} aria-label={statusLabel} />
-              </button>
-            )
-          })
-        })()}
+    <div className={`rounded-xl border bg-card p-4 space-y-4 ${className}`}>
+      <KeystoneBar pieces={pieces} />
+
+      <div className="space-y-2">
+        <p className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+          Posts <span className="font-mono normal-case">· {pieces.length}</span>
+        </p>
+        {pieces.map((piece) => (
+          <PostStatusRow key={piece.id} piece={piece} />
+        ))}
       </div>
 
-      {/* Active piece body */}
-      <div className="p-4 space-y-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${pm.bg}`}>
-            <PlatformIcon className={`h-3.5 w-3.5 ${pm.color}`} />
-            <span className={`text-xs font-medium ${pm.color}`}>{pm.label}</span>
-          </div>
-          {active?.series_id && (
-            <SeriesBadge active={active} pieces={pieces} onJump={handleSelectPiece} />
-          )}
-          {(() => {
-            const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' })
-            if (active?.status === 'published') {
-              const pubRaw = active.published_at || active.scheduled_at
-              if (!pubRaw) return null
-              return (
-                <span className="text-xs text-muted-foreground">
-                  Published {fmt(new Date(pubRaw))}
-                </span>
-              )
-            }
-            if (!active?.scheduled_at) return null
-            const schedDate = new Date(active.scheduled_at)
-            const isStale = schedDate < new Date()
-            return isStale ? (
-              <span className="flex items-center gap-1 text-xs text-warning font-medium">
-                <span>⚠ Schedule expired ({fmt(schedDate)}) — repick a time before publishing</span>
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                Scheduled {fmt(schedDate)}
-              </span>
-            )
-          })()}
-        </div>
-
-        {/* Body / preview / approval — keyed wrapper forces a clean unmount/
-            remount of the entire piece-scoped subtree when the active piece
-            changes. Without this wrapper, React's reconciler was leaving old
-            ContentEditor DOM nodes behind across tab clicks because the
-            children array mixes keyed (ContentEditor, ApprovalPanel) and
-            unkeyed (InspectDrawer, conditional BufferMetricsRow) siblings —
-            the keyed children got new instances but the old ones never got
-            removed, so every tab click stacked a new editor on top of the
-            previous one. */}
-        {active && (
-          <div key={active.id} className="space-y-3">
-            {/* Generation-style switcher for blog pieces. The choice lives on
-                interview.generation_style and applies to the blog editorial
-                summary. Atoms (social, video, marketing) always derive from
-                that summary so they pick up the new style on next regen. */}
-            <GenerationStyleSwitcher piece={active} story={story} />
-
-            {/* Body / Assets / Attributed tabs live inside ContentEditor.
-                Media + overlay panels are rendered under the Assets tab. */}
-            <ContentEditor piece={active} onProvenanceHighlight={onProvenanceHighlight} />
-
-            {/* Regenerate + live preview — collapsed by default to keep the
-                primary write loop (body → approval) uncluttered. */}
-            <InspectDrawer piece={active} story={story} />
-
-            {/* Buffer performance metrics — shown for published pieces with a buffer_update_id */}
-            {active.status === 'published' && active.buffer_update_id && (
-              <BufferMetricsRow contentItemId={active.id} />
-            )}
-            {/* GBP post view metrics — shown for published GBP pieces once cron has matched them */}
-            {active.status === 'published' && active.platform === 'gbp' && (
-              <GbpInsightsRow contentItemId={active.id} />
-            )}
-
-            {/* V5 engagement loop: human "this worked" signal on published pieces.
-                Feeds the Moment Miner's Coverage winners + proven-topic resurfacing. */}
-            {active.status === 'published' && <WinnerToggle piece={active} />}
-
-            <ApprovalPanel piece={active} mode="workflow" />
-          </div>
-        )}
-      </div>
+      <StoryCommentsFeed pieces={pieces} />
     </div>
   )
 }
