@@ -28,7 +28,7 @@
     --secondary-foreground: 222 47% 12%;
 
     --muted: 220 14% 96%;
-    --muted-foreground: 215 16% 47%;   /* slate-500 */
+    --muted-foreground: 215 19% 34%;   /* slate-600 — darker for readability */
 
     /* Soft emerald tint — used for hover surfaces, gap-highlight banners,
        and the Review-stage column background. */

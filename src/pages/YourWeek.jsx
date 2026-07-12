@@ -195,21 +195,21 @@ function BacklogRow({ item, onNavigate }) {
 function cardState(item) {
   const cis = item.contentItemStatus
   if (!item.contentPieceId || item.status === 'pending') {
-    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft', rail: 'bg-action' }
+    return { label: 'needs draft', cls: 'bg-action text-action-foreground', action: 'draft', rail: 'bg-action' }
   }
   if (item.status === 'drafting') {
     return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none', rail: 'bg-muted-foreground/40' }
   }
   if (cis === 'scheduled' || cis === 'published') {
-    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open', rail: 'bg-success' }
+    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success text-success-foreground', action: 'open', rail: 'bg-success' }
   }
   if (cis === 'approved') {
-    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule', rail: 'bg-primary' }
+    return { label: 'approved', cls: 'bg-primary text-primary-foreground', action: 'schedule', rail: 'bg-primary' }
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
   // Amber pill+rail so "needs your yes" reads as attention, not inert muted.
-  return { label: 'in review', cls: 'bg-warning/10 text-warning', action: 'open', reviewable: true, rail: 'bg-warning' }
+  return { label: 'in review', cls: 'bg-warning text-warning-foreground', action: 'open', reviewable: true, rail: 'bg-warning' }
 }
 
 function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
@@ -252,11 +252,11 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
       {/* Pill and action stack on separate lines — side-by-side overflowed the
           button out of a narrow day column. */}
       <div className="flex flex-col items-start gap-1.5">
-        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-semibold ${state.cls}`}>
+        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-bold ${state.cls}`}>
           {state.label}
         </span>
         {item.predrafted && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-semibold text-muted-foreground" title="Bernard drafted this ahead of the week">
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-3xs font-bold text-foreground" title="Bernard drafted this ahead of the week">
             <Bot className="h-2.5 w-2.5" aria-hidden="true" /> drafted ahead
           </span>
         )}
@@ -359,11 +359,11 @@ function DayPlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOn
         </span>
         <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">{meta.label}</span>
         {time && <span className="text-2xs font-semibold text-muted-foreground/70">· {time}</span>}
-        <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-3xs font-semibold ${state.cls}`}>
+        <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-3xs font-bold ${state.cls}`}>
           {state.label}
         </span>
         {item.predrafted && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-semibold text-muted-foreground" title="Bernard drafted this ahead of the week">
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-1.5 py-0.5 text-3xs font-bold text-foreground" title="Bernard drafted this ahead of the week">
             <Bot className="h-2.5 w-2.5" aria-hidden="true" /> drafted ahead
           </span>
         )}
@@ -1056,7 +1056,7 @@ export default function YourWeek() {
                 <div className="mb-2 flex items-center gap-2">
                   <Archive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   <span className="text-sm font-bold">Backlog</span>
-                  <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground">
+                  <span className="ml-auto inline-flex items-center rounded-full bg-foreground/10 px-2 py-0.5 text-2xs font-bold text-foreground">
                     {data.heldCount} banked
                   </span>
                 </div>
