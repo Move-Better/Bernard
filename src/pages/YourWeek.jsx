@@ -411,6 +411,14 @@ export default function YourWeek() {
       } else if (resp?.reason === 'in_progress') {
         // Another approve (another tab/teammate) is already dispatching this piece.
         toast.info('Already being scheduled…')
+      } else if (resp?.error === 'words_not_approved') {
+        // Same words-approval gate as every other publish path (Phase 3,
+        // story-monitor redesign) — the piece stayed approved server-side;
+        // it'll dispatch on the next "Schedule approved" retry once the
+        // story's words are approved.
+        toast.warning('Approved — but words aren’t approved yet', {
+          description: 'Approve that story’s words on its Story page, then use “Schedule approved” to retry.',
+        })
       } else if (resp?.error) {
         // Approved but dispatch failed on the server — leave it approved (the
         // "Schedule approved" button can retry); surface the reason.
@@ -497,6 +505,9 @@ export default function YourWeek() {
     setScheduling(true)
     let okCount = 0
     let failCount = 0
+    // Distinguished from a generic failure — same words-approval gate as
+    // every other publish path (Phase 3, story-monitor redesign).
+    let wordsBlockedCount = 0
     let outerError = false
     try {
       for (const item of approvedSchedulable) {
@@ -521,8 +532,9 @@ export default function YourWeek() {
             scheduledAt,
           })
           okCount++
-        } catch {
-          failCount++
+        } catch (e) {
+          if (e?.payload?.error === 'words_not_approved') wordsBlockedCount++
+          else failCount++
         }
       }
     } catch (e) {
@@ -533,6 +545,11 @@ export default function YourWeek() {
       setScheduleConfirmOpen(false)
       qc.invalidateQueries({ queryKey: ['week-summary'] })
       if (!outerError && okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
+      if (!outerError && wordsBlockedCount) {
+        toast.warning(`${wordsBlockedCount} skipped — words not approved yet`, {
+          description: 'Approve that story’s words on its Story page, then try again.',
+        })
+      }
       if (!outerError && failCount) toast.error(`${failCount} couldn't be scheduled`, { description: 'Open them individually to retry.' })
     }
   }
@@ -876,7 +893,7 @@ export default function YourWeek() {
         open={scheduleConfirmOpen}
         onOpenChange={(v) => { if (!scheduling) setScheduleConfirmOpen(v) }}
         title={`Schedule ${approvedSchedulable.length} approved post${approvedSchedulable.length === 1 ? '' : 's'}?`}
-        description="Bernard will add these to your scheduling queue at their planned times. You can still hold or delete them before they publish."
+        description="Bernard will add these to your scheduling queue at their planned times. You can still hold or delete them before they publish. This schedules straight from here, without previewing each post individually — if that matters for one of these, open it in the editor instead."
         confirmLabel={scheduling ? 'Scheduling…' : 'Schedule all'}
         loading={scheduling}
         onConfirm={batchSchedule}

@@ -24,6 +24,7 @@ import { BundlePublisher } from './social/index.js'
 import { resolveBundleGbpTargets } from './social/gbpTargets.js'
 import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
+import { checkWordsApproved } from './wordsApprovalGate.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -83,6 +84,13 @@ export async function dispatchContentItem({ ws, piece }) {
   if (!reel && CAROUSEL_PLATFORMS.has(piece.platform) && Array.isArray(piece.slides) && piece.slides.length > 0) {
     return { dispatched: false, fallback: 'client', needs_client_bake: true }
   }
+
+  // Words-approval gate (Phase 3, story-monitor redesign) — this server-side
+  // dispatch is a publish path like any other and must not bypass it. Checked
+  // before the atomic claim below so a blocked piece takes no side effects
+  // (no claim taken, nothing to release).
+  const gate = await checkWordsApproved(piece.id, ws.id)
+  if (!gate.ok) return { dispatched: false, error: gate.body?.error || 'words_not_approved' }
 
   const wsFilter = `workspace_id=eq.${ws.id}`
 
