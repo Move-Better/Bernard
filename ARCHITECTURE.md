@@ -852,6 +852,20 @@ Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) an
   `PlainPreview` raw-dumps its content (the Story `LINK_STICKER_TEXT:` bug class). Every enabled
   channel now has a case; add one for any new channel.
 
+**`UnifiedEditor.jsx` (the non-carousel shell — `doc`/`email`/`textad`/`ad`/`vvideo`/`lvideo`/`storyvid`)
+consumes the SAME `editorArchetype.js` rail arrays, but its `RAIL_META` lookup silently drops any key
+with no matching entry — no error, the tab just never appears.** Every archetype's `rail: [...]` entries
+must have a matching `RAIL_META[key]`. This bit blog for over a month: the `doc` archetype's rail was
+`['doc', 'media', 'seo']`, but `RAIL_META` only ever defined `words`/`media`/`photo`/`text`/`grade` — so
+`doc` and `seo` both dropped, leaving blog with no Words tab at all (not even a body-edit textarea),
+which also orphaned the 3 blog generation actions (Regenerate/style-switch/split-into-series) that PR
+#2107 had deleted from the old AssetsPane console with nowhere left to remount. Fixed in #2109 by
+renaming the rail key `'doc'` → `'words'` (the key `WordsPanel` actually handles). **`'seo'` (doc/textad)
+and `'email'` (email archetype) have the identical latent gap today** — still unmapped in `RAIL_META`,
+still silently dropped. Before adding a new rail key to any archetype, add its `RAIL_META` entry in the
+same PR, or grep `RAIL_META` in `UnifiedEditor.jsx` to confirm an existing key actually resolves to a
+panel — don't assume the archetype config alone means the tab renders.
+
 **As of #1690 (2026-06-25) and #1854/#1856 (2026-07-01), `SlideEditor` is not just the carousel
 editor** — every `singleSlide`-capable archetype routes through it as a carousel of one slide, not a
 separate implementation: `carousel`, `visual` (single-photo LinkedIn/FB/X/GBP/Pinterest/Reddit, via
