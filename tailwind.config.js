@@ -54,6 +54,16 @@ export default {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
         },
+        // Sidebar chrome (charcoal) — see src/index.css for HSL values.
+        // <alpha-value> enables opacity modifiers (hover:bg-sidebar-active/60).
+        sidebar: {
+          DEFAULT:             'hsl(var(--sidebar) / <alpha-value>)',
+          foreground:          'hsl(var(--sidebar-foreground) / <alpha-value>)',
+          active:              'hsl(var(--sidebar-active) / <alpha-value>)',
+          'active-foreground': 'hsl(var(--sidebar-active-foreground) / <alpha-value>)',
+          rail:                'hsl(var(--sidebar-rail) / <alpha-value>)',
+          border:              'hsl(var(--sidebar-border) / <alpha-value>)',
+        },
         // Voice-fidelity semantic tokens — see src/index.css for HSL values.
         // The `<alpha-value>` placeholder enables opacity modifiers like
         // bg-contrast-signal/10, border-agreement-signal/30, etc.

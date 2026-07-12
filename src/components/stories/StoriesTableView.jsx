@@ -176,7 +176,7 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
           </thead>
           <tbody>
             {rows.map(({ s, ms, ml, showMonth }) => {
-              const { badge, label } = getStageToken(s.story_stage || '')
+              const { badge, label, rail } = getStageToken(s.story_stage || '')
               const pieces = s.pieces || []
               const platforms = [...new Set(pieces.map((p) => p.platform).filter(Boolean))]
               // Per-platform state so the Platforms column can carry the same
@@ -213,7 +213,7 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                     })}
                     className="border-b border-border/60 last:border-b-0 hover:bg-primary/5 cursor-pointer transition-colors"
                   >
-                    <td className="px-3.5 py-2.5 align-middle whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">
+                    <td className={`px-3.5 py-2.5 align-middle whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground border-l-2 ${rail}`}>
                       {fmtShortDate(ms)}
                     </td>
                     <td className="px-3.5 py-2.5 align-middle max-w-0">

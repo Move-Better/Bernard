@@ -18,11 +18,11 @@ const MAX_ROWS = 6
 // (Capture → Drafting → Review → Scheduled → Published) so one mental model
 // spans every surface. Pill classes come from the shared .nx-pill palette.
 const STAGE = {
-  capture:   { label: 'Capturing', pill: 'nx-pill-ink',     action: 'Resume' },
-  drafting:  { label: 'Drafting',  pill: 'nx-pill-amber',   action: 'Edit text' },
-  review:    { label: 'In review', pill: 'nx-pill-tint',    action: 'View' },
-  scheduled: { label: 'Scheduled', pill: 'nx-pill-violet',  action: 'Preview' },
-  published: { label: '🎉 Live',   pill: 'nx-pill-emerald', action: 'View post' },
+  capture:   { label: 'Capturing', pill: 'nx-pill-ink',     action: 'Resume',    rail: 'border-l-border' },
+  drafting:  { label: 'Drafting',  pill: 'nx-pill-amber',   action: 'Edit text', rail: 'border-l-action' },
+  review:    { label: 'In review', pill: 'nx-pill-tint',    action: 'View',      rail: 'border-l-action' },
+  scheduled: { label: 'Scheduled', pill: 'nx-pill-violet',  action: 'Preview',   rail: 'border-l-scheduled' },
+  published: { label: '🎉 Live',   pill: 'nx-pill-emerald', action: 'View post', rail: 'border-l-success' },
 }
 
 function shortDate(iso) {
@@ -96,7 +96,7 @@ export default function MyWorkCard({ stories = [], userId }) {
             <Link
               key={s.id}
               to={`/stories/${s.id}`}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors group"
+              className={`flex items-center gap-3 px-4 py-3 border-l-2 ${meta.rail} hover:bg-accent/20 transition-colors group`}
             >
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate text-foreground">{s.topic}</p>

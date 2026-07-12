@@ -105,7 +105,7 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
           type="button"
           onClick={() => setOpen(o => !o)}
           aria-label={collapsed ? (open ? 'Close feedback' : 'Send feedback') : undefined}
-          className={`flex items-center rounded-md text-sm font-medium transition-colors group relative w-full text-muted-foreground hover:bg-accent/40 hover:text-foreground
+          className={`flex items-center rounded-md text-sm font-medium transition-colors group relative w-full text-sidebar-foreground hover:bg-sidebar-active hover:text-white
             ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
         >
           <MessageSquare className="h-4 w-4 shrink-0" />
