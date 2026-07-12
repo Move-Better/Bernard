@@ -187,23 +187,27 @@ function BacklogRow({ item, onNavigate }) {
 }
 
 // Resolve the pill appearance for a card based on atom + content_item state.
+// The `rail` is the status-colored left border that gives the week board its
+// at-a-glance differentiation (amber = needs you, spruce = approved, green =
+// live, faint = drafting) — same rail language as the Stories status rails.
 function cardState(item) {
   const cis = item.contentItemStatus
   if (!item.contentPieceId || item.status === 'pending') {
-    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft' }
+    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft', rail: 'border-l-action' }
   }
   if (item.status === 'drafting') {
-    return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none' }
+    return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none', rail: 'border-l-border' }
   }
   if (cis === 'scheduled' || cis === 'published') {
-    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open' }
+    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open', rail: 'border-l-success' }
   }
   if (cis === 'approved') {
-    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule' }
+    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule', rail: 'border-l-primary' }
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
-  return { label: 'in review', cls: 'bg-muted text-muted-foreground', action: 'open', reviewable: true }
+  // Amber pill+rail so "needs your yes" reads as attention, not inert muted.
+  return { label: 'in review', cls: 'bg-warning/10 text-warning', action: 'open', reviewable: true, rail: 'border-l-warning' }
 }
 
 function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
@@ -222,18 +226,21 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
     : (state.action === 'open' || state.action === 'schedule')
 
   return (
-    <div className="rounded-lg border border-l-[3px] border-l-primary bg-card p-2 transition-all hover:border-primary/60 hover:shadow-sm">
-      {/* Platform label at text-2xs (legibility, esp. on the narrow mobile day
-          columns); the scheduled time moves to a hover/title so the always-on
-          label row stays uncluttered. The state pill below carries status. */}
-      <div className="mb-1 flex items-center gap-1.5">
-        {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
+    <div className={`rounded-lg border border-l-[3px] ${state.rail} bg-card p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_6px_16px_-11px_rgba(15,23,42,0.25)] transition-all hover:shadow-md`}>
+      {/* Platform gets a brand-colored icon chip so channels differentiate at a
+          glance instead of reading as identical gray labels; the scheduled time
+          rides to the right of the same row. The state pill below carries status. */}
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}>
+          {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
+        </span>
         <span
-          className="text-2xs font-bold uppercase tracking-wide text-muted-foreground"
+          className="text-2xs font-bold uppercase tracking-wide text-muted-foreground truncate"
           title={time ? `${meta.label} · scheduled ${time}` : meta.label}
         >
           {meta.label}
         </span>
+        {time && <span className="ml-auto shrink-0 text-3xs font-semibold text-muted-foreground/70">{time}</span>}
       </div>
       <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
         {contentLabel(item)}
@@ -474,6 +481,12 @@ export default function YourWeek() {
     const k = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz }).format(new Date(item.scheduled_at)).toLowerCase().slice(0, 3)
     if (byDay[k]) byDay[k].push(item)
   }
+
+  // Today's column key — only on the current week (a past/future week has no
+  // "today" to anchor). Resolved in the workspace tz so it matches byDay above.
+  const todayKey = weekOffset === 0
+    ? new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz }).format(new Date()).toLowerCase().slice(0, 3)
+    : null
 
   // Stage breakdown of the visible week — computed from the SAME cardState() the
   // day-column cards render, so the banner's numbers reconcile with what's on
@@ -779,15 +792,38 @@ export default function YourWeek() {
                 {DAYS.map(([key, label]) => {
                   const isQuiet = quiet.has(key)
                   const items = byDay[key] || []
+                  const isToday = key === todayKey
                   return (
-                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border ${isQuiet ? 'bg-muted/30' : 'bg-card'}`}>
-                      <div className="px-2.5 pt-2.5 pb-1.5 text-2xs font-bold">{label}</div>
+                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20 bg-primary/[0.03]' : isQuiet ? 'border-border bg-muted/30' : 'border-border bg-card'}`}>
+                      <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
+                        <span className={`text-2xs font-bold ${isToday ? 'text-primary' : ''}`}>
+                          {label}{isToday && ' · Today'}
+                        </span>
+                        {items.length > 0 && (
+                          <span className="text-3xs font-semibold text-muted-foreground/60 tabular-nums">{items.length}</span>
+                        )}
+                      </div>
                       <div className="flex flex-1 flex-col gap-2 px-2 pb-2">
-                        {isQuiet && items.length === 0 ? (
-                          <div className="flex flex-1 flex-col items-center justify-center gap-1 text-muted-foreground">
-                            <Moon className="h-4 w-4" aria-hidden="true" />
-                            <span className="text-3xs font-semibold">Quiet</span>
-                          </div>
+                        {items.length === 0 ? (
+                          isQuiet ? (
+                            <div className="flex flex-1 flex-col items-center justify-center gap-1 text-muted-foreground">
+                              <Moon className="h-4 w-4" aria-hidden="true" />
+                              <span className="text-3xs font-semibold">Quiet</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/70 py-4">
+                              <span className="text-3xs font-medium text-muted-foreground/70">Nothing planned</span>
+                              {!isPast && data.heldCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setBacklogOpen(true)}
+                                  className="text-3xs font-semibold text-primary hover:underline focus:outline-none focus-visible:underline"
+                                >
+                                  View backlog
+                                </button>
+                              )}
+                            </div>
+                          )
                         ) : (
                           items.map((item) => (
                             <PlanCard
