@@ -80,7 +80,7 @@ export const ARCHETYPES = Object.freeze({
   },
   doc: {
     label: 'Long-form doc', surface: SURFACE.NONE, canvas: CANVAS.DOC,
-    rail: ['doc', 'media', 'seo'],
+    rail: ['words', 'media', 'seo'],
     aspects: [], mediaTier: MEDIA_TIER.OPTIONAL,
   },
   email: {

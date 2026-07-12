@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blog Words panel — regenerate / style / split</title>
+<style>
+  :root {
+    --background: 220 22% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;
+    --primary-fg: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 60% 95%;
+    --destructive: 0 84% 60%;
+    --border: 214 32% 91%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 8%;
+    --scheduled: 262 83% 58%;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, hsl(186 60% 14%) 0%, transparent 60%),
+      #0b1220;
+    color: hsl(220 15% 88%);
+    padding: 40px 24px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1040px; margin: 0 auto; }
+
+  header.page-head { margin-bottom: 28px; }
+  header.page-head .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: hsl(186 70% 62%); margin: 0 0 8px;
+  }
+  header.page-head h1 {
+    font-size: 22px; line-height: 1.3; margin: 0 0 8px; color: #fff; font-weight: 650;
+    text-wrap: balance; max-width: 640px;
+  }
+  header.page-head p {
+    font-size: 13.5px; line-height: 1.55; color: hsl(220 15% 68%); margin: 0; max-width: 620px;
+  }
+  header.page-head code {
+    background: hsl(220 20% 16%); border: 1px solid hsl(220 20% 24%); border-radius: 4px;
+    padding: 1px 5px; font-size: 12px; color: hsl(186 70% 72%);
+  }
+
+  /* ── top-level Today / Proposed toggle ─────────────────────────────── */
+  .view-toggle {
+    display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px;
+    background: hsl(220 20% 14%); border: 1px solid hsl(220 20% 22%);
+    margin-bottom: 20px;
+  }
+  .view-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+  .view-toggle label {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+    border-radius: 7px; font-size: 12.5px; font-weight: 600; color: hsl(220 15% 62%);
+    cursor: pointer; user-select: none; transition: background .15s, color .15s;
+  }
+  .view-toggle label .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: .5; }
+  #v-today:checked ~ .view-toggle label[for="v-today"],
+  #v-proposed:checked ~ .view-toggle label[for="v-proposed"] {
+    background: #fff; color: hsl(222 47% 10%);
+  }
+  #v-today:checked ~ .view-toggle label[for="v-today"] .dot { background: hsl(0 70% 55%); opacity: 1; }
+  #v-proposed:checked ~ .view-toggle label[for="v-proposed"] .dot { background: hsl(160 70% 38%); opacity: 1; }
+
+  /* ── device chrome (replica of EditorChrome + IconRail + inspector) ── */
+  .device {
+    background: hsl(var(--card));
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,.55), 0 0 0 1px hsl(220 20% 20%);
+    color: hsl(var(--foreground));
+  }
+  .chrome {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+  .chrome .back { color: hsl(var(--muted-foreground)); font-size: 15px; }
+  .chrome .titleblock { min-width: 0; }
+  .chrome .titleblock .t {
+    font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 260px;
+  }
+  .chrome .badges { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .chrome .badge {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600;
+    color: hsl(var(--primary)); background: hsl(var(--primary) / 0.08);
+    padding: 2px 7px; border-radius: 5px;
+  }
+  .chrome .note { font-size: 10.5px; color: hsl(var(--muted-foreground)); }
+  .chrome .spacer { flex: 1; }
+  .chrome .pill-approved {
+    font-size: 11px; font-weight: 600; color: hsl(160 60% 30%); background: hsl(160 60% 95%);
+    border: 1px solid hsl(160 50% 82%); padding: 4px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .chrome .btn-publish {
+    font-size: 11.5px; font-weight: 650; color: #fff; background: hsl(var(--primary));
+    padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  .body-row { display: flex; min-height: 460px; }
+
+  /* icon rail */
+  .rail {
+    width: 50px; flex-shrink: 0; border-right: 1px solid hsl(var(--border));
+    display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 10px;
+    background: hsl(var(--card));
+  }
+  .rail .item {
+    width: 42px; padding: 7px 0 6px; border-radius: 9px; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; color: hsl(var(--muted-foreground)); cursor: default; position: relative;
+  }
+  .rail .item .lab { font-size: 8.5px; font-weight: 600; letter-spacing: .01em; }
+  .rail .item.is-active { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); }
+  .rail .item.is-new::after {
+    content: ''; position: absolute; top: 4px; right: 6px; width: 6px; height: 6px;
+    border-radius: 999px; background: hsl(38 92% 50%); box-shadow: 0 0 0 2px #fff;
+  }
+  .rail .item.is-ghost { opacity: .32; }
+  .rail svg { width: 17px; height: 17px; }
+
+  /* inspector panel */
+  .panel { width: 300px; flex-shrink: 0; border-right: 1px solid hsl(var(--border)); display: flex; flex-direction: column; min-width: 0; }
+  .panel-head {
+    padding: 10px 13px; border-bottom: 1px solid hsl(var(--border)); flex-shrink: 0;
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+  }
+  .panel-body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+
+  /* canvas sliver */
+  .canvas { flex: 1; background: hsl(var(--muted) / 0.6); padding: 20px 18px; overflow: hidden; }
+  .canvas .card {
+    background: #fff; border-radius: 10px; border: 1px solid hsl(var(--border));
+    padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  }
+  .canvas h3 { font-size: 14px; line-height: 1.35; margin: 0 0 8px; font-weight: 700; text-wrap: balance; }
+  .canvas p { font-size: 10.5px; line-height: 1.6; color: hsl(222 20% 30%); margin: 0 0 8px; }
+  .canvas .fade { position: relative; }
+  .canvas .fade::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 40px;
+    background: linear-gradient(to bottom, transparent, #fff);
+  }
+
+  /* ── generic bits ── */
+  .empty-note {
+    margin: auto; text-align: center; font-size: 12px; color: hsl(var(--muted-foreground));
+    padding: 24px 12px; line-height: 1.6;
+  }
+  .empty-note b { display: block; color: hsl(var(--foreground)); font-size: 13px; margin-bottom: 4px; }
+
+  textarea.body-field {
+    width: 100%; min-height: 150px; resize: none; border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.5); border-radius: 8px; padding: 8px 9px;
+    font-size: 11.5px; line-height: 1.55; color: hsl(var(--foreground)); font-family: inherit;
+  }
+  .hint { font-size: 9.5px; color: hsl(var(--muted-foreground) / 0.8); }
+
+  .style-toggle {
+    display: inline-flex; border-radius: 8px; background: hsl(var(--muted) / 0.5); padding: 2px; gap: 2px;
+    border: 1px solid hsl(var(--border));
+  }
+  .style-toggle button {
+    font: inherit; border: 0; background: transparent; padding: 5px 10px; border-radius: 6px;
+    font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 500;
+  }
+  .style-toggle button.on { background: #fff; color: hsl(var(--foreground)); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .desc-italic { font-size: 10px; font-style: italic; color: hsl(var(--muted-foreground)); }
+
+  .context-bullets { font-size: 9.5px; font-style: italic; color: hsl(var(--muted-foreground)); }
+
+  .action-row { display: flex; flex-direction: column; gap: 7px; }
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600;
+    border: 1px solid hsl(var(--border)); background: #fff; color: hsl(var(--foreground));
+    padding: 6px 10px; border-radius: 7px; width: fit-content;
+  }
+  .btn-outline svg { width: 13px; height: 13px; }
+
+  .confirm-chip {
+    border-radius: 9px; padding: 9px 10px; font-size: 11px; line-height: 1.5; display: flex; flex-direction: column; gap: 7px;
+  }
+  .confirm-chip.warn { border: 1px solid hsl(var(--warning) / 0.35); background: hsl(var(--warning) / 0.1); color: hsl(32 70% 30%); }
+  .confirm-chip.sched { border: 1px solid hsl(var(--scheduled) / 0.35); background: hsl(var(--scheduled) / 0.07); color: hsl(var(--foreground)); }
+  .confirm-chip .sub { opacity: .82; }
+  .confirm-chip .row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .confirm-chip .row-label { font-weight: 650; margin-right: 2px; }
+  .chip-pill {
+    border-radius: 999px; padding: 3px 9px; font-size: 10.5px; border: 1px solid;
+  }
+  .chip-pill.warn-off { border-color: hsl(var(--warning) / 0.35); background: #fff; color: hsl(32 70% 32%); }
+  .chip-pill.warn-on { border-color: hsl(var(--warning) / 0.6); background: hsl(var(--warning) / 0.28); color: hsl(32 70% 24%); font-weight: 650; }
+  .chip-pill.sch-off { border-color: hsl(var(--scheduled) / 0.4); background: #fff; color: hsl(var(--scheduled)); }
+  .chip-pill.sch-on { border-color: hsl(var(--scheduled) / 0.6); background: hsl(var(--scheduled) / 0.2); color: hsl(var(--foreground)); font-weight: 650; }
+  .confirm-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .btn-sm {
+    font-size: 10.5px; font-weight: 650; padding: 5px 9px; border-radius: 6px; border: 1px solid transparent;
+  }
+  .btn-sm.confirm-warn { border-color: hsl(var(--warning) / 0.45); color: hsl(32 75% 28%); background: hsl(var(--warning) / 0.12); }
+  .btn-sm.confirm-sched { border-color: hsl(var(--scheduled) / 0.5); color: hsl(var(--scheduled)); background: hsl(var(--scheduled) / 0.12); }
+  .btn-sm.ghost { color: hsl(var(--muted-foreground)); background: transparent; }
+
+  .series-badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 7px;
+    background: hsl(var(--scheduled) / 0.12); color: hsl(var(--scheduled)); font-size: 10.5px; font-weight: 650; width: fit-content;
+  }
+  .series-badge .parts { display: inline-flex; gap: 3px; margin-left: 2px; }
+  .series-badge .parts span {
+    min-width: 15px; text-align: center; border-radius: 4px; padding: 0 3px; font-size: 9.5px;
+    background: hsl(var(--scheduled) / 0.28);
+  }
+  .series-badge .parts span.cur { background: hsl(var(--scheduled) / 0.5); color: #fff; }
+
+  /* ── sub-state switcher (inside Proposed) ── */
+  .substate-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 14px; }
+  .substate-row input { position: absolute; opacity: 0; pointer-events: none; }
+  .substate-row label {
+    font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid hsl(220 20% 26%); color: hsl(220 15% 70%); cursor: pointer; user-select: none;
+    background: hsl(220 20% 13%); transition: all .15s;
+  }
+  #s-resting:checked ~ .substate-row label[for="s-resting"],
+  #s-style:checked   ~ .substate-row label[for="s-style"],
+  #s-regen:checked   ~ .substate-row label[for="s-regen"],
+  #s-split:checked   ~ .substate-row label[for="s-split"] {
+    background: hsl(186 70% 30%); border-color: hsl(186 70% 40%); color: #fff;
+  }
+
+  /* show/hide state panels driven by the radios, declared once up top */
+  .only-proposed { display: none; }
+  #v-proposed:checked ~ .only-proposed { display: block; }
+  #v-proposed:checked ~ .only-today { display: none; }
+
+  .state-panel { display: none; }
+  #s-resting:checked ~ .device-wrap .state-resting,
+  #s-style:checked   ~ .device-wrap .state-style,
+  #s-regen:checked   ~ .device-wrap .state-regen,
+  #s-split:checked   ~ .device-wrap .state-split { display: flex; }
+
+  footer.legend {
+    margin-top: 30px; border-top: 1px solid hsl(220 20% 20%); padding-top: 20px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px;
+  }
+  footer.legend .item h4 {
+    font-size: 11.5px; margin: 0 0 5px; color: #fff; font-weight: 650;
+    display: flex; align-items: center; gap: 6px;
+  }
+  footer.legend .item h4 .sw { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  footer.legend .item p { font-size: 11.5px; line-height: 1.55; color: hsl(220 15% 62%); margin: 0; }
+  footer.legend .item code {
+    background: hsl(220 20% 16%); border: 1px solid hsl(220 20% 24%); border-radius: 4px;
+    padding: 0 4px; font-size: 10.5px; color: hsl(186 70% 72%);
+  }
+
+  @media (max-width: 620px) {
+    .body-row { flex-wrap: wrap; }
+    .canvas { display: none; }
+    .panel { width: auto; flex: 1; border-right: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <p class="eyebrow">Bernard · Story Monitor Phase 1 follow-up · PR #2107</p>
+    <h1>Give Regenerate, style-switch and split-into-series a home in the blog editor</h1>
+    <p>
+      PR #2107 rebuilt the Story detail screen into a read-only monitor and correctly removed the old
+      per-channel publish console — but that console was also the only place a blog draft could be
+      regenerated, switched between <em>Full blog post</em> / <em>Cleaned transcript</em>, or split into a
+      series. Turns out the gap is bigger than that: the unified editor's rail for blog
+      (<code>doc</code> archetype) points at a <code>doc</code> rail key that has no matching panel, so
+      today a blog draft has <b style="color:#fff">no Words tab at all</b> — not even a way to edit the body.
+      Toggle below.
+    </p>
+  </header>
+
+  <input type="radio" name="view" id="v-today" checked style="position:absolute;opacity:0;">
+  <input type="radio" name="view" id="v-proposed" style="position:absolute;opacity:0;">
+
+  <div class="view-toggle">
+    <label for="v-today"><span class="dot"></span> Today — live now</label>
+    <label for="v-proposed"><span class="dot"></span> Proposed — Words panel restored</label>
+  </div>
+
+  <!-- ============================= TODAY ============================= -->
+  <div class="only-today">
+  <div class="device" style="max-width:600px;">
+    <div class="chrome">
+      <span class="back">&#8592;</span>
+      <div class="titleblock">
+        <div class="t">July 10, 2026 — Hip extensi&#8230;</div>
+        <div class="badges">
+          <span class="badge">&#128196; Blog &middot; 0 media</span>
+          <span class="note">no media</span>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <span class="pill-approved">&#10003; Approved</span>
+      <span class="btn-publish">&#10148; Publish to website</span>
+    </div>
+    <div class="body-row">
+      <div class="rail">
+        <div class="item is-active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>
+          <span class="lab">Publish</span>
+        </div>
+        <div class="item is-ghost" title="No Words tab exists for blog today">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+          <span class="lab" style="text-decoration:line-through;">Words</span>
+        </div>
+        <div class="item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+          <span class="lab">Media</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">Publish</div>
+        <div class="panel-body" style="justify-content:center;">
+          <div class="empty-note">
+            <b>No regenerate. No style switch. No split.</b>
+            The body text itself can't even be edited &mdash; the rail only ever
+            resolves to <code>Publish</code> or <code>Media</code>. Ported UI for
+            all three actions still exists in git history (pre-#2107) with nowhere to mount.
+          </div>
+        </div>
+      </div>
+      <div class="canvas">
+        <div class="card fade" style="max-height:220px;">
+          <h3>Why Your Shoulder Pain Might Actually Be a Hip Problem</h3>
+          <p>Sometimes the thing that finally cracks open a stubborn shoulder isn't in the shoulder at all. One of our clinicians, Dr.&nbsp;Q, spent a recent week working on exactly this&#8202;&mdash;&#8202;the relationship between hip extension on one side and shoulder stability on the <em>opposite</em> side&#8202;&mdash;&#8202;and it's the kind of pattern we see in patients all the time.</p>
+          <p><b>The Discovery: A Power Clean That Wouldn't Cooperate</b><br>This one actually started with our own team. Dr.&nbsp;Q had been working into power cleans with another of our doctors&#8230;</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- ============================ PROPOSED ============================ -->
+  <div class="only-proposed">
+
+  <input type="radio" name="sub" id="s-resting" checked style="position:absolute;opacity:0;">
+  <input type="radio" name="sub" id="s-style" style="position:absolute;opacity:0;">
+  <input type="radio" name="sub" id="s-regen" style="position:absolute;opacity:0;">
+  <input type="radio" name="sub" id="s-split" style="position:absolute;opacity:0;">
+
+  <div class="substate-row">
+    <label for="s-resting">Resting</label>
+    <label for="s-style">Switch style</label>
+    <label for="s-regen">Regenerate</label>
+    <label for="s-split">Split into series</label>
+  </div>
+
+  <div class="device-wrap">
+  <div class="device" style="max-width:600px;">
+    <div class="chrome">
+      <span class="back">&#8592;</span>
+      <div class="titleblock">
+        <div class="t">July 10, 2026 — Hip extensi&#8230;</div>
+        <div class="badges">
+          <span class="badge">&#128196; Blog &middot; 0 media</span>
+          <span class="note">no media</span>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <span class="pill-approved">&#10003; Approved</span>
+      <span class="btn-publish">&#10148; Publish to website</span>
+    </div>
+    <div class="body-row">
+      <div class="rail">
+        <div class="item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>
+          <span class="lab">Publish</span>
+        </div>
+        <div class="item is-active is-new">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+          <span class="lab">Words</span>
+        </div>
+        <div class="item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+          <span class="lab">Media</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">Words &middot; Blog post</div>
+        <div class="panel-body">
+
+          <!-- shared top: style switcher + body + context, shown in every state -->
+          <div>
+            <div class="style-toggle">
+              <button class="on">Full blog post</button>
+              <button>Cleaned transcript</button>
+            </div>
+            <div class="desc-italic" style="margin-top:5px;">A structured blog post rewritten from your interview &mdash; headlines, sections, links.</div>
+          </div>
+
+          <textarea class="body-field" readonly># Why Your Shoulder Pain Might Actually Be a Hip Problem
+
+Sometimes the thing that finally cracks open a stubborn shoulder isn't in the shoulder at all. One of our clinicians, Dr. Q, spent a recent week working on exactly this — the relationship between hip extension on one side and shoulder stability on the *opposite* side&#8230;
+
+## The Discovery: A Power Clean That Wouldn't Cooperate
+
+This one actually started with our own team. Dr. Q had been working into power cleans with another of our doctors, Dr. Tyler, and kept running into the same wall&#8230;</textarea>
+          <div class="hint">Saves when you click away &middot; same autosave as every other Words panel.</div>
+
+          <!-- state: resting -->
+          <div class="state-panel state-resting" style="flex-direction:column;gap:9px;">
+            <div class="context-bullets">Voice notes &middot; 2 exemplars &middot; smart tone &middot; Standard length</div>
+            <div class="action-row">
+              <span class="btn-outline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Regenerate
+              </span>
+              <span class="btn-outline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+                Split into series
+              </span>
+            </div>
+          </div>
+
+          <!-- state: style switch confirm -->
+          <div class="state-panel state-style" style="flex-direction:column;gap:9px;">
+            <div class="confirm-chip warn">
+              <div>Switch to <b>Cleaned transcript</b>? The current draft and approval state will be replaced with a fresh AI generation.</div>
+              <div class="sub">Your exact words, cleaned of filler and broken into paragraphs. No restructuring.</div>
+              <div class="confirm-actions">
+                <button class="btn-sm confirm-warn">Switch &amp; regenerate</button>
+                <button class="btn-sm ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- state: regenerate confirm -->
+          <div class="state-panel state-regen" style="flex-direction:column;gap:9px;">
+            <div class="confirm-chip warn">
+              <div>Replace this draft with a fresh AI generation? Current text and approval state will be lost.</div>
+              <div class="sub">Bernard will apply Dr.&nbsp;Q&rsquo;s voice settings.</div>
+              <div class="row" style="border-top:1px solid hsl(var(--warning)/.3);padding-top:6px;">
+                <span class="row-label">Length:</span>
+                <span class="chip-pill warn-off">&#9986;&#65039; Tight</span>
+                <span class="chip-pill warn-on">&#128196; Standard</span>
+                <span class="chip-pill warn-off">&#128214; Expansive</span>
+              </div>
+              <div class="confirm-actions">
+                <button class="btn-sm confirm-warn">Regenerate</button>
+                <button class="btn-sm ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- state: split confirm -->
+          <div class="state-panel state-split" style="flex-direction:column;gap:9px;">
+            <div class="confirm-chip sched">
+              <div><b>Split this blog into a series?</b></div>
+              <div class="sub">The full interview will be re-planned and written as multiple linked posts, each focused on one thread. Your current blog will be archived (kept for rollback). Each new part is a fresh draft and needs review before publish.</div>
+              <div class="row" style="border-top:1px solid hsl(var(--scheduled)/.25);padding-top:6px;">
+                <span class="row-label">Parts:</span>
+                <span class="chip-pill sch-off">2 parts</span>
+                <span class="chip-pill sch-on">3 parts</span>
+                <span class="chip-pill sch-off">4 parts</span>
+              </div>
+              <div class="sub" style="font-style:italic;">The planner may return fewer parts if there isn&rsquo;t enough material.</div>
+              <div class="confirm-actions">
+                <button class="btn-sm confirm-sched">Split into 3 parts</button>
+                <button class="btn-sm ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="canvas">
+        <div class="card fade" style="max-height:220px;">
+          <h3>Why Your Shoulder Pain Might Actually Be a Hip Problem</h3>
+          <p>Sometimes the thing that finally cracks open a stubborn shoulder isn't in the shoulder at all. One of our clinicians, Dr.&nbsp;Q, spent a recent week working on exactly this&#8202;&mdash;&#8202;the relationship between hip extension on one side and shoulder stability on the <em>opposite</em> side&#8202;&mdash;&#8202;and it's the kind of pattern we see in patients all the time.</p>
+          <p><b>The Discovery: A Power Clean That Wouldn't Cooperate</b><br>This one actually started with our own team. Dr.&nbsp;Q had been working into power cleans with another of our doctors&#8230;</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+
+  <footer class="legend">
+    <div class="item">
+      <h4><span class="sw" style="background:hsl(186 70% 45%);"></span>Fixes the missing Words tab</h4>
+      <p><code>editorArchetype.js</code>'s <code>doc</code> archetype rails on a <code>'doc'</code> key that <code>UnifiedEditor</code>'s <code>RAIL_META</code> never defines &mdash; it silently drops. Renaming it to <code>'words'</code> (the same key carousel/visual/ad/textad already use) is the whole fix; the existing panel-routing code needs no new branch.</p>
+    </div>
+    <div class="item">
+      <h4><span class="sw" style="background:hsl(38 92% 50%);"></span>Regenerate &amp; style switch</h4>
+      <p>Ported verbatim from the pre-#2107 <code>AssetsPane.jsx</code>: same confirm-before-regenerate chip, same length-preset picker, same <code>useRegenerateBlogStreamed</code> mutation (Opus via <code>/api/stream</code>, no function-cap timeout).</p>
+    </div>
+    <div class="item">
+      <h4><span class="sw" style="background:hsl(262 83% 58%);"></span>Split into series</h4>
+      <p>Same 2/3/4-parts confirm dialog and <code>useSplitBlogIntoSeries</code> mutation. On success, navigates to the new Part&nbsp;1 (<code>?piece=</code> in the old console &rarr; the editor's own piece param).</p>
+    </div>
+    <div class="item">
+      <h4><span class="sw" style="background:hsl(220 15% 55%);"></span>Scoped to blog only</h4>
+      <p>Style switch and split are already blog-gated in the ported code. Regenerate is wired to <code>useRegenerateBlogStreamed</code> only here &mdash; SlideEditor's <code>CaptionPanel</code> and StoryComposer have no regenerate today either (confirmed), but re-adding it there is a separate follow-up, not bundled into this fix.</p>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

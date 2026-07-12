@@ -11,7 +11,8 @@ import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import OverlayTextEditor from '@/components/story-detail/OverlayTextEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
-import { useUpdateContentItem, useMediaSuggestions, queryKeys } from '@/lib/queries'
+import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } from '@/lib/queries'
+import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
@@ -48,9 +49,14 @@ const hasPhotoEntry = (media) =>
   Array.isArray(media) && media.some((m) => m && !isVideoEntry(m) && (m.url || m.sourceUrl || m.thumbnailUrl))
 
 // Caption editor — mirrors SlideEditor's CaptionPanel (textarea + onBlur save).
+// For blog (the `doc` archetype's only live platform besides landing_page),
+// also carries the generation controls that had no home after the
+// pre-#2107 AssetsPane console was retired — see BlogWordsExtras.jsx.
 function WordsPanel({ piece, updateItem }) {
   const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
   const savedRef = useRef(draft)
+  const isBlog = piece?.platform === 'blog'
+  const { data: interview } = useInterview(isBlog ? piece?.interview_id : null)
 
   useEffect(() => {
     const next = typeof piece?.content === 'string' ? piece.content : ''
@@ -72,20 +78,24 @@ function WordsPanel({ piece, updateItem }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b px-3 py-2">
-        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Caption</span>
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {isBlog ? 'Words' : 'Caption'}
+        </span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+        {isBlog && <BlogStyleSwitcher piece={piece} interview={interview} />}
         <textarea
-          aria-label="Caption"
+          aria-label={isBlog ? 'Body' : 'Caption'}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={handleBlur}
-          placeholder="Caption visible to followers…"
-          className="min-h-[200px] flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none"
+          placeholder={isBlog ? 'Write the blog post…' : 'Caption visible to followers…'}
+          className={`${isBlog ? 'min-h-[240px]' : 'min-h-[200px]'} flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none`}
         />
         <p className="shrink-0 text-3xs text-muted-foreground/70">
           Saves when you click away. The live preview updates as you type.
         </p>
+        {isBlog && <BlogGenerationActions piece={piece} interview={interview} />}
       </div>
     </div>
   )
