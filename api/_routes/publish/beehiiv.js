@@ -34,6 +34,7 @@ import { getCredential } from '../../_lib/getCredential.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 
 const BEEHIIV_API = 'https://api.beehiiv.com/v2'
 
@@ -61,6 +62,12 @@ async function handler(req, res) {
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   if (!(await enforceLimit(req, res, 'publish-beehiiv', scope.workspace.id))) return
   const workspaceId = scope?.workspace?.id
+
+  // Words-approval gate (Phase 3, story-monitor redesign) — Beehiiv is a
+  // secondary distribution destination but still exports the clinician's
+  // words to an audience, so it's gated the same as the primary publish.
+  const gate = await checkWordsApproved(payload.contentItemId, workspaceId)
+  if (!gate.ok) return res.status(gate.status).json(gate.body)
 
   const cred = await getCredential(workspaceId, 'beehiiv')
   if (!cred?.secret) {

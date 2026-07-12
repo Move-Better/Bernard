@@ -454,6 +454,8 @@
     "video_media_asset_id",
     "video_offset_seconds",
     "voice_mode",
+    "words_approved_at",
+    "words_approved_by",
     "workspace_id"
   ],
   "media_assets": [
@@ -724,6 +726,7 @@
   "topic_backlog": [
     "created_at",
     "id",
+    "idempotency_key",
     "interview_id",
     "priority",
     "rationale",

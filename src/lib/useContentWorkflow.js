@@ -177,7 +177,7 @@ export function useContentWorkflow(piece) {
         const description = descLine?.trim().slice(0, 200) || seoTitle
         const pubDate = new Date().toISOString().slice(0, 10)
         const manifest = buildImagesManifest({ markdown: body, mediaUrls: piece.media_urls, slug })
-        const payload = { slug, title, seoTitle, headline: title, description, pubDate, markdown: body, ...manifest }
+        const payload = { contentItemId: piece.id, slug, title, seoTitle, headline: title, description, pubDate, markdown: body, ...manifest }
         if (piece.published_at) payload.updatedDate = pubDate
         if (piece.staff_name) payload.author = piece.staff_name
         if (piece.topic) {
@@ -266,7 +266,7 @@ export function useContentWorkflow(piece) {
       const heroImage = Array.isArray(piece.media_urls) && piece.media_urls[0]?.url
         ? piece.media_urls[0].url
         : undefined
-      const payload = { title, description, markdown: body, slug }
+      const payload = { contentItemId: piece.id, title, description, markdown: body, slug }
       if (heroImage) payload.heroImage = heroImage
       const result = await runWithToast(sendBlogToBeehiiv(payload), {
         loading: 'Sending draft to Beehiiv…',

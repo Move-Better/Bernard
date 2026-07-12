@@ -91,6 +91,10 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
 
   if (BUFFER_PLATFORMS.includes(platform)) {
     const body = { platform, content, mediaUrls, scheduledAt, useQueue }
+    // contentItemId — lets the server enforce the words-approval gate
+    // (Phase 3, story-monitor redesign) and the pre-existing workspace-
+    // ownership check. item.id is the content_items row id.
+    if (item.id) body.contentItemId = item.id
     if (platform === 'gbp') {
       if (locationIds?.length) body.locationIds = locationIds
       // Pass per-location content overrides so the Buffer route posts distinct

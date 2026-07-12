@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import {
   CheckCircle2, XCircle, Send, Loader2,
   ChevronDown, MessageSquare, RotateCcw, ExternalLink, Quote,
@@ -867,36 +867,50 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 // a post lives behind "Open in editor" on its row (PostStatusRow). See
 // .claude/mockups/story-monitor-redesign.html + .claude/story-monitor-redesign-plan.md.
 
-// Keystone bar — Phase 1 ships a STATIC, derived-only read of what already
-// happened (no gate, no action yet), since interviews.words_approved_at
-// doesn't exist until Phase 3 adds the real approve/pending flow + a
-// dedicated words screen. This just tells the truth in the meantime.
-function KeystoneBar({ pieces }) {
-  const anyApproved = pieces.some((p) => (
-    p.approved_by || ['approved', 'scheduled', 'published'].includes(p.status)
-  ))
+// Keystone bar — the real gate (Phase 3). Pending links to the words-approval
+// screen; approved shows who + when, resolved through the staff list the same
+// way ApprovalPanel resolves a per-piece approver.
+function KeystoneBar({ story }) {
+  const { data: staffList = [] } = useStaff()
+  const isApproved = !!story?.words_approved_at
+  const approverStaff = staffList.find((s) => s.user_id === story?.words_approved_by)
+  const approverName = approverStaff?.name || story?.words_approved_by
+
+  if (isApproved) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3.5">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">
+            Words approved by {approverStaff ? <StaffChip name={approverName} id={approverStaff.id} size="sm" showName /> : approverName}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(story.words_approved_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+            {' · '}every post below is written from these words.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={`flex items-center gap-3 rounded-lg border p-3.5 ${
-      anyApproved ? 'border-primary/20 bg-primary/5' : 'border-dashed bg-muted/40'
-    }`}
+    <Link
+      to={`/stories/${story?.id}/words`}
+      className="flex items-center gap-3 rounded-lg border border-dashed border-warning/40 bg-warning/5 p-3.5 transition-colors hover:bg-warning/10"
     >
-      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-        anyApproved
-          ? 'bg-primary text-primary-foreground'
-          : 'border-2 border-dashed border-muted-foreground/40 text-muted-foreground'
-      }`}
-      >
-        {anyApproved ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <span className="text-xs font-bold">1</span>}
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-warning/50 text-xs font-bold text-warning">
+        1
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-foreground">
-          {anyApproved ? 'Words approved' : 'Words not yet reviewed'}
-        </p>
+        <p className="text-sm font-semibold text-foreground">Review &amp; approve the words</p>
         <p className="text-xs text-muted-foreground">
-          Validates the clinician&rsquo;s voice — every post below is written from these words.
+          Every post comes from these words — confirm they sound like you before anything can publish.
         </p>
       </div>
-    </div>
+      <span className="ml-auto shrink-0 text-xs font-semibold text-warning">Review the words →</span>
+    </Link>
   )
 }
 
@@ -943,7 +957,7 @@ export default function AssetsPane({
 
   return (
     <div className={`rounded-xl border bg-card p-4 space-y-4 ${className}`}>
-      <KeystoneBar pieces={pieces} />
+      <KeystoneBar story={story} />
 
       <div className="space-y-2">
         <p className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">

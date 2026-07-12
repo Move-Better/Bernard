@@ -20,6 +20,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { BundlePublisher } from '../../_lib/social/index.js'
 import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
+import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -410,6 +411,13 @@ async function handler(req, res) {
     }
   }
 
+  // Words-approval gate (Phase 3, story-monitor redesign) — the piece's
+  // parent interview must have its words approved before ANY publish/
+  // schedule/retry dispatch. Never gates DELETE (cancel), which happens
+  // above this point.
+  const gate = await checkWordsApproved(contentItemId, workspaceId)
+  if (!gate.ok) return res.status(gate.status).json(gate.body)
+
   const result = await runBufferPublish({
     workspaceId, token: BUFFER_TOKEN, platform, content, mediaUrls, scheduledAt, useQueue, locationIds, locationContents,
   })
@@ -455,8 +463,13 @@ async function handleBundlePublish(req, res, workspace) {
   }
 
   const body = (typeof req.body === 'object' && req.body) ? req.body : {}
-  const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents } = body
+  const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, contentItemId } = body
   if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
+
+  // Words-approval gate (Phase 3, story-monitor redesign) — see the mirror
+  // check in the Buffer handler above for the full rationale.
+  const gate = await checkWordsApproved(contentItemId, workspace.id)
+  if (!gate.ok) return res.status(gate.status).json(gate.body)
 
   const result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
   return res.status(result.status).json(result.body)

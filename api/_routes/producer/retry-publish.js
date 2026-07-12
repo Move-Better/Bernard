@@ -32,6 +32,7 @@ import { getCredential } from '../../_lib/getCredential.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 import { runBufferPublish, runBundlePublish } from '../publish/buffer.js'
+import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
 
   const itemRes = await sb(
     `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}` +
-    `&select=id,platform,content,media_urls,scheduled_at,location_overrides,status`,
+    `&select=id,platform,content,media_urls,scheduled_at,location_overrides,status,interview_id`,
   )
   if (!itemRes.ok) return dbErr(res, itemRes)
   const itemRows = await itemRes.json()
@@ -79,6 +80,11 @@ export default async function handler(req, res) {
   const item = itemRows[0]
 
   if (item.status !== 'failed') return err(res, 'not_failed', 409)
+
+  // Words-approval gate (Phase 3, story-monitor redesign) — a retry is a
+  // publish dispatch like any other, so it's gated the same way.
+  const gate = await checkWordsApproved(contentItemId, ws.id)
+  if (!gate.ok) return res.status(gate.status).json(gate.body)
 
   const platform = item.platform
   const content = item.content
