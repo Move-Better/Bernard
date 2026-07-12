@@ -203,6 +203,10 @@ export default function ReviewInbox() {
     setScheduling(true)
     let ok = 0
     let fail = 0
+    // Distinguished from a generic failure so the toast tells the producer
+    // WHY, rather than "couldn't be queued" for a story whose words simply
+    // haven't been approved yet (api/_lib/wordsApprovalGate.js, Phase 3).
+    let wordsBlocked = 0
     for (const piece of selectedSchedulable) {
       try {
         const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
@@ -224,13 +228,19 @@ export default function ReviewInbox() {
           scheduledAt,
         })
         ok++
-      } catch {
-        fail++
+      } catch (e) {
+        if (e?.payload?.error === 'words_not_approved') wordsBlocked++
+        else fail++
       }
     }
     setScheduling(false)
     setScheduleConfirmOpen(false)
     if (ok) toast.success(`Added ${ok} post${ok === 1 ? '' : 's'} to the queue`)
+    if (wordsBlocked) {
+      toast.warning(`${wordsBlocked} skipped — words not approved yet`, {
+        description: 'Approve that story’s words on its Story page, then try again.',
+      })
+    }
     if (fail) toast.error(`${fail} couldn’t be queued`, { description: 'Open them individually to retry.' })
     clearSel()
   }
@@ -376,7 +386,7 @@ export default function ReviewInbox() {
         open={scheduleConfirmOpen}
         onOpenChange={setScheduleConfirmOpen}
         title={`Add ${selectedSchedulable.length} post${selectedSchedulable.length === 1 ? '' : 's'} to the queue?`}
-        description="Each goes into its channel’s queue — the slot is picked from your posting schedule. You can still reschedule or cancel afterward."
+        description="Each goes into its channel’s queue — the slot is picked from your posting schedule. You can still reschedule or cancel afterward. This schedules straight from here, without previewing each post individually — if that matters for one of these, open it in the editor instead."
         confirmLabel="Add to queue"
         destructive={false}
         loading={scheduling}
