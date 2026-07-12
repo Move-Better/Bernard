@@ -860,11 +860,27 @@ must have a matching `RAIL_META[key]`. This bit blog for over a month: the `doc`
 `doc` and `seo` both dropped, leaving blog with no Words tab at all (not even a body-edit textarea),
 which also orphaned the 3 blog generation actions (Regenerate/style-switch/split-into-series) that PR
 #2107 had deleted from the old AssetsPane console with nowhere left to remount. Fixed in #2109 by
-renaming the rail key `'doc'` → `'words'` (the key `WordsPanel` actually handles). **`'seo'` (doc/textad)
-and `'email'` (email archetype) have the identical latent gap today** — still unmapped in `RAIL_META`,
-still silently dropped. Before adding a new rail key to any archetype, add its `RAIL_META` entry in the
-same PR, or grep `RAIL_META` in `UnifiedEditor.jsx` to confirm an existing key actually resolves to a
-panel — don't assume the archetype config alone means the tab renders.
+renaming the rail key `'doc'` → `'words'` (the key `WordsPanel` actually handles). Before adding a new
+rail key to any archetype, add its `RAIL_META` entry in the same PR, or grep `RAIL_META` in
+`UnifiedEditor.jsx` to confirm an existing key actually resolves to a panel — don't assume the archetype
+config alone means the tab renders.
+
+**The `email` and `'seo'` variants of this same gap were fixed the same day (#2114, #2115, 2026-07-11).**
+`email` archetype: rail key `'email'` → `'words'` (email content is a plain string with `---SECTION---`
+markers — the exact shape `getNewsletterSystemPrompt` in `prompts.js` emits and `PostPreview.jsx`'s
+`parseEmailSections`/`fillTemplate` consume — so the same generic `WordsPanel` textarea works, no new
+structured form needed); also dropped `'text'` from `email`'s rail since `OverlayTextEditor` (on-image
+overlay) has no meaning for a block-based email template. `'seo'` on `doc` (blog/landing_page): unlike
+`doc`/`email`, this had ZERO backing data anywhere — no DB column, nothing. But `api/publish/website.js`
+already expects `seoTitle`/`description` in its payload and `useContentWorkflow.js` was 100%
+auto-deriving both client-side (`deriveSeoTitle`/`deriveMetaDescription` in `blogOutput.js`) with no way
+to override a bad auto-derived value — so a real, scoped feature (migration 174: `content_items.seo_title`
++ `.meta_description`, nullable, manual override wins over auto-derive) was built rather than just
+dropping the key. `'seo'` was ALSO dropped from `textad` (Google Ads) — a paid ad has no meta-description/
+SERP concept the way a webpage does, no backing data existed, and no clear request existed either, so
+that one got the "remove the phantom key" treatment instead of a speculative panel. **Same underlying
+lesson as the doc/words fix, but the resolution differs per key depending on whether real backing
+data/consumer already exists** (email/doc: yes → build the panel; textad/seo: no → drop the key).
 
 **As of #1690 (2026-06-25) and #1854/#1856 (2026-07-01), `SlideEditor` is not just the carousel
 editor** — every `singleSlide`-capable archetype routes through it as a carousel of one slide, not a
