@@ -74,46 +74,6 @@ function weekRelative(offset) {
   return offset > 0 ? `In ${offset} weeks` : `${-offset} weeks ago`
 }
 
-// Module-scope per the react-hooks/static-components rule.
-function WeekNav({ offset, onPrev, onNext, onToday }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-2.5">
-      <button
-        type="button"
-        onClick={onPrev}
-        disabled={offset <= -NAV_BACK}
-        className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Prev
-      </button>
-      <div className="flex items-center gap-2 text-center">
-        <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <div>
-          <div className="text-sm font-bold leading-tight">{weekRangeLabel(offset)}</div>
-          <div className="text-3xs font-semibold uppercase tracking-wide text-primary">{weekRelative(offset)}</div>
-        </div>
-        {offset !== 0 && (
-          <button
-            type="button"
-            onClick={onToday}
-            className="ml-1 rounded-md border px-2 py-0.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
-          >
-            Back to this week
-          </button>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={offset >= NAV_FWD}
-        className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
-      </button>
-    </div>
-  )
-}
-
 // Friendly zone label so the cadence footer reads "Pacific time", not the raw
 // IANA city ("Los Angeles times" — which also read like the newspaper).
 const TZ_LABELS = {
@@ -707,16 +667,95 @@ export default function YourWeek() {
     </div>
   ) : null
 
-  // Week selector — rendered once, placed below the posting schedule (above the
-  // board) when there's a plan, and above the empty state otherwise so you can
-  // always page between weeks.
-  const weekNavEl = (
-    <WeekNav
-      offset={weekOffset}
-      onPrev={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
-      onNext={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
-      onToday={() => setWeekOffset(0)}
-    />
+  // Unified control bar (Option B) — one compact row: Week/Day toggle · ‹ prev
+  // week · the center (day chips in Day view, the week range in Week view) ·
+  // next week ›. Rendered once, below the posting schedule when there's a plan,
+  // and above the empty state otherwise so you can always page between weeks.
+  const controlBarEl = (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 px-0.5">
+        <CalendarRange className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">{weekRangeLabel(weekOffset)}</span>
+        <span className="text-2xs font-bold uppercase tracking-wide text-primary">· {weekRelative(weekOffset)}</span>
+      </div>
+      <div className="flex items-stretch gap-2">
+        {data?.hasPlan && (
+          <div role="group" aria-label="View" className="inline-flex shrink-0 items-center rounded-lg border bg-card p-0.5 text-xs">
+            {['week', 'day'].map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setViewMode(m)}
+                aria-pressed={viewMode === m}
+                className={`rounded-md px-3 py-1 font-semibold capitalize transition-colors ${
+                  viewMode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
+          disabled={weekOffset <= -NAV_BACK}
+          aria-label="Previous week"
+          className="flex w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
+        {viewMode === 'day' && data?.hasPlan ? (
+          <div className="flex min-w-0 flex-1 gap-1.5">
+            {DAYS.map(([key, label], i) => {
+              const count = (byDay[key] || []).length
+              const isSel = key === activeDay
+              const isTod = key === todayKey
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedDay(key)}
+                  aria-pressed={isSel}
+                  className={`min-w-0 flex-1 rounded-lg border px-1 py-1.5 text-center leading-tight transition-colors ${
+                    isSel ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                          : `bg-card hover:border-primary/40 ${isTod ? 'border-primary/40' : 'border-border'}`
+                  }`}
+                >
+                  <div className={`text-3xs font-bold uppercase tracking-wide ${isSel ? '' : isTod ? 'text-primary' : 'text-muted-foreground'}`}>{label}</div>
+                  <div className="leading-none">
+                    <span className={`text-sm font-extrabold tabular-nums ${isSel ? '' : count ? 'text-foreground' : 'text-muted-foreground/40'}`}>{dayDates[i]}</span>
+                    {count > 0 && <span className={`ml-0.5 text-3xs font-bold ${isSel ? 'text-primary-foreground/75' : 'text-muted-foreground/60'}`}>{count}</span>}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center justify-center rounded-lg border bg-card px-3">
+            <span className="text-sm font-bold text-foreground">{weekRangeLabel(weekOffset)}</span>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
+          disabled={weekOffset >= NAV_FWD}
+          aria-label="Next week"
+          className="flex w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+        {weekOffset !== 0 && (
+          <button
+            type="button"
+            onClick={() => setWeekOffset(0)}
+            className="shrink-0 rounded-lg border bg-card px-2.5 text-2xs font-semibold text-muted-foreground hover:bg-muted"
+          >
+            Today
+          </button>
+        )}
+      </div>
+    </div>
   )
 
   return (
@@ -732,24 +771,6 @@ export default function YourWeek() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Week / Day view toggle — Day is a focused per-day work surface. */}
-          {data?.hasPlan && (
-            <div role="group" aria-label="View" className="inline-flex items-center rounded-lg border bg-card p-0.5 text-xs">
-              {['week', 'day'].map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setViewMode(m)}
-                  aria-pressed={viewMode === m}
-                  className={`rounded-md px-3 py-1 font-semibold capitalize transition-colors ${
-                    viewMode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          )}
           {!isPast && approvedSchedulable.length > 0 && (
             <button
               type="button"
@@ -836,9 +857,9 @@ export default function YourWeek() {
         </div>
       )}
 
-      {/* On an empty week the nav sits above the empty state so you can still
-          page between weeks; on a planned week it moves below the schedule. */}
-      {!data?.hasPlan && weekNavEl}
+      {/* On an empty week the controls sit above the empty state so you can still
+          page between weeks; on a planned week they move below the schedule. */}
+      {!data?.hasPlan && controlBarEl}
 
       {!data?.hasPlan ? (
         isFuture ? (
@@ -927,41 +948,16 @@ export default function YourWeek() {
             </div>
           )}
 
-          {/* Week selector — directly below the posting schedule, above the board. */}
-          {weekNavEl}
+          {/* Control bar — directly below the posting schedule, above the board. */}
+          {controlBarEl}
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
             {/* Calendar */}
             <div className="min-w-0 flex-1">
               {viewMode === 'day' ? (
                 <div>
-                  {/* Day strip — pick a day; shows date + post count. */}
-                  <div className="mb-4 grid grid-cols-7 gap-1.5 sm:gap-2">
-                    {DAYS.map(([key, label], i) => {
-                      const count = (byDay[key] || []).length
-                      const isSel = key === activeDay
-                      const isTod = key === todayKey
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setSelectedDay(key)}
-                          aria-pressed={isSel}
-                          className={`rounded-xl border px-1 py-2 text-center transition-colors ${
-                            isSel ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                                  : `bg-card hover:border-primary/40 ${isTod ? 'border-primary/40' : 'border-border'}`
-                          }`}
-                        >
-                          <div className={`text-2xs font-bold uppercase tracking-wide ${isSel ? '' : isTod ? 'text-primary' : 'text-muted-foreground'}`}>{label}</div>
-                          <div className={`text-lg font-extrabold tabular-nums leading-tight ${isSel ? '' : count ? 'text-foreground' : 'text-muted-foreground/40'}`}>{dayDates[i]}</div>
-                          <div className={`text-3xs font-semibold ${isSel ? 'text-primary-foreground/80' : count ? 'text-muted-foreground/70' : 'text-muted-foreground/40'}`}>
-                            {count ? `${count} post${count === 1 ? '' : 's'}` : '—'}{isTod ? ' · today' : ''}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {/* Selected day's posts as roomy working cards. */}
+                  {/* Selected day's posts as roomy working cards (the day picker
+                      lives in the control bar above). */}
                   {(() => {
                     const dayItems = byDay[activeDay] || []
                     if (dayItems.length === 0) {
