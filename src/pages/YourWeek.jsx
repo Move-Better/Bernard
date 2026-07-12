@@ -594,6 +594,18 @@ export default function YourWeek() {
     </div>
   ) : null
 
+  // Week selector — rendered once, placed below the posting schedule (above the
+  // board) when there's a plan, and above the empty state otherwise so you can
+  // always page between weeks.
+  const weekNavEl = (
+    <WeekNav
+      offset={weekOffset}
+      onPrev={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
+      onNext={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
+      onToday={() => setWeekOffset(0)}
+    />
+  )
+
   return (
     <div className="space-y-5 py-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -679,14 +691,6 @@ export default function YourWeek() {
         </div>
       )}
 
-      {/* Week selector — sits directly above the posting schedule / board. */}
-      <WeekNav
-        offset={weekOffset}
-        onPrev={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
-        onNext={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
-        onToday={() => setWeekOffset(0)}
-      />
-
       {/* Per-week context banner */}
       {isPast && (
         <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-2xs text-muted-foreground">
@@ -700,6 +704,10 @@ export default function YourWeek() {
           <span><b>Planned ahead.</b> Review &amp; approve these now — they sit ready until {weekRangeLabel(weekOffset)}. Nothing publishes without your yes.</span>
         </div>
       )}
+
+      {/* On an empty week the nav sits above the empty state so you can still
+          page between weeks; on a planned week it moves below the schedule. */}
+      {!data?.hasPlan && weekNavEl}
 
       {!data?.hasPlan ? (
         isFuture ? (
@@ -788,6 +796,9 @@ export default function YourWeek() {
             </div>
           )}
 
+          {/* Week selector — directly below the posting schedule, above the board. */}
+          {weekNavEl}
+
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
             {/* Calendar */}
             <div className="min-w-0 flex-1">
@@ -797,7 +808,7 @@ export default function YourWeek() {
                   const items = byDay[key] || []
                   const isToday = key === todayKey
                   return (
-                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20 bg-primary/[0.05]' : isQuiet ? 'border-border/60 bg-muted/25' : 'border-border/60 bg-muted/40'}`}>
+                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border bg-card shadow-sm transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border'}`}>
                       <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
                         <span className={`text-2xs font-bold ${isToday ? 'text-primary' : ''}`}>
                           {label}{isToday && ' · Today'}

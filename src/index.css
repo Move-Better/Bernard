@@ -5,12 +5,12 @@
 @layer base {
   :root {
     /* ── Core surfaces ──────────────────────────────────────────────────
-       Canvas is a neutral light gray (NOT the retired cool-blue tint) so
-       white cards visibly separate from the page — the contrast that fixes
-       the "flat / dull" read. Cards stay pure white (--card below).
-       Foreground darker than before (was 0% 10%) so body copy reads as
-       real ink, not muted gray. */
-    --background: 216 14% 94%;         /* #eaecef neutral paper — cards lift off it */
+       Canvas is pure white. Contrast/depth comes from card borders +
+       shadows and from content color (status rails, platform chips), not a
+       gray page fill — the pattern Linear / Notion / Stripe use. The
+       charcoal sidebar stays the app's anchor. Foreground is near-black ink
+       so body copy reads as real ink, not muted gray. */
+    --background: 0 0% 100%;           /* #ffffff pure white */
     --foreground: 222 47% 8%;          /* near-black ink */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 8%;
