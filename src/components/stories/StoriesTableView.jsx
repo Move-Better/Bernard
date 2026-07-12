@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Mic, SearchX, AlertTriangle, Target, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Mic, SearchX, AlertTriangle, Target, ChevronLeft, ChevronRight, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StaffChip } from '@/components/StaffChip'
 import EmptyState from '@/components/EmptyState'
@@ -177,8 +177,22 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
           <tbody>
             {rows.map(({ s, ms, ml, showMonth }) => {
               const { badge, label } = getStageToken(s.story_stage || '')
-              const platforms = [...new Set((s.pieces || []).map((p) => p.platform).filter(Boolean))]
-              const hasFailed = (s.pieces || []).some((p) => p.status === 'failed')
+              const pieces = s.pieces || []
+              const platforms = [...new Set(pieces.map((p) => p.platform).filter(Boolean))]
+              // Per-platform state so the Platforms column can carry the same
+              // signal a click-through would show: red if that channel failed,
+              // a trophy if it's a published winner (matches WinnerToggle's
+              // icon/color exactly — same signal, same look, different surface).
+              const platformStates = platforms.map((p) => {
+                const forPlatform = pieces.filter((pp) => pp.platform === p)
+                return {
+                  platform: p,
+                  failed: forPlatform.some((pp) => pp.status === 'failed'),
+                  winner: forPlatform.some((pp) => pp.status === 'published' && pp.performed_well),
+                }
+              })
+              const failedPlatforms = [...new Set(pieces.filter((p) => p.status === 'failed').map((p) => p.platform))]
+              const hasFailed = failedPlatforms.length > 0
               const subject = storySubject(s)
 
               return (
@@ -221,7 +235,9 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                         {hasFailed && (
                           <span className="shrink-0 inline-flex items-center gap-1 text-3xs font-bold rounded-full px-1.5 py-0.5 bg-destructive text-destructive-foreground">
                             <AlertTriangle className="w-2.5 h-2.5" aria-hidden="true" />
-                            Failed
+                            {failedPlatforms.length === 1
+                              ? `${PLATFORM_SHORT[failedPlatforms[0]] ?? failedPlatforms[0]} failed`
+                              : `${failedPlatforms.length} failed`}
                           </span>
                         )}
                       </div>
@@ -243,8 +259,17 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                     <td className="px-3.5 py-2.5 align-middle">
                       {platforms.length > 0 ? (
                         <div className="flex items-center gap-1">
-                          {platforms.slice(0, 3).map((p) => (
-                            <span key={p} className="text-3xs font-semibold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5 whitespace-nowrap">
+                          {platformStates.slice(0, 3).map(({ platform: p, failed, winner }) => (
+                            <span
+                              key={p}
+                              title={failed ? 'Failed to publish' : winner ? 'Marked as a winner' : undefined}
+                              className={`inline-flex items-center gap-0.5 text-3xs font-semibold rounded px-1.5 py-0.5 whitespace-nowrap border ${
+                                failed
+                                  ? 'text-destructive bg-destructive/10 border-destructive/40'
+                                  : 'text-muted-foreground bg-muted border-border'
+                              }`}
+                            >
+                              {winner && <Trophy className="h-2.5 w-2.5 fill-success text-success" aria-hidden="true" />}
                               {PLATFORM_SHORT[p] ?? p}
                             </span>
                           ))}
