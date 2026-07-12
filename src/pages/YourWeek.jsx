@@ -187,27 +187,28 @@ function BacklogRow({ item, onNavigate }) {
 }
 
 // Resolve the pill appearance for a card based on atom + content_item state.
-// The `rail` is the status-colored left border that gives the week board its
-// at-a-glance differentiation (amber = needs you, spruce = approved, green =
-// live, faint = drafting) — same rail language as the Stories status rails.
+// The `rail` is the status-colored bar down the card's left edge that gives the
+// week board its at-a-glance differentiation (amber = needs you, spruce =
+// approved, green = live, faint = drafting) — same status language as the
+// Stories rails, rendered as a solid bar (bg-*) for weight.
 function cardState(item) {
   const cis = item.contentItemStatus
   if (!item.contentPieceId || item.status === 'pending') {
-    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft', rail: 'border-l-action' }
+    return { label: 'needs draft', cls: 'bg-action/10 text-action', action: 'draft', rail: 'bg-action' }
   }
   if (item.status === 'drafting') {
-    return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none', rail: 'border-l-border' }
+    return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none', rail: 'bg-muted-foreground/40' }
   }
   if (cis === 'scheduled' || cis === 'published') {
-    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open', rail: 'border-l-success' }
+    return { label: cis === 'published' ? 'Live' : 'Scheduled', cls: 'bg-success/10 text-success', action: 'open', rail: 'bg-success' }
   }
   if (cis === 'approved') {
-    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule', rail: 'border-l-primary' }
+    return { label: 'approved', cls: 'bg-primary/10 text-primary', action: 'schedule', rail: 'bg-primary' }
   }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
   // Amber pill+rail so "needs your yes" reads as attention, not inert muted.
-  return { label: 'in review', cls: 'bg-warning/10 text-warning', action: 'open', reviewable: true, rail: 'border-l-warning' }
+  return { label: 'in review', cls: 'bg-warning/10 text-warning', action: 'open', reviewable: true, rail: 'bg-warning' }
 }
 
 function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
@@ -226,21 +227,20 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
     : (state.action === 'open' || state.action === 'schedule')
 
   return (
-    <div className={`rounded-lg border border-l-[3px] ${state.rail} bg-card p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_6px_16px_-11px_rgba(15,23,42,0.25)] transition-all hover:shadow-md`}>
-      {/* Platform gets a brand-colored icon chip so channels differentiate at a
-          glance instead of reading as identical gray labels; the scheduled time
-          rides to the right of the same row. The state pill below carries status. */}
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card p-2 pl-3 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-11px_rgba(15,23,42,0.3)] transition-shadow hover:shadow-md">
+      {/* Solid status rail down the left edge — carries the card's status color
+          with real weight (amber = needs you, green = live, spruce = approved). */}
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
+      {/* Brand-colored platform icon chip identifies the channel on its own (no
+          redundant label); the scheduled time rides to the right of the row. */}
       <div className="mb-1.5 flex items-center gap-2">
-        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}>
-          {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
-        </span>
         <span
-          className="text-2xs font-bold uppercase tracking-wide text-muted-foreground truncate"
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}
           title={time ? `${meta.label} · scheduled ${time}` : meta.label}
         >
-          {meta.label}
+          {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
         </span>
-        {time && <span className="ml-auto shrink-0 text-3xs font-semibold text-muted-foreground/70">{time}</span>}
+        {time && <span className="ml-auto shrink-0 text-2xs font-semibold text-muted-foreground">{time}</span>}
       </div>
       <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
         {contentLabel(item)}
@@ -627,62 +627,65 @@ export default function YourWeek() {
       {/* Clinician review slice (2d) */}
       {YourReviewSlice}
 
-      {/* Trust mode — a segmented control showing which automation mode you're
-          in (not a breadcrumb trail). Display-only here; the mode is set in
-          Auto-publish settings. The helper line explains the CURRENT mode. */}
-      {isEditor && (
-        <div className="rounded-xl border bg-card p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Your mode</span>
-            <div
-              role="group"
-              aria-label="Current automation mode"
-              className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5 text-xs"
-            >
-              {LADDER.map(([s, lbl], i) => (
-                <span
-                  key={s}
-                  aria-current={i === stageIdx ? 'true' : undefined}
-                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${
-                    i === stageIdx ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
-                  }`}
+      {/* Mode + pre-draft summary — compacted into one row so the controls take
+          less vertical space above the week itself. Trust mode is display-only
+          (set in Auto-publish settings); the pre-draft banner frames /week as a
+          review session when Bernard drafted ahead. */}
+      {(isEditor || data?.predraftSummary?.predrafted > 0) && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
+          {isEditor && (
+            <div className="rounded-xl border bg-card p-3 lg:shrink-0">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Your mode</span>
+                <div
+                  role="group"
+                  aria-label="Current automation mode"
+                  className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5 text-xs"
                 >
-                  {lbl}
-                </span>
-              ))}
+                  {LADDER.map(([s, lbl], i) => (
+                    <span
+                      key={s}
+                      aria-current={i === stageIdx ? 'true' : undefined}
+                      className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${
+                        i === stageIdx ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {lbl}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <p className="mt-1.5 text-2xs text-muted-foreground">{LADDER[stageIdx]?.[2]}</p>
             </div>
-          </div>
-          <p className="mt-2 text-2xs text-muted-foreground">{LADDER[stageIdx]?.[2]}</p>
+          )}
+
+          {data?.predraftSummary?.predrafted > 0 && (
+            <div className="flex flex-1 items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                <Bot className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold">
+                  Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} planned posts
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {weekStages.review} ready to review · {weekStages.scheduled} scheduled · {data.heldCount} in backlog
+                  {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} flagged for a closer look` : ''}
+                  {' · '}nothing publishes without your yes.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Week navigation (F2): page back through finished weeks or forward to plan ahead */}
+      {/* Week selector — sits directly above the posting schedule / board. */}
       <WeekNav
         offset={weekOffset}
         onPrev={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
         onNext={() => setWeekOffset((o) => Math.min(NAV_FWD, o + 1))}
         onToday={() => setWeekOffset(0)}
       />
-
-      {/* Pre-drafted week (Phase 3): when Bernard drafted the week ahead, /week
-          opens as a review session — this banner sets the frame. */}
-      {data?.predraftSummary?.predrafted > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Bot className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold">
-              Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} planned posts
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {weekStages.review} ready to review · {weekStages.scheduled} scheduled · {data.heldCount} in backlog
-              {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} flagged for a closer look` : ''}
-              {' · '}nothing publishes without your yes.
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Per-week context banner */}
       {isPast && (
@@ -794,7 +797,7 @@ export default function YourWeek() {
                   const items = byDay[key] || []
                   const isToday = key === todayKey
                   return (
-                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20 bg-primary/[0.03]' : isQuiet ? 'border-border bg-muted/30' : 'border-border bg-card'}`}>
+                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20 bg-primary/[0.05]' : isQuiet ? 'border-border/60 bg-muted/25' : 'border-border/60 bg-muted/40'}`}>
                       <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
                         <span className={`text-2xs font-bold ${isToday ? 'text-primary' : ''}`}>
                           {label}{isToday && ' · Today'}
