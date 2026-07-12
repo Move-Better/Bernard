@@ -5,10 +5,12 @@
 @layer base {
   :root {
     /* ── Core surfaces ──────────────────────────────────────────────────
-       Background warmed slightly off pure white; foreground darker than
-       before (was 0% 10%) so default body copy reads as real ink, not
-       muted gray. */
-    --background: 220 22% 97%;         /* #f7f8fb soft cool-paper */
+       Canvas is a neutral light gray (NOT the retired cool-blue tint) so
+       white cards visibly separate from the page — the contrast that fixes
+       the "flat / dull" read. Cards stay pure white (--card below).
+       Foreground darker than before (was 0% 10%) so body copy reads as
+       real ink, not muted gray. */
+    --background: 216 14% 94%;         /* #eaecef neutral paper — cards lift off it */
     --foreground: 222 47% 8%;          /* near-black ink */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 8%;
@@ -40,6 +42,21 @@
     --input: 214 32% 91%;
     --ring: 160 84% 39%;
     --radius: 0.625rem;                /* 10px — tighter than the old 8px */
+
+    /* ── Sidebar chrome — charcoal anchor ───────────────────────────────
+       The app's left rail is a dark ink surface, not white, so it reads as
+       a fixed anchor and lets the (lighter) content area carry the color.
+       Tokens (not hardcoded hex) so a tenant theme can restyle the rail in
+       one block. Reference as bg-sidebar / text-sidebar-foreground /
+       bg-sidebar-active / text-sidebar-active-foreground / bg-sidebar-rail
+       / border-sidebar-border. The rail accent is a brighter spruce than
+       --primary so it stays legible on the dark ground. */
+    --sidebar: 218 15% 10%;                  /* #16191e charcoal */
+    --sidebar-foreground: 216 9% 53%;        /* #7c8490 resting nav text */
+    --sidebar-active: 218 14% 16%;           /* #23272e active row fill */
+    --sidebar-active-foreground: 0 0% 100%;  /* white on active row */
+    --sidebar-rail: 185 77% 40%;             /* #17a6b4 active accent rail */
+    --sidebar-border: 218 13% 17%;           /* #262a31 internal dividers */
 
     /* ── Voice-fidelity semantic tokens ────────────────────────────────────
        Cross-staff probe signals surfaced during interviews and in the
@@ -186,7 +203,7 @@
     background: #fff;
     border: 1px solid hsl(var(--border));
     border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.03), 0 8px 24px -18px rgba(15,23,42,0.10);
+    box-shadow: 0 1px 2px rgba(15,23,42,0.05), 0 8px 20px -14px rgba(15,23,42,0.22);
   }
   .nx-card-hi {
     background: linear-gradient(180deg, #fff, hsl(var(--primary) / 0.08));

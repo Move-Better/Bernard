@@ -29,5 +29,6 @@ export const BERNARD_INK     = '#0F172A'
 // the triplet, so a rebrand only has to update it here (+ index.css).
 export const BERNARD_PRIMARY_HSL = '186 83% 27%'
 
-export const BERNARD_LOGO_URL = '/bernard-logo.svg' // horizontal wordmark
+export const BERNARD_LOGO_URL = '/bernard-logo.svg' // horizontal wordmark (dark ink — for light grounds)
+export const BERNARD_LOGO_LIGHT_URL = '/bernard-logo-light.svg' // light wordmark — for dark grounds (charcoal sidebar)
 export const BERNARD_ICON_URL = '/bernard-icon.svg' // square app mark / favicon

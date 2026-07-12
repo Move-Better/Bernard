@@ -2,19 +2,22 @@
 //
 // badge — Tailwind classes for <Badge> (StoryDetail, StoryCard)
 // dot   — Tailwind classes for dot indicators (StoriesThemesView)
+// rail  — Tailwind left-border color for row status rails (StoriesTableView).
+//         Pair with a width utility, e.g. `border-l-2 ${rail}`. Draft stages
+//         use the faint neutral border so they read as inert.
 // label — human-readable stage name
 
 export const STAGE_TOKENS = {
-  capture:   { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50' },
-  drafting:  { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50'  },
-  review:    { label: 'In Review',  badge: 'bg-warning/10 text-warning',   dot: 'bg-warning'    },
-  scheduled: { label: 'Scheduled',  badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', dot: 'bg-scheduled' },
-  published: { label: 'Published',  badge: 'bg-success/10 text-success', dot: 'bg-success' },
+  capture:   { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50', rail: 'border-l-border' },
+  drafting:  { label: 'Draft',       badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50', rail: 'border-l-border' },
+  review:    { label: 'In Review',  badge: 'bg-warning/10 text-warning',   dot: 'bg-warning',    rail: 'border-l-warning' },
+  scheduled: { label: 'Scheduled',  badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', dot: 'bg-scheduled', rail: 'border-l-scheduled' },
+  published: { label: 'Published',  badge: 'bg-success/10 text-success', dot: 'bg-success', rail: 'border-l-success' },
 }
 
-/** @param {string} stage @returns {{ label: string, badge: string, dot: string }} */
+/** @param {string} stage @returns {{ label: string, badge: string, dot: string, rail: string }} */
 export function getStageToken(stage) {
-  return STAGE_TOKENS[stage] ?? { label: stage, badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/40' }
+  return STAGE_TOKENS[stage] ?? { label: stage, badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/40', rail: 'border-l-border' }
 }
 
 // Dot colours keyed by content_item.status — single source so AssetsPane

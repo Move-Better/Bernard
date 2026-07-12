@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/Drawer'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { workspace as STATIC_WORKSPACE } from '@/lib/workspace'
+import { BERNARD_LOGO_URL, BERNARD_LOGO_LIGHT_URL } from '@/lib/brand'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePlatformAdmin } from '@/lib/usePlatformAdmin'
@@ -133,6 +134,11 @@ export default function Layout({ children }) {
   useEnsureSelfStaff()
   const logoSrc = ws?.primary_logo_url || ws?.logo?.main || STATIC_WORKSPACE.logo.main
   const logoAlt = ws?.display_name || ws?.name || STATIC_WORKSPACE.name
+  // The charcoal sidebar needs a light wordmark — the default Bernard logo is
+  // dark ink (#0F172A) and disappears on the dark ground. Swap to the light
+  // variant whenever we're showing the default Bernard mark; a tenant's own
+  // logo (once primary_logo_url exists) is left as-is.
+  const sidebarLogoSrc = logoSrc === BERNARD_LOGO_URL ? BERNARD_LOGO_LIGHT_URL : logoSrc
 
   function toggleSidebar() {
     const next = !collapsed
@@ -187,20 +193,20 @@ export default function Layout({ children }) {
       <CommandPalette />
 
       {/* ── Left sidebar — desktop only ─────────────────────────────────── */}
-      <aside className={`hidden md:flex fixed inset-y-0 left-0 ${sidebarW} flex-col border-r bg-card z-30 transition-[width] duration-200`}>
+      <aside className={`hidden md:flex fixed inset-y-0 left-0 ${sidebarW} flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground z-30 transition-[width] duration-200`}>
 
         {/* Logo */}
-        <div className={`h-14 border-b shrink-0 flex items-center ${collapsed ? 'justify-center px-0' : 'px-4 gap-2.5'}`}>
+        <div className={`h-14 border-b border-sidebar-border shrink-0 flex items-center ${collapsed ? 'justify-center px-0' : 'px-4 gap-2.5'}`}>
           {collapsed ? (
             <Link to="/" aria-label="Home">
-              <img src={logoSrc} alt={logoAlt} className="h-8 w-auto" />
+              <img src={sidebarLogoSrc} alt={logoAlt} className="h-8 w-auto" />
             </Link>
           ) : (
             <Link to="/" className="flex items-center gap-2.5 min-w-0">
-              <img src={logoSrc} alt={logoAlt} className="h-8 w-auto shrink-0" />
+              <img src={sidebarLogoSrc} alt={logoAlt} className="h-8 w-auto shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-none truncate">Bernard</p>
-                <p className="text-3xs text-muted-foreground mt-0.5 leading-none truncate" title={APP_BYLINE}>
+                <p className="text-sm font-semibold leading-none truncate text-white">Bernard</p>
+                <p className="text-3xs text-sidebar-foreground mt-0.5 leading-none truncate" title={APP_BYLINE}>
                   {APP_BYLINE}
                 </p>
               </div>
@@ -232,9 +238,9 @@ export default function Layout({ children }) {
           {navSections.map((section, si) => (
             <div key={section.label || 'top'} className={si > 0 ? 'pt-2' : ''}>
               {section.label && (collapsed ? (
-                <div className="mx-2 my-1.5 border-t border-border/70" aria-hidden="true" />
+                <div className="mx-2 my-1.5 border-t border-sidebar-border" aria-hidden="true" />
               ) : (
-                <p className="px-3 pt-1 pb-1 text-3xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <p className="px-3 pt-1 pb-1 text-3xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
                   {section.label}
                 </p>
               ))}
@@ -268,7 +274,7 @@ export default function Layout({ children }) {
         </nav>
 
         {/* Bottom section: secondary links + user button + collapse toggle */}
-        <div className="border-t px-2 py-2 space-y-0.5">
+        <div className="border-t border-sidebar-border px-2 py-2 space-y-0.5">
           {role === 'admin' && (
             <SidebarNavLink
               to="/synthesis"
@@ -308,7 +314,7 @@ export default function Layout({ children }) {
           <button
             type="button"
             onClick={toggleSidebar}
-            className={`flex items-center gap-2 py-2 w-full rounded-md text-xs text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${collapsed ? 'justify-center px-0' : 'px-3'}`}
+            className={`flex items-center gap-2 py-2 w-full rounded-md text-xs text-sidebar-foreground hover:bg-sidebar-active hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-rail/40 ${collapsed ? 'justify-center px-0' : 'px-3'}`}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <ChevronLeft className={`h-4 w-4 shrink-0 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`} />
@@ -512,7 +518,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
-          className={`inline-flex items-center gap-1 h-6 pl-2 pr-1.5 text-xs font-medium rounded-full border border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${inSidebar ? 'w-full justify-between' : ''}`}
+          className={`inline-flex items-center gap-1 h-6 pl-2 pr-1.5 text-xs font-medium rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${inSidebar ? 'w-full justify-between border-sidebar-border bg-sidebar-active/60 text-sidebar-foreground hover:bg-sidebar-active hover:text-white' : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'}`}
           aria-expanded={open}
           aria-haspopup="listbox"
         >
@@ -581,7 +587,7 @@ function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
   }, [open])
 
   const base = `flex items-center rounded-md text-sm font-medium transition-colors w-full relative
-    ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'}`
+    ${active ? 'bg-sidebar-active text-sidebar-active-foreground' : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-white'}`
 
   return (
     <div className="relative" ref={ref}>
@@ -593,6 +599,7 @@ function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
         aria-haspopup="menu"
         className={`${base} ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
       >
+        {active && <span aria-hidden="true" className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-sidebar-rail" />}
         <span className="relative shrink-0">
           {Icon && <Icon className="h-4 w-4" />}
           {collapsed && (
@@ -601,13 +608,13 @@ function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
             // user has a visual cue before ever clicking (2026-07-04 audit).
             <ChevronDown
               aria-hidden="true"
-              className="absolute -right-1.5 -bottom-1.5 h-2.5 w-2.5 text-muted-foreground/70 bg-background rounded-full"
+              className="absolute -right-1.5 -bottom-1.5 h-2.5 w-2.5 text-sidebar-foreground bg-sidebar rounded-full"
             />
           )}
           {collapsed && active && (
             <span
               aria-hidden="true"
-              className="absolute -right-1 -bottom-1 h-1.5 w-1.5 rounded-full bg-primary"
+              className="absolute -right-1 -bottom-1 h-1.5 w-1.5 rounded-full bg-sidebar-rail"
             />
           )}
         </span>
@@ -647,7 +654,7 @@ function SidebarNavFlyout({ label, icon: Icon, items, pathname, collapsed }) {
 // clipping of the absolute-positioned tooltip).
 function SidebarNavLink({ to, label, hint, badge, active, icon: Icon, collapsed }) {
   const base = `flex items-center rounded-md text-sm font-medium transition-colors group relative
-    ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'}`
+    ${active ? 'bg-sidebar-active text-sidebar-active-foreground' : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-white'}`
 
   return (
     <Link
@@ -655,6 +662,7 @@ function SidebarNavLink({ to, label, hint, badge, active, icon: Icon, collapsed 
       aria-label={collapsed ? label : undefined}
       className={`${base} ${collapsed ? 'justify-center py-2 px-0' : 'gap-2.5 px-3 py-2'}`}
     >
+      {active && <span aria-hidden="true" className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-sidebar-rail" />}
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
       {!collapsed && hint && <span className="text-3xs text-muted-foreground/60 shrink-0">{hint}</span>}
