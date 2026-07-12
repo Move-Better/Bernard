@@ -81,7 +81,7 @@ function RecapBlock({ recap }) {
                 const Icon = item.hasVideo ? Play : Image
                 const labels = platformLabels(item.platforms)
                 return (
-                  <Link key={item.storyId} to={`/stories/${item.storyId}`} className="flex items-center gap-3 group">
+                  <Link key={item.storyId} to={`/stories/${item.storyId}`} className="flex items-center gap-3 group border-l-2 border-l-success pl-2.5">
                     <span className="h-7 w-7 rounded-full bg-muted text-muted-foreground text-2xs font-bold flex items-center justify-center shrink-0">
                       {getInitials(item.staffName)}
                     </span>
@@ -112,7 +112,7 @@ function RecapBlock({ recap }) {
             ) : (
               <div className="space-y-2">
                 {scheduled.slice(0, 4).map((s, i) => (
-                  <Link key={`${s.storyId}-${i}`} to={`/stories/${s.storyId}`} className="flex items-center gap-2 text-sm group">
+                  <Link key={`${s.storyId}-${i}`} to={`/stories/${s.storyId}`} className="flex items-center gap-2 text-sm group border-l-2 border-l-info pl-2.5">
                     <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                     <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{s.topic}</span>
                     <span className="text-2xs text-muted-foreground shrink-0">{dateTimeLabel(s.scheduledAt)}</span>
@@ -132,7 +132,7 @@ function RecapBlock({ recap }) {
             ) : (
               <div className="space-y-2">
                 {waiting.slice(0, 4).map((w) => (
-                  <Link key={w.storyId} to={`/stories/${w.storyId}`} className="flex items-center gap-2 text-sm group">
+                  <Link key={w.storyId} to={`/stories/${w.storyId}`} className="flex items-center gap-2 text-sm group border-l-2 border-l-warning pl-2.5">
                     <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{w.topic}</span>
                     <span className="text-2xs text-muted-foreground shrink-0">{w.staffName}</span>
                   </Link>
