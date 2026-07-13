@@ -975,6 +975,18 @@ export default function VideoEditor() {
   }, [playClipT, scrubT])
   const displayClipT = scrubT != null ? scrubT : playClipT
 
+  // Editable caption lines. Declared up here (ahead of draftDoc) so the draft
+  // snapshot can persist them alongside every other editable field — otherwise
+  // hand-edited caption text is dropped on autosave/reload/undo/version-restore.
+  // The lines are seeded and edited further below, where the transcript-derived
+  // lines are available; only the state containers live up here.
+  const [captionLines, setCaptionLines] = useState([])
+  // Once the user hand-edits a caption line, their words win: we stop auto-
+  // re-seeding from the transcript on trim changes (which used to silently wipe
+  // the edits). "Reset captions to transcript" clears this to re-derive.
+  const captionsEditedRef = useRef(false)
+  const [captionsEdited, setCaptionsEdited] = useState(false)
+
   // Save & resume. On open, restore this asset's editor doc — preferring the
   // SERVER draft (media_assets.video_edit_draft, cross-device) and falling back
   // to localStorage if the asset hasn't loaded a server draft yet. Autosave
@@ -1009,6 +1021,15 @@ export default function VideoEditor() {
         if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
         if (Array.isArray(d.cuts)) setCuts(d.cuts)
         if (d.music) setMusic(d.music)
+        // Restore hand-edited caption lines. Only when the user actually edited
+        // them (captionsEdited) — an unedited draft re-seeds cleanly from the
+        // current transcript below. Setting the ref true stops the seed effect
+        // from clobbering the restored lines on the trim/derived-lines change.
+        if (d.captionsEdited && Array.isArray(d.captionLines) && d.captionLines.length) {
+          setCaptionLines(d.captionLines)
+          setCaptionsEdited(true)
+          captionsEditedRef.current = true
+        }
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
@@ -1017,8 +1038,8 @@ export default function VideoEditor() {
 
   // Draft snapshot shared by autosave + undo/redo.
   const draftDoc = useMemo(
-    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music }),
-    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music],
+    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited }),
+    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited],
   )
 
   // localStorage mirror — immediate, undebounced offline copy. The server
@@ -1050,6 +1071,9 @@ export default function VideoEditor() {
     setEndSec(snap.endSec)
     setCuts(snap.cuts || [])
     setMusic(snap.music || { trackId: null, volume: 0.22, duck: true, fade: true })
+    setCaptionLines(snap.captionLines || [])
+    setCaptionsEdited(!!snap.captionsEdited)
+    captionsEditedRef.current = !!snap.captionsEdited
   }, { enabled: hydrated })
   useUndoRedoShortcut(undo, redo)
 
@@ -1067,6 +1091,9 @@ export default function VideoEditor() {
     if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
     if (Array.isArray(d.cuts)) setCuts(d.cuts)
     setMusic(d.music || { trackId: null, volume: 0.22, duck: true, fade: true })
+    if (Array.isArray(d.captionLines)) setCaptionLines(d.captionLines)
+    setCaptionsEdited(!!d.captionsEdited)
+    captionsEditedRef.current = !!d.captionsEdited
   }, [])
   // Auto-snapshot the draft at most every ~3 min of editing (pruned to 30 server-side).
   useEffect(() => {
@@ -1111,16 +1138,12 @@ export default function VideoEditor() {
 
   const words = useMemo(() => sliceWords(asset?.transcript_words, startSec, durationSec), [asset, startSec, durationSec])
   const derivedLines = useMemo(() => groupLines(words), [words])
-  // Editable caption lines — seeded from the derived transcript lines; re-seeds on
-  // load or when the trim window changes. Editing a line re-splits its words across
-  // the line's time so karaoke still animates, and the bake receives these EXACT
-  // words (captionWords override → preview==publish for edited captions).
-  const [captionLines, setCaptionLines] = useState([])
-  // Once the user hand-edits a caption line, their words win: we stop auto-
-  // re-seeding from the transcript on trim changes (which used to silently wipe
-  // the edits). "Reset captions to transcript" clears this to re-derive.
-  const captionsEditedRef = useRef(false)
-  const [captionsEdited, setCaptionsEdited] = useState(false)
+  // captionLines / captionsEdited / captionsEditedRef are declared above (near
+  // draftDoc) so the draft snapshot can persist edited caption text. Here we
+  // seed them from the derived transcript lines and re-split on edit: editing a
+  // line re-distributes its words across the line's time so karaoke still
+  // animates, and the bake receives these EXACT words (captionWords override →
+  // preview==publish for edited captions).
   // Re-seed only when the trim window or line count actually changes — NOT on a
   // bare asset-object refetch, and NOT once the user has manually edited a line.
   const seedSigRef = useRef('')
