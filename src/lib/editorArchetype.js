@@ -92,7 +92,11 @@ export const ARCHETYPES = Object.freeze({
   },
   ad: {
     label: 'Ad creative', surface: SURFACE.VARIANTS, canvas: CANVAS.VISUAL,
-    rail: ['words', 'media', 'text', 'variants'],
+    // No 'variants' rail section — size-variant export is the separate /ads
+    // flow (AdExportModal, driven by adFormats.js), reachable from the Library
+    // drawer, the Ads page, and the Storyboard compositor. There's no in-editor
+    // variants panel, so declaring one only made railFor silently drop it.
+    rail: ['words', 'media', 'text'],
     aspects: ['1:1', '4:5', '9:16', '16:9'], mediaTier: MEDIA_TIER.REQUIRED,
   },
   textad: {
