@@ -1013,9 +1013,11 @@ export default function Analytics() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
-            <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-            {assetName} — Insights
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+              {assetName} — Insights
+            </h1>
             <button
               type="button"
               onClick={() => setDefsOpen(true)}
@@ -1023,7 +1025,7 @@ export default function Analytics() {
             >
               <HelpCircle className="h-3.5 w-3.5" /> How these numbers are calculated
             </button>
-          </h1>
+          </div>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Bernard reads your performance like a content expert and tells you what&rsquo;s working and what
             to do next — in plain language, with the numbers behind it if you want them.

@@ -1,6 +1,8 @@
-// OWNER_ROLE_COLORS: uses --owner-accent CSS tokens from index.css
-// These are the owner-role accent values. No design token exists yet — tracked in audit-2026-06-09.
-// When a --role-owner token is added to src/index.css, replace these literals.
+// AccessMatrix — role capability grid. Owner-tier styling uses the --owner-accent*
+// CSS tokens defined in src/index.css (see TIER_PILL.owner below). AVATAR_COLORS is a
+// decorative per-person identity palette, kept intentionally disjoint from the brand and
+// status token hexes (--primary #0C7580, --action #d97706) so an avatar can't accidentally
+// wear a color the rest of the app uses to mean "on-brand" or "needs your attention".
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
@@ -25,7 +27,9 @@ const TIER_PILL = {
 }
 const TIER_LABEL = { owner: '★ Owner', producer: 'Producer', clinician: 'Clinician', viewer: 'Viewer' }
 
-const AVATAR_COLORS = ['#0b111e', '#058ac7', '#7c3aed', '#0C7580', '#0284c7', '#059669', '#d97706']
+// Decorative identity palette — see file header. Must not include --primary (#0C7580)
+// or --action (#d97706); #db2777 (rose) and #64748b (slate) replace those two collisions.
+const AVATAR_COLORS = ['#0b111e', '#058ac7', '#7c3aed', '#db2777', '#0284c7', '#059669', '#64748b']
 function avatarFor(person, i) {
   const initials = (person.name || '?')
     .split(/[\s@.]+/)
