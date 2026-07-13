@@ -30,6 +30,7 @@ export function useUndoHistory(snapshot, restore, { debounceMs = 500, enabled = 
   const timerRef = useRef(null)
   const wasEnabledRef = useRef(enabled)
   const [counts, setCounts] = useState({ past: 0, future: 0 })
+  const [hasPending, setHasPending] = useState(false)
 
   useEffect(() => {
     // While disabled (e.g. draft still hydrating from server/localStorage),
@@ -53,11 +54,15 @@ export function useUndoHistory(snapshot, restore, { debounceMs = 500, enabled = 
     }
     if (json === lastCommittedRef.current) return
 
-    if (pendingRef.current === null) pendingRef.current = lastCommittedRef.current
+    if (pendingRef.current === null) {
+      pendingRef.current = lastCommittedRef.current
+      setHasPending(true)
+    }
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       const prior = pendingRef.current
       pendingRef.current = null
+      setHasPending(false)
       if (prior === null || prior === json) return
       pastRef.current = [...pastRef.current, prior].slice(-MAX_HISTORY)
       futureRef.current = []
@@ -78,6 +83,7 @@ export function useUndoHistory(snapshot, restore, { debounceMs = 500, enabled = 
     if (pendingRef.current !== null) {
       const committed = lastCommittedRef.current
       pendingRef.current = null
+      setHasPending(false)
       applyingRef.current = true
       restore(JSON.parse(committed))
       return
@@ -99,6 +105,7 @@ export function useUndoHistory(snapshot, restore, { debounceMs = 500, enabled = 
     futureRef.current = futureRef.current.slice(1)
     pastRef.current = [...pastRef.current, lastCommittedRef.current]
     pendingRef.current = null
+    setHasPending(false)
     applyingRef.current = true
     lastCommittedRef.current = next
     setCounts({ past: pastRef.current.length, future: futureRef.current.length })
@@ -108,7 +115,7 @@ export function useUndoHistory(snapshot, restore, { debounceMs = 500, enabled = 
   return {
     undo,
     redo,
-    canUndo: counts.past > 0,
+    canUndo: counts.past > 0 || hasPending,
     canRedo: counts.future > 0,
   }
 }

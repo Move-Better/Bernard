@@ -79,7 +79,7 @@ export default function ProducerSettings() {
   const needCount = Array.isArray(needs?.items) ? needs.items.length : 0
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

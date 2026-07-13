@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useParams } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
+import { Lock, ShieldOff } from 'lucide-react'
 import PrivacyPolicy from '@/pages/PrivacyPolicy'
 import TermsOfService from '@/pages/TermsOfService'
 import DemoExperience from '@/pages/DemoExperience'
@@ -454,7 +455,7 @@ function OrgGate({ clerkOrgId, children }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-sm text-center space-y-3 p-8 border rounded-xl shadow-sm">
-          <p className="text-3xl" aria-hidden="true">🔒</p>
+          <Lock className="h-8 w-8 mx-auto text-muted-foreground" aria-hidden="true" />
           <h2 className="font-semibold text-lg">No access to this workspace</h2>
           <p className="text-sm text-muted-foreground">
             Your account isn&apos;t a member of this workspace. Ask your admin to send you an
@@ -486,7 +487,7 @@ function DomainGuard({ children }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-sm text-center space-y-3 p-8 border rounded-xl shadow-sm">
-          <p className="text-3xl" aria-hidden="true">🚫</p>
+          <ShieldOff className="h-8 w-8 mx-auto text-muted-foreground" aria-hidden="true" />
           <h2 className="font-semibold text-lg">Access Restricted</h2>
           <p className="text-sm text-muted-foreground">
             This app is only available to <strong>@{allowed}</strong> accounts.

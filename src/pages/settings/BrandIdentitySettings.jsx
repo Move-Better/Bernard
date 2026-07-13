@@ -57,7 +57,7 @@ export default function BrandIdentitySettings() {
   if (hasBrief) {
     const updated = formatDate(brief.synthesized_at)
     return (
-      <div className="py-2 max-w-3xl">
+      <div className="py-2">
         <PageHeader
           className="items-start mb-5"
           icon={Compass}
