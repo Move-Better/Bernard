@@ -183,13 +183,17 @@ async function processRecording({ iv, recordingUrl, authToken }) {
   // inside the webhook's waitUntil, so nested waitUntil would not be honored).
   const steps = [
     ['concepts', () => extractConcepts({ workspaceId: wsId, sourceKind: 'interview_turn', sourceId: iv, text: interviewText, staffId: staff.id, weightDelta: 1.0 })],
-    ['summary', () => summarizeInterview({ interviewId: iv, workspaceId: wsId, staffId: staff.id, staffName: staff.name, topic: interview.topic, messages: turns })],
-    ['rag', () => indexInterviewTranscriptFull({ workspaceId: wsId, staffId: staff.id, interviewId: iv, messages: turns, cleanedMessages: null, topic: interview.topic, createdAt: interview.created_at })],
     ['region', () => classifyAndStoreInterviewRegion({ interviewId: iv, workspaceId: wsId, topic: interview.topic })],
     ['book', () => markBookStale({ workspaceId: wsId })],
     ['strategist', () => replanWorkspaceWeek({ workspace: { id: wsId, cadence_policy: workspace.cadence_policy ?? null, enabled_outputs: workspace.enabled_outputs ?? null }, weekMonday: mondayOf(new Date().toISOString()) })],
   ]
+  // summary/rag both filter messages by role==='user' internally
+  // (interviewSummarizer.js, practiceMemoryRag.js's buildTranscriptBody) — on
+  // the mixed-transcript fallback that single 'user'-tagged blob contains
+  // BOTH speakers, so these must be gated the same as style/voice below.
   if (dualChannel) {
+    steps.push(['summary', () => summarizeInterview({ interviewId: iv, workspaceId: wsId, staffId: staff.id, staffName: staff.name, topic: interview.topic, messages: turns })])
+    steps.push(['rag', () => indexInterviewTranscriptFull({ workspaceId: wsId, staffId: staff.id, interviewId: iv, messages: turns, cleanedMessages: null, topic: interview.topic, createdAt: interview.created_at })])
     steps.push(['style', () => classifyAndStoreInterviewStyle({ workspaceId: wsId, staffId: staff.id, interviewId: iv, messages: turns })])
   }
   if (clinicianTurns) {
