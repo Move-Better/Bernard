@@ -947,7 +947,10 @@ export default function AssetsPane({
 
   if (pieces.length === 0) {
     return (
-      <div className={`rounded-xl border bg-card p-4 space-y-3 ${className}`}>
+      <div
+        data-testid="assets-pane"
+        className={`rounded-xl border bg-card p-4 space-y-3 ${className}`}
+      >
         <p className="text-sm text-muted-foreground">
           No content pieces yet. Generate content from the interview to see it here.
         </p>
@@ -956,7 +959,7 @@ export default function AssetsPane({
   }
 
   return (
-    <div className={`rounded-xl border bg-card p-4 space-y-4 ${className}`}>
+    <div data-testid="assets-pane" className={`rounded-xl border bg-card p-4 space-y-4 ${className}`}>
       <KeystoneBar story={story} />
 
       <div className="space-y-2">
