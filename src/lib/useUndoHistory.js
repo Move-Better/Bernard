@@ -70,12 +70,22 @@ export function useUndoHistory(snapshot, restore, { debounceMs = 500, enabled = 
 
   const undo = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    const prior = pendingRef.current !== null ? pendingRef.current : lastCommittedRef.current
+    // An uncommitted (debounced) edit is still in flight: pendingRef holds the
+    // PRE-edit baseline, not a committed history entry. Undoing it is a single
+    // step back — restore the last committed snapshot and discard the pending
+    // edit — WITHOUT popping the committed history stack (doing both would jump
+    // back two steps and lose the in-progress edit from both stacks).
+    if (pendingRef.current !== null) {
+      const committed = lastCommittedRef.current
+      pendingRef.current = null
+      applyingRef.current = true
+      restore(JSON.parse(committed))
+      return
+    }
     if (pastRef.current.length === 0) return
     const previous = pastRef.current[pastRef.current.length - 1]
     pastRef.current = pastRef.current.slice(0, -1)
-    futureRef.current = [prior, ...futureRef.current]
-    pendingRef.current = null
+    futureRef.current = [lastCommittedRef.current, ...futureRef.current]
     applyingRef.current = true
     lastCommittedRef.current = previous
     setCounts({ past: pastRef.current.length, future: futureRef.current.length })
