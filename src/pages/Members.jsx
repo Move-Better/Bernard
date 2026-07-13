@@ -11,11 +11,10 @@
 // keep working without us having to add wildcard routes.
 
 import { OrganizationProfile } from '@clerk/react'
-import { ArrowLeft, Bot, ChevronRight } from 'lucide-react'
+import { Bot, ChevronRight, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { useSmartBack } from '@/lib/useSmartBack'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 
 // Bernard-as-teammate card (Standing Producer Phase 0). Presentational: shown
@@ -51,26 +50,14 @@ function BernardMemberCard() {
 
 export default function Members() {
   useDocumentTitle('Members')
-  const goBack = useSmartBack('/settings/workspace')
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back to settings">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center">
-            <span
-              className="inline-block w-1 h-6 rounded-full shrink-0 mr-2.5 bg-info"
-              aria-hidden="true"
-            />
-            Members
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Invite teammates, change roles, and manage workspace access.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/settings/workspace"
+        icon={Users}
+        title="Members"
+        subtitle="Invite teammates, change roles, and manage workspace access."
+      />
 
       <BernardMemberCard />
 
