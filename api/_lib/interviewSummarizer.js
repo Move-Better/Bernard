@@ -77,6 +77,13 @@ Return only the summary text — no preamble, no labels.`
  * @property {string=} staffName
  * @property {string=} topic
  * @property {Array<{role:string,content:string}>} messages   — preferred cleaned_messages, else raw
+ * @property {boolean=} speakerAttributed — false when `messages` came from a
+ *   degraded/fallback transcription path where a `role:'user'` tag can't be
+ *   trusted to mean "only the clinician spoke" (e.g. a mixed single-channel
+ *   call transcript). Defaults to true for all existing callers whose
+ *   messages are reliably per-speaker. See callTranscript.js's dualChannel
+ *   doc comment and CLAUDE.md "A degraded-fallback code path that reuses a
+ *   'real' shape's tag corrupts every downstream consumer that trusts it."
  */
 
 /**
@@ -85,9 +92,13 @@ Return only the summary text — no preamble, no labels.`
  *
  * @param {SummarizeArgs} args
  */
-export async function summarizeInterview({ interviewId, workspaceId, staffId, staffName, topic, messages }) {
+export async function summarizeInterview({ interviewId, workspaceId, staffId, staffName, topic, messages, speakerAttributed = true }) {
   try {
     if (!interviewId || !workspaceId) return
+    if (!speakerAttributed) {
+      console.info(`[interviewSummarizer] interview=${interviewId} skipped — messages not reliably speaker-attributed`)
+      return
+    }
 
     const transcriptText = (messages || [])
       .filter((m) => m?.role === 'user' && typeof m.content === 'string' && m.content.trim())
