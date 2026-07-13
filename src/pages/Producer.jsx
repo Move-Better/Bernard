@@ -23,7 +23,7 @@ export default function Producer() {
   const actions = data?.actions || []
 
   return (
-    <div className="max-w-3xl">
+    <div>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
         <div>

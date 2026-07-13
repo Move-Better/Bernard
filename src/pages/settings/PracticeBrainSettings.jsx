@@ -15,7 +15,7 @@ export default function PracticeBrainSettings() {
   const { data: items = [], isLoading } = usePracticeBrainSupersessions()
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-4">
       <PageHeader
         icon={Brain}
         title="Clinic knowledge"
