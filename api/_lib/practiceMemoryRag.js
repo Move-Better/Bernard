@@ -420,6 +420,12 @@ function buildTranscriptBody(messages) {
  * Prefers cleanedMessages (filler removed, voice preserved) and falls back
  * to messages. Assistant prompts become inline "[Asked: ...]" markers so
  * retrieved chunks land with their question for context.
+ *
+ * @param {boolean} [speakerAttributed=true] — false when `messages`/`cleanedMessages`
+ *   came from a degraded/fallback transcription path where a `role:'user'` tag
+ *   can't be trusted to mean "only the clinician spoke" (e.g. a mixed
+ *   single-channel call transcript). Skips indexing rather than risk writing
+ *   non-clinician content into this trusted RAG substrate.
  */
 export async function indexInterviewTranscriptFull({
   workspaceId,
@@ -429,9 +435,14 @@ export async function indexInterviewTranscriptFull({
   cleanedMessages,
   topic,
   createdAt,
+  speakerAttributed = true,
 }) {
   try {
     if (!workspaceId || !interviewId) return
+    if (!speakerAttributed) {
+      console.info(`[practiceMemoryRag] interview=${interviewId} transcript-full indexing skipped — messages not reliably speaker-attributed`)
+      return
+    }
     const turns = (Array.isArray(cleanedMessages) && cleanedMessages.length)
       ? cleanedMessages
       : (Array.isArray(messages) ? messages : [])
