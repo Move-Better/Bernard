@@ -56,7 +56,7 @@ export async function checkWordsApproved(contentItemId, workspaceId) {
   // against if it does) — let it through rather than block on a null ref.
   if (!piece.interview_id) return { ok: true }
 
-  const ivRes = await sb(`interviews?id=eq.${piece.interview_id}&select=words_approved_at`)
+  const ivRes = await sb(`interviews?id=eq.${piece.interview_id}&workspace_id=eq.${workspaceId}&select=words_approved_at`)
   if (!ivRes.ok) {
     console.error(`[wordsApprovalGate] interviews lookup ${ivRes.status} for interview=${piece.interview_id}`)
     return { ok: false, status: 500, body: { error: 'words_gate_check_failed' } }

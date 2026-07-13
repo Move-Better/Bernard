@@ -45,9 +45,12 @@ function EditablePill({ value, options, placeholder, label, onChange, disabled, 
   // Unset CTA styling draws the eye to missing metadata. When several pills are
   // unset at once, only the first should shout — pass demoteUnset on the rest so
   // they read as quiet "add later" chips and don't compete for attention.
+  // Amber (--action), not primary — this is a "fill this in" nudge, not the
+  // page's real CTA, and the two shouldn't share a hue (they'd both read as
+  // "the button to click" at a glance).
   const unsetCls = demoteUnset
     ? 'text-muted-foreground bg-muted/40 border border-dashed border-border hover:bg-muted active:bg-muted px-2 py-1.5'
-    : 'text-primary bg-primary/5 border border-dashed border-primary/40 hover:bg-primary/10 hover:border-primary/60 active:bg-primary/10 font-medium px-2 py-1.5'
+    : 'text-action bg-action/5 border border-dashed border-action/40 hover:bg-action/10 hover:border-action/60 active:bg-action/10 font-medium px-2 py-1.5'
   return (
     <label
       className={`relative inline-flex items-center gap-1 text-xs rounded-full transition-colors ${

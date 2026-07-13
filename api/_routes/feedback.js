@@ -152,7 +152,7 @@ export default async function handler(req, res) {
 
   // Record the notification outcome on the already-saved row — best-effort,
   // doesn't affect the response either way.
-  await sb(`feedback?id=eq.${saved.id}`, {
+  await sb(`feedback?id=eq.${saved.id}&workspace_id=eq.${wsCtx.id}`, {
     method: 'PATCH',
     body: JSON.stringify({ notify_ok: notifyOk, notify_error: notifyError }),
   }).catch(() => {})

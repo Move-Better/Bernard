@@ -43,9 +43,11 @@ const NAV_SECTIONS = [
     items: [
       { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard,
         requiresCapability: CAP_INTERVIEW_START },
-      // Analytics — grouped flyout for the four measurement surfaces (Overview,
-      // Insights, SEO, Usage). Collapses 4 top-level icons into 1; each item
-      // keeps its own gating and still routes to its existing page.
+      // Analytics — grouped flyout for the tenant-facing measurement surfaces
+      // (Overview, Insights, SEO). Collapses 3 top-level icons into 1; each
+      // item keeps its own gating and still routes to its existing page.
+      // Usage (internal adoption metrics, not clinic performance) lives in
+      // the Tools flyout below, next to Admin — same audience, same purpose.
       {
         label: 'Analytics', icon: BarChart3,
         flyoutItems: [
@@ -58,9 +60,6 @@ const NAV_SECTIONS = [
           // SEO Opportunities — search demand → content + advisory site fixes. Editor-gated.
           { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp,
             requiresEditor: true },
-          // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
-          { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge,
-            requiresAdmin: true },
         ],
       },
     ],
@@ -98,7 +97,7 @@ const NAV_SECTIONS = [
     label: 'Tools',
     items: [
       // Tools — grouped flyout for the lower-frequency surfaces (Book, Write,
-      // Pre-Visit, Admin). Collapses 4 top-level icons into 1.
+      // Pre-Visit, Usage, Admin). Collapses 5 top-level icons into 1.
       {
         label: 'Tools', icon: Wrench,
         flyoutItems: [
@@ -108,6 +107,11 @@ const NAV_SECTIONS = [
             hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START },
           { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2,
             requiresCapability: CAP_INTERVIEW_START },
+          // Usage — per-workspace adoption dashboard (internal metrics, not
+          // clinic performance — grouped with Admin, not Analytics).
+          // Admin/owner-gated (per-staff data).
+          { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge,
+            requiresAdmin: true },
           // Admin — cross-tenant global usage. Visible only to platform operators
           // (Clerk publicMetadata.platform_admin), distinct from per-workspace admin.
           { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe,
