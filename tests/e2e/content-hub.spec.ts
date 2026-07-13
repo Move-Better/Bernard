@@ -144,20 +144,18 @@ test('story detail renders content pieces without auth error', async ({ page }) 
   await expect(page).toHaveURL(/\/stories\/[0-9a-f-]{36}/i, { timeout: 15_000 })
 
   // Story detail renders a two-column layout: TranscriptPane (left) and
-  // AssetsPane (right). AssetsPane shows content pieces or an empty state.
+  // AssetsPane (right). AssetsPane (data-testid="assets-pane") shows the
+  // per-story review/monitor with content pieces, or an empty state.
   // An auth error from /api/db/content returns 403, which causes the pane
   // to render a network-error message instead of pieces.
   await expect(
     page.locator('text=/network error|forbidden|403/i'),
   ).toHaveCount(0, { timeout: 10_000 })
 
-  // Either some content pieces OR the empty state must be present —
-  // "Generating" spinner counts as "present" while AI runs.
+  // The AssetsPane root renders whether the story has pieces (Posts list /
+  // status rows) or is empty ("No content pieces yet"). Anchor on the stable
+  // testid so this doesn't drift when the pane's inner controls change.
   await expect(
-    page
-      .locator('[data-testid="assets-pane"]')
-      .or(page.locator('text=/no content pieces|generating/i'))
-      .or(page.locator('button', { hasText: /regenerate|approve|send for review/i }))
-      .first(),
+    page.locator('[data-testid="assets-pane"]').first(),
   ).toBeVisible({ timeout: 20_000 })
 })
