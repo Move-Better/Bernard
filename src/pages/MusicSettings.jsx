@@ -5,6 +5,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { useConfirm } from '@/lib/useConfirm'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { toast } from '@/lib/toast'
 import { getMusicTracks, uploadMusicTrack, deleteMusicTrack, updateMusicTrack } from '@/lib/musicLib'
 
@@ -14,11 +15,10 @@ const fmt = (s) => (s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(
 // A single track row. Module-scope (react-hooks/static-components).
 function TrackRow({ t, own, isPlaying, onPreview, onMood, onDelete }) {
   return (
-    <div className="flex items-center gap-3 border-t px-3.5 py-2.5 first:border-t-0" style={{ borderColor: 'hsl(var(--border))' }}>
+    <div className="flex items-center gap-3 border-t border-border px-3.5 py-2.5 first:border-t-0">
       <button
         type="button" onClick={() => onPreview(t)}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-        style={{ background: 'hsl(var(--primary)/.10)', color: 'hsl(var(--primary))' }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
         title={isPlaying ? 'Stop preview' : 'Preview'}
       >
         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -31,8 +31,7 @@ function TrackRow({ t, own, isPlaying, onPreview, onMood, onDelete }) {
         <select
           value={t.mood}
           onChange={(e) => onMood(t.id, e.target.value)}
-          className="rounded-md border bg-card px-2 py-1 text-xs font-medium capitalize text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-          style={{ borderColor: 'hsl(var(--border))' }}
+          className="rounded-md border border-border bg-card px-2 py-1 text-xs font-medium capitalize text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
           aria-label="Mood"
         >
           {MOODS.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -113,28 +112,26 @@ export default function MusicSettings() {
   const sectionLabel = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground'
 
   return (
-    <div className="max-w-xl py-6">
+    <div className="py-6">
       <audio ref={audioRef} onEnded={() => setPreviewId(null)} className="hidden" />
       <input
         ref={fileRef} type="file" accept="audio/mpeg,.mp3" multiple className="hidden"
         onChange={(e) => { onFiles(e.target.files); e.target.value = '' }}
       />
 
-      <div className="mb-1 flex items-center gap-2">
-        <Music className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold tracking-tight">Music</h1>
-      </div>
-      <p className="mb-7 text-sm text-muted-foreground">
-        Licensed background tracks for your video clips. Add one in the video editor and it&rsquo;s mixed under the voice with auto-duck.
-      </p>
+      <PageHeader
+        icon={Music}
+        title="Music"
+        subtitle="Licensed background tracks for your video clips. Add one in the video editor and it’s mixed under the voice with auto-duck."
+      />
 
       {/* Shared library */}
       <section className="mb-6">
         <div className="mb-2 flex items-center justify-between">
           <span className={sectionLabel}>Shared library</span>
-          <span className="rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wide" style={{ background: 'hsl(var(--accent))', color: 'hsl(var(--primary))' }}>✓ Included</span>
+          <span className="rounded-full bg-accent px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-primary">✓ Included</span>
         </div>
-        <div className="rounded-xl border bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+        <div className="rounded-xl border border-border bg-card">
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : shared.length === 0 ? (
@@ -153,11 +150,10 @@ export default function MusicSettings() {
           <span className={sectionLabel}>Your tracks</span>
           <span className="text-xs text-muted-foreground">Admins only</span>
         </div>
-        <div className="rounded-xl border bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+        <div className="rounded-xl border border-border bg-card">
           <button
             type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="m-3.5 flex w-[calc(100%-1.75rem)] flex-col items-center rounded-xl border border-dashed px-6 py-6 text-center transition-colors hover:bg-primary/[.03] disabled:opacity-60"
-            style={{ borderColor: 'hsl(var(--border))' }}
+            className="m-3.5 flex w-[calc(100%-1.75rem)] flex-col items-center rounded-xl border border-dashed border-border px-6 py-6 text-center transition-colors hover:bg-primary/[.03] disabled:opacity-60"
           >
             {uploading
               ? <Loader2 className="mb-2 h-7 w-7 animate-spin text-muted-foreground" />
@@ -166,7 +162,7 @@ export default function MusicSettings() {
             <span className="mt-1 text-xs text-muted-foreground">Tracks your clinic is licensed to use. Set the mood after upload.</span>
           </button>
           {own.length > 0 && (
-            <div className="border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+            <div className="border-t border-border">
               {own.map((t) => (
                 <TrackRow
                   key={t.id} t={t} own isPlaying={previewId === t.id}

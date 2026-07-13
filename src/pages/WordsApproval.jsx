@@ -92,7 +92,7 @@ export default function WordsApproval() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 space-y-5">
+    <div className="px-4 py-8 space-y-5">
       <button
         type="button"
         onClick={goBack}
@@ -115,7 +115,7 @@ export default function WordsApproval() {
       </div>
 
       {isApproved && (
-        <div className="flex items-center gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3">
+        <div className="flex max-w-3xl items-center gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
           <p className="text-sm text-success">
             <span className="font-semibold">Words approved</span>
@@ -130,7 +130,7 @@ export default function WordsApproval() {
       )}
 
       {!initial && !dirty ? (
-        <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <div className="max-w-3xl rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
           The story summary is still generating — check back in a moment.
         </div>
       ) : (
@@ -141,7 +141,7 @@ export default function WordsApproval() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             spellCheck
-            className="w-full min-h-[240px] max-h-[560px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed text-foreground/90 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full max-w-3xl min-h-[240px] max-h-[560px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed text-foreground/90 focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
 
           <button
@@ -153,7 +153,7 @@ export default function WordsApproval() {
             Not sure it&rsquo;s faithful? Compare to what you said
           </button>
 
-          <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+          <div className="flex max-w-3xl flex-wrap items-center gap-3 border-t pt-4">
             <p className="max-w-[34ch] text-xs text-muted-foreground">
               Approving greenlights this story into posts. You still approve each post
               before it publishes.
