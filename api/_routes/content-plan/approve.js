@@ -9,6 +9,7 @@
 //   { status:'approved', dispatched:false, fallback:'client', needs_client_bake? }
 //                                                                — client runs publishPieceToBuffer
 //   { status:'approved', dispatched:false, error }               — surface; client must NOT re-dispatch
+//   { status:'approved', dispatched:false, reason:'in_progress' } — another dispatch holds the claim
 //   { status, alreadyApproved:true }                             — already scheduled/published
 export const config = { runtime: 'nodejs' }
 
@@ -105,6 +106,7 @@ export default async function handler(req, res) {
     dispatched: false,
     ...(dispatch?.fallback ? { fallback: dispatch.fallback } : {}),
     ...(dispatch?.needs_client_bake ? { needs_client_bake: true } : {}),
+    ...(dispatch?.reason ? { reason: dispatch.reason } : {}),
     ...(dispatch?.error ? { error: dispatch.error } : {}),
   })
 }
