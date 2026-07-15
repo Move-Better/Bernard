@@ -310,7 +310,7 @@ export default function NewInterview() {
             <Mic className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
             Start an interview
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Answer two things and start talking. Everything else you shape later, in your own words.</p>
+          <p className="text-sm text-muted-foreground mt-1">Pick who&apos;s talking and what it&apos;s about &mdash; everything else is optional and tunable per draft.</p>
         </div>
       </div>
 

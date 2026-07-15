@@ -337,40 +337,39 @@ export default function Stories() {
           <button
             type="button"
             onClick={toggleSort}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary/30 hover:bg-muted transition-colors"
+            title={sortAsc ? 'Oldest first' : 'Newest first'}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary/30 hover:bg-muted transition-colors"
           >
             <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-            {sortAsc ? 'Oldest first' : 'Newest first'}
+            <span className="hidden sm:inline">{sortAsc ? 'Oldest first' : 'Newest first'}</span>
           </button>
-        </div>
-
-        {/* Advanced filters — collapsed into one popover so the sticky header
-            isn't a wall of dropdowns. Applied filters show as removable chips
-            beside the button so what's active stays visible without opening it.
-            (Status tabs + Mine live in the pill row above; the failed-triage
-            deep link keeps its own destructive chip.) */}
-        <div className="flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Advanced filters — compact trigger on the search row (icon-only on
+              mobile) so it isn't a fourth pinned row. Radix portals the panel, so
+              the trigger's DOM position here is all that matters; applied chips
+              render below the sticky header, scrolling with content. */}
           <Popover>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                title="Filters"
+                aria-label="Filters"
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-colors ${
                   advancedCount > 0
                     ? 'border-primary/40 bg-primary/5 text-foreground hover:bg-primary/10'
                     : 'border-border bg-muted/40 text-foreground hover:border-primary/30 hover:bg-muted'
                 }`}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                Filters
+                <span className="hidden sm:inline">Filters</span>
                 {advancedCount > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-primary text-primary-foreground text-2xs font-bold">
                     {advancedCount}
                   </span>
                 )}
-                <ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                <ChevronDown className="h-3 w-3 text-muted-foreground hidden sm:inline" aria-hidden="true" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 space-y-3 p-3">
+            <PopoverContent align="end" className="w-64 space-y-3 p-3">
               <div className="flex items-center justify-between">
                 <span className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">Filters</span>
                 {advancedCount > 0 && (
@@ -431,8 +430,15 @@ export default function Stories() {
               )}
             </PopoverContent>
           </Popover>
+        </div>
 
-          {/* Applied-filter chips (removable) — click to clear */}
+      </div>
+
+      {/* Applied-filter chips (removable) — click to clear. Live BELOW the sticky
+          header so they scroll with content instead of pinning a fourth row;
+          rendered only when a filter is active. */}
+      {(failedOnly || realOnly || activeCampaignObj || activeStaffObj || platformFilter || locationFilter || archetypeFilter) && (
+        <div className="flex flex-wrap items-center gap-2">
           {failedOnly && (
             <ActiveFilterChip icon={AlertTriangle} label="Failed to publish" tone="destructive" onClear={clearStatus} />
           )}
@@ -461,7 +467,7 @@ export default function Stories() {
             />
           )}
         </div>
-      </div>
+      )}
 
       {/* Campaign progress strip — shown whenever a campaign filter is
           active. Lives below the sticky chrome so it scrolls with content. */}

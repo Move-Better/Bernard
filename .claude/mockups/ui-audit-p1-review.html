@@ -1,0 +1,850 @@
+<title>Bernard UI Audit &mdash; P1 Review</title>
+<style>
+  :root {
+    /* ---- review-layer chrome (theme-aware) ---- */
+    --paper: #f5f6f8;
+    --ink: #12151c;
+    --ink-soft: #4a5162;
+    --ink-faint: #8b91a1;
+    --panel: #ffffff;
+    --hair: #e4e7ec;
+    --hair-strong: #d3d7df;
+    --rose: #e11d48;        /* current / problem &mdash; outside Bernard's palette */
+    --rose-wash: #fdf2f5;
+    --indigo: #5b5bd6;      /* proposed / recommended &mdash; outside Bernard's palette */
+    --indigo-wash: #f1f1fc;
+
+    /* ---- Bernard's real app tokens (used ONLY inside app renderings) ---- */
+    --app-bg: #ffffff;
+    --app-fg: #0b1120;
+    --app-muted: #f1f3f5;
+    --app-muted-fg: #47536b;
+    --app-border: #e2e8f0;
+    --app-primary: #0c7580;      /* spruce  hsl(186 83% 27%) */
+    --app-action: #d97706;       /* amber-600 hsl(32 95% 44%) */
+    --app-warning: #f59e0b;      /* amber-500 hsl(38 92% 50%) */
+    --app-success: #16b45d;      /* emerald hsl(152 76% 40%) */
+
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0c0e13;
+      --ink: #e9ecf2;
+      --ink-soft: #a2a9b8;
+      --ink-faint: #6b7180;
+      --panel: #14171e;
+      --hair: #242833;
+      --hair-strong: #313644;
+      --rose: #fb7185;
+      --rose-wash: #2a1720;
+      --indigo: #a5a5f5;
+      --indigo-wash: #1a1a2b;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f5f6f8; --ink: #12151c; --ink-soft: #4a5162; --ink-faint: #8b91a1;
+    --panel: #ffffff; --hair: #e4e7ec; --hair-strong: #d3d7df;
+    --rose: #e11d48; --rose-wash: #fdf2f5; --indigo: #5b5bd6; --indigo-wash: #f1f1fc;
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c0e13; --ink: #e9ecf2; --ink-soft: #a2a9b8; --ink-faint: #6b7180;
+    --panel: #14171e; --hair: #242833; --hair-strong: #313644;
+    --rose: #fb7185; --rose-wash: #2a1720; --indigo: #a5a5f5; --indigo-wash: #1a1a2b;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .doc {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: clamp(20px, 4vw, 56px) clamp(16px, 4vw, 40px) 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ---------- document header ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  }
+  .eyebrow b { color: var(--indigo); font-weight: 600; }
+  .doc-head h1 {
+    font-size: clamp(28px, 4.4vw, 42px);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 800;
+    text-wrap: balance;
+    margin: 14px 0 0;
+    max-width: 20ch;
+  }
+  .doc-head .lede {
+    font-size: clamp(15px, 1.6vw, 17px);
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 16px 0 0;
+  }
+  .verdict-bar {
+    margin-top: 22px;
+    display: flex; flex-wrap: wrap; gap: 10px;
+  }
+  .vchip {
+    font-family: var(--mono); font-size: 12px;
+    padding: 6px 11px; border-radius: 999px;
+    border: 1px solid var(--hair-strong);
+    background: var(--panel);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .vchip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .vchip.clean { border-color: color-mix(in srgb, var(--app-success) 45%, var(--hair)); }
+  .vchip.clean .dot { background: var(--app-success); }
+  .vchip.hold { border-color: color-mix(in srgb, var(--indigo) 45%, var(--hair)); }
+  .vchip.hold .dot { background: var(--indigo); }
+
+  /* ---------- finding section ---------- */
+  .finding { margin-top: clamp(40px, 6vw, 72px); }
+  .finding > hr {
+    border: 0; border-top: 1px solid var(--hair); margin: 0 0 28px;
+  }
+  .f-id {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--rose);
+    letter-spacing: 0.04em;
+  }
+  .f-title {
+    font-size: clamp(21px, 2.6vw, 27px);
+    font-weight: 750; letter-spacing: -0.02em;
+    margin: 6px 0 0; text-wrap: balance;
+  }
+  .f-where {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink-faint); margin-top: 8px;
+    word-break: break-word;
+  }
+  .f-problem {
+    font-size: 15.5px; line-height: 1.55; color: var(--ink-soft);
+    max-width: 66ch; margin: 14px 0 0;
+  }
+  .f-problem strong { color: var(--ink); font-weight: 650; }
+
+  /* comparison grid */
+  .compare {
+    margin-top: 26px;
+    display: grid; gap: 18px;
+    grid-template-columns: 1fr 1fr;
+  }
+  .compare.trio { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 780px) { .compare, .compare.trio { grid-template-columns: 1fr; } }
+
+  .pane {
+    border: 1px solid var(--hair);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 16px 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pane-tab {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding-bottom: 12px;
+  }
+  .pane-tab .sq { width: 9px; height: 9px; border-radius: 2px; }
+  .pane.current { border-color: color-mix(in srgb, var(--rose) 32%, var(--hair)); }
+  .pane.current .pane-tab { color: var(--rose); }
+  .pane.current .pane-tab .sq { background: var(--rose); }
+  .pane.proposed { border-color: color-mix(in srgb, var(--indigo) 34%, var(--hair)); }
+  .pane.proposed .pane-tab { color: var(--indigo); }
+  .pane.proposed .pane-tab .sq { background: var(--indigo); }
+  .pane .rec {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; color: var(--indigo);
+    border: 1px solid color-mix(in srgb, var(--indigo) 40%, var(--hair));
+    background: var(--indigo-wash);
+    border-radius: 999px; padding: 3px 8px;
+    position: absolute; top: 14px; right: 14px;
+  }
+
+  /* ---------- the embedded "app surface" ---------- */
+  .app {
+    font-family: var(--sans);
+    background: var(--app-bg);
+    color: var(--app-fg);
+    border: 1px solid var(--app-border);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 12px 26px -18px rgba(15,23,42,.4);
+    overflow: hidden;
+  }
+  .app-inner { padding: 14px; }
+
+  /* Your Week plan cards */
+  .board { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (max-width: 460px) { .board { grid-template-columns: 1fr; } }
+  .pcard {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--app-border); border-radius: 10px;
+    background: var(--app-bg); padding: 9px 9px 10px 13px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 8px 18px -13px rgba(15,23,42,.3);
+  }
+  .pcard .rail { position: absolute; inset: 0 auto 0 0; width: 6px; }
+  .pcard .chanrow { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+  .pcard .chan {
+    width: 20px; height: 20px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .pcard .chan svg { width: 12px; height: 12px; }
+  .pcard .time { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--app-muted-fg); }
+  .pcard .headline {
+    font-size: 11px; font-weight: 650; line-height: 1.35; color: var(--app-fg);
+    margin-bottom: 8px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .pill {
+    display: inline-flex; align-items: center; border-radius: 999px;
+    padding: 2px 8px; font-size: 10px; font-weight: 700; line-height: 1.4;
+  }
+  .pill-solid-action { background: var(--app-action); color: #fff; }
+  .pill-solid-warning { background: var(--app-warning); color: #1a1205; }
+  .pill-solid-primary { background: var(--app-primary); color: #fff; }
+  .pill-solid-success { background: var(--app-success); color: #fff; }
+  .pill-muted { background: var(--app-muted); color: var(--app-muted-fg); }
+  .pill-ghost {
+    background: transparent; color: var(--app-muted-fg);
+    border: 1px dashed var(--app-border);
+  }
+
+  .rail-action { background: var(--app-action); }
+  .rail-warning { background: var(--app-warning); }
+  .rail-primary { background: var(--app-primary); }
+  .rail-success { background: var(--app-success); }
+  .rail-muted { background: color-mix(in srgb, var(--app-muted-fg) 40%, transparent); }
+  .rail-neutral {
+    background: repeating-linear-gradient(
+      -45deg, var(--app-border), var(--app-border) 3px,
+      transparent 3px, transparent 6px);
+    border-right: 1px solid var(--app-border);
+  }
+
+  /* collision annotation brackets */
+  .collide {
+    margin-top: 12px; display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--rose);
+    background: var(--rose-wash); border: 1px solid color-mix(in srgb, var(--rose) 24%, transparent);
+    border-radius: 8px; padding: 8px 10px;
+  }
+  .resolve {
+    margin-top: 12px; display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--indigo);
+    background: var(--indigo-wash); border: 1px solid color-mix(in srgb, var(--indigo) 26%, transparent);
+    border-radius: 8px; padding: 8px 10px;
+  }
+  .collide svg, .resolve svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* status ramp legend */
+  .ramp {
+    margin-top: 18px;
+    border: 1px solid var(--hair); border-radius: 12px;
+    background: var(--panel); padding: 16px 18px;
+  }
+  .ramp .ramp-h {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px;
+  }
+  .ramp-track { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .ramp-step {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 9px; padding: 8px 10px; background: var(--app-bg);
+    border: 1px solid var(--app-border);
+  }
+  .ramp-step .swatch { width: 10px; height: 22px; border-radius: 3px; }
+  .ramp-step .lbl { font-size: 12px; font-weight: 650; color: var(--app-fg); }
+  .ramp-step .sub { font-family: var(--mono); font-size: 9.5px; color: var(--app-muted-fg); display:block; margin-top:1px; }
+  .ramp-arrow { color: var(--ink-faint); flex-shrink: 0; }
+  .ramp-step.hero { border-color: color-mix(in srgb, var(--app-warning) 55%, var(--app-border)); background: color-mix(in srgb, var(--app-warning) 8%, var(--app-bg)); }
+
+  /* ---------- phone frames ---------- */
+  .phones { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 24px; align-items: flex-start; }
+  .phone-col { flex: 1 1 280px; min-width: 260px; }
+  .phone-cap {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .phone-cap .sq { width: 9px; height: 9px; border-radius: 2px; }
+  .phone-cap.cur { color: var(--rose); } .phone-cap.cur .sq { background: var(--rose); }
+  .phone-cap.pro { color: var(--indigo); } .phone-cap.pro .sq { background: var(--indigo); }
+  .phone-cap .rec {
+    margin-left: auto; font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+    border: 1px solid color-mix(in srgb, var(--indigo) 40%, var(--hair));
+    background: var(--indigo-wash); color: var(--indigo);
+    border-radius: 999px; padding: 2px 7px;
+  }
+  .phone-rig { display: flex; gap: 10px; align-items: stretch; }
+  .brace {
+    position: relative; width: 46px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: stretch;
+  }
+  .brace .seg {
+    position: relative; border-right: 2px solid var(--measure);
+    flex: 0 0 auto;
+  }
+  .brace .seg::before, .brace .seg::after {
+    content: ""; position: absolute; right: 0; width: 8px; height: 2px; background: var(--measure);
+  }
+  .brace .seg::before { top: 0; } .brace .seg::after { bottom: 0; }
+  .brace .measure-lbl {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: var(--measure); white-space: nowrap; writing-mode: vertical-rl; text-orientation: mixed;
+    letter-spacing: 0.02em;
+  }
+  .brace.cur { --measure: var(--rose); }
+  .brace.pro { --measure: var(--indigo); }
+
+  .phone {
+    flex: 1; border: 8px solid #1b1e26; border-radius: 26px;
+    background: #1b1e26; box-shadow: 0 18px 40px -20px rgba(0,0,0,.5);
+    overflow: hidden;
+  }
+  @media (prefers-color-scheme: dark) { .phone { border-color: #2a2e39; background: #2a2e39; } }
+  .phone-screen { background: var(--app-bg); position: relative; height: 430px; overflow: hidden; }
+  .notch { height: 16px; background: var(--app-bg); display:flex; align-items:center; justify-content:center; }
+  .notch::after { content:""; width: 54px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--app-muted-fg) 30%, transparent); }
+
+  .s-header {
+    background: var(--app-bg); border-bottom: 1px solid var(--app-border);
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 9px;
+    box-shadow: 0 6px 10px -8px rgba(15,23,42,.25);
+    position: relative; z-index: 2;
+  }
+  .s-row1 { display: flex; align-items: center; gap: 8px; }
+  .s-row1 .t { font-size: 16px; font-weight: 800; letter-spacing: -.02em; display:flex; align-items:center; gap:6px; }
+  .s-row1 .t svg { width: 15px; height: 15px; color: var(--app-primary); }
+  .s-row1 .c { font-size: 11px; color: var(--app-muted-fg); }
+  .s-row1 .help { margin-left:auto; width:18px;height:18px;border-radius:50%;border:1px solid var(--app-border); color:var(--app-muted-fg); font-size:11px; display:flex;align-items:center;justify-content:center; }
+  .s-pills { display: flex; gap: 6px; overflow: hidden; }
+  .s-pill { flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--app-border); color: var(--app-muted-fg); background: var(--app-bg); white-space: nowrap; }
+  .s-pill.on { background: var(--app-primary); color: #fff; border-color: var(--app-primary); }
+  .s-pill .badge { margin-left: 5px; background: color-mix(in srgb, var(--app-action) 16%, transparent); color: var(--app-action); border-radius: 999px; padding: 0 5px; font-size: 9px; font-weight: 800; }
+  .s-search { display: flex; gap: 7px; }
+  .s-search .box { flex: 1; display: flex; align-items: center; gap: 6px; border: 1px solid var(--app-border); background: var(--app-muted); border-radius: 8px; padding: 6px 9px; font-size: 11px; color: var(--app-muted-fg); }
+  .s-search .box svg { width: 13px; height: 13px; }
+  .s-search .btn { display:flex;align-items:center;gap:5px; border: 1px solid var(--app-border); background: var(--app-muted); border-radius: 8px; padding: 6px 9px; font-size: 11px; font-weight: 600; color: var(--app-fg); white-space:nowrap; }
+  .s-search .btn svg { width: 13px; height: 13px; color: var(--app-muted-fg); }
+  .s-search .iconbtn { border: 1px solid var(--app-border); background: var(--app-muted); border-radius: 8px; padding: 6px 8px; display:flex;align-items:center; }
+  .s-search .iconbtn svg { width: 14px; height: 14px; color: var(--app-muted-fg); }
+  .s-filters { display: flex; gap: 6px; align-items:center; }
+  .s-filters .fbtn { display:flex;align-items:center;gap:5px; font-size: 11px; font-weight:600; border: 1px solid var(--app-border); background: var(--app-muted); border-radius: 8px; padding: 5px 9px; color: var(--app-fg); }
+  .s-filters .fbtn svg { width:13px;height:13px; color: var(--app-muted-fg); }
+
+  .s-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .story-row { border: 1px solid var(--app-border); border-radius: 9px; padding: 9px 10px; background: var(--app-bg); }
+  .story-row .sr-top { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+  .story-row .sr-date { font-family: var(--mono); font-size: 10px; color: var(--app-muted-fg); }
+  .story-row .sr-stat { margin-left:auto; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
+  .story-row .sr-title { font-size: 12px; font-weight: 650; line-height: 1.3; display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden; }
+  .story-row .sr-chans { display:flex; gap:4px; margin-top:7px; }
+  .story-row .sr-chans span { width:15px;height:15px;border-radius:4px; display:inline-flex;align-items:center;justify-content:center; }
+  .story-row .sr-chans svg { width:9px;height:9px; }
+  .peek { opacity: .45; }
+  .cut-note { font-family: var(--mono); font-size: 9.5px; color: var(--app-muted-fg); text-align:center; padding-top: 4px; }
+
+  /* New interview form renderings */
+  .ni { padding: 14px; display:flex; flex-direction: column; gap: 13px; }
+  .ni-head .k { font-size: 15px; font-weight: 800; letter-spacing:-.02em; display:flex;align-items:center;gap:6px; }
+  .ni-head .k svg { width:14px;height:14px;color:var(--app-primary); }
+  .ni-sub { font-size: 12px; color: var(--app-muted-fg); margin-top: 3px; line-height:1.45; }
+  .ni-sub.flag { color: var(--rose); background: var(--rose-wash); border-radius:6px; padding:5px 8px; border:1px solid color-mix(in srgb, var(--rose) 22%, transparent); font-family: var(--sans); }
+  .ni-sub.fix { color: var(--app-fg); }
+  .ni-sub.fix em { color: var(--app-primary); font-style: normal; font-weight: 650; }
+  .field { border: 1px solid var(--app-border); border-radius: 9px; padding: 10px 11px; background: var(--app-bg); position: relative; }
+  .field.count::before {
+    content: attr(data-n); position: absolute; top: -8px; left: 10px;
+    font-family: var(--mono); font-size: 9px; font-weight: 700; color: var(--rose);
+    background: var(--panel); padding: 0 5px; border:1px solid color-mix(in srgb,var(--rose) 30%,var(--hair)); border-radius: 999px;
+  }
+  .field .flabel { font-size: 12px; font-weight: 650; color: var(--app-fg); margin-bottom: 3px; }
+  .field .fhint { font-size: 10px; color: var(--app-muted-fg); margin-bottom: 8px; }
+  .req { color: #dc2626; }
+  .avatars { display:flex; flex-wrap: wrap; gap: 7px; }
+  .av { display:inline-flex; align-items:center; gap:7px; border:2px solid var(--app-border); border-radius:999px; padding: 3px 11px 3px 3px; }
+  .av.sel { border-color: var(--app-primary); background: color-mix(in srgb, var(--app-primary) 5%, transparent); }
+  .av .circ { width:22px;height:22px;border-radius:50%; background: var(--app-muted); color: var(--app-muted-fg); font-size:10px;font-weight:700; display:flex;align-items:center;justify-content:center; }
+  .av.sel .circ { background: var(--app-primary); color:#fff; }
+  .av .nm { font-size: 12px; font-weight: 550; color: var(--app-muted-fg); }
+  .av.sel .nm { color: var(--app-fg); }
+  .inputline { border:1px solid var(--app-border); border-radius: 7px; padding: 8px 10px; font-size:11px; color: var(--app-muted-fg); background: var(--app-bg); }
+  .slot { display:flex; gap:6px; }
+  .slot .opt { flex:1; text-align:center; border:1px solid var(--app-border); border-radius:7px; padding:7px; font-size:11px; font-weight:600; color:var(--app-muted-fg); }
+  .slot .opt.on { border-color: var(--app-primary); background: color-mix(in srgb, var(--app-primary) 6%, transparent); color: var(--app-fg); }
+  .levers { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .lever-pill { font-size:10px; font-weight:600; border:1px solid var(--app-border); border-radius:999px; padding:4px 9px; color:var(--app-muted-fg); background:var(--app-muted); }
+  .more-toggle { display:flex;align-items:center;gap:6px; font-size:11px; font-weight:650; color:var(--app-primary); }
+  .more-toggle svg { width:13px;height:13px; }
+  .cta { background: var(--app-primary); color:#fff; text-align:center; border-radius:9px; padding: 11px; font-size:13px; font-weight:700; display:flex;align-items:center;justify-content:center;gap:7px; }
+  .cta svg { width:15px;height:15px; }
+  .collapsed {
+    border:1px dashed var(--app-border); border-radius:9px; padding:10px 11px;
+    display:flex; align-items:center; gap:8px; background: color-mix(in srgb, var(--app-muted) 50%, transparent);
+  }
+  .collapsed svg { width:14px;height:14px;color:var(--app-muted-fg); }
+  .collapsed .ct { font-size:11px; font-weight:650; color:var(--app-fg); }
+  .collapsed .cs { font-family: var(--mono); font-size:9.5px; color:var(--app-muted-fg); }
+
+  .risk {
+    margin-top: 12px; border-radius: 9px; padding: 10px 12px;
+    background: color-mix(in srgb, var(--app-warning) 9%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--app-warning) 40%, var(--hair));
+    font-size: 12px; line-height: 1.5; color: var(--ink);
+    display:flex; gap: 9px;
+  }
+  .risk svg { width: 15px; height: 15px; color: var(--app-warning); flex-shrink:0; margin-top:1px; }
+  .risk code { font-family: var(--mono); font-size: 11px; background: color-mix(in srgb, var(--app-warning) 14%, transparent); padding: 1px 4px; border-radius: 4px; }
+
+  /* why note + decision */
+  .why {
+    margin-top: 18px; border-left: 3px solid var(--indigo);
+    padding: 4px 0 4px 16px;
+  }
+  .why h4 { font-family: var(--mono); font-size: 11px; letter-spacing:.1em; text-transform: uppercase; color: var(--indigo); margin: 0 0 8px; }
+  .why p { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); max-width: 68ch; }
+  .why p + p { margin-top: 8px; }
+  .why b { color: var(--ink); font-weight: 650; }
+  .why code { font-family: var(--mono); font-size: 12.5px; background: color-mix(in srgb, var(--indigo) 10%, transparent); color: var(--ink); padding: 1px 5px; border-radius: 4px; }
+
+  .decision {
+    margin-top: 18px; border: 1px solid var(--hair-strong); border-radius: 12px;
+    background: var(--panel); padding: 16px 18px;
+  }
+  .decision .dh { font-family: var(--mono); font-size: 11px; letter-spacing:.08em; text-transform:uppercase; color: var(--ink-faint); margin-bottom: 10px; }
+  .decision .q { font-size: 15px; font-weight: 650; margin-bottom: 12px; }
+  .opts { display:grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { .opts { grid-template-columns: 1fr; } }
+  .opt-card { border:1px solid var(--hair); border-radius: 10px; padding: 12px 13px; background: var(--app-bg); }
+  .opt-card.pick { border-color: color-mix(in srgb, var(--indigo) 45%, var(--hair)); background: var(--indigo-wash); }
+  .opt-card .oh { font-size: 13px; font-weight: 750; display:flex; align-items:center; gap:8px; }
+  .opt-card .picktag { font-family: var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em; color: var(--indigo); border:1px solid color-mix(in srgb,var(--indigo) 40%, var(--hair)); border-radius:999px; padding:2px 6px; margin-left:auto; }
+  .opt-card .od { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 7px; }
+
+  .foot {
+    margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--hair);
+    font-size: 13px; color: var(--ink-faint); line-height: 1.6;
+  }
+  .foot code { font-family: var(--mono); font-size: 12px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pane, .opt-card { transition: transform .18s ease, box-shadow .18s ease; }
+    .pane:hover { transform: translateY(-2px); }
+  }
+</style>
+
+<div class="doc">
+  <div class="wrap">
+
+    <header class="doc-head">
+      <div class="eyebrow">
+        <span>AUDIT &middot; 2026-07-15</span>
+        <span>FULL SWEEP</span>
+        <span><b>branch</b> claude/auditfull-0cf280</span>
+        <span><b>@</b> 9fe6862c</span>
+      </div>
+      <h1>Three UI calls that need your eye</h1>
+      <p class="lede">
+        The full-codebase audit came back with <strong style="color:var(--ink)">zero P0s</strong> &mdash; the bug and tenant-isolation
+        findings are already spinning off as fix sessions. These three are different: each is a real
+        inconsistency, but the fix is a <em>design decision</em>, not a mechanical patch. So they stay report-only
+        until you pick a direction. Here's CURRENT vs PROPOSED for each, rendered in Bernard's real tokens.
+      </p>
+      <div class="verdict-bar">
+        <span class="vchip clean"><span class="dot"></span>0 P0 &middot; 0 P1 that ships without you</span>
+        <span class="vchip hold"><span class="dot"></span>3 UI calls awaiting sign-off</span>
+      </div>
+    </header>
+
+    <!-- =============== FINDING 1: YOUR WEEK =============== -->
+    <section class="finding">
+      <hr>
+      <div class="f-id">P1-7 &middot; YOUR WEEK</div>
+      <h2 class="f-title">Two near-identical ambers, two different jobs</h2>
+      <div class="f-where">src/pages/YourWeek.jsx:155&ndash;173 &middot; cardState()</div>
+      <p class="f-problem">
+        On the week board, <strong>&ldquo;needs draft&rdquo;</strong> paints <code style="font-family:var(--mono);font-size:13px">bg-action</code>
+        (amber, hue 32&deg;) and <strong>&ldquo;in review&rdquo;</strong> paints <code style="font-family:var(--mono);font-size:13px">bg-warning</code>
+        (amber, hue 38&deg;) &mdash; six degrees apart, side by side, on your highest-value planning screen. The app's own
+        rule is that you should <strong>clock the color before you read the label</strong>. Here you can't: one amber means
+        &ldquo;nothing's been written yet,&rdquo; the other means &ldquo;your yes is the only thing missing.&rdquo; Only the text tells them apart.
+      </p>
+
+      <div class="compare">
+        <!-- CURRENT -->
+        <div class="pane current">
+          <div class="pane-tab"><span class="sq"></span>Current</div>
+          <div class="app"><div class="app-inner">
+            <div class="board">
+              <div class="pcard">
+                <span class="rail rail-action"></span>
+                <div class="chanrow"><span class="chan" style="background:#fdeee0;color:var(--app-action)">IG</span><span class="time">Mon 9a</span></div>
+                <div class="headline">Why your morning stiffness isn't &ldquo;just age&rdquo;</div>
+                <span class="pill pill-solid-action">needs draft</span>
+              </div>
+              <div class="pcard">
+                <span class="rail rail-warning"></span>
+                <div class="chanrow"><span class="chan" style="background:#e7f2f3;color:var(--app-primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H5.2L4 17.5V4z"/></svg></span><span class="time">Tue 8a</span></div>
+                <div class="headline">The 3 desk habits wrecking your lower back</div>
+                <span class="pill pill-solid-warning">in review</span>
+              </div>
+              <div class="pcard">
+                <span class="rail rail-primary"></span>
+                <div class="chanrow"><span class="chan" style="background:#e7f2f3;color:var(--app-primary)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-4z"/></svg></span><span class="time">Wed 12p</span></div>
+                <div class="headline">Meet the runner who fixed her IT band in 6 weeks</div>
+                <span class="pill pill-solid-primary">approved</span>
+              </div>
+              <div class="pcard">
+                <span class="rail rail-success"></span>
+                <div class="chanrow"><span class="chan" style="background:#e6f7ee;color:var(--app-success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span><span class="time">Thu 7a</span></div>
+                <div class="headline">Postpartum recovery: what week 6 should feel like</div>
+                <span class="pill pill-solid-success">Live</span>
+              </div>
+            </div>
+          </div></div>
+          <div class="collide">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <span>needs-draft and in-review read as the same amber &mdash; the two most different actions on the board</span>
+          </div>
+        </div>
+
+        <!-- PROPOSED -->
+        <div class="pane proposed">
+          <span class="rec">RECOMMENDED</span>
+          <div class="pane-tab"><span class="sq"></span>Proposed</div>
+          <div class="app"><div class="app-inner">
+            <div class="board">
+              <div class="pcard">
+                <span class="rail rail-neutral"></span>
+                <div class="chanrow"><span class="chan" style="background:#fdeee0;color:var(--app-action)">IG</span><span class="time">Mon 9a</span></div>
+                <div class="headline">Why your morning stiffness isn't &ldquo;just age&rdquo;</div>
+                <span class="pill pill-ghost">needs draft</span>
+              </div>
+              <div class="pcard">
+                <span class="rail rail-warning"></span>
+                <div class="chanrow"><span class="chan" style="background:#e7f2f3;color:var(--app-primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H5.2L4 17.5V4z"/></svg></span><span class="time">Tue 8a</span></div>
+                <div class="headline">The 3 desk habits wrecking your lower back</div>
+                <span class="pill pill-solid-warning">in review</span>
+              </div>
+              <div class="pcard">
+                <span class="rail rail-primary"></span>
+                <div class="chanrow"><span class="chan" style="background:#e7f2f3;color:var(--app-primary)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-4z"/></svg></span><span class="time">Wed 12p</span></div>
+                <div class="headline">Meet the runner who fixed her IT band in 6 weeks</div>
+                <span class="pill pill-solid-primary">approved</span>
+              </div>
+              <div class="pcard">
+                <span class="rail rail-success"></span>
+                <div class="chanrow"><span class="chan" style="background:#e6f7ee;color:var(--app-success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></span><span class="time">Thu 7a</span></div>
+                <div class="headline">Postpartum recovery: what week 6 should feel like</div>
+                <span class="pill pill-solid-success">Live</span>
+              </div>
+            </div>
+          </div></div>
+          <div class="resolve">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>&ldquo;needs draft&rdquo; &rarr; quiet dashed / neutral (a to-do, not an alert). Amber now means exactly one thing: your yes.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ramp">
+        <div class="ramp-h">Proposed status ramp &mdash; one meaning per color, left to right</div>
+        <div class="ramp-track">
+          <div class="ramp-step">
+            <span class="swatch rail-neutral"></span>
+            <span class="lbl">needs draft<span class="sub">nothing written yet</span></span>
+          </div>
+          <svg class="ramp-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <div class="ramp-step">
+            <span class="swatch rail-muted"></span>
+            <span class="lbl">drafting&hellip;<span class="sub">Bernard working</span></span>
+          </div>
+          <svg class="ramp-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <div class="ramp-step hero">
+            <span class="swatch" style="background:var(--app-warning)"></span>
+            <span class="lbl">in review<span class="sub">YOUR YES NEEDED</span></span>
+          </div>
+          <svg class="ramp-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <div class="ramp-step">
+            <span class="swatch" style="background:var(--app-primary)"></span>
+            <span class="lbl">approved<span class="sub">scheduled to go</span></span>
+          </div>
+          <svg class="ramp-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <div class="ramp-step">
+            <span class="swatch" style="background:var(--app-success)"></span>
+            <span class="lbl">live<span class="sub">published</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <h4>Why this direction</h4>
+        <p>
+          The severity-ramp principle you set is that <b>amber = &ldquo;an action only you can take is waiting.&rdquo;</b>
+          &ldquo;In review&rdquo; is exactly that &mdash; approve the words. &ldquo;Needs draft&rdquo; isn't: Bernard (or one click) produces
+          the draft, so it's a <b>backlog/to-do</b> state, not an alert. Painting it amber spends the board's loudest
+          signal on the one state that doesn't need you yet.
+        </p>
+        <p>
+          Making it a quiet dashed/neutral chip keeps it visible as &ldquo;not started&rdquo; while letting the eye land straight
+          on the real amber. It's a <code>cardState()</code> change plus one pill/rail style &mdash; no new tokens, no layout shift.
+        </p>
+      </div>
+    </section>
+
+    <!-- =============== FINDING 2: STORIES MOBILE =============== -->
+    <section class="finding">
+      <hr>
+      <div class="f-id">P1-8 &middot; STORIES</div>
+      <h2 class="f-title">The phone spends 200px pinning chrome before a single story</h2>
+      <div class="f-where">src/pages/Stories.jsx:228&ndash;464 &middot; sticky top-14 header</div>
+      <p class="f-problem">
+        The sticky header stacks <strong>four</strong> rows that never scroll away &mdash; title + count, quick-filter pills,
+        search + sort, and the advanced-filters trigger + active chips. On a ~390&times;700 phone that's
+        <strong>~200px of permanent chrome</strong> before the first story row. The advanced-filters trigger is already a
+        popover; it doesn't need to be pinned.
+      </p>
+
+      <div class="phones">
+        <!-- CURRENT PHONE -->
+        <div class="phone-col">
+          <div class="phone-cap cur"><span class="sq"></span>Current &middot; 4 rows pinned</div>
+          <div class="phone-rig">
+            <div class="brace cur">
+              <div class="seg" style="height:184px"><span class="measure-lbl">~200px pinned</span></div>
+              <div style="flex:1"></div>
+            </div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="notch"></div>
+                <div class="s-header">
+                  <div class="s-row1">
+                    <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9h4"/></svg>Stories</span>
+                    <span class="c">128 stories</span>
+                    <span class="help">?</span>
+                  </div>
+                  <div class="s-pills">
+                    <span class="s-pill on">All</span>
+                    <span class="s-pill">Draft</span>
+                    <span class="s-pill">Ready<span class="badge">4</span></span>
+                    <span class="s-pill">Published</span>
+                  </div>
+                  <div class="s-search">
+                    <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>Search stories&hellip;</span>
+                    <span class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/></svg>Newest</span>
+                  </div>
+                  <div class="s-filters">
+                    <span class="fbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters</span>
+                  </div>
+                </div>
+                <div class="s-body peek">
+                  <div class="story-row">
+                    <div class="sr-top"><span class="sr-date">07/14/26</span><span class="sr-stat" style="background:color-mix(in srgb,var(--app-warning) 16%,transparent);color:#9a6206">in review</span></div>
+                    <div class="sr-title">The 3 desk habits wrecking your lower back</div>
+                  </div>
+                </div>
+                <div class="cut-note peek">&uarr; first story starts here &mdash; barely on screen</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROPOSED PHONE -->
+        <div class="phone-col">
+          <div class="phone-cap pro"><span class="sq"></span>Proposed &middot; 3 rows pinned<span class="rec">RECOMMENDED</span></div>
+          <div class="phone-rig">
+            <div class="brace pro">
+              <div class="seg" style="height:120px"><span class="measure-lbl">~130px</span></div>
+              <div style="flex:1"></div>
+            </div>
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="notch"></div>
+                <div class="s-header">
+                  <div class="s-row1">
+                    <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9h4"/></svg>Stories</span>
+                    <span class="c">128</span>
+                    <span class="help">?</span>
+                  </div>
+                  <div class="s-pills">
+                    <span class="s-pill on">All</span>
+                    <span class="s-pill">Draft</span>
+                    <span class="s-pill">Ready<span class="badge">4</span></span>
+                    <span class="s-pill">Published</span>
+                  </div>
+                  <div class="s-search">
+                    <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>Search stories&hellip;</span>
+                    <span class="iconbtn" title="Sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/></svg></span>
+                    <span class="iconbtn" title="Filters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>
+                  </div>
+                </div>
+                <div class="s-body">
+                  <div class="story-row">
+                    <div class="sr-top"><span class="sr-date">07/14/26</span><span class="sr-stat" style="background:color-mix(in srgb,var(--app-warning) 16%,transparent);color:#9a6206">in review</span></div>
+                    <div class="sr-title">The 3 desk habits wrecking your lower back</div>
+                    <div class="sr-chans"><span style="background:#fdeee0;color:var(--app-action)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></div>
+                  </div>
+                  <div class="story-row">
+                    <div class="sr-top"><span class="sr-date">07/13/26</span><span class="sr-stat" style="background:color-mix(in srgb,var(--app-success) 16%,transparent);color:#0d7a41">live</span></div>
+                    <div class="sr-title">Why your morning stiffness isn't &ldquo;just age&rdquo;</div>
+                    <div class="sr-chans"><span style="background:#e7f2f3;color:var(--app-primary)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-4z"/></svg></span></div>
+                  </div>
+                  <div class="story-row peek">
+                    <div class="sr-top"><span class="sr-date">07/12/26</span></div>
+                    <div class="sr-title">Postpartum recovery: what week 6 should feel like</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <h4>Why this direction</h4>
+        <p>
+          Keep pinned only what you operate constantly: <b>search</b> and the <b>quick-filter tabs</b>. Fold the sort +
+          advanced-filters triggers into compact icon buttons on the search row, and let the <b>active-filter chips flow
+          inline with content</b> &mdash; they only exist when a filter is on, and when one is on you're scrolled to the results
+          anyway. Net: ~70px back, and two full story rows visible on first paint instead of half of one.
+        </p>
+        <p>The desktop header is unaffected &mdash; it has the room. This is a mobile-breakpoint change to the sticky stack only.</p>
+      </div>
+    </section>
+
+    <!-- =============== FINDING 3: NEW INTERVIEW =============== -->
+    <section class="finding">
+      <hr>
+      <div class="f-id">P1-9 &middot; NEW INTERVIEW</div>
+      <h2 class="f-title">&ldquo;Answer two things&rdquo; &mdash; but the form asks for six</h2>
+      <div class="f-where">src/pages/NewInterview.jsx:313 (subtitle) vs :322&ndash;492 (form)</div>
+      <p class="f-problem">
+        The subtitle promises <strong>&ldquo;Answer two things and start talking.&rdquo;</strong> The form below it surfaces at least
+        <strong>five decision points</strong> before the Start button &mdash; staff, topic, whose-voice, an optional recipe, and a
+        levers row. The promise and the screen disagree. This one's a genuine fork, because the code deliberately keeps
+        <em>whose voice</em> visible &mdash; so I'm not assuming the trim.
+      </p>
+
+      <div class="phones">
+        <!-- CURRENT -->
+        <div class="phone-col" style="flex:1 1 320px">
+          <div class="phone-cap cur"><span class="sq"></span>Current</div>
+          <div class="app">
+            <div class="ni">
+              <div class="ni-head">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg>Start an interview</div>
+                <div class="ni-sub flag">&ldquo;Answer two things and start talking. Everything else you shape later&hellip;&rdquo; &mdash; but 5 fields are already on screen.</div>
+              </div>
+              <div class="field count" data-n="1">
+                <div class="flabel">Who's talking?</div>
+                <div class="avatars">
+                  <span class="av sel"><span class="circ">MQ</span><span class="nm">Michael</span></span>
+                  <span class="av"><span class="circ">SR</span><span class="nm">Sarah</span></span>
+                  <span class="av"><span class="circ">JL</span><span class="nm">Jon</span></span>
+                </div>
+              </div>
+              <div class="field count" data-n="2">
+                <div class="flabel">Topic <span class="req">*</span></div>
+                <div class="inputline">Low back pain, IT band rehab&hellip;</div>
+              </div>
+              <div class="field count" data-n="3">
+                <div class="flabel">Whose voice is this interview in?</div>
+                <div class="slot"><span class="opt on">&ldquo;We&rdquo; &middot; clinic</span><span class="opt">&ldquo;I&rdquo; &middot; personal</span></div>
+              </div>
+              <div class="field count" data-n="4">
+                <div class="flabel">Recipe</div>
+                <div class="inputline">Choose a saved recipe&hellip;</div>
+              </div>
+              <div class="field count" data-n="5">
+                <div class="flabel" style="margin-bottom:8px">Active levers</div>
+                <div class="levers"><span class="lever-pill">Cleanup: light</span><span class="more-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>More options</span></div>
+              </div>
+              <div class="cta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>Start interview</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROPOSED (option A visual) -->
+        <div class="phone-col" style="flex:1 1 320px">
+          <div class="phone-cap pro"><span class="sq"></span>Proposed &middot; Option A (trim)</div>
+          <div class="app">
+            <div class="ni">
+              <div class="ni-head">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg>Start an interview</div>
+                <div class="ni-sub">Answer two things and start talking.</div>
+              </div>
+              <div class="field">
+                <div class="flabel">Who's talking?</div>
+                <div class="avatars">
+                  <span class="av sel"><span class="circ">MQ</span><span class="nm">Michael</span></span>
+                  <span class="av"><span class="circ">SR</span><span class="nm">Sarah</span></span>
+                  <span class="av"><span class="circ">JL</span><span class="nm">Jon</span></span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">Topic <span class="req">*</span></div>
+                <div class="inputline">Low back pain, IT band rehab&hellip;</div>
+              </div>
+              <div class="cta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>Start interview</div>
+              <div class="collapsed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20v-4M18 20v-9M4 8l4-4 5 5 7-7"/></svg>
+                <span><span class="ct">More options</span><br><span class="cs">voice &middot; recipe &middot; cleanup &middot; patient type</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="risk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <span>Trade-off: the code keeps <code>voiceMode</code> visible on purpose &mdash; <em>&ldquo;the one lane decision that shapes every output.&rdquo;</em> Option A buries it one tap deeper. Fine if you agree it's tunable-later; a regression if that visibility is load-bearing.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="decision">
+        <div class="dh">Your call</div>
+        <div class="q">Trim the form to match the promise, or keep the fields and fix the promise?</div>
+        <div class="opts">
+          <div class="opt-card">
+            <div class="oh">Option A &middot; Trim the UI</div>
+            <div class="od">Staff + Topic + Start stay; voice, recipe, and levers collapse under &ldquo;More options.&rdquo; Matches &ldquo;two things&rdquo; literally. <b>Cost:</b> overrides the deliberate always-visible-voice decision &mdash; worth a gut-check that voice is genuinely fine one tap away.</div>
+          </div>
+          <div class="opt-card pick">
+            <div class="oh">Option B &middot; Fix the copy<span class="picktag">LOWER RISK</span></div>
+            <div class="od">Keep every field (voice stays visible, as designed). Rewrite the subtitle to something honest: <em>&ldquo;Pick who's talking and what about &mdash; everything else is optional and tunable per draft.&rdquo;</em> One-line change, respects the existing intent.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <h4>Why I lean B</h4>
+        <p>
+          The contradiction is real, but the cheapest honest fix is usually to make the words match the screen rather than
+          hide a field someone deliberately surfaced. <b>Voice</b> is set once and shapes everything &mdash; that's a defensible
+          thing to keep in front of the user. If you'd rather the screen <i>feel</i> like two decisions, Option A is right and
+          I'll wire the collapse &mdash; just confirming you're okay demoting voice before I do.
+        </p>
+      </div>
+    </section>
+
+    <footer class="foot">
+      Full report: <code>.claude/audit-history/2026-07-15-0855-full.md</code> &middot; These three are the only report-only items;
+      the 3 bug + 3 tenant P1s are already live as fix-session chips. Pick a direction on each (or say &ldquo;ship the recommended
+      set&rdquo;) and I'll build against this as the spec.
+    </footer>
+
+  </div>
+</div>
