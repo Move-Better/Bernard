@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import CredentialForm from '@/components/CredentialForm'
 import AppleBusinessInsightsCard from '@/components/AppleBusinessInsightsCard'
+import ConnectedBadge from '@/components/ui/ConnectedBadge'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -34,25 +35,6 @@ import { toast } from '@/lib/toast'
 // integration for every workspace and now covers Google Business Profile too
 // (per-location channel IDs live on workspace_locations rows). TDC stays
 // first-party only and renders behind a capability flag.
-
-// Solid "connected" state chip — the single source for this page's
-// connected-state badges. `upper` renders the compact uppercase card-header
-// tag; default renders the icon row chip used in account/location lists.
-function ConnectedBadge({ upper = false, children = 'Connected' }) {
-  if (upper) {
-    return (
-      <span className="text-3xs uppercase tracking-wide font-bold bg-success text-success-foreground px-2 py-0.5 rounded shadow-sm">
-        {children}
-      </span>
-    )
-  }
-  return (
-    <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-success-foreground shadow-sm">
-      <CheckCircle2 className="h-3.5 w-3.5" />
-      {children}
-    </span>
-  )
-}
 
 const INTEGRATIONS = [
   {
@@ -441,9 +423,13 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                 <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
               )}
               {bundleActive && (
-                <span className={`text-3xs uppercase tracking-wide px-2 py-0.5 rounded ${status?.connected ? 'font-bold bg-success text-white shadow-sm' : 'bg-muted text-muted-foreground'}`}>
-                  {status == null ? 'Checking…' : status.connected ? 'Connected' : 'Not connected yet'}
-                </span>
+                status?.connected ? (
+                  <ConnectedBadge upper />
+                ) : (
+                  <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                    {status == null ? 'Checking…' : 'Not connected yet'}
+                  </span>
+                )
               )}
             </div>
             <p className="text-xs text-muted-foreground leading-snug mt-1">

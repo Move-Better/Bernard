@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Loader2, Upload, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import ConnectedBadge from '@/components/ui/ConnectedBadge'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { useApplePerformance, useLocations } from '@/lib/queries'
@@ -108,7 +109,7 @@ export default function AppleBusinessInsightsCard({ disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Apple Business Insights</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
+                <ConnectedBadge upper />
               ) : (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not set up</span>
               )}

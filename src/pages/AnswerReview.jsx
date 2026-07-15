@@ -494,7 +494,7 @@ export default function AnswerReview() {
                           type="button"
                           loading={busy}
                           onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
-                          className="gap-1.5 bg-success font-semibold text-white hover:bg-success/90"
+                          className="gap-1.5 bg-success font-semibold text-success-foreground hover:bg-success/90"
                         >
                           <Check className="h-4 w-4" />{' '}
                           {active.movebetterco_slug ? 'Approve — replace the live page' : 'Looks right — approve'}
