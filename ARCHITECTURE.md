@@ -797,9 +797,13 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
   from backlog.** The original `replanWorkspaceWeek` bailed `skipped:'no-interviews'`, so a workspace
   whose captures predate this week never got a plan even with a full backlog. Fixed: it now proceeds
   when interviews OR backlog is non-empty (#1567). When debugging an empty `/week`, check in order:
-  (1) are there atoms with `held_at` set (backlog exists)? (2) does `mondayOf(now)` match what you
-  expect — the server may already be in *next* week (Sun PT → Mon UTC flips `plan_week`)? (3) did a
-  replan run for that week?
+  (1) are there atoms with `held_at` set (backlog exists)? (2) does the READ boundary match what you
+  expect? `/week`'s read side (`week-summary.js` `nowMonday` + the client `weekMondayDate`) is now
+  tz-aware — `mondayOf(now, ws.cadence_policy.timezone)` resolves "this week" at the workspace's LOCAL
+  midnight (#2138), so it no longer jumps to next week during the Sun-PT-evening/Mon-UTC gap. The WRITE
+  side (the Strategist stamping `plan_week`) still uses bare `mondayOf(now)` UTC — coherent, since the
+  weekly cron fires ~Mon-00:00 UTC and its stamp shows under the board's "Next week" until local
+  midnight promotes it. (3) did a replan run for that week?
 - **Cadence is COMPUTED from `enabled_outputs`, not a hand-maintained list (Auto mode, the default).**
   `cadence_policy.provenance` selects the source. In **Auto** (`provenance !== 'user'`, the default),
   `getWeekInputs` (`strategistPlan.js`) computes the per-channel cadence at plan time as
@@ -820,6 +824,26 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
     per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
     wired through `computeCadenceChannels` in `cadenceDefaults.js` (#1628, 2026-06-23). Falls back to
     prior-only when a workspace has < 5 scored posts per channel (MIN_SAMPLE guard).
+
+### Week/day boundary math — tz-aware, with one deliberate UTC exception
+
+Any surface that buckets content by the workspace's WEEK or DAY resolves the boundary in the workspace
+timezone, not UTC. `mondayOf(date, tz)` (`api/_lib/strategist.js`) derives the local calendar date via
+`Intl.DateTimeFormat` in `tz` BEFORE computing the ISO-Monday; the client mirror (`weekMondayDate` in
+YourWeek.jsx) uses the identical algorithm. Without it, a US workspace hits a ~7h window every week
+(Pacific: Sun ~5pm–midnight local, after UTC-Monday-00:00) where `/week` shows next week and hides the
+running week's posts — an audit P1 (#2138).
+
+- **`mondayOf`'s `tz` is OPTIONAL and defaults to the old UTC behavior.** Callers that pass a bare
+  `'YYYY-MM-DD'` for validation/canonicalization (`mondayOf(week) !== week` in `plan-week.js` /
+  `week-summary.js`) MUST NOT pass `tz` — a bare Monday has to round-trip unchanged. Pass `tz` only when
+  the input is a NOW instant and you want "this week" in local terms. A full-year sweep proved the
+  no-tz path is byte-identical to the pre-fix impl, so the ~10 other `mondayOf` callers are unaffected.
+- **`recapDerive.js` keeps its OWN UTC `mondayOf` on purpose — do NOT "fix" it to tz.** Its week
+  buckets must line up with Postgres `date_trunc('week', …)` under the default UTC session (the Overview
+  capture-streak is counted against DB-aggregated weeks). Switching it to the workspace tz would desync
+  the streak from the data it counts. Different surface, different (intentional) contract — an
+  "audit found a UTC week boundary" sweep must leave this one alone.
 
 ## Unified editor shell (carousel + reel)
 
