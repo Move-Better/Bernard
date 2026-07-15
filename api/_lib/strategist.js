@@ -94,11 +94,33 @@ export function anglePalette() {
 // ── deterministic helpers (pure) ────────────────────────────────────────────
 
 // Monday (ISO) of the week containing `date`, as 'YYYY-MM-DD'.
-export function mondayOf(date) {
-  const d = new Date(date)
-  const dow = (d.getUTCDay() + 6) % 7 // 0 = Monday
-  d.setUTCDate(d.getUTCDate() - dow)
-  return d.toISOString().slice(0, 10)
+//
+// `tz` (IANA) makes the week boundary the workspace's LOCAL midnight: derive the
+// local calendar date at that instant first, THEN take its ISO-Monday. This
+// matters when `date` is a NOW instant near the UTC date line — e.g. Sunday
+// ~5pm–midnight Pacific is already Monday in UTC, so a UTC-only boundary would
+// report next week and hide the still-running week's earlier posts. Omit `tz` to
+// treat `date` as a floating UTC calendar date — the correct, unshifted behavior
+// for canonicalizing/validating a bare 'YYYY-MM-DD' Monday, where mondayOf(monday)
+// must return it unchanged (do NOT pass tz on the validation path).
+export function mondayOf(date, tz) {
+  const instant = new Date(date)
+  let y, m, d
+  if (tz) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(instant)
+    const part = (t) => Number(parts.find((p) => p.type === t).value)
+    y = part('year'); m = part('month'); d = part('day')
+  } else {
+    y = instant.getUTCFullYear(); m = instant.getUTCMonth() + 1; d = instant.getUTCDate()
+  }
+  // Anchor at UTC noon of the (local) calendar date so the weekday lookup never
+  // straddles a date boundary, then step back to Monday. Pure UTC math from here.
+  const anchor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0))
+  const dow = (anchor.getUTCDay() + 6) % 7 // 0 = Monday
+  anchor.setUTCDate(anchor.getUTCDate() - dow)
+  return anchor.toISOString().slice(0, 10)
 }
 
 // Spread N this-week pieces of a channel across the non-quiet weekdays, stamping
