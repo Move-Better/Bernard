@@ -25,6 +25,7 @@ import { resolveBundleGbpTargets } from './social/gbpTargets.js'
 import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
 import { checkWordsApproved } from './wordsApprovalGate.js'
+import { claimDispatch, releaseDispatch } from './dispatchClaim.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -54,10 +55,6 @@ function sb(path, init = {}) {
 // array on them must NOT route to the client fallback (that path is
 // dispatch_state-blind and would re-post — the double-post class from the audit).
 const CAROUSEL_PLATFORMS = new Set(['instagram', 'facebook'])
-
-// A dispatch shouldn't outlive the function's max duration; a claim older than
-// this is treated as abandoned (crashed request) and reclaimable.
-const CLAIM_STALE_MS = 5 * 60 * 1000
 
 /**
  * @param {object} a
@@ -95,30 +92,21 @@ export async function dispatchContentItem({ ws, piece }) {
   const wsFilter = `workspace_id=eq.${ws.id}`
 
   // ── Atomic claim ──────────────────────────────────────────────────────────
-  // Serialize concurrent approves of the SAME piece. Only the request that flips
-  // dispatching_at (from null OR a stale value) proceeds; a loser gets 0 rows
-  // and bails without posting. We read the AUTHORITATIVE dispatch_state + status
-  // from the claim response, not from the possibly-stale row approve.js fetched.
-  const nowIso = new Date().toISOString()
-  const staleIso = new Date(Date.now() - CLAIM_STALE_MS).toISOString()
-  const claimRes = await sb(
-    `content_items?id=eq.${piece.id}&${wsFilter}&or=(dispatching_at.is.null,dispatching_at.lt.${staleIso})`,
-    {
-      method: 'PATCH',
-      headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ dispatching_at: nowIso }),
-    }
-  )
-  if (!claimRes.ok) return { dispatched: false, error: 'claim_failed' }
-  const claimed = (await claimRes.json().catch(() => []))?.[0]
-  if (!claimed) return { dispatched: false, reason: 'in_progress' }
-
-  async function releaseClaim(extra = {}) {
-    await sb(`content_items?id=eq.${piece.id}&${wsFilter}`, {
-      method: 'PATCH', headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ dispatching_at: null, updated_at: new Date().toISOString(), ...extra }),
-    }).catch((e) => console.warn('[dispatchContentItem] claim release failed:', e?.message))
+  // Serialize concurrent dispatches of the SAME piece across every publish path
+  // (the /week Approve here, the editor Publish/Schedule button, and the manual
+  // Retry all take this same lock — see api/_lib/dispatchClaim.js). Only the
+  // request that flips dispatching_at (from null OR a stale value) proceeds; a
+  // loser gets 0 rows and bails without posting. We read the AUTHORITATIVE
+  // dispatch_state + status from the claim response, not from the possibly-stale
+  // row approve.js fetched.
+  const claim = await claimDispatch(piece.id, ws.id)
+  if (!claim.ok) {
+    return claim.reason === 'claim_failed'
+      ? { dispatched: false, error: 'claim_failed' }
+      : { dispatched: false, reason: 'in_progress' }
   }
+  const claimed = claim.row
+  const releaseClaim = (extra = {}) => releaseDispatch(piece.id, ws.id, extra)
 
   // Re-check terminal status from the fresh (claimed) row.
   if (claimed.status === 'scheduled' || claimed.status === 'published') {
@@ -146,9 +134,14 @@ export async function dispatchContentItem({ ws, piece }) {
   let channelState = state.published_channels?.[piece.platform] || {}
   const todo = unpostedTargets(targets, channelState)
 
-  // Already fully dispatched (a prior run posted every target) — idempotent no-op.
+  // Already fully dispatched (a prior run posted every target) but the row was
+  // never committed to a terminal status — e.g. a crash between the last post
+  // and the success PATCH below. Commit status now (mirroring the success-path
+  // release) instead of just clearing the claim: releasing to 'approved' would
+  // leave the piece in YourWeek's re-publishable list, and re-approving it is
+  // one way to re-trigger the cross-path double-post race. (audit P2)
   if (todo.length === 0) {
-    await releaseClaim()
+    await releaseClaim({ status: 'scheduled', scheduled_at: scheduledAt || null })
     return { dispatched: true, alreadyDispatched: true }
   }
 

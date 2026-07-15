@@ -33,6 +33,7 @@ import { recordAgentAction } from '../../_lib/agentActions.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 import { runBufferPublish, runBundlePublish } from '../publish/buffer.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
+import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -86,6 +87,25 @@ export default async function handler(req, res) {
   const gate = await checkWordsApproved(contentItemId, ws.id)
   if (!gate.ok) return res.status(gate.status).json(gate.body)
 
+  // ── Cross-path double-publish guard (audit P1, 2026-07-15) ────────────────
+  // A retry is a publish dispatch like any other and must take the same
+  // dispatching_at lock as the Approve/editor paths (api/_lib/dispatchClaim.js),
+  // so two concurrent "Retry" clicks — or a retry racing another dispatch —
+  // can't post the piece twice. Released (with the terminal status) in both the
+  // success and failure PATCHes below.
+  const claim = await claimDispatch(contentItemId, ws.id)
+  if (!claim.ok) {
+    return claim.reason === 'in_progress'
+      ? err(res, 'dispatch_in_progress', 409)
+      : err(res, 'claim_failed', 502)
+  }
+  if (claim.row?.status !== 'failed') {
+    // A concurrent retry won between our status read and the claim and already
+    // committed a terminal status — release and report success without re-posting.
+    await releaseDispatch(contentItemId, ws.id)
+    return res.status(200).json({ success: true, alreadyPublished: true })
+  }
+
   const platform = item.platform
   const content = item.content
   const mediaUrls = Array.isArray(item.media_urls) ? item.media_urls : []
@@ -119,7 +139,10 @@ export default async function handler(req, res) {
     result = await runBundlePublish(ws, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
   } else {
     const cred = await getCredential(ws.id, 'buffer')
-    if (!cred?.secret) return err(res, 'not_configured', 503)
+    if (!cred?.secret) {
+      await releaseDispatch(contentItemId, ws.id)  // release the claim we took above
+      return err(res, 'not_configured', 503)
+    }
     result = await runBufferPublish({
       workspaceId: ws.id, token: cred.secret, platform, content, mediaUrls, scheduledAt,
       useQueue: false, locationIds, locationContents,
@@ -128,9 +151,11 @@ export default async function handler(req, res) {
 
   if (result.status !== 200 || !result.body?.success) {
     const reason = typeof result.body?.error === 'string' ? result.body.error : 'Retry failed'
+    // Release the dispatch claim alongside the error write (status stays
+    // 'failed', so a later retry can re-acquire the lock and try again).
     await sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
-      body:   JSON.stringify({ publish_error: reason.slice(0, 2000), updated_at: new Date().toISOString() }),
+      body:   JSON.stringify({ publish_error: reason.slice(0, 2000), dispatching_at: null, updated_at: new Date().toISOString() }),
     }).catch(() => {})
     notifyPublishFailure({ workspaceId: ws.id, item: { id: contentItemId, platform, content }, reason }).catch(() => {})
     return res.status(result.status && result.status >= 400 ? result.status : 502).json({ error: 'retry_failed' })
@@ -143,6 +168,7 @@ export default async function handler(req, res) {
     platform_post_id:  result.body.bufferId ?? null,
     buffer_update_id:  result.body.bufferId ?? null,
     publish_error:     null,
+    dispatching_at:    null,  // release the dispatch claim atomically with the terminal status
     updated_at:        new Date().toISOString(),
     ...(willBeScheduled && result.body.scheduledAt ? { scheduled_at: result.body.scheduledAt } : {}),
   }
@@ -150,6 +176,10 @@ export default async function handler(req, res) {
     method: 'PATCH',
     body:   JSON.stringify(patch),
   })
+  // If this terminal write fails the post already went out but dispatching_at is
+  // NOT cleared — deliberately. Retaining the claim is the safe direction: it
+  // blocks a re-post until the stale window elapses, rather than releasing to a
+  // still-'failed' row that a retry would immediately re-post.
   if (!upd.ok) return dbErr(res, upd, 'Update after retry failed')
 
   await recordAgentAction({

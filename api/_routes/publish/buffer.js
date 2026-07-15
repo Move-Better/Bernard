@@ -21,6 +21,7 @@ import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { BundlePublisher } from '../../_lib/social/index.js'
 import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
+import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -471,7 +472,54 @@ async function handleBundlePublish(req, res, workspace) {
   const gate = await checkWordsApproved(contentItemId, workspace.id)
   if (!gate.ok) return res.status(gate.status).json(gate.body)
 
-  const result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
+  // ── Cross-path double-publish guard (audit P1, 2026-07-15) ────────────────
+  // The /week Approve path (api/_lib/dispatchContentItem.js) dispatches the SAME
+  // piece to bundle.social behind an atomic dispatching_at claim. This editor
+  // Publish/Schedule path must take the SAME lock (api/_lib/dispatchClaim.js), or
+  // the two can post the piece to the customer's live channel twice. Only a
+  // piece-backed publish can be guarded — an ad-hoc publish with no contentItemId
+  // has no row to lock (and no persisted piece another path could also dispatch).
+  let claimed = false
+  if (contentItemId && UUID_RE.test(contentItemId)) {
+    const claim = await claimDispatch(contentItemId, workspace.id)
+    if (!claim.ok) {
+      // in_progress: another dispatch (Approve, or a double-clicked Publish)
+      // holds a fresh claim — surface 409 so the client does NOT re-post. Its
+      // own status PATCH never runs; the winning path commits the row.
+      return res.status(claim.reason === 'in_progress' ? 409 : 502).json({
+        error: claim.reason === 'in_progress' ? 'dispatch_in_progress' : 'claim_failed',
+      })
+    }
+    if (claim.row?.status === 'scheduled' || claim.row?.status === 'published') {
+      // The other path already dispatched this piece — release and report
+      // success so the client settles without posting again.
+      await releaseDispatch(contentItemId, workspace.id)
+      return res.status(200).json({ success: true, alreadyDispatched: true })
+    }
+    claimed = true
+  }
+
+  let result
+  try {
+    result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
+  } catch (e) {
+    // runBundlePublish catches internally today; this is belt-and-suspenders so
+    // an unexpected throw can never strand the claim (released below).
+    console.error('[publish/bundle] dispatch threw:', e?.stack || e?.message)
+    result = { status: 502, body: { error: 'bundle_post_failed' } }
+  }
+
+  if (claimed) {
+    // On success, commit a terminal status in the SAME release so there's no
+    // dispatching_at=null / status=approved gap the Approve path could re-claim
+    // and re-post into before the client's own status PATCH lands. On failure,
+    // release only (status untouched) so a retry can re-acquire the lock.
+    const extra = result.status === 200
+      ? { status: scheduledAt ? 'scheduled' : 'published', scheduled_at: scheduledAt || null }
+      : {}
+    await releaseDispatch(contentItemId, workspace.id, extra)
+  }
+
   return res.status(result.status).json(result.body)
 }
 
