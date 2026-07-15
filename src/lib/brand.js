@@ -20,6 +20,7 @@
 export const BERNARD_PRIMARY = '#0C7580' // Blue Spruce — HSL 186 83% 27%
 export const BERNARD_EMERALD = BERNARD_PRIMARY // alias kept for any remaining refs
 export const BERNARD_INK     = '#0F172A'
+export const BERNARD_ACTION  = '#d97706' // act-now amber — mirrors --action (32 95% 44%) in src/index.css; keep in sync
 
 // HSL triplet mirroring src/index.css's `--primary` custom property, in the
 // `h s% l%` form CSS's hsl() function expects. Clerk's `appearance.variables`

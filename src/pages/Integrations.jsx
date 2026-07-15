@@ -35,6 +35,25 @@ import { toast } from '@/lib/toast'
 // (per-location channel IDs live on workspace_locations rows). TDC stays
 // first-party only and renders behind a capability flag.
 
+// Solid "connected" state chip — the single source for this page's
+// connected-state badges. `upper` renders the compact uppercase card-header
+// tag; default renders the icon row chip used in account/location lists.
+function ConnectedBadge({ upper = false, children = 'Connected' }) {
+  if (upper) {
+    return (
+      <span className="text-3xs uppercase tracking-wide font-bold bg-success text-success-foreground px-2 py-0.5 rounded shadow-sm">
+        {children}
+      </span>
+    )
+  }
+  return (
+    <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-success-foreground shadow-sm">
+      <CheckCircle2 className="h-3.5 w-3.5" />
+      {children}
+    </span>
+  )
+}
+
 const INTEGRATIONS = [
   {
     id: 'buffer',
@@ -452,9 +471,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                     {status == null ? (
                       <span className="text-2xs text-muted-foreground">Checking…</span>
                     ) : (
-                      <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-white shadow-sm">
-                        <CheckCircle2 className="h-3.5 w-3.5" />{accounts.filter(a => a.connected).length} connected
-                      </span>
+                      <ConnectedBadge>{accounts.filter(a => a.connected).length} connected</ConnectedBadge>
                     )}
                     <span className="text-2xs text-muted-foreground ml-2">Instagram, Facebook, X, LinkedIn &amp; more</span>
                   </div>
@@ -478,9 +495,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                           {a.displayName ? <span className="text-muted-foreground normal-case"> · {a.displayName}</span> : null}
                         </span>
                         {a.connected ? (
-                          <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-white shadow-sm">
-                            <CheckCircle2 className="h-3.5 w-3.5" />Connected
-                          </span>
+                          <ConnectedBadge />
                         ) : (
                           <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action">
                             <AlertTriangle className="h-3.5 w-3.5" />Needs attention
@@ -518,9 +533,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                       </div>
                       {loc.connected ? (
                         <>
-                          <span className="text-2xs inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-success text-white shadow-sm">
-                            <CheckCircle2 className="h-3.5 w-3.5" />Connected
-                          </span>
+                          <ConnectedBadge />
                           <button
                             type="button" onClick={() => openLocationPortal(loc.id)} disabled={!isAdmin || locBusy}
                             className="text-xs text-primary border border-primary/40 px-2.5 py-1 rounded-md font-medium disabled:opacity-60 hover:bg-primary/5 inline-flex items-center gap-1.5 shrink-0"
@@ -565,7 +578,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                 <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
               )}
               {bufferActive && bufferRow && (
-                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
+                <ConnectedBadge upper />
               )}
             </div>
             <p className="text-xs text-muted-foreground leading-snug mt-1">
@@ -628,9 +641,7 @@ function IntegrationCard({ integration, row, loading, disabled, getToken, onChan
                 </span>
               )}
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">
-                  Connected
-                </span>
+                <ConnectedBadge upper />
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
                   Not connected
@@ -773,9 +784,7 @@ function GoogleDriveCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Drive</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">
-                  Connected
-                </span>
+                <ConnectedBadge upper />
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
                   Not connected
@@ -988,7 +997,7 @@ function GoogleSearchConsoleCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Search Console</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
+                <ConnectedBadge upper />
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
               ) : null}
@@ -1152,7 +1161,7 @@ function GoogleBusinessAnalyticsCard({ row, loading, disabled, onChange }) {
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium">Google Business Profile</p>
               {configured ? (
-                <span className="text-3xs uppercase tracking-wide font-bold bg-success text-white px-2 py-0.5 rounded shadow-sm">Connected</span>
+                <ConnectedBadge upper />
               ) : !loading ? (
                 <span className="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Not connected</span>
               ) : null}

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
-import { BERNARD_PRIMARY } from '@/lib/brand'
+import { BERNARD_PRIMARY, BERNARD_ACTION } from '@/lib/brand'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
@@ -432,13 +432,13 @@ function CaptionInspector({ ctx }) {
         <div className="mb-3">
           <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Highlight colour</p>
           <div className="flex items-center gap-1.5">
-            {['#ffffff', BERNARD_PRIMARY, '#f0b64a'].map((c) => {
+            {['#ffffff', BERNARD_PRIMARY, BERNARD_ACTION].map((c) => {
               const on = (caption.accent || '').toLowerCase() === c.toLowerCase()
               return <button key={c} type="button" onClick={() => setCaption('accent', c)} aria-label={`Caption colour ${c}`} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', boxShadow: on ? '0 0 0 1.5px hsl(var(--primary))' : undefined }} />
             })}
             <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border" style={{ borderColor: 'hsl(var(--border))' }} title="Custom colour">
               <span className="absolute inset-0" style={{ background: 'conic-gradient(from 90deg, #f44, #fd4, #4d4, #4dd, #44f, #f4f, #f44)' }} aria-hidden="true" />
-              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(caption.accent || '') ? caption.accent : '#f0b64a'} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
+              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(caption.accent || '') ? caption.accent : BERNARD_ACTION} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
             </label>
           </div>
         </div>

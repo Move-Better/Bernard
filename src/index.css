@@ -178,7 +178,7 @@
 
   /* Signature gradient — used once per page as "the moment." Reserve for
      hero ribbons, campaign progress strips, brand-mark badges. Do NOT use
-     for buttons (use .nx-btn-primary). */
+     for buttons (use the shadcn <Button> primitive). */
   .nx-grad {
     background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--action)));
     color: #fff;
@@ -273,8 +273,10 @@
   .nx-alert-chip-act  { background: hsl(var(--action)); }
   .nx-alert-chip-info { background: hsl(var(--muted-foreground)); }
 
-  /* Buttons — solid Blue Spruce primary with a subtle shadow, neutral
-     secondary, ink-dark variant for finish/destructive-ish surfaces. */
+  /* Hero CTA — solid Blue Spruce with a subtle shadow. Used by the Home
+     weekly-call hero only; everything else uses the shadcn <Button>
+     primitive (src/components/ui/button.jsx) — don't grow a parallel
+     button system here. */
   .nx-btn-primary {
     background: hsl(var(--primary));
     color: #fff;
@@ -284,21 +286,6 @@
     transition: background .15s ease;
   }
   .nx-btn-primary:hover { background: hsl(186 83% 21%); }
-  .nx-btn-secondary {
-    background: #fff;
-    color: hsl(var(--foreground));
-    border: 1px solid hsl(var(--border));
-    font-weight: 600;
-    border-radius: 10px;
-  }
-  .nx-btn-secondary:hover { background: #f8fafc; }
-  .nx-btn-dark {
-    background: hsl(var(--foreground));
-    color: #fff;
-    border-radius: 10px;
-    font-weight: 600;
-  }
-  .nx-btn-dark:hover { background: #111827; }
 
   /* Eyebrow label — small all-caps section labels above headings. */
   .nx-eyebrow {
