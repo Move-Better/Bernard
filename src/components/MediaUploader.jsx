@@ -347,7 +347,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               })}
             </div>
             {speakerRole === 'patient_guest' && (
-              <div className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 dark:bg-warning/15 p-2">
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
                 <p className="text-2xs text-warning">
                   Verify written consent from the patient before uploading. Patient-guest content cannot be published without it.

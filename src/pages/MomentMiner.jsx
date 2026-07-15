@@ -83,7 +83,7 @@ const MOMENT_FILTERS = [
 // accent): teal reads "films well", amber "films weak", slate in between.
 function camPillClasses(v) {
   if (v >= 65) return 'text-primary bg-primary/10'
-  if (v < 40) return 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
+  if (v < 40) return 'text-action bg-warning/10'
   return 'text-muted-foreground bg-muted'
 }
 

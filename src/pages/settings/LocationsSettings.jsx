@@ -301,7 +301,7 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
             {location.label || location.city}
           </div>
           {location.is_primary && (
-            <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+            <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
               <Star className="h-2.5 w-2.5" /> Primary
             </span>
           )}

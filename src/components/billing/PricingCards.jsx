@@ -116,7 +116,7 @@ export default function PricingCards({ currentPlan = 'trial' }) {
               key={plan.id}
               className={`relative rounded-xl border p-6 flex flex-col gap-4 ${
                 isActive
-                  ? 'border-action bg-action/5 dark:bg-action/10 shadow-sm'
+                  ? 'border-action bg-action/5 shadow-sm'
                   : 'border-border bg-card'
               }`}
             >
