@@ -21,13 +21,15 @@
 //
 // Decryption uses WORKSPACE_CREDENTIALS_KEY (see credentialCrypto.js).
 //
-// LEGACY FALLBACK: if no row exists for (workspace_id, service), this helper
-// falls back to reading the matching process.env vars and returns a
-// best-effort value. This keeps legacy per-brand deployments working until
-// they're decommissioned and lets the shared deployment serve any one
-// workspace whose creds are still on env vars (during the credentials
-// migration window). Falsy/null returned only when neither source has
-// anything to offer.
+// NOTE: there is deliberately NO process.env fallback. An earlier version, when
+// a workspace had no row, read BUFFER_ACCESS_TOKEN / WORDPRESS_USER /
+// WORDPRESS_APP_PASSWORD / WEBSITE_PUBLISH_URL to keep the pre-2026-05-10
+// per-brand deployments working. On this shared multi-tenant deployment that
+// would hand every unconfigured workspace the SAME process-wide credential — a
+// cross-tenant leak — so it was removed once per-brand deployments were retired
+// (Phase 1F). getCredential now returns null whenever no active, decryptable
+// row exists; every caller guards on that (typically a 503 'not_configured').
+// Do not re-add an env fallback here.
 
 import { decryptSecret } from './credentialCrypto.js'
 
@@ -56,34 +58,6 @@ async function fetchRow(workspaceId, service) {
   return Array.isArray(rows) && rows[0] ? rows[0] : null
 }
 
-function envFallback(service) {
-  switch (service) {
-    case 'buffer':
-      return process.env.BUFFER_ACCESS_TOKEN
-        ? { config: {}, secret: process.env.BUFFER_ACCESS_TOKEN }
-        : null
-    case 'wordpress':
-      return process.env.WORDPRESS_USER && process.env.WORDPRESS_APP_PASSWORD
-        ? {
-            config: {
-              site_url: process.env.WEBSITE_PUBLISH_URL,
-              user: process.env.WORDPRESS_USER,
-            },
-            secret: process.env.WORDPRESS_APP_PASSWORD,
-          }
-        : null
-    case 'website':
-      return process.env.WEBSITE_PUBLISH_URL && process.env.BERNARD_PUBLISH_SECRET
-        ? {
-            config: { url: process.env.WEBSITE_PUBLISH_URL },
-            secret: process.env.BERNARD_PUBLISH_SECRET,
-          }
-        : null
-    default:
-      return null
-  }
-}
-
 export async function getCredential(workspaceId, service) {
   const row = await fetchRow(workspaceId, service)
   if (row && row.secret_ciphertext) {
@@ -92,11 +66,12 @@ export async function getCredential(workspaceId, service) {
       return { config: row.config || {}, secret }
     } catch (e) {
       console.error(`[getCredential] decrypt failed for service='${service}':`, e?.message)
-      // Fall through to env fallback so a corrupted row doesn't take publishing
-      // offline if env vars are still set.
+      // A corrupted/undecryptable row is treated as not-configured: return null
+      // and let the caller surface a 503 'not_configured' rather than serving a
+      // stale or wrong credential.
     }
   }
-  return envFallback(service)
+  return null
 }
 
 // Lightweight existence check that doesn't require decrypting the secret.

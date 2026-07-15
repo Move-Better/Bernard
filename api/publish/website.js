@@ -19,9 +19,9 @@ export const config = { runtime: 'nodejs' }
 //     docs/api-publish-contract.md in the movebetteranimal repo.
 //
 // Mode selection: if 'wordpress' creds resolve, use WP. Else if 'astro_github'
-// or generic 'website' creds resolve, use Astro. The legacy env-var fallback in
-// getCredential keeps per-brand deployments working — WORDPRESS_USER/PASSWORD
-// surfaces as 'wordpress' creds, BERNARD_PUBLISH_SECRET as 'website'.
+// or generic 'website' creds resolve, use Astro. Credentials come solely from
+// the per-workspace workspace_credentials table (getCredential) — there is no
+// process.env fallback, so an unconfigured workspace resolves to null and 503s.
 //
 // Payload contract (callers pass these in payload):
 //   slug, title, description, pubDate, markdown        — required
