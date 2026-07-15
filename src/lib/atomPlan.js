@@ -2,7 +2,7 @@
 // Used for UI rendering (labels, descriptions, icons, slot badges).
 // Keep in sync with the server-side file when adding new platforms/angles.
 
-import { Instagram, Linkedin, Facebook, MapPin, Music2, Twitter, AtSign, Cloud, Hash } from 'lucide-react'
+import { PLATFORM_META } from './contentMeta.js'
 
 export const ATOM_DEFINITIONS = {
   instagram: [
@@ -47,18 +47,13 @@ export const ATOM_DEFINITIONS = {
   ],
 }
 
-export const PLATFORM_UI = {
-  instagram: { label: 'Instagram',         icon: Instagram, color: 'text-pink-600',    bg: 'bg-pink-50',    border: 'border-pink-200',    dot: 'bg-pink-500'    },
-  linkedin:  { label: 'LinkedIn',          icon: Linkedin,  color: 'text-info',        bg: 'bg-info/10',    border: 'border-info/30',     dot: 'bg-info'        },
-  facebook:  { label: 'Facebook',          icon: Facebook,  color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    dot: 'bg-blue-600'    },
-  gbp:       { label: 'Google Business',   icon: MapPin,    color: 'text-primary',     bg: 'bg-primary/10', border: 'border-primary/20',  dot: 'bg-primary'     },
-  tiktok:    { label: 'TikTok / Reels',    icon: Music2,    color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', dot: 'bg-fuchsia-600' },
-  twitter:   { label: 'X / Twitter',       icon: Twitter,   color: 'text-foreground',    bg: 'bg-muted',      border: 'border-border',       dot: 'bg-foreground'   },
-  threads:   { label: 'Threads',           icon: AtSign,    color: 'text-zinc-700',    bg: 'bg-zinc-50',    border: 'border-zinc-200',    dot: 'bg-zinc-700'    },
-  bluesky:   { label: 'Bluesky',           icon: Cloud,     color: 'text-info',        bg: 'bg-info/10',    border: 'border-info/30',     dot: 'bg-info'        },
-  mastodon:  { label: 'Mastodon',          icon: Hash,      color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-200',  dot: 'bg-violet-600'  },
-  instagram_story: { label: 'Instagram Story', icon: Instagram, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500' },
-}
+// Derived view of the canonical PLATFORM_META registry (contentMeta.js),
+// restricted to the atom platforms the Strategist plans against. Keyed off
+// ATOM_DEFINITIONS so a new atom platform only needs (a) its atom slots here
+// and (b) one PLATFORM_META entry — no third hand-copied registry to drift.
+export const PLATFORM_UI = Object.fromEntries(
+  Object.keys(ATOM_DEFINITIONS).map((id) => [id, PLATFORM_META[id]])
+)
 
 export const SLOT_LABELS = ['Week 1', 'Week 2', 'Week 3', 'Week 4']
 

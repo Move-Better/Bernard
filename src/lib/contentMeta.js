@@ -12,22 +12,31 @@ import {
   Instagram, Facebook, Linkedin, FileText, Mail,
   MapPin, Clock, CheckCircle2, Send, CalendarDays,
   MousePointer2, LayoutTemplate, Youtube, Music2, Megaphone,
-  Archive, AlertTriangle,
+  Archive, AlertTriangle, Twitter, AtSign, Cloud, Hash,
 } from 'lucide-react'
 
+// CANONICAL platform registry — the single source of truth for per-platform
+// label/icon/colors. atomPlan.js's PLATFORM_UI and ChannelsSettings' icon maps
+// derive from this object, so adding a platform here covers those surfaces too.
+// Every entry carries the full field set (label, icon, color, bg, border, dot)
+// so derived views never hit a missing field.
 export const PLATFORM_META = {
-  blog:         { label: 'Blog Post',       icon: FileText,   color: 'text-muted-foreground', bg: 'bg-muted' },
-  instagram:    { label: 'Instagram',       icon: Instagram,  color: 'text-pink-600',   bg: 'bg-pink-50' },
-  instagram_story:{ label: 'Instagram Story', icon: Instagram, color: 'text-pink-600',   bg: 'bg-pink-50' },
-  facebook:     { label: 'Facebook',        icon: Facebook,   color: 'text-blue-600',   bg: 'bg-blue-50' },
-  linkedin:     { label: 'LinkedIn',        icon: Linkedin,   color: 'text-info',       bg: 'bg-info/10' },
-  gbp:          { label: 'Google Business', icon: MapPin,     color: 'text-primary',    bg: 'bg-primary/10' },
-  google_ads:   { label: 'Google Ads',      icon: MousePointer2, color: 'text-yellow-700', bg: 'bg-yellow-50' },
-  instagram_ads:{ label: 'Instagram Ads',   icon: Megaphone,  color: 'text-rose-600',   bg: 'bg-rose-50' },
-  landing_page: { label: 'Landing Page',    icon: LayoutTemplate, color: 'text-primary',    bg: 'bg-primary/10' },
-  youtube:      { label: 'YouTube',         icon: Youtube,       color: 'text-red-600',    bg: 'bg-red-50' },
-  tiktok:       { label: 'TikTok / Reels', icon: Music2,        color: 'text-fuchsia-600', bg: 'bg-fuchsia-50' },
-  email:        { label: 'Email',           icon: Mail,       color: 'text-muted-foreground', bg: 'bg-muted' },
+  blog:         { label: 'Blog Post',       icon: FileText,   color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border', dot: 'bg-muted-foreground' },
+  instagram:    { label: 'Instagram',       icon: Instagram,  color: 'text-pink-600',   bg: 'bg-pink-50', border: 'border-pink-200', dot: 'bg-pink-500' },
+  instagram_story:{ label: 'Instagram Story', icon: Instagram, color: 'text-pink-600',   bg: 'bg-pink-50', border: 'border-pink-200', dot: 'bg-pink-500' },
+  facebook:     { label: 'Facebook',        icon: Facebook,   color: 'text-blue-600',   bg: 'bg-blue-50', border: 'border-blue-200', dot: 'bg-blue-600' },
+  linkedin:     { label: 'LinkedIn',        icon: Linkedin,   color: 'text-info',       bg: 'bg-info/10', border: 'border-info/30', dot: 'bg-info' },
+  gbp:          { label: 'Google Business', icon: MapPin,     color: 'text-primary',    bg: 'bg-primary/10', border: 'border-primary/20', dot: 'bg-primary' },
+  google_ads:   { label: 'Google Ads',      icon: MousePointer2, color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', dot: 'bg-yellow-600' },
+  instagram_ads:{ label: 'Instagram Ads',   icon: Megaphone,  color: 'text-rose-600',   bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500' },
+  landing_page: { label: 'Landing Page',    icon: LayoutTemplate, color: 'text-primary',    bg: 'bg-primary/10', border: 'border-primary/20', dot: 'bg-primary' },
+  youtube:      { label: 'YouTube',         icon: Youtube,       color: 'text-red-600',    bg: 'bg-red-50', border: 'border-red-200', dot: 'bg-red-600' },
+  tiktok:       { label: 'TikTok / Reels', icon: Music2,        color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', dot: 'bg-fuchsia-600' },
+  twitter:      { label: 'X / Twitter',     icon: Twitter,    color: 'text-foreground', bg: 'bg-muted', border: 'border-border', dot: 'bg-foreground' },
+  threads:      { label: 'Threads',         icon: AtSign,     color: 'text-zinc-700',   bg: 'bg-zinc-50', border: 'border-zinc-200', dot: 'bg-zinc-700' },
+  bluesky:      { label: 'Bluesky',         icon: Cloud,      color: 'text-info',       bg: 'bg-info/10', border: 'border-info/30', dot: 'bg-info' },
+  mastodon:     { label: 'Mastodon',        icon: Hash,       color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-600' },
+  email:        { label: 'Email',           icon: Mail,       color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border', dot: 'bg-muted-foreground' },
 }
 
 // Hard caption-length caps the destination platform actually enforces at
@@ -71,5 +80,6 @@ export const PLATFORM_GROUPS = [
   ['instagram_ads'],
   ['google_ads', 'landing_page'],
   ['youtube', 'tiktok'],
+  ['twitter', 'threads', 'bluesky', 'mastodon'],
   ['email'],
 ]

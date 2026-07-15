@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
-  Loader2, FileText, Mail, MapPin, Instagram, Facebook, Linkedin,
-  Youtube, Twitter, Music2, MessageCircle, Cloud, Megaphone,
-  LayoutTemplate, Radio, Film, Puzzle,
+  Loader2, Instagram, Youtube, Megaphone, Radio, Film, Puzzle,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,28 +16,20 @@ import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { OUTPUT_CHANNELS, EXPORT_SHAPES } from '@/lib/outputChannels'
+import { PLATFORM_META } from '@/lib/contentMeta'
 import { SaveBar } from '@/components/settings/helpers'
 import { apiFetch } from '@/lib/api'
 
-// Icon per channel id. Falls back to Radio for any new channel we forget to map.
+// Icon per channel id — derived from the canonical PLATFORM_META registry
+// (contentMeta.js) wherever the channel id doubles as a platform id, with
+// explicit entries only for channel-only ids that have no PLATFORM_META key.
+// Falls back to Radio for any new channel missing from both.
 const CHANNEL_ICONS = {
-  blog:           FileText,
-  email:          Mail,
-  gbp:            MapPin,
+  ...Object.fromEntries(Object.entries(PLATFORM_META).map(([id, m]) => [id, m.icon])),
   instagram_post: Instagram,
   instagram_reel: Film,
-  facebook:       Facebook,
-  linkedin:       Linkedin,
-  tiktok:         Music2,
   youtube_short:  Youtube,
-  youtube:        Youtube,
-  twitter:        Twitter,
-  threads:        MessageCircle,
-  bluesky:        Cloud,
-  mastodon:       MessageCircle,
-  google_ads:     Megaphone,
   ig_ads:         Megaphone,
-  landing_page:   LayoutTemplate,
 }
 
 // Friendlier labels for export-shape / publish-mode badges.
@@ -66,18 +56,20 @@ const GROUPS = [
 // the single `instagram` bucket; Story is its own. The rows actually shown are
 // derived from the workspace's enabled_outputs (see deriveCadenceRows) so the
 // list always matches what the tenant enabled.
+// Labels stay hand-written (cadence context wants e.g. "Instagram (feed +
+// reels)"); icons derive from the canonical PLATFORM_META registry.
 const CADENCE_PLATFORM_META = [
-  { id: 'instagram',       label: 'Instagram (feed + reels)', Icon: Instagram },
-  { id: 'instagram_story', label: 'Instagram Story',          Icon: Instagram },
-  { id: 'linkedin',        label: 'LinkedIn',                 Icon: Linkedin },
-  { id: 'gbp',             label: 'Google Business',          Icon: MapPin },
-  { id: 'facebook',        label: 'Facebook',                 Icon: Facebook },
-  { id: 'tiktok',          label: 'TikTok',                   Icon: Music2 },
-  { id: 'twitter',         label: 'Twitter / X',              Icon: Twitter },
-  { id: 'threads',         label: 'Threads',                  Icon: MessageCircle },
-  { id: 'bluesky',         label: 'Bluesky',                  Icon: Cloud },
-  { id: 'mastodon',        label: 'Mastodon',                 Icon: MessageCircle },
-]
+  { id: 'instagram',       label: 'Instagram (feed + reels)' },
+  { id: 'instagram_story', label: 'Instagram Story' },
+  { id: 'linkedin',        label: 'LinkedIn' },
+  { id: 'gbp',             label: 'Google Business' },
+  { id: 'facebook',        label: 'Facebook' },
+  { id: 'tiktok',          label: 'TikTok' },
+  { id: 'twitter',         label: 'Twitter / X' },
+  { id: 'threads',         label: 'Threads' },
+  { id: 'bluesky',         label: 'Bluesky' },
+  { id: 'mastodon',        label: 'Mastodon' },
+].map((row) => ({ ...row, Icon: PLATFORM_META[row.id]?.icon ?? Radio }))
 
 // enabled_outputs (registry ids) → atom-platform set. MUST stay in sync with
 // atomPlatformsFromEnabledOutputs in api/_lib/atomPlan.js: instagram_post and
