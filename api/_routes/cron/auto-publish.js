@@ -11,9 +11,18 @@ export const config = { runtime: 'nodejs' }
 // auto_publish_settings are accepted and stored but silently skipped here
 // until they're wired.
 //
+// This cron is the SIXTH publish dispatch path (audit 2026-07-15). Before
+// dispatching, each package's GBP content_items row (created by
+// approve-package.js) must exist and still be 'approved', the words-approval
+// gate is checked, and the cross-path content_items.dispatching_at claim is
+// taken — see ARCHITECTURE.md "cross-path dispatch lock" + "words-approval
+// hard gate".
+//
 // Auth: Bearer CRON_SECRET (same as backup-db and refresh-engagement).
 
 import { evaluate } from '../../_lib/autoPublishGate.js'
+import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
+import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { getCredential } from '../../_lib/getCredential.js'
 import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
 import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
@@ -163,49 +172,27 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
   return { posted, failed }
 }
 
-// Upsert the approved content_items row to scheduled + mark auto_published.
-async function markContentItemScheduled({ pkg, workspaceId, bufferId }) {
-  // Find the GBP content_item created by approve-package for this package.
+// Find the GBP content_item created by approve-package for this package.
+// Returns { ok: true, row: {id,status}|null } — row=null means no content_items
+// row exists for the package (the library-destination case) — or { ok: false }
+// when the lookup itself failed (transient; retry next run).
+async function findGbpContentItem({ pkg, workspaceId }) {
   if (!UUID_RE.test(pkg.id)) {
     console.error('[auto-publish] invalid pkg.id format:', pkg.id)
-    return null
+    return { ok: false }
   }
   const ciRes = await sb(
     `content_items?workspace_id=eq.${workspaceId}` +
     `&provenance->>package_id=eq.${pkg.id}` +
     `&platform=eq.gbp` +
-    `&status=eq.approved` +
-    `&select=id&limit=1`
+    `&select=id,status&limit=1`
   )
   if (!ciRes.ok) {
-    console.error('[auto-publish] markContentItemScheduled fetch failed:', ciRes.status, 'pkg:', pkg.id)
-    return null
+    console.error('[auto-publish] content_item lookup failed:', ciRes.status, 'pkg:', pkg.id)
+    return { ok: false }
   }
   const rows = await ciRes.json().catch(() => [])
-  const ci = rows?.[0]
-  if (!ci?.id) {
-    console.warn('[auto-publish] markContentItemScheduled: 0 rows matched for pkg:', pkg.id, 'workspace:', workspaceId, 'status:', ciRes.status, 'rows:', rows?.length ?? 0)
-    return null
-  }
-
-  const now = new Date().toISOString()
-  const patchRes = await sb(`content_items?id=eq.${ci.id}&workspace_id=eq.${workspaceId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      status:           'scheduled',
-      buffer_update_id: bufferId,
-      auto_published:   true,
-      // Do NOT write approved_at here — it's set by the human editorial
-      // approve flow in approve-package.js and must not be overwritten
-      // with the cron dispatch time (breaks time-since-approval analytics).
-      notes:            `Auto-published by cron at ${now}`,
-    }),
-  })
-  if (!patchRes.ok) {
-    console.error('[auto-publish] markContentItemScheduled PATCH failed:', patchRes.status, 'ci:', ci.id, 'pkg:', pkg.id)
-    return null
-  }
-  return ci.id
+  return { ok: true, row: rows?.[0] ?? null }
 }
 
 async function processWorkspace(ws, summary) {
@@ -351,6 +338,79 @@ async function processWorkspace(ws, summary) {
       const channelState = publishedChannels[channel] || { locations: {} }
       const pending = unpostedTargets(targets, channelState)
 
+      if (pending.length === 0 && channelState.content_item_id != null) {
+        // Everything already posted and bookkeeping done — nothing to do.
+        channelStatus[channel] = 'complete'
+        continue
+      }
+
+      // Resolve the content_items row created by approve-package BEFORE any
+      // dispatch (audit 2026-07-15, P1 #2 + P2 #7):
+      //   (a) it must EXIST — a package approved with destination='library'
+      //       also gets status 'approved' but has NO content_items row;
+      //       without this check the cron would auto-post a clip the
+      //       clinician explicitly sent to the Library instead of Publish.
+      //   (b) its status must still be 'approved' — if an interactive path
+      //       already scheduled/published the piece (or a human pulled it
+      //       back), re-dispatching from the package would double-post.
+      //   (c) it carries the cross-path dispatching_at claim and is what the
+      //       words-approval gate keys off (both below).
+      let ci = channelState.content_item_id != null ? { id: channelState.content_item_id } : null
+      if (!ci) {
+        const found = await findGbpContentItem({ pkg, workspaceId: ws.id })
+        if (!found.ok) {
+          held.push({ id: pkg.id, reasons: [{ signal: 'content_item_lookup', detail: 'Content item lookup failed — will retry next run' }] })
+          channelStatus[channel] = 'retriable'
+          continue
+        }
+        if (!found.row) {
+          held.push({ id: pkg.id, reasons: [{ signal: 'no_content_item', detail: 'No GBP content item exists for this package (library-destination approval?) — not auto-publishable' }] })
+          channelStatus[channel] = 'permanent'
+          continue
+        }
+        if (found.row.status !== 'approved') {
+          held.push({ id: pkg.id, reasons: [{ signal: 'content_item_status', detail: `GBP content item is '${found.row.status}' (handled outside auto-publish) — not dispatching` }] })
+          channelStatus[channel] = 'permanent'
+          continue
+        }
+        ci = found.row
+      }
+
+      // Words-approval hard gate — this cron is the sixth publish path (see
+      // ARCHITECTURE.md). Package-sourced rows carry interview_id=null, which
+      // the gate passes by design (package approval in Moment Miner is the
+      // human words checkpoint for this pipeline); the call enforces the gate
+      // automatically if a package row ever gains interview lineage.
+      if (pending.length > 0) {
+        const gate = await checkWordsApproved(ci.id, ws.id).catch((e) => {
+          console.error('[auto-publish] words gate check threw:', e?.message)
+          return null
+        })
+        if (!gate) {
+          held.push({ id: pkg.id, reasons: [{ signal: 'words_gate_error', detail: 'Words-approval check failed — will retry next run' }] })
+          channelStatus[channel] = 'retriable'
+          continue
+        }
+        if (!gate.ok) {
+          held.push({ id: pkg.id, reasons: [{ signal: 'words_not_approved', detail: 'Interview words not approved — approve the words, then publish manually (the gate is re-checked there)' }] })
+          channelStatus[channel] = 'permanent'
+          continue
+        }
+      }
+
+      // Take the SAME cross-path dispatching_at claim the interactive publish
+      // paths use (dispatchClaim.js), so a concurrent human "Publish now"
+      // during this loop can't double-post the piece (audit P2, 2026-07-15).
+      const claim = await claimDispatch(ci.id, ws.id).catch((e) => {
+        console.error('[auto-publish] dispatch claim threw:', e?.message)
+        return null
+      })
+      if (!claim?.ok) {
+        held.push({ id: pkg.id, reasons: [{ signal: 'dispatch_claim', detail: 'Content item is being dispatched by another path — will re-check next run' }] })
+        channelStatus[channel] = 'retriable'
+        continue
+      }
+
       // Dispatch only the not-yet-posted locations. A null/throw is treated as
       // "all pending failed" so nothing is silently marked posted.
       let posted = []
@@ -367,22 +427,39 @@ async function processWorkspace(ws, summary) {
       const merged = mergePostedLocations(channelState, posted, now)
       publishedChannels[channel] = merged
 
-      // Mark the GBP content_item scheduled the first time ANY location posts.
-      // On retry runs (content_item_id already recorded) this is skipped, so the
-      // post is never re-sent and the content_item isn't re-queried.
+      // Mark the GBP content_item scheduled the first time ANY location posts,
+      // releasing the dispatch claim in the SAME PATCH (per the dispatchClaim
+      // contract — releasing before the terminal status lands would leave a
+      // window a concurrent path could re-claim and re-post into).
       const anyPosted = Object.keys(merged.locations).length > 0
       if (anyPosted && merged.content_item_id == null) {
         const firstPostId = merged.buffer_id || posted[0]?.postId || Object.values(merged.locations)[0]?.post_id
-        const ciId = await markContentItemScheduled({ pkg, workspaceId: ws.id, bufferId: firstPostId })
-        if (ciId != null) {
-          merged.content_item_id = ciId
+        const markRes = await sb(`content_items?id=eq.${ci.id}&workspace_id=eq.${ws.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status:           'scheduled',
+            buffer_update_id: firstPostId,
+            auto_published:   true,
+            dispatching_at:   null,
+            // Do NOT write approved_at here — it's set by the human editorial
+            // approve flow in approve-package.js and must not be overwritten
+            // with the cron dispatch time (breaks time-since-approval analytics).
+            notes:            `Auto-published by cron at ${now}`,
+          }),
+        }).catch(() => null)
+        if (markRes?.ok) {
+          merged.content_item_id = ci.id
           merged.buffer_id = firstPostId
           merged.first_fired_at = merged.first_fired_at || now
         } else {
           // Post fired but bookkeeping failed — retry the marking next run
-          // (post NOT re-sent: the location is already recorded above).
-          console.error('[auto-publish] GBP post fired but markContentItemScheduled returned null — will retry bookkeeping next run (post NOT re-sent)', { pkgId: pkg.id, channel, retryCount })
+          // (post NOT re-sent: the location is already recorded above). The
+          // unreleased claim self-clears via the 5-minute staleness window.
+          console.error('[auto-publish] GBP post fired but scheduled-mark failed — will retry bookkeeping next run (post NOT re-sent)', { pkgId: pkg.id, ciId: ci.id, status: markRes?.status ?? 'error', retryCount })
         }
+      } else {
+        // Nothing new to mark on the row — just release the claim.
+        await releaseDispatch(ci.id, ws.id)
       }
 
       if (posted.length > 0) {
