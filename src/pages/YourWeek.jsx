@@ -46,20 +46,34 @@ const LADDER = [
 const NAV_BACK = 8
 const NAV_FWD = 4
 
-// UTC-Monday for an offset from this week — mirrors strategist mondayOf() exactly,
-// so the Monday/range the server validates is the same value we compute & send.
-function weekMondayDate(offset) {
-  const d = new Date()
-  const dow = (d.getUTCDay() + 6) % 7 // 0 = Monday
-  d.setUTCDate(d.getUTCDate() - dow + offset * 7)
-  d.setUTCHours(0, 0, 0, 0)
-  return d
+// The workspace-tz Monday for an offset from the current week, returned as a Date
+// anchored at UTC-midnight of that Monday (so callers can read getUTCDate() /
+// toISOString() off it and format in UTC). Mirrors the server's mondayOf(now, tz)
+// EXACTLY: derive the workspace-LOCAL calendar date for "now" first, THEN take its
+// ISO-Monday — so the week flips at local midnight, not UTC midnight. Pre-fix this
+// used getUTCDay() on `new Date()`, so a Pacific workspace jumped to next week from
+// ~5pm Sunday local (once UTC had ticked over to Monday), hiding the running week's
+// earlier posts and labeling the board a day early. `tz` is IANA.
+function localYMD(instant, tz) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(instant)
+  const part = (t) => Number(parts.find((p) => p.type === t).value)
+  return [part('year'), part('month'), part('day')]
 }
-function weekMondayISO(offset) {
-  return weekMondayDate(offset).toISOString().slice(0, 10)
+function weekMondayDate(offset, tz) {
+  const [y, m, d] = localYMD(new Date(), tz || 'America/Los_Angeles')
+  const anchor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0))
+  const dow = (anchor.getUTCDay() + 6) % 7 // 0 = Monday
+  anchor.setUTCDate(anchor.getUTCDate() - dow + offset * 7)
+  anchor.setUTCHours(0, 0, 0, 0)
+  return anchor
 }
-function weekRangeLabel(offset) {
-  const mon = weekMondayDate(offset)
+function weekMondayISO(offset, tz) {
+  return weekMondayDate(offset, tz).toISOString().slice(0, 10)
+}
+function weekRangeLabel(offset, tz) {
+  const mon = weekMondayDate(offset, tz)
   const sun = new Date(mon)
   sun.setUTCDate(sun.getUTCDate() + 6)
   const f = (dt, withMonth) => dt.toLocaleDateString('en-US', { month: withMonth ? 'short' : undefined, day: 'numeric', timeZone: 'UTC' })
@@ -398,6 +412,10 @@ export default function YourWeek() {
   const { user } = useUser()
   const { isEditor, isLoading: roleLoading } = useUserRole()
   const workspace = useWorkspace()
+  // Week boundaries flip at the workspace's LOCAL midnight, not the browser's or
+  // UTC's (see weekMondayDate). Available here pre-query; the server mirrors it
+  // from ws.cadence_policy.timezone so the ?week= it receives matches.
+  const wsTz = workspace?.cadence_policy?.timezone || 'America/Los_Angeles'
   const navigate = useNavigate()
   const qc = useQueryClient()
   const updateStatus = useUpdateContentItemStatus()
@@ -415,7 +433,7 @@ export default function YourWeek() {
   const [selectedDay, setSelectedDay] = useState(null) // day key ('mon'..'sun'); null = auto (today/first)
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary', weekOffset],
-    queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset)}` : ''}`),
+    queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset, wsTz)}` : ''}`),
     enabled: !roleLoading,
     refetchOnWindowFocus: false,
   })
@@ -515,7 +533,7 @@ export default function YourWeek() {
       const r = await apiFetch('/api/content-plan/plan-week', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ week: weekMondayISO(weekOffset) }),
+        body: JSON.stringify({ week: weekMondayISO(weekOffset, wsTz) }),
       })
       if (r?.skipped === 'no-inputs') {
         toast.info('Nothing to plan ahead yet', {
@@ -537,7 +555,7 @@ export default function YourWeek() {
   const quiet = new Set((data?.quietDays || ['sat', 'sun']).map((q) => q.toLowerCase()))
   const cadence = data?.cadence || {}
   const scheduled = data?.scheduled || []
-  const tz = data?.timezone || workspace?.cadence_policy?.timezone || 'America/Los_Angeles'
+  const tz = data?.timezone || wsTz
 
   // Group scheduled atoms into day columns.
   const byDay = {}
@@ -554,7 +572,7 @@ export default function YourWeek() {
     : null
 
   // Day view: per-day calendar dates for the strip, and the resolved active day.
-  const weekMondayForStrip = weekMondayDate(weekOffset)
+  const weekMondayForStrip = weekMondayDate(weekOffset, wsTz)
   const dayDates = DAYS.map(([, ], i) => new Date(weekMondayForStrip.getTime() + i * 86400000).getUTCDate())
   const firstDayWithItems = DAYS.find(([k]) => (byDay[k] || []).length > 0)?.[0]
   // Auto-pick: today if it has posts, else the first populated day, else today/Mon.
@@ -675,7 +693,7 @@ export default function YourWeek() {
     <div className="space-y-2">
       <div className="flex items-center gap-1.5 px-0.5">
         <CalendarRange className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">{weekRangeLabel(weekOffset)}</span>
+        <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">{weekRangeLabel(weekOffset, wsTz)}</span>
         <span className="text-2xs font-bold uppercase tracking-wide text-primary">· {weekRelative(weekOffset)}</span>
       </div>
       <div className="flex items-stretch gap-2">
@@ -733,7 +751,7 @@ export default function YourWeek() {
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-lg border bg-card px-3">
-            <span className="text-sm font-bold text-foreground">{weekRangeLabel(weekOffset)}</span>
+            <span className="text-sm font-bold text-foreground">{weekRangeLabel(weekOffset, wsTz)}</span>
           </div>
         )}
         <button
@@ -847,13 +865,13 @@ export default function YourWeek() {
       {isPast && (
         <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-2xs text-muted-foreground">
           <History className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span><b className="text-foreground">Past week — read-only.</b> What ran the week of {weekRangeLabel(weekOffset)}. Open any piece to view it; finished weeks can&apos;t be re-planned.</span>
+          <span><b className="text-foreground">Past week — read-only.</b> What ran the week of {weekRangeLabel(weekOffset, wsTz)}. Open any piece to view it; finished weeks can&apos;t be re-planned.</span>
         </div>
       )}
       {isFuture && data?.hasPlan && (
         <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-2xs text-primary">
           <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span><b>Planned ahead.</b> Review &amp; approve these now — they sit ready until {weekRangeLabel(weekOffset)}. Nothing publishes without your yes.</span>
+          <span><b>Planned ahead.</b> Review &amp; approve these now — they sit ready until {weekRangeLabel(weekOffset, wsTz)}. Nothing publishes without your yes.</span>
         </div>
       )}
 
@@ -865,7 +883,7 @@ export default function YourWeek() {
         isFuture ? (
           <div className="rounded-lg border border-dashed bg-muted/20 py-12 text-center">
             <CalendarPlus className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
-            <p className="mt-2 text-sm font-medium text-foreground">Nothing planned for {weekRangeLabel(weekOffset)} yet</p>
+            <p className="mt-2 text-sm font-medium text-foreground">Nothing planned for {weekRangeLabel(weekOffset, wsTz)} yet</p>
             <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
               I&apos;ll compose this week from your backlog and any captures in its window — paced across your channels. You review and approve before anything schedules.
             </p>
@@ -882,7 +900,7 @@ export default function YourWeek() {
         ) : isPast ? (
           <div className="rounded-lg border bg-muted/20 py-12 text-center">
             <Moon className="mx-auto h-8 w-8 text-muted-foreground/60" aria-hidden="true" />
-            <p className="mt-2 text-sm font-medium text-foreground">Nothing ran the week of {weekRangeLabel(weekOffset)}</p>
+            <p className="mt-2 text-sm font-medium text-foreground">Nothing ran the week of {weekRangeLabel(weekOffset, wsTz)}</p>
             <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
               No content was planned for this past week.
             </p>

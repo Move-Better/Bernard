@@ -33,10 +33,12 @@ export default async function handler(req, res) {
 
   // Week navigation (F2): default to the current week, but accept ?week=YYYY-MM-DD
   // to view a past week (read-only, up to 8 weeks back) or a future week (up to 4
-  // weeks ahead, plannable). The value must be a Monday within that window — the
-  // client computes it the same UTC way mondayOf() does, so this stays in lockstep.
+  // weeks ahead, plannable). The value must be a Monday within that window. "This
+  // week" is resolved in the WORKSPACE timezone (the client mirrors this), so the
+  // board doesn't jump to next week during the Sun-evening/Mon-UTC gap. The bare
+  // weekParam is validated tz-neutrally (it's already a floating Monday date).
   const NAV_BACK = 8, NAV_FWD = 4
-  const nowMonday = mondayOf(new Date().toISOString())
+  const nowMonday = mondayOf(new Date().toISOString(), ws.cadence_policy?.timezone)
   let weekMonday = nowMonday
   const weekParam = new URL(req.url, 'http://localhost').searchParams.get('week')
   if (weekParam) {

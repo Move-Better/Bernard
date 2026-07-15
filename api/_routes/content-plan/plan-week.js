@@ -32,10 +32,14 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'ai', ws.id))) return
 
   const { week } = req.body || {}
+  // `week` is a bare Monday date — validate tz-neutrally (no tz arg), so a real
+  // Monday round-trips unchanged. "This week" for the offset bound below, though,
+  // is resolved in the workspace timezone to match the client (avoids the
+  // Sun-evening/Mon-UTC gap rejecting a legit "next week" as offset 0).
   if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week) || mondayOf(week) !== week) {
     return err(res, 'Invalid week — must be a Monday (YYYY-MM-DD)')
   }
-  const nowMonday = mondayOf(new Date().toISOString())
+  const nowMonday = mondayOf(new Date().toISOString(), ws.cadence_policy?.timezone)
   const offsetWeeks = Math.round((Date.parse(week) - Date.parse(nowMonday)) / (7 * 86400000))
   if (offsetWeeks < 1 || offsetWeeks > NAV_FWD) {
     return err(res, 'Only future weeks (the next 4) can be planned ahead', 400)
