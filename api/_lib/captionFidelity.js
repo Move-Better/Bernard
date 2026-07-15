@@ -68,12 +68,12 @@ export async function scoreCaptionFidelity({
   let phrases = []
   if (staffId) {
     try {
-      const cRes = await sb(`staff?id=eq.${staffId}&select=name`)
+      const cRes = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=name`)
       if (cRes.ok) {
         const rows = await cRes.json()
         staffName = rows?.[0]?.name || staffName
       }
-      const pRes = await sb(`staff_voice_phrases?staff_id=eq.${staffId}&select=phrase,weight&order=weight.desc&limit=8`)
+      const pRes = await sb(`staff_voice_phrases?staff_id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=phrase,weight&order=weight.desc&limit=8`)
       if (pRes.ok) phrases = await pRes.json()
     } catch {
       // ignore — we'll score with whatever we have

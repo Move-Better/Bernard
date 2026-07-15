@@ -22,7 +22,7 @@ function relTime(iso) {
 // status → semantic token. active=success, at-risk=warning, idle=destructive.
 const STATUS = {
   active:    { cls: 'bg-success/15 text-success',         dot: 'bg-success' },
-  'at-risk': { cls: 'bg-warning/15 text-warning-foreground', dot: 'bg-warning' },
+  'at-risk': { cls: 'bg-warning/15 text-warning', dot: 'bg-warning' },
   idle:      { cls: 'bg-destructive/12 text-destructive',  dot: 'bg-destructive' },
 }
 

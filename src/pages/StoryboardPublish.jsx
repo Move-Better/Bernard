@@ -2,9 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import BackLink from '@/components/ui/BackLink'
-import Breadcrumb from '@/components/ui/Breadcrumb'
 import { useSmartBack } from '@/lib/useSmartBack'
-import { pieceLabel } from '@/lib/pieceLabel'
 import { postFormat } from '@/lib/mediaEntry'
 import { resolveArchetype } from '@/lib/editorArchetype'
 import LoadingState from '@/components/LoadingState'
@@ -174,12 +172,6 @@ export default function StoryboardPublish() {
   if (isStory) {
     return (
       <div className="space-y-5 py-6">
-        <Breadcrumb
-          items={[
-            { label: 'Publish queue', to: '/publish' },
-            { label: pieceLabel(piece) },
-          ]}
-        />
         <div className="min-w-0">
           <BackLink to="/publish">Back to Publish</BackLink>
           <h1 className="mt-1 flex items-center gap-2 text-lg font-semibold text-foreground">

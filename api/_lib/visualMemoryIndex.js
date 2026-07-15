@@ -68,10 +68,10 @@ function composeEmbeddingText(asset, staffName = '') {
 /**
  * Best-effort fetch of clinician display name for richer embedding context.
  */
-async function getStaffName(staffId) {
-  if (!staffId) return ''
+async function getStaffName(staffId, workspaceId) {
+  if (!staffId || !workspaceId) return ''
   try {
-    const r = await sb(`staff?id=eq.${staffId}&select=name`)
+    const r = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=name`)
     if (!r.ok) return ''
     const rows = await r.json()
     return rows?.[0]?.name || ''
@@ -102,7 +102,7 @@ export async function indexMediaAsset({ assetId }) {
   if (!asset) return { ok: false, reason: 'asset_not_found' }
 
   // 2. Compose embedding text. If too sparse, defer.
-  const staffName = await getStaffName(asset.staff_id)
+  const staffName = await getStaffName(asset.staff_id, asset.workspace_id)
   const text = composeEmbeddingText(asset, staffName)
   if (!text || text.length < 16) {
     return { ok: false, reason: 'text_too_sparse' }

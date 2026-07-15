@@ -227,6 +227,29 @@ async function handler(req, res) {
         // so paid features are blocked until payment is resolved. Stripe will
         // send invoice.paid when the customer updates their card and retries.
         const invoice = event.data.object
+
+        // Stripe re-signs each retried delivery, so a payment_failed can land
+        // days late — after the customer already fixed payment and invoice.paid
+        // was processed. The invoice's CURRENT status at Stripe is the source
+        // of truth: skip the downgrade if it has since been paid. Fail-open on
+        // lookup errors so an unverifiable event keeps the existing behavior.
+        if (invoice.id && process.env.STRIPE_SECRET_KEY) {
+          try {
+            const invRes = await fetch(`https://api.stripe.com/v1/invoices/${invoice.id}`, {
+              headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+            })
+            if (invRes.ok) {
+              const inv = await invRes.json()
+              if (inv?.status === 'paid' || inv?.paid === true) {
+                console.info(`[billing/webhook] invoice.payment_failed: invoice ${invoice.id} already paid — stale retry, ignoring`)
+                break
+              }
+            }
+          } catch (e) {
+            console.error('[billing/webhook] invoice.payment_failed: invoice re-check failed:', e?.message)
+          }
+        }
+
         const workspaceId = invoice.subscription_details?.metadata?.workspace_id
           ?? invoice.metadata?.workspace_id
         if (!workspaceId) {
@@ -285,6 +308,7 @@ async function handler(req, res) {
         const subscriptionId = invoice.subscription
         let priceId = null
         let planConfig = null
+        let subStatus = null
         if (subscriptionId) {
           try {
             const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
@@ -293,9 +317,19 @@ async function handler(req, res) {
             const sub = await subRes.json()
             priceId = sub?.items?.data?.[0]?.price?.id || null
             planConfig = priceId ? PRICE_PLAN_MAP[priceId] : null
+            subStatus = sub?.status || null
           } catch (e) {
             console.error('[billing/webhook] invoice.paid: failed to fetch subscription:', e?.message)
           }
+        }
+
+        // Mirror of the payment_failed re-check: a stale retried invoice.paid
+        // must not restore a workspace whose subscription has since fallen back
+        // into arrears or been cancelled. Only clearly-bad current statuses
+        // block the restore; null (fetch failed) keeps the existing behavior.
+        if (subStatus === 'past_due' || subStatus === 'unpaid' || subStatus === 'canceled') {
+          console.warn(`[billing/webhook] invoice.paid: subscription ${subscriptionId} currently ${subStatus} — stale event, not restoring workspace ${workspaceId}`)
+          break
         }
 
         if (planConfig) {
