@@ -35,6 +35,10 @@ import { mondayOf } from '../../_lib/strategist.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+// `iv` is a bare interviews.id that lands in PostgREST filters; validate its
+// shape before use (defense-in-depth — the request is already Twilio-signed).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // eslint-disable-next-line bernard/require-workspace-scope -- webhook: no Clerk session; workspace is resolved from the interview row looked up by the signature-verified `iv` correlation id, and every subsequent query is filtered by that workspace_id (wsFilter).
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -83,7 +87,8 @@ export default async function handler(req, res) {
   }
 
   const recordingUrl = params.RecordingUrl
-  if (!iv || !recordingUrl) return res.status(400).json({ error: 'missing_recording' })
+  if (!iv || !UUID_RE.test(iv)) return res.status(400).json({ error: 'invalid_id' })
+  if (!recordingUrl) return res.status(400).json({ error: 'missing_recording' })
 
   // Ack Twilio immediately; do the heavy lifting in the background. All work is
   // inside this single waitUntil promise, so nested awaits are covered (see the
@@ -95,12 +100,61 @@ export default async function handler(req, res) {
 }
 
 async function processRecording({ iv, recordingUrl, authToken }) {
-  // 1. Load the interview + its workspace + staff.
-  const ivRes = await sb(`interviews?id=eq.${encodeURIComponent(iv)}&select=id,workspace_id,staff_id,topic,created_at&limit=1`)
+  // 1. Load the interview (+status for the idempotency guard below).
+  const ivRes = await sb(`interviews?id=eq.${encodeURIComponent(iv)}&select=id,workspace_id,staff_id,topic,created_at,status&limit=1`)
   const interview = ivRes.ok ? (await ivRes.json())[0] : null
   if (!interview) throw new Error('interview_not_found')
   const wsId = interview.workspace_id
 
+  // ── Idempotency ─────────────────────────────────────────────────────────────
+  // Twilio delivers callbacks at-least-once, so this webhook can fire twice for
+  // one call. Re-running the cascade would double-bill transcription + 2 LLM
+  // calls AND double-count concept weights / voice phrases (neither extractor
+  // dedups — see conceptExtractor.upsertConcept's unconditional weight bump).
+  // Only the content_items insert was guarded before; guard the whole function,
+  // the way the sibling twilio-status.js guards its PATCH on status.
+  //
+  // Fast path — a redelivery that arrives after we've finished sees 'completed'.
+  if (interview.status === 'completed') {
+    console.info(`[webhooks/twilio-recording] already processed iv=${iv} — skipping redelivery`)
+    return
+  }
+  // Race path — two near-simultaneous deliveries both read 'in_progress' before
+  // either finishes. An atomic compare-and-set (the dispatching_at claim pattern
+  // from dispatchContentItem.js, applied to the interview's own status column)
+  // lets exactly one win; the loser gets 0 rows back and bails before any paid
+  // or enriching work runs. 'processing' is a transient claim state, flipped to
+  // 'completed' at step 4 (or released back to 'in_progress' on failure below).
+  const claimRes = await sb(`interviews?id=eq.${iv}&workspace_id=eq.${wsId}&status=eq.in_progress`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ status: 'processing', updated_at: new Date().toISOString() }),
+  })
+  const claimed = claimRes.ok ? (await claimRes.json().catch(() => []))[0] : null
+  if (!claimed) {
+    console.info(`[webhooks/twilio-recording] recording claim lost iv=${iv} — another delivery owns it; skipping`)
+    return
+  }
+
+  try {
+    await runCascade({ iv, recordingUrl, authToken, interview, wsId })
+  } catch (e) {
+    // Release the claim so a genuine Twilio re-fire can retry. Nothing is
+    // committed as 'completed' until step 4, so resetting 'processing' →
+    // 'in_progress' can never discard finished work (mirrors releaseClaim()).
+    await sb(`interviews?id=eq.${iv}&workspace_id=eq.${wsId}&status=eq.processing`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'in_progress', updated_at: new Date().toISOString() }),
+    }).catch((re) => console.error(`[webhooks/twilio-recording] claim release failed iv=${iv}: ${re?.message}`))
+    throw e
+  }
+}
+
+// The generate + enrich cascade. Runs only after processRecording() claims the
+// interview, so it executes at most once per completed call.
+async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
+  // Load workspace + staff for this interview (already fetched by the caller).
   const [wsRes, staffRes] = await Promise.all([
     sb(`workspaces?id=eq.${wsId}&select=*&limit=1`),
     sb(`staff?id=eq.${interview.staff_id}&workspace_id=eq.${wsId}&select=id,name,staff_type,default_tone,default_voice_mode,voice_notes,blog_review_enabled&limit=1`),
