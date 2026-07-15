@@ -454,6 +454,19 @@ async function handleBundlePublish(req, res, workspace) {
     if (!postId || typeof postId !== 'string') {
       return res.status(400).json({ error: 'Missing bufferUpdateId' })
     }
+    // Verify the scheduled post belongs to this workspace before cancelling —
+    // prevents a member of workspace A from cancelling workspace B's posts.
+    // The bundle post id is stored as content_items.buffer_update_id downstream,
+    // so this mirrors the Buffer DELETE branch's ownership check above.
+    if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })
+    const ownerCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(postId)}&workspace_id=eq.${workspace.id}&select=id`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    )
+    if (ownerCheck.ok) {
+      const rows = await ownerCheck.json()
+      if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
+    }
     try {
       const r = await publisher.deletePost({ postId })
       return res.status(200).json({ success: true, ...(r.alreadyGone ? { alreadyGone: true } : {}) })

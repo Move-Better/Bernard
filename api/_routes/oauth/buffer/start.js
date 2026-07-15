@@ -13,6 +13,8 @@ const CLIENT_ID = process.env.BUFFER_CLIENT_ID
 const CLIENT_SECRET = process.env.BUFFER_CLIENT_SECRET
 const REDIRECT_URI = 'https://withbernard.ai/api/oauth/buffer/callback'
 const AUTHORIZE_URL = 'https://api.bufferapp.com/1/oauth2/authorize'
+// 10-min OAuth-state expiry, matching the drive/gbp/gsc OAuth state TTL.
+const STATE_TTL_MS = 10 * 60 * 1000
 
 function signState(payload) {
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url')
@@ -46,7 +48,7 @@ async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'generic', workspace.id))) return
 
   const nonce = crypto.randomBytes(16).toString('hex')
-  const state = signState({ workspace_id: workspace.id, nonce })
+  const state = signState({ workspace_id: workspace.id, nonce, e: Date.now() + STATE_TTL_MS })
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID,

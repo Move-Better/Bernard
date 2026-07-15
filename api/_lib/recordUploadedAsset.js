@@ -130,7 +130,31 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
   }
   const innerScope = { column: scopeColumn, id: scopeId, workspace: workspaceRow }
 
-  const isReturnUpload = !!meta.parentId
+  // Defense-in-depth: parent_id and staff_id arrive in the client-supplied
+  // upload-token payload. Verify each references a row in THIS workspace before
+  // storing it — same drop-if-not-owned pattern as the collectionId /
+  // contentPieceId checks below. A cross-tenant or stale id is nulled, not stored.
+  let parentId = null
+  if (meta.parentId) {
+    const pv = await sb(
+      `media_assets?id=eq.${encodeURIComponent(meta.parentId)}&${scopeColumn}=eq.${scopeId}&select=id&limit=1`,
+    )
+    const pvRows = pv.ok ? await pv.json().catch(() => []) : []
+    if (pvRows.length === 1) parentId = meta.parentId
+    else console.warn(`recordUploadedAsset: parent_id ${meta.parentId} not in workspace ${scopeId}; dropping`)
+  }
+
+  let staffId = null
+  if (meta.staffId) {
+    const sv = await sb(
+      `staff?id=eq.${encodeURIComponent(meta.staffId)}&${scopeColumn}=eq.${scopeId}&select=id&limit=1`,
+    )
+    const svRows = sv.ok ? await sv.json().catch(() => []) : []
+    if (svRows.length === 1) staffId = meta.staffId
+    else console.warn(`recordUploadedAsset: staff_id ${meta.staffId} not in workspace ${scopeId}; dropping`)
+  }
+
+  const isReturnUpload = !!parentId
   const assetPurpose = PURPOSES.has(meta.assetPurpose)
     ? meta.assetPurpose
     : defaultPurpose(kind)
@@ -169,8 +193,8 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
     created_by: meta.createdBy || null,
     asset_purpose: assetPurpose,
     speaker_role: speakerRole,
-    parent_id: meta.parentId || null,
-    staff_id: meta.staffId || null,
+    parent_id: parentId,
+    staff_id: staffId,
     // Seed videos as 'pending' when Mux will transcode them, so the player
     // shows the "Transcoding…" placeholder immediately instead of falling
     // back to a native <video> that can't play a non-faststart .mov (moov
