@@ -39,12 +39,20 @@ async function handler(req, res) {
     const result = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: ALLOWED_MIME,
-        maximumSizeInBytes: MAX_ANCHOR_BYTES,
-        allowedPathPrefixes: [`brand-anchors/${scope.id}/`],
-        tokenPayload: JSON.stringify({ scopeId: scope.id }),
-      }),
+      onBeforeGenerateToken: async (pathname) => {
+        // `pathname` is client-controlled and @vercel/blob's token mint has no
+        // path restriction of its own — pin it to this workspace's namespace
+        // (brandKitLib.js uploadBrandAnchorImage builds brand-anchors/<ws.id>/…).
+        // Throw → outer catch → 400.
+        if (!scope || typeof pathname !== 'string' || !pathname.startsWith(`brand-anchors/${scope.id}/`)) {
+          throw new Error('pathname outside workspace namespace')
+        }
+        return {
+          allowedContentTypes: ALLOWED_MIME,
+          maximumSizeInBytes: MAX_ANCHOR_BYTES,
+          tokenPayload: JSON.stringify({ scopeId: scope.id }),
+        }
+      },
       // No DB write — the client already has blob.url from the upload() call and
       // persists it onto the brief via /api/brand-discovery/anchors.
       onUploadCompleted: async () => { waitUntil(Promise.resolve()) },

@@ -81,6 +81,13 @@ export default async function handler(req, res) {
         if (!iv) throw new Error('Interview not found')
         if (iv.owner_id !== auth.userId) throw new Error('Interview not owned by requester')
 
+        // `pathname` is client-controlled and @vercel/blob's token mint has no
+        // path restriction of its own — pin it to the just-validated interview
+        // (useInterviewAudioCapture.js builds interviews/audio/<interviewId>.<ext>).
+        if (typeof pathname !== 'string' || !pathname.startsWith(`interviews/audio/${interviewId}.`)) {
+          throw new Error('pathname outside interview namespace')
+        }
+
         return {
           allowedContentTypes: ALLOWED_AUDIO_MIME,
           tokenPayload:        JSON.stringify({ interviewId, workspaceId: ws.id }),

@@ -56,6 +56,12 @@ async function handler(req, res) {
       body,
       request: req,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
+        // `pathname` is client-controlled and @vercel/blob's token mint has no
+        // path restriction of its own — pin it to this workspace's namespace
+        // (musicLib.js builds music/<ws.id>/…). Throw → outer catch → 400.
+        if (!scope || typeof pathname !== 'string' || !pathname.startsWith(`music/${scope.id}/`)) {
+          throw new Error('pathname outside workspace namespace')
+        }
         let meta = {}
         try { meta = clientPayload ? JSON.parse(clientPayload) : {} } catch { /* empty */ }
         const title = String(meta.title || pathname.split('/').pop() || 'Untitled').slice(0, 120)
@@ -64,7 +70,6 @@ async function handler(req, res) {
         return {
           allowedContentTypes: ALLOWED_MIME,
           maximumSizeInBytes: MAX_TRACK_BYTES,
-          allowedPathPrefixes: [`music/${scope.id}/`],
           tokenPayload: JSON.stringify({ scopeId: scope.id, title, mood, durationSec, uploadedBy: meta.uploadedBy || null }),
         }
       },

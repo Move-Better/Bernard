@@ -62,6 +62,18 @@ async function handler(req, res) {
     return res.status(403).json({ error: 'scope mismatch' })
   }
 
+  // Defense-in-depth: /create computes the pathname as media/raw|edited/<ws.id>/…
+  // and the client echoes it back here. Don't trust the echo to still be inside
+  // this workspace's namespace (unconfirmed whether Vercel's backend pins
+  // uploadId→pathname server-side).
+  if (
+    typeof pathname !== 'string' ||
+    (!pathname.startsWith(`media/raw/${scope.id}/`) &&
+      !pathname.startsWith(`media/edited/${scope.id}/`))
+  ) {
+    return res.status(400).json({ error: 'invalid_pathname' })
+  }
+
   // Parts must be (partNumber asc, unique). Vercel's complete call expects
   // ordered parts; client orchestrator already builds it that way, but defend
   // against a buggy/forged caller.
