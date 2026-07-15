@@ -2,12 +2,16 @@ import typography from '@tailwindcss/typography'
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  // Dark mode is intentionally not enabled — there is no `.dark` token block
-  // in index.css and no toggle UI. The previous `darkMode: ['class']` setting
-  // was half-implemented (audit P2). When/if dark mode lands properly:
+  // Dark mode is intentionally not implemented — there is no `.dark` token
+  // block in index.css and no toggle UI. `darkMode: ['class']` stays set so
+  // any stray `dark:` variant is inert (no `.dark` ancestor is ever applied).
+  // Do NOT remove this key: in Tailwind v3 an absent darkMode key means the
+  // default `media` strategy, which activates `dark:` classes for any visitor
+  // whose OS prefers dark mode (audit 2026-07-15 P1 #4: white-on-white legal
+  // pages). When/if dark mode lands properly:
   //   1. Add a `.dark` block to index.css mirroring every `--*` token
   //   2. Add a toggle that sets `<html class="dark">`
-  //   3. Re-enable `darkMode: ['class']` here
+  darkMode: ['class'],
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     container: {

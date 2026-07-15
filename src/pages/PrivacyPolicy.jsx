@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
         </div>
 
         {/* Body */}
-        <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 text-sm leading-relaxed">
+        <div className="prose prose-neutral max-w-none space-y-8 text-sm leading-relaxed">
 
           <section>
             <p>
