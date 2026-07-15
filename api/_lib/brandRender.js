@@ -93,6 +93,9 @@ export function resolveBrandColors(workspace) {
       || brandStyle.accent_color
       || palette.foreground
       || DEFAULT_PRIMARY,
+    // KEEP IN SYNC: src/lib/brandSwatches.js workspaceCaptionAccent() mirrors
+    // this accent chain client-side (the video editor seeds caption.accent
+    // from it so the karaoke preview matches this bake-side fallback).
     accentColor: colors.accent
       || palette.accent
       || DEFAULT_ACCENT,

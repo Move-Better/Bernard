@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { BERNARD_PRIMARY, BERNARD_ACTION } from '@/lib/brand'
+import { workspaceCaptionAccent, WORKSPACE_DEFAULT_ACCENT } from '@/lib/brandSwatches'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
@@ -58,6 +59,7 @@ const isOverlaySel = (s) => s != null && typeof s === 'object'
 // The timeline trim handles clamp to this so a clip can't silently truncate at render.
 const MAX_CLIP_SECONDS = 60
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const HEX6_RE = /^#[0-9a-fA-F]{6}$/
 const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
 const CAPTION_STYLE_OPTS = [
@@ -71,7 +73,10 @@ const CAPTION_STYLE_OPTS = [
 // Preview styling per caption preset (approximates the ASS bake). Returns the
 // spoken-word style, the upcoming-word style, and any container wrap.
 function captionCss(style, accent) {
-  const a = accent || '#f0b64a'
+  // Fallback must equal the bake-side default accent (brandRender.js
+  // DEFAULT_ACCENT) — caption.accent is seeded on hydrate, so this only
+  // guards a pathological draft.
+  const a = accent || WORKSPACE_DEFAULT_ACCENT
   switch (style) {
     case 'word_box':    return { active: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, base: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, wrap: {} }
     case 'accent_fill': return { active: { color: '#fff' }, base: { color: '#fff' }, wrap: { background: a, padding: '3px 10px', borderRadius: 8 } }
@@ -438,7 +443,7 @@ function CaptionInspector({ ctx }) {
             })}
             <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border" style={{ borderColor: 'hsl(var(--border))' }} title="Custom colour">
               <span className="absolute inset-0" style={{ background: 'conic-gradient(from 90deg, #f44, #fd4, #4d4, #4dd, #44f, #f4f, #f44)' }} aria-hidden="true" />
-              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(caption.accent || '') ? caption.accent : BERNARD_ACTION} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
+              <input type="color" value={HEX6_RE.test(caption.accent || '') ? caption.accent : BERNARD_ACTION} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
             </label>
           </div>
         </div>
@@ -1001,6 +1006,7 @@ export default function VideoEditor() {
   useEffect(() => {
     if (!asset || restoredRef.current) return
     restoredRef.current = true
+    let draftAccent = null
     try {
       const server = asset.video_edit_draft
       let local = null
@@ -1016,7 +1022,7 @@ export default function VideoEditor() {
         if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
         if (Array.isArray(d.overlays)) setOverlays(d.overlays)
         if (d.speed) setSpeedState(d.speed)
-        if (d.caption) setCaptionState((c) => ({ ...c, ...d.caption }))
+        if (d.caption) { setCaptionState((c) => ({ ...c, ...d.caption })); draftAccent = d.caption.accent }
         if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
         if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
         if (Array.isArray(d.cuts)) setCuts(d.cuts)
@@ -1033,6 +1039,15 @@ export default function VideoEditor() {
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
+    // Seed the caption accent from the workspace brand when the draft didn't
+    // bring a valid one. The bake always receives caption.accent (renderBody),
+    // and the server resolves a missing/invalid accent via resolveBrandColors —
+    // seeding the same resolution up front keeps preview == bake, while an
+    // existing draft's stored (possibly hand-picked) accent stays untouched so
+    // already-baked clips re-render byte-identical.
+    if (!HEX6_RE.test(String(draftAccent || ''))) {
+      setCaptionState((c) => ({ ...c, accent: workspaceCaptionAccent(asset.workspace) }))
+    }
     setHydrated(true)
   }, [asset, assetId])
 
@@ -1129,12 +1144,6 @@ export default function VideoEditor() {
   useEffect(() => {
     if (videoDuration > 0) setEndSec((e) => Math.min(e, videoDuration))
   }, [videoDuration])
-
-  // brand accent for captions/callouts
-  useEffect(() => {
-    const a = asset?.workspace?.brand_style?.accent_color || asset?.brand_style?.accent_color
-    if (a && /^#[0-9a-fA-F]{6}$/.test(a)) setCaptionState((c) => ({ ...c, accent: a }))
-  }, [asset])
 
   const words = useMemo(() => sliceWords(asset?.transcript_words, startSec, durationSec), [asset, startSec, durationSec])
   const derivedLines = useMemo(() => groupLines(words), [words])
