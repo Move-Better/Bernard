@@ -26,11 +26,16 @@ function verifyState(state) {
   } catch {
     return null
   }
+  let payload
   try {
-    return JSON.parse(Buffer.from(data, 'base64url').toString())
+    payload = JSON.parse(Buffer.from(data, 'base64url').toString())
   } catch {
     return null
   }
+  // Reject expired state — mirrors the 10-min TTL on drive/gbp/gsc OAuth state.
+  // A leaked state+code pair is only replayable within this window.
+  if (!payload?.e || Date.now() > Number(payload.e)) return null
+  return payload
 }
 
 function redirectTo(res, url) {
