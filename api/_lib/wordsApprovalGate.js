@@ -52,8 +52,12 @@ export async function checkWordsApproved(contentItemId, workspaceId) {
   }
   const [piece] = await ciRes.json().catch(() => [])
   if (!piece) return { ok: false, status: 403, body: { error: 'content_item_not_found' } }
-  // No parent interview (shouldn't happen in practice, but nothing to gate
-  // against if it does) — let it through rather than block on a null ref.
+  // No parent interview → nothing to gate against; let it through. This is a
+  // DOCUMENTED, intentional case for Moment-Miner package content:
+  // approve-package.js inserts its rows with interview_id null, and package
+  // approval (human sees the exact caption + renders, on top of the
+  // autoPublishGate signals) is the words checkpoint for that pipeline — see
+  // ARCHITECTURE.md "words-approval hard gate".
   if (!piece.interview_id) return { ok: true }
 
   const ivRes = await sb(`interviews?id=eq.${piece.interview_id}&workspace_id=eq.${workspaceId}&select=words_approved_at`)

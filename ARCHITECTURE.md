@@ -367,12 +367,30 @@ status **in the same release PATCH** — releasing to a still-`approved` row wou
 concurrent path can re-claim and re-post into before the caller's own status write lands. Any NEW
 caller of `runBundlePublish` / `BundlePublisher.publish()` on a persisted piece MUST take this
 claim (grep those primitives + `runBufferPublish` — the "enforced at every publish path" rule).
-**Two distinct lock domains — don't cross them:** the interactive paths lock
-`content_items.dispatching_at`; the auto-publish cron (`cron/auto-publish.js`) has its OWN claim on
+**Two lock domains, bridged by the cron:** the interactive paths lock
+`content_items.dispatching_at`; the auto-publish cron (`cron/auto-publish.js`) claims
 `story_packages.auto_published_at` + per-location `published_channels` (it dispatches from
-packages, not content_items). A new publish path picks the domain matching what it iterates.
-(audit P1, 2026-07-15 — the editor + retry paths originally skipped the claim, so a concurrent
-Approve + Publish double-posted the piece to the customer's live channel.)
+packages, not content_items) — and it ALSO takes the shared `dispatching_at` claim on the
+package's GBP `content_items` row before its dispatch loop, so a concurrent human "Publish now"
+on that same row can't double-post it. A new publish path picks the domain matching what it
+iterates, and must additionally take the content_items claim whenever a row it dispatches is
+also reachable interactively. (audit P1, 2026-07-15 — the editor + retry paths originally
+skipped the claim, so a concurrent Approve + Publish double-posted the piece to the customer's
+live channel; audit P2 same date — the cron originally never touched `dispatching_at`.)
+
+**The words-approval hard gate covers SIX dispatch paths — and package content is a documented
+exception to its interview check.** `checkWordsApproved` (`api/_lib/wordsApprovalGate.js`) is
+called by every path that sends a `content_items` row to a live channel: `publish/buffer.js`
+(both provider paths), `publish/website.js`, `publish/beehiiv.js`, `producer/retry-publish.js`,
+`_lib/dispatchContentItem.js`, and the auto-publish cron (`cron/auto-publish.js`). Rows sourced
+from Moment-Miner story packages (`editorial/approve-package.js`) carry `interview_id: null`,
+which the gate deliberately passes through — for that pipeline, **package approval IS the human
+words checkpoint** (the approver sees the exact caption + renders, on top of the autoPublishGate
+voice-fidelity/similarity/consent/QC signals), so there is no parent interview to gate against.
+The cron still calls the gate so any future interview-linked lineage is enforced automatically.
+Related invariant: the cron requires the package's GBP `content_items` row to EXIST and still be
+`approved` before dispatching — a package approved with `destination='library'` has no
+content_items row and must never auto-publish (audit follow-up, 2026-07-15).
 
 ---
 
