@@ -18,6 +18,7 @@ import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { useAppMutation } from '@/lib/useAppMutation.js'
 import { useConfirm } from '@/lib/useConfirm'
+import { Button } from '@/components/ui/button'
 
 // Markdown element styling (module scope — never define components inside render).
 const MD_COMPONENTS = {
@@ -101,10 +102,14 @@ function HeldBanner({ answer }) {
     { label: 'Non-diagnostic & safe', v: va.safety },
   ].filter((d) => typeof d.v === 'number')
   return (
-    <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3">
+    <div className="nx-alert nx-alert-crit mt-4 items-start">
+      <span className="nx-alert-chip nx-alert-chip-crit">
+        <Lock className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
         <span className="inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-destructive">
-          <Lock className="h-3.5 w-3.5" /> Held — can&rsquo;t publish yet
+          Held — can&rsquo;t publish yet
         </span>
         <span className="ml-auto text-2xs font-bold tabular-nums text-destructive">
           {s ? `${s} / 10 · ` : ''}bar is {threshold}
@@ -130,6 +135,7 @@ function HeldBanner({ answer }) {
         <span className="font-semibold text-foreground">Ask Bernard to revise</span> — it re-drafts in
         your voice and re-scores. Approve unlocks once it clears {threshold}.
       </p>
+      </div>
     </div>
   )
 }
@@ -149,9 +155,13 @@ function LiveChip() {
 // up until the clinician approves the replacement or retracts it.
 function SupersededBanner() {
   return (
-    <div className="mt-4 rounded-lg border border-action/30 bg-action/[0.06] px-3.5 py-3">
+    <div className="nx-alert nx-alert-act mt-4 items-start">
+      <span className="nx-alert-chip nx-alert-chip-act">
+        <RotateCcw className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
       <div className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-action">
-        <RotateCcw className="h-3.5 w-3.5" /> Your thinking on this changed
+        Your thinking on this changed
       </div>
       <p className="mt-1.5 text-2xs text-foreground">
         You confirmed a shift in how you approach this topic. The draft below is re-written in your
@@ -159,6 +169,7 @@ function SupersededBanner() {
         <span className="font-semibold">The current version is still live on movebetter.co</span> —
         approve to replace it, or take it down.
       </p>
+      </div>
     </div>
   )
 }
@@ -412,9 +423,9 @@ export default function AnswerReview() {
                 {/* Actions */}
                 {mode === 'edit' ? (
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button
+                    <Button
                       type="button"
-                      disabled={busy}
+                      loading={busy}
                       onClick={() =>
                         mutation.mutate({
                           id: active.id,
@@ -424,17 +435,18 @@ export default function AnswerReview() {
                           body: draft.body,
                         })
                       }
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                      className="font-semibold"
                     >
                       Save my edits
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={() => setMode(null)}
-                      className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
+                      className="font-semibold"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 ) : mode === 'revise' ? (
                   <div className="mt-4">
@@ -445,21 +457,23 @@ export default function AnswerReview() {
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                     />
                     <div className="mt-2 flex gap-2">
-                      <button
+                      <Button
                         type="button"
-                        disabled={busy || !note.trim()}
+                        loading={busy}
+                        disabled={!note.trim()}
                         onClick={() => mutation.mutate({ id: active.id, action: 'revise', note })}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                        className="font-semibold"
                       >
                         Send to Bernard
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => setMode(null)}
-                        className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
+                        className="font-semibold"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -476,34 +490,36 @@ export default function AnswerReview() {
                           <Lock className="h-4 w-4" /> Approve — fix the voice check first
                         </button>
                       ) : (
-                        <button
+                        <Button
                           type="button"
-                          disabled={busy}
+                          loading={busy}
                           onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                          className="gap-1.5 bg-success font-semibold text-white hover:bg-success/90"
                         >
                           <Check className="h-4 w-4" />{' '}
                           {active.movebetterco_slug ? 'Approve — replace the live page' : 'Looks right — approve'}
-                        </button>
+                        </Button>
                       )}
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => startEdit(active)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
+                        className="gap-1.5 font-semibold"
                       >
                         <Pencil className="h-4 w-4" /> Edit inline
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => setMode('revise')}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold ${
+                        className={`gap-1.5 font-semibold ${
                           voiceGate(active) === 'held'
-                            ? 'border-action/40 bg-action/10 text-action'
-                            : 'border-border text-foreground'
+                            ? 'border-action/40 bg-action/10 text-action hover:bg-action/15 hover:text-action'
+                            : ''
                         }`}
                       >
                         <RotateCcw className="h-4 w-4" /> Ask Bernard to revise
-                      </button>
+                      </Button>
                       {active.movebetterco_slug && (
                         <button
                           type="button"
