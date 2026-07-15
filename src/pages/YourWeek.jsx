@@ -163,13 +163,15 @@ function BacklogRow({ item, onNavigate }) {
 
 // Resolve the pill appearance for a card based on atom + content_item state.
 // The `rail` is the status-colored bar down the card's left edge that gives the
-// week board its at-a-glance differentiation (amber = needs you, spruce =
-// approved, green = live, faint = drafting) — same status language as the
+// week board its at-a-glance differentiation. Amber is reserved for the ONE
+// state that needs a human decision ("in review"); "needs draft" is a quiet
+// dashed neutral (a to-do the system fills, not an alert), spruce =
+// approved, green = live, faint = drafting — same status language as the
 // Stories rails, rendered as a solid bar (bg-*) for weight.
 function cardState(item) {
   const cis = item.contentItemStatus
   if (!item.contentPieceId || item.status === 'pending') {
-    return { label: 'needs draft', cls: 'bg-action text-action-foreground', action: 'draft', rail: 'bg-action' }
+    return { label: 'needs draft', cls: 'border border-dashed border-muted-foreground/40 text-muted-foreground', action: 'draft', rail: 'bg-muted-foreground/25' }
   }
   if (item.status === 'drafting') {
     return { label: 'drafting…', cls: 'bg-muted text-muted-foreground', action: 'none', rail: 'bg-muted-foreground/40' }
