@@ -185,6 +185,26 @@ both publish-status webhooks: `api/_routes/webhooks/bundle.js` (#1685) and `api/
 POST→504 = a stream-read hang (not "unconfigured", which is a fast 503); after the fix an unsigned
 POST returns 401/400 in well under a second.
 
+**Webhook idempotency: third-party callbacks are at-least-once — guard the whole handler, not just one
+write.** Twilio / Stripe / Mux / Clerk / bundle.social all redeliver (or double-fire) callbacks, so a
+handler that runs paid work or non-idempotent writes MUST dedup the whole cascade — guarding only one
+write is the trap (`twilio-recording.js` guarded just its `content_items` insert while the surrounding
+transcription + 2 LLM calls + concept-weight / voice-phrase writes re-ran on every redelivery, double-
+billing and double-counting practice-memory scores — #2137 P1). Guard pattern (see
+`api/_routes/webhooks/twilio-recording.js` `processRecording`): (1) **fast path** — early-return when
+the row is already in its terminal status (the redelivery that lands after processing finished); (2)
+**race path** — an atomic compare-and-set claim on the row's status column, `PATCH …&status=eq.<open>`
+→ `{status:'<claimed>'}` with `Prefer: return=representation`; under Postgres READ COMMITTED row-
+locking exactly one of two near-simultaneous deliveries gets a row back, the loser gets `[]` and bails
+before any side effect. Release the claim back to the open status on failure so a genuine re-fire can
+retry (mirrors `dispatchContentItem.js`'s `dispatching_at` claim + `releaseClaim`). **No migration is
+needed** to introduce a transient claim value IF the status column has no CHECK constraint AND every
+reader positive-matches known values (an unknown transient value simply misses their filters) — verify
+BOTH before reusing a status column instead of adding a dedicated `*_claimed_at` timestamp. Do NOT
+reuse the trigger-managed `updated_at` as the claim marker: the `update_<table>_updated_at` trigger
+overwrites it on every write (exactly why `dispatchContentItem` uses a dedicated `dispatching_at`
+column rather than `updated_at`).
+
 ### Edge runtime
 ```js
 export const config = { runtime: 'edge' }
