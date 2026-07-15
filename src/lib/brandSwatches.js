@@ -58,3 +58,17 @@ export function brandPaper(workspace, fallback = '#f0ede6') {
   const cols = brandSwatches(workspace)
   return cols.length ? cols.reduce((a, b) => (hexLum(b) > hexLum(a) ? b : a)) : fallback
 }
+
+// The workspace's karaoke-caption accent — client mirror of the ACCENT chain in
+// api/_lib/brandRender.js resolveBrandColors(): colors.accent →
+// brand_visual_identity.colorPalette.accent → DEFAULT_ACCENT. The video editor
+// seeds caption.accent from this when a draft doesn't already carry one, so the
+// stored value the preview styles with is the SAME value the bake receives
+// (the server falls back to resolveBrandColors when no valid accent is sent).
+// KEEP IN SYNC with resolveBrandColors — a chain change there must land here.
+export const WORKSPACE_DEFAULT_ACCENT = '#83957C' // = DEFAULT_ACCENT in brandRender.js
+export function workspaceCaptionAccent(workspace) {
+  return workspace?.colors?.accent
+    || workspace?.brand_visual_identity?.colorPalette?.accent
+    || WORKSPACE_DEFAULT_ACCENT
+}
