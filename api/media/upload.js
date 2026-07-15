@@ -55,12 +55,23 @@ async function handler(req, res) {
       request: req,
 
       onBeforeGenerateToken: async (pathname, clientPayload) => {
+        // `pathname` is client-controlled and @vercel/blob's token mint has no
+        // path restriction of its own — enforce the ws.id blob namespace here
+        // (CLAUDE.md blob-path rule). Throw → outer catch → 400.
+        if (
+          !scope ||
+          typeof pathname !== 'string' ||
+          (!pathname.startsWith(`media/raw/${scope.id}/`) &&
+            !pathname.startsWith(`media/edited/${scope.id}/`))
+        ) {
+          throw new Error('pathname outside workspace namespace')
+        }
+
         let meta = {}
         try { meta = clientPayload ? JSON.parse(clientPayload) : {} } catch { /* empty */ }
 
         return {
           allowedContentTypes: ALLOWED_MIME,
-          allowedPathPrefixes: [`media/raw/${scope.id}/`, `media/edited/${scope.id}/`],
           maximumSizeInBytes: 500 * 1024 * 1024,
           tokenPayload: JSON.stringify({
             scopeColumn: scope.column,

@@ -82,12 +82,21 @@ async function handler(req, res) {
       request: req,
 
       onBeforeGenerateToken: async (pathname, clientPayload) => {
+        // `pathname` is client-controlled and @vercel/blob's token mint has no
+        // path restriction of its own. The live uploader (brandKitLib.js
+        // uploadBrandAsset) writes to the flat brand-assets/ folder — tenancy
+        // lives on the brand_assets row, not the blob path — so pin this lane
+        // to its own folder so a minted token can't plant blobs inside another
+        // lane's workspace-scoped namespace (media/raw/<ws>/, music/<ws>/, …).
+        // Throw → outer catch → 400.
+        if (typeof pathname !== 'string' || !pathname.startsWith('brand-assets/')) {
+          throw new Error('pathname outside brand-assets namespace')
+        }
         let meta = {}
         try { meta = clientPayload ? JSON.parse(clientPayload) : {} } catch { /* empty */ }
         return {
           allowedContentTypes: ALLOWED_MIME,
           maximumSizeInBytes: MAX_BRAND_ASSET_BYTES,
-          allowedPathPrefixes: [`brand-kit/${scope.id}/`],
           tokenPayload: JSON.stringify({
             scopeColumn: scope.column,
             scopeId: scope.id,

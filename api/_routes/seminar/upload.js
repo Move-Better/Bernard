@@ -62,15 +62,19 @@ async function handler(req, res) {
       request: req,
       onBeforeGenerateToken: async (pathname) => {
         // Namespace blobs under the immutable workspace id (never the mutable
-        // slug — see CLAUDE.md blob-path rule).
+        // slug — see CLAUDE.md blob-path rule). `pathname` is client-controlled
+        // and @vercel/blob's token mint has no path restriction of its own —
+        // enforce the namespace here. Throw → outer catch → 400.
+        if (!scope || typeof pathname !== 'string' || !pathname.startsWith(`seminar/${scope.id}/`)) {
+          throw new Error('pathname outside workspace namespace')
+        }
         return {
           allowedContentTypes: ALLOWED_MIME,
           maximumSizeInBytes: MAX_BYTES,
           addRandomSuffix: true,
-          allowedPathPrefixes: [`seminar/${scope?.id}/`],
           tokenPayload: JSON.stringify({
-            scopeColumn: scope?.column || null,
-            scopeId: scope?.id || null,
+            scopeColumn: scope.column,
+            scopeId: scope.id,
             filename: pathname.split('/').pop() || null,
           }),
         }

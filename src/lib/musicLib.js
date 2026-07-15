@@ -27,8 +27,8 @@ function probeDuration(file) {
 }
 
 // Two-phase Vercel Blob client upload → /api/music/upload (inserts the row on
-// completion). The pathname is workspace-scoped to match the server's
-// allowedPathPrefixes (music/<wsId>/). Returns the @vercel/blob Blob.
+// completion). The pathname is workspace-scoped (music/<wsId>/) — the server's
+// token handshake rejects any other prefix. Returns the @vercel/blob Blob.
 export async function uploadMusicTrack(file, { workspaceId, title, mood, uploadedBy, onProgress } = {}) {
   if (!workspaceId) throw new Error('workspaceId required')
   const durationSec = await probeDuration(file)
