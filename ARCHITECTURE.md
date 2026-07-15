@@ -355,6 +355,25 @@ multi-location GBP publish down to a subset at publish-click time (that's epheme
 picker UI state) — a retry/resend of such a post re-targets every active location, not the
 originally-picked subset.
 
+**Every interactive publish of a `content_items` row takes the SAME `dispatching_at` claim, or
+two paths double-post it.** `content_items.dispatching_at` is a cross-path mutex shared by all
+three interactive publish paths — `/week` Approve (`dispatchContentItem`), the editor Publish/
+Schedule button (`handleBundlePublish`), and manual Retry (`retry-publish`) — each of which calls
+`claimDispatch(pieceId, wsId)` from `api/_lib/dispatchClaim.js` before dispatching. It's an atomic
+conditional PATCH (`dispatching_at IS NULL OR < 5-min-stale`); Postgres serializes it, so exactly
+one caller gets the row back and publishes while every other gets 0 rows → bails without posting.
+On success, `releaseDispatch(..., { status: 'scheduled'|'published', … })` commits the terminal
+status **in the same release PATCH** — releasing to a still-`approved` row would leave a window a
+concurrent path can re-claim and re-post into before the caller's own status write lands. Any NEW
+caller of `runBundlePublish` / `BundlePublisher.publish()` on a persisted piece MUST take this
+claim (grep those primitives + `runBufferPublish` — the "enforced at every publish path" rule).
+**Two distinct lock domains — don't cross them:** the interactive paths lock
+`content_items.dispatching_at`; the auto-publish cron (`cron/auto-publish.js`) has its OWN claim on
+`story_packages.auto_published_at` + per-location `published_channels` (it dispatches from
+packages, not content_items). A new publish path picks the domain matching what it iterates.
+(audit P1, 2026-07-15 — the editor + retry paths originally skipped the claim, so a concurrent
+Approve + Publish double-posted the piece to the customer's live channel.)
+
 ---
 
 ## Router conventions (App.jsx)
