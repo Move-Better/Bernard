@@ -48,7 +48,16 @@ function sb(path, init = {}) {
  * @returns {Promise<string>}
  */
 export async function generateCaption({ topic, clip = {}, workspace, staffId = null, practiceChunks = [], campaign = null, clipTranscript = '' }) {
-  const toneHint = workspace?.brand_voice?.tone_descriptors?.join(', ') || 'warm, expert'
+  // brand_voice is a free-text narrative for every live workspace (the rich "how
+  // this practice talks" description). A legacy shape stored tone_descriptors on an
+  // object; support both, but the narrative is the real voice authority. The old
+  // `brand_voice?.tone_descriptors?.join()` silently failed on the string shape, so
+  // EVERY caption fell back to the generic literal 'warm, expert' — a prime source
+  // of the robotic / AI-marketing tone. Use the narrative instead.
+  const bv = workspace?.brand_voice
+  const brandVoiceNarrative = typeof bv === 'string'
+    ? bv.trim()
+    : (Array.isArray(bv?.tone_descriptors) ? `Tone: ${bv.tone_descriptors.join(', ')}` : '')
   const clipContext = [
     clip.visualNarrative ? `Visual: ${clip.visualNarrative}` : '',
     clip.aiTags?.length ? `Tags: ${(clip.aiTags || []).join(', ')}` : '',
@@ -86,9 +95,24 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
 
   const systemLines = [
     'You write short, compelling social media captions for a clinical practitioner.',
-    `Tone: ${toneHint}. Write 1-2 sentences only. Do NOT use hashtags. Do NOT include a call to action.`,
+    'Write 1-2 sentences only. Do NOT use hashtags. Do NOT include a call to action.',
     'Speak from the practitioner\'s perspective as if they\'re sharing something meaningful.',
   ]
+  // The practice's real voice narrative is the authority on tone — replaces the old
+  // generic 'warm, expert' fallback that made captions sound machine-generated.
+  if (brandVoiceNarrative) {
+    systemLines.push(
+      'HOW THIS PRACTICE ACTUALLY TALKS — write in THIS voice (the authority on tone and register):\n' +
+      brandVoiceNarrative.slice(0, 900),
+    )
+  }
+  // Same anti-slop + anti-fabrication guardrails the atom generator uses, so
+  // captions stop reading as AI marketing and stop inventing specifics.
+  systemLines.push(
+    'Write like a real person, not AI marketing. No formula openers ("The one thing most people get wrong…", "Here\'s the thing…", "Did you know…"). No X-not-Y antithesis slop ("it\'s not about X, it\'s about Y"). No hollow hype ("game-changer", "unlock", "transform", "the secret to"). Do not bolt the practice name onto the point.',
+    'Use ONLY what the clinician actually conveyed. Do NOT invent specifics — no patient histories, timelines, names, numbers, outcomes, dates, or events that are not supported by the material below. If you lack a concrete detail, stay general rather than fabricate one.',
+    'Plain text only — no markdown (no *asterisks*, no **bold**); it renders as literal characters in the caption and subtitles.',
+  )
   // Inject the clip transcript FIRST among the grounding signals so it — together
   // with the voice phrases below — dominates over the generic tone descriptors.
   // Split of duties matters: the transcript supplies WHAT to say (the substance,
