@@ -9,6 +9,7 @@ import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
+import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
@@ -45,7 +46,11 @@ import FullPreviewOverlay from './slide-editor/FullPreviewOverlay'
 export default function SlideEditor({ piece, onBack, formatLabel, formatSub, photoCount, scheduleNode, singleSlide = false, badgeIcon = null, forcedAspect = null }) {
   const workspace = useWorkspace()
   const smartBack = useSmartBack('/publish')
-  const brandStyle = workspace?.brand_style || {}
+  // heroAccent reconciled to the server compositor's chain so the client slide
+  // bake (preview + publish + ad export) matches the server bake for the same
+  // template. Flows to SlidePreview, FullPreviewOverlay, ensureRenderedSlides
+  // and AdCarouselExportModal below.
+  const brandStyle = brandStyleForRender(workspace)
   const pieceMediaUrls = piece?.media_urls
   const mediaUrls = (pieceMediaUrls || []).filter((m) => m && m.type !== 'video' && m.url)
   const hasMedia = mediaUrls.length > 0

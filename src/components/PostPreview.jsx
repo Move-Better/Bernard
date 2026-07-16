@@ -5,6 +5,7 @@ import emailTemplateHtml from '../email-template.html?raw'
 import { workspace } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { renderFreeformSlide, SLIDE_W, SLIDE_H } from '@/lib/overlayTemplates'
+import { brandStyleForRender } from '@/lib/brandSwatches'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
@@ -89,7 +90,8 @@ function SlideCanvas({ slide, photo, brandStyle, theme }) {
 function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   const [idx, setIdx] = React.useState(0)
   const ws = useWorkspace()
-  const brandStyle = ws?.brand_style || {}
+  // heroAccent reconciled to the server compositor's chain (preview == bake).
+  const brandStyle = brandStyleForRender(ws)
   // Resolve the same theme the editor and the publish bake use: per-slide
   // override (slide.template_id) falls back to the deck theme (photoTemplateId).
   const { data: allThemes = [] } = usePhotoTemplates()
