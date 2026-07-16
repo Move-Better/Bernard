@@ -23,20 +23,19 @@ import {
   DEFAULT_DECK_THEME,
   defaultBlockConfig,
 } from '@/lib/photoTemplates'
-import { renderFreeformSlide, brandAccent as resolveBrandAccent, FALLBACK_ACCENT } from '@/lib/overlayTemplates'
+import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
-import { brandSwatches, NEUTRAL_SWATCHES, brandInk, brandPaper } from '@/lib/brandSwatches'
+import { brandSwatches, NEUTRAL_SWATCHES, brandInk, brandPaper, workspacePrimaryColor, WORKSPACE_DEFAULT_PRIMARY, brandStyleForRender } from '@/lib/brandSwatches'
 
-// Resolve the brand accent through the SAME function the canvas renderer bakes
-// with (brandAccent() in overlayTemplates.js: brand_style.accent_color →
-// FALLBACK_ACCENT), so a `bgColor: null` CTA previews in the exact accent that
-// publishes — one source of truth, no drift. (Reusing the resolver rather than
-// re-deriving the chain here; the old local copy added a colors.primary /
-// #0c7580 fallback the renderer never uses, so an accent-less workspace's
-// thumbnail disagreed with its bake.)
+// Resolve the brand hero accent the SAME way the bake does — via
+// workspacePrimaryColor() (colors.primary → brand_style.accent_color → palette →
+// default), the client mirror of the server compositor's chain that the slide
+// renderer now bakes with (brandStyleForRender → brandAccent). So a `bgColor:
+// null` CTA and the rail thumbnails preview the exact accent that publishes,
+// identically across the client slide bake and the server compositor.
 function useBrandAccent() {
   const workspace = useWorkspace()
-  return resolveBrandAccent(workspace?.brand_style)
+  return workspacePrimaryColor(workspace)
 }
 
 // Representative slides for the live preview, one per common slide type.
@@ -135,7 +134,7 @@ function emptyThemeConfig() {
 const NAVY_T  = '#0c1a2e'
 const PAPER_T = '#f0ede6'
 
-function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = FALLBACK_ACCENT, ink = NAVY_T, paper = PAPER_T }) {
+function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = WORKSPACE_DEFAULT_PRIMARY, ink = NAVY_T, paper = PAPER_T }) {
   const dim = size === 'sm' ? { w: 48, h: 60 } : { w: 96, h: 120 }
   const { w, h } = dim
   const p = Math.round(w * 0.10)        // padding
@@ -233,7 +232,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = FALLBACK_ACCE
 }
 
 // CSS swatch fallback for custom templates (no fixed layout to diagram)
-function CustomThemePreview({ theme, size = 'md', brandAccent = FALLBACK_ACCENT }) {
+function CustomThemePreview({ theme, size = 'md', brandAccent = WORKSPACE_DEFAULT_PRIMARY }) {
   const b = theme?.blocks || {}
   const hook = b.hook || {}
   const body = b.body || {}
@@ -286,7 +285,7 @@ function CustomThemePreview({ theme, size = 'md', brandAccent = FALLBACK_ACCENT 
 }
 
 // Dispatcher: built-ins get the SVG layout diagram; custom get the CSS swatch.
-function ThemePreview({ theme, size = 'md', brandAccent = FALLBACK_ACCENT }) {
+function ThemePreview({ theme, size = 'md', brandAccent = WORKSPACE_DEFAULT_PRIMARY }) {
   const workspace = useWorkspace()
   const id = theme?.id
   if (id && BUILTIN_THEME_IDS.includes(id)) {
@@ -298,7 +297,7 @@ function ThemePreview({ theme, size = 'md', brandAccent = FALLBACK_ACCENT }) {
 
 // ── Per-block-role style editor ───────────────────────────────────────────────
 
-function BlockEditor({ role, config, onChange, brandAccent = FALLBACK_ACCENT, swatches = [] }) {
+function BlockEditor({ role, config, onChange, brandAccent = WORKSPACE_DEFAULT_PRIMARY, swatches = [] }) {
   const c = config || defaultBlockConfig(role)
   function set(key, val) { onChange({ ...c, [key]: val }) }
 
@@ -764,7 +763,9 @@ export default function PhotoTemplates() {
   const generateThemes = useGenerateBrandTemplates()
   const brandAccent  = useBrandAccent()
   const workspace    = useWorkspace()
-  const brandStyle   = workspace?.brand_style || {}
+  // Reconciled: heroAccent resolved the SAME way the server compositor does, so
+  // the LiveThemePreview canvas bakes the exact accent that publishes.
+  const brandStyle   = brandStyleForRender(workspace)
   const confirm      = useConfirm()
 
   // 'browse' = the built-in/custom rail + form editor; 'chat' = Design with AI.

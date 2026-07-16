@@ -35,8 +35,13 @@ function brandFonts(brandStyle) {
   return { heading, body }
 }
 
+// `heroAccent` is the server-reconciled hero color (brandStyleForRender() in
+// brandSwatches.js attaches it via the same colors.primary→accent_color→palette
+// chain the server compositor uses), so the client bake matches the server bake
+// for the same template. Falls back to the raw accent_color (then FALLBACK_ACCENT)
+// for any caller that hands in a plain brand_style without the reconciled key.
 export function brandAccent(brandStyle, fallback = FALLBACK_ACCENT) {
-  return brandStyle?.accent_color || fallback
+  return brandStyle?.heroAccent || brandStyle?.accent_color || fallback
 }
 
 // Relative luminance of a #rrggbb hex (0 = black … 1 = white), or null if invalid.

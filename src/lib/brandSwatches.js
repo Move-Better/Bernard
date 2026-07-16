@@ -72,3 +72,34 @@ export function workspaceCaptionAccent(workspace) {
     || workspace?.brand_visual_identity?.colorPalette?.accent
     || WORKSPACE_DEFAULT_ACCENT
 }
+
+// The workspace's HERO ACCENT — the one color the templates put on the rule /
+// CTA pill / badge ring / accent word. Client mirror of resolveBrandColors()
+// .primaryColor in api/_lib/brandRender.js (the SERVER photo compositor's hero
+// chain: colors.primary → brand_style.accent_color → palette.foreground →
+// DEFAULT_PRIMARY). The client slide renderer (overlayTemplates.js brandAccent)
+// historically read ONLY brand_style.accent_color, so the same six photo
+// templates could bake a different accent client-side vs server-side for a
+// workspace whose colors.primary ≠ brand_style.accent_color (e.g. movebetter-
+// equine: primary #E36525 vs accent_color #ff4000). This resolves it the SAME
+// way the server does so both bakes agree. KEEP IN SYNC with resolveBrandColors()
+// .primaryColor — a chain change there must land here. (Parallels
+// workspaceCaptionAccent above, which mirrors .accentColor.)
+export const WORKSPACE_DEFAULT_PRIMARY = '#1a3a5c' // = DEFAULT_PRIMARY in brandRender.js
+export function workspacePrimaryColor(workspace) {
+  return workspace?.colors?.primary
+    || workspace?.brand_style?.accent_color
+    || workspace?.brand_visual_identity?.colorPalette?.foreground
+    || WORKSPACE_DEFAULT_PRIMARY
+}
+
+// brand_style handed to the client slide renderer, with the reconciled hero
+// accent attached as a dedicated `heroAccent` key. overlayTemplates.js
+// brandAccent() reads heroAccent first (falling back to the raw accent_color for
+// any un-augmented caller, so this is backward-safe). Deliberately a SEPARATE key
+// — NOT an override of accent_color — because accent_color is also a candidate
+// swatch for brandInk/brandPaper (the template grounds), which must keep seeing
+// the workspace's real accent, not the primary.
+export function brandStyleForRender(workspace) {
+  return { ...(workspace?.brand_style || {}), heroAccent: workspacePrimaryColor(workspace) }
+}

@@ -2,6 +2,7 @@ import { publishAndTrack } from '@/lib/publish'
 import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { isInstagramReel } from '@/lib/mediaEntry'
+import { brandStyleForRender } from '@/lib/brandSwatches'
 
 /**
  * Publish — or schedule / queue — ONE social content piece through Buffer.
@@ -55,7 +56,7 @@ export async function publishPieceToBuffer(
     const { slides, publishMediaUrls, changed } = await ensureRenderedSlides({
       slides: piece.slides,
       mediaUrls: piece.media_urls,
-      brandStyle: workspace?.brand_style || {},
+      brandStyle: brandStyleForRender(workspace),
       theme,
       themeId: piece.photo_template_id || DEFAULT_DECK_THEME,
       customThemes,
