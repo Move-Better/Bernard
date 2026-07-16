@@ -64,6 +64,13 @@ const TRANSCRIPT_MAX = 24_000
 const HARD_GATE_MAX_CHARS = 600
 const GATE = 6.5
 
+// Fabrication signal from the voice judge (captionFidelityRubric emits
+// invented_claims). Kept separate from the numeric `overall` so a piece with
+// invented specifics but good voice can't average into a passing score — the
+// exact way fabricated patient histories used to ship.
+const isFabricated = (score) =>
+  Array.isArray(score?.breakdown?.invented_claims) && score.breakdown.invented_claims.length > 0
+
 /**
  * Ground + generate + judge one atom's caption. Behavior-identical to draft.js's
  * inline core; does NO DB writes.
@@ -226,7 +233,7 @@ export async function draftAtom({ ws, atom, interview }) {
     const { text: evalRaw1 } = await generateText({
       model: HAIKU, instructions: ep1.instructions,
       messages: [{ role: 'user', content: ep1.user }],
-      maxOutputTokens: 240,
+      maxOutputTokens: 500,
     })
     voiceScore = parseFidelity(evalRaw1, {
       model: HAIKU, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(),
@@ -235,8 +242,11 @@ export async function draftAtom({ ws, atom, interview }) {
     console.warn('[draftAtom] voice-judge eval-1 failed:', e.message)
   }
 
-  if (voiceScore && voiceScore.overall < GATE) {
-    const redFlag = voiceScore.breakdown?.red_flag || 'voice drift from transcript'
+  if (voiceScore && (voiceScore.overall < GATE || isFabricated(voiceScore))) {
+    const invented = isFabricated(voiceScore) ? voiceScore.breakdown.invented_claims : []
+    const redFlag = invented.length
+      ? `You invented details that were NOT in our conversation: ${invented.join('; ')}. Remove them entirely — use only what was actually said.`
+      : (voiceScore.breakdown?.red_flag || 'voice drift from transcript')
     try {
       const { text: rawText2 } = await generateText({
         model: 'anthropic/claude-sonnet-4-6',
@@ -263,7 +273,7 @@ export async function draftAtom({ ws, atom, interview }) {
         const { text: evalRaw2 } = await generateText({
           model: HAIKU, instructions: ep2.instructions,
           messages: [{ role: 'user', content: ep2.user }],
-          maxOutputTokens: 240,
+          maxOutputTokens: 500,
         })
         const score2 = parseFidelity(evalRaw2, {
           model: HAIKU, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(),
@@ -319,8 +329,19 @@ export async function draftAtom({ ws, atom, interview }) {
   let gate = 'passed'
   let voiceAudit = null
   if (voiceScore) {
-    if (voiceScore.overall < GATE) gate = caption.length <= HARD_GATE_MAX_CHARS ? 'held' : 'soft'
+    const fabricated = isFabricated(voiceScore)
+    // Fabrication ALWAYS holds for review — any length, any overall score. Invented
+    // specifics must never wash out into a passing average (the pre-P2 bug where a
+    // fabricated-but-well-voiced atom scored 7.25 and shipped).
+    if (fabricated) gate = 'held'
+    else if (voiceScore.overall < GATE) gate = caption.length <= HARD_GATE_MAX_CHARS ? 'held' : 'soft'
     voiceAudit = { ...voiceScore.breakdown, attempts: voiceAttempts, gate }
+    // Make the invented specifics the visible hold reason on /week (week-summary
+    // maps voice_audit.red_flag → voiceFlag), overriding whatever the judge picked
+    // as "biggest issue" — for a held-on-fabrication piece, the invention IS it.
+    if (fabricated) {
+      voiceAudit.red_flag = `Invented details not in the interview: ${voiceScore.breakdown.invented_claims.join('; ')}`
+    }
   }
 
   return {
