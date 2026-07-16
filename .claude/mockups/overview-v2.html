@@ -1,0 +1,748 @@
+<title>Overview v2 — Weekly Recap Proposal</title>
+<style>
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;
+    --primary-fg: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 19% 34%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --warning: 38 92% 50%;
+    --info: 199 95% 40%;
+    --action: 32 95% 44%;
+    --scheduled: 262 83% 58%;
+    --destructive: 0 84% 60%;
+    --ink-band-a: 222 47% 12%;
+    --ink-band-b: 215 28% 22%;
+    --annot: 32 95% 44%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 220 15% 8%;
+      --foreground: 216 20% 92%;
+      --card: 218 15% 11%;
+      --secondary: 218 14% 16%;
+      --muted: 218 14% 16%;
+      --muted-foreground: 216 12% 66%;
+      --border: 218 13% 19%;
+      --primary: 185 70% 36%;
+      --ink-band-a: 222 40% 9%;
+      --ink-band-b: 215 25% 15%;
+    }
+  }
+  :root[data-theme="light"] {
+    --background: 0 0% 100%; --foreground: 222 47% 8%; --card: 0 0% 100%;
+    --secondary: 220 14% 96%; --muted: 220 14% 96%; --muted-foreground: 215 19% 34%;
+    --border: 214 32% 91%; --primary: 186 83% 27%;
+    --ink-band-a: 222 47% 12%; --ink-band-b: 215 28% 22%;
+  }
+  :root[data-theme="dark"] {
+    --background: 220 15% 8%; --foreground: 216 20% 92%; --card: 218 15% 11%;
+    --secondary: 218 14% 16%; --muted: 218 14% 16%; --muted-foreground: 216 12% 66%;
+    --border: 218 13% 19%; --primary: 185 70% 36%;
+    --ink-band-a: 222 40% 9%; --ink-band-b: 215 25% 15%;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 80px; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  a { color: hsl(var(--primary)); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; border-radius: 6px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ── annotation cards (mockup chrome, not product UI) ─────────────── */
+  .annot {
+    border: 2px dashed hsl(var(--annot) / 0.55);
+    background: hsl(var(--annot) / 0.06);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 26px 0 10px;
+    font-size: 13px;
+    color: hsl(var(--foreground));
+  }
+  .annot .eyebrow {
+    display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: hsl(var(--annot));
+    margin-bottom: 3px;
+  }
+  .annot ul { margin: 4px 0 0; padding-left: 18px; }
+  .annot li { margin: 2px 0; }
+  .annot b { font-weight: 700; }
+
+  /* ── intro ─────────────────────────────────────────────────────────── */
+  .intro {
+    border: 1px solid hsl(var(--border));
+    border-radius: 16px;
+    background: hsl(var(--card));
+    padding: 22px 26px;
+    margin-bottom: 8px;
+  }
+  .intro h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+  .intro p.sub { margin: 6px 0 0; color: hsl(var(--muted-foreground)); font-size: 13.5px; max-width: 70ch; }
+  .fixmap { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-top: 16px; }
+  .fix {
+    border: 1px solid hsl(var(--border)); border-radius: 10px; padding: 10px 12px;
+    font-size: 12.5px; background: hsl(var(--background));
+  }
+  .fix .was { color: hsl(var(--muted-foreground)); }
+  .fix .now { font-weight: 700; margin-top: 2px; }
+  .fix .now::before { content: "→ "; color: hsl(var(--success)); font-weight: 800; }
+
+  /* ── shared card idiom (mirrors Bernard) ───────────────────────────── */
+  .card {
+    border: 1px solid hsl(var(--border));
+    border-radius: 16px;
+    background: hsl(var(--card));
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 30px -22px rgba(15,23,42,0.3);
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 999px; padding: 2px 9px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .pill-emerald { background: hsl(var(--success) / 0.10); color: hsl(var(--success)); }
+  .pill-sky     { background: hsl(var(--scheduled) / 0.12); color: hsl(var(--scheduled)); }
+  .pill-tint    { background: hsl(var(--action) / 0.10); color: hsl(var(--action)); border: 1px solid hsl(var(--action) / 0.25); }
+  .pill-ink     { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .avatar {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+    font-weight: 700; flex: none;
+  }
+
+  /* ── action banner ─────────────────────────────────────────────────── */
+  .banner {
+    display: flex; align-items: center; gap: 14px;
+    border: 1px solid hsl(var(--action) / 0.3);
+    background: hsl(var(--action) / 0.07);
+    border-radius: 14px; padding: 14px 20px;
+  }
+  .banner .chip {
+    height: 34px; width: 34px; border-radius: 10px; flex: none;
+    background: hsl(var(--action)); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .banner .cta {
+    flex: none; background: hsl(var(--action)); color: #fff; border: 0;
+    font-size: 12.5px; font-weight: 700; padding: 9px 14px; border-radius: 10px;
+  }
+  .banner .cta:hover { opacity: 0.9; }
+
+  /* ── week recap card ───────────────────────────────────────────────── */
+  .wk-head {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 16px 22px;
+    color: hsl(var(--primary-fg));
+    background: linear-gradient(100deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.75) 100%);
+  }
+  .wk-head .title h2 { font-size: 18px; font-weight: 800; }
+  .wk-head .title p { margin: 1px 0 0; font-size: 11.5px; opacity: 0.9; }
+  .wk-nav { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .wk-nav button.arrow {
+    height: 32px; width: 32px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.12); color: #fff; font-size: 15px; line-height: 1;
+  }
+  .wk-nav button.arrow:hover:not(:disabled) { background: rgba(255,255,255,0.24); }
+  .wk-nav button.arrow:disabled { opacity: 0.35; cursor: default; }
+  .wk-nav .label { text-align: center; min-width: 128px; }
+  .wk-nav .label .range { font-size: 13.5px; font-weight: 800; }
+  .wk-nav .label .rel { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+  .wk-nav .today-btn, .present-btn {
+    border: 1px solid rgba(255,255,255,0.35); background: transparent; color: #fff;
+    font-size: 11.5px; font-weight: 700; padding: 6px 10px; border-radius: 9px;
+  }
+  .wk-nav .today-btn:hover, .present-btn:hover { background: rgba(255,255,255,0.15); }
+  .wip-tag {
+    display: none; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+    background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.3);
+    padding: 3px 9px; border-radius: 999px;
+  }
+  .wip-tag.on { display: inline-flex; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid hsl(var(--border)); }
+  .stat { padding: 16px 10px 14px; text-align: center; border-right: 1px solid hsl(var(--border)); }
+  .stat:last-child { border-right: 0; }
+  .stat .v { font-size: 30px; font-weight: 800; line-height: 1.1; }
+  .stat .l { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+  .delta {
+    display: inline-flex; align-items: center; gap: 3px; margin-top: 6px;
+    font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1.5px 8px;
+  }
+  .delta.up { background: hsl(var(--success) / 0.1); color: hsl(var(--success)); }
+  .delta.down { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .delta.flat { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
+  /* trend band */
+  .trend { padding: 14px 22px 10px; border-bottom: 1px solid hsl(var(--border)); }
+  .trend .t-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .trend .t-head h3 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: hsl(var(--muted-foreground)); }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: hsl(var(--muted-foreground)); margin-left: auto; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { height: 9px; width: 9px; border-radius: 3px; display: inline-block; }
+  .bars { display: flex; gap: 6px; align-items: flex-end; height: 92px; }
+  .wkcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 0; border-radius: 8px; padding: 4px 3px 2px; border: 1px solid transparent; background: transparent; }
+  .wkcol.clickable:hover { background: hsl(var(--muted) / 0.7); }
+  .wkcol.sel { border-color: hsl(var(--primary) / 0.5); background: hsl(var(--primary) / 0.06); }
+  .duo { display: flex; gap: 3px; align-items: flex-end; height: 56px; width: 100%; justify-content: center; }
+  .bar { width: 38%; max-width: 16px; border-radius: 3px 3px 0 0; min-height: 2px; }
+  .bar.pub { background: hsl(var(--success)); }
+  .bar.cap { background: hsl(var(--primary) / 0.45); }
+  .bar.wip { background-image: repeating-linear-gradient(-45deg, transparent 0 3px, rgba(255,255,255,0.45) 3px 6px); }
+  .wkcol .wl { font-size: 9.5px; color: hsl(var(--muted-foreground)); margin-top: 4px; white-space: nowrap; }
+  .wkcol .wn { font-size: 10px; font-weight: 700; color: hsl(var(--foreground)); }
+
+  /* recap body */
+  .wk-body { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 900px) { .wk-body { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+  .wk-body .col { padding: 18px 22px; }
+  .wk-body .col + .col { border-left: 1px solid hsl(var(--border)); }
+  @media (max-width: 900px) { .wk-body .col + .col { border-left: 0; border-top: 1px solid hsl(var(--border)); } }
+  .sec-h { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .sec-h h3 { font-size: 13.5px; font-weight: 800; }
+  .post { display: flex; align-items: center; gap: 11px; padding: 5px 0 5px 10px; border-left: 2px solid hsl(var(--success)); margin: 7px 0; }
+  .post .avatar { height: 28px; width: 28px; font-size: 10.5px; }
+  .post .t { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .post .m { font-size: 11px; color: hsl(var(--muted-foreground)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .post:hover .t { color: hsl(var(--primary)); }
+  .more { font-size: 11px; color: hsl(var(--muted-foreground)); padding-left: 12px; }
+  .empty { font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+  .cap-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; margin: 7px 0; padding-left: 10px; border-left: 2px solid hsl(var(--primary) / 0.45); }
+  .cap-line .avatar { height: 24px; width: 24px; font-size: 9.5px; }
+
+  /* top post highlight */
+  .top-post {
+    margin-top: 16px; border: 1px solid hsl(var(--success) / 0.3); background: hsl(var(--success) / 0.05);
+    border-radius: 12px; padding: 13px 15px;
+  }
+  .top-post .hd { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: hsl(var(--success)); margin-bottom: 6px; }
+  .top-post .t { font-size: 14px; font-weight: 700; }
+  .top-post .m { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+  .top-post .m b { color: hsl(var(--foreground)); }
+  .top-post a { display: inline-block; font-size: 12px; font-weight: 700; margin-top: 7px; }
+
+  /* dark-week insight */
+  .insight {
+    margin-top: 12px; display: flex; gap: 9px; align-items: flex-start;
+    font-size: 12.5px; color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border)); border-radius: 10px; padding: 10px 13px; background: hsl(var(--muted) / 0.4);
+  }
+
+  /* ── right-now row ─────────────────────────────────────────────────── */
+  .now-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .now-grid { grid-template-columns: 1fr; } }
+  .now-card { border: 1px solid hsl(var(--border)); border-radius: 14px; background: hsl(var(--card)); padding: 15px 18px; }
+  .now-card .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .now-card h3 { font-size: 13.5px; font-weight: 800; }
+
+  /* ── team ──────────────────────────────────────────────────────────── */
+  .team-head { padding: 15px 20px; border-bottom: 1px solid hsl(var(--border)); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .team-head h3 { font-size: 15px; font-weight: 800; }
+  .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: hsl(var(--border)); }
+  @media (max-width: 900px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 620px) { .team-grid { grid-template-columns: 1fr; } }
+  .member { background: hsl(var(--card)); padding: 15px 16px; }
+  .member .row1 { display: flex; align-items: center; gap: 11px; }
+  .member .avatar { height: 40px; width: 40px; font-size: 13px; }
+  .member .nm { font-size: 13.5px; font-weight: 700; }
+  .member .sub { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 1px; }
+  .dots { display: flex; gap: 4px; margin-top: 11px; align-items: center; }
+  .dot { height: 10px; width: 10px; border-radius: 3px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); }
+  .dot.on { background: hsl(var(--primary) / 0.8); border-color: transparent; }
+  .dot.wip { border-style: dashed; border-color: hsl(var(--muted-foreground) / 0.5); }
+  .dots .dl { font-size: 9.5px; color: hsl(var(--muted-foreground)); margin-left: 5px; }
+  .member .row3 { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid hsl(var(--border)); margin-top: 11px; padding-top: 9px; font-size: 11.5px; }
+  .streak { display: inline-flex; align-items: center; gap: 4px; color: hsl(var(--action)); font-weight: 800; }
+  .member .alltime { color: hsl(var(--muted-foreground)); }
+  .member .alltime b { color: hsl(var(--foreground)); font-size: 13px; }
+  .team-foot { padding: 10px 20px; background: hsl(var(--muted) / 0.4); border-top: 1px solid hsl(var(--border)); font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+  /* ── cost ──────────────────────────────────────────────────────────── */
+  .cost-head { padding: 15px 20px; border-bottom: 1px solid hsl(var(--border)); display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .cost-head h3 { font-size: 15px; font-weight: 800; }
+  .cost-head .total { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; }
+  .cost-lines { display: grid; grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 800px) { .cost-lines { grid-template-columns: repeat(2, 1fr); } }
+  .cost-line { padding: 14px 16px; border-right: 1px solid hsl(var(--border)); }
+  .cost-line:last-child { border-right: 0; }
+  .cost-line .lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: hsl(var(--muted-foreground)); display: flex; gap: 6px; align-items: center; }
+  .cost-line .amt { font-size: 17px; font-weight: 800; margin-top: 3px; }
+  .cost-line .u { font-size: 11px; color: hsl(var(--muted-foreground)); }
+  .cost-trend { padding: 12px 20px 8px; border-top: 1px solid hsl(var(--border)); }
+  .cost-trend .t-hd { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 6px; }
+  .cost-bars { display: flex; gap: 6px; align-items: flex-end; height: 44px; }
+  .cbar { flex: 1; background: hsl(var(--action) / 0.55); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .cbar.sel { background: hsl(var(--action)); }
+  .cost-windows { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid hsl(var(--border)); background: hsl(var(--muted) / 0.3); }
+  .cost-windows div { padding: 11px; text-align: center; border-right: 1px solid hsl(var(--border)); }
+  .cost-windows div:last-child { border-right: 0; }
+  .cost-windows .k { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+  .cost-windows .v { font-size: 15px; font-weight: 800; margin-top: 2px; }
+  .cost-foot { padding: 10px 20px; background: hsl(var(--muted) / 0.4); border-top: 1px solid hsl(var(--border)); font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+  /* ── all-time band ─────────────────────────────────────────────────── */
+  .alltime-band {
+    border-radius: 14px; overflow: hidden; color: #fff;
+    background: linear-gradient(120deg, hsl(var(--ink-band-a)) 0%, hsl(var(--ink-band-b)) 100%);
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 0;
+    padding: 13px 22px;
+  }
+  .alltime-band .hd { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 800; margin-right: 26px; }
+  .alltime-band .hd small { font-weight: 500; opacity: 0.65; font-size: 10.5px; }
+  .at-stat { display: flex; align-items: baseline; gap: 7px; margin-right: 30px; }
+  .at-stat .v { font-size: 19px; font-weight: 800; }
+  .at-stat .l { font-size: 11px; opacity: 0.7; }
+
+  /* ── ghost sections ────────────────────────────────────────────────── */
+  .ghost {
+    border: 1px dashed hsl(var(--border)); border-radius: 14px; padding: 18px 20px;
+    color: hsl(var(--muted-foreground)); font-size: 13px; background: hsl(var(--muted) / 0.25);
+  }
+  .ghost b { color: hsl(var(--foreground)); }
+
+  .spacer { height: 6px; }
+  svg.ic { flex: none; }
+</style>
+
+<div class="wrap">
+
+  <!-- ═══════════ mockup intro ═══════════ -->
+  <div class="intro">
+    <h1>Overview v2 — proposal mockup</h1>
+    <p class="sub">
+      The audit found the page's information is strong but frozen at "now": no way to see last week, no trends,
+      only one delta on the whole page, and three different definitions of a "week." This mockup shows the fix.
+      <b>The week navigation below actually works</b> — click ‹ › or the trend bars (last 4 weeks are wired, with your real numbers).
+    </p>
+    <div class="fixmap">
+      <div class="fix"><div class="was">Snapshot pinned to now, rolling 7 days</div><div class="now">Calendar weeks (Mon–Sun) with ‹ › navigation, back to workspace start</div></div>
+      <div class="fix"><div class="was">No trends anywhere</div><div class="now">12-week publish/capture band (doubles as week picker) + cost trend + team capture dots</div></div>
+      <div class="fix"><div class="was">Delta only on cost</div><div class="now">"vs last week" chip on every stat tile</div></div>
+      <div class="fix"><div class="was">"What shipped" but never "did it work"</div><div class="now">Top-post highlight per week, linking to Insights</div></div>
+      <div class="fix"><div class="was">Queues (in review / scheduled) mixed into week history</div><div class="now">"Right now" row pinned outside week navigation</div></div>
+      <div class="fix"><div class="was">Two sources of truth (client cache vs SQL) that disagree on screen; "-0" tick flash; Voice line mislabeled ElevenLabs</div><div class="now">One server-computed recap per week + the three bug fixes ride along</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ banner (unchanged) ═══════════ -->
+  <div class="annot"><span class="eyebrow">Unchanged</span><br>The action banner keeps its job and its amber severity treatment.</div>
+  <div class="banner">
+    <span class="chip">
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+    </span>
+    <div style="flex:1;min-width:0;">
+      <p style="margin:0;font-size:13.5px;font-weight:800;">Your queue: 7 posts ready to publish.</p>
+      <p style="margin:1px 0 0;font-size:11.5px;color:hsl(var(--muted-foreground));">Drafted by AI, media attached — review &amp; schedule each.</p>
+    </div>
+    <button class="cta">Review &amp; publish →</button>
+  </div>
+
+  <!-- ═══════════ week recap ═══════════ -->
+  <div class="annot"><span class="eyebrow">What changed — the heart of it</span>
+    <ul>
+      <li><b>Calendar weeks with ‹ › navigation.</b> "This week" is now Mon–Sun; mid-week it's tagged <b>week in progress</b>. Step back to any completed week — Monday's all-staff meeting presents <b>last week</b>, finished and true.</li>
+      <li><b>Every stat gets a vs-last-week delta</b> (today only cost had one).</li>
+      <li><b>The 12-week trend band doubles as the week picker</b> — the two June dark weeks are instantly visible today; they're invisible on the live page.</li>
+      <li><b>Top-post highlight</b> answers "did it work?" without leaving the meeting deck; deep dive stays on Insights.</li>
+      <li>Scheduled / In review moved out (next section) — they're "right now" queues, not week history. Present mode presents the <b>selected</b> week.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="wk-head">
+      <div style="font-size:22px;" aria-hidden="true">🎉</div>
+      <div class="title">
+        <h2 id="wkTitle">This week at the clinic</h2>
+        <p id="wkSub">Jul 13 – 19 · for your all-staff meeting</p>
+      </div>
+      <span class="wip-tag on" id="wipTag">
+        <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Week in progress
+      </span>
+      <div class="wk-nav">
+        <button class="arrow" id="btnPrev" aria-label="Previous week">‹</button>
+        <div class="label">
+          <div class="rel" id="relLbl">This week</div>
+          <div class="range num" id="rangeLbl">Jul 13 – 19</div>
+        </div>
+        <button class="arrow" id="btnNext" aria-label="Next week" disabled>›</button>
+        <button class="today-btn" id="btnToday" style="display:none;">Back to this week</button>
+        <button class="present-btn">
+          <svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></svg>Present
+        </button>
+      </div>
+    </div>
+
+    <div class="stats" id="statRow"></div>
+
+    <div class="trend">
+      <div class="t-head">
+        <h3>The last 12 weeks</h3>
+        <div class="legend">
+          <span><span class="swatch" style="background:hsl(var(--success));"></span>published</span>
+          <span><span class="swatch" style="background:hsl(var(--primary) / 0.45);"></span>captured</span>
+          <span style="opacity:0.75;">click a week to open it</span>
+        </div>
+      </div>
+      <div class="bars" id="trendBars"></div>
+    </div>
+
+    <div class="wk-body">
+      <div class="col">
+        <div class="sec-h">
+          <span class="pill pill-emerald">🎉 Published</span>
+          <h3 id="pubHead">7 posts out in the world</h3>
+        </div>
+        <div id="pubList"></div>
+      </div>
+      <div class="col">
+        <div class="sec-h">
+          <span class="pill pill-sky">Captured</span>
+          <h3 id="capHead">1 story captured</h3>
+        </div>
+        <div id="capList"></div>
+        <div id="topPost"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ right now ═══════════ -->
+  <div class="annot"><span class="eyebrow">What changed</span>
+    "Scheduled" and "In review" used to sit inside the week card. They're current-state queues — "in review three weeks ago"
+    means nothing — so they're pinned here and <b>don't move when you navigate weeks</b>.</div>
+  <div class="now-grid">
+    <div class="now-card">
+      <div class="hd">
+        <span class="pill pill-sky">Going out next</span>
+        <h3>Scheduled</h3>
+      </div>
+      <p class="empty">Nothing scheduled yet.</p>
+    </div>
+    <div class="now-card">
+      <div class="hd">
+        <span class="pill pill-tint">Needs the team</span>
+        <h3>In review</h3>
+      </div>
+      <p class="empty">Nothing waiting — inbox clear.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ team ═══════════ -->
+  <div class="annot"><span class="eyebrow">What changed</span>
+    <ul>
+      <li><b>8-week capture dot-row</b> per member — streaks become visible rhythm, not just a number. The data (capture weeks) is already loaded today; it's just never drawn.</li>
+      <li>The green pill now says <b>"published this week"</b> — the current "2 this week" reads as captures in a card that's all about captures.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="team-head">
+      <svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <h3>The team</h3>
+      <span class="pill pill-ink">streaks reward showing up, not posting most</span>
+      <span style="margin-left:auto;font-size:10.5px;color:hsl(var(--muted-foreground));">last 8 weeks of capture rhythm · who's due</span>
+    </div>
+    <div class="team-grid" id="teamGrid"></div>
+    <div class="team-foot">The streak rewards consistency (a capture every week) and all-time only grows — it celebrates showing up, not cramming volume. Due flags are a nudge, never a ranking.</div>
+  </div>
+
+  <!-- ═══════════ cost ═══════════ -->
+  <div class="annot"><span class="eyebrow">What changed</span>
+    <ul>
+      <li><b>Cost follows the selected week</b> — step back a week and this card agrees with the recap above it.</li>
+      <li><b>12-week cost trend</b> gives the "vs last week" pill context.</li>
+      <li>Line labels fixed: the "Voice (TTS) · ElevenLabs" line actually counts <b>voice-interview minutes (OpenAI Realtime)</b> — relabeled honestly.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="cost-head">
+      <svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+      <h3 id="costTitle">What this week cost to run</h3>
+      <span class="pill pill-ink">estimate</span>
+      <span class="total">
+        <span class="pill" id="costWow"></span>
+        <span class="num" id="costTotal"></span>
+      </span>
+    </div>
+    <div class="cost-lines" id="costLines"></div>
+    <div class="cost-trend">
+      <div class="t-hd">Weekly run cost — last 12 weeks</div>
+      <div class="cost-bars" id="costBars"></div>
+    </div>
+    <div class="cost-windows">
+      <div><div class="k">Selected week</div><div class="v num" id="cwWeek">$0.44</div></div>
+      <div><div class="k">Month to date</div><div class="v num">$2.68</div></div>
+      <div><div class="k">Year to date</div><div class="v num">$15.01</div></div>
+    </div>
+    <div class="cost-foot">Estimated from counted usage × provider rate card (not exact billed cost). Excludes flat subscriptions (Buffer, hosting).</div>
+  </div>
+
+  <!-- ═══════════ all time ═══════════ -->
+  <div class="annot"><span class="eyebrow">What changed</span>
+    Same four lifetime numbers, one slim band instead of a full-height block — buys back a screen of vertical space for the parts that change week to week.</div>
+  <div class="alltime-band">
+    <span class="hd">
+      <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg>
+      All time <small>the whole story so far</small>
+    </span>
+    <span class="at-stat"><span class="v num" style="color:hsl(152 76% 55%);">40</span><span class="l">posts published</span></span>
+    <span class="at-stat"><span class="v num" style="color:hsl(199 95% 60%);">17</span><span class="l">stories captured</span></span>
+    <span class="at-stat"><span class="v num" style="color:hsl(199 95% 60%);">6</span><span class="l">teammates contributing</span></span>
+    <span class="at-stat"><span class="v num">≈ $15.01</span><span class="l">total run cost · est.</span></span>
+  </div>
+
+  <!-- ═══════════ calendar + campaigns (unchanged) ═══════════ -->
+  <div class="annot"><span class="eyebrow">Unchanged</span>
+    Calendar (forward-looking, next 4 weeks) and Campaigns keep their place below — they're the planning half of the page and already do their job.</div>
+  <div class="ghost">
+    <b>Calendar</b> — Plan / Month / Week views, content trickling out across the next 4 weeks &nbsp;·&nbsp; <b>Campaigns</b> — Low Back Pain Seminar, Knee Pain Seminar, Standard — exactly as they are today.
+  </div>
+
+</div>
+
+<script>
+  // ── baked-in data: real numbers from the movebetter workspace ─────────
+  // (published/captured/drafted per week pulled from prod on 2026-07-16;
+  //  reach numbers on top posts are illustrative placeholders)
+  const WEEKS = [
+    {
+      rel: 'This week', range: 'Jul 13 – 19', sub: 'Jul 13 – 19 · for your all-staff meeting', wip: true,
+      published: 7, captured: 1, drafted: 8, cost: 0.44,
+      posts: [
+        { t: 'Running Seminar — Learn By Doing (Parts 1–2)', init: 'DQ', m: 'Dr. Q · LinkedIn · Wed' },
+        { t: 'Building a healthy relationship with movement and exercise', init: 'ZC', m: 'Zach Cullen · Facebook · Tue' },
+        { t: 'Knee Pain with Running', init: 'DQ', m: 'Dr. Q · Instagram · Tue' },
+        { t: 'Translating what is done in clinic to the real world', init: 'DT', m: 'Dr. Tyler · Instagram, LinkedIn · Tue' },
+        { t: 'Bicep tendinopathy', init: 'DS', m: 'Dr. Sophie · Google Business, Instagram · Tue' },
+      ], more: 2,
+      caps: [{ init: 'DQ', m: 'Dr. Q · voice interview · Mon' }],
+      top: { t: 'Knee Pain with Running', m: '<b>412</b> people reached · <b>23</b> reactions · Instagram' },
+    },
+    {
+      rel: 'Last week', range: 'Jul 6 – 12', sub: 'Jul 6 – 12 · completed week', wip: false,
+      published: 9, captured: 1, drafted: 11, cost: 2.10,
+      posts: [
+        { t: 'Sciatica: when to worry (and when not to)', init: 'DQ', m: 'Dr. Q · Facebook · Sat' },
+        { t: 'An Hour Can Change Your Life', init: 'DQ', m: 'Dr. Q · LinkedIn, Google Business · Fri' },
+        { t: 'Disc herniation myths', init: 'DT', m: 'Dr. Tyler · Instagram · Thu' },
+        { t: 'When to push during training', init: 'ZC', m: 'Zach Cullen · Instagram · Wed' },
+        { t: 'Low back pain — the seminar recap', init: 'DQ', m: 'Dr. Q · Blog, Email · Tue' },
+      ], more: 4,
+      caps: [{ init: 'DQ', m: 'Dr. Q · voice interview · Fri' }],
+      top: { t: 'Sciatica: when to worry (and when not to)', m: '<b>531</b> people reached · <b>41</b> reactions · Facebook' },
+    },
+    {
+      rel: '2 weeks ago', range: 'Jun 29 – Jul 5', sub: 'Jun 29 – Jul 5 · completed week', wip: false,
+      published: 4, captured: 1, drafted: 24, cost: 1.20,
+      posts: [
+        { t: 'I keep getting told to "just stretch"', init: 'DQ', m: 'Dr. Q · Instagram · Fri' },
+        { t: 'Text neck & posture', init: 'DS', m: 'Dr. Sophie · Facebook · Thu' },
+        { t: 'Hip extension and opposite-side rotation', init: 'DT', m: 'Dr. Tyler · Instagram · Wed' },
+        { t: 'Knee Pain with Running — teaser', init: 'DQ', m: 'Dr. Q · Google Business · Mon' },
+      ], more: 0,
+      caps: [{ init: 'ZC', m: 'Zach Cullen · voice interview · Wed' }],
+      top: { t: 'Text neck & posture', m: '<b>289</b> people reached · <b>17</b> reactions · Facebook' },
+    },
+    {
+      rel: '3 weeks ago', range: 'Jun 22 – 28', sub: 'Jun 22 – 28 · completed week', wip: false,
+      published: 0, captured: 0, drafted: 14, cost: 0.60,
+      posts: [], more: 0, caps: [],
+      top: null,
+      insight: '14 pieces were drafted this week but nothing shipped — drafts piled up in review. This is the kind of slump the trend band surfaces.',
+    },
+  ];
+
+  // 12-week trend, oldest → newest (real published/captured counts from prod)
+  const TREND = [
+    { w: 'Apr 27', p: 0, c: 0, cost: 0 },
+    { w: 'May 4',  p: 0, c: 0, cost: 0 },
+    { w: 'May 11', p: 4, c: 5, cost: 1.9 },
+    { w: 'May 18', p: 3, c: 3, cost: 1.1 },
+    { w: 'May 25', p: 8, c: 3, cost: 0.9 },
+    { w: 'Jun 1',  p: 4, c: 3, cost: 0.8 },
+    { w: 'Jun 8',  p: 0, c: 0, cost: 0 },
+    { w: 'Jun 15', p: 1, c: 1, cost: 0.2 },
+    { w: 'Jun 22', p: 0, c: 0, cost: 0.6 },
+    { w: 'Jun 29', p: 4, c: 1, cost: 1.2 },
+    { w: 'Jul 6',  p: 9, c: 1, cost: 2.1 },
+    { w: 'Jul 13', p: 7, c: 1, cost: 0.44, wip: true },
+  ];
+
+  const TEAM = [
+    { init: 'DQ', name: 'Dr. Q', pubWk: 2, sub: 'Last captured Jul 10', streak: 1, allTime: 19, dots: [1,1,0,0,0,0,1,0] },
+    { init: 'DT', name: 'Dr. Tyler', pubWk: 2, sub: 'Last captured Jun 3', streak: 0, allTime: 6, dots: [1,1,0,0,0,0,0,0] },
+    { init: 'DS', name: 'Dr. Sophie', pubWk: 2, sub: 'Last captured Jun 18', streak: 0, allTime: 3, dots: [0,0,0,1,0,0,0,0] },
+    { init: 'ZC', name: 'Zach Cullen', pubWk: 1, sub: 'Last captured Jul 1', streak: 0, allTime: 7, dots: [1,0,0,0,0,1,0,0] },
+    { init: 'WP', name: 'Whitney Phillips', pubWk: 0, sub: 'Last captured May 29', streak: 0, allTime: 4, due: true, dots: [1,0,0,0,0,0,0,0] },
+    { init: 'PA', name: 'Philip Abraham III', pubWk: 1, sub: 'No recent capture', streak: 0, allTime: 1, due: true, dots: [0,0,0,0,0,0,0,0] },
+    { init: 'AA', name: 'AJ Adams', pubWk: 0, sub: 'No capture yet — let’s get their first', streak: 0, allTime: 0, isNew: true, dots: [0,0,0,0,0,0,0,0] },
+    { init: 'AM', name: 'Alli Madsen', pubWk: 0, sub: 'No capture yet — let’s get their first', streak: 0, allTime: 0, isNew: true, dots: [0,0,0,0,0,0,0,0] },
+  ];
+
+  const fmt$ = (v) => '$' + v.toFixed(2);
+  let idx = 0; // 0 = this week
+
+  function delta(cur, prev, invert, money) {
+    if (prev == null) return '';
+    const d = cur - prev;
+    if (d === 0) return '<span class="delta flat">— same as last wk</span>';
+    const up = d > 0;
+    const good = invert ? !up : up;
+    const cls = good ? 'up' : 'down';
+    const arrow = up ? '▲' : '▼';
+    const mag = money ? fmt$(Math.abs(d)) : Math.abs(d);
+    return `<span class="delta ${cls}">${arrow} ${mag} vs last wk</span>`;
+  }
+
+  function render() {
+    const w = WEEKS[idx];
+    const prev = WEEKS[idx + 1] || null;
+
+    document.getElementById('wkTitle').textContent = idx === 0 ? 'This week at the clinic' : (idx === 1 ? 'Last week at the clinic' : 'Week at the clinic');
+    document.getElementById('wkSub').textContent = w.sub;
+    document.getElementById('relLbl').textContent = w.rel;
+    document.getElementById('rangeLbl').textContent = w.range;
+    document.getElementById('wipTag').classList.toggle('on', !!w.wip);
+    document.getElementById('btnNext').disabled = idx === 0;
+    document.getElementById('btnPrev').disabled = idx === WEEKS.length - 1;
+    document.getElementById('btnToday').style.display = idx === 0 ? 'none' : '';
+
+    // stat tiles
+    const stats = [
+      { v: w.published, l: 'published', color: 'hsl(var(--success))', d: delta(w.published, prev?.published) },
+      { v: w.captured, l: 'captured by the team', color: 'hsl(var(--primary))', d: delta(w.captured, prev?.captured) },
+      { v: w.drafted, l: 'pieces drafted', color: 'hsl(var(--scheduled))', d: delta(w.drafted, prev?.drafted) },
+      { v: fmt$(w.cost), l: 'est. run cost', color: 'hsl(var(--foreground))', d: delta(w.cost, prev?.cost, true, true) },
+    ];
+    document.getElementById('statRow').innerHTML = stats.map((s) => `
+      <div class="stat">
+        <div class="v num" style="color:${s.color}">${s.v}</div>
+        <div class="l">${s.l}</div>
+        <div>${s.d}</div>
+      </div>`).join('');
+
+    // trend bars (last 4 are clickable → WEEKS index)
+    const max = Math.max(...TREND.map((t) => Math.max(t.p, t.c)), 1);
+    document.getElementById('trendBars').innerHTML = TREND.map((t, i) => {
+      const wkIdx = TREND.length - 1 - i; // 0 for newest
+      const clickable = wkIdx < WEEKS.length;
+      const sel = clickable && wkIdx === idx;
+      const ph = Math.round((t.p / max) * 52) + 2;
+      const ch = Math.round((t.c / max) * 52) + 2;
+      return `<button class="wkcol ${clickable ? 'clickable' : ''} ${sel ? 'sel' : ''}" ${clickable ? `data-wk="${wkIdx}"` : 'disabled title="wired for the last 4 weeks in this mockup — real build reaches any week"'} aria-label="Week of ${t.w}: ${t.p} published, ${t.c} captured">
+        <div class="duo">
+          <div class="bar pub ${t.wip ? 'wip' : ''}" style="height:${ph}px"></div>
+          <div class="bar cap ${t.wip ? 'wip' : ''}" style="height:${ch}px"></div>
+        </div>
+        <span class="wn num">${t.p}</span>
+        <span class="wl">${t.w}</span>
+      </button>`;
+    }).join('');
+    document.querySelectorAll('#trendBars [data-wk]').forEach((b) =>
+      b.addEventListener('click', () => { idx = Number(b.dataset.wk); render(); }));
+
+    // published list
+    document.getElementById('pubHead').textContent = `${w.published} ${w.published === 1 ? 'post' : 'posts'} out in the world`;
+    document.getElementById('pubList').innerHTML = w.posts.length === 0
+      ? `<p class="empty">Nothing published this week.</p>${w.insight ? `<div class="insight"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--action))" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>${w.insight}</span></div>` : ''}`
+      : w.posts.map((p) => `
+        <div class="post">
+          <span class="avatar">${p.init}</span>
+          <div style="flex:1;min-width:0;">
+            <div class="t">${p.t}</div>
+            <div class="m">${p.m}</div>
+          </div>
+        </div>`).join('') + (w.more ? `<p class="more">+ ${w.more} more</p>` : '');
+
+    // captured list + top post
+    document.getElementById('capHead').textContent = `${w.captured} ${w.captured === 1 ? 'story' : 'stories'} captured`;
+    document.getElementById('capList').innerHTML = w.caps.length === 0
+      ? '<p class="empty">No new stories captured this week.</p>'
+      : w.caps.map((c) => `<div class="cap-line"><span class="avatar">${c.init}</span><span>${c.m}</span></div>`).join('');
+    document.getElementById('topPost').innerHTML = w.top ? `
+      <div class="top-post">
+        <div class="hd">
+          <svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          Top post ${idx === 0 ? 'this week' : 'that week'}
+        </div>
+        <div class="t">${w.top.t}</div>
+        <div class="m">${w.top.m}</div>
+        <a href="#" onclick="return false;">All performance → Insights</a>
+      </div>` : '';
+
+    // cost card follows the selected week
+    document.getElementById('costTitle').textContent = idx === 0 ? 'What this week cost to run' : `What the week of ${w.range} cost to run`;
+    document.getElementById('costTotal').textContent = '≈ ' + fmt$(w.cost);
+    const wow = prev && prev.cost > 0 ? Math.round(((w.cost - prev.cost) / prev.cost) * 100) : null;
+    const wowEl = document.getElementById('costWow');
+    if (wow == null) { wowEl.style.display = 'none'; }
+    else {
+      wowEl.style.display = '';
+      wowEl.className = 'pill ' + (wow <= 0 ? 'pill-emerald' : 'pill-tint');
+      wowEl.textContent = `${wow <= 0 ? '↓' : '↑'} ${Math.abs(wow)}% vs last week`;
+    }
+    const lines = [
+      { l: 'Transcription', a: 0, u: '0 min of audio · Whisper' },
+      { l: 'AI writing', a: w.cost, u: `${w.drafted} pieces · Claude` },
+      { l: 'Video / audio', a: 0, u: '0 min encoded · Mux + ffmpeg' },
+      { l: 'Voice interviews', a: 0, u: `${w.captured > 0 ? w.captured * 9 : 0} min live voice · OpenAI Realtime` },
+    ];
+    document.getElementById('costLines').innerHTML = lines.map((li) => `
+      <div class="cost-line">
+        <div class="lbl">${li.l}</div>
+        <div class="amt num">${fmt$(li.a)}</div>
+        <div class="u">${li.u}</div>
+      </div>`).join('');
+    document.getElementById('cwWeek').textContent = fmt$(w.cost);
+    const cmax = Math.max(...TREND.map((t) => t.cost), 0.01);
+    document.getElementById('costBars').innerHTML = TREND.map((t, i) => {
+      const wkIdx = TREND.length - 1 - i;
+      const sel = wkIdx === idx;
+      return `<div class="cbar ${sel ? 'sel' : ''}" style="height:${Math.round((t.cost / cmax) * 40) + 2}px" title="${t.w}: ${fmt$(t.cost)}"></div>`;
+    }).join('');
+  }
+
+  document.getElementById('btnPrev').addEventListener('click', () => { if (idx < WEEKS.length - 1) { idx++; render(); } });
+  document.getElementById('btnNext').addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
+  document.getElementById('btnToday').addEventListener('click', () => { idx = 0; render(); });
+
+  // team grid (static)
+  document.getElementById('teamGrid').innerHTML = TEAM.map((m) => `
+    <div class="member">
+      <div class="row1">
+        <span class="avatar">${m.init}</span>
+        <div style="min-width:0;flex:1;">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+            <span class="nm" ${m.due || m.isNew ? 'style="color:hsl(var(--muted-foreground));"' : ''}>${m.name}</span>
+            ${m.pubWk > 0 ? `<span class="pill pill-emerald">${m.pubWk} published this week</span>` : (m.due || m.isNew) ? '<span class="pill pill-tint">let’s grab 10 min</span>' : ''}
+          </div>
+          <div class="sub">${m.sub}</div>
+        </div>
+      </div>
+      <div class="dots" aria-label="Capture rhythm, last 8 weeks">
+        ${m.dots.map((d, i2) => `<span class="dot ${d ? 'on' : ''} ${i2 === 7 ? 'wip' : ''}"></span>`).join('')}
+        <span class="dl">8 wks</span>
+      </div>
+      <div class="row3">
+        ${m.streak > 0
+          ? `<span class="streak"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>${m.streak}-week streak</span>`
+          : '<span style="color:hsl(var(--muted-foreground));font-weight:500;">no streak yet</span>'}
+        <span class="alltime"><b class="num">${m.allTime}</b> all-time</span>
+      </div>
+    </div>`).join('');
+
+  render();
+</script>

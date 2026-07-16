@@ -90,6 +90,7 @@ export const queryKeys = {
   recap: {
     all: ['recap'],
     workspace: () => ['recap', 'workspace'],
+    week: (offset) => ['recap', 'week', offset],
   },
   usage: {
     all: ['usage'],
@@ -186,6 +187,21 @@ export function useWorkspaceRecap(options = {}) {
     queryFn: () =>
       apiFetch('/api/db/workspace-recap').catch(() => ({ team: [], team_all_time_total: 0, cost: {} })),
     staleTime: 1000 * 60 * 5,
+    ...options,
+  })
+}
+
+// One selected calendar week (Mon–Sun UTC) of Overview recap facts — counts +
+// prev-week deltas, item lists, cost units, top post. weekOffset is 0 (this
+// week) or negative. keepPreviousData so stepping between weeks swaps content
+// without a skeleton flash. NO tolerant catch — the panel needs to distinguish
+// "loading/failed" from "a real week with zero activity".
+export function useWorkspaceWeekRecap(weekOffset = 0, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.recap.week(weekOffset),
+    queryFn: () => apiFetch(`/api/db/workspace-week?weekOffset=${weekOffset}`),
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
     ...options,
   })
 }

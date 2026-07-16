@@ -1,7 +1,10 @@
-// Pure helpers for the Overview weekly recap. Two jobs:
-//  1. Derive the "this week" recap lists (went live / scheduled / waiting /
-//     captured) from the already-loaded useStories data — no extra fetch.
+// Pure helpers for the Overview weekly recap. Three jobs:
+//  1. Derive the "Right now" queues (scheduled next / waiting on review) from
+//     the already-loaded useStories data — current-state, so no extra fetch.
 //  2. Turn the server's per-staff capture-week array into a consistency streak.
+//  3. Label math for the calendar-week navigator (range strings, relative
+//     labels, the how-far-back floor). Week facts themselves come from the
+//     workspace_week_recap RPC — the client no longer recomputes them.
 // Kept pure (no React) so the logic is trivially testable.
 
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -73,49 +76,56 @@ export function sortTeam(team = []) {
   })
 }
 
-// ── "This week" recap, derived from useStories ──────────────────────────────
-// Returns { stats, wentLive[], scheduled[], waiting[] }.
-export function deriveWeekRecap(stories = []) {
-  const now = Date.now()
-  const liveByStory = new Map()
+// ── "Right now" queues, derived from useStories ─────────────────────────────
+// Scheduled-next + waiting-on-review. These describe the present (queues), not
+// a historical week, so they live outside the week navigator. The historical
+// week facts (published / captured / drafted) come from the server's
+// workspace_week_recap RPC — the old client-side derivation double-counted
+// against a capped cache and disagreed with the SQL team pills on screen.
+export function deriveNowQueues(stories = []) {
   const scheduled = []
   const waiting = []
-  let wentLiveCount = 0
-  let scheduledCount = 0
-  let capturedCount = 0
-
   for (const s of stories) {
-    if (within(s.created_at, WEEK_MS)) capturedCount++
-
     let storyInReview = false
     for (const p of s.pieces || []) {
-      if (p.status === 'published' && p.published_at && now - new Date(p.published_at).getTime() <= WEEK_MS) {
-        wentLiveCount++
-        const e = liveByStory.get(s.id) || {
-          storyId: s.id, topic: s.topic, staffName: s.staff_name,
-          platforms: [], publishedAt: p.published_at, hasVideo: false,
-        }
-        e.platforms.push(p.platform)
-        if (new Date(p.published_at) > new Date(e.publishedAt)) e.publishedAt = p.published_at
-        if (p.platform === 'youtube' || p.platform === 'tiktok') e.hasVideo = true
-        liveByStory.set(s.id, e)
-      }
-      if (p.status === 'scheduled') {
-        scheduledCount++
-        if (p.scheduled_at) scheduled.push({ storyId: s.id, topic: s.topic, staffName: s.staff_name, scheduledAt: p.scheduled_at })
+      if (p.status === 'scheduled' && p.scheduled_at) {
+        scheduled.push({ storyId: s.id, topic: s.topic, staffName: s.staff_name, scheduledAt: p.scheduled_at })
       }
       if (p.status === 'in_review') storyInReview = true
     }
     if (storyInReview) waiting.push({ storyId: s.id, topic: s.topic, staffName: s.staff_name })
   }
-
-  const wentLive = [...liveByStory.values()].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
   scheduled.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
+  return { scheduled, waiting }
+}
 
-  return {
-    stats: { wentLive: wentLiveCount, scheduled: scheduledCount, waiting: waiting.length, captured: capturedCount },
-    wentLive,
-    scheduled,
-    waiting,
-  }
+// ── Week-navigator label math ────────────────────────────────────────────────
+// "Jul 13 – 19" from the RPC's week_start/week_end date strings (end
+// exclusive), UTC — mirrors periodMath.js's label shape so Overview and
+// Insights read the same way.
+export function fmtWeekRange(weekStart, weekEnd) {
+  if (!weekStart || !weekEnd) return ''
+  const start = new Date(`${weekStart}T00:00:00Z`)
+  const last = new Date(new Date(`${weekEnd}T00:00:00Z`).getTime() - 1)
+  const f = (dt, withMonth) =>
+    dt.toLocaleDateString('en-US', { month: withMonth ? 'short' : undefined, day: 'numeric', timeZone: 'UTC' })
+  return start.getUTCMonth() === last.getUTCMonth()
+    ? `${f(start, true)} – ${f(last, false)}`
+    : `${f(start, true)} – ${f(last, true)}`
+}
+
+export function weekRelative(offset) {
+  if (offset === 0) return 'This week'
+  if (offset === -1) return 'Last week'
+  return `${-offset} weeks ago`
+}
+
+// How far back Prev may go: the offset of the workspace's first-activity week
+// (workspace_recap's first_week, a 'YYYY-MM-DD' Monday). 0 when unknown, so an
+// empty workspace simply can't navigate.
+export function floorWeekOffset(firstWeek) {
+  if (!firstWeek) return 0
+  const first = new Date(`${firstWeek}T00:00:00Z`).getTime()
+  const cur = mondayOf(new Date()).getTime()
+  return Math.min(0, Math.round((first - cur) / WEEK_MS))
 }
