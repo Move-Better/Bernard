@@ -203,13 +203,13 @@ VOICE FIRST: Open with 1–2 sentences that use the clinician's distinctive diag
 Then connect that insight to the local context: what ${workspace.display_name} does differently for ${condition} patients in ${workspace.location_keyword ?? 'your area'}.
 Use "we" and "our team" throughout.
 Close with 1–2 sentences that echo the specific insight above before the booking ask — not a bare "book now." E.g. "If that pattern sounds familiar, a movement screen at ${workspace.display_name} is how we start untangling it: ${website || 'book online'}"
-Illustrate with the general pattern you discussed — do NOT invent a specific patient, name, or backstory ("a surfer came in who…") that wasn't actually described in the conversation.
+If the clinician described a specific patient or example in the conversation, USE it — a real, specific story is vivid and welcome here. Only avoid INVENTING a new patient, name, age, or recovery timeline that wasn't actually described.
 No hashtags. Conversational, not salesy.`,
 
       patient_outcome: `Write a Google Business Profile post (~200 words) about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
 ANGLE: Results framing.
 VOICE FIRST: Open with 1–2 sentences in the clinician's authentic voice — pull a specific clinical mechanism or patient insight from the VOICE PHRASE ANCHORS above rather than leading with a generic outcomes statement.
-Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? Describe a realistic, GENERAL outcome ("patients typically find…" or "the goal is…") — do NOT invent a specific patient story, name, or timeline that wasn't in the conversation.
+Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? If the clinician described a specific patient outcome in the conversation, use it — a real, specific result lands harder than a generic one. Otherwise describe a realistic general outcome ("patients typically find…" or "the goal is…"). Either way, do NOT invent a patient, name, or timeline that wasn't in the conversation.
 Use "we" and "our team" throughout.
 Close with 1–2 sentences that connect the outcome above to the next step — not a bare "book now." E.g. "If you're ready to find out what recovery actually looks like for your situation: ${website || 'book online'}"
 No hashtags. Conversational, results-focused.`,
