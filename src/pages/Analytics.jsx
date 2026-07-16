@@ -277,11 +277,17 @@ function SeoPeriodRead({ data, granularity }) {
       <div className="mt-4 space-y-3 text-sm">
         <div className="flex justify-between items-baseline">
           <span className="text-muted-foreground">Clicks</span>
-          <span className="font-semibold tabular-nums">{fmtNum(data.clicks)}</span>
+          <span className="inline-flex items-center gap-2">
+            <PeriodDelta cur={data.clicks} prev={data?.prev?.clicks} granularity={granularity} />
+            <span className="font-semibold tabular-nums">{fmtNum(data.clicks)}</span>
+          </span>
         </div>
         <div className="flex justify-between items-baseline">
           <span className="text-muted-foreground">Impressions</span>
-          <span className="font-semibold tabular-nums">{fmtNum(data.impressions)}</span>
+          <span className="inline-flex items-center gap-2">
+            <PeriodDelta cur={data.impressions} prev={data?.prev?.impressions} granularity={granularity} />
+            <span className="font-semibold tabular-nums">{fmtNum(data.impressions)}</span>
+          </span>
         </div>
       </div>
       {data.periodOffset === 0 && (
@@ -735,6 +741,33 @@ function PlatformBadge({ platform }) {
   )
 }
 
+// vs-previous-period chip for the by-period tabs — same visual language as
+// the Overview recap's delta chips (up = emerald, down = quiet, no alarm
+// red on a metric where less isn't an error). Renders nothing without a
+// previous-period value.
+function PeriodDelta({ cur, prev, granularity = 'week' }) {
+  if (prev == null || cur == null) return null
+  const d = cur - prev
+  if (d === 0) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-px text-3xs font-semibold text-muted-foreground">
+        — same
+      </span>
+    )
+  }
+  const up = d > 0
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-3xs font-semibold ${
+        up ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+      }`}
+      title={`vs previous ${granularity}`}
+    >
+      {up ? '▲' : '▼'} {fmtNum(Math.abs(d))}
+    </span>
+  )
+}
+
 function SocialTab({ data, loading, cost, granularity = 'week' }) {
   if (loading && !data) {
     return (
@@ -762,15 +795,28 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between items-baseline">
               <span className="text-muted-foreground">Posts published</span>
-              <span className="font-semibold tabular-nums">{overall.posts}</span>
+              <span className="inline-flex items-center gap-2">
+                <PeriodDelta cur={overall.posts} prev={data?.prev?.posts} granularity={granularity} />
+                <span className="font-semibold tabular-nums">{overall.posts}</span>
+              </span>
             </div>
             <div className="flex justify-between items-baseline">
               <span className="text-muted-foreground">Reach</span>
-              <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
+              <span className="inline-flex items-center gap-2">
+                {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
+                  <PeriodDelta cur={overall.reach} prev={data.prev.reach} granularity={granularity} />
+                ) : null}
+                <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
+              </span>
             </div>
             <div className="flex justify-between items-baseline">
               <span className="text-muted-foreground">Engagement</span>
-              <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
+              <span className="inline-flex items-center gap-2">
+                {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
+                  <PeriodDelta cur={overall.engagement} prev={data.prev.engagement} granularity={granularity} />
+                ) : null}
+                <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
+              </span>
             </div>
             {overall.posts > 0 && overall.measuredPosts === 0 && (
               <p className="text-2xs text-muted-foreground pt-1">
@@ -855,13 +901,21 @@ function WebsiteWeekCard({ data }) {
         {data?.connected && data?.totalSessions != null && (
           <div className="flex justify-between items-baseline">
             <span className="text-muted-foreground">Total site sessions</span>
-            <span className="font-semibold tabular-nums">{fmtNum(data.totalSessions)}</span>
+            <span className="inline-flex items-center gap-2">
+              <PeriodDelta cur={data.totalSessions} prev={data?.prev?.totalSessions} granularity={granularity} />
+              <span className="font-semibold tabular-nums">{fmtNum(data.totalSessions)}</span>
+            </span>
           </div>
         )}
         <div className="flex justify-between items-baseline">
           <span className="text-muted-foreground">Sessions on your posts</span>
-          <span className="font-semibold tabular-nums">
-            {data?.connected && data?.sessions != null ? fmtNum(data.sessions) : '—'}
+          <span className="inline-flex items-center gap-2">
+            {data?.connected && data?.sessions != null ? (
+              <PeriodDelta cur={data.sessions} prev={data?.prev?.sessions} granularity={granularity} />
+            ) : null}
+            <span className="font-semibold tabular-nums">
+              {data?.connected && data?.sessions != null ? fmtNum(data.sessions) : '—'}
+            </span>
           </span>
         </div>
         <div className="flex justify-between items-baseline">
@@ -873,7 +927,10 @@ function WebsiteWeekCard({ data }) {
         {data?.connected && data?.bookNowClicks != null && (
           <div className="flex justify-between items-baseline">
             <span className="text-muted-foreground">Book Now clicks</span>
-            <span className="font-semibold tabular-nums">{fmtNum(data.bookNowClicks)}</span>
+            <span className="inline-flex items-center gap-2">
+              <PeriodDelta cur={data.bookNowClicks} prev={data?.prev?.bookNowClicks} granularity={granularity} />
+              <span className="font-semibold tabular-nums">{fmtNum(data.bookNowClicks)}</span>
+            </span>
           </div>
         )}
         {!data?.connected && (

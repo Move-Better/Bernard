@@ -16,7 +16,7 @@ import { requireRole }       from '../../_lib/auth.js'
 import { enforceLimit }      from '../../_lib/ratelimit.js'
 import { decryptSecret }     from '../../_lib/credentialCrypto.js'
 import { fetchSearchTotals } from '../../_lib/searchConsole.js'
-import { periodBounds, toDateStr } from '../../_lib/periodMath.js'
+import { periodBounds, prevPeriodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -74,13 +74,32 @@ export default async function handler(req, res) {
   }
   const credential = { secret, config: row.config || {} }
 
+  // Previous period alongside the current one — vs-previous delta chips.
+  // Prev is best-effort: its failure nulls the deltas, not the card.
+  const { start: prevStart, end: prevEnd } = prevPeriodBounds(granularity, periodOffset)
   let totals
+  let prevTotals = null
   try {
-    totals = await fetchSearchTotals({ credential, siteUrl: ws.gsc_site_url, startDate: periodStartStr, endDate: periodEndStr })
+    ;[totals, prevTotals] = await Promise.all([
+      fetchSearchTotals({ credential, siteUrl: ws.gsc_site_url, startDate: periodStartStr, endDate: periodEndStr }),
+      fetchSearchTotals({
+        credential, siteUrl: ws.gsc_site_url,
+        startDate: toDateStr(prevStart), endDate: toDateStr(new Date(prevEnd.getTime() - 1)),
+      }).catch((e) => {
+        console.error('[insights/search-by-period] prev-period totals failed:', e?.message)
+        return null
+      }),
+    ])
   } catch (e) {
     console.error('[insights/search-by-period]', e?.message)
     return res.status(200).json({ ...body, connected: true, error: 'gsc_fetch_failed' })
   }
 
-  return res.status(200).json({ ...body, connected: true, clicks: totals.clicks, impressions: totals.impressions })
+  return res.status(200).json({
+    ...body,
+    connected: true,
+    clicks: totals.clicks,
+    impressions: totals.impressions,
+    prev: prevTotals ? { clicks: prevTotals.clicks, impressions: prevTotals.impressions } : null,
+  })
 }

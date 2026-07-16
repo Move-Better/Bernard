@@ -13,7 +13,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
 import { fetchGA4Metrics, fetchGA4OutboundClickCount, fetchGA4TotalSessions, urlToPagePath } from '../../_lib/ga4.js'
-import { periodBounds, toDateStr } from '../../_lib/periodMath.js'
+import { periodBounds, prevPeriodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -70,78 +70,102 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...body, connected: false, error: 'credential_decrypt_failed' })
   }
 
-  // "Book Now" clicks — GA4 Enhanced Measurement auto-tracks outbound clicks
-  // to off-domain links, so a workspace with a booking widget on a different
-  // domain (e.g. Jane App) gets this for free. Property-wide, so it doesn't
-  // depend on the workspace having any published pages. Best-effort: a
-  // failure here shouldn't block the sessions read below.
-  let bookNowClicks = null
-  if (ws.booking_url) {
-    try {
-      const bookingHost = new URL(ws.booking_url).hostname
-      bookNowClicks = await fetchGA4OutboundClickCount({
-        serviceAccountJson,
-        propertyId: ws.ga4_property_id,
-        domainContains: bookingHost,
-        startDate: periodStartStr,
-        endDate: periodEndStr,
-      })
-    } catch (e) {
-      console.error('[engagement/website-by-week] book-now click count failed:', e?.message)
-    }
-  }
-
-  // Property-wide total sessions — every page GA4 sees, not just our tracked
-  // content_items (see fetchGA4Metrics below, which is scoped to pagePaths).
-  // Best-effort, same reasoning as bookNowClicks above.
-  let totalSessions = null
-  try {
-    totalSessions = await fetchGA4TotalSessions({
-      serviceAccountJson,
-      propertyId: ws.ga4_property_id,
-      startDate: periodStartStr,
-      endDate: periodEndStr,
-    })
-  } catch (e) {
-    console.error('[engagement/website-by-week] total-sessions failed:', e?.message)
-  }
-
   const itemsRes = await sb(
     `content_items?workspace_id=eq.${ws.id}&status=eq.published&resolved_url=not.is.null` +
     `&select=resolved_url&order=published_at.desc.nullslast&limit=200`
   )
   const items = itemsRes.ok ? (await itemsRes.json().catch(() => [])) : []
   const pagePaths = [...new Set(items.map((i) => urlToPagePath(i.resolved_url)).filter(Boolean))]
-  if (pagePaths.length === 0) return res.status(200).json({ ...body, connected: true, sessions: 0, engagedSessions: 0, bookNowClicks, totalSessions })
 
-  let metricsByPath
-  try {
-    metricsByPath = await fetchGA4Metrics({
-      serviceAccountJson,
-      propertyId: ws.ga4_property_id,
-      pagePaths,
-      startDate: periodStartStr,
-      endDate: periodEndStr,
-    })
-  } catch (e) {
-    console.error('[engagement/website-by-week]', e?.message)
-    return res.status(200).json({ ...body, connected: true, error: 'ga4_fetch_failed', bookNowClicks, totalSessions })
+  // Read one window's numbers — every read best-effort so a single GA4
+  // hiccup nulls that figure instead of blanking the card:
+  //  • bookNowClicks — GA4 Enhanced Measurement auto-tracks outbound clicks
+  //    to off-domain links (e.g. a Jane App booking widget), property-wide.
+  //  • totalSessions — every page GA4 sees, not just tracked content_items.
+  //  • sessions/engagedSessions — scoped to our published pages' paths.
+  async function readWindow(startStr, endStr) {
+    const [bookNowClicks, totalSessions, metricsByPath] = await Promise.all([
+      (async () => {
+        if (!ws.booking_url) return null
+        try {
+          const bookingHost = new URL(ws.booking_url).hostname
+          return await fetchGA4OutboundClickCount({
+            serviceAccountJson,
+            propertyId: ws.ga4_property_id,
+            domainContains: bookingHost,
+            startDate: startStr,
+            endDate: endStr,
+          })
+        } catch (e) {
+          console.error('[engagement/website-by-week] book-now click count failed:', e?.message)
+          return null
+        }
+      })(),
+      (async () => {
+        try {
+          return await fetchGA4TotalSessions({
+            serviceAccountJson,
+            propertyId: ws.ga4_property_id,
+            startDate: startStr,
+            endDate: endStr,
+          })
+        } catch (e) {
+          console.error('[engagement/website-by-week] total-sessions failed:', e?.message)
+          return null
+        }
+      })(),
+      (async () => {
+        if (pagePaths.length === 0) return {}
+        try {
+          return await fetchGA4Metrics({
+            serviceAccountJson,
+            propertyId: ws.ga4_property_id,
+            pagePaths,
+            startDate: startStr,
+            endDate: endStr,
+          })
+        } catch (e) {
+          console.error('[engagement/website-by-week]', e?.message)
+          return null
+        }
+      })(),
+    ])
+
+    if (metricsByPath === null) return { bookNowClicks, totalSessions, sessions: null, engagedSessions: null }
+    let sessions = 0
+    let engagedSessions = 0
+    for (const m of Object.values(metricsByPath)) {
+      sessions += m.pageviews
+      engagedSessions += m.engaged_sessions
+    }
+    return { bookNowClicks, totalSessions, sessions, engagedSessions }
   }
 
-  let sessions = 0
-  let engagedSessions = 0
-  for (const m of Object.values(metricsByPath)) {
-    sessions += m.pageviews
-    engagedSessions += m.engaged_sessions
+  const { start: prevStart, end: prevEnd } = prevPeriodBounds(granularity, periodOffset)
+  const [cur, prev] = await Promise.all([
+    readWindow(periodStartStr, periodEndStr),
+    readWindow(toDateStr(prevStart), toDateStr(new Date(prevEnd.getTime() - 1))),
+  ])
+
+  if (cur.sessions === null) {
+    return res.status(200).json({
+      ...body, connected: true, error: 'ga4_fetch_failed',
+      bookNowClicks: cur.bookNowClicks, totalSessions: cur.totalSessions,
+    })
   }
 
   return res.status(200).json({
     ...body,
     connected: true,
-    sessions,
-    engagedSessions,
-    engagementRate: sessions > 0 ? engagedSessions / sessions : null,
-    bookNowClicks,
-    totalSessions,
+    sessions: cur.sessions,
+    engagedSessions: cur.engagedSessions,
+    engagementRate: cur.sessions > 0 ? cur.engagedSessions / cur.sessions : null,
+    bookNowClicks: cur.bookNowClicks,
+    totalSessions: cur.totalSessions,
+    prev: prev.sessions === null && prev.totalSessions === null ? null : {
+      sessions: prev.sessions,
+      totalSessions: prev.totalSessions,
+      bookNowClicks: prev.bookNowClicks,
+    },
   })
 }
