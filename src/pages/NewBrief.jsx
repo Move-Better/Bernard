@@ -12,6 +12,10 @@ import { apiFetch } from '@/lib/api'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
 import { CAPTION_LIMITS } from '@/lib/contentMeta'
 import { uploadMedia } from '@/lib/mediaLib'
+import { useUser } from '@clerk/react'
+import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { updateContentItem } from '@/lib/publish'
+import { toast } from '@/lib/toast'
 
 // Channels that Brief generation supports. Other channels (blog, email,
 // youtube, etc.) require richer source material than a brief provides.
@@ -57,6 +61,7 @@ export default function NewBrief() {
   const navigate  = useNavigate()
   const goBack = useSmartBack('/new')
   const workspace = useWorkspace()
+  const { user } = useUser()
   const [searchParams] = useSearchParams()
 
   // Form state. `?topic=` seeds the internal title — used by the SEO
@@ -72,6 +77,8 @@ export default function NewBrief() {
   const [uploading,    setUploading]    = useState(false)
   const [selected, setSelected] = useState(new Set())
   const [mode, setMode] = useState('as_written') // 'as_written' | 'adapt'
+  const [scheduledAt, setScheduledAt] = useState('')
+  const [showSchedule, setShowSchedule] = useState(false)
   const fileInputRef = useRef(null)
 
   // Submission state
@@ -117,15 +124,23 @@ export default function NewBrief() {
   }
 
   const bodyLen = body.trim().length
+  const userEmail = user?.primaryEmailAddress?.emailAddress || user?.id || ''
+  // As-written channels whose verbatim text exceeds the platform's hard cap —
+  // blocks Post now / Schedule (no silent truncation); Save as draft still works.
+  const anyOverLimit = mode === 'as_written' && [...selected].some((id) => {
+    const lim = limitForOutput(id)
+    return lim && bodyLen > lim
+  })
   const canSubmit = body.trim() && selected.size > 0 && !generating && !uploading
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  // action: 'post_now' | 'schedule' | 'draft'. Adapt mode always yields drafts.
+  async function runSubmit(action) {
     if (!canSubmit) return
+    const effective = mode === 'adapt' ? 'draft' : action
     setGenerating(true)
     setError(null)
     try {
-      await apiFetch('/api/briefs/generate', {
+      const resp = await apiFetch('/api/briefs/generate', {
         method: 'POST',
         body: JSON.stringify({
           mode,
@@ -139,9 +154,46 @@ export default function NewBrief() {
           selectedOutputs: [...selected],
         }),
       })
+
+      const items = resp?.contentItems || []
+      if (effective === 'draft' || items.length === 0) {
+        navigate('/stories?source=brief')
+        return
+      }
+
+      // Post now / schedule: dispatch each created row through the canonical
+      // social publish path (the same helper the Review Inbox bulk scheduler
+      // uses), so this can never diverge from the rest of the app.
+      const scheduledISO = effective === 'schedule' && scheduledAt
+        ? new Date(scheduledAt).toISOString()
+        : null
+      const results = await Promise.allSettled(
+        items.map(async (it) => {
+          const r = await publishPieceToBuffer(it, {
+            scheduledAt: scheduledISO, useQueue: false, userEmail, workspace, themes: [],
+          })
+          // publishAndTrack sets status but persists scheduled_at only in queue
+          // mode; for a specific slot, write it (+ approver) ourselves.
+          if (scheduledISO) {
+            await updateContentItem(it.id, { scheduledAt: scheduledISO, approvedBy: userEmail })
+          }
+          return r
+        }),
+      )
+      const ok = results.filter((r) => r.status === 'fulfilled').length
+      const failed = results.length - ok
+      if (failed === 0) {
+        toast.success(scheduledISO
+          ? `Scheduled ${ok} post${ok !== 1 ? 's' : ''}`
+          : `Posted ${ok} post${ok !== 1 ? 's' : ''}`)
+      } else {
+        toast.warning(`${ok} sent, ${failed} failed`, {
+          description: 'Anything that failed is saved as a draft in Stories.',
+        })
+      }
       navigate('/stories?source=brief')
     } catch (e_) {
-      setError(e_?.message || 'Generation failed — please try again.')
+      setError(e_?.message || 'Something went wrong — please try again.')
       setGenerating(false)
     }
   }
@@ -164,7 +216,7 @@ export default function NewBrief() {
       {generating ? (
         <GeneratingView mode={mode} channels={[...selected].map((id) => OUTPUT_CHANNELS[id]).filter(Boolean)} />
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => e.preventDefault()}>
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
 
             {/* ── Left: brief form ── */}
@@ -397,19 +449,79 @@ export default function NewBrief() {
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-border space-y-3">
+                  <div className="pt-2 border-t border-border space-y-2.5">
                     {selected.size > 0 && (
                       <p className="text-xs text-muted-foreground">
                         {selected.size} channel{selected.size !== 1 ? 's' : ''} selected
                       </p>
                     )}
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={!canSubmit}
-                    >
-                      {mode === 'as_written' ? 'Create posts →' : 'Generate content →'}
-                    </Button>
+                    {anyOverLimit && (
+                      <p className="text-xs text-warning">
+                        A selected channel is over its character limit. Shorten your post, or Save as draft to fix it later.
+                      </p>
+                    )}
+
+                    {mode === 'as_written' ? (
+                      <>
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={!canSubmit || anyOverLimit}
+                          onClick={() => runSubmit('post_now')}
+                        >
+                          Post now →
+                        </Button>
+
+                        {showSchedule ? (
+                          <div className="flex gap-2">
+                            <Input
+                              type="datetime-local"
+                              value={scheduledAt}
+                              onChange={(e) => setScheduledAt(e.target.value)}
+                              className="text-sm"
+                              aria-label="Schedule date and time"
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={!canSubmit || anyOverLimit || !scheduledAt}
+                              onClick={() => runSubmit('schedule')}
+                            >
+                              Set
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            disabled={!canSubmit}
+                            onClick={() => setShowSchedule(true)}
+                          >
+                            Schedule for later
+                          </Button>
+                        )}
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full"
+                          disabled={!canSubmit}
+                          onClick={() => runSubmit('draft')}
+                        >
+                          Save as draft
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="w-full"
+                        disabled={!canSubmit}
+                        onClick={() => runSubmit('draft')}
+                      >
+                        Generate drafts →
+                      </Button>
+                    )}
                   </div>
 
                   {mode === 'adapt' && (
