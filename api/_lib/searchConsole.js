@@ -174,6 +174,33 @@ export async function fetchSearchTotals({ credential, serviceAccountJson, siteUr
   return { clicks: row?.clicks || 0, impressions: row?.impressions || 0 }
 }
 
+// Clicks/impressions broken down by day — one searchAnalytics query with the
+// `date` dimension over the whole span, for the Insights trend strip (the
+// caller buckets days into weeks/months/years). Returns [{ date:
+// 'YYYY-MM-DD', clicks, impressions }].
+export async function fetchSearchTotalsByDate({ credential, serviceAccountJson, siteUrl, startDate, endDate }) {
+  const url = siteUrl || credential?.config?.site_url
+  if (!url) throw new Error('gsc: siteUrl is required')
+  const token = await resolveToken({ credential, serviceAccountJson })
+
+  const r = await fetch(QUERY_URL(url), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    // rowLimit sized for the widest trend-strip span (3 years of days).
+    body:    JSON.stringify({ startDate, endDate, dimensions: ['date'], rowLimit: 5000 }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new Error(`gsc: searchAnalytics (by-date) query failed (${r.status}) — ${text.slice(0, 300)}`)
+  }
+  const data = await r.json()
+  return (data.rows || []).map((row) => ({
+    date: row?.keys?.[0] || '',
+    clicks: row?.clicks || 0,
+    impressions: row?.impressions || 0,
+  }))
+}
+
 // Test-connection probe: resolve a token (OAuth or SA) then run a minimal
 // 1-row query to confirm property access. Returns { siteUrl, totalImpressions }.
 // Pass either { credential, siteUrl } or { serviceAccountJson, siteUrl }.

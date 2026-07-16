@@ -12,7 +12,9 @@ import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
   useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
   useApplePerformance, useSocialByPeriod, useWebsiteByPeriod, useSearchByPeriod,
+  useInsightsSeries,
 } from '@/lib/queries'
+import TrendStrip from '@/components/insights/TrendStrip'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights } from '@/lib/insightsReads'
@@ -1048,6 +1050,12 @@ export default function Analytics() {
   const { data: socialPeriod, isLoading: socialPeriodLoading } = useSocialByPeriod(granularity, periodOffset)
   const { data: websitePeriod } = useWebsiteByPeriod(granularity, periodOffset)
   const { data: seoPeriod } = useSearchByPeriod(granularity, periodOffset)
+  // Trend strip for whichever picker-driven tab is active — only that
+  // source's series is fetched (the others stay idle until their tab opens).
+  const seriesSource = activeTab === 'website' ? 'website' : activeTab === 'seo' ? 'search' : 'social'
+  const { data: seriesData } = useInsightsSeries(seriesSource, granularity, {
+    enabled: activeTab === 'social' || activeTab === 'website' || activeTab === 'seo',
+  })
 
   const changeGranularity = (g) => {
     setGranularity(g)
@@ -1128,14 +1136,33 @@ export default function Analytics() {
       </div>
 
       {(activeTab === 'social' || activeTab === 'website' || activeTab === 'seo') && (
-        <PeriodNav
-          granularity={granularity}
-          periodOffset={periodOffset}
-          onGranularityChange={changeGranularity}
-          onPrev={() => setPeriodOffset((o) => Math.max(MAX_OFFSET[granularity], o - 1))}
-          onNext={() => setPeriodOffset((o) => Math.min(0, o + 1))}
-          onToday={() => setPeriodOffset(0)}
-        />
+        <>
+          <PeriodNav
+            granularity={granularity}
+            periodOffset={periodOffset}
+            onGranularityChange={changeGranularity}
+            onPrev={() => setPeriodOffset((o) => Math.max(MAX_OFFSET[granularity], o - 1))}
+            onNext={() => setPeriodOffset((o) => Math.min(0, o + 1))}
+            onToday={() => setPeriodOffset(0)}
+          />
+          {seriesData?.series && seriesData?.connected !== false ? (
+            <TrendStrip
+              series={seriesData.series}
+              granularity={granularity}
+              metric={activeTab === 'website' ? 'sessions' : activeTab === 'seo' ? 'clicks' : 'reach'}
+              metricLabel={activeTab === 'website' ? 'site sessions' : activeTab === 'seo' ? 'search clicks' : 'social reach'}
+              selectedOffset={periodOffset}
+              onSelect={(o) => setPeriodOffset(Math.max(MAX_OFFSET[granularity], o))}
+              tooltipFor={(p) =>
+                activeTab === 'social'
+                  ? `${p.posts ?? 0} posts · ${fmtNum(p.reach)} reach · ${fmtNum(p.engagement)} engagement`
+                  : activeTab === 'seo'
+                    ? `${fmtNum(p.clicks)} clicks · ${fmtNum(p.impressions)} impressions`
+                    : `${fmtNum(p.sessions)} sessions`
+              }
+            />
+          ) : null}
+        </>
       )}
 
       {activeTab === 'social' && (
