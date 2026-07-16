@@ -6,8 +6,9 @@ export const GRANULARITIES = ['week', 'month', 'year']
 
 // How far Prev can go, per granularity (0 = current period). Mirrors the
 // server's MAX_OFFSET so the nav button disables at the same point the
-// backend would otherwise clamp.
-export const MAX_OFFSET = { week: -8, month: -12, year: -3 }
+// backend would otherwise clamp. Week reaches ~6 months back — inside every
+// provider's retention (GSC 16 months, GA4 14 months).
+export const MAX_OFFSET = { week: -26, month: -12, year: -3 }
 
 function weekBounds(offset) {
   const start = new Date()

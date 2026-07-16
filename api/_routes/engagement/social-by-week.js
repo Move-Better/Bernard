@@ -13,7 +13,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { scoreSnapshot } from '../../_lib/engagementScoring.js'
-import { periodBounds, toDateStr } from '../../_lib/periodMath.js'
+import { periodBounds, prevPeriodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -54,17 +54,22 @@ export default withSentry(async function handler(req, res) {
     searchParams.get('granularity'),
     searchParams.get('periodOffset') ?? '0',
   )
+  const { start: prevStart, end: prevEnd } = prevPeriodBounds(granularity, periodOffset)
 
+  // One items read spanning BOTH windows (prev directly precedes current), then
+  // split — saves a round-trip and keeps the two windows' filters identical.
   const itemsRes = await sb(
     `content_items?workspace_id=eq.${ws.id}` +
     `&status=eq.published` +
-    `&published_at=gte.${encodeURIComponent(periodStart.toISOString())}` +
+    `&published_at=gte.${encodeURIComponent(prevStart.toISOString())}` +
     `&published_at=lt.${encodeURIComponent(periodEnd.toISOString())}` +
-    `&select=id,topic,platform`
+    `&select=id,topic,platform,published_at`
   )
   if (!itemsRes.ok) return res.status(500).json({ error: 'Database error' })
   const allItems = await itemsRes.json().catch(() => [])
-  const items = (Array.isArray(allItems) ? allItems : []).filter((i) => SOCIAL_PLATFORMS.has(i.platform))
+  const social = (Array.isArray(allItems) ? allItems : []).filter((i) => SOCIAL_PLATFORMS.has(i.platform))
+  const items = social.filter((i) => new Date(i.published_at) >= periodStart)
+  const prevItems = social.filter((i) => new Date(i.published_at) < prevEnd)
 
   const emptyBody = {
     granularity,
@@ -74,10 +79,11 @@ export default withSentry(async function handler(req, res) {
     overall: { posts: 0, reach: 0, engagement: 0 },
     byPlatform: [],
     topPost: null,
+    prev: { posts: prevItems.length, measuredPosts: 0, reach: 0, engagement: 0 },
   }
-  if (items.length === 0) return res.status(200).json(emptyBody)
+  if (social.length === 0) return res.status(200).json(emptyBody)
 
-  const idList = items.map((i) => `"${i.id}"`).join(',')
+  const idList = social.map((i) => `"${i.id}"`).join(',')
   const snapRes = await sb(
     `engagement_snapshots?workspace_id=eq.${ws.id}` +
     `&content_item_id=in.(${idList})` +
@@ -92,6 +98,20 @@ export default withSentry(async function handler(req, res) {
   for (const row of Array.isArray(snapRows) ? snapRows : []) {
     if (!latestByItem.has(row.content_item_id)) latestByItem.set(row.content_item_id, row)
   }
+
+  // Previous-period totals — same measured-only rules as the main loop below,
+  // counts only (the UI's vs-previous delta chips).
+  const prev = { posts: prevItems.length, measuredPosts: 0, reach: 0, engagement: 0 }
+  for (const item of prevItems) {
+    const snap = latestByItem.get(item.id)
+    if (!snap || snap.stats?.unavailable === true) continue
+    const { reach, engagement } = scoreSnapshot(snap)
+    prev.measuredPosts++
+    prev.reach += reach
+    prev.engagement += engagement
+  }
+
+  if (items.length === 0) return res.status(200).json({ ...emptyBody, prev })
 
   const byPlatform = new Map()
   let overallPosts = 0
@@ -154,5 +174,6 @@ export default withSentry(async function handler(req, res) {
     overall: { posts: overallPosts, measuredPosts: overallMeasured, reach: overallReach, engagement: overallEngagement },
     byPlatform: platformRows,
     topPost,
+    prev,
   })
 })

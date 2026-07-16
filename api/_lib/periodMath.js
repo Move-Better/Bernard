@@ -5,8 +5,10 @@
 
 export const GRANULARITIES = ['week', 'month', 'year']
 
-// How far Prev can go, per granularity (0 = current period).
-export const MAX_OFFSET = { week: -8, month: -12, year: -3 }
+// How far Prev can go, per granularity (0 = current period). Week reaches
+// back ~6 months — comfortably inside GSC's 16-month and GA4's 14-month
+// retention, so every provider can still answer at the floor.
+export const MAX_OFFSET = { week: -26, month: -12, year: -3 }
 
 function weekBounds(offset) {
   const start = new Date()
@@ -40,6 +42,17 @@ export function periodBounds(granularity, offset) {
   const clamped = Math.max(MAX_OFFSET[g], Math.min(0, Number.parseInt(offset, 10) || 0))
   const bounds = g === 'month' ? monthBounds(clamped) : g === 'year' ? yearBounds(clamped) : weekBounds(clamped)
   return { ...bounds, granularity: g, offset: clamped }
+}
+
+// Bounds of the period immediately BEFORE an already-clamped offset — for
+// vs-previous-period deltas. Deliberately NOT clamped: at the MAX_OFFSET
+// floor the previous period is one step past it, and clamping would compare
+// a period against itself (a guaranteed-zero delta).
+export function prevPeriodBounds(granularity, clampedOffset) {
+  const g = GRANULARITIES.includes(granularity) ? granularity : 'week'
+  const off = (Number.parseInt(clampedOffset, 10) || 0) - 1
+  const bounds = g === 'month' ? monthBounds(off) : g === 'year' ? yearBounds(off) : weekBounds(off)
+  return { ...bounds, granularity: g, offset: off }
 }
 
 // YYYY-MM-DD, UTC — for APIs (GA4, GSC) that take date-only strings.
