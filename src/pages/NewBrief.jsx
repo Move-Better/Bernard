@@ -10,7 +10,12 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch } from '@/lib/api'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
+import { CAPTION_LIMITS } from '@/lib/contentMeta'
 import { uploadMedia } from '@/lib/mediaLib'
+import { useUser } from '@clerk/react'
+import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { updateContentItem } from '@/lib/publish'
+import { toast } from '@/lib/toast'
 
 // Channels that Brief generation supports. Other channels (blog, email,
 // youtube, etc.) require richer source material than a brief provides.
@@ -18,6 +23,15 @@ const BRIEF_SUPPORTED = new Set([
   'instagram_post', 'instagram_story', 'facebook', 'linkedin',
   'gbp', 'twitter', 'threads',
 ])
+
+// Per-channel hard caption caps (only channels that realistically hit one).
+// instagram_post/reel map to the 'instagram' cap; others match 1:1. Used for
+// the live character counts shown in "post as written" mode.
+const IG_OUTPUTS = new Set(['instagram_post', 'instagram_reel'])
+function limitForOutput(id) {
+  const key = IG_OUTPUTS.has(id) ? 'instagram' : id
+  return CAPTION_LIMITS[key] ?? null
+}
 
 // Group channels for the picker UI.
 const CHANNEL_GROUPS = [
@@ -43,10 +57,11 @@ const CHANNEL_ICON = {
 }
 
 export default function NewBrief() {
-  useDocumentTitle('New Brief')
+  useDocumentTitle('New Post')
   const navigate  = useNavigate()
   const goBack = useSmartBack('/new')
   const workspace = useWorkspace()
+  const { user } = useUser()
   const [searchParams] = useSearchParams()
 
   // Form state. `?topic=` seeds the internal title — used by the SEO
@@ -59,8 +74,12 @@ export default function NewBrief() {
   const [ctaLabel, setCtaLabel] = useState('')
   const [mediaUrl,     setMediaUrl]     = useState('')
   const [mediaPreview, setMediaPreview] = useState(null)
+  const [mediaType,    setMediaType]    = useState('photo') // 'photo' | 'video'
   const [uploading,    setUploading]    = useState(false)
   const [selected, setSelected] = useState(new Set())
+  const [mode, setMode] = useState('as_written') // 'as_written' | 'adapt'
+  const [scheduledAt, setScheduledAt] = useState('')
+  const [showSchedule, setShowSchedule] = useState(false)
   const fileInputRef = useRef(null)
 
   // Submission state
@@ -91,9 +110,10 @@ export default function NewBrief() {
     try {
       const result = await uploadMedia(file, { assetPurpose: 'broll' })
       setMediaUrl(result.url)
+      setMediaType(file.type.startsWith('video/') ? 'video' : 'photo')
       setMediaPreview(URL.createObjectURL(file))
     } catch {
-      setError('Photo upload failed — please try again.')
+      setError('Upload failed — please try again.')
     } finally {
       setUploading(false)
     }
@@ -102,20 +122,31 @@ export default function NewBrief() {
   function removeMedia() {
     setMediaUrl('')
     setMediaPreview(null)
+    setMediaType('photo')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const canSubmit = title.trim() && body.trim() && selected.size > 0 && !generating && !uploading
+  const bodyLen = body.trim().length
+  const userEmail = user?.primaryEmailAddress?.emailAddress || user?.id || ''
+  // As-written channels whose verbatim text exceeds the platform's hard cap —
+  // blocks Post now / Schedule (no silent truncation); Save as draft still works.
+  const anyOverLimit = mode === 'as_written' && [...selected].some((id) => {
+    const lim = limitForOutput(id)
+    return lim && bodyLen > lim
+  })
+  const canSubmit = body.trim() && selected.size > 0 && !generating && !uploading
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  // action: 'post_now' | 'schedule' | 'draft'. Adapt mode always yields drafts.
+  async function runSubmit(action) {
     if (!canSubmit) return
+    const effective = mode === 'adapt' ? 'draft' : action
     setGenerating(true)
     setError(null)
     try {
-      await apiFetch('/api/briefs/generate', {
+      const resp = await apiFetch('/api/briefs/generate', {
         method: 'POST',
         body: JSON.stringify({
+          mode,
           title:           title.trim(),
           body:            body.trim(),
           eventAt:         eventAt   || null,
@@ -123,12 +154,50 @@ export default function NewBrief() {
           ctaUrl:          ctaUrl    || null,
           ctaLabel:        ctaLabel  || null,
           mediaUrl:        mediaUrl  || null,
+          mediaType:       mediaType,
           selectedOutputs: [...selected],
         }),
       })
+
+      const items = resp?.contentItems || []
+      if (effective === 'draft' || items.length === 0) {
+        navigate('/stories?source=brief')
+        return
+      }
+
+      // Post now / schedule: dispatch each created row through the canonical
+      // social publish path (the same helper the Review Inbox bulk scheduler
+      // uses), so this can never diverge from the rest of the app.
+      const scheduledISO = effective === 'schedule' && scheduledAt
+        ? new Date(scheduledAt).toISOString()
+        : null
+      const results = await Promise.allSettled(
+        items.map(async (it) => {
+          const r = await publishPieceToBuffer(it, {
+            scheduledAt: scheduledISO, useQueue: false, userEmail, workspace, themes: [],
+          })
+          // publishAndTrack sets status but persists scheduled_at only in queue
+          // mode; for a specific slot, write it (+ approver) ourselves.
+          if (scheduledISO) {
+            await updateContentItem(it.id, { scheduledAt: scheduledISO, approvedBy: userEmail })
+          }
+          return r
+        }),
+      )
+      const ok = results.filter((r) => r.status === 'fulfilled').length
+      const failed = results.length - ok
+      if (failed === 0) {
+        toast.success(scheduledISO
+          ? `Scheduled ${ok} post${ok !== 1 ? 's' : ''}`
+          : `Posted ${ok} post${ok !== 1 ? 's' : ''}`)
+      } else {
+        toast.warning(`${ok} sent, ${failed} failed`, {
+          description: 'Anything that failed is saved as a draft in Stories.',
+        })
+      }
       navigate('/stories?source=brief')
     } catch (e_) {
-      setError(e_?.message || 'Generation failed — please try again.')
+      setError(e_?.message || 'Something went wrong — please try again.')
       setGenerating(false)
     }
   }
@@ -141,17 +210,17 @@ export default function NewBrief() {
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Brief</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Post</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Write your message once — Bernard adapts it for each channel.
+            Write it once, send it anywhere — your words, or let Bernard adapt.
           </p>
         </div>
       </div>
 
       {generating ? (
-        <GeneratingView channels={[...selected].map((id) => OUTPUT_CHANNELS[id]).filter(Boolean)} />
+        <GeneratingView mode={mode} channels={[...selected].map((id) => OUTPUT_CHANNELS[id]).filter(Boolean)} />
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => e.preventDefault()}>
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
 
             {/* ── Left: brief form ── */}
@@ -159,33 +228,64 @@ export default function NewBrief() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="brief-title">
-                  Title <span className="text-destructive">*</span>
+                  Title <span className="font-normal text-muted-foreground">(optional)</span>
                 </Label>
-                <p className="text-xs text-muted-foreground">Internal label — not published.</p>
+                <p className="text-xs text-muted-foreground">Internal label — not published. Leave blank and we&apos;ll name it from your post.</p>
                 <Input
                   id="brief-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Summer Wellness Workshop — June 20"
-                  required
+                  placeholder="e.g. Thanksgiving hours"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="brief-body">
-                  Your message <span className="text-destructive">*</span>
+                  Your post <span className="text-destructive">*</span>
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Write your core message in plain language. Bernard adapts tone and length for each channel.
+                  {mode === 'as_written'
+                    ? 'Type it exactly how you want it — this is what publishes.'
+                    : 'Write your core message in plain language. Bernard adapts tone and length for each channel.'}
                 </p>
                 <textarea
                   id="brief-body"
                   className="w-full min-h-[140px] rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 resize-y"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="Describe the event, promotion, or update in your own words. Include the key details — who it's for, what happens, when, where, and any cost or registration info."
+                  placeholder="Write your post — an announcement, promotion, or quick update in your own words."
                   required
                 />
+              </div>
+
+              {/* Post mode — manual (as written) vs Bernard adapt per channel */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  How should it post?
+                </p>
+                <div className="inline-flex w-full rounded-lg border border-border bg-muted p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setMode('as_written')}
+                    aria-pressed={mode === 'as_written'}
+                    className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${mode === 'as_written' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Post as written
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('adapt')}
+                    aria-pressed={mode === 'adapt'}
+                    className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${mode === 'adapt' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Adapt per channel
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {mode === 'as_written'
+                    ? 'Your exact words go to every selected channel, unchanged.'
+                    : 'Bernard rewrites your message to fit each channel — in your workspace voice.'}
+                </p>
               </div>
 
               {/* Optional structured fields */}
@@ -193,6 +293,11 @@ export default function NewBrief() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                   Optional details
                 </p>
+                {mode === 'as_written' && (
+                  <p className="text-xs text-muted-foreground mb-3 -mt-1">
+                    Used when Bernard adapts — your written text posts exactly as-is.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="brief-event-at">📅 Event date &amp; time</Label>
@@ -239,20 +344,24 @@ export default function NewBrief() {
 
               {/* Media attach */}
               <div className="space-y-1.5">
-                <Label>🖼️ Attach photo <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Label>🖼️ Attach photo or video <span className="font-normal text-muted-foreground">(optional)</span></Label>
                 <p className="text-xs text-muted-foreground">
                   Attached to all channels that support media. Instagram Story uses it instead of a text card.
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="hidden"
                   onChange={(e) => handleMediaFile(e.target.files?.[0])}
                 />
                 {mediaPreview ? (
                   <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-border">
-                    <img src={mediaPreview} alt="" className="w-full h-full object-cover" />
+                    {mediaType === 'video' ? (
+                      <video src={mediaPreview} className="w-full h-full object-cover" muted playsInline />
+                    ) : (
+                      <img src={mediaPreview} alt="" className="w-full h-full object-cover" />
+                    )}
                     <button
                       type="button"
                       onClick={removeMedia}
@@ -270,7 +379,7 @@ export default function NewBrief() {
                     className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-sm text-muted-foreground transition-colors disabled:opacity-50"
                   >
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                    {uploading ? 'Uploading…' : 'Attach a photo'}
+                    {uploading ? 'Uploading…' : 'Attach photo or video'}
                   </button>
                 )}
               </div>
@@ -291,7 +400,9 @@ export default function NewBrief() {
                       Channels
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Bernard generates a separate post for each one.
+                      {mode === 'as_written'
+                        ? 'Your post goes to each one you pick.'
+                        : 'Bernard generates a separate post for each one.'}
                     </p>
                   </div>
 
@@ -331,6 +442,11 @@ export default function NewBrief() {
                                     <span className="text-sm">
                                       {CHANNEL_ICON[ch.id] || '📄'} {ch.label}
                                     </span>
+                                    {mode === 'as_written' && isSelected && limitForOutput(ch.id) && (
+                                      <span className={`ml-auto text-2xs tabular-nums rounded px-1.5 py-0.5 ${bodyLen > limitForOutput(ch.id) ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>
+                                        {bodyLen > limitForOutput(ch.id) ? `over ${bodyLen - limitForOutput(ch.id)}` : `${bodyLen}/${limitForOutput(ch.id)}`}
+                                      </span>
+                                    )}
                                   </label>
                                 )
                               })}
@@ -341,24 +457,86 @@ export default function NewBrief() {
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-border space-y-3">
+                  <div className="pt-2 border-t border-border space-y-2.5">
                     {selected.size > 0 && (
                       <p className="text-xs text-muted-foreground">
                         {selected.size} channel{selected.size !== 1 ? 's' : ''} selected
                       </p>
                     )}
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={!canSubmit}
-                    >
-                      Generate content →
-                    </Button>
+                    {anyOverLimit && (
+                      <p className="text-xs text-warning">
+                        A selected channel is over its character limit. Shorten your post, or Save as draft to fix it later.
+                      </p>
+                    )}
+
+                    {mode === 'as_written' ? (
+                      <>
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={!canSubmit || anyOverLimit}
+                          onClick={() => runSubmit('post_now')}
+                        >
+                          Post now →
+                        </Button>
+
+                        {showSchedule ? (
+                          <div className="flex gap-2">
+                            <Input
+                              type="datetime-local"
+                              value={scheduledAt}
+                              onChange={(e) => setScheduledAt(e.target.value)}
+                              className="text-sm"
+                              aria-label="Schedule date and time"
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={!canSubmit || anyOverLimit || !scheduledAt}
+                              onClick={() => runSubmit('schedule')}
+                            >
+                              Set
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            disabled={!canSubmit}
+                            onClick={() => setShowSchedule(true)}
+                          >
+                            Schedule for later
+                          </Button>
+                        )}
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full"
+                          disabled={!canSubmit}
+                          onClick={() => runSubmit('draft')}
+                        >
+                          Save as draft
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="w-full"
+                        disabled={!canSubmit}
+                        onClick={() => runSubmit('draft')}
+                      >
+                        Generate drafts →
+                      </Button>
+                    )}
                   </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    ✦ Bernard will use <strong>{workspace?.display_name || 'your workspace'}&apos;s voice</strong> — warm, direct, human — across all channels.
-                  </p>
+                  {mode === 'adapt' && (
+                    <p className="text-xs text-muted-foreground">
+                      ✦ Bernard will use <strong>{workspace?.display_name || 'your workspace'}&apos;s voice</strong> — warm, direct, human — across all channels.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -370,16 +548,19 @@ export default function NewBrief() {
   )
 }
 
-function GeneratingView({ channels }) {
+function GeneratingView({ channels, mode }) {
+  const asWritten = mode === 'as_written'
   return (
     <div className="max-w-md mx-auto py-12 space-y-6">
       <div className="text-center space-y-2">
         <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
           <ClipboardList className="h-6 w-6" />
         </div>
-        <h2 className="text-xl font-semibold">Generating your posts</h2>
+        <h2 className="text-xl font-semibold">{asWritten ? 'Creating your posts' : 'Generating your posts'}</h2>
         <p className="text-sm text-muted-foreground">
-          Bernard is adapting your brief for each channel. This takes about 15 seconds.
+          {asWritten
+            ? 'Adding your post to each channel — just a moment.'
+            : 'Bernard is adapting your post for each channel. This takes about 15 seconds.'}
         </p>
       </div>
 

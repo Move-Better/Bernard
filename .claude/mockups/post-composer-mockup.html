@@ -1,0 +1,471 @@
+<meta charset="UTF-8">
+<title>Post composer — design review</title>
+<style>
+  :root {
+    --page:#eef1f4; --bg:#ffffff; --ink:#0b1220; --card:#ffffff;
+    --muted:#f1f3f6; --muted-ink:#4a5568; --border:#e2e8f0;
+    --primary:#0C7580; --primary-ink:#ffffff; --primary-soft:#e6f4f5;
+    --accent-bg:#e9f9f1; --accent-ink:#0f7a52;
+    --amber:#b45309; --amber-bg:#fef3c7; --amber-line:#f59e0b;
+    --danger:#b91c1c; --danger-bg:#fef2f2;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px rgba(15,23,42,.06);
+    --ff: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --page:#0b0e12; --bg:#0f1216; --ink:#e8edf2; --card:#161a20;
+      --muted:#1c2128; --muted-ink:#9aa6b2; --border:#262c34;
+      --primary:#19aebc; --primary-ink:#04262a; --primary-soft:#0f2f34;
+      --accent-bg:#0e3128; --accent-ink:#5fe3b0;
+      --amber:#fbbf24; --amber-bg:#3a2c0c; --amber-line:#d99a1a;
+      --danger:#f87171; --danger-bg:#3a1616;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --page:#0b0e12; --bg:#0f1216; --ink:#e8edf2; --card:#161a20;
+    --muted:#1c2128; --muted-ink:#9aa6b2; --border:#262c34;
+    --primary:#19aebc; --primary-ink:#04262a; --primary-soft:#0f2f34;
+    --accent-bg:#0e3128; --accent-ink:#5fe3b0;
+    --amber:#fbbf24; --amber-bg:#3a2c0c; --amber-line:#d99a1a;
+    --danger:#f87171; --danger-bg:#3a1616;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --page:#eef1f4; --bg:#ffffff; --ink:#0b1220; --card:#ffffff;
+    --muted:#f1f3f6; --muted-ink:#4a5568; --border:#e2e8f0;
+    --primary:#0C7580; --primary-ink:#ffffff; --primary-soft:#e6f4f5;
+    --accent-bg:#e9f9f1; --accent-ink:#0f7a52;
+    --amber:#b45309; --amber-bg:#fef3c7; --amber-line:#f59e0b;
+    --danger:#b91c1c; --danger-bg:#fef2f2;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px rgba(15,23,42,.06);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    font-family:var(--ff); background:var(--page); color:var(--ink);
+    min-height:100vh; padding:28px 20px 64px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{max-width:1060px; margin:0 auto}
+
+  /* ── page head ── */
+  .phead{margin-bottom:20px}
+  .kicker{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--primary); margin:0 0 6px}
+  .ptitle{font-size:26px; font-weight:700; letter-spacing:-.01em; margin:0; text-wrap:balance}
+  .psub{font-size:14px; color:var(--muted-ink); margin:6px 0 0; max-width:64ch}
+
+  /* ── change summary chips ── */
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 22px}
+  .chip{display:inline-flex; align-items:center; gap:7px; background:var(--card); border:1px solid var(--border);
+        border-radius:999px; padding:6px 12px 6px 10px; font-size:12.5px; font-weight:500; box-shadow:var(--shadow)}
+  .chip b{font-weight:700}
+  .dot{width:7px; height:7px; border-radius:50%; flex:none}
+  .dot.g{background:var(--primary)} .dot.a{background:var(--amber-line)} .dot.e{background:var(--accent-ink)}
+
+  /* ── tabs ── */
+  .tabs{display:inline-flex; background:var(--muted); border:1px solid var(--border); border-radius:999px; padding:3px; gap:2px; margin-bottom:18px}
+  .tab{appearance:none; border:0; background:transparent; color:var(--muted-ink); font-family:inherit; font-size:13px; font-weight:600;
+       padding:7px 16px; border-radius:999px; cursor:pointer; transition:background .15s,color .15s}
+  .tab[aria-selected="true"]{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
+  .tab .tg{font-weight:500; opacity:.7}
+
+  /* ── composer card ── */
+  .screen{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); overflow:hidden}
+  .topbar{display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border)}
+  .back{width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--bg); display:grid; place-items:center; color:var(--muted-ink); flex:none}
+  .htxt h2{font-size:18px; font-weight:700; margin:0}
+  .htxt p{font-size:12.5px; color:var(--muted-ink); margin:2px 0 0}
+
+  .body{display:grid; grid-template-columns:1fr 320px; gap:0}
+  @media (max-width:820px){ .body{grid-template-columns:1fr} }
+  .form{padding:22px 22px 26px; display:flex; flex-direction:column; gap:18px; border-right:1px solid var(--border)}
+  @media (max-width:820px){ .form{border-right:0; border-bottom:1px solid var(--border)} }
+  .rail{padding:22px 20px 24px; display:flex; flex-direction:column; gap:18px; background:var(--bg)}
+
+  .field{display:flex; flex-direction:column; gap:6px}
+  .lab{font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px}
+  .lab .opt{font-weight:500; color:var(--muted-ink); font-size:12px}
+  .req{color:var(--danger); font-weight:700}
+  .hint{font-size:11.5px; color:var(--muted-ink); margin:0}
+  .in{font-family:inherit; font-size:13.5px; color:var(--ink); background:var(--bg); border:1px solid var(--border);
+      border-radius:9px; padding:9px 11px; width:100%}
+  .in:focus-visible{outline:2px solid var(--primary); outline-offset:0; border-color:var(--primary)}
+  textarea.in{min-height:120px; resize:vertical; line-height:1.55}
+
+  .seg-label{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-ink); margin:0 0 2px}
+  .seg{display:inline-flex; background:var(--muted); border:1px solid var(--border); border-radius:10px; padding:3px; gap:3px; width:100%}
+  .seg button{flex:1; appearance:none; border:0; background:transparent; font-family:inherit; font-size:12.5px; font-weight:600;
+              color:var(--muted-ink); padding:8px 10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:.15s}
+  .seg button[aria-pressed="true"]{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
+  .seg button[aria-pressed="true"] .tick{color:var(--primary)}
+  .tick{opacity:0}
+  .seg button[aria-pressed="true"] .tick{opacity:1}
+  .modehint{font-size:12px; color:var(--accent-ink); background:var(--accent-bg); border-radius:8px; padding:8px 11px; display:flex; gap:8px; align-items:flex-start}
+  .modehint svg{flex:none; margin-top:1px}
+
+  /* optional details grid */
+  .optgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media (max-width:560px){ .optgrid{grid-template-columns:1fr} }
+  .optwrap{border:1px solid var(--border); border-radius:12px; padding:14px; background:var(--bg)}
+  .optwrap>.seg-label{margin-bottom:12px}
+
+  /* media */
+  .media-btn{display:inline-flex; align-items:center; gap:9px; border:1px dashed var(--border); background:var(--bg);
+             color:var(--muted-ink); font-family:inherit; font-size:13px; font-weight:500; padding:12px 14px; border-radius:10px; cursor:pointer; width:max-content}
+  .media-btn:hover{border-color:var(--primary); background:var(--primary-soft); color:var(--ink)}
+  .thumbs{display:flex; gap:10px}
+  .thumb{width:74px; height:74px; border-radius:10px; border:1px solid var(--border); position:relative; overflow:hidden; display:grid; place-items:center; color:#fff; font-size:11px; font-weight:600}
+  .thumb.ph{background:linear-gradient(135deg,#0C7580,#1aa3ac)}
+  .thumb.vid{background:linear-gradient(135deg,#334155,#0b1220)}
+  .thumb .x{position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.55); display:grid; place-items:center; font-size:11px}
+  .thumb .badge{position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,.55); border-radius:5px; padding:1px 5px; font-size:9.5px; letter-spacing:.03em}
+
+  /* rail: channels */
+  .rlab{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-ink); margin:0 0 3px}
+  .rsub{font-size:12px; color:var(--muted-ink); margin:0 0 10px}
+  .chan{display:flex; align-items:center; gap:10px; padding:8px 9px; border-radius:9px; cursor:pointer; transition:background .12s}
+  .chan:hover{background:var(--muted)}
+  .chan input{width:15px; height:15px; accent-color:var(--primary); flex:none}
+  .chan .nm{font-size:13px; font-weight:500}
+  .chan .cnt{margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; color:var(--muted-ink); background:var(--muted); border-radius:6px; padding:2px 7px}
+  .chan .cnt.warn{color:var(--amber); background:var(--amber-bg)}
+  .cico{width:18px; text-align:center; font-size:14px}
+
+  .adapt-note{font-size:12px; color:var(--muted-ink); background:var(--muted); border-radius:8px; padding:9px 11px; display:none}
+
+  /* publish bar */
+  .pubbar{border-top:1px solid var(--border); padding-top:16px; display:flex; flex-direction:column; gap:9px}
+  .btn{font-family:inherit; font-weight:600; font-size:13.5px; border-radius:9px; padding:11px 14px; cursor:pointer; border:1px solid transparent; display:flex; align-items:center; justify-content:center; gap:8px; width:100%}
+  .btn.primary{background:var(--primary); color:var(--primary-ink)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.ghost{background:var(--bg); color:var(--ink); border-color:var(--border)}
+  .btn.ghost:hover{background:var(--muted)}
+  .btn.text{background:transparent; color:var(--muted-ink); border:0; font-weight:500; padding:6px}
+  .btn.text:hover{color:var(--ink)}
+  .schedrow{display:none; gap:8px; align-items:center; background:var(--muted); border-radius:9px; padding:9px 10px}
+  .schedrow.show{display:flex}
+  .schedrow .in{padding:7px 9px; font-size:12.5px}
+  .voice{font-size:11.5px; color:var(--muted-ink); display:flex; gap:7px; align-items:flex-start}
+
+  /* callouts */
+  .callout{position:relative; border:1.5px dashed var(--primary); border-radius:10px; padding:9px 11px 9px 12px; background:var(--primary-soft)}
+  .callout .tagrow{display:flex; align-items:center; gap:8px; margin-bottom:3px}
+  .tag{font-size:9.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; padding:2px 7px; border-radius:5px; color:#fff}
+  .tag.new{background:var(--primary)} .tag.chg{background:var(--amber-line); color:#3a2600} .tag.gone{background:var(--muted-ink)}
+  .callout .co{font-size:11.5px; color:var(--ink); margin:0} .callout .co b{font-weight:700}
+  .callout.amber{border-color:var(--amber-line); background:var(--amber-bg)}
+
+  /* legend footer */
+  .legend{margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow)}
+  .legend h3{font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted-ink); margin:0 0 12px}
+  .ltab{display:grid; grid-template-columns:132px 1fr 1fr; gap:0; font-size:12.5px}
+  .ltab .lh{font-weight:700; color:var(--muted-ink); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; padding:0 0 8px}
+  .ltab .cell{padding:9px 12px 9px 0; border-top:1px solid var(--border)}
+  .ltab .k{font-weight:600}
+  .ltab .old{color:var(--muted-ink)}
+  .ltab .new b{color:var(--primary)}
+  @media (max-width:640px){ .ltab{grid-template-columns:1fr} .ltab .lh:nth-child(2),.ltab .lh:nth-child(3){display:none} .ltab .cell{padding:8px 0} .ltab .k{border-top:2px solid var(--border); padding-top:12px} }
+
+  .hide{display:none !important}
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+
+<div class="wrap">
+  <div class="shell">
+
+    <div class="phead">
+      <p class="kicker">Bernard · design review</p>
+      <h1 class="ptitle">“Post” — the one-off post composer</h1>
+      <p class="psub">Evolving the existing <code>/new/brief</code> screen into a manual-first composer: your exact words by default, optional Bernard adapt, and post-now / schedule / draft. Flip between today and the proposal below.</p>
+    </div>
+
+    <div class="chips">
+      <span class="chip"><span class="dot g"></span><b>Manual-first</b>&nbsp;— your words by default</span>
+      <span class="chip"><span class="dot a"></span><b>Post now</b>&nbsp;· Schedule · Draft</span>
+      <span class="chip"><span class="dot e"></span><b>Photo + video</b>&nbsp;attach</span>
+      <span class="chip"><span class="dot g"></span>Renamed&nbsp;<b>Brief → Post</b></span>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Compare versions">
+      <button class="tab" role="tab" aria-selected="true" id="t-prop" onclick="showTab('prop')">Proposed <span class="tg">· Post</span></button>
+      <button class="tab" role="tab" aria-selected="false" id="t-cur" onclick="showTab('cur')">Today <span class="tg">· Brief</span></button>
+    </div>
+
+    <!-- ══════════════ PROPOSED ══════════════ -->
+    <section id="panel-prop">
+      <div class="screen">
+        <div class="topbar">
+          <div class="back">←</div>
+          <div class="htxt">
+            <h2>Post</h2>
+            <p>Write it once, send it anywhere — your words, or let Bernard adapt.</p>
+          </div>
+        </div>
+
+        <div class="body">
+          <!-- form -->
+          <div class="form">
+
+            <div class="callout">
+              <div class="tagrow"><span class="tag new">New</span><span class="co"><b>Mode toggle</b> — the whole point. Manual is the default; AI is opt-in per post.</span></div>
+            </div>
+
+            <div class="field">
+              <label class="lab" for="msg">Your post <span class="req">*</span></label>
+              <p class="hint">Type it exactly how you want it. This is what publishes.</p>
+              <textarea class="in" id="msg" oninput="recount()">Closed Thursday &amp; Friday for Thanksgiving — back to regular hours Monday. Wishing you a restful holiday from all of us at Move Better. 🍂</textarea>
+            </div>
+
+            <div class="field">
+              <p class="seg-label">How should it post?</p>
+              <div class="seg" role="group" aria-label="Post mode">
+                <button id="m-asis" aria-pressed="true" onclick="setMode('asis')"><span class="tick">✓</span> Post as written</button>
+                <button id="m-adapt" aria-pressed="false" onclick="setMode('adapt')"><span class="tick">✓</span> Adapt per channel</button>
+              </div>
+              <div class="modehint" id="modehint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
+                <span id="modehint-txt">Your exact text goes to every selected channel, unchanged. Character limits shown on the right.</span>
+              </div>
+            </div>
+
+            <div class="optwrap">
+              <p class="seg-label">Optional details</p>
+              <div class="optgrid">
+                <div class="field">
+                  <label class="lab" for="ev">📅 Event date &amp; time</label>
+                  <input class="in" id="ev" type="datetime-local" value="2026-11-26T09:00">
+                </div>
+                <div class="field">
+                  <label class="lab" for="loc">📍 Location</label>
+                  <input class="in" id="loc" placeholder="Address or venue">
+                </div>
+                <div class="field">
+                  <label class="lab" for="cu">🔗 CTA link</label>
+                  <input class="in" id="cu" placeholder="https://…">
+                </div>
+                <div class="field">
+                  <label class="lab" for="cl">🏷️ CTA label</label>
+                  <input class="in" id="cl" placeholder="e.g. Book a visit">
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="lab">🖼️ Attach media <span class="opt">(optional)</span>
+                <span class="tag chg" style="margin-left:2px">Now video too</span>
+              </label>
+              <p class="hint">Photo or video. Attached to every channel that supports media.</p>
+              <div class="thumbs">
+                <div class="thumb ph">Photo<span class="x">✕</span></div>
+                <button class="media-btn">＋ Add photo or video</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- rail -->
+          <div class="rail">
+            <div>
+              <p class="rlab">Channels</p>
+              <p class="rsub" id="rsub">Your post goes to each one you pick.</p>
+              <div id="chanlist">
+                <label class="chan"><input type="checkbox" checked onchange="recount()" data-lim="2200" data-nm="Instagram"><span class="cico">📸</span><span class="nm">Instagram</span><span class="cnt"></span></label>
+                <label class="chan"><input type="checkbox" checked onchange="recount()" data-lim="63206" data-nm="Facebook"><span class="cico">🔵</span><span class="nm">Facebook</span><span class="cnt"></span></label>
+                <label class="chan"><input type="checkbox" checked onchange="recount()" data-lim="1500" data-nm="Google Business"><span class="cico">🗺️</span><span class="nm">Google Business</span><span class="cnt"></span></label>
+                <label class="chan"><input type="checkbox" onchange="recount()" data-lim="280" data-nm="X"><span class="cico">𝕏</span><span class="nm">X (Twitter)</span><span class="cnt"></span></label>
+                <label class="chan"><input type="checkbox" onchange="recount()" data-lim="3000" data-nm="LinkedIn"><span class="cico">💼</span><span class="nm">LinkedIn</span><span class="cnt"></span></label>
+              </div>
+              <div class="adapt-note" id="adaptnote">✦ Bernard tailors tone and length for each channel — no limits to worry about.</div>
+            </div>
+
+            <div class="pubbar">
+              <div class="callout amber" style="margin-bottom:4px">
+                <div class="tagrow"><span class="tag chg">New</span><span class="co" id="pubcallout-txt"><b>Publish, your call.</b> Post now · schedule · draft.</span></div>
+              </div>
+              <div id="pub-asis" style="display:flex; flex-direction:column; gap:9px">
+                <button class="btn primary" onclick="pretend('Posting now…')">Post now →</button>
+                <button class="btn ghost" onclick="toggleSched()">🕑 Schedule for later</button>
+                <div class="schedrow" id="schedrow">
+                  <input class="in" type="datetime-local" value="2026-11-25T08:00">
+                  <button class="btn primary" style="width:auto; padding:8px 12px" onclick="pretend('Scheduled ✓')">Set</button>
+                </div>
+                <button class="btn text" onclick="pretend('Saved to Stories as a draft')">Save as draft</button>
+              </div>
+              <div id="pub-adapt" class="hide">
+                <button class="btn primary" onclick="pretend('Generating drafts to review…')">Generate drafts →</button>
+              </div>
+              <p class="voice" id="railvoice"><span>ℹ️</span><span>Your own words skip the AI review gate — post-now is safe here.</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ TODAY / BRIEF ══════════════ -->
+    <section id="panel-cur" class="hide">
+      <div class="screen">
+        <div class="topbar">
+          <div class="back">←</div>
+          <div class="htxt">
+            <h2>Brief</h2>
+            <p>Write your message once — Bernard adapts it for each channel.</p>
+          </div>
+        </div>
+        <div class="body">
+          <div class="form">
+            <div class="callout amber">
+              <div class="tagrow"><span class="tag gone">Friction</span><span class="co">Title is <b>required</b> — an internal label you must write before anything else.</span></div>
+            </div>
+            <div class="field">
+              <label class="lab">Title <span class="req">*</span></label>
+              <p class="hint">Internal label — not published.</p>
+              <input class="in" value="Thanksgiving hours 2026">
+            </div>
+            <div class="field">
+              <label class="lab">Your message <span class="req">*</span></label>
+              <p class="hint">Bernard adapts tone and length for each channel.</p>
+              <textarea class="in" style="min-height:96px">Closed Thursday &amp; Friday for Thanksgiving — back Monday.</textarea>
+            </div>
+            <div class="optwrap">
+              <p class="seg-label">Optional details</p>
+              <div class="optgrid">
+                <div class="field"><label class="lab">📅 Event date &amp; time</label><input class="in" type="datetime-local"></div>
+                <div class="field"><label class="lab">📍 Location</label><input class="in" placeholder="Address or venue"></div>
+                <div class="field"><label class="lab">🔗 CTA URL</label><input class="in" placeholder="https://…"></div>
+                <div class="field"><label class="lab">🏷️ CTA label</label><input class="in" placeholder="e.g. Reserve"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="lab">🖼️ Attach photo <span class="opt">(photo only)</span></label>
+              <button class="media-btn">Attach a photo</button>
+            </div>
+          </div>
+          <div class="rail">
+            <div>
+              <p class="rlab">Channels</p>
+              <p class="rsub">Bernard generates a separate post for each one.</p>
+              <label class="chan"><input type="checkbox" checked><span class="cico">📸</span><span class="nm">Instagram</span></label>
+              <label class="chan"><input type="checkbox" checked><span class="cico">🔵</span><span class="nm">Facebook</span></label>
+              <label class="chan"><input type="checkbox" checked><span class="cico">🗺️</span><span class="nm">Google Business</span></label>
+            </div>
+            <div class="pubbar">
+              <div class="callout amber" style="margin-bottom:4px">
+                <div class="tagrow"><span class="tag gone">Only path</span><span class="co">One button. Always AI-rewrites, always lands as a draft to review later.</span></div>
+              </div>
+              <button class="btn primary">Generate content →</button>
+              <p class="voice"><span>✦</span><span>Bernard will use your workspace’s voice across all channels.</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- legend -->
+    <div class="legend">
+      <h3>What changes, line by line</h3>
+      <div class="ltab">
+        <div class="lh">&nbsp;</div><div class="lh">Today — Brief</div><div class="lh">Proposed — Post</div>
+
+        <div class="cell k">Words</div>
+        <div class="cell old">Bernard always rewrites per channel</div>
+        <div class="cell new"><b>Your exact words</b> by default; adapt is an opt-in toggle</div>
+
+        <div class="cell k">Publish</div>
+        <div class="cell old">One “Generate” → always a draft in Stories</div>
+        <div class="cell new"><b>Post now · Schedule · Save draft</b>, per post</div>
+
+        <div class="cell k">Media</div>
+        <div class="cell old">Photo only</div>
+        <div class="cell new"><b>Photo or video</b></div>
+
+        <div class="cell k">Title</div>
+        <div class="cell old">Required internal label</div>
+        <div class="cell new"><b>Optional</b> — no busywork for a quick post</div>
+
+        <div class="cell k">Name / entry</div>
+        <div class="cell old">“Brief”, under /new</div>
+        <div class="cell new"><b>“Post”</b>, same /new entry (no new buttons)</div>
+
+        <div class="cell k">Under the hood</div>
+        <div class="cell old">briefs table + fan-out + publish plumbing</div>
+        <div class="cell new">Same — <b>reused, not rebuilt</b></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function showTab(which){
+    document.getElementById('panel-prop').classList.toggle('hide', which!=='prop');
+    document.getElementById('panel-cur').classList.toggle('hide', which!=='cur');
+    document.getElementById('t-prop').setAttribute('aria-selected', which==='prop');
+    document.getElementById('t-cur').setAttribute('aria-selected', which==='cur');
+  }
+
+  let mode='asis';
+  function setMode(m){
+    mode=m;
+    document.getElementById('m-asis').setAttribute('aria-pressed', m==='asis');
+    document.getElementById('m-adapt').setAttribute('aria-pressed', m==='adapt');
+    const txt=document.getElementById('modehint-txt');
+    const rsub=document.getElementById('rsub');
+    const adaptnote=document.getElementById('adaptnote');
+    const railvoice=document.getElementById('railvoice');
+    const pubAsis=document.getElementById('pub-asis');
+    const pubAdapt=document.getElementById('pub-adapt');
+    const pubco=document.getElementById('pubcallout-txt');
+    if(m==='asis'){
+      txt.textContent='Your exact text goes to every selected channel, unchanged. Character limits shown on the right.';
+      rsub.textContent='Your post goes to each one you pick.';
+      adaptnote.style.display='none';
+      railvoice.querySelector('span:last-child').textContent='Your own words skip the AI review gate — post-now is safe here.';
+      pubAsis.classList.remove('hide'); pubAdapt.classList.add('hide');
+      pubco.innerHTML='<b>Publish, your call.</b> Post now · schedule · draft.';
+    } else {
+      txt.textContent='Bernard rewrites your message to fit each channel’s tone and length, in your workspace voice.';
+      rsub.textContent='Bernard generates a tailored post for each one.';
+      adaptnote.style.display='block';
+      railvoice.querySelector('span:last-child').textContent='AI text gets a review beat — adapted posts land as drafts to approve.';
+      pubAsis.classList.add('hide'); pubAdapt.classList.remove('hide');
+      pubco.innerHTML='<b>Reviewed first.</b> Adapted posts land in Stories as drafts to approve.';
+    }
+    recount();
+  }
+
+  function recount(){
+    const len=(document.getElementById('msg').value||'').length;
+    document.querySelectorAll('#chanlist .chan').forEach(row=>{
+      const cb=row.querySelector('input');
+      const cnt=row.querySelector('.cnt');
+      const lim=+cb.dataset.lim;
+      if(mode==='adapt' || !cb.checked){ cnt.textContent=''; cnt.className='cnt'; return; }
+      if(lim>=10000){ cnt.textContent='no limit'; cnt.className='cnt'; return; }
+      const over=len-lim;
+      if(over>0){ cnt.textContent='over '+over; cnt.className='cnt warn'; }
+      else { cnt.textContent=len+'/'+lim; cnt.className='cnt'; }
+    });
+    // count selected
+    const n=document.querySelectorAll('#chanlist .chan input:checked').length;
+    const btn=document.querySelector('#panel-prop .btn.primary');
+    if(btn) btn.textContent='Post now → '+n+' channel'+(n===1?'':'s');
+  }
+
+  function toggleSched(){ document.getElementById('schedrow').classList.toggle('show'); }
+
+  let toastT;
+  function pretend(m){
+    let t=document.getElementById('__toast');
+    if(!t){ t=document.createElement('div'); t.id='__toast';
+      t.style.cssText='position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#0b1220;color:#fff;padding:11px 18px;border-radius:10px;font-family:var(--ff);font-size:13px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:99;opacity:0;transition:opacity .18s';
+      document.body.appendChild(t);
+    }
+    t.textContent=m; t.style.opacity='1';
+    clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity='0',1700);
+  }
+
+  recount();
+</script>
