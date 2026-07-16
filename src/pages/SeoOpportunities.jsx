@@ -298,7 +298,45 @@ function EngineCell({ probe, connected }) {
   )
 }
 
-function CitationHero({ share, perEngine, connectedEngines, lastProbedAt }) {
+// Weekly answer-share trend inside the hero — one bar per probe week (the
+// same any-engine share rule as the top-line %). Hidden until two weekly
+// probes have accrued, mirroring the page's decay/cannibalization pattern of
+// features lighting up as history builds.
+function ShareTrend({ history }) {
+  if (!Array.isArray(history) || history.length < 2) return null
+  return (
+    <div className="mt-4 pt-3 border-t border-white/15">
+      <div className="text-3xs font-semibold uppercase tracking-wider opacity-60 mb-1.5">
+        Answer share by week
+      </div>
+      <div className="flex items-end gap-1.5">
+        {history.map((h) => {
+          const pct = h.probed > 0 ? Math.round((h.cited / h.probed) * 100) : 0
+          const label = new Date(`${h.week_start}T00:00:00Z`)
+            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+          return (
+            <div
+              key={h.week_start}
+              className="flex flex-col items-center flex-1 min-w-0 max-w-[4.5rem]"
+              title={`${label}: cited in ${h.cited} of ${h.probed} questions`}
+            >
+              <div className="flex items-end h-9 w-full justify-center" aria-hidden="true">
+                <div
+                  className="w-[60%] max-w-[18px] rounded-t-[3px] bg-white/50"
+                  style={{ height: `${Math.round((pct / 100) * 32) + 2}px` }}
+                />
+              </div>
+              <div className="text-3xs font-bold opacity-90 tabular-nums">{pct}%</div>
+              <div className="text-3xs opacity-50 whitespace-nowrap">{label}</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CitationHero({ share, perEngine, connectedEngines, lastProbedAt, history }) {
   const probedLabel = lastProbedAt
     ? new Date(lastProbedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })
     : null
@@ -338,6 +376,7 @@ function CitationHero({ share, perEngine, connectedEngines, lastProbedAt }) {
           })}
         </div>
       </div>
+      <ShareTrend history={history} />
       <div className="text-2xs opacity-70 mt-3">
         Probed weekly{probedLabel && ` · last run ${probedLabel}`} · clicks are no longer the scoreboard — AI answers now resolve a large share of patient searches before any website is visited.
       </div>
@@ -417,6 +456,7 @@ function CitationScoreboard() {
         perEngine={data.perEngine}
         connectedEngines={data.connectedEngines}
         lastProbedAt={data.lastProbedAt}
+        history={data.history}
       />
 
       <div className="bg-card border border-border rounded-xl p-4 overflow-x-auto">

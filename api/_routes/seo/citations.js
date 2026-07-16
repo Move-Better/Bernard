@@ -116,6 +116,32 @@ export default async function handler(req, res) {
     })),
   }))
 
+  // Share over time — weekly buckets across all probes of tracked questions.
+  // A question counts as probed in a week when ANY engine probed it, cited
+  // when ANY engine cited the clinic — the same any-engine rule as the hero
+  // share, so the trend and the top-line % speak the same language. The
+  // weekly cron makes ~one bucket per week; deadline-split re-runs merge
+  // into the same UTC-Monday bucket instead of fabricating extra rounds.
+  const weekly = new Map()
+  for (const p of probes) {
+    if (!questionIds.has(p.question_id)) continue
+    const d = new Date(p.probed_at)
+    const dow = (d.getUTCDay() + 6) % 7
+    const wk = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow))
+      .toISOString().slice(0, 10)
+    let m = weekly.get(wk)
+    if (!m) { m = new Map(); weekly.set(wk, m) }
+    m.set(p.question_id, m.get(p.question_id) === true || p.cited === true)
+  }
+  const history = [...weekly.entries()]
+    .map(([week_start, m]) => ({
+      week_start,
+      probed: m.size,
+      cited: [...m.values()].filter(Boolean).length,
+    }))
+    .sort((a, b) => a.week_start.localeCompare(b.week_start))
+    .slice(-12)
+
   return res.status(200).json({
     available: true,
     connectedEngines,
@@ -127,6 +153,7 @@ export default async function handler(req, res) {
     },
     perEngine,
     rows,
+    history,
     lastProbedAt: probes[0]?.probed_at || null,
   })
 }
