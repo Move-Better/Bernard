@@ -129,3 +129,11 @@ export function floorWeekOffset(firstWeek) {
   const cur = mondayOf(new Date()).getTime()
   return Math.min(0, Math.round((first - cur) / WEEK_MS))
 }
+
+// The last N calendar-week starts as 'YYYY-MM-DD' (oldest first, ending at the
+// current week) — the x-axis for the team cards' capture dot-rows, matching
+// the capture_weeks strings the recap RPC returns.
+export function lastNWeekStarts(n) {
+  const cur = mondayOf(new Date()).getTime()
+  return Array.from({ length: n }, (_, i) => isoDay(new Date(cur - (n - 1 - i) * WEEK_MS)))
+}

@@ -127,22 +127,22 @@ export const HELP_CONTENT = {
   overview: {
     title: 'Overview — how it works',
     intro:
-      'Overview is the clinic-wide content board for owners and producers. It shows every story in the practice — every staff member, every stage — across three lenses so you can spot bottlenecks, plan the publishing calendar, and find coverage gaps.',
+      'Overview is the clinic-wide board for owners and producers: a week-by-week recap of what the practice published, captured, and spent — plus the team’s capture rhythm, the publishing calendar, and campaigns. It’s built to be screen-shared in the weekly all-staff meeting.',
     steps: [
       {
-        icon: LayoutGrid,
-        title: 'Pipeline view',
-        body: 'Stories are grouped by stage: Capture, Drafting, Review, Scheduled, Published. This is the diagnostic lens — if Review has a dozen cards and Drafting has two, something is backed up at the approval step.',
+        icon: Calendar,
+        title: 'Step through weeks',
+        body: 'The recap is a calendar week (Mon–Sun). Use the arrows in its header to open any past week — Monday’s meeting presents last week, finished and final. Every stat shows how it moved vs the week before, and the 12-week band doubles as a picker: click a bar to open that week.',
       },
       {
-        icon: Calendar,
-        title: 'Calendar view',
-        body: 'Stories are laid out by scheduled or published date. Use this to see the publication cadence, spot gaps in the week, and make sure the clinic is publishing consistently.',
+        icon: LayoutGrid,
+        title: 'Right now vs. history',
+        body: 'Published, captured, drafted, and cost belong to the selected week. The "Right now" row (scheduled next, in review) and the team cards always show the present — they don’t move when you step back in time.',
       },
       {
         icon: Target,
-        title: 'Themes view',
-        body: 'Content is grouped by topic area, showing which subjects the practice covers regularly and which are underrepresented — useful for briefing the next round of interviews.',
+        title: 'Did it work?',
+        body: 'Each week’s recap highlights the top post by measured reach, with a link into Insights for the full performance picture. The team block tracks capture streaks — consistency, not volume.',
       },
     ],
     notes: [

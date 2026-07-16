@@ -14,7 +14,10 @@
 // USD rate card (provider list prices, rounded conservatively).
 export const RATES = {
   transcribePerSec: 0.006 / 60,   // Whisper $0.006/min
-  voicePerSec:      0.003,        // ElevenLabs ~$0.18/1k chars ≈ ~15 chars/sec
+  // voice_sec counts LIVE VOICE-INTERVIEW seconds (interviews.realtime_voice_
+  // seconds — OpenAI Realtime), not TTS narration. ~$0.18/min is a blended
+  // input+output audio rate for a realtime conversation.
+  voicePerSec:      0.003,
   videoPerSec:      0.04 / 60,    // Mux-class encode ~$0.04/min (blended)
   perPiece:         0.04,         // AI writing: flat per generated piece (no token log)
 }
