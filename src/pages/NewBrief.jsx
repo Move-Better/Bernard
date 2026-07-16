@@ -74,6 +74,7 @@ export default function NewBrief() {
   const [ctaLabel, setCtaLabel] = useState('')
   const [mediaUrl,     setMediaUrl]     = useState('')
   const [mediaPreview, setMediaPreview] = useState(null)
+  const [mediaType,    setMediaType]    = useState('photo') // 'photo' | 'video'
   const [uploading,    setUploading]    = useState(false)
   const [selected, setSelected] = useState(new Set())
   const [mode, setMode] = useState('as_written') // 'as_written' | 'adapt'
@@ -109,9 +110,10 @@ export default function NewBrief() {
     try {
       const result = await uploadMedia(file, { assetPurpose: 'broll' })
       setMediaUrl(result.url)
+      setMediaType(file.type.startsWith('video/') ? 'video' : 'photo')
       setMediaPreview(URL.createObjectURL(file))
     } catch {
-      setError('Photo upload failed — please try again.')
+      setError('Upload failed — please try again.')
     } finally {
       setUploading(false)
     }
@@ -120,6 +122,7 @@ export default function NewBrief() {
   function removeMedia() {
     setMediaUrl('')
     setMediaPreview(null)
+    setMediaType('photo')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -151,6 +154,7 @@ export default function NewBrief() {
           ctaUrl:          ctaUrl    || null,
           ctaLabel:        ctaLabel  || null,
           mediaUrl:        mediaUrl  || null,
+          mediaType:       mediaType,
           selectedOutputs: [...selected],
         }),
       })
@@ -340,20 +344,24 @@ export default function NewBrief() {
 
               {/* Media attach */}
               <div className="space-y-1.5">
-                <Label>🖼️ Attach photo <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Label>🖼️ Attach photo or video <span className="font-normal text-muted-foreground">(optional)</span></Label>
                 <p className="text-xs text-muted-foreground">
                   Attached to all channels that support media. Instagram Story uses it instead of a text card.
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="hidden"
                   onChange={(e) => handleMediaFile(e.target.files?.[0])}
                 />
                 {mediaPreview ? (
                   <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-border">
-                    <img src={mediaPreview} alt="" className="w-full h-full object-cover" />
+                    {mediaType === 'video' ? (
+                      <video src={mediaPreview} className="w-full h-full object-cover" muted playsInline />
+                    ) : (
+                      <img src={mediaPreview} alt="" className="w-full h-full object-cover" />
+                    )}
                     <button
                       type="button"
                       onClick={removeMedia}
@@ -371,7 +379,7 @@ export default function NewBrief() {
                     className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 text-sm text-muted-foreground transition-colors disabled:opacity-50"
                   >
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                    {uploading ? 'Uploading…' : 'Attach a photo'}
+                    {uploading ? 'Uploading…' : 'Attach photo or video'}
                   </button>
                 )}
               </div>

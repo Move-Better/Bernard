@@ -47,7 +47,7 @@ async function handler(req, res) {
 
   const {
     title, body, eventAt, location, ctaUrl, ctaLabel,
-    mediaUrl, selectedOutputs, mode,
+    mediaUrl, mediaType, selectedOutputs, mode,
   } = req.body || {}
 
   // Manual-first "Post": as-written publishes the user's exact text verbatim to
@@ -88,7 +88,10 @@ async function handler(req, res) {
 
   // 2. Generate content for each selected output channel in parallel.
   const brief_ = { ...briefRow, id: brief.id }
-  const mediaEntry = mediaUrl ? [{ url: mediaUrl, type: 'photo', kind: 'image' }] : []
+  const isVideo = mediaType === 'video'
+  const mediaEntry = mediaUrl
+    ? [{ url: mediaUrl, type: isVideo ? 'video' : 'photo', kind: isVideo ? 'video' : 'image' }]
+    : []
 
   const results = await Promise.allSettled(
     selectedOutputs.map(async (outputId) => {
