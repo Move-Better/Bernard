@@ -19,6 +19,24 @@ function buildVoicePhrasesBlock(phrases) {
   return `\n\nVOICE PHRASE ANCHORS — sentences this clinician has shipped in approved content. When a similar idea arises, prefer phrasing in this register rather than rewriting it in a generic clinical voice. These are examples, NOT required quotations — only echo when the meaning genuinely aligns:\n${examples}\n`
 }
 
+// The auto-extracted brand book (workspaces.brand_guidelines) mixes useful
+// guardrails (KEY MESSAGES, AVOID) with two kinds of noise that actively hurt a
+// TEXT prompt: (1) visual-only lines (BRAND COLORS / fonts) the model can echo as
+// literal hex into copy, and (2) generic marketing-adjective voice lines
+// ("BRAND VOICE: Bold, authoritative…", "TONE: confident expertise… celebratory
+// energy") that are a worse, flatter version of the real workspaces.brand_voice
+// narrative and pull output toward exactly the AI-marketing register we're trying
+// to escape. Strip both line classes so the brand book contributes guardrails,
+// not tone — the brand_voice narrative is the tone authority. Line-prefix match
+// only, so free-form brand text is left untouched.
+function stripBrandBookNoise(text) {
+  return String(text || '')
+    .split('\n')
+    .filter((line) => !/^\s*(BRAND VOICE|TONE|BRAND COLORS?|HEADING FONT|BODY FONT|FONTS?)\s*[:-]/i.test(line))
+    .join('\n')
+    .trim()
+}
+
 // `campaignContext` — output of getTentpolePromptContext(campaign, ws) from
 // api/_lib/tentpoleCampaignContext.js. Empty string when no campaign is
 // active or when the active campaign's content_style is 'clinical'. When
@@ -121,7 +139,7 @@ Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspac
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
       clinical_insight: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
-ANGLE: Lead with "The one thing most people get wrong about ${condition} is…" and deliver the key clinical insight ${firstName ? `${firstName} surfaced` : 'the clinician surfaced'} in the conversation.
+ANGLE: Open with the sharpest, most counterintuitive thing ${firstName ? firstName : 'the clinician'} actually said about ${condition} — the misconception they push back on — in their own framing. Do NOT use a templated "the one thing most people get wrong about…" opener; pull the real line from the conversation. Then deliver the key clinical insight ${firstName ? `${firstName} surfaced` : 'the clinician surfaced'} in the conversation.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${clinicalInsightCtaLine}
 Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
@@ -170,7 +188,7 @@ ${facebookUrlLine}
 End with a question that sparks comments. 1–2 hashtags max.`,
 
       educational: `Write a Facebook post (~125 words) for ${workspace.display_name} about ${condition}.
-ANGLE: Educational myth-buster or "did you know" format. One surprising or commonly misunderstood fact about ${condition}, explained simply.
+ANGLE: Educational myth-buster. One surprising or commonly misunderstood fact about ${condition} that ${firstName ? firstName : 'the clinician'} raised, explained simply — lead with the fact itself, not a "did you know" wind-up.
 ${isPersonal
   ? `Write in ${firstName}'s first-person voice.`
   : `Write as ${workspace.display_name} the clinic.`}
@@ -185,12 +203,13 @@ VOICE FIRST: Open with 1–2 sentences that use the clinician's distinctive diag
 Then connect that insight to the local context: what ${workspace.display_name} does differently for ${condition} patients in ${workspace.location_keyword ?? 'your area'}.
 Use "we" and "our team" throughout.
 Close with 1–2 sentences that echo the specific insight above before the booking ask — not a bare "book now." E.g. "If that pattern sounds familiar, a movement screen at ${workspace.display_name} is how we start untangling it: ${website || 'book online'}"
+Illustrate with the general pattern you discussed — do NOT invent a specific patient, name, or backstory ("a surfer came in who…") that wasn't actually described in the conversation.
 No hashtags. Conversational, not salesy.`,
 
       patient_outcome: `Write a Google Business Profile post (~200 words) about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
 ANGLE: Results framing.
 VOICE FIRST: Open with 1–2 sentences in the clinician's authentic voice — pull a specific clinical mechanism or patient insight from the VOICE PHRASE ANCHORS above rather than leading with a generic outcomes statement.
-Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? Include a specific, believable outcome ("patients typically find…" or "the goal is…").
+Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? Describe a realistic, GENERAL outcome ("patients typically find…" or "the goal is…") — do NOT invent a specific patient story, name, or timeline that wasn't in the conversation.
 Use "we" and "our team" throughout.
 Close with 1–2 sentences that connect the outcome above to the next step — not a bare "book now." E.g. "If you're ready to find out what recovery actually looks like for your situation: ${website || 'book online'}"
 No hashtags. Conversational, results-focused.`,
@@ -201,7 +220,7 @@ No hashtags. Conversational, results-focused.`,
 ANGLE: Lead with the most counterintuitive claim from the conversation. First 3 seconds must stop the scroll.
 
 [HOOK — first 3 seconds]
-One punchy sentence starting with tension or a myth. Example: "Everything you've been told about ${condition} is probably slowing your recovery."
+One punchy sentence built from a real claim ${firstName ? firstName : 'the clinician'} actually made in the conversation — tension or a myth in their own words. Don't reach for a templated "everything you've been told about ${condition}" formula; pull the actual counterintuitive line from the transcript.
 
 [BODY — 30–40 seconds]
 3–4 short punchy points. 1–2 sentences each. Plain language. Add [ON SCREEN TEXT: ...] for text overlays.
@@ -284,9 +303,21 @@ Output ONLY the overlay text line, then the LINK_STICKER_TEXT line. No other tex
     ? `\n\nCLINICIAN VOICE PATTERNS — apply these consistently. They were learned from how this clinician edits drafts, so respecting them up-front saves a round of revisions:\n${voiceNotesTrimmed}\n`
     : ''
 
-  const brandGuidelinesTrimmed = (brandGuidelines || '').trim()
+  // The practice's real voice narrative (workspaces.brand_voice) is the AUTHORITY
+  // on register/tone — how this practice actually talks. Injected prominently so it
+  // outweighs the generic brand-book adjectives and steers away from AI-marketing
+  // voice. This was previously used only on blog/newsletter output, never on atoms.
+  const brandVoiceNarrative = String(workspace.brand_voice || '').trim()
+  const brandVoiceBlock = brandVoiceNarrative
+    ? `\n\nHOW ${(workspace.display_name || 'THIS PRACTICE').toUpperCase()} ACTUALLY TALKS — write in THIS voice. It is the authority on tone, register, and instinct; match it. Everything below is subordinate to it:\n${brandVoiceNarrative.slice(0, 1400)}\n`
+    : ''
+
+  // Brand book contributes GUARDRAILS only (key messages + things to avoid) — the
+  // generic voice/tone adjective lines and visual color/font lines are stripped so
+  // they can't flatten the voice above. See stripBrandBookNoise.
+  const brandGuidelinesTrimmed = stripBrandBookNoise(brandGuidelines)
   const brandBlock = brandGuidelinesTrimmed
-    ? `\n\nBRAND GUIDELINES — extracted from ${workspace.display_name}'s brand book. Apply these to every word choice:\n${brandGuidelinesTrimmed}\n`
+    ? `\n\nBRAND GUARDRAILS — key messages and things to avoid, from ${workspace.display_name}'s brand book. These constrain WHAT you say; the voice above governs HOW you say it:\n${brandGuidelinesTrimmed}\n`
     : ''
 
   const voicePhrasesBlockStr = buildVoicePhrasesBlock(voicePhrases)
@@ -302,10 +333,21 @@ VOICE FIDELITY rules for the core:
 - Never paraphrase a sentence ${staffName || 'the clinician'} said into a smoother version. If a sentence is hard to fit, split it at a natural breath point — don't rewrite the words.
 - Preserve every strong claim or opinion in its original strength. Don't soften, balance, or hedge.
 
+NO FABRICATION — use only what ${staffName || 'the clinician'} actually said:
+- Do NOT invent specifics that aren't in the conversation: no patient histories or timelines ("six years of back pain"), no names, ages, numbers, statistics, outcomes, dates, events, or made-up patient anecdotes or characters. If you don't have a concrete detail, stay general — being less specific is always better than inventing one.
+- Do NOT reshape a nuanced observation into a tidy "hero story" or a dramatic before/after that ${staffName || 'the clinician'} did not actually describe.
+
+WRITE LIKE A REAL PERSON, NOT AI MARKETING — avoid the tells that make copy read as machine-generated:
+- No formula openers: "The one thing most people get wrong…", "Here's the thing…", "Let's talk about…", "Ever wonder why…", "Did you know…".
+- No X-not-Y antithesis slop: "It's not about trying harder, it's about moving smarter", "Not X. Just Y."
+- No bolting the practice name onto the insight ("that's what we do at ${workspace.display_name}", "everything we do at…"). The point stands on its own; the practice name belongs only in an actual CTA, if at all.
+- No hollow hype words: "game-changer", "unlock", "the secret to", "revolutionary", "transform your…", "level up".
+- Let ${firstName || 'the clinician'}'s own way of explaining it carry the piece — their analogies, their asides, their exact words — not a polished content-marketing voice layered on top.
+
 Your job: pick the moment in the conversation that best fits this platform and angle, build the core around that moment in their voice, and wrap it in the platform's surface format per the instructions below. Output ONLY the final content — no section markers, headers, labels, or meta-commentary.
 
 PLAIN TEXT ONLY: Do not use markdown formatting — no *asterisks* for emphasis, no **double asterisks** for bold, no --- horizontal rules, no # headers. Social platforms render these as literal characters.
 
 ${instruction}
-${brandBlock}${voiceBlock}${voicePhrasesBlockStr}${ownHistoryBlock}${campaignContext ? `\n${campaignContext}\n\nThe CAMPAIGN FOCUS directive above OVERRIDES any default "book a visit" / "link in bio" CTAs in the per-platform instructions. Rewrite the CTA portion of this piece to match the campaign — including the exact URL and button phrasing when provided. Keep platform-specific structural rules (character limits, hashtag counts, overlay format) intact.\n\nCRITICAL — the CTA must flow from the content, not be bolted on: the campaign ask has to grow directly out of the specific point this piece just made. Bridge from the body's idea into the campaign in one continuous voice, so the reader feels a natural turn rather than a hard pivot to a sales line. Never drop the CTA in as a disconnected final sentence, and never let it read as a canned insert pasted after the real content — the last thought and the ask should belong to the same breath.\n` : ''}`
+${brandVoiceBlock}${brandBlock}${voiceBlock}${voicePhrasesBlockStr}${ownHistoryBlock}${campaignContext ? `\n${campaignContext}\n\nThe CAMPAIGN FOCUS directive above OVERRIDES any default "book a visit" / "link in bio" CTAs in the per-platform instructions. Rewrite the CTA portion of this piece to match the campaign — including the exact URL and button phrasing when provided. Keep platform-specific structural rules (character limits, hashtag counts, overlay format) intact.\n\nCRITICAL — the CTA must flow from the content, not be bolted on: the campaign ask has to grow directly out of the specific point this piece just made. Bridge from the body's idea into the campaign in one continuous voice, so the reader feels a natural turn rather than a hard pivot to a sales line. Never drop the CTA in as a disconnected final sentence, and never let it read as a canned insert pasted after the real content — the last thought and the ask should belong to the same breath.\n` : ''}`
 }
