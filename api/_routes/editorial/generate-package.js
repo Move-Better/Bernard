@@ -26,8 +26,7 @@
 //     packageId, topic, captionText, staffName,
 //     clip: { assetId, similarity, kind, blobUrl, filename, ... },
 //     renders: [{ channel, blobUrl, width, height, sizeBytes, hadSubtitles? }],
-//     errors?: [{ channel, error }],
-//     elapsedMs
+//     errors?: [{ channel, error }]
 //   }
 // Errors: 400 / 401 / 403 / 404 / 409 (no matching clips) / 500
 
@@ -44,7 +43,6 @@ import { CHANNEL_SPECS } from '../../_lib/brandRender.js'
 import { VIDEO_CHANNEL_SPECS } from '../../_lib/brandRenderVideo.js'
 import { renderAndPatchPackage } from '../../_lib/renderPackageChannels.js'
 import { generateCaption } from '../../_lib/captionGen.js'
-import { generateSyntheticBroll, runwayConfigured } from '../../_lib/syntheticBroll.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -122,8 +120,6 @@ export default async function handler(req, res) {
     }
   }
 
-  const started = Date.now()
-
   // --- 1. Clip search (V6: framing-aware when flag is on) ───────────────────
   let clips = []
   let ragContext = null
@@ -183,107 +179,11 @@ export default async function handler(req, res) {
   }
 
   if (!clips.length) {
-    // V3 synthetic b-roll fallback — when no real clips match the topic, generate
-    // footage via Runway Gen-3 Alpha Turbo instead of returning 409.
-    // Requires RUNWAY_API_KEY to be configured. Without it, fall through to 409.
-    if (!runwayConfigured()) {
-      return res.status(409).json({
-        error: 'no_matching_clips',
-        message: 'No visually relevant clips found for this topic. Upload more media first.',
-      })
-    }
-
-    // Determine channels ahead of time (video-only — Runway produces video).
-    const brollChannels = (Array.isArray(body.channels) && body.channels.length)
-      ? body.channels.map(String).filter((c) => VIDEO_CHANNEL_SPECS[c])
-      : DEFAULT_VIDEO_CHANNELS
-
-    if (!brollChannels.length) {
-      return res.status(409).json({
-        error: 'no_matching_clips',
-        message: 'No visually relevant clips found and no valid video channels requested.',
-      })
-    }
-
-    // Auto-generate caption now (will be used by the background render).
-    if (!captionText) {
-      try {
-        captionText = await generateCaption({ topic, clip: {}, workspace: ws, staffId, practiceChunks: [], campaign })
-      } catch {
-        captionText = topic
-      }
-    }
-
-    // Create package row immediately so the Moment Miner card appears with a spinner.
-    let brollPackageId
-    try {
-      const insRes = await sb('story_packages', {
-        method: 'POST',
-        body: JSON.stringify({
-          workspace_id:  ws.id,
-          staff_id:  staffId || null,
-          source_asset_id: null,
-          topic,
-          caption_text:  captionText,
-          similarity:    null,
-          channels:      brollChannels,
-          renders:       [],
-          status:        'pending_broll',
-          broll_status:  'generating',
-          broll_model:   'gen3a_turbo',
-          rag_context:   ragContext ? { ...ragContext, _practiceChunks: undefined } : null,
-          campaign_id:   campaign?.id || null,
-        }),
-      })
-      if (!insRes.ok) {
-        const errText = await insRes.text().catch(() => '')
-        console.error('[generate-package] broll package insert failed:', insRes.status, errText)
-        return res.status(500).json({ error: 'db_insert_failed' })
-      }
-      const inserted = await insRes.json()
-      brollPackageId = inserted?.[0]?.id
-      if (!brollPackageId) return res.status(500).json({ error: 'insert_no_id' })
-    } catch (e) {
-      console.error('[generate-package] db error:', e?.message)
-    return res.status(500).json({ error: 'db_error' })
-    }
-
-    // Resolve clinician name for render overlays (best-effort).
-    let brollStaffName = ''
-    if (staffId) {
-      const cRes = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=name`)
-      if (cRes.ok) {
-        const cRows = await cRes.json()
-        brollStaffName = cRows?.[0]?.name || ''
-      }
-    }
-
-    // Fire-and-forget: generate → render → patch package. Runs within
-    // the Vercel function's waitUntil budget (up to 300s). The Moment Miner
-    // polls packages with broll_status='generating' every few seconds.
-    waitUntil(
-      generateSyntheticBroll({
-        packageId:     brollPackageId,
-        topic,
-        captionText,
-        workspace:     ws,
-        staffId:   staffId || null,
-        channels:      brollChannels,
-        staffName: brollStaffName,
-      })
-    )
-
-    return res.status(202).json({
-      packageId:    brollPackageId,
-      topic,
-      captionText,
-      staffName: brollStaffName,
-      status:       'pending_broll',
-      broll_status: 'generating',
-      broll_model:  'gen3a_turbo',
-      channels:     brollChannels,
-      renders:      [],
-      elapsedMs:    Date.now() - started,
+    // No generative fallback: AI-generated video is rejected for Bernard
+    // (2026-06-21 ruling — "b-roll" means the clinic's OWN library footage).
+    return res.status(409).json({
+      error: 'no_matching_clips',
+      message: 'No visually relevant clips found for this topic. Upload more media first.',
     })
   }
 
@@ -385,7 +285,7 @@ export default async function handler(req, res) {
   // awaiting it inside the request: a large source (downscaled on ingest) can
   // take minutes, which raced both the 300s function ceiling and the caller's
   // short-lived Clerk token (→ "invalid-token"). The Moment Miner polls the row until
-  // status flips to complete/failed. Mirrors the b-roll path's waitUntil + 202.
+  // status flips to complete/failed.
   waitUntil(
     renderAndPatchPackage({
       workspace:     ws,
