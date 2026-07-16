@@ -9,11 +9,12 @@ import { getInitials } from '@/lib/utils'
 import { useWorkspaceRecap, useWorkspaceWeekRecap } from '@/lib/queries'
 import {
   deriveNowQueues, computeStreak, classifyMember, sortTeam, platformLabels,
-  fmtWeekRange, weekRelative, floorWeekOffset,
+  fmtWeekRange, weekRelative, floorWeekOffset, lastNWeekStarts,
 } from '@/lib/recapDerive'
 import { buildCostView, estimateWindow, fmtUsd, fmtMinutes } from '@/lib/costEstimate'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Skeleton } from '@/components/ui/skeleton'
+import TrendBand from '@/components/overview/TrendBand'
 
 // The Overview recap — a workspace-wide snapshot built to be screen-shared in
 // the weekly all-staff meeting, now navigable by calendar week (Mon–Sun, the
@@ -115,7 +116,7 @@ function WeekNavButton({ onClick, disabled, label, children }) {
   )
 }
 
-function RecapBlock({ week, weekOffset, canPrev, onPrev, onNext, onToday, onPresent, dimmed }) {
+function RecapBlock({ week, weekOffset, canPrev, onPrev, onNext, onToday, onPresent, dimmed, trend, floorOffset, onSelectWeek }) {
   const isCurrent = weekOffset === 0
   const range = fmtWeekRange(week.week_start, week.week_end)
   const title = isCurrent ? 'This week at the clinic'
@@ -190,6 +191,13 @@ function RecapBlock({ week, weekOffset, canPrev, onPrev, onNext, onToday, onPres
             delta={<DeltaChip cur={cost} prev={prevCost} money invert />}
           />
         </div>
+
+        <TrendBand
+          trend={trend}
+          selectedOffset={weekOffset}
+          floorOffset={floorOffset}
+          onSelectWeek={onSelectWeek}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
           {/* published */}
@@ -323,6 +331,38 @@ function NowRow({ scheduled, waiting }) {
 }
 
 // ── Block 2: team cadence ────────────────────────────────────────────────────
+const DOT_WEEKS = 8
+
+// Capture rhythm dot-row: one square per calendar week (oldest → current),
+// filled when that member captured that week. The current, still-in-progress
+// week gets a dashed outline so an empty square doesn't read as a miss yet.
+function CaptureDots({ captureWeeks }) {
+  const weeks = lastNWeekStarts(DOT_WEEKS)
+  const set = new Set(captureWeeks || [])
+  const captured = weeks.filter((wk) => set.has(wk)).length
+  return (
+    <div
+      className="mt-3 flex items-center gap-1"
+      role="img"
+      aria-label={`Captured in ${captured} of the last ${DOT_WEEKS} weeks`}
+    >
+      {weeks.map((wk, i) => {
+        const on = set.has(wk)
+        const isCurrent = i === weeks.length - 1
+        return (
+          <span
+            key={wk}
+            className={`h-2.5 w-2.5 rounded-[3px] ${
+              on ? 'bg-primary/80' : 'bg-muted border border-border'
+            } ${isCurrent && !on ? 'border-dashed border-muted-foreground/50' : ''}`}
+          />
+        )
+      })}
+      <span className="text-3xs text-muted-foreground ml-1.5">{DOT_WEEKS} wks</span>
+    </div>
+  )
+}
+
 function MemberCard({ m }) {
   const kind = classifyMember(m)
   const streak = computeStreak(m.capture_weeks)
@@ -337,7 +377,7 @@ function MemberCard({ m }) {
           <div className="flex items-center gap-2 flex-wrap">
             <p className={`font-bold text-sm ${due ? 'text-muted-foreground' : ''}`}>{m.name}</p>
             {m.week_published > 0 ? (
-              <span className="nx-pill nx-pill-emerald">{m.week_published} this week</span>
+              <span className="nx-pill nx-pill-emerald">{m.week_published} published this week</span>
             ) : due ? (
               <span className="nx-pill nx-pill-tint">let&rsquo;s grab 10 min</span>
             ) : null}
@@ -349,7 +389,8 @@ function MemberCard({ m }) {
           </p>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
+      <CaptureDots captureWeeks={m.capture_weeks} />
+      <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2.5">
         {streak > 0 ? (
           <span className="inline-flex items-center gap-1 text-xs font-bold text-action">
             <Flame className="h-3.5 w-3.5" aria-hidden="true" />{streak}-week streak
@@ -363,37 +404,36 @@ function MemberCard({ m }) {
   )
 }
 
-// ── Block 1.5: all-time summary — the lifetime counterpart to "this week" ─────
+// ── Block 1.5: all-time summary — the lifetime counterpart to "this week".
+// One slim band (was a full-height stat block) — same four numbers, a screen
+// less vertical space, so the parts that change week to week stay above the
+// fold.
 function AllTimeStat({ value, label, color, format }) {
   return (
-    <div className="p-4 text-center">
-      <p className="text-3xl font-extrabold" style={{ color }}>
+    <span className="flex items-baseline gap-2 mr-1">
+      <span className="text-xl font-extrabold tabular-nums" style={{ color }}>
         <NumberTicker value={value} format={format} />
-      </p>
-      <p className="text-xs opacity-70 mt-0.5">{label}</p>
-    </div>
+      </span>
+      <span className="text-xs opacity-70">{label}</span>
+    </span>
   )
 }
 
 function AllTimeBlock({ published, captured, contributors, costTotal }) {
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)]"
+      className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)] px-6 py-3 flex items-center gap-x-7 gap-y-1.5 flex-wrap text-white"
       style={{ background: 'linear-gradient(120deg, hsl(222 47% 12%) 0%, hsl(215 28% 22%) 100%)' }}
     >
-      <div className="px-6 py-3.5 flex items-center gap-3 text-white border-b border-white/10">
-        <InfinityIcon className="h-5 w-5 opacity-90" aria-hidden="true" />
-        <div className="flex-1 min-w-0">
-          <h2 className="text-base font-extrabold leading-tight">All time</h2>
-          <p className="text-2xs opacity-70">the whole story so far</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
-        <AllTimeStat value={published} label="posts published" color="hsl(var(--success))" />
-        <AllTimeStat value={captured} label="stories captured" color="hsl(var(--info))" />
-        <AllTimeStat value={contributors} label="teammates contributing" color="hsl(var(--info))" />
-        <AllTimeStat value={costTotal} format={(v) => `≈ ${fmtUsd(v)}`} label="total run cost · est." color="#ffffff" />
-      </div>
+      <span className="flex items-center gap-2.5 mr-2">
+        <InfinityIcon className="h-4 w-4 opacity-90" aria-hidden="true" />
+        <span className="text-sm font-extrabold">All time</span>
+        <span className="text-2xs opacity-60">the whole story so far</span>
+      </span>
+      <AllTimeStat value={published} label="posts published" color="hsl(var(--success))" />
+      <AllTimeStat value={captured} label="stories captured" color="hsl(var(--info))" />
+      <AllTimeStat value={contributors} label="teammates contributing" color="hsl(var(--info))" />
+      <AllTimeStat value={costTotal} format={(v) => `≈ ${fmtUsd(v)}`} label="total run cost · est." color="#ffffff" />
     </div>
   )
 }
@@ -406,7 +446,7 @@ function TeamBlock({ team }) {
         <Users className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 className="text-base font-bold">The team</h3>
         <span className="nx-pill nx-pill-ink">streaks reward showing up, not posting most</span>
-        <span className="ml-auto text-2xs text-muted-foreground">who&rsquo;s been captured recently · who&rsquo;s due</span>
+        <span className="ml-auto text-2xs text-muted-foreground">last {DOT_WEEKS} weeks of capture rhythm · who&rsquo;s due</span>
       </div>
       {sorted.length === 0 ? (
         <p className="p-5 text-sm text-muted-foreground">No team members yet.</p>
@@ -436,16 +476,28 @@ function CostLine({ icon: Icon, label, units, value }) {
   )
 }
 
-function CostBlock({ cost }) {
-  const view = buildCostView(cost)
-  const lines = estimateWindow(view.units).lines
-  const u = view.units
-  const wow = view.wowPct
+// Follows the recap's selected week: units + prev come from the week payload,
+// MTD/YTD stay pinned to now (they read "to date"). The 12-week mini-trend
+// gives the vs-last-week pill its context.
+function CostBlock({ units, prevUnits, weekOffset, rangeLabel, mtdTotal, ytdTotal, published, trend }) {
+  const { lines, total: weekTotal } = estimateWindow(units)
+  const prevTotal = prevUnits ? estimateWindow(prevUnits).total : null
+  const u = { pieces: 0, transcribe_sec: 0, voice_sec: 0, video_sec: 0, ...(units || {}) }
+  const wow = prevTotal > 0 ? Math.round(((weekTotal - prevTotal) / prevTotal) * 100) : null
+  const perPost = published > 0 && weekTotal > 0 ? weekTotal / published : null
+  const isCurrent = weekOffset === 0
+
+  const trendTotals = (trend || []).map((t) => ({ week_start: t.week_start, total: estimateWindow(t).total }))
+  const maxTotal = Math.max(0.01, ...trendTotals.map((t) => t.total))
+  const selectedIdx = trendTotals.length - 1 + weekOffset
+
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center gap-2 flex-wrap">
         <Receipt className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h3 className="text-base font-bold">What this week cost to run</h3>
+        <h3 className="text-base font-bold">
+          {isCurrent ? 'What this week cost to run' : `What the week of ${rangeLabel} cost to run`}
+        </h3>
         <span className="nx-pill nx-pill-ink">estimate</span>
         <span className="ml-auto inline-flex items-center gap-2">
           {wow != null ? (
@@ -453,23 +505,38 @@ function CostBlock({ cost }) {
               {wow <= 0 ? '↓' : '↑'} {Math.abs(wow)}% vs last week
             </span>
           ) : null}
-          <span className="text-lg font-extrabold">≈ {fmtUsd(view.weekTotal)}</span>
+          <span className="text-lg font-extrabold">≈ {fmtUsd(weekTotal)}</span>
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border">
         <CostLine icon={Mic} label="Transcription" units={`${fmtMinutes(u.transcribe_sec)} of audio · Whisper`} value={lines.transcription} />
         <CostLine icon={Sparkles} label="AI writing" units={`${u.pieces} pieces · Claude`} value={lines.writing} />
         <CostLine icon={Video} label="Video / audio" units={`${fmtMinutes(u.video_sec)} encoded · Mux + ffmpeg`} value={lines.video} />
-        <CostLine icon={Volume2} label="Voice (TTS)" units={`${fmtMinutes(u.voice_sec)} narration · ElevenLabs`} value={lines.voice} />
+        <CostLine icon={Volume2} label="Voice interviews" units={`${fmtMinutes(u.voice_sec)} live voice · OpenAI Realtime`} value={lines.voice} />
       </div>
+      {trendTotals.length > 1 ? (
+        <div className="px-5 pt-3 pb-2 border-t border-border">
+          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Weekly run cost — last {trendTotals.length} weeks</p>
+          <div className="flex items-end gap-1.5 h-10" aria-hidden="true">
+            {trendTotals.map((t, i) => (
+              <span
+                key={t.week_start}
+                title={`${t.week_start}: ${fmtUsd(t.total)}`}
+                className={`flex-1 rounded-t-[3px] ${i === selectedIdx ? 'bg-action' : 'bg-action/50'}`}
+                style={{ height: `${Math.round((t.total / maxTotal) * 34) + 2}px` }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="grid grid-cols-3 divide-x divide-border border-t border-border bg-muted/30">
-        <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">This week</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(view.weekTotal)}</p></div>
-        <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Month to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(view.mtdTotal)}</p></div>
-        <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Year to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(view.ytdTotal)}</p></div>
+        <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{isCurrent ? 'This week' : 'Selected week'}</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(weekTotal)}</p></div>
+        <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Month to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(mtdTotal)}</p></div>
+        <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Year to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(ytdTotal)}</p></div>
       </div>
       <div className="px-5 py-2.5 bg-muted/40 border-t border-border text-2xs text-muted-foreground">
         Estimated from counted usage × provider rate card (not exact billed cost). Excludes flat subscriptions (Buffer, hosting).
-        {view.perPost != null ? ` ~${fmtUsd(view.perPost)} per published post this week.` : ''}
+        {perPost != null ? ` ~${fmtUsd(perPost)} per published post ${isCurrent ? 'this week' : 'that week'}.` : ''}
       </div>
     </div>
   )
@@ -518,6 +585,9 @@ export default function WeeklyRecapPanel({ stories = [] }) {
       onToday={() => setWeekOffset(0)}
       onPresent={() => setPresent(true)}
       dimmed={weekSwapping}
+      trend={data?.trend || []}
+      floorOffset={floor}
+      onSelectWeek={(o) => setWeekOffset(o)}
     />
   )
 
@@ -532,7 +602,20 @@ export default function WeeklyRecapPanel({ stories = [] }) {
         costTotal={costView.allTotal || 0}
       />
       <TeamBlock team={team} />
-      <CostBlock cost={cost} />
+      {week ? (
+        <CostBlock
+          units={week.cost}
+          prevUnits={week.prev?.cost}
+          weekOffset={weekOffset}
+          rangeLabel={fmtWeekRange(week.week_start, week.week_end)}
+          mtdTotal={costView.mtdTotal}
+          ytdTotal={costView.ytdTotal}
+          published={week.published || 0}
+          trend={data?.trend || []}
+        />
+      ) : (
+        <Skeleton className="h-56 w-full rounded-2xl" />
+      )}
     </div>
   )
 

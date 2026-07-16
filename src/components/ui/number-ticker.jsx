@@ -37,7 +37,11 @@ function NumberTicker({
     const from = displayRef.current
     const start = performance.now()
     const step = (now) => {
-      const t = Math.min(1, (now - start) / duration)
+      // Clamp below as well as above: rAF hands the frame's vsync timestamp,
+      // which can PRECEDE the performance.now() captured at animateTo() — an
+      // unclamped negative t overshoots past `from` and a 0→N count-up briefly
+      // renders "-0" (Math.round(-0.001) is -0).
+      const t = Math.max(0, Math.min(1, (now - start) / duration))
       const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
       set(from + (target - from) * eased)
       if (t < 1) rafRef.current = requestAnimationFrame(step)
