@@ -10,10 +10,10 @@
 //   Both fields may be present simultaneously.
 //
 // Cancel ('canceled') is cooperative: it only applies while the package is
-// still generating (status in generating/pending/pending_broll). It can't kill
+// still generating (status in generating/pending). It can't kill
 // the in-flight Vercel waitUntil render, but it (a) unblocks the producer
 // immediately — the Moment Miner drops canceled cards — and (b) the background render's
-// terminal PATCH is guarded (renderPackageChannels.js / syntheticBroll.js) so a
+// terminal PATCH is guarded (renderPackageChannels.js) so a
 // late finish can't resurrect a canceled card to complete/failed. Canceling a
 // package that has already settled returns 409 already_settled.
 //
