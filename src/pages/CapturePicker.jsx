@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail, PenSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -105,7 +105,7 @@ export default function CapturePicker() {
           </Card>
         </button>
 
-        {/* Brief — written message → multi-channel posts, no interview required */}
+        {/* Post — one-off post, your words → one or more channels, no interview */}
         <button
           type="button"
           onClick={() => go('/new/brief')}
@@ -114,12 +114,12 @@ export default function CapturePicker() {
           <Card className="h-full transition hover:border-primary hover:shadow-sm">
             <CardContent className="p-5 space-y-3">
               <div className="h-10 w-10 rounded-md bg-action/10 text-action flex items-center justify-center">
-                <ClipboardList className="h-5 w-5" />
+                <PenSquare className="h-5 w-5" />
               </div>
               <div>
-                <div className="font-medium">Brief</div>
+                <div className="font-medium">Post</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Write it yourself — event announcements, promotions, updates. Bernard adapts your words for each channel.
+                  Write a one-off post — announcements, promotions, quick shares. Post your exact words, or let Bernard adapt them for each channel.
                 </p>
               </div>
             </CardContent>

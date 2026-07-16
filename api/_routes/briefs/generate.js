@@ -47,18 +47,28 @@ async function handler(req, res) {
 
   const {
     title, body, eventAt, location, ctaUrl, ctaLabel,
-    mediaUrl, selectedOutputs,
+    mediaUrl, selectedOutputs, mode,
   } = req.body || {}
 
-  if (!title || !body) return err(res, 'title and body are required')
+  // Manual-first "Post": as-written publishes the user's exact text verbatim to
+  // every selected channel (no LLM). 'adapt' runs the per-channel voice
+  // generation. Absent mode defaults to adapt (back-compat).
+  const asWritten = mode === 'as_written'
+
+  if (!body || !body.trim()) return err(res, 'body is required')
   if (!Array.isArray(selectedOutputs) || selectedOutputs.length === 0) {
     return err(res, 'At least one output channel is required')
   }
+  // Title is an optional internal label; derive one from the body when blank
+  // (briefs.title is NOT NULL).
+  const briefTitle = (title && title.trim())
+    || body.trim().split('\n')[0].slice(0, 80).trim()
+    || 'Post'
 
   // 1. Create the brief row first so content_items can reference it.
   const briefRow = {
     workspace_id:     ws.id,
-    title,
+    title:            briefTitle,
     body,
     event_at:         eventAt   || null,
     location:         location  || null,
@@ -83,15 +93,23 @@ async function handler(req, res) {
   const results = await Promise.allSettled(
     selectedOutputs.map(async (outputId) => {
       const platform = toPlatformKey(outputId)
-      const prompts  = getBriefChannelPrompt(brief_, platform, ws)
-      if (!prompts) return null // unsupported platform — skip silently
 
-      const { text } = await generateText({
-        model:    'anthropic/claude-haiku-4-5-20251001',
-        instructions:   prompts.system,
-        messages: [{ role: 'user', content: prompts.user }],
-        maxOutputTokens: 600,
-      })
+      // Resolve the caption text: verbatim in as-written mode, else per-channel
+      // voice generation.
+      let contentText
+      if (asWritten) {
+        contentText = body.trim()
+      } else {
+        const prompts = getBriefChannelPrompt(brief_, platform, ws)
+        if (!prompts) return null // unsupported platform — skip silently
+        const { text } = await generateText({
+          model:    'anthropic/claude-haiku-4-5-20251001',
+          instructions:   prompts.instructions,
+          messages: [{ role: 'user', content: prompts.user }],
+          maxOutputTokens: 600,
+        })
+        contentText = text.trim()
+      }
 
       // Build the content_item row for this channel.
       const row = {
@@ -99,20 +117,27 @@ async function handler(req, res) {
         brief_id:     brief.id,
         interview_id: null,
         staff_id:     null,
-        topic:        title,
+        topic:        briefTitle,
         platform,
-        content:      text.trim(),
+        content:      contentText,
         status:       'draft',
         media_urls:   mediaEntry,
       }
 
-      // Instagram Story: parse overlay text + pre-populate text_card when no media.
+      // Instagram Story: overlay text + a pre-populated text_card when no media.
       if (platform === 'instagram_story') {
-        const { overlayText, linkStickerText } = parseStoryOutput(text)
-        row.content = overlayText
-        row.overlay_text = overlayText
-        if (!mediaUrl) {
-          row.text_card = buildStoryTextCard(brief_, overlayText, linkStickerText)
+        if (asWritten) {
+          row.overlay_text = contentText
+          if (!mediaUrl) {
+            row.text_card = buildStoryTextCard(brief_, contentText, brief_.cta_label || 'Learn more')
+          }
+        } else {
+          const { overlayText, linkStickerText } = parseStoryOutput(contentText)
+          row.content = overlayText
+          row.overlay_text = overlayText
+          if (!mediaUrl) {
+            row.text_card = buildStoryTextCard(brief_, overlayText, linkStickerText)
+          }
         }
       }
 
