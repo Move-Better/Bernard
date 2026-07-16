@@ -116,6 +116,7 @@ export const queryKeys = {
   topicSuggestions: ['topic-suggestions'],
   topPerformers:    ['top-performers'],
   socialByPeriod:   (granularity = 'week', periodOffset = 0) => ['social-by-period', granularity, periodOffset],
+  insightsSeries:   (source, granularity = 'week') => ['insights-series', source, granularity],
   websiteByPeriod:  (granularity = 'week', periodOffset = 0) => ['website-by-period', granularity, periodOffset],
   searchByPeriod:   (granularity = 'week', periodOffset = 0) => ['search-by-period', granularity, periodOffset],
   websiteHealth:    ['website-health'],
@@ -841,6 +842,19 @@ export function useSocialByPeriod(granularity, periodOffset) {
     queryFn: () =>
       apiFetch(`/api/engagement/social-by-week?granularity=${granularity}&periodOffset=${periodOffset}`).catch(() => null),
     staleTime: 1000 * 60 * 15,
+  })
+}
+
+// Insights trend strip — the last N periods of one source's headline metric
+// (social reach / website sessions / search clicks). Anchored to now, so it's
+// cached per (source, granularity) and doesn't refetch as the picker steps.
+export function useInsightsSeries(source, granularity, options = {}) {
+  return useQuery({
+    queryKey: queryKeys.insightsSeries(source, granularity),
+    queryFn: () =>
+      apiFetch(`/api/insights/series?source=${source}&granularity=${granularity}`).catch(() => null),
+    staleTime: 1000 * 60 * 30,
+    ...options,
   })
 }
 

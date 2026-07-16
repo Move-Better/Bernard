@@ -132,6 +132,36 @@ export async function fetchGA4Metrics({ serviceAccountJson, propertyId, pagePath
   return out
 }
 
+// Property-wide sessions broken down by day — one runReport with the `date`
+// dimension over the whole span, for the Insights trend strip (the caller
+// buckets days into weeks/months/years). Returns [{ date: 'YYYYMMDD',
+// sessions }], unsorted as GA4 returns them.
+export async function fetchGA4SessionsByDate({ serviceAccountJson, propertyId, startDate, endDate }) {
+  if (!propertyId) throw new Error('ga4: propertyId is required')
+  const token = await getAccessToken(serviceAccountJson)
+
+  const r = await fetch(REPORT_URL(propertyId), {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }],
+      metrics:    [{ name: 'sessions' }],
+      // Enough for the widest span the trend strip asks for (3 years of days).
+      limit:      5000,
+    }),
+  })
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new Error(`ga4: sessions-by-date report failed (${r.status}) — ${text.slice(0, 300)}`)
+  }
+  const data = await r.json()
+  return (data?.rows || []).map((row) => ({
+    date: row?.dimensionValues?.[0]?.value || '',
+    sessions: Number(row?.metricValues?.[0]?.value) || 0,
+  }))
+}
+
 // Property-wide total sessions for a date range — no page/path filter, so
 // this includes every page GA4 sees (home, staff bios, service pages, etc.),
 // not just the workspace's tracked content_items. Distinct from
