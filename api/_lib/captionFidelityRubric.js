@@ -50,7 +50,13 @@ export const FIDELITY_DIMENSIONS = ['said_fidelity', 'voice_match', 'naturalness
  * @param {string} p.workspaceName
  */
 export function buildFidelityPrompt({ topic, caption, transcript = '', phrases = [], staffName, workspaceName }) {
-  const said = String(transcript || '').replace(/\s+/g, ' ').trim().slice(0, 2500)
+  // Give the judge enough of the reference to actually verify faithfulness. The old
+  // 2500-char cap silently defeated draftAtom's 24k TRANSCRIPT_MAX (the interview was
+  // re-cut to 2500 here), so anything a faithful caption drew from later in the
+  // interview looked "invented" — a false-positive machine once we gate on it. Clip
+  // transcripts (the story-package path) are short, so this only widens the interview
+  // path; 24k matches draftAtom's TRANSCRIPT_MAX so the judge sees the whole reference.
+  const said = String(transcript || '').replace(/\s+/g, ' ').trim().slice(0, 24000)
   const hasSaid = said.length > 0
   const phraseExamples = (phrases || []).slice(0, 8).map((x) => `- "${x.phrase}"`).join('\n')
   const hasPhrases = phraseExamples.length > 0
@@ -69,7 +75,18 @@ do NOT penalize a caption for being warm, personal, or emotional. People share
 personal struggles and stories as well as clinical insight; a caption that
 faithfully carries an emotional or personal moment in the person's own voice is
 EXCELLENT and should score high. Register (clinical vs. personal) is the speaker's
-choice, never a quality signal. Return ONLY valid JSON — no markdown, no preamble.`,
+choice, never a quality signal.
+
+The single most serious failure is FABRICATION: the caption presenting a SPECIFIC
+instance or detail as real that the transcript does NOT contain — an invented
+individual patient and their story, a specific age, a specific number or statistic,
+a specific date or duration ("week four", "six years"), a specific named outcome, or
+a made-up quote. The test is CATEGORY vs SPECIFIC: naming a GROUP the speaker
+actually discussed (e.g. "runners", "powerlifters", "surfers") is faithful — but
+turning it into ONE specific person with a backstory, an age, and a recovery timeline
+the speaker never gave IS fabrication. A general statement, a paraphrase, and anatomy
+or a mechanism the speaker described are all faithful and must NOT be flagged. List
+each invented specific in invented_claims. Return ONLY valid JSON — no markdown, no preamble.`,
     user:
 `Evaluate this title + caption, written for ${staffName} at ${workspaceName}. It will
 be posted as the social caption and burned into the video's subtitles.
@@ -105,6 +122,11 @@ Score each dimension 1–10 and return EXACTLY this JSON shape (no other keys):
     corporate template. Register-neutral>,
   "tightness": <1-10 INVERSE redundancy — 10=title and caption each add something and the
     caption is crisp; 1=they restate each other or it's padded>,
+  "invented_claims": [<0–5 SHORT phrases (≤8 words each). Each names a SPECIFIC instance or detail
+    the caption presents as real but the transcript does NOT contain — a made-up individual patient
+    and their story, an age, a number/statistic, a date or duration, or a specific outcome. Naming a
+    GROUP the speaker discussed is fine; a general statement, a paraphrase, or anatomy/mechanism the
+    speaker described is fine — do NOT list those. Empty array [] if nothing is invented${hasSaid ? '' : '; no transcript to verify against — return []'}>],
   "red_flag": "<one short phrase: the single biggest issue, or 'none'. Do NOT cite missing
     clinical/anatomical language as a flag>"
 }`,
@@ -119,22 +141,35 @@ Score each dimension 1–10 and return EXACTLY this JSON shape (no other keys):
  * @param {object} [extra] — merged into breakdown (e.g. has_phrases, model)
  */
 export function parseFidelity(rawText, extra = {}) {
-  let r = {}
-  try {
-    r = JSON.parse(String(rawText || '').trim())
-  } catch {
-    const cleaned = String(rawText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    try { r = JSON.parse(cleaned) } catch { return null }
-  }
+  const raw = String(rawText || '').trim()
+  const tryParse = (s) => { try { return JSON.parse(s) } catch { return null } }
+  let r = tryParse(raw)
+  if (!r) r = tryParse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+  // The judge occasionally wraps the object in a sentence of preamble/trailer
+  // despite the "ONLY valid JSON" instruction — recover the first {...} object
+  // rather than dropping the whole score to null (a null silently disables the gate).
+  if (!r) { const m = raw.match(/\{[\s\S]*\}/); if (m) r = tryParse(m[0]) }
+  if (!r || typeof r !== 'object') return null
   const valid = FIDELITY_DIMENSIONS.filter((d) => typeof r[d] === 'number' && isFinite(r[d]))
   if (!valid.length) return null
   const clampedScores = valid.map((d) => Math.max(1, Math.min(10, r[d])))
   const overall = Number((clampedScores.reduce((s, v) => s + v, 0) / valid.length).toFixed(2))
+  // Fabrication is a SEPARATE gate signal, not part of `overall` — a piece with
+  // invented specifics but good voice must not be averaged into a passing score
+  // (that's how it slipped through before). Callers gate on `fabrication` directly.
+  const inventedClaims = Array.isArray(r.invented_claims)
+    ? r.invented_claims
+        .filter((x) => typeof x === 'string' && x.trim())
+        .map((x) => x.trim().slice(0, 200))
+        .slice(0, 5)
+    : []
   const breakdown = {
     said_fidelity: r.said_fidelity ?? null,
     voice_match:   r.voice_match ?? null,
     naturalness:   r.naturalness ?? null,
     tightness:     r.tightness ?? null,
+    invented_claims: inventedClaims,
+    fabrication:   inventedClaims.length > 0,
     red_flag:      r.red_flag || null,
     ...extra,
   }

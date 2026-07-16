@@ -111,7 +111,10 @@ export async function scoreCaptionFidelity({
       model: EVAL_MODEL,
       instructions: prompt.instructions,
       messages: [{ role: 'user', content: prompt.user }],
-      maxOutputTokens: 240,
+      // 500 (was 240): the invented_claims list can push the JSON past a 240-cap and
+      // truncate it → parseFidelity returns null → the fabrication gate silently
+      // no-ops. Headroom keeps the judge's output parseable.
+      maxOutputTokens: 500,
     })
     raw = res.text
   } catch (err) {

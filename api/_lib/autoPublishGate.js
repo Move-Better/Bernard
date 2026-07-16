@@ -81,6 +81,22 @@ export function evaluate({ pkg, workspace, sourceAsset }) {
     return results
   }
 
+  // 4b. Fabrication gate (workspace-level, fail-closed). The voice judge lists any
+  // specific facts the caption asserts that the clip transcript does NOT support
+  // (invented patient histories, names, numbers, outcomes) in the breakdown's
+  // invented_claims. These average out of the overall voice_fidelity_score, so a
+  // fabricated-but-well-voiced caption can clear the numeric threshold — block it
+  // here so invented specifics never auto-publish.
+  const invented = pkg?.voice_fidelity_breakdown?.invented_claims
+  if (Array.isArray(invented) && invented.length > 0) {
+    results.reasons.push({
+      signal: 'fabrication',
+      value:  invented,
+      detail: `Caption asserts specifics not in the source: ${invented.join('; ')}`,
+    })
+    return results
+  }
+
   // 5. Per-channel signal evaluation.
   const eligibleChannels = []
   const channelReasons = []
