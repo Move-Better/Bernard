@@ -23,17 +23,20 @@ import {
   DEFAULT_DECK_THEME,
   defaultBlockConfig,
 } from '@/lib/photoTemplates'
-import { renderFreeformSlide } from '@/lib/overlayTemplates'
+import { renderFreeformSlide, brandAccent as resolveBrandAccent, FALLBACK_ACCENT } from '@/lib/overlayTemplates'
 import { ColorPickerPopover } from '@/components/ColorPickerPopover'
 import { brandSwatches, NEUTRAL_SWATCHES, brandInk, brandPaper } from '@/lib/brandSwatches'
 
-// Resolve the brand accent the SAME way the canvas renderer does
-// (brandAccent() in overlayTemplates.js reads brand_style.accent_color), so a
-// `bgColor: null` CTA previews in the workspace's real accent — not a stray
-// hardcoded orange. Falls back to the Bernard product color when unset.
+// Resolve the brand accent through the SAME function the canvas renderer bakes
+// with (brandAccent() in overlayTemplates.js: brand_style.accent_color →
+// FALLBACK_ACCENT), so a `bgColor: null` CTA previews in the exact accent that
+// publishes — one source of truth, no drift. (Reusing the resolver rather than
+// re-deriving the chain here; the old local copy added a colors.primary /
+// #0c7580 fallback the renderer never uses, so an accent-less workspace's
+// thumbnail disagreed with its bake.)
 function useBrandAccent() {
   const workspace = useWorkspace()
-  return workspace?.brand_style?.accent_color || workspace?.colors?.primary || '#0c7580'
+  return resolveBrandAccent(workspace?.brand_style)
 }
 
 // Representative slides for the live preview, one per common slide type.
@@ -132,7 +135,7 @@ function emptyThemeConfig() {
 const NAVY_T  = '#0c1a2e'
 const PAPER_T = '#f0ede6'
 
-function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580', ink = NAVY_T, paper = PAPER_T }) {
+function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = FALLBACK_ACCENT, ink = NAVY_T, paper = PAPER_T }) {
   const dim = size === 'sm' ? { w: 48, h: 60 } : { w: 96, h: 120 }
   const { w, h } = dim
   const p = Math.round(w * 0.10)        // padding
@@ -230,7 +233,7 @@ function WhoopLayoutThumb({ templateId, size = 'sm', brandAccent = '#0c7580', in
 }
 
 // CSS swatch fallback for custom templates (no fixed layout to diagram)
-function CustomThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
+function CustomThemePreview({ theme, size = 'md', brandAccent = FALLBACK_ACCENT }) {
   const b = theme?.blocks || {}
   const hook = b.hook || {}
   const body = b.body || {}
@@ -283,7 +286,7 @@ function CustomThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
 }
 
 // Dispatcher: built-ins get the SVG layout diagram; custom get the CSS swatch.
-function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
+function ThemePreview({ theme, size = 'md', brandAccent = FALLBACK_ACCENT }) {
   const workspace = useWorkspace()
   const id = theme?.id
   if (id && BUILTIN_THEME_IDS.includes(id)) {
@@ -295,7 +298,7 @@ function ThemePreview({ theme, size = 'md', brandAccent = '#0c7580' }) {
 
 // ── Per-block-role style editor ───────────────────────────────────────────────
 
-function BlockEditor({ role, config, onChange, brandAccent = '#0c7580', swatches = [] }) {
+function BlockEditor({ role, config, onChange, brandAccent = FALLBACK_ACCENT, swatches = [] }) {
   const c = config || defaultBlockConfig(role)
   function set(key, val) { onChange({ ...c, [key]: val }) }
 

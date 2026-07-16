@@ -22,7 +22,10 @@ export const SIZE = 1080
 // by the caller. (Q 2026-06-20)
 export const SLIDE_W = SIZE
 export const SLIDE_H = Math.round(SIZE * 1.25)
-const FALLBACK_ACCENT  = '#0a7f3f'
+// Exported so the Photo Templates preview chrome (rail thumbnails, editor
+// swatches) resolves the brand accent through the SAME function that bakes the
+// slide — single source of truth, can't drift. See brandAccent below.
+export const FALLBACK_ACCENT  = '#0a7f3f'
 const FALLBACK_HEADING = '"Inter", "Helvetica Neue", Arial, sans-serif'
 const FALLBACK_BODY    = '"Inter", "Helvetica Neue", Arial, sans-serif'
 
@@ -32,7 +35,7 @@ function brandFonts(brandStyle) {
   return { heading, body }
 }
 
-function brandAccent(brandStyle, fallback = FALLBACK_ACCENT) {
+export function brandAccent(brandStyle, fallback = FALLBACK_ACCENT) {
   return brandStyle?.accent_color || fallback
 }
 
