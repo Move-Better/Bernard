@@ -37,9 +37,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const OPENAI_KEY   = process.env.OPENAI_API_KEY
 
-// GA model as of Aug 2025. Older preview names (gpt-4o-realtime-preview-*)
-// are still accepted but gpt-realtime is the recommended default.
-const REALTIME_MODEL = 'gpt-realtime'
+// gpt-realtime-2.1 (GA July 2026) — lower p95 latency and more reliable
+// interruption/VAD handling than the original gpt-realtime GA (Aug 2025).
+const REALTIME_MODEL = 'gpt-realtime-2.1'
 
 // Bernard's voice. The chat interview uses an ElevenLabs voice that the
 // Realtime API can't reproduce — true clone is Phase 5 Feature #3. For now we

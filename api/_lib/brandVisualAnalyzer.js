@@ -27,7 +27,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // 10 per batch × 40KB = 400KB — well under the AI Gateway 20MB cap.
 const BATCH_SIZE = 10
 const DEFAULT_SAMPLE_SIZE = 20
-const ANALYSIS_MODEL = 'anthropic/claude-sonnet-4-5'
+const ANALYSIS_MODEL = 'anthropic/claude-sonnet-4-6'
 
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
