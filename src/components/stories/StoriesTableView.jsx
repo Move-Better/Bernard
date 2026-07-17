@@ -9,17 +9,11 @@ import { getStageToken } from '@/lib/stageTokens'
 import { queryKeys, fetchStory, useStory } from '@/lib/queries'
 import { formatStoryDate, stripStoryDatePrefix } from '@/lib/storyTitle'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { CHANNEL_STATE_TOKENS as CH_STATE, PLATFORM_SHORT } from '@/lib/channelStateTokens'
 
 // Rows per page — bounds the rendered DOM so the list scales to thousands of
 // stories without ever mounting thousands of rows (Q: "won't scale").
 const PAGE_SIZE = 50
-
-// Short platform labels for the compact platform column.
-const PLATFORM_SHORT = {
-  blog: 'Blog', instagram: 'IG', instagram_story: 'Story', facebook: 'FB',
-  linkedin: 'LI', gbp: 'GBP', google_ads: 'G Ads', instagram_ads: 'IG Ads',
-  landing_page: 'LP', youtube: 'YT', tiktok: 'TT', email: 'Email',
-}
 
 // Per-channel lifecycle state for an expanded sub-row, derived from the piece's
 // own fields. Same lineage as PostsTableView.pieceState so the two surfaces
@@ -29,15 +23,6 @@ function channelState(p) {
   if (p.status === 'published' || p.published_at) return 'published'
   if (p.status === 'scheduled' || p.scheduled_at) return 'scheduled'
   return 'draft'
-}
-
-// Sub-row status token: rail color + pill. Draft rides the amber act-now token
-// (needs you), scheduled = info, published = success, failed = destructive.
-const CH_STATE = {
-  draft:     { label: 'Draft',     pill: 'bg-action/15 text-action',           rail: 'border-action' },
-  scheduled: { label: 'Scheduled', pill: 'bg-info/15 text-info',               rail: 'border-info' },
-  published: { label: 'Published', pill: 'bg-success/15 text-success',          rail: 'border-success' },
-  failed:    { label: 'Failed',    pill: 'bg-destructive/15 text-destructive', rail: 'border-destructive' },
 }
 
 // When-label for a channel: scheduled shows its slot, published shows when it

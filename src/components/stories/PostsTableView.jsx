@@ -7,37 +7,22 @@ import { useContentItems } from '@/lib/queries'
 import { formatStoryDate } from '@/lib/storyTitle'
 import { isVideoEntry } from '@/lib/mediaEntry'
 import { PLATFORM_META } from '@/lib/contentMeta'
-
-// Short channel labels for the compact Channels column (matches StoriesTableView).
-const PLATFORM_SHORT = {
-  instagram: 'IG', instagram_story: 'Story', facebook: 'FB', linkedin: 'LI',
-  twitter: 'X', threads: 'Threads', gbp: 'GBP', blog: 'Blog', email: 'Email',
-  tiktok: 'TT', youtube: 'YT', bluesky: 'Bsky', mastodon: 'Masto', pinterest: 'Pin',
-}
-
-// Per-channel lifecycle → pill treatment + label, for the expanded sub-rows
-// (each channel is its own content_item, so it can be in a different state than
-// its siblings). Mirrors the SECTIONS colours.
-const STATE_PILL = {
-  draft:     'bg-warning/15 text-warning',
-  scheduled: 'bg-info/15 text-info',
-  published: 'bg-success/15 text-success',
-  failed:    'bg-destructive text-destructive-foreground',
-}
-const STATE_LABEL = { draft: 'Draft', scheduled: 'Scheduled', published: 'Published', failed: 'Failed' }
+import { CHANNEL_STATE_TOKENS, PLATFORM_SHORT } from '@/lib/channelStateTokens'
 
 function fmtWhen(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-// The three lifecycle sections, in "needs-you-first" order. Colors mirror the
-// mock: amber (draft = act now), sky (scheduled = pending), emerald (published).
+// The three lifecycle sections, in "needs-you-first" order. Pill/rail colors come
+// from the shared CHANNEL_STATE_TOKENS so the section headers, roll-up pills, and
+// the per-channel sub-row pills stay in lockstep (draft = --action act-now, not
+// --warning).
 const SECTIONS = [
-  { key: 'draft',     label: 'Drafts',    hint: 'needs you to publish or schedule', pill: 'bg-warning/15 text-warning', rail: 'border-warning' },
-  { key: 'scheduled', label: 'Scheduled', hint: 'queued to go out',                 pill: 'bg-info/15 text-info',       rail: 'border-info' },
-  { key: 'published', label: 'Published', hint: 'live on channel',                  pill: 'bg-success/15 text-success', rail: 'border-success' },
-]
+  { key: 'draft',     label: 'Drafts',    hint: 'needs you to publish or schedule' },
+  { key: 'scheduled', label: 'Scheduled', hint: 'queued to go out' },
+  { key: 'published', label: 'Published', hint: 'live on channel' },
+].map((s) => ({ ...s, pill: CHANNEL_STATE_TOKENS[s.key].pill, rail: CHANNEL_STATE_TOKENS[s.key].rail }))
 
 // Per-channel lifecycle state, derived from the row's own fields (no interview).
 function pieceState(p) {
@@ -152,7 +137,7 @@ export default function PostsTableView() {
         channels,
         channelRows,
         createdMs,
-        statusLabel: uniform ? STATE_LABEL[states[0]] : 'Mixed',
+        statusLabel: uniform ? CHANNEL_STATE_TOKENS[states[0]].label : 'Mixed',
         preview: postPreview(pieces[0].content),
         media: mediaKind(pieces),
         when: whenLabel(section, pieces),
@@ -368,8 +353,8 @@ function ChannelSubRows({ post }) {
                   <span className="flex-1 min-w-0 truncate text-2xs text-muted-foreground" title={ch.caption}>
                     {ch.caption || <span className="italic">No caption yet</span>}
                   </span>
-                  <span className={`shrink-0 inline-flex items-center text-3xs font-semibold px-2 py-0.5 rounded-full ${STATE_PILL[ch.state]}`}>
-                    {ch.when || STATE_LABEL[ch.state]}
+                  <span className={`shrink-0 inline-flex items-center text-3xs font-semibold px-2 py-0.5 rounded-full ${CHANNEL_STATE_TOKENS[ch.state].pill}`}>
+                    {ch.when || CHANNEL_STATE_TOKENS[ch.state].label}
                   </span>
                   <Link
                     to={`/publish/${ch.id}`}
