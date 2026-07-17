@@ -66,8 +66,12 @@ function sanitizeSvg(markup) {
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     // Strip <foreignObject> — can embed arbitrary HTML (onclick etc.) in SVG context.
     .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
-    // Strip <style> blocks — can reference external resources (url()) for data exfiltration.
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    // Keep <style> blocks — many logo exports assign fill colors via CSS classes
+    // (e.g. `.cls-1 { fill: #e36525 }` with `<path class="cls-1">`) rather than
+    // inline fill attributes, so deleting the block left every path with no fill
+    // and browsers default to black. Neutralize only url(...) refs inside it to
+    // still block external-resource / data exfiltration via CSS.
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (block) => block.replace(/url\([^)]*\)/gi, 'none'))
     // Strip event handlers with any quoting style (quoted, unquoted, or backtick).
     .replace(/\son[a-z][a-z0-9]*\s*=\s*(?:"[^"]*"|'[^']*'|`[^`]*`|[^\s>]*)/gi, '')
     // Strip href / xlink:href that aren't fragment-only (#anchor) — prevents javascript: URIs,
