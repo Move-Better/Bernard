@@ -799,8 +799,11 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
   }
 
   // ---- Default render -----------------------------------------------------
+  // Onboarding renders inside a padded panel; the Settings variant sits in the
+  // already-padded settings shell, so it drops the extra p-6 to align with the
+  // sibling Brand pages (Identity / Voice) rather than inset further.
   return (
-    <div className="p-6 space-y-6">
+    <div className={isOnboarding ? 'p-6 space-y-6' : 'space-y-6'}>
       {isOnboarding && (
         <div className="text-center space-y-1">
           <h1 className="text-xl font-semibold">Add your brand assets</h1>

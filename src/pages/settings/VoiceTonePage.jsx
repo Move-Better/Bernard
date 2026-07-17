@@ -14,8 +14,9 @@
 
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Loader2, Sparkles, Pencil, Mic2, Users } from 'lucide-react'
-import { Section, Field, Textarea2, SaveBar } from '@/components/settings/helpers'
+import { Loader2, Sparkles, Pencil, Mic2, Users, Compass, SlidersHorizontal } from 'lucide-react'
+import { Field, Textarea2, SaveBar } from '@/components/settings/helpers'
+import { Room, SectionGuide, RoomSubhead, Collapse } from '@/components/settings/Room'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useUserRole } from '@/lib/useUserRole'
@@ -29,21 +30,6 @@ import { apiFetch } from '@/lib/api'
 import { ToneModifierCards } from '@/components/settings/ToneCard'
 import { ArchetypeCardsSection } from '@/components/settings/PatientArchetypes'
 import { PatientContextEditor } from '@/components/settings/PatientContextEditor'
-
-// A labeled sub-block inside a zone Section — a quieter h3 heading than the
-// zone's own h2, used to keep merged clusters (patient types, tone, length)
-// legible within one zone.
-function SubGroup({ title, description, className = '', children }) {
-  return (
-    <div className={`space-y-3 ${className}`}>
-      <div>
-        <h3 className="text-xs font-semibold text-foreground">{title}</h3>
-        {description && <p className="text-2xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
-      </div>
-      {children}
-    </div>
-  )
-}
 
 function tryParseJson(text, fallback) {
   if (!text || !text.trim()) return { ok: true, value: fallback }
@@ -198,8 +184,12 @@ export default function VoiceTonePage() {
   const interviewerName = runtimeWs?.interviewer_name || ws?.interviewer_name || 'Bernard'
   const clinicName = runtimeWs?.display_name || ws?.display_name || 'your practice'
 
+  // Simple completion signals — drive the section-guide dots and room pills.
+  const identityDone = !!(form.clinic_context?.trim() && form.brand_voice?.trim())
+  const audienceDone = !!form.audience_short?.trim()
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Breadcrumb + heading */}
       <div>
         <p className="text-2xs text-muted-foreground/80">
@@ -213,6 +203,15 @@ export default function VoiceTonePage() {
         />
       </div>
 
+      {/* Jump nav + completion at a glance */}
+      <SectionGuide
+        items={[
+          { id: 'voice-identity', label: 'Identity', done: identityDone },
+          { id: 'voice-audience', label: 'Audience', done: audienceDone },
+          { id: 'voice-style',    label: 'Style',    done: true },
+        ]}
+      />
+
       {/* Clinic-vs-clinician callout — draws the line between this shared
           brand voice and each clinician's own auto-learned voice. */}
       <div className="rounded-xl bg-info/10 border border-info/25 p-3.5 flex gap-3">
@@ -225,14 +224,18 @@ export default function VoiceTonePage() {
         </div>
       </div>
 
-      {/* Unified brief + preview card */}
+      {/* Summary-first read of the current settings */}
       <BriefAndPreviewCard form={form} interviewerName={interviewerName} />
 
-      <div className="space-y-8">
-        {/* ── Zone 1 · Identity — who the practice is ─────────────────────── */}
-        <Section
+      {/* Rooms */}
+      <div className="space-y-4">
+        {/* Identity — who the practice is */}
+        <Room
+          id="voice-identity"
+          icon={Compass}
           title="Identity"
-          description={`Who the practice is — the core brief ${interviewerName} reads before writing anything.`}
+          purpose={`Who the practice is — the core brief ${interviewerName} reads before writing anything.`}
+          state={{ label: identityDone ? 'Complete' : 'Add detail', tone: identityDone ? 'done' : 'todo' }}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-4 items-start">
             <Textarea2
@@ -250,13 +253,15 @@ export default function VoiceTonePage() {
               hint="The adjectives, cadences, and phrases that make your voice yours."
             />
           </div>
-        </Section>
+        </Room>
 
-        {/* ── Zone 2 · Audience — who it's for ────────────────────────────── */}
-        <Section
+        {/* Audience — who it's for */}
+        <Room
+          id="voice-audience"
+          icon={Users}
           title="Audience"
-          description={`Who it's for — ${interviewerName} calibrates language and empathy to who is actually reading.`}
-          className="pt-8 border-t border-border/60"
+          purpose={`Who it's for — ${interviewerName} calibrates language and empathy to who is actually reading.`}
+          state={{ label: audienceDone ? 'Complete' : 'Add detail', tone: audienceDone ? 'done' : 'todo' }}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-3 items-start">
             <Field
@@ -272,53 +277,56 @@ export default function VoiceTonePage() {
               hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
             />
           </div>
-          <Textarea2
-            label="Full audience description"
-            value={form.audience_description}
-            onChange={set('audience_description')}
-            rows={4}
-            hint="The fuller picture of who you're writing for — their goals, fears, and what gets them to take action."
-          />
 
-          <SubGroup
-            title="Patient types"
-            description={`The patient types ${clinicName} serves. ${interviewerName} sharpens questions toward the type chosen at interview start.`}
-            className="pt-4 mt-1 border-t border-border/50"
-          >
+          <Collapse summary="Full audience description" hint="— the fuller picture, optional">
+            <Textarea2
+              label=""
+              value={form.audience_description}
+              onChange={set('audience_description')}
+              rows={4}
+              hint="Their goals, fears, and what gets them to take action."
+            />
+          </Collapse>
+
+          <div className="space-y-3 border-t border-border/50 pt-4">
+            <RoomSubhead
+              title="Patient types"
+              note={`${interviewerName} sharpens questions toward the type chosen at interview start.`}
+            />
             <ArchetypeCardsSection
               value={form.patient_context_json}
               onChange={set('patient_context_json')}
               interviewerName={interviewerName}
             />
-            <PatientContextEditor
-              value={form.patient_context_json}
-              onChange={set('patient_context_json')}
-              interviewerName={interviewerName}
-            />
-          </SubGroup>
-        </Section>
+            <Collapse summary="Patient detail" hint="— summary, primary avatar, prior-provider pain points">
+              <PatientContextEditor
+                value={form.patient_context_json}
+                onChange={set('patient_context_json')}
+                interviewerName={interviewerName}
+              />
+            </Collapse>
+          </div>
+        </Room>
 
-        {/* ── Zone 3 · Style — how it's expressed ─────────────────────────── */}
-        <Section
+        {/* Style — how it's expressed */}
+        <Room
+          id="voice-style"
+          icon={SlidersHorizontal}
           title="Style"
-          description="How it's expressed — tone and length, set together."
-          className="pt-8 border-t border-border/60"
+          purpose="How it's expressed — tone and length, set together."
+          state={{ label: 'Set', tone: 'done' }}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-6 items-start">
-            <SubGroup
-              title="Tone modes"
-              description={`When a staff member picks a tone at the start of an interview, ${interviewerName} applies the matching modifier. Leave any blank to fall back to the system default shown in the card.`}
-            >
+            <div className="space-y-3">
+              <RoomSubhead title="Tone modes" note="applied when a tone is picked at interview start" />
               <ToneModifierCards form={form} set={set} />
-            </SubGroup>
-            <SubGroup
-              title="Post length"
-              description={`How much depth ${interviewerName} writes into social posts. Hooks and calls-to-action stay short either way — this dials the everyday and deep-dive pieces.`}
-            >
+            </div>
+            <div className="space-y-3">
+              <RoomSubhead title="Post length" note="hooks & calls-to-action stay short either way" />
               <LengthLeanSelector value={form.social_length_lean} onChange={set('social_length_lean')} />
-            </SubGroup>
+            </div>
           </div>
-        </Section>
+        </Room>
       </div>
 
       <SaveBar
@@ -331,39 +339,19 @@ export default function VoiceTonePage() {
 }
 
 // ── BriefAndPreviewCard ──────────────────────────────────────────────────────
-// Merges what used to be two separate things on the legacy page:
-//   - WorkingSummaryCallout: deterministic string-template of the brief
-//   - PreviewBernardCard: live LLM opener generated from current settings
-//
-// One card. Resting state shows the deterministic summary; "Try a live
-// preview" hits /api/voice-preview and renders the opener below in a
-// blockquote. Avoids two answers to the "what does Bernard think" question.
-
-function buildWorkingSummary(form, interviewerName) {
-  const brandVoice = (form?.brand_voice || '').trim()
-  const audience = (form?.audience_short || '').trim()
-  if (!brandVoice && !audience) return null
-  const tones = [form?.tone_active, form?.tone_clinical, form?.tone_warm, form?.tone_smart]
-    .map(t => (t || '').trim()).filter(Boolean)
-  const name = interviewerName || 'Bernard'
-  const sentences = []
-  if (brandVoice && audience) {
-    const voiceSnippet = brandVoice.slice(0, 120) + (brandVoice.length > 120 ? '…' : '')
-    sentences.push(`${name} will write for ${audience} in a voice that comes across as ${voiceSnippet}.`)
-  } else if (brandVoice) {
-    const voiceSnippet = brandVoice.slice(0, 160) + (brandVoice.length > 160 ? '…' : '')
-    sentences.push(`${name} will write in a voice that comes across as ${voiceSnippet}.`)
-  } else if (audience) {
-    sentences.push(`${name} will tailor content for ${audience}.`)
-  }
-  if (tones.length) {
-    sentences.push(`${tones.length} tone mode${tones.length === 1 ? '' : 's'} configured so each piece can shift register when needed.`)
-  }
-  return sentences.join(' ')
-}
+// Summary-first read of the current settings: a structured "How {name} reads
+// you" card sitting above the rooms, so the outcome is visible before the
+// fields. Rows are deterministic (real field values); "Try a live preview" hits
+// /api/voice-preview and renders a sample opener below in a blockquote.
 
 function BriefAndPreviewCard({ form, interviewerName }) {
-  const summary = buildWorkingSummary(form, interviewerName)
+  const audience = (form?.audience_short || '').trim()
+  const brandVoice = (form?.brand_voice || '').trim()
+  const toneCount = [form?.tone_active, form?.tone_clinical, form?.tone_warm, form?.tone_smart]
+    .filter(t => (t || '').trim()).length
+  const lengthLabel = (LENGTH_LEAN_OPTIONS.find(o => o.value === (form?.social_length_lean || 'balanced')) || {}).label || 'Balanced'
+  const hasAny = !!(audience || brandVoice)
+
   const [opener, setOpener] = useState(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState(null)
@@ -384,31 +372,47 @@ function BriefAndPreviewCard({ form, interviewerName }) {
     }
   }
 
+  const rows = [
+    brandVoice && { k: 'Sounds like', v: brandVoice.length > 110 ? brandVoice.slice(0, 110) + '…' : brandVoice },
+    audience && { k: 'Writes for', v: audience },
+    { k: 'Length', v: lengthLabel },
+    { k: 'Tone modes', v: toneCount ? `${toneCount} configured` : 'System defaults' },
+  ].filter(Boolean)
+
   return (
-    <div className="rounded-lg border border-action/30 bg-action/5 px-4 py-3.5">
+    <div className="rounded-2xl border border-primary/25 bg-gradient-to-b from-card to-primary/5 px-5 py-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-2xs font-semibold uppercase tracking-widest text-action">
-          {interviewerName}&apos;s brief, as he reads it
+        <p className="text-2xs font-semibold uppercase tracking-widest text-primary">
+          How {interviewerName} reads you right now
         </p>
         <Button
           onClick={generate}
           disabled={loading}
           size="sm"
           variant="outline"
-          className="h-7 gap-1.5 border-action/40 bg-action/10 text-action hover:bg-action/20 hover:text-action"
+          className="h-7 gap-1.5 border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           <span className="text-xs">{loading ? 'Generating…' : 'Try a live preview'}</span>
         </Button>
       </div>
-      {summary ? (
-        <p className="text-sm text-foreground mt-2 leading-relaxed">{summary}</p>
+
+      {hasAny ? (
+        <dl className="mt-3 space-y-1.5">
+          {rows.map(r => (
+            <div key={r.k} className="flex gap-3 text-sm">
+              <dt className="w-24 shrink-0 pt-px text-xs font-semibold text-muted-foreground">{r.k}</dt>
+              <dd className="text-foreground">{r.v}</dd>
+            </div>
+          ))}
+        </dl>
       ) : (
         <p className="text-sm italic text-foreground/70 mt-2 leading-relaxed flex items-center gap-1.5">
           <Pencil className="h-3 w-3 text-verbatim-accent/80 shrink-0" />
-          {interviewerName} hasn&apos;t learned your voice yet — fill in the sections below and he&apos;ll mirror it back.
+          {interviewerName} hasn&apos;t learned your voice yet — fill in the rooms below and the read appears here.
         </p>
       )}
+
       {opener && (
         <blockquote className="mt-3 border-l-2 border-verbatim-accent/60 pl-3 text-sm italic text-foreground/80 leading-relaxed">
           &ldquo;{opener}&rdquo;
