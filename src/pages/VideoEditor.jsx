@@ -14,7 +14,7 @@ import { BERNARD_PRIMARY, BERNARD_ACTION } from '@/lib/brand'
 import { workspaceCaptionAccent, WORKSPACE_DEFAULT_ACCENT } from '@/lib/brandSwatches'
 import { apiFetch } from '@/lib/api'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
-import { getSegments, renderWholeVideo, findClips, updateSegment } from '@/lib/clipsLib'
+import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
@@ -1383,6 +1383,10 @@ export default function VideoEditor() {
   const [exportOpen, setExportOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
   const [dest, setDest] = useState({ broll: true, ad: false })
+  // Async b-roll export: the id of the destination row we're polling to
+  // completion (null when idle). See exportMutation + the poll effect below.
+  const [pollBrollId, setPollBrollId] = useState(null)
+  const exportPollStartRef = useRef(0)
   const toggleDest = (k) => setDest((d) => ({ ...d, [k]: !d[k] }))
 
   // Inline "finalize this clip into a post" — Q's "create the post inline" so
@@ -1439,27 +1443,55 @@ export default function VideoEditor() {
   // path moved inline (finalizeToPost above), so this no longer navigates away.
   const exportMutation = useAppMutation({
     mutationFn: async () => {
-      let briefReturned = false
+      let renderingAssetId = null
       if (dest.broll) {
-        const render = await doRenderClip()
-        // Pass briefId only when this clip was opened from a brief; the server
-        // closes that brief (scoped to workspace + this exact source asset) and
-        // reports back whether a brief row actually matched.
-        const r = await apiFetch('/api/editorial/clip-to-broll', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assetId, renderedBlobUrl: render.blobUrl, width: render.width, height: render.height, sizeBytes: render.sizeBytes, captionText: captionSummary(), ...(briefId ? { briefId } : {}) }),
-        })
-        briefReturned = !!r?.briefReturned
+        // Async export: the clip renders on a FRESH worker budget instead of
+        // inline, so a long/hi-res clip can't blow the 300s ceiling → 504
+        // ("Failed Export to library"). Returns fast (202) with the new b-roll
+        // row id; we poll it to completion below. briefId is passed only when
+        // this clip was opened from a Media Hub brief (the worker closes it on
+        // success, scoped to workspace + this exact source asset).
+        const r = await exportClipToBroll({ ...renderBody(), captionText: captionSummary(), ...(briefId ? { briefId } : {}) })
+        renderingAssetId = r?.assetId || null
       }
-      return { briefReturned }
+      return { renderingAssetId }
     },
-    onSuccess: ({ briefReturned }) => {
-      if (dest.broll) toast(briefReturned ? 'Saved to Library · brief marked returned' : 'Saved to Library')
+    onSuccess: ({ renderingAssetId }) => {
+      if (dest.broll) {
+        toast('Rendering your clip — it’ll appear in your Library shortly.')
+        if (renderingAssetId) { exportPollStartRef.current = 0; setPollBrollId(renderingAssetId) }
+      }
       setExportOpen(false)
       // Ad export is an interactive download modal — open it and STAY here.
       if (dest.ad) { setAdExportOpen(true) }
     },
   })
+  // Poll the async b-roll export to completion so we can toast success/failure
+  // without blocking the editor (the button frees the instant the 202 lands,
+  // matching the full-video render UX). Hard-capped — the worker has its own
+  // 300s budget and a stuck row is swept to 'failed' by cron within ~10min, so
+  // this never loops forever.
+  const EXPORT_POLL_CAP_MS = 6 * 60 * 1000
+  const { data: pollBroll } = useQuery({
+    queryKey: ['media-asset', pollBrollId],
+    queryFn: () => getMediaAsset(pollBrollId),
+    enabled: !!pollBrollId,
+    refetchInterval: (q) => {
+      if (!pollBrollId) return false
+      const row = q.state.data
+      if (row?.render_status && row.render_status !== 'rendering') return false
+      if (!exportPollStartRef.current) exportPollStartRef.current = Date.now()
+      if (Date.now() - exportPollStartRef.current > EXPORT_POLL_CAP_MS) return false
+      return 2500
+    },
+    refetchOnWindowFocus: false,
+  })
+  useEffect(() => {
+    if (!pollBrollId || !pollBroll) return
+    const s = pollBroll.render_status
+    if (s === 'ready') { toast('Clip saved to your Library.'); exportPollStartRef.current = 0; setPollBrollId(null) }
+    else if (s === 'failed') { toast('Clip export failed — please try again.'); exportPollStartRef.current = 0; setPollBrollId(null) }
+  }, [pollBrollId, pollBroll])
   const wholeMutation = useAppMutation({
     mutationFn: () => renderWholeVideo(assetId),
     onSuccess: () => { toast('Rendering the full-length video — track it on Moment Miner.'); navigate('/moments') },

@@ -16,7 +16,13 @@ import { indexInterviewSummary } from './practiceMemoryRag.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-const MODEL = 'anthropic/claude-sonnet-4-6'
+// Haiku 4.5, not Sonnet — validated 2026-07-16 against 3 real interview
+// transcripts (different clinicians/topics) run through this exact prompt:
+// summaries matched Sonnet on accuracy (no fabricated details in any sample)
+// at 1/3 the cost ($1/$5 vs $3/$15 per M tokens). Latency was a wash, not a
+// factor. Fire-and-forget + idempotent, so low blast radius if quality drifts
+// on some future transcript shape — regenerate and compare against Sonnet.
+const MODEL = 'anthropic/claude-haiku-4-5'
 
 // Hard caps so a stalled AI Gateway call or Supabase write can't silently burn
 // the waitUntil budget to the 300s function wall (which strands the summary +

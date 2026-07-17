@@ -6,11 +6,20 @@
 // Photos  → JPEG per channel   (Sharp + SVG overlay)
 // Videos  → MP4  per channel   (ffmpeg + Whisper subs + Sharp SVG overlay PNG)
 //
+// SYNCHRONOUS render: this endpoint renders inside the request and returns the
+// encoded output in the response. It serves the post + ad-export flows, which
+// render short selections that comfortably fit the 300s budget. The heavy
+// "Save to Library" b-roll export moved to the ASYNC worker path
+// (api/editorial/export-clip{,-worker}.js) because a long/hi-res clip could
+// blow the ceiling → 504. Both paths share the render implementation in
+// api/_lib/renderClipCore.js so they never drift.
+//
 // Body:
 //   {
 //     assetId: string,             // media_assets.id
 //     captionText?: string,        // overlaid in caption band (photos + videos)
 //     channels?: string[]          // default: 3 most-used channels for the asset kind
+//     ...editor doc (startSec, durationSec, grade, reframe, cuts, overlays, music, ...)
 //   }
 //
 // Auth: Clerk JWT + workspace org-id check + video_pipeline_enabled gate.
@@ -22,39 +31,16 @@
 //     errors?: [{ channel, error }],
 //     elapsedMs
 //   }
-// Errors: 400 / 401 / 403 / 404 / 500.
+// Errors: 400 / 401 / 403 / 404 / 415 / 500.
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
-import { renderPhotoChannel, CHANNEL_SPECS } from '../_lib/brandRender.js'
-import { renderVideoChannel, VIDEO_CHANNEL_SPECS } from '../_lib/brandRenderVideo.js'
-import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
-import { resolveMusicTrack } from '../_lib/musicLibrary.js'
-
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-
-async function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
-
-const DEFAULT_PHOTO_CHANNELS = ['linkedin_feed', 'instagram_reel_still', 'blog_hero']
-const DEFAULT_VIDEO_CHANNELS = ['linkedin_video', 'instagram_reel', 'blog_hero_video']
+import { resolveClipRender, runClipRender } from '../_lib/renderClipCore.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -75,209 +61,25 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
-  // --- Validate body ---
-  const body = req.body || {}
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  const assetId = String(body.assetId || '').trim()
-  if (!assetId) return res.status(400).json({ error: 'assetId_required' })
-  if (!UUID_RE.test(assetId)) return res.status(400).json({ error: 'invalid_assetId' })
-
-  const captionText = String(body.captionText || '').slice(0, 500)
-  const startSec = body.startSec != null ? Number(body.startSec) : undefined
-  const durationSec = body.durationSec != null ? Number(body.durationSec) : undefined
-  if (startSec !== undefined && !Number.isFinite(startSec)) return res.status(400).json({ error: 'startSec must be a number' })
-  if (durationSec !== undefined && !Number.isFinite(durationSec)) return res.status(400).json({ error: 'durationSec must be a number' })
-  const subtitles = body.subtitles !== undefined ? Boolean(body.subtitles) : undefined
-  const VALID_OVERLAY_POSITIONS = ['top', 'center', 'bottom']
-  const VALID_OVERLAY_SIZES = ['small', 'medium', 'large']
-  const overlayPosition = VALID_OVERLAY_POSITIONS.includes(body.overlayPosition) ? body.overlayPosition : undefined
-  const overlaySize = VALID_OVERLAY_SIZES.includes(body.overlaySize) ? body.overlaySize : undefined
-  const captionAccent = typeof body.captionAccent === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.captionAccent) ? body.captionAccent : undefined
-  const captionAnim = ['pop', 'fade'].includes(body.captionAnim) ? body.captionAnim : undefined
-  const captionStyle = ['bold', 'word_box', 'accent_fill', 'glow', 'underline', 'pop'].includes(body.captionStyle) ? body.captionStyle : undefined
-  // Edit-by-transcript cut ranges (clip-relative seconds). Sanitised to finite,
-  // positive-length ranges; the renderer normalises/merges + caps to the clip.
-  const cuts = Array.isArray(body.cuts)
-    ? body.cuts
-        .filter((c) => c && Number.isFinite(+c.start) && Number.isFinite(+c.end) && +c.end > +c.start)
-        .slice(0, 200)
-        .map((c) => ({ start: +c.start, end: +c.end }))
-    : undefined
-  // AI-colorist grade (canonical params). Clamped/normalized inside the renderer
-  // (gradeToFfmpeg → normalizeGrade); a neutral or absent grade is a no-op.
-  const grade = body.grade && typeof body.grade === 'object' && !Array.isArray(body.grade) ? body.grade : undefined
-  // Static reframe (zoom/pan) + manual timed text overlays. Validated/clamped
-  // inside the renderer (isNeutralReframe / normalizeOverlays); absent = no-op.
-  const reframe = body.reframe && typeof body.reframe === 'object' && !Array.isArray(body.reframe) ? body.reframe : undefined
-  const kenBurns = body.kenBurns && typeof body.kenBurns === 'object' && !Array.isArray(body.kenBurns)
-    && ['push_in', 'pull_out', 'pan_left', 'pan_right'].includes(body.kenBurns.motion)
-    ? { motion: body.kenBurns.motion, intensity: Math.max(0, Math.min(100, Number(body.kenBurns.intensity) || 50)) }
-    : undefined
-  const overlays = Array.isArray(body.overlays) && body.overlays.length ? body.overlays : undefined
-  // Playback speed 0.5..2 (default 1 = no-op); clamped again in the renderer.
-  const sp = Number(body.speed)
-  const speed = Number.isFinite(sp) && sp >= 0.5 && sp <= 2 ? sp : undefined
-  // Music bed (WS3.3): the client sends a trackId (+ mix options); the URL is
-  // resolved HERE from the server-side library so the renderer never fetches an
-  // arbitrary URL. An unknown/absent trackId → no music (byte-identical old path).
-  let music
-  if (body.music && typeof body.music === 'object' && !Array.isArray(body.music)) {
-    // Resolve against the DB, scoped to this workspace (shared tracks + own only).
-    const track = await resolveMusicTrack(String(body.music.trackId || ''), ws.id)
-    if (track) {
-      const vol = Number(body.music.volume)
-      music = {
-        url: track.url,
-        volume: Number.isFinite(vol) && vol >= 0 && vol <= 1 ? vol : 0.22,
-        duck: body.music.duck !== false,   // default ON
-        fade: body.music.fade !== false,   // default ON
-      }
-    }
-  }
-  // Edited-captions override: when the editor sends caption words explicitly (the
-  // user fixed a word), use them verbatim (already window-relative, 0-based)
-  // instead of slicing the source's transcript_words.
-  const captionWordsOverride = Array.isArray(body.captionWords) && body.captionWords.length ? body.captionWords : undefined
-  const requestedChannels = Array.isArray(body.channels) && body.channels.length
-    ? body.channels.map((c) => String(c))
-    : null  // resolved after we know asset kind
-
-  // --- Fetch asset + clinician ---
-  const assetRes = await sb(
-    `media_assets?id=eq.${assetId}&workspace_id=eq.${ws.id}` +
-      `&select=id,kind,blob_url,filename,staff_id,archived_at,consent_status,transcript_words`,
-  )
-  if (!assetRes.ok) return res.status(500).json({ error: 'db_error' })
-  const assets = await assetRes.json()
-  const asset = assets?.[0]
-  if (!asset) return res.status(404).json({ error: 'asset_not_found' })
-  if (asset.archived_at) return res.status(404).json({ error: 'asset_archived' })
-
-  // Consent gate — block only unresolved/withdrawn consent.
-  // Allowed consent vocabulary (media_assets CHECK): not_required | pending | obtained | revoked.
-  // 'granted' is NOT a valid value, so the old `!== 'granted'` gate 403'd every real asset.
-  // Matches the sibling handlers (render-segments / clip-to-broll / clip-to-post).
-  if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') {
-    return res.status(403).json({ error: 'consent_not_granted' })
-  }
-  if (!asset.blob_url) return res.status(500).json({ error: 'asset_missing_blob_url' })
-
-  const isVideo = asset.kind === 'video'
-  const isPhoto = asset.kind === 'photo'
-  if (!isVideo && !isPhoto) {
-    return res.status(415).json({ error: 'unsupported_asset_kind' })
+  // --- Validate + resolve the source asset and render params ---
+  const resolved = await resolveClipRender({ ws, body: req.body || {} })
+  if (!resolved.ok) {
+    return res.status(resolved.status).json({ error: resolved.error, ...(resolved.extra || {}) })
   }
 
-  // Resolve channels + validate against the appropriate spec map for this kind.
-  const specMap = isVideo ? VIDEO_CHANNEL_SPECS : CHANNEL_SPECS
-  const defaultChannels = isVideo ? DEFAULT_VIDEO_CHANNELS : DEFAULT_PHOTO_CHANNELS
-  const channels = requestedChannels ?? defaultChannels
-
-  for (const c of channels) {
-    if (!specMap[c]) {
-      return res.status(400).json({ error: 'invalid_channel', channel: c, kind: asset.kind })
-    }
-  }
-
-  let staffName = ''
-  if (asset.staff_id) {
-    const cRes = await sb(`staff?id=eq.${asset.staff_id}&workspace_id=eq.${ws.id}&select=name`)
-    if (cRes.ok) {
-      const cRows = await cRes.json()
-      staffName = cRows?.[0]?.name || ''
-    }
-  }
-
-  // --- Render each channel + upload ---
-  const renders = []
-  const errors = []
-  const renderStartedAt = Date.now()
-
-  for (const channel of channels) {
-    try {
-      const safeFilename = (asset.filename || 'render')
-        .replace(/[^\w.-]/g, '_')
-        .replace(/\.\w+$/, '')
-
-      if (isPhoto) {
-        const { buffer, width, height } = await renderPhotoChannel({
-          photoUrl: asset.blob_url,
-          channel,
-          captionText,
-          workspace: ws,
-          staffName,
-        })
-        // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
-        const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.jpg`
-        const blob = await blobPut(pathname, buffer, {
-          access: 'public',
-          contentType: 'image/jpeg',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        })
-        renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length })
-
-      } else {
-        // Persisted captions (migration 137): if the source was transcribed at
-        // detection (media_assets.transcript_words), slice those words to THIS
-        // clip window and hand them to the renderer — it then skips the per-render
-        // Whisper pass entirely. Legacy assets (no transcript_words) fall back to
-        // the live transcription inside renderVideoChannel, unchanged.
-        const captionWords = captionWordsOverride
-          || (Array.isArray(asset.transcript_words) && asset.transcript_words.length
-            ? sliceWordsToWindow(asset.transcript_words, startSec ?? 0, durationSec ?? 60)
-            : null)
-        // Video — ffmpeg pipeline with karaoke captions + brand overlay
-        const { buffer, width, height, hadSubtitles } = await renderVideoChannel({
-          videoUrl: asset.blob_url,
-          channel,
-          captionText,
-          workspace: ws,
-          staffName,
-          ...(startSec !== undefined ? { startSec } : {}),
-          ...(durationSec !== undefined ? { durationSec } : {}),
-          ...(subtitles !== undefined ? { subtitles } : {}),
-          ...(overlayPosition !== undefined ? { overlayPosition } : {}),
-          ...(overlaySize !== undefined ? { overlaySize } : {}),
-          ...(captionAccent !== undefined ? { captionAccent } : {}),
-          ...(captionAnim !== undefined ? { captionAnim } : {}),
-          ...(captionStyle !== undefined ? { captionStyle } : {}),
-          ...(cuts && cuts.length ? { cuts } : {}),
-          ...(captionWords && captionWords.length ? { captionWords } : {}),
-          ...(grade ? { grade } : {}),
-          ...(reframe ? { reframe } : {}),
-          ...(kenBurns ? { kenBurns } : {}),
-          ...(overlays ? { overlays } : {}),
-          ...(speed ? { speed } : {}),
-          ...(music ? { music } : {}),
-        })
-        // Use ws.id (immutable) not ws.slug (mutable) for blob namespacing.
-        const pathname = `media/renders/${ws.id}/${asset.id}/${channel}-${safeFilename}.mp4`
-        const blob = await blobPut(pathname, buffer, {
-          access: 'public',
-          contentType: 'video/mp4',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        })
-        renders.push({ channel, blobUrl: blob.url, width, height, sizeBytes: buffer.length, hadSubtitles })
-      }
-
-    } catch (e) {
-      console.error(`[render-clip] channel ${channel} failed:`, e?.stack || e?.message || e)
-      errors.push({ channel, error: e?.message || 'unknown' })
-    }
-  }
-
-  const elapsedMs = Date.now() - renderStartedAt
+  // --- Render each channel + upload (synchronous) ---
+  const { renders, errors, elapsedMs } = await runClipRender({
+    ws, asset: resolved.asset, params: resolved.params,
+  })
 
   waitUntil(Promise.resolve()) // placeholder for future analytics logging
 
   return res.status(renders.length > 0 ? 200 : 500).json({
-    assetId,
-    kind: asset.kind,
-    sourceBlobUrl: asset.blob_url,
-    captionText,
-    staffName,
+    assetId: resolved.asset.id,
+    kind: resolved.asset.kind,
+    sourceBlobUrl: resolved.asset.blob_url,
+    captionText: resolved.params.captionText,
+    staffName: resolved.params.staffName,
     renders,
     errors: errors.length ? errors : undefined,
     elapsedMs,
