@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useSmartBack } from '@/lib/useSmartBack'
-import { ArrowLeft, Loader2, ClipboardList, ImagePlus, X } from 'lucide-react'
+import { ArrowLeft, Loader2, ClipboardList, ImagePlus, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch } from '@/lib/api'
 import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
-import { CAPTION_LIMITS } from '@/lib/contentMeta'
+import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import { uploadMedia } from '@/lib/mediaLib'
 import { useUser } from '@clerk/react'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
@@ -57,15 +57,17 @@ const CHANNEL_GROUPS = [
   },
 ]
 
-// Emoji decoration per channel for the picker.
+// Icon per channel for the picker — derived from the canonical PLATFORM_META
+// registry (contentMeta.js) so these match the icons used everywhere else in
+// the app (Stories table, ChannelsSettings, etc.) rather than emoji.
 const CHANNEL_ICON = {
-  instagram_post:  '📸',
-  instagram_story: '◻️',
-  facebook:        '🔵',
-  linkedin:        '💼',
-  twitter:         '𝕏',
-  threads:         '🧵',
-  gbp:             '🗺️',
+  instagram_post:  PLATFORM_META.instagram?.icon,
+  instagram_story: PLATFORM_META.instagram_story?.icon,
+  facebook:        PLATFORM_META.facebook?.icon,
+  linkedin:        PLATFORM_META.linkedin?.icon,
+  twitter:         PLATFORM_META.twitter?.icon,
+  threads:         PLATFORM_META.threads?.icon,
+  gbp:             PLATFORM_META.gbp?.icon,
 }
 
 export default function NewBrief() {
@@ -446,6 +448,7 @@ export default function NewBrief() {
                             <div className="space-y-1">
                               {groupChannels.map((ch) => {
                                 const isSelected = selected.has(ch.id)
+                                const Icon = CHANNEL_ICON[ch.id] || FileText
                                 return (
                                   <label
                                     key={ch.id}
@@ -457,8 +460,9 @@ export default function NewBrief() {
                                       onChange={() => toggleChannel(ch.id)}
                                       className="h-4 w-4 accent-primary"
                                     />
-                                    <span className="text-sm">
-                                      {CHANNEL_ICON[ch.id] || '📄'} {ch.label}
+                                    <span className="flex items-center gap-2 text-sm">
+                                      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                      {ch.label}
                                     </span>
                                     {mode === 'as_written' && isSelected && limitForOutput(ch.id) && (
                                       <span className={`ml-auto text-2xs tabular-nums rounded px-1.5 py-0.5 ${bodyLen > limitForOutput(ch.id) ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>
