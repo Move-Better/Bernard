@@ -82,8 +82,6 @@ export default function BrandAnchorsEditor({ anchors = [] }) {
 
   return (
     <div>
-      <div className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Visual anchors</div>
-
       {imageAnchors.length > 0 && (
         <div className="grid sm:grid-cols-2 gap-3 mb-3">
           {imageAnchors.map((a) => (
