@@ -359,10 +359,24 @@ function BriefAndPreviewCard({ form, interviewerName }) {
   async function generate() {
     setLoading(true); setErr(null)
     try {
+      // Preview the in-progress edits (what the summary rows above show), not
+      // the saved workspace — pass the fields this page owns as a draft override.
       const data = await apiFetch('/api/voice-preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          draft: {
+            brand_voice:    form?.brand_voice    ?? '',
+            clinic_context: form?.clinic_context ?? '',
+            audience_short: form?.audience_short ?? '',
+            tone_modifiers: {
+              active:   form?.tone_active   ?? '',
+              clinical: form?.tone_clinical ?? '',
+              warm:     form?.tone_warm     ?? '',
+              smart:    form?.tone_smart    ?? '',
+            },
+          },
+        }),
       })
       setOpener(data.opener)
     } catch (e) {
