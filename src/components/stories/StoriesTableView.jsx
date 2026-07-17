@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Mic, SearchX, AlertTriangle, Target, ChevronLeft, ChevronRight, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -90,7 +90,6 @@ function storySubject(s) {
  */
 export default function StoriesTableView({ stories = [], isLoading = false }) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const containerRef = useRef(null)
   const [page, setPage] = useState(0)
@@ -245,19 +244,23 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                     </tr>
                   )}
                   <tr
-                    onClick={() => navigate(`/stories/${s.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    onClick={() => toggleExpand(s.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(s.id) } }}
                     onMouseEnter={() => qc.prefetchQuery({
                       queryKey: queryKeys.stories.detail(s.id),
                       queryFn: () => fetchStory(s.id),
                       staleTime: 30_000,
                     })}
-                    className="border-b border-border/60 last:border-b-0 hover:bg-primary/5 cursor-pointer transition-colors"
+                    className="border-b border-border/60 last:border-b-0 hover:bg-primary/5 cursor-pointer transition-colors focus:outline-none focus-visible:bg-primary/5"
                   >
                     <td className="px-1 align-middle w-9">
-                      {/* Disclosure — expands the story into per-channel sub-rows.
-                          stopPropagation so opening channels never also fires the
-                          row's navigate-to-StoryDetail. Row click, hover-prefetch,
-                          and the Subject link all stay intact. */}
+                      {/* Disclosure — the explicit expand affordance (the whole row
+                          also toggles now, matching the Posts tab). stopPropagation
+                          so the chevron's own handler doesn't double-fire the row
+                          onClick. Deeper nav lives on the "Open" link below. */}
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); toggleExpand(s.id) }}
@@ -273,14 +276,12 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                     </td>
                     <td className="px-3.5 py-2.5 align-middle max-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Link
-                          to={`/stories/${s.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="font-semibold text-foreground truncate hover:underline focus:outline-none focus-visible:underline"
+                        <span
+                          className="font-semibold text-foreground truncate min-w-0"
                           title={subject || 'No topic set'}
                         >
                           {subject || <span className="italic text-muted-foreground font-normal">No topic set</span>}
-                        </Link>
+                        </span>
                         {s.campaign_id && s.campaign_name ? (
                           <span className="shrink-0 inline-flex items-center gap-1 text-3xs font-semibold rounded-full px-1.5 py-0.5 border border-action/25 bg-action/10 text-action">
                             <Target className="w-2.5 h-2.5" aria-hidden="true" />
@@ -295,6 +296,15 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                               : `${failedPlatforms.length} failed`}
                           </span>
                         )}
+                        {/* Explicit open — the row itself expands the channels, so
+                            deeper navigation to the full story lives on this link. */}
+                        <Link
+                          to={`/stories/${s.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0 ml-auto inline-flex items-center gap-0.5 text-xs font-semibold text-primary px-2 py-0.5 rounded-md border border-primary/30 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+                        >
+                          Open →
+                        </Link>
                       </div>
                     </td>
                     <td className="px-3.5 py-2.5 align-middle whitespace-nowrap">
