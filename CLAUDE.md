@@ -660,6 +660,15 @@ Three complementary commands cover code/UI/prod health:
 
 Pair `/audit` with `/schedule` for an automated weekly run; reserve `/auditfull` for monthly or pre-release passes.
 
+## Acting on in-app feedback — read the `feedback` table, not the inbox
+
+Every submission from Bernard's in-app Feedback button is stored durably in the **`feedback` Supabase table** (`message`, `page_url`, `screenshot_url`, `user_name`, `created_at` — see `api/_routes/feedback.js`). The email to `ADMIN_NOTIFY_EMAIL` is only a notification copy — **never parse the inbox; query the table.** When a staffer reports bugs via Feedback ("act on these feedback emails"), the table IS the queue.
+
+- **`/triage-feedback`** command — queries untriaged rows (`triaged_at IS NULL`), maps each `page_url` → code, reads the screenshot, diagnoses the root cause, writes a P0/P1 punch list to `.claude/feedback-history/`, spawns a task chip per actionable item, and stamps rows `triaged_at`. **Report-only** by default (no auto-PRs — review before ship). Migration 177 added `feedback.triaged_at` + `triage_note` as DB-native state so a headless routine and an interactive session never double-process a row.
+- A weekly scheduled task (`triage-bernard-feedback`, Mondays 9am) runs it automatically.
+- To re-open a triaged item: `UPDATE feedback SET triaged_at = NULL WHERE id = '…'`.
+- Fixes still go through the normal branch → PR → prod → Chrome-verify loop (authed UI surfaces need the post-deploy Chrome check). Shipped as the feedback-triage loop, #2179 (2026-07-16).
+
 **Audit reports + `.last-audit` live in the PRIMARY checkout's `.claude/audit-history/` — a session worktree writing them relative strands them.** `.claude/audit-history/` is gitignored, and harness session worktrees get their own disconnected copy of `.claude/`, so an audit that writes `<date>-full.md` + `.last-audit` via relative paths leaves them in a disposable worktree: the report vanishes on worktree cleanup and the primary's `.last-audit` silently goes stale, mis-scoping every future `/audit` since-last run. (2026-07-15: the 7-12 full baseline was found stranded this way — the primary's pointer still read Jul 3.) Rule: audit runs write the report and `git rev-parse HEAD > .last-audit` to the absolute primary path (`/Users/qbook/Claude Projects/Bernard/.claude/audit-history/`), and at audit start check the worktree copy for stranded reports from prior sessions and rescue any missing from the primary.
 
 **Pre-merge Claude review** (`pr.yml` `review` job) — runs an inline `prompt` on every PR via `anthropics/claude-code-action@beta`, posting inline findings before merge. Non-blocking (`continue-on-error: true`); `build` is still the only required gate. To promote it to a required check, add `review` to branch protection status checks. Two pitfalls found in initial wiring:

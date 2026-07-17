@@ -902,6 +902,35 @@ running week's posts — an audit P1 (#2138).
   the streak from the data it counts. Different surface, different (intentional) contract — an
   "audit found a UTC week boundary" sweep must leave this one alone.
 
+### `/week` is driven by the ATOM, not the content_item — (re)scheduling must sync the atom
+
+`week-summary.js` filters `content_plan_atoms` by `plan_week` and lays each card out by the
+**atom's** `scheduled_at`; it joins `content_items` only for status/thumbnail/excerpt. So the atom
+row — not the content item — decides whether a piece appears on the board and on which day. This
+means **any write to `content_items.scheduled_at` must also update the linked atom** (the atom whose
+`content_piece_id = <item id>`), setting the atom's `scheduled_at` AND recomputing
+`plan_week = mondayOf(scheduledAt, ws.cadence_policy?.timezone)` — with the SAME tz-aware `mondayOf`
+the board reads with, or the piece lands in the wrong week bucket. Otherwise the atom stays pinned to
+its original `plan_week` and an approved, rescheduled post silently vanishes from Your Week (real user
+feedback 2026-07-13; fixed in the `db/content` PATCH handler, #2182 — best-effort, since one-off Posts
+have no atom and match 0 rows). Grep for every writer of `content_items.scheduled_at` when touching
+scheduling — the user-facing path is `PATCH /api/db/content` (via `useContentWorkflow.publish`);
+dispatch-time writes (`buffer.js`, `dispatchContentItem.js`) generally re-write the same value and
+rarely cross a week boundary, but are the next place to check if a same-week desync ever surfaces.
+
+### Generated captions are hard-clamped to the platform char cap at GENERATION, not just publish
+
+The per-(platform,angle) `cap` in `socialLengthTargets.js` is only a *prose instruction* to the LLM
+("Never exceed N characters") — the model overshoots. So the generation path deterministically clamps:
+`draftAtom` (and its GBP per-location variants) runs the returned caption through
+`clampToCap(text, platformCap(platform))` (both in `socialLengthTargets.js`) — a sentence-aware trim
+(last `.!?` under cap → last word boundary → hard slice, no ellipsis) applied AFTER the voice judge so
+fidelity scores the full text. The publish paths (`buffer.js` GBP branches) use the same `clampToCap`
+as a final gate for non-atom sources (manual edits, one-off posts, brief-broadcast). Any NEW caption
+generation path or NEW capped platform must clamp too — don't rely on the prompt or the blind
+`slice(0, N)` that used to be the only enforcement (shipped #2181, user feedback "caption auto
+generated over character limit").
+
 ## Unified editor shell (carousel + reel)
 
 Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) and the clip/reel
