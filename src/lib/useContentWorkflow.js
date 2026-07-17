@@ -231,9 +231,11 @@ export function useContentWorkflow(piece) {
             await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } })
           } catch { /* non-fatal: publish already used the rendered URLs */ }
         }
-        // publishAndTrack already set status + publishedAt; this pass writes the
-        // approver audit trail and (for scheduled posts) persists the chosen
-        // scheduled_at on the row so the calendar/header reflect the new time.
+        // publishAndTrack already set status + publishedAt; this pass persists
+        // (for scheduled posts) the chosen scheduled_at so the calendar/header
+        // reflect the new time. approvedBy/approvedAt below are inert — the
+        // server derives approver identity from auth.userId on the 'approved'
+        // transition only (api/_routes/db/content.js), never from the client.
         await updateStatus.mutateAsync({
           id: piece.id,
           status: scheduling ? 'scheduled' : 'published',

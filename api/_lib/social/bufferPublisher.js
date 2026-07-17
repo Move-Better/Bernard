@@ -18,6 +18,7 @@ import { getCredential } from '../getCredential.js'
 import { prepareMediaForBuffer } from '../prepareMediaForBuffer.js'
 import { fetchPostStats } from '../bufferPostStats.js'
 import { SocialPublisher, publishError, emptyMetrics } from './socialPublisher.js'
+import { clampToCap, platformCap } from '../socialLengthTargets.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 const BUFFER_AUTHORIZE_URL = 'https://api.bufferapp.com/1/oauth2/authorize'
@@ -158,7 +159,7 @@ export class BufferPublisher extends SocialPublisher {
     const posts = []
     for (const { id: locationId, channelId } of fanOut) {
       const rawText = (locationId && locationContents?.[locationId]) ? locationContents[locationId] : content
-      const postText = platform === 'gbp' ? rawText.slice(0, 1500) : rawText // GBP 1500-char cap
+      const postText = platform === 'gbp' ? clampToCap(rawText, platformCap('gbp')) : rawText // GBP hard cap, word-boundary aware (matches publish/buffer.js)
       const input = {
         channelId,
         text: postText,
