@@ -1,0 +1,316 @@
+<style>
+  :root {
+    --background: 0 0% 100%; --foreground: 222 47% 8%;
+    --card: 0 0% 100%; --muted: 220 14% 96%; --muted-foreground: 215 19% 34%;
+    --border: 214 32% 91%; --primary: 186 83% 27%; --primary-foreground: 0 0% 100%;
+    --success: 152 76% 40%; --warning: 38 92% 50%; --warning-foreground: 222 47% 8%;
+    --info: 199 95% 40%; --destructive: 0 84% 60%; --action: 32 95% 44%;
+    --shadow: 222 47% 8%;
+    --neutral-tint: 200 20% 97%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 220 26% 9%; --foreground: 210 20% 92%;
+      --card: 220 22% 12%; --muted: 220 18% 17%; --muted-foreground: 215 15% 62%;
+      --border: 220 16% 22%; --primary: 186 62% 46%; --primary-foreground: 220 26% 9%;
+      --success: 152 60% 46%; --warning: 38 88% 56%; --info: 199 85% 55%;
+      --destructive: 0 72% 60%; --action: 32 90% 55%;
+      --neutral-tint: 220 20% 13%;
+    }
+  }
+  :root[data-theme="light"] {
+    --background: 0 0% 100%; --foreground: 222 47% 8%; --card: 0 0% 100%;
+    --muted: 220 14% 96%; --muted-foreground: 215 19% 34%; --border: 214 32% 91%;
+    --primary: 186 83% 27%; --primary-foreground: 0 0% 100%; --success: 152 76% 40%;
+    --warning: 38 92% 50%; --info: 199 95% 40%; --destructive: 0 84% 60%;
+    --action: 32 95% 44%; --neutral-tint: 200 20% 97%;
+  }
+  :root[data-theme="dark"] {
+    --background: 220 26% 9%; --foreground: 210 20% 92%; --card: 220 22% 12%;
+    --muted: 220 18% 17%; --muted-foreground: 215 15% 62%; --border: 220 16% 22%;
+    --primary: 186 62% 46%; --primary-foreground: 220 26% 9%; --success: 152 60% 46%;
+    --warning: 38 88% 56%; --info: 199 85% 55%; --destructive: 0 72% 60%;
+    --action: 32 90% 55%; --neutral-tint: 220 20% 13%;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 96px; }
+
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: hsl(var(--primary)); }
+  h1 { font-size: 30px; line-height: 1.15; margin: 8px 0 6px; letter-spacing: -.02em; text-wrap: balance; font-weight: 800; }
+  .sub { color: hsl(var(--muted-foreground)); font-size: 15px; max-width: 62ch; }
+  h2 { font-size: 19px; font-weight: 750; letter-spacing: -.01em; margin: 0 0 4px; }
+  h3 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+
+  .verdict {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: hsl(var(--warning) / .13); color: hsl(var(--warning-foreground));
+    border: 1px solid hsl(var(--warning) / .45);
+    padding: 7px 14px; border-radius: 999px; font-weight: 750; font-size: 13px; margin-top: 16px;
+  }
+  .verdict .dot { width: 9px; height: 9px; border-radius: 999px; background: hsl(var(--warning)); }
+
+  section { margin-top: 40px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 14px; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card {
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+    border-radius: 14px; padding: 18px 18px 16px; position: relative; overflow: hidden;
+  }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: hsl(var(--rail, var(--border))); }
+  .card.ok { --rail: var(--success); } .card.watch { --rail: var(--warning); } .card.risk { --rail: var(--destructive); }
+  .card .q { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+  .card p { font-size: 13.5px; color: hsl(var(--foreground) / .88); margin: 8px 0 0; }
+  .card .verdict-chip { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; display: inline-block; margin-top: 10px; }
+  .chip-ok { background: hsl(var(--success) / .14); color: hsl(var(--success)); }
+  .chip-watch { background: hsl(var(--warning) / .16); color: hsl(var(--warning-foreground)); }
+  .chip-risk { background: hsl(var(--destructive) / .14); color: hsl(var(--destructive)); }
+
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; background: hsl(var(--muted)); padding: 1px 5px; border-radius: 5px; }
+
+  /* mockup table */
+  .demo-frame {
+    background: hsl(var(--neutral-tint)); border: 1px solid hsl(var(--border));
+    border-radius: 16px; padding: 20px; margin-top: 16px;
+  }
+  .demo-hint { font-size: 12.5px; color: hsl(var(--muted-foreground)); margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+  .demo-hint kbd { font-family: inherit; font-size: 11px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 6px; padding: 2px 7px; font-weight: 650; }
+
+  table.stories { width: 100%; border-collapse: collapse; font-size: 13.5px; background: hsl(var(--card)); border-radius: 12px; overflow: hidden; border: 1px solid hsl(var(--border)); }
+  .stories thead th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .6); padding: 9px 14px; }
+  .stories thead th:last-child { text-align: right; }
+  .storyrow { border-top: 1px solid hsl(var(--border) / .6); cursor: pointer; transition: background .12s; }
+  .storyrow:hover { background: hsl(var(--primary) / .05); }
+  .stories td { padding: 11px 14px; vertical-align: middle; }
+  .disc { width: 34px; padding-right: 0 !important; }
+  .disc button { all: unset; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 7px; color: hsl(var(--muted-foreground)); cursor: pointer; transition: background .12s, transform .18s; }
+  .disc button:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+  .disc button:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 1px; }
+  .storyrow.open .disc button { transform: rotate(90deg); }
+  .date { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; border-left: 2px solid hsl(var(--rail, var(--border))); }
+  .storyrow.rl-review .date { --rail: var(--warning); } .storyrow.rl-pub .date { --rail: var(--success); } .storyrow.rl-draft .date { --rail: var(--muted-foreground); }
+  .subject { font-weight: 650; }
+  .subject .sub-meta { display: inline-flex; gap: 6px; margin-left: 8px; }
+  .fail-chip { font-size: 10px; font-weight: 700; background: hsl(var(--destructive)); color: #fff; padding: 2px 7px; border-radius: 999px; }
+  .author { color: hsl(var(--muted-foreground)); white-space: nowrap; }
+  .avatar { display: inline-flex; width: 20px; height: 20px; border-radius: 999px; background: hsl(var(--primary) / .15); color: hsl(var(--primary)); font-size: 10px; font-weight: 700; align-items: center; justify-content: center; margin-right: 6px; vertical-align: middle; }
+  .stage { font-size: 11px; font-weight: 650; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .st-review { background: hsl(var(--warning) / .16); color: hsl(var(--warning-foreground)); }
+  .st-pub { background: hsl(var(--success) / .16); color: hsl(var(--success)); }
+  .st-draft { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .platchips { display: flex; gap: 5px; }
+  .plat { font-size: 10.5px; font-weight: 650; border: 1px solid hsl(var(--border)); background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); border-radius: 6px; padding: 2px 7px; white-space: nowrap; }
+  .plat.more { border: none; background: none; }
+  .pieces-n { text-align: right; color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
+
+  /* sub-rows */
+  .subrow { background: hsl(var(--neutral-tint)); border-top: 1px dashed hsl(var(--border)); }
+  .subrow td { padding: 0; }
+  .sub-inner { display: grid; grid-template-columns: 34px 96px 1fr 120px 130px 92px; align-items: center; gap: 0; padding: 9px 14px 9px 0; }
+  .sub-inner .rail-cell { border-left: 2px solid hsl(var(--sr, var(--muted-foreground))); height: 26px; }
+  .subrow.s-draft { --sr: var(--action); } .subrow.s-sched { --sr: var(--info); } .subrow.s-pub { --sr: var(--success); } .subrow.s-fail { --sr: var(--destructive); }
+  .sub-plat { font-size: 11.5px; font-weight: 700; color: hsl(var(--foreground)); padding-left: 14px; }
+  .sub-caption { font-size: 12.5px; color: hsl(var(--muted-foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 14px; }
+  .sub-status { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; justify-self: start; }
+  .ss-draft { background: hsl(var(--action) / .15); color: hsl(var(--action)); }
+  .ss-sched { background: hsl(var(--info) / .15); color: hsl(var(--info)); }
+  .ss-pub { background: hsl(var(--success) / .15); color: hsl(var(--success)); }
+  .ss-fail { background: hsl(var(--destructive) / .15); color: hsl(var(--destructive)); }
+  .sub-when { font-size: 11.5px; color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
+  .sub-edit { all: unset; cursor: pointer; font-size: 11.5px; font-weight: 700; color: hsl(var(--primary)); padding: 4px 10px; border: 1px solid hsl(var(--primary) / .3); border-radius: 8px; justify-self: end; margin-right: 14px; transition: background .12s; }
+  .sub-edit:hover { background: hsl(var(--primary) / .08); }
+  .sub-edit:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 1px; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); background: hsl(var(--foreground)); color: hsl(var(--background)); font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; box-shadow: 0 8px 30px hsl(var(--shadow) / .25); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .callout { border: 1px solid hsl(var(--primary) / .3); background: hsl(var(--primary) / .05); border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
+  .callout h3 { color: hsl(var(--primary)); }
+  ul.tight { margin: 8px 0 0; padding-left: 18px; } ul.tight li { font-size: 13.5px; margin: 5px 0; color: hsl(var(--foreground) / .9); }
+  .foot { margin-top: 48px; padding-top: 18px; border-top: 1px solid hsl(var(--border)); font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 720px) {
+    .stories thead th.hide-sm, .stories td.hide-sm { display: none; }
+    .sub-inner { grid-template-columns: 20px 70px 1fr 84px; }
+    .sub-caption, .sub-when { display: none; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Investigation · Stories table</div>
+  <h1>Expandable per-channel rows on Stories</h1>
+  <p class="sub">Can the Posts-tab expand pattern come to the main Stories table? Short answer: yes, and the data already fits — but one interaction decision decides whether it's safe. Below: the findings, then a live mockup of the recommended approach.</p>
+  <div class="verdict"><span class="dot"></span> GO with caveats — don't hijack the row click</div>
+
+  <section>
+    <div class="section-label">Findings — the five questions</div>
+    <div class="grid">
+      <div class="card watch">
+        <div class="q">1 · Row-click today</div>
+        <p>The whole row navigates to <code>/stories/:id</code> (StoryDetail), with a hover <em>prefetch</em> of that story and a <code>useSmartBack</code> return contract. This is heavily-used muscle memory. Mirroring Posts' "click = expand" here would <strong>delete</strong> that quick-nav.</p>
+        <span class="verdict-chip chip-watch">Keep row→detail; add a separate expander</span>
+      </div>
+      <div class="card watch">
+        <div class="q">2 · Do pieces carry the fields?</div>
+        <p><code>story.pieces</code> has <code>platform / status / scheduled_at / published_at / performed_well</code> — enough for status + time + an Edit button. <strong>Caption &amp; media are stripped</strong> (view=card + summarizePiece). But the row already hover-prefetches <code>fetchStory</code> (full pieces incl. content) — reuse that cache for the preview.</p>
+        <span class="verdict-chip chip-ok">Fields present; caption is opportunistic</span>
+      </div>
+      <div class="card ok">
+        <div class="q">3 · Volume &amp; perf</div>
+        <p>movebetter: 16 stories, avg <strong>5.9</strong> / max 12 pieces each. Expand is opt-in per row and reuses the hover-prefetch cache, so <strong>no new N+1</strong> beyond a fetch the row already fires. Trivial scale.</p>
+        <span class="verdict-chip chip-ok">No perf concern</span>
+      </div>
+      <div class="card ok">
+        <div class="q">4 · Sort / filter / paginate</div>
+        <p>Key expand state by <code>story.id</code> in a <code>Set</code> (not row index). Re-sorts and filter changes then keep the right rows open and never jump. Page reset already fires on the result-set key.</p>
+        <span class="verdict-chip chip-ok">Safe if keyed by id</span>
+      </div>
+      <div class="card watch">
+        <div class="q">5 · Duplicate of StoryDetail?</div>
+        <p>StoryDetail already shows every channel (AssetsPane) in depth. Expand-in-place is <em>additive</em>: a quick peek + a direct jump to one channel's editor without a full page nav. Real, but modest — worth shipping only as a lightweight lens, not a second editor.</p>
+        <span class="verdict-chip chip-watch">Additive, keep it light</span>
+      </div>
+      <div class="card ok">
+        <div class="q">✓ Edit target already exists</div>
+        <p><code>/publish/:pieceId</code> (StoryboardPublish) loads any single content_item and <strong>already handles both story pieces and post pieces</strong>. A sub-row "Edit" reuses the exact canonical editor — nothing new invented.</p>
+        <span class="verdict-chip chip-ok">Zero new routes</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">Recommended interaction — try it</div>
+    <div class="demo-frame">
+      <p class="demo-hint">
+        <span>Click the <kbd>›</kbd> chevron to expand a story into its channels. Click anywhere else on the row to "open the story" (row-click stays intact).</span>
+      </p>
+      <table class="stories">
+        <thead>
+          <tr>
+            <th class="disc"></th>
+            <th>Date</th>
+            <th>Subject</th>
+            <th class="hide-sm">Author</th>
+            <th class="hide-sm">Stage</th>
+            <th class="hide-sm">Platforms</th>
+            <th>Pieces</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>The one caveat that makes it safe</h3>
+      <p style="font-size:13.5px;margin:6px 0 0;color:hsl(var(--foreground)/.9)">On Posts, "click row = expand" was fine because the row only ever opened an editor. On Stories the row opens <strong>StoryDetail</strong> — a richer, more-used destination. So the recommendation diverges from the approved Posts interaction in exactly one way:</p>
+      <ul class="tight">
+        <li><strong>Add a dedicated chevron disclosure</strong> (leading cell). Chevron = expand; the rest of the row keeps its <code>/stories/:id</code> navigation, hover-prefetch, and back contract.</li>
+        <li><strong>Lazy per-row</strong>: fetch full pieces only on first expand, from the same <code>queryKeys.stories.detail</code> cache the hover already warms.</li>
+        <li><strong>Expand state = <code>Set&lt;storyId&gt;</code></strong>, so sort/filter/pagination never lose or misplace an open row.</li>
+        <li><strong>Mirror the approved Posts decisions otherwise</strong>: expand-only (no auto-open primary channel), no publish-all button.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">Blast radius — what it touches</div>
+    <div class="grid">
+      <div class="card ok"><div class="q">Files</div><p>One component: <code>StoriesTableView.jsx</code>. Optionally a tiny shared sub-row. No API, no migration, no route.</p></div>
+      <div class="card ok"><div class="q">Data</div><p>Reuses existing <code>fetchStory</code> / <code>useStory</code>. No new query, no select-clause change.</p></div>
+      <div class="card watch"><div class="q">Regression to watch</div><p>The chevron cell must <code>stopPropagation</code> so expanding never also fires row-navigation. That's the whole footgun.</p></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    Recommendation: <strong>GO with caveats</strong> — scope one focused PR against <code>StoriesTableView.jsx</code> after sign-off. Est. ~half a day, low risk. · Verdict badge and copy reflect a proposal, not shipped code.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORIES = [
+    { id: 's1', date: '07/14/26', subject: 'Why we screen before we adjust', author: 'MQ', stage: 'review', rail: 'review', n: 8,
+      plats: ['Blog','IG','FB','LI'], failed: false,
+      pieces: [
+        { plat:'Blog', st:'draft', when:'—', cap:'The first visit isn’t a crack—it’s a screen.' },
+        { plat:'Instagram', st:'sched', when:'Jul 18, 9:00 AM', cap:'Before we adjust anything, we watch how you move…' },
+        { plat:'Facebook', st:'sched', when:'Jul 18, 9:00 AM', cap:'Before we adjust anything, we watch how you move…' },
+        { plat:'LinkedIn', st:'draft', when:'—', cap:'Screening first is the difference between guessing and knowing.' },
+      ] },
+    { id: 's2', date: '07/11/26', subject: 'The surfer who was back in the water by week four', author: 'MQ', stage: 'published', rail: 'pub', n: 6,
+      plats: ['GBP','IG','Blog'], failed: false,
+      pieces: [
+        { plat:'GBP', st:'pub', when:'Jul 12', cap:'She came in barely able to paddle out…' },
+        { plat:'Instagram', st:'pub', when:'Jul 12', cap:'Four weeks. That’s all it took to get her back on the board.' },
+        { plat:'Blog', st:'pub', when:'Jul 12', cap:'A late-20s surfer, sidelined by low-back pain…' },
+      ] },
+    { id: 's3', date: '07/09/26', subject: 'What “move better” actually means', author: 'SR', stage: 'draft', rail: 'draft', n: 5,
+      plats: ['IG','FB','Email'], failed: true,
+      pieces: [
+        { plat:'Instagram', st:'draft', when:'—', cap:'It’s not about being bendy. It’s about moving without thinking about it.' },
+        { plat:'Facebook', st:'fail', when:'Failed Jul 10', cap:'It’s not about being bendy…' },
+        { plat:'Email', st:'draft', when:'—', cap:'This month: what we mean when we say “move better.”' },
+      ] },
+  ];
+
+  const SHORT = { Blog:'Blog', Instagram:'IG', Facebook:'FB', LinkedIn:'LI', GBP:'GBP', Email:'Email' };
+  const SS = { draft:['ss-draft','Draft'], sched:['ss-sched','Scheduled'], pub:['ss-pub','Published'], fail:['ss-fail','Failed'] };
+  const open = new Set();
+
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1600); }
+
+  function render(){
+    const tb = document.getElementById('tbody');
+    tb.innerHTML = '';
+    STORIES.forEach(s => {
+      const isOpen = open.has(s.id);
+      const tr = document.createElement('tr');
+      tr.className = 'storyrow rl-' + s.rail + (isOpen ? ' open' : '');
+      tr.onclick = () => toast('→ open StoryDetail  /stories/' + s.id);
+      const stageCls = { review:'st-review', published:'st-pub', draft:'st-draft' }[s.stage];
+      const stageLbl = { review:'In Review', published:'Published', draft:'Drafting' }[s.stage];
+      const chips = s.plats.slice(0,3).map(p=>`<span class="plat">${SHORT[p]||p}</span>`).join('')
+        + (s.plats.length>3 ? `<span class="plat more">+${s.plats.length-3}</span>` : '');
+      tr.innerHTML = `
+        <td class="disc"><button aria-label="Expand channels" aria-expanded="${isOpen}">${chevron()}</button></td>
+        <td class="date">${s.date}</td>
+        <td class="subject">${s.subject}${s.failed?'<span class="sub-meta"><span class="fail-chip">1 failed</span></span>':''}</td>
+        <td class="author hide-sm"><span class="avatar">${s.author}</span></td>
+        <td class="hide-sm"><span class="stage ${stageCls}">${stageLbl}</span></td>
+        <td class="hide-sm"><div class="platchips">${chips}</div></td>
+        <td class="pieces-n">${s.n}</td>`;
+      tr.querySelector('.disc button').onclick = (e)=>{ e.stopPropagation(); if(open.has(s.id))open.delete(s.id); else open.add(s.id); render(); };
+      tb.appendChild(tr);
+
+      if(isOpen){
+        s.pieces.forEach(p=>{
+          const [scls,slbl] = SS[p.st];
+          const sr = document.createElement('tr');
+          sr.className = 'subrow s-' + p.st;
+          sr.innerHTML = `<td colspan="7"><div class="sub-inner">
+            <div class="rail-cell"></div>
+            <div class="sub-plat">${p.plat}</div>
+            <div class="sub-caption">${p.cap}</div>
+            <div><span class="sub-status ${scls}">${slbl}</span></div>
+            <div class="sub-when">${p.when}</div>
+            <button class="sub-edit">Edit →</button>
+          </div></td>`;
+          sr.querySelector('.sub-edit').onclick = (e)=>{ e.stopPropagation(); toast('→ /publish/'+s.id+'-'+p.plat.toLowerCase()+'  (StoryboardPublish)'); };
+          tb.appendChild(sr);
+        });
+      }
+    });
+  }
+  function chevron(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'; }
+  render();
+</script>
