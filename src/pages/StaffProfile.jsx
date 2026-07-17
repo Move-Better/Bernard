@@ -495,7 +495,7 @@ export default function StaffProfile() {
 
       {/* ── Settings tab ──────────────────────────────────────────── */}
       {activeTab === 'settings' && (
-        <div className="px-6 py-6 space-y-4 max-w-2xl">
+        <div className="px-6 py-6 space-y-4">
           {isMyStaffProfile && <DisplayNameCard />}
           {(isMyStaffProfile || role === 'admin') && (
             <DefaultToneCard staffMember={staffMember} />

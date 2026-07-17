@@ -173,7 +173,7 @@ export default function BrandIdentitySettings() {
 
   // ── Empty state ────────────────────────────────────────────────────────────
   return (
-    <div className="py-2 max-w-3xl">
+    <div className="py-2">
       <PageHeader
         className="mb-5"
         icon={Compass}
