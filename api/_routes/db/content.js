@@ -314,18 +314,19 @@ export default async function handler(req, res) {
     // original plan_week — and an approved, rescheduled post silently vanishes
     // from Your Week (user feedback 2026-07-13). Mirror the new schedule onto
     // the atom, recomputing plan_week with the SAME tz-aware mondayOf the board
-    // uses so it lands in the right week bucket. Best-effort: a non-atom piece
-    // (one-off Post) matches zero rows, and a failure here must not fail the
-    // user's save (the content item is already updated).
+    // uses so it lands in the right week bucket. On UNSCHEDULE (scheduledAt ===
+    // null) return the atom to the CURRENT week so the freed draft reappears on
+    // this week's board, rather than staying pinned to the week it was last
+    // scheduled to (audit 2026-07-16). Best-effort: a non-atom piece (one-off
+    // Post) matches zero rows, and a failure here must not fail the user's save
+    // (the content item is already updated).
     if (updated && patch.scheduledAt !== undefined) {
-      const planWeek = patch.scheduledAt
-        ? mondayOf(patch.scheduledAt, ws.cadence_policy?.timezone)
-        : null
+      const planWeek = mondayOf(patch.scheduledAt || new Date().toISOString(), ws.cadence_policy?.timezone)
       await sb(`content_plan_atoms?content_piece_id=eq.${id}&${wsFilter}`, {
         method: 'PATCH',
         body: JSON.stringify({
           scheduled_at: patch.scheduledAt,
-          ...(planWeek ? { plan_week: planWeek } : {}),
+          plan_week: planWeek,
           updated_at: new Date().toISOString(),
         }),
         headers: { Prefer: 'return=minimal' },
