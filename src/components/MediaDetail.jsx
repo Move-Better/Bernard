@@ -65,10 +65,14 @@ function daysSince(iso) {
 // Signal that the server pipeline finished:
 //  - photos: imagePipeline.js PATCHes web_blob_url when sharp resize succeeds
 //  - videos: Mux webhook flips transcode_status to 'ready'
+//  - async clip export: export-clip-worker flips render_status 'rendering' →
+//    'ready' | 'failed' (b-roll rows created up front with blob_url still null)
 // Anything else is still in flight (or never started — legacy rows).
 function pipelinePending(a) {
   if (!a) return false
   if (a.status === 'tagging') return true
+  // Async "Save to Library" export: keep polling while the worker renders.
+  if (a.render_status === 'rendering') return true
   if (a.kind === 'photo') return !a.web_blob_url
   if (a.kind === 'video') {
     const s = a.transcode_status

@@ -492,6 +492,8 @@
     "parent_asset_id",
     "parent_id",
     "patient_pseudonym",
+    "render_error",
+    "render_status",
     "rendered_url",
     "segment_error",
     "segment_status",
