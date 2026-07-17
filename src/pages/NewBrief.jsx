@@ -29,9 +29,21 @@ const BRIEF_SUPPORTED = new Set([
 // the live character counts shown in "post as written" mode.
 const IG_OUTPUTS = new Set(['instagram_post', 'instagram_reel'])
 function limitForOutput(id) {
+  // Instagram Story's real constraint is a SOFT fit-limit on the overlay
+  // headline (see STORY_OVERLAY_SOFT_LIMIT), not the 2200-char IG API cap — so
+  // it gets its own non-blocking warning below rather than a char badge / a
+  // hard over-cap block that would never fire at a meaningful length.
+  if (id === 'instagram_story') return null
   const key = IG_OUTPUTS.has(id) ? 'instagram' : id
   return CAPTION_LIMITS[key] ?? null
 }
+
+// Instagram Story overlay renders as a short billboard headline on a branded
+// card (or over the photo). The card caps at ~4 lines of large text (~60 chars),
+// so a multi-sentence as-written message is silently trimmed to fit. Warn past a
+// conservative length so a paragraph never publishes half-cut — a genuine
+// billboard line (a handful of words) stays well under it.
+const STORY_OVERLAY_SOFT_LIMIT = 120
 
 // Group channels for the picker UI.
 const CHANNEL_GROUPS = [
@@ -134,6 +146,12 @@ export default function NewBrief() {
     const lim = limitForOutput(id)
     return lim && bodyLen > lim
   })
+  // As-written Instagram Story with a long message: the overlay is a short
+  // headline, so a paragraph gets shortened to fit the card. Warn (don't block —
+  // it still publishes and the story card stays editable afterward).
+  const storyOverflow = mode === 'as_written'
+    && selected.has('instagram_story')
+    && bodyLen > STORY_OVERLAY_SOFT_LIMIT
   const canSubmit = body.trim() && selected.size > 0 && !generating && !uploading
 
   // action: 'post_now' | 'schedule' | 'draft'. Adapt mode always yields drafts.
@@ -466,6 +484,11 @@ export default function NewBrief() {
                     {anyOverLimit && (
                       <p className="text-xs text-warning">
                         A selected channel is over its character limit. Shorten your post, or Save as draft to fix it later.
+                      </p>
+                    )}
+                    {storyOverflow && (
+                      <p className="text-xs text-warning">
+                        Instagram Story fits a short headline — this message is long and will be trimmed to fit the card. Shorten it, edit the story after, or switch that channel to Adapt.
                       </p>
                     )}
 
