@@ -246,6 +246,11 @@ export default async function handler(req, res) {
 
     if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) return err(res, 'Invalid status', 400)
     if (patch.locationId && !UUID_RE.test(patch.locationId)) return err(res, 'Invalid locationId', 400)
+    if (patch.targetLocations !== undefined && patch.targetLocations !== null) {
+      if (!Array.isArray(patch.targetLocations) || !patch.targetLocations.every((lid) => UUID_RE.test(String(lid)))) {
+        return err(res, 'Invalid targetLocations', 400)
+      }
+    }
     if (patch.locationId) {
       const locChk = await sb(`workspace_locations?id=eq.${patch.locationId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
       if (!locChk.ok || !(await locChk.json()).length) return err(res, 'Location not found in workspace', 404)
