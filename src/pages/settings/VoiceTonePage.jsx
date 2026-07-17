@@ -1,17 +1,20 @@
-// "Your voice" settings page — how this clinic sounds and who it serves.
-// Owns the fields the AI reads before writing anything:
+// Settings → Brand → Voice. The practice's shared brand voice — how this clinic
+// sounds and who it serves. Owns the fields the AI reads before writing anything,
+// organized into three zones:
 //
-//   clinic_context, brand_voice
-//   audience_short, audience_description, activity_context
-//   tone_modifiers (active / clinical / warm / smart)
-//   patient_context (archetypes, summary blurb, prior-provider pain points)
+//   Identity  — clinic_context, brand_voice ("How it should sound")
+//   Audience  — audience_short, audience_description, activity_context,
+//               patient_context (archetypes, summary blurb, prior-provider pain points)
+//   Style     — tone_modifiers (active / clinical / warm / smart), social_length_lean
 //
+// This is CLINIC voice, not a clinician's own voice — each clinician's phrases and
+// register are learned automatically and live on their Staff Profile "Voice model" tab.
 // Topic catalog, interview pickers, and condition bank live on the sibling
 // "Interview setup" page (/settings/workspace/interview).
 
 import { useState, useEffect } from 'react'
-import { Navigate, Link } from 'react-router-dom'
-import { Loader2, Sparkles, Pencil, ArrowRight, Mic2 } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
+import { Loader2, Sparkles, Pencil, Mic2, Users } from 'lucide-react'
 import { Section, Field, Textarea2, SaveBar } from '@/components/settings/helpers'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -26,6 +29,21 @@ import { apiFetch } from '@/lib/api'
 import { ToneModifierCards } from '@/components/settings/ToneCard'
 import { ArchetypeCardsSection } from '@/components/settings/PatientArchetypes'
 import { PatientContextEditor } from '@/components/settings/PatientContextEditor'
+
+// A labeled sub-block inside a zone Section — a quieter h3 heading than the
+// zone's own h2, used to keep merged clusters (patient types, tone, length)
+// legible within one zone.
+function SubGroup({ title, description, className = '', children }) {
+  return (
+    <div className={`space-y-3 ${className}`}>
+      <div>
+        <h3 className="text-xs font-semibold text-foreground">{title}</h3>
+        {description && <p className="text-2xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
+      </div>
+      {children}
+    </div>
+  )
+}
 
 function tryParseJson(text, fallback) {
   if (!text || !text.trim()) return { ok: true, value: fallback }
@@ -108,7 +126,7 @@ function formToPatch(form) {
 }
 
 export default function VoiceTonePage() {
-  useDocumentTitle('Settings — Your voice')
+  useDocumentTitle('Settings — Voice')
   const runtimeWs = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
   const { has } = usePermission()
@@ -184,62 +202,76 @@ export default function VoiceTonePage() {
     <div className="space-y-8">
       {/* Breadcrumb + heading */}
       <div>
-        <div className="flex items-center justify-between">
-          <p className="text-2xs text-muted-foreground/80">
-            Settings · {interviewerName} · Your voice
-          </p>
-          <Link
-            to="/settings/workspace/interview"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            Next: Interview setup
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
+        <p className="text-2xs text-muted-foreground/80">
+          Settings · Brand · Voice
+        </p>
         <PageHeader
           className="mt-0.5 mb-0"
           icon={Mic2}
-          title="Your voice"
-          subtitle={`Everything ${interviewerName} reads before writing — how ${clinicName} sounds, who it serves, and who its patients are.`}
+          title="Voice"
+          subtitle={`How ${clinicName} sounds in every post ${interviewerName} writes — the practice's shared voice, set once for the whole clinic.`}
         />
+      </div>
+
+      {/* Clinic-vs-clinician callout — draws the line between this shared
+          brand voice and each clinician's own auto-learned voice. */}
+      <div className="rounded-xl bg-info/10 border border-info/25 p-3.5 flex gap-3">
+        <Users className="h-4 w-4 shrink-0 text-info mt-0.5" aria-hidden="true" />
+        <div className="text-sm text-foreground/90 leading-relaxed">
+          <span className="font-semibold">Clinic voice, not a personal setting.</span>{' '}
+          This is the practice&apos;s shared voice. Each clinician&apos;s own voice — their phrases,
+          their register — is learned automatically from their interviews and edits, and lives on
+          their profile&apos;s <span className="font-medium">Voice model</span> tab. Nothing for them to fill in.
+        </div>
       </div>
 
       {/* Unified brief + preview card */}
       <BriefAndPreviewCard form={form} interviewerName={interviewerName} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
-        {/* The clinic */}
+      <div className="space-y-8">
+        {/* ── Zone 1 · Identity — who the practice is ─────────────────────── */}
         <Section
-          title="The clinic"
-          description={`The core orienting brief ${interviewerName} uses to stay on-brand in every piece of content.`}
+          title="Identity"
+          description={`Who the practice is — the core brief ${interviewerName} reads before writing anything.`}
         >
-          <Textarea2
-            label="What this clinic is about"
-            value={form.clinic_context}
-            onChange={set('clinic_context')}
-            rows={3}
-            hint={`${interviewerName} uses this to orient tone and framing across all content.`}
-          />
-          <Textarea2
-            label="Brand voice"
-            value={form.brand_voice}
-            onChange={set('brand_voice')}
-            rows={6}
-            hint="How your content should feel — the adjectives, cadences, and phrases that make your voice yours."
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-4 items-start">
+            <Textarea2
+              label="What this clinic is about"
+              value={form.clinic_context}
+              onChange={set('clinic_context')}
+              rows={5}
+              hint={`${interviewerName} uses this to orient tone and framing across all content.`}
+            />
+            <Textarea2
+              label="How it should sound"
+              value={form.brand_voice}
+              onChange={set('brand_voice')}
+              rows={5}
+              hint="The adjectives, cadences, and phrases that make your voice yours."
+            />
+          </div>
         </Section>
 
-        {/* Who you serve */}
+        {/* ── Zone 2 · Audience — who it's for ────────────────────────────── */}
         <Section
-          title="Who you serve"
-          description={`${interviewerName} uses this to calibrate language and empathy — who is actually reading this content?`}
+          title="Audience"
+          description={`Who it's for — ${interviewerName} calibrates language and empathy to who is actually reading.`}
+          className="pt-8 border-t border-border/60"
         >
-          <Field
-            label="Audience in one line"
-            value={form.audience_short}
-            onChange={set('audience_short')}
-            hint={`A short label ${interviewerName} can reference quickly — e.g. "active adults 35–60 returning from injury."`}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-3 items-start">
+            <Field
+              label="Audience in one line"
+              value={form.audience_short}
+              onChange={set('audience_short')}
+              hint={`A short label ${interviewerName} can reference quickly — e.g. "active adults 35–60 returning from injury."`}
+            />
+            <Field
+              label="Activity or discipline vocabulary"
+              value={form.activity_context}
+              onChange={set('activity_context')}
+              hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
+            />
+          </div>
           <Textarea2
             label="Full audience description"
             value={form.audience_description}
@@ -247,48 +279,45 @@ export default function VoiceTonePage() {
             rows={4}
             hint="The fuller picture of who you're writing for — their goals, fears, and what gets them to take action."
           />
-          <Field
-            label="Activity or discipline vocabulary"
-            value={form.activity_context}
-            onChange={set('activity_context')}
-            hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
-          />
+
+          <SubGroup
+            title="Patient types"
+            description={`The patient types ${clinicName} serves. ${interviewerName} sharpens questions toward the type chosen at interview start.`}
+            className="pt-4 mt-1 border-t border-border/50"
+          >
+            <ArchetypeCardsSection
+              value={form.patient_context_json}
+              onChange={set('patient_context_json')}
+              interviewerName={interviewerName}
+            />
+            <PatientContextEditor
+              value={form.patient_context_json}
+              onChange={set('patient_context_json')}
+              interviewerName={interviewerName}
+            />
+          </SubGroup>
         </Section>
 
-        {/* Post length — global length-lean dial */}
+        {/* ── Zone 3 · Style — how it's expressed ─────────────────────────── */}
         <Section
-          title="Post length"
-          description={`How much depth ${interviewerName} writes into social posts. Hooks and calls-to-action stay short either way — this dials the everyday and deep-dive pieces.`}
-          className="lg:col-span-2"
+          title="Style"
+          description="How it's expressed — tone and length, set together."
+          className="pt-8 border-t border-border/60"
         >
-          <LengthLeanSelector value={form.social_length_lean} onChange={set('social_length_lean')} />
-        </Section>
-
-        {/* Patient types — span both columns */}
-        <Section
-          title="Patient types"
-          description={`The types of patients ${clinicName} serves. ${interviewerName} sharpens questions toward the patient type chosen at interview start.`}
-          className="lg:col-span-2"
-        >
-          <ArchetypeCardsSection
-            value={form.patient_context_json}
-            onChange={set('patient_context_json')}
-            interviewerName={interviewerName}
-          />
-          <PatientContextEditor
-            value={form.patient_context_json}
-            onChange={set('patient_context_json')}
-            interviewerName={interviewerName}
-          />
-        </Section>
-
-        {/* Tone modes — span both columns; cards already lay out internally */}
-        <Section
-          title="Tone modes"
-          description={`When a staff member picks a tone at the start of an interview, ${interviewerName} applies the matching modifier below. Leave any tone blank to fall back to the system default shown inside the card.`}
-          className="lg:col-span-2"
-        >
-          <ToneModifierCards form={form} set={set} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-6 items-start">
+            <SubGroup
+              title="Tone modes"
+              description={`When a staff member picks a tone at the start of an interview, ${interviewerName} applies the matching modifier. Leave any blank to fall back to the system default shown in the card.`}
+            >
+              <ToneModifierCards form={form} set={set} />
+            </SubGroup>
+            <SubGroup
+              title="Post length"
+              description={`How much depth ${interviewerName} writes into social posts. Hooks and calls-to-action stay short either way — this dials the everyday and deep-dive pieces.`}
+            >
+              <LengthLeanSelector value={form.social_length_lean} onChange={set('social_length_lean')} />
+            </SubGroup>
+          </div>
         </Section>
       </div>
 
