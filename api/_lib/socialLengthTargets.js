@@ -125,3 +125,42 @@ export function briefLengthLine(platform, lean = DEFAULT_LEAN) {
 export function leanOf(workspace) {
   return normalizeLean(workspace?.social_length_lean)
 }
+
+/**
+ * The hard CHARACTER ceiling for a platform (the max `cap` across its angles —
+ * a platform's cap is its API limit, the same for every angle). Returns null for
+ * platforms we don't cap (facebook, tiktok, instagram_story). This is the
+ * guardrail ceiling, NOT the target range — see resolveRange for targets.
+ */
+export function platformCap(platform) {
+  const angles = SOCIAL_LENGTH[platform]
+  if (!angles) return null
+  let cap = null
+  for (const a of Object.values(angles)) {
+    if (a.cap) cap = cap === null ? a.cap : Math.max(cap, a.cap)
+  }
+  return cap
+}
+
+/**
+ * Clamp text to a hard character cap WITHOUT cutting mid-sentence. Prefers the
+ * last sentence terminator (. ! ?) at/under the cap; falls back to the last word
+ * boundary; last resort a hard slice. No ellipsis is added — the cap is a
+ * character budget (GBP counts every char), so an added "…" would itself risk
+ * re-crossing the ceiling. Returns text unchanged when it already fits (or when
+ * cap/text is falsy). The 50%-of-cap floor stops an unusually-early period from
+ * throwing away half the caption; below it we prefer a near-cap word boundary.
+ */
+export function clampToCap(text, cap) {
+  if (!cap || typeof text !== 'string' || text.length <= cap) return text
+  const window = text.slice(0, cap)
+  const floor = Math.floor(cap * 0.5)
+  // Last sentence-ending punctuation, optionally trailed by a closing quote/paren.
+  const sentence = window.match(/[\s\S]*[.!?]["')\]]?(?=\s|$)/)
+  if (sentence && sentence[0].trim().length >= floor) return sentence[0].trim()
+  // No good sentence boundary — don't cut a word in half.
+  const lastSpace = window.lastIndexOf(' ')
+  if (lastSpace >= floor) return window.slice(0, lastSpace).trim()
+  // Last resort: hard slice (a single token longer than the cap).
+  return window.trim()
+}
