@@ -1,9 +1,10 @@
 // POST /api/voice-preview
 //
-// Generates a single sample Bernard opener using the workspace's current voice
-// settings (brand_voice + voice_context + tone modifiers + topic suggestions).
-// Used by the Voice Settings "Preview Bernard's voice" CTA — admin-only, not
-// persisted anywhere.
+// Generates a single sample Bernard opener from the workspace's voice settings
+// (brand_voice + clinic_context + audience + tone modifiers + topic suggestions).
+// Used by the Voice Settings "Try a live preview" CTA — admin-only, not persisted.
+// Accepts an optional `draft` object so the preview can reflect the caller's
+// in-progress (unsaved) edits instead of the saved workspace values.
 export const config = { runtime: 'nodejs', maxDuration: 30 }
 
 import { generateText } from 'ai'
@@ -27,10 +28,24 @@ export default async function handler(req, res) {
 
   const interviewerName = ws.interviewer_name || 'Bernard'
   const clinicName = ws.display_name || 'your clinic'
-  const toneMods = ws.tone_modifiers || {}
+
+  // Prefer the caller's in-progress (unsaved) edits when supplied, so the sample
+  // opener matches the settings shown on-screen rather than what's saved. Only
+  // the fields the Voice page owns are overridable; name + topics still come from
+  // the saved workspace. Draft values are bounded strings (empty string = an
+  // intentionally-cleared field, which previews as cleared).
+  const draft = (req.body && typeof req.body.draft === 'object' && req.body.draft) || {}
+  const draftStr = (v, max = 4000) => (typeof v === 'string' ? v.slice(0, max) : undefined)
+  const brandVoice    = draftStr(draft.brand_voice)    ?? ws.brand_voice
+  const clinicContext = draftStr(draft.clinic_context) ?? ws.clinic_context
+  const audienceShort = draftStr(draft.audience_short) ?? ws.audience_short
+  const toneMods = (draft.tone_modifiers && typeof draft.tone_modifiers === 'object')
+    ? draft.tone_modifiers
+    : (ws.tone_modifiers || {})
+
   const toneLines = Object.entries(toneMods)
     .filter(([, v]) => v && String(v).trim())
-    .map(([k, v]) => `- ${k}: ${v}`)
+    .map(([k, v]) => `- ${k}: ${String(v).slice(0, 500)}`)
     .join('\n')
 
   // Topic_suggestions can be a JSON array of objects with a `topic` field.
@@ -40,9 +55,9 @@ export default async function handler(req, res) {
 
   const systemPrompt = [
     `You are ${interviewerName}, an interviewer for ${clinicName}.`,
-    ws.brand_voice ? `Brand voice:\n${ws.brand_voice}` : '',
-    ws.clinic_context ? `Clinic context:\n${ws.clinic_context}` : '',
-    ws.audience_short ? `Audience: ${ws.audience_short}` : '',
+    brandVoice ? `Brand voice:\n${brandVoice}` : '',
+    clinicContext ? `Clinic context:\n${clinicContext}` : '',
+    audienceShort ? `Audience: ${audienceShort}` : '',
     toneLines ? `Tone modifiers:\n${toneLines}` : '',
     topics.length ? `Common topics: ${topics.join(', ')}` : '',
     `Given this clinician's voice settings, write the FIRST SENTENCE you'd open an interview with for a returning patient. Return only the sentence, no quotes, no preamble. One sentence.`,
