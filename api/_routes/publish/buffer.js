@@ -22,8 +22,11 @@ import { BundlePublisher } from '../../_lib/social/index.js'
 import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
+import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
+// GBP's hard character ceiling, resolved from the single source of truth.
+const GBP_CAP = platformCap('gbp')
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -191,8 +194,11 @@ export async function runBufferPublish({ workspaceId, token, platform, content, 
   const posts = []
   for (const { id: locationId, channelId } of fanOut) {
     const rawText = (locationId && locationContents?.[locationId]) ? locationContents[locationId] : content
-    // GBP enforces a 1500-character hard cap on post summaries.
-    const postText = platform === 'gbp' ? rawText.slice(0, 1500) : rawText
+    // GBP enforces a 1500-character hard cap on post summaries. Clamp
+    // sentence-aware (not a blind mid-word cut) as the final gate for any
+    // caption source — manual edits, one-off posts, brief-broadcast — that
+    // didn't go through the generation-time clamp in draftAtom.
+    const postText = platform === 'gbp' ? clampToCap(rawText, GBP_CAP) : rawText
     const input = {
       channelId,
       text: postText,
@@ -268,7 +274,7 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
       const posts = []
       for (const loc of targets) {
         const rawText = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
-        const text = rawText.slice(0, 1500)
+        const text = clampToCap(rawText, GBP_CAP)
         const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
         const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
         posts.push(r)

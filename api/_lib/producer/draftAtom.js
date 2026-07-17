@@ -33,6 +33,7 @@ import {
 } from '../tentpoleCampaignContext.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
+import { clampToCap, platformCap } from '../socialLengthTargets.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -344,8 +345,17 @@ export async function draftAtom({ ws, atom, interview }) {
     }
   }
 
+  // Hard guardrail: never return a caption over the platform's character ceiling.
+  // The length prompt (socialLengthTargets.lengthLine) asks the model to stay
+  // under the cap, but that's a soft instruction it can overshoot — GBP's 1500
+  // cap in particular was landing over-limit and the only enforcement was a
+  // blind mid-sentence slice at publish time. Clamp here (sentence-aware) so the
+  // stored caption the editor shows is always within cap. Applied AFTER the voice
+  // judge so fidelity is scored on the full generated text, not the clamped copy.
+  const cappedCaption = clampToCap(caption, platformCap(atom.platform))
+
   return {
-    caption,
+    caption: cappedCaption,
     slides,
     voiceScore,
     voiceAudit,
@@ -441,7 +451,8 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
         })
         if (!locText?.trim()) return null
         return [loc.id, {
-          content:       extractProvenanceBlock(locText.trim()).content,
+          // GBP-only path — clamp each per-location variant to the 1500 cap too.
+          content:       clampToCap(extractProvenanceBlock(locText.trim()).content, platformCap('gbp')),
           location_name: loc.label ?? loc.city,
           generated_at:  new Date().toISOString(),
         }]
