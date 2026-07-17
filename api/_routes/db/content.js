@@ -12,6 +12,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { extractConcepts } from '../../_lib/conceptExtractor.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
+import { mondayOf } from '../../_lib/strategist.js'
 import { waitUntil } from '@vercel/functions'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -298,6 +299,32 @@ export default async function handler(req, res) {
     if (!r.ok) return dbErr(res, r, 'Update failed')
     const data = await r.json()
     const updated = data[0]
+
+    // Keep the linked plan atom's schedule in sync. The /week board is driven
+    // entirely by content_plan_atoms.plan_week + scheduled_at (week-summary.js
+    // filters atoms by plan_week and lays them out by the ATOM's scheduled_at);
+    // content_items is joined only for status/thumbnail. So a (re)schedule that
+    // writes only content_items.scheduled_at leaves the atom pinned to its
+    // original plan_week — and an approved, rescheduled post silently vanishes
+    // from Your Week (user feedback 2026-07-13). Mirror the new schedule onto
+    // the atom, recomputing plan_week with the SAME tz-aware mondayOf the board
+    // uses so it lands in the right week bucket. Best-effort: a non-atom piece
+    // (one-off Post) matches zero rows, and a failure here must not fail the
+    // user's save (the content item is already updated).
+    if (updated && patch.scheduledAt !== undefined) {
+      const planWeek = patch.scheduledAt
+        ? mondayOf(patch.scheduledAt, ws.cadence_policy?.timezone)
+        : null
+      await sb(`content_plan_atoms?content_piece_id=eq.${id}&${wsFilter}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          scheduled_at: patch.scheduledAt,
+          ...(planWeek ? { plan_week: planWeek } : {}),
+          updated_at: new Date().toISOString(),
+        }),
+        headers: { Prefer: 'return=minimal' },
+      }).catch((e) => console.error('[db/content] atom schedule sync failed:', e?.message))
+    }
 
     // Off-request enrichment on approval (positive signal) and change-request
     // (negative signal, demotes phrasings that got rejected). Registered with
