@@ -98,6 +98,75 @@ Rule: to verify a UI change or audit live prod, ask Q to log in once, then drive
 
 **A "click through it and see" verification pass can itself create a real row you didn't intend to leave behind — "New brief" and similar create-affordances aren't purpose-gated the way the AI pipeline that normally produces them is.** Verifying the media-hub in-app-editor button (2026-07-09, PR #2054/#2056) meant opening a real B-roll asset in Q's Chrome and clicking "New brief" just to get a brief row to click "Edit clip in Bernard" from — but `segmentInterview.js`'s server-side gate (`asset_purpose === 'interview'` only) only restricts the AI segmenter; the manual "New brief" button in `MediaDetail.jsx` has no such restriction, so it happily created a live `content_pieces` row on a B-roll asset in the real `movebetter` workspace. Harmless here (empty caption, `accepted` status, easy to `Delete`), but it's the same class of "read-only isn't really read-only" trap as the `fetch()` case above, just via a UI click instead of a raw API call. **Rule: before using a create/generate button purely to exercise a downstream feature, check the target table for a `workspace_id` filter you could scope to a disposable test record instead — and if you do create one on a real workspace, delete it via the UI's own delete affordance before ending the verification pass, not just note it in your report.**
 
+## Weekly staff-update routine — capturing screenshots for the PDF
+
+The weekly Bernard staff summary (`.claude/scheduled-tasks/bernard-weekly-staff-summary/SKILL.md`) produces a combined PDF with plain-language bullets + embedded screenshots, plus a Gmail draft pointing to it. **Screenshot capture is a ship-time responsibility — not a separate task.**
+
+**When to capture:** Any time you merge a UI change to `main`. Backend-only changes, refactors, CI/test updates, and docs changes need no screenshot.
+
+**How to capture (working pipeline):**
+
+The "what doesn't work" list from Deep Thought (claude-in-chrome `zoom`/`upload_image` return unusable IDs, `javascript_tool` dataURL is blocked, `computer-use` requires interactive approval) applies here. **Use the proven working path:**
+
+1. **Navigate in Q's real Chrome** via claude-in-chrome MCP (`tabs_context_mcp` → `navigate` to `https://<slug>.withbernard.ai/<page>`). This uses his logged-in session; no auth needed.
+
+2. **Isolate the target element** via `javascript_tool`:
+   - Walk UP the DOM from the element.
+   - At each level, set `display:none` on every SIBLING that doesn't contain the target.
+   - Continue up to the shell/nav root.
+   - Result: just the target element rendered alone on a blank page.
+   - Clear any stale `data-target-card` attribute from a prior run first.
+
+3. **Inject html2canvas from CDN** via `javascript_tool`:
+   ```js
+   const script = document.createElement('script');
+   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+   document.head.appendChild(script);
+   await new Promise(r => setTimeout(r, 500));
+   ```
+
+4. **Render the isolated element:**
+   ```js
+   const target = document.querySelector('[data-target-card]');
+   const canvas = await window.html2canvas(target, { backgroundColor: '#ffffff', scale: 2 });
+   ```
+
+5. **Trigger a browser download** (do NOT return dataURL from javascript_tool):
+   ```js
+   const link = document.createElement('a');
+   link.href = canvas.toDataURL('image/png');
+   link.download = 'screenshot.png';
+   link.click();
+   link.remove();
+   ```
+   Chrome writes a real file to `~/Downloads/`.
+
+6. **Move the file into the repo** via Bash:
+   ```bash
+   cp ~/Downloads/screenshot.png "/Users/qbook/Claude Projects/Bernard/.staff-update-screenshots/YYYY-MM-DD_PR###_slug.png"
+   ```
+
+**Storage convention:**
+
+- **Directory:** `.staff-update-screenshots/` (gitignored, not in repo)
+- **Filename pattern:** `YYYY-MM-DD_PR###_short-slug.png` (e.g. `2026-07-17_PR2185_stories-table-sort.png`)
+- **Index:** `captions.jsonl` in the same directory (one JSON line per screenshot):
+  ```json
+  {"file":"2026-07-17_PR2185_stories-table-sort.png","date":"2026-07-17","pr":2185,"caption":"the Stories list now shows a dense sortable table with search"}
+  ```
+
+**Caption:** One plain-language sentence describing what the user sees / what changed / why it matters. No jargon, no "PR #2185 fixed…" — just the user-visible fact. This caption is what matches bullets in the weekly summary PDF.
+
+**First-time setup:**
+- Create `.staff-update-screenshots/` folder manually (or let the routine create it).
+- Add to `.gitignore`: `.staff-update-screenshots/`
+- Document in a README in that folder (for future sessions) if you'd like.
+
+**Gotchas & testing:**
+- html2canvas requires the CSP not to block CDN scripts. Bernard's CSP currently allows it; verify if that changes.
+- On some Pillow/PIL installs, `image.save(..., "PDF")` throws `KeyError: 'JPEG'` even though JPEG save works. The routine includes a workaround; only matters when building the PDF.
+- Screenshots are not required for the routine to work — if a bullet has no matching screenshot, the PDF just renders the text. Capture what's relevant; don't force every change.
+
 **A fourth variant: a raw screenshot-coordinate click meant for a benign link can land on an adjacent mutating button instead — prefer `find`/`read_page` refs over pixel coordinates near any Approve/Publish/Delete/Send control.** Navigating `/week` to open a piece for read-only verification (2026-07-16, `/publish/:pieceId` dead-click audit #2171), a coordinate click aimed at "Open to change" landed on the "Approve" button one row above it instead — silently triggering a real approve+publish attempt on a live `movebetter` piece. The actual bundle.social publish call failed (`bundle_post_failed`), so nothing posted publicly, but the row's `status` flipped to `approved` without authorization. Caught immediately by cross-checking `content_items.updated_at > now() - interval '15 minutes'` via the Supabase MCP, confirmed with Q, and reverted (`status='draft', approved_at=null`) before continuing. **Rule: when clicking near any button whose label suggests a state-changing action (Approve, Publish, Schedule, Delete, Send), use `find`/`read_page` element refs instead of raw pixel coordinates — refs target the actual DOM node regardless of visual drift between the screenshot and the live layout. If a misclick on a mutating control ever happens anyway, immediately verify via a direct DB read (`updated_at`/`approved_at`/`published_at` on the affected row) rather than trusting the on-screen toast alone, and confirm with Q before reverting.**
 
 ## A preview is not the published artifact
