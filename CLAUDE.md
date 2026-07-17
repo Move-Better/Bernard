@@ -104,6 +104,8 @@ The weekly Bernard staff summary (`.claude/scheduled-tasks/bernard-weekly-staff-
 
 **When to capture:** Any time you merge a UI change to `main`. Backend-only changes, refactors, CI/test updates, and docs changes need no screenshot.
 
+**What to capture — ZOOMED CROPS, never full pages.** Grab a tight crop of just the ONE component the change is about (a card, a control, a few table rows), not the whole screen. A full-page screenshot downscaled to fit the PDF becomes an unreadable blur — this is the #1 failure mode (hit 2026-07-16: the first Bernard PDF captured whole-`main` pages and had to be fully redone as element-level crops at `scale: 2`). The quality bar is the Deep Thought reference PDF (`/Users/qbook/Claude Projects/Deep Thought/.staff-update-screenshots/`): a colored title + tight per-feature crops (its "My voice" card, its Cmd-K box, its two thumb buttons). The isolation + `scale: 2` steps below produce exactly this — do NOT skip the isolation and `html2canvas(document.querySelector('main'))` wholesale. One representative element per bullet; for a long table hide all but the first ~5 rows, for a card grid capture 2–3 cards, for a form keep the input + the new control and hide the rest.
+
 **How to capture (working pipeline):**
 
 The "what doesn't work" list from Deep Thought (claude-in-chrome `zoom`/`upload_image` return unusable IDs, `javascript_tool` dataURL is blocked, `computer-use` requires interactive approval) applies here. **Use the proven working path:**

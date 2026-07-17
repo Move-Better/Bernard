@@ -54,6 +54,36 @@ Match each screenshot to a bullet by:
 
 If a bullet has no matching screenshot, render just the text.
 
+### 4b. Screenshot capture standard — ZOOMED CROPS, not full pages
+
+Screenshots are normally captured at ship time (see CLAUDE.md → "Weekly staff-update
+routine — capturing screenshots for the PDF"). If the weekly run captures them live
+instead (driving Q's logged-in Chrome via the claude-in-chrome MCP), follow this
+standard — it is what makes the PDF readable.
+
+**Quality bar:** the Deep Thought reference PDF
+(`/Users/qbook/Claude Projects/Deep Thought/.staff-update-screenshots/`) — a colored
+title plus tight, high-resolution crops of just the one component each bullet is about
+(e.g. its "My voice" card, its Cmd-K search box, its thumbs-up/down buttons).
+
+Rules:
+- **Crop to the relevant element, NOT the whole page.** A full-page screenshot downscaled
+  to fit the PDF becomes an unreadable blur — this is the #1 failure mode (hit 2026-07-16).
+  Capture only the specific card / control / row-group the bullet describes.
+- **Capture at `scale: 2`** in html2canvas (high pixel density). The PDF renders images at
+  950px wide; a 2× crop of a ~600–1200px element lands crisp, a downscaled ~1900px full
+  page does not.
+- **Isolate the target.** Either pass the specific element to `html2canvas(el, {scale:2})`,
+  or hide surrounding siblings first (set `display:none`) so only the relevant part renders
+  — e.g. for a compose form, keep the input + the new toggle and hide the other fields; for
+  a long table, hide all but the first ~5 rows; for a card grid, capture 2–3 representative
+  cards.
+- **One representative element per bullet** — the single UI piece that best conveys the
+  change (the new toggle, the search+header row, the trend-recap card).
+- Downloads need the site's **"allow multiple downloads"** permission the first time (Chrome
+  blocks the 2nd+ automatic download per origin) — a one-time click Q grants. A headless run
+  with Q absent cannot grant it, which is why ship-time capture is preferred over live capture.
+
 ### 5. Build PDF with Python + Pillow
 
 **Script location:** Inline Python in this routine.
@@ -168,9 +198,10 @@ def render_pdf(bullets, screenshot_map, output_path, max_width=PAGE_WIDTH):
     y = PADDING
     
     # Title
-    title = "Bernard Update — This Week"
+    title = "Bernard Update"
     date_str = datetime.now().strftime("%B %d, %Y")
-    draw.text((PADDING, y), title, font=title_font, fill=TITLE_COLOR)
+    # Rust accent title — matches the Deep Thought reference PDF (do not revert to gray)
+    draw.text((PADDING, y), title, font=title_font, fill=(156, 61, 30))
     y += 40
     draw.text((PADDING, y), date_str, font=text_font, fill=TEXT_COLOR)
     y += 40
