@@ -711,10 +711,28 @@ function silenceRanges(words, dur) {
 }
 
 function TranscriptInspector({ ctx }) {
-  const { words, cuts, toggleWordCut, addCuts, clearCuts, durationSec, genCaptions, genCaptionsPending } = ctx
+  const { words, cuts, toggleWordCut, editWord, addCuts, clearCuts, durationSec, genCaptions, genCaptionsPending } = ctx
   const kept = Math.max(0, durationSec - totalCutCli(cuts, durationSec))
   const fillers = words.filter((w) => FILLERS.has(fillerKey(w.word)) && !inCut((w.start + w.end) / 2, cuts))
   const sils = silenceRanges(words, durationSec).filter((r) => !inCut((r.start + r.end) / 2, cuts))
+  // Which word is being corrected inline (index into `words`), and a click timer
+  // so a single click cuts while a double-click opens the editor (without the
+  // single-click cut firing first).
+  const [editingIdx, setEditingIdx] = useState(null)
+  const clickTimerRef = useRef(null)
+  useEffect(() => () => { if (clickTimerRef.current) clearTimeout(clickTimerRef.current) }, [])
+  const onWordClick = (w) => {
+    if (clickTimerRef.current) return
+    clickTimerRef.current = setTimeout(() => { clickTimerRef.current = null; toggleWordCut(w) }, 210)
+  }
+  const onWordDbl = (i) => {
+    if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null }
+    setEditingIdx(i)
+  }
+  const commitEdit = (w, value, save) => {
+    setEditingIdx(null)
+    if (save) editWord(w, value)
+  }
   return (
     <InspectorShell icon={FileText} title="Transcript" right={`${fmt(kept)} kept`}>
       {words.length === 0 ? (
@@ -731,14 +749,40 @@ function TranscriptInspector({ ctx }) {
             <button onClick={() => addCuts(sils)} disabled={!sils.length} className="flex items-center gap-1 rounded-md border px-2 py-1 text-3xs disabled:opacity-40" style={{ borderColor: 'hsl(var(--border))' }}><span className="h-2 w-2 rounded-full" style={{ background: 'hsl(0 60% 55%)' }} />Remove {sils.length} silences</button>
             {cuts.length > 0 && <button onClick={clearCuts} className="ml-auto text-3xs underline-offset-2 hover:underline" style={{ color: 'hsl(var(--muted-foreground))' }}>Undo all</button>}
           </div>
-          <p className="mb-2 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Click a word to cut it — the footage is removed at export.</p>
+          <p className="mb-2 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">Click a word to cut it. Double-click to fix a mis-heard word — the correction flows to the caption and export.</p>
           <div className="text-sm leading-loose">
             {words.map((w, i) => {
+              if (editingIdx === i) {
+                return (
+                  <input
+                    key={i}
+                    autoFocus
+                    defaultValue={w.word}
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); commitEdit(w, e.target.value, true) }
+                      else if (e.key === 'Escape') { e.preventDefault(); commitEdit(w, '', false) }
+                    }}
+                    onBlur={(e) => commitEdit(w, e.target.value, true)}
+                    className="mx-0.5 rounded border px-1 py-0 text-sm"
+                    style={{ width: `${Math.max(3, (w.word.length || 3) + 2)}ch`, borderColor: 'hsl(var(--ring))', background: 'hsl(var(--background))', color: 'hsl(var(--foreground))', outline: 'none', boxShadow: '0 0 0 3px hsl(var(--ring)/0.18)' }}
+                  />
+                )
+              }
               const cut = inCut((w.start + w.end) / 2, cuts)
               const filler = FILLERS.has(fillerKey(w.word))
               return (
-                <span key={i} onClick={() => toggleWordCut(w)} className="cursor-pointer rounded px-0.5"
-                  style={{ textDecoration: cut ? 'line-through' : 'none', color: cut ? 'hsl(var(--muted-foreground))' : filler ? 'hsl(var(--action))' : 'inherit', opacity: cut ? 0.5 : 1, background: !cut && filler ? 'hsl(var(--action)/0.12)' : 'transparent' }}>
+                <span key={i} onClick={() => onWordClick(w)} onDoubleClick={() => onWordDbl(i)}
+                  title="Click to cut · double-click to fix the word"
+                  className="cursor-pointer rounded px-0.5"
+                  style={{
+                    textDecoration: cut ? 'line-through' : w.edited ? 'underline' : 'none',
+                    textDecorationColor: w.edited ? 'hsl(var(--primary))' : undefined,
+                    textUnderlineOffset: w.edited ? '3px' : undefined,
+                    color: cut ? 'hsl(var(--muted-foreground))' : filler ? 'hsl(var(--action))' : 'inherit',
+                    opacity: cut ? 0.5 : 1,
+                    background: !cut && w.edited ? 'hsl(var(--primary)/0.12)' : !cut && filler ? 'hsl(var(--action)/0.12)' : 'transparent',
+                  }}>
                   {w.word}{' '}
                 </span>
               )
@@ -991,6 +1035,12 @@ export default function VideoEditor() {
   // the edits). "Reset captions to transcript" clears this to re-derive.
   const captionsEditedRef = useRef(false)
   const [captionsEdited, setCaptionsEdited] = useState(false)
+  // Per-word transcript corrections (Script tab): fix a mis-transcribed word
+  // ("that's" → "Yes") without re-cutting it. Keyed by the word's ABSOLUTE start
+  // time (clip-relative start + trim offset) so a correction survives re-trims;
+  // value is the corrected text. Applied to `words` below, which flows to the
+  // Script list, the karaoke caption, and the export bake (captionWords override).
+  const [wordEdits, setWordEdits] = useState({})
 
   // Save & resume. On open, restore this asset's editor doc — preferring the
   // SERVER draft (media_assets.video_edit_draft, cross-device) and falling back
@@ -1036,6 +1086,10 @@ export default function VideoEditor() {
           setCaptionsEdited(true)
           captionsEditedRef.current = true
         }
+        // Restore per-word transcript corrections (Script tab).
+        if (d.wordEdits && typeof d.wordEdits === 'object' && !Array.isArray(d.wordEdits)) {
+          setWordEdits(d.wordEdits)
+        }
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
@@ -1053,8 +1107,8 @@ export default function VideoEditor() {
 
   // Draft snapshot shared by autosave + undo/redo.
   const draftDoc = useMemo(
-    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited }),
-    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited],
+    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits }),
+    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits],
   )
 
   // localStorage mirror — immediate, undebounced offline copy. The server
@@ -1089,6 +1143,7 @@ export default function VideoEditor() {
     setCaptionLines(snap.captionLines || [])
     setCaptionsEdited(!!snap.captionsEdited)
     captionsEditedRef.current = !!snap.captionsEdited
+    setWordEdits(snap.wordEdits || {})
   }, { enabled: hydrated })
   useUndoRedoShortcut(undo, redo)
 
@@ -1145,7 +1200,25 @@ export default function VideoEditor() {
     if (videoDuration > 0) setEndSec((e) => Math.min(e, videoDuration))
   }, [videoDuration])
 
-  const words = useMemo(() => sliceWords(asset?.transcript_words, startSec, durationSec), [asset, startSec, durationSec])
+  const rawWords = useMemo(() => sliceWords(asset?.transcript_words, startSec, durationSec), [asset, startSec, durationSec])
+  // Apply per-word corrections (keyed by absolute start time). A corrected word
+  // carries `edited: true` so the Script list can mark it. Text-only change —
+  // timings are untouched, so cut ranges and karaoke timing stay valid.
+  const words = useMemo(() => {
+    if (!wordEdits || !Object.keys(wordEdits).length) return rawWords
+    const s = Math.max(0, startSec || 0)
+    return rawWords.map((w) => {
+      const fix = wordEdits[(w.start + s).toFixed(2)]
+      return fix != null && fix !== w.word ? { ...w, word: fix, edited: true } : w
+    })
+  }, [rawWords, wordEdits, startSec])
+  const editWord = useCallback((w, text) => {
+    const clean = String(text || '').trim()
+    if (!clean || clean === w.word) return
+    const s = Math.max(0, startSec || 0)
+    const key = (w.start + s).toFixed(2)
+    setWordEdits((prev) => (prev[key] === clean ? prev : { ...prev, [key]: clean }))
+  }, [startSec])
   const derivedLines = useMemo(() => groupLines(words), [words])
   // captionLines / captionsEdited / captionsEditedRef are declared above (near
   // draftDoc) so the draft snapshot can persist edited caption text. Here we
@@ -1157,7 +1230,11 @@ export default function VideoEditor() {
   // bare asset-object refetch, and NOT once the user has manually edited a line.
   const seedSigRef = useRef('')
   useEffect(() => {
-    const sig = `${startSec}|${durationSec}|${derivedLines.length}`
+    // Include the derived TEXT (not just line count) so a word correction — which
+    // changes a word without changing the line count — still re-seeds the caption
+    // from the corrected transcript. Manual line edits stay protected by the
+    // captionsEditedRef guard below.
+    const sig = `${startSec}|${durationSec}|${derivedLines.map((l) => l.text).join('')}`
     if (sig === seedSigRef.current) return
     seedSigRef.current = sig
     if (captionsEditedRef.current) return
@@ -1462,7 +1539,7 @@ export default function VideoEditor() {
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
+    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
