@@ -1,17 +1,34 @@
-import { useMemo, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { Send, SearchX, AlertTriangle, Image as ImageIcon, Film, FileText } from 'lucide-react'
+import { useMemo, useState, Fragment } from 'react'
+import { Link } from 'react-router-dom'
+import { Send, SearchX, AlertTriangle, Image as ImageIcon, Film, FileText, ChevronRight, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
 import { useContentItems } from '@/lib/queries'
 import { formatStoryDate } from '@/lib/storyTitle'
 import { isVideoEntry } from '@/lib/mediaEntry'
+import { PLATFORM_META } from '@/lib/contentMeta'
 
 // Short channel labels for the compact Channels column (matches StoriesTableView).
 const PLATFORM_SHORT = {
   instagram: 'IG', instagram_story: 'Story', facebook: 'FB', linkedin: 'LI',
   twitter: 'X', threads: 'Threads', gbp: 'GBP', blog: 'Blog', email: 'Email',
   tiktok: 'TT', youtube: 'YT', bluesky: 'Bsky', mastodon: 'Masto', pinterest: 'Pin',
+}
+
+// Per-channel lifecycle → pill treatment + label, for the expanded sub-rows
+// (each channel is its own content_item, so it can be in a different state than
+// its siblings). Mirrors the SECTIONS colours.
+const STATE_PILL = {
+  draft:     'bg-warning/15 text-warning',
+  scheduled: 'bg-info/15 text-info',
+  published: 'bg-success/15 text-success',
+  failed:    'bg-destructive text-destructive-foreground',
+}
+const STATE_LABEL = { draft: 'Draft', scheduled: 'Scheduled', published: 'Published', failed: 'Failed' }
+
+function fmtWhen(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 // The three lifecycle sections, in "needs-you-first" order. Colors mirror the
@@ -82,9 +99,19 @@ const FILTERS = [
  * opens the existing /publish/:id editor + publish flow.
  */
 export default function PostsTableView() {
-  const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
+  // Which Posts are expanded into per-channel sub-rows (by post key). Expand-only
+  // interaction: clicking a row toggles its channels; editing happens per-channel.
+  const [expanded, setExpanded] = useState(() => new Set())
   const { data: items = [], isLoading } = useContentItems({ origin: 'post' })
+
+  const toggle = (key) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
   // Roll the per-channel content_items up into one entry per Post (brief_id).
   const posts = useMemo(() => {
@@ -101,16 +128,31 @@ export default function PostsTableView() {
       const section = groupSection(states)
       const channels = [...new Set(pieces.map((p) => p.platform).filter(Boolean))]
       const createdMs = Math.max(...pieces.map((p) => new Date(p.created_at || 0).getTime()))
-      // Open the piece that still needs work (a draft) when there is one, so a
-      // click lands on something editable rather than an already-sent channel.
-      const primary = pieces.find((p) => pieceState(p) === 'draft') || pieces[0]
+      // Per-channel sub-rows: each content_item is one channel with its own
+      // lifecycle state, caption, go-live time, and editor link.
+      const channelRows = [...pieces]
+        .sort((a, b) => (a.platform || '').localeCompare(b.platform || ''))
+        .map((pc) => {
+          const st = pieceState(pc)
+          return {
+            id: pc.id,
+            platform: pc.platform,
+            state: st,
+            when: fmtWhen(st === 'scheduled' ? pc.scheduled_at : st === 'published' ? (pc.published_at || pc.updated_at) : null),
+            caption: postPreview(pc.content),
+          }
+        })
+      // The row's roll-up status: the shared state when every channel agrees,
+      // else "Mixed" (e.g. one scheduled, one still a draft).
+      const uniform = new Set(states).size === 1
       list.push({
         key,
         pieces,
         section,
         channels,
+        channelRows,
         createdMs,
-        primaryId: primary.id,
+        statusLabel: uniform ? STATE_LABEL[states[0]] : 'Mixed',
         preview: postPreview(pieces[0].content),
         media: mediaKind(pieces),
         when: whenLabel(section, pieces),
@@ -203,7 +245,7 @@ export default function PostsTableView() {
             </thead>
             <tbody>
               {bySection.map((s) => (
-                <SectionRows key={s.key} section={s} navigate={navigate} />
+                <SectionRows key={s.key} section={s} expanded={expanded} toggle={toggle} />
               ))}
             </tbody>
           </table>
@@ -215,7 +257,7 @@ export default function PostsTableView() {
 
 // A lifecycle section header row followed by its post rows. Module-scope
 // component (react-hooks/static-components) so it isn't redefined each render.
-function SectionRows({ section, navigate }) {
+function SectionRows({ section, expanded, toggle }) {
   const MediaIconFor = (m) => MEDIA_ICON[m] || FileText
   return (
     <>
@@ -231,58 +273,116 @@ function SectionRows({ section, navigate }) {
       </tr>
       {section.rows.map((p) => {
         const MediaIcon = MediaIconFor(p.media)
+        const isOpen = expanded.has(p.key)
         return (
-          <tr
-            key={p.key}
-            onClick={() => navigate(`/publish/${p.primaryId}`)}
-            className="border-b border-border/60 last:border-b-0 hover:bg-primary/5 cursor-pointer transition-colors"
-          >
-            <td className={`px-3.5 py-2.5 align-middle whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground border-l-2 ${section.rail}`}>
-              {formatStoryDate(p.createdMs) || '—'}
-            </td>
-            <td className="px-3.5 py-2.5 align-middle max-w-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="shrink-0 h-6 w-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
-                  <MediaIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <Fragment key={p.key}>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={isOpen}
+              onClick={() => toggle(p.key)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(p.key) }
+              }}
+              className="border-b border-border/60 last:border-b-0 hover:bg-primary/5 cursor-pointer transition-colors focus:outline-none focus-visible:bg-primary/5"
+            >
+              <td className={`px-3.5 py-2.5 align-middle whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground border-l-2 ${section.rail}`}>
+                {formatStoryDate(p.createdMs) || '—'}
+              </td>
+              <td className="px-3.5 py-2.5 align-middle max-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ChevronRight
+                    className={`shrink-0 h-3.5 w-3.5 text-muted-foreground transition-transform ${isOpen ? 'rotate-90 text-primary' : ''}`}
+                    aria-hidden="true"
+                  />
+                  <span className="shrink-0 h-6 w-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+                    <MediaIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
+                  <span
+                    className="font-semibold text-foreground truncate"
+                    title={p.preview || 'Untitled post'}
+                  >
+                    {p.preview || <span className="italic text-muted-foreground font-normal">Untitled post</span>}
+                  </span>
+                  {p.failed && (
+                    <span className="shrink-0 inline-flex items-center gap-1 text-3xs font-bold rounded-full px-1.5 py-0.5 bg-destructive text-destructive-foreground">
+                      <AlertTriangle className="w-2.5 h-2.5" aria-hidden="true" /> failed
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="px-3.5 py-2.5 align-middle">
+                <div className="flex items-center gap-1">
+                  {p.channels.slice(0, 4).map((c) => (
+                    <span key={c} className="inline-flex items-center text-3xs font-semibold rounded px-1.5 py-0.5 whitespace-nowrap border text-muted-foreground bg-muted border-border">
+                      {PLATFORM_SHORT[c] ?? c}
+                    </span>
+                  ))}
+                  {p.channels.length > 4 && (
+                    <span className="text-3xs font-semibold text-muted-foreground px-1">+{p.channels.length - 4}</span>
+                  )}
+                </div>
+              </td>
+              <td className="px-3.5 py-2.5 align-middle">
+                <span className={`inline-flex items-center text-2xs font-semibold px-2 py-0.5 rounded-full ${section.pill}`}>
+                  {p.statusLabel}
                 </span>
-                <Link
-                  to={`/publish/${p.primaryId}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="font-semibold text-foreground truncate hover:underline focus:outline-none focus-visible:underline"
-                  title={p.preview || 'Untitled post'}
-                >
-                  {p.preview || <span className="italic text-muted-foreground font-normal">Untitled post</span>}
-                </Link>
-                {p.failed && (
-                  <span className="shrink-0 inline-flex items-center gap-1 text-3xs font-bold rounded-full px-1.5 py-0.5 bg-destructive text-destructive-foreground">
-                    <AlertTriangle className="w-2.5 h-2.5" aria-hidden="true" /> failed
-                  </span>
-                )}
-              </div>
-            </td>
-            <td className="px-3.5 py-2.5 align-middle">
-              <div className="flex items-center gap-1">
-                {p.channels.slice(0, 4).map((c) => (
-                  <span key={c} className="inline-flex items-center text-3xs font-semibold rounded px-1.5 py-0.5 whitespace-nowrap border text-muted-foreground bg-muted border-border">
-                    {PLATFORM_SHORT[c] ?? c}
-                  </span>
-                ))}
-                {p.channels.length > 4 && (
-                  <span className="text-3xs font-semibold text-muted-foreground px-1">+{p.channels.length - 4}</span>
-                )}
-              </div>
-            </td>
-            <td className="px-3.5 py-2.5 align-middle">
-              <span className={`inline-flex items-center text-2xs font-semibold px-2 py-0.5 rounded-full ${section.pill}`}>
-                {section.label.replace(/s$/, '')}
-              </span>
-            </td>
-            <td className="px-3.5 py-2.5 align-middle text-right whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-              {p.when || <span className="text-primary font-semibold">Edit →</span>}
-            </td>
-          </tr>
+              </td>
+              <td className="px-3.5 py-2.5 align-middle text-right whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                {p.when || `${p.channels.length} ${p.channels.length === 1 ? 'channel' : 'channels'}`}
+              </td>
+            </tr>
+            {isOpen && <ChannelSubRows post={p} />}
+          </Fragment>
         )
       })}
     </>
+  )
+}
+
+// The per-channel sub-rows shown when a Post is expanded — one line per channel,
+// each with its own lifecycle pill, caption preview, go-live time, and a link to
+// that exact channel's /publish editor. Editing/publishing is per-channel.
+function ChannelSubRows({ post }) {
+  const publishedLike = post.section === 'published'
+  return (
+    <tr className="border-b border-border/60 last:border-b-0">
+      <td colSpan={5} className="p-0 border-l-2 border-transparent">
+        <div className="bg-muted/25">
+          <div className="px-3.5 pl-11 pt-2 pb-1 text-3xs font-bold uppercase tracking-wider text-muted-foreground">
+            Channels · {post.channelRows.length}
+          </div>
+          <ul>
+            {post.channelRows.map((ch) => {
+              const meta = PLATFORM_META[ch.platform]
+              const Icon = meta?.icon
+              return (
+                <li
+                  key={ch.id}
+                  className="flex items-center gap-3 px-3.5 pl-11 py-2 border-t border-border/50 hover:bg-primary/5 transition-colors"
+                >
+                  <span className="inline-flex items-center gap-1.5 w-32 shrink-0 text-xs font-semibold text-foreground">
+                    {Icon && <Icon className={`h-3.5 w-3.5 ${meta?.color || 'text-muted-foreground'}`} aria-hidden="true" />}
+                    <span className="truncate">{meta?.label || ch.platform}</span>
+                  </span>
+                  <span className="flex-1 min-w-0 truncate text-2xs text-muted-foreground" title={ch.caption}>
+                    {ch.caption || <span className="italic">No caption yet</span>}
+                  </span>
+                  <span className={`shrink-0 inline-flex items-center text-3xs font-semibold px-2 py-0.5 rounded-full ${STATE_PILL[ch.state]}`}>
+                    {ch.when || STATE_LABEL[ch.state]}
+                  </span>
+                  <Link
+                    to={`/publish/${ch.id}`}
+                    className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-primary rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    {publishedLike ? 'View' : 'Edit'} <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      </td>
+    </tr>
   )
 }
