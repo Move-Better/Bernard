@@ -25,7 +25,9 @@ const OPENAI_KEY = () => process.env.OPENAI_API_KEY
 // Bernard's realtime voice — matches api/realtime-session.js so the phone call
 // sounds like the in-app interview. `ballad`: British male, softer-spoken.
 const REALTIME_VOICE = 'ballad'
-const REALTIME_MODEL = 'gpt-realtime'
+// gpt-realtime-2.1 (GA July 2026) — lower p95 latency and more reliable
+// interruption/VAD handling than the original gpt-realtime GA (Aug 2025).
+const REALTIME_MODEL = 'gpt-realtime-2.1'
 
 /**
  * All env the outbound-call feature needs, read lazily. Returns { ok, missing }.
