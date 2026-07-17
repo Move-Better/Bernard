@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
-  Loader2, Instagram, Youtube, Megaphone, Radio, Film, Puzzle,
+  Loader2, Instagram, Youtube, Megaphone, Radio, Film, Puzzle, SlidersHorizontal, Send,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Switch } from '@/components/ui/switch'
@@ -18,6 +18,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { OUTPUT_CHANNELS, EXPORT_SHAPES } from '@/lib/outputChannels'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { SaveBar } from '@/components/settings/helpers'
+import { Room, SectionGuide, RoomSubhead } from '@/components/settings/Room'
 import { apiFetch } from '@/lib/api'
 
 // Icon per channel id — derived from the canonical PLATFORM_META registry
@@ -189,32 +190,28 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
   }
 
   return (
-    <Card className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-base font-semibold">Posting cadence</CardTitle>
-            <CardDescription className="text-xs mt-0.5">
-              Target posts per week per channel. The weekly plan uses these as capacity ceilings.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-muted-foreground">{isAuto ? 'Auto' : 'Manual'}</span>
-            <Switch
-              checked={isAuto}
-              onCheckedChange={toggleAuto}
-              aria-label="Let Bernard manage cadence automatically"
-            />
-          </div>
+    <Room
+      id="ch-cadence"
+      icon={SlidersHorizontal}
+      title="Cadence"
+      purpose="Target posts per week per channel — the weekly plan uses these as capacity ceilings."
+      action={
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground">{isAuto ? 'Auto' : 'Manual'}</span>
+          <Switch
+            checked={isAuto}
+            onCheckedChange={toggleAuto}
+            aria-label="Let Bernard manage cadence automatically"
+          />
         </div>
-        {isAuto && (
-          <p className="text-xs text-muted-foreground pt-1">
-            Bernard manages cadence automatically. Turn off to edit targets.
-          </p>
-        )}
-      </CardHeader>
-
-      <CardContent className={`space-y-5 pt-0 ${isAuto ? 'pointer-events-none opacity-60' : ''}`}>
+      }
+    >
+      {isAuto && (
+        <p className="text-xs text-muted-foreground -mt-1">
+          Bernard manages cadence automatically. Turn off to edit targets.
+        </p>
+      )}
+      <div className={`space-y-5 ${isAuto ? 'pointer-events-none opacity-60' : ''}`}>
         {isAuto && (
           <p className="text-2xs text-muted-foreground px-1">Computed from your enabled channels — turn off Auto to edit</p>
         )}
@@ -301,8 +298,8 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
             </SelectContent>
           </Select>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Room>
   )
 }
 
@@ -316,14 +313,13 @@ function PublishIntentCard({ intent, onChange }) {
   }
 
   return (
-    <Card className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">How you publish</CardTitle>
-        <CardDescription className="text-xs">
-          Set at onboarding — update here if your setup changes. Affects which integrations are highlighted.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5 pt-0">
+    <Room
+      id="ch-publishing"
+      icon={Send}
+      title="Publishing"
+      purpose="How each channel goes out. Set at onboarding — update here if your setup changes."
+    >
+      <div className="space-y-5">
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Blog</p>
           <div className="space-y-1.5">
@@ -384,8 +380,8 @@ function PublishIntentCard({ intent, onChange }) {
             ))}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Room>
   )
 }
 
@@ -538,15 +534,27 @@ export default function ChannelsSettings() {
         </PageHeader>
       </div>
 
-      {groups.map((group) => (
-        <Card key={group.label} className="rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold">{group.label}</CardTitle>
-            <CardDescription className="text-xs">
-              {group.channels.length} channel{group.channels.length === 1 ? '' : 's'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <SectionGuide
+        items={[
+          { id: 'ch-channels',   label: 'Channels',   done: enabled.size > 0 },
+          { id: 'ch-cadence',    label: 'Cadence',    done: true },
+          { id: 'ch-publishing', label: 'Publishing', done: true },
+        ]}
+      />
+
+      <Room
+        id="ch-channels"
+        icon={Radio}
+        title="Channels"
+        purpose="The outputs this workspace generates for. Each interview lets the author pick a subset."
+        state={{ label: `${enabled.size} on`, tone: enabled.size > 0 ? 'done' : 'todo' }}
+      >
+        {groups.map((group) => (
+          <div key={group.label} className="space-y-2.5">
+            <RoomSubhead
+              title={group.label}
+              note={`${group.channels.length} channel${group.channels.length === 1 ? '' : 's'}`}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {group.channels.map((channel) => (
                 <ChannelTile
@@ -557,9 +565,9 @@ export default function ChannelsSettings() {
                 />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          </div>
+        ))}
+      </Room>
 
       <CadenceCard
         cadence={form.cadence_policy}
