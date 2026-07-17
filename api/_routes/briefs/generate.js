@@ -14,6 +14,7 @@ import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -48,8 +49,17 @@ async function handler(req, res) {
 
   const {
     title, body, eventAt, location, ctaUrl, ctaLabel,
-    mediaUrl, mediaType, selectedOutputs, mode,
+    mediaUrl, mediaType, selectedOutputs, mode, gbpLocationIds,
   } = req.body || {}
+
+  // Optional GBP location narrowing (the New Post location picker) — an
+  // explicit subset of workspace_locations.id this post should target.
+  // Omitted/empty means "every connected location" (existing default).
+  if (gbpLocationIds !== undefined) {
+    if (!Array.isArray(gbpLocationIds) || !gbpLocationIds.every((lid) => UUID_RE.test(String(lid)))) {
+      return err(res, 'Invalid gbpLocationIds')
+    }
+  }
 
   // Manual-first "Post": as-written publishes the user's exact text verbatim to
   // every selected channel (no LLM). 'adapt' runs the per-channel voice
@@ -134,6 +144,10 @@ async function handler(req, res) {
         content:      contentText,
         status:       'draft',
         media_urls:   mediaEntry,
+      }
+
+      if (platform === 'gbp' && Array.isArray(gbpLocationIds) && gbpLocationIds.length > 0) {
+        row.target_locations = gbpLocationIds
       }
 
       // Instagram Story: overlay text + a pre-populated text_card when no media.

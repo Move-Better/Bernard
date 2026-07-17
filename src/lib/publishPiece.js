@@ -3,6 +3,7 @@ import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { isInstagramReel } from '@/lib/mediaEntry'
 import { brandStyleForRender } from '@/lib/brandSwatches'
+import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 
 /**
  * Publish — or schedule / queue — ONE social content piece through Buffer.
@@ -74,6 +75,14 @@ export async function publishPieceToBuffer(
       mediaUrls,
       scheduledAt,
       useQueue,
+      // GBP fan-out target — an explicit target_locations selection (the
+      // location picker) wins, else location_overrides' key set (Producer
+      // drafted per-location copy for these), else undefined = every active
+      // connected location. See gbpLocations.js.
+      ...(piece.platform === 'gbp' ? {
+        locationIds: resolveGbpLocationIds(piece),
+        location_overrides: piece.location_overrides,
+      } : {}),
     },
     userEmail,
   )

@@ -34,6 +34,7 @@ import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 import { runBufferPublish, runBundlePublish } from '../publish/buffer.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
+import { resolveGbpLocationIds } from '../../../src/lib/gbpLocations.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -73,7 +74,7 @@ export default async function handler(req, res) {
 
   const itemRes = await sb(
     `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}` +
-    `&select=id,platform,content,media_urls,scheduled_at,location_overrides,status,interview_id`,
+    `&select=id,platform,content,media_urls,scheduled_at,location_overrides,target_locations,status,interview_id`,
   )
   if (!itemRes.ok) return dbErr(res, itemRes)
   const itemRows = await itemRes.json()
@@ -115,17 +116,12 @@ export default async function handler(req, res) {
   const scheduledAt = item.scheduled_at && new Date(item.scheduled_at).getTime() > Date.now()
     ? item.scheduled_at
     : null
-  // location_overrides is populated for EVERY active GBP location at draft
-  // time (buildGbpLocationVariants), so its key set already equals what
-  // resolveGbpChannelIds/resolveBundleGbpTargets would default to when
-  // locationIds is omitted. ponytail: if a human later narrowed a multi-
-  // location GBP post down to a subset at publish time, that subset isn't
-  // persisted anywhere on content_items, so a retry re-targets every active
-  // location rather than the originally-picked one. Not reachable for
-  // non-GBP platforms.
-  const locationIds = item.location_overrides && typeof item.location_overrides === 'object'
-    ? Object.keys(item.location_overrides)
-    : undefined
+  // target_locations (an explicit human narrowing from the location picker)
+  // wins; otherwise location_overrides' key set (populated for every active
+  // GBP location at draft time by buildGbpLocationVariants) is the fallback.
+  // Shared with dispatchContentItem.js / the client publish path so a retry
+  // always re-targets exactly what was originally picked. See gbpLocations.js.
+  const locationIds = resolveGbpLocationIds(item)
   const locationContents = item.location_overrides && typeof item.location_overrides === 'object'
     ? Object.fromEntries(
         Object.entries(item.location_overrides)

@@ -22,6 +22,7 @@
 
 import { BundlePublisher } from './social/index.js'
 import { resolveBundleGbpTargets } from './social/gbpTargets.js'
+import { resolveGbpLocationIds } from '../../src/lib/gbpLocations.js'
 import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
 import { checkWordsApproved } from './wordsApprovalGate.js'
@@ -124,7 +125,7 @@ export async function dispatchContentItem({ ws, piece }) {
   // Targets: GBP fans out per connected location; everything else is one post.
   let targets
   if (piece.platform === 'gbp') {
-    targets = await resolveBundleGbpTargets(ws.id, null)
+    targets = await resolveBundleGbpTargets(ws.id, resolveGbpLocationIds(claimed))
     if (targets.length === 0) { await releaseClaim(); return { dispatched: false, error: 'no_gbp_location' } }
   } else {
     targets = [{ id: piece.platform }]

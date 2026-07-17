@@ -11,7 +11,10 @@ import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import OverlayTextEditor from '@/components/story-detail/OverlayTextEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
+import GbpLocationPicker from '@/components/GbpLocationPicker'
 import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } from '@/lib/queries'
+import { useWorkspace } from '@/lib/WorkspaceContext'
+import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
@@ -635,9 +638,36 @@ function GradePanel({ piece, aspect }) {
 
 // Publish inspector — the full ApprovalPanel toolkit plus the "Next up" loop that
 // flows the producer back into the queue after publishing one piece.
-function PublishPanel({ piece, remainingNeedsMedia = [], isReel }) {
+function PublishPanel({ piece, remainingNeedsMedia = [], isReel, updateItem }) {
+  const workspace = useWorkspace()
+  const gbpLocations = (workspace?.locations || []).filter((l) => l.gbp_location_id)
+  const locked = piece.status === 'published' || piece.status === 'scheduled'
+  const selectedGbpIds = new Set(resolveGbpLocationIds(piece) || gbpLocations.map((l) => l.id))
+
+  function toggleGbpLocation(id) {
+    const next = new Set(selectedGbpIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    updateItem.mutate({ id: piece.id, patch: { targetLocations: [...next] } })
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 space-y-4">
+      {piece.platform === 'gbp' && gbpLocations.length > 1 && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+          <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Locations</p>
+          {locked ? (
+            <p className="text-xs text-muted-foreground">Already {piece.status} — locations are locked.</p>
+          ) : (
+            <GbpLocationPicker
+              locations={gbpLocations}
+              selectedIds={selectedGbpIds}
+              onToggle={toggleGbpLocation}
+              indent={false}
+            />
+          )}
+        </div>
+      )}
       {isReel && (
         <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
           <Video className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -741,7 +771,7 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
           ) : activeKey === 'seo' ? (
             <SeoPanel piece={piece} updateItem={updateItem} />
           ) : (
-            <PublishPanel piece={piece} remainingNeedsMedia={remainingNeedsMedia} isReel={isReel} />
+            <PublishPanel piece={piece} remainingNeedsMedia={remainingNeedsMedia} isReel={isReel} updateItem={updateItem} />
           )}
         </aside>
 

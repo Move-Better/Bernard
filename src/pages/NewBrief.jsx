@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
+import GbpLocationPicker from '@/components/GbpLocationPicker'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch } from '@/lib/api'
@@ -91,6 +92,10 @@ export default function NewBrief() {
   const [mediaType,    setMediaType]    = useState('photo') // 'photo' | 'video'
   const [uploading,    setUploading]    = useState(false)
   const [selected, setSelected] = useState(new Set())
+  // GBP location narrowing — null means "every connected location" (the
+  // existing default / back-compat). Only becomes a Set once the user
+  // actively unchecks one, so an unchanged workspace never narrows anything.
+  const [gbpLocationIds, setGbpLocationIds] = useState(null)
   const [mode, setMode] = useState('as_written') // 'as_written' | 'adapt'
   const [scheduledAt, setScheduledAt] = useState('')
   const [showSchedule, setShowSchedule] = useState(false)
@@ -108,9 +113,28 @@ export default function NewBrief() {
     )
   }, [workspace])
 
+  // GBP-connected locations (each posts to its own Google listing). Only
+  // relevant when a workspace has more than one — GbpLocationPicker no-ops
+  // otherwise.
+  const gbpLocations = useMemo(
+    () => (workspace?.locations || []).filter((l) => l.gbp_location_id),
+    [workspace],
+  )
+  const selectedGbpLocationIds = gbpLocationIds ?? new Set(gbpLocations.map((l) => l.id))
+
   function toggleChannel(id) {
     setSelected((prev) => {
       const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleGbpLocation(id) {
+    setGbpLocationIds((prev) => {
+      const base = prev ?? new Set(gbpLocations.map((l) => l.id))
+      const next = new Set(base)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
@@ -154,7 +178,9 @@ export default function NewBrief() {
   const storyOverflow = mode === 'as_written'
     && selected.has('instagram_story')
     && bodyLen > STORY_OVERLAY_SOFT_LIMIT
-  const canSubmit = body.trim() && selected.size > 0 && !generating && !uploading
+  // GBP selected but every location unchecked — nothing would actually post.
+  const gbpNoLocations = selected.has('gbp') && gbpLocations.length > 0 && selectedGbpLocationIds.size === 0
+  const canSubmit = body.trim() && selected.size > 0 && !generating && !uploading && !gbpNoLocations
 
   // action: 'post_now' | 'schedule' | 'draft'. Adapt mode always yields drafts.
   async function runSubmit(action) {
@@ -163,6 +189,13 @@ export default function NewBrief() {
     setGenerating(true)
     setError(null)
     try {
+      // Only send an explicit GBP target set when the user actually narrowed
+      // it (unchecked a location) — omitted means "every connected location",
+      // matching the existing default.
+      const narrowedGbpIds = selected.has('gbp') && gbpLocations.length > 0
+        && selectedGbpLocationIds.size < gbpLocations.length
+        ? [...selectedGbpLocationIds]
+        : undefined
       const resp = await apiFetch('/api/briefs/generate', {
         method: 'POST',
         body: JSON.stringify({
@@ -176,6 +209,7 @@ export default function NewBrief() {
           mediaUrl:        mediaUrl  || null,
           mediaType:       mediaType,
           selectedOutputs: [...selected],
+          gbpLocationIds:  narrowedGbpIds,
         }),
       })
 
@@ -450,26 +484,34 @@ export default function NewBrief() {
                                 const isSelected = selected.has(ch.id)
                                 const Icon = CHANNEL_ICON[ch.id] || FileText
                                 return (
-                                  <label
-                                    key={ch.id}
-                                    className="flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={() => toggleChannel(ch.id)}
-                                      className="h-4 w-4 accent-primary"
-                                    />
-                                    <span className="flex items-center gap-2 text-sm">
-                                      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                      {ch.label}
-                                    </span>
-                                    {mode === 'as_written' && isSelected && limitForOutput(ch.id) && (
-                                      <span className={`ml-auto text-2xs tabular-nums rounded px-1.5 py-0.5 ${bodyLen > limitForOutput(ch.id) ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>
-                                        {bodyLen > limitForOutput(ch.id) ? `over ${bodyLen - limitForOutput(ch.id)}` : `${bodyLen}/${limitForOutput(ch.id)}`}
+                                  <div key={ch.id}>
+                                    <label
+                                      className="flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleChannel(ch.id)}
+                                        className="h-4 w-4 accent-primary"
+                                      />
+                                      <span className="flex items-center gap-2 text-sm">
+                                        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                        {ch.label}
                                       </span>
+                                      {mode === 'as_written' && isSelected && limitForOutput(ch.id) && (
+                                        <span className={`ml-auto text-2xs tabular-nums rounded px-1.5 py-0.5 ${bodyLen > limitForOutput(ch.id) ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>
+                                          {bodyLen > limitForOutput(ch.id) ? `over ${bodyLen - limitForOutput(ch.id)}` : `${bodyLen}/${limitForOutput(ch.id)}`}
+                                        </span>
+                                      )}
+                                    </label>
+                                    {ch.id === 'gbp' && isSelected && (
+                                      <GbpLocationPicker
+                                        locations={gbpLocations}
+                                        selectedIds={selectedGbpLocationIds}
+                                        onToggle={toggleGbpLocation}
+                                      />
                                     )}
-                                  </label>
+                                  </div>
                                 )
                               })}
                             </div>
@@ -493,6 +535,11 @@ export default function NewBrief() {
                     {storyOverflow && (
                       <p className="text-xs text-warning">
                         Instagram Story fits a short headline — this message is long and will be trimmed to fit the card. Shorten it, edit the story after, or switch that channel to Adapt.
+                      </p>
+                    )}
+                    {gbpNoLocations && (
+                      <p className="text-xs text-warning">
+                        Google Business Profile is selected but no location is checked — pick at least one, or uncheck the channel.
                       </p>
                     )}
 
