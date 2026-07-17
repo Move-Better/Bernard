@@ -29,6 +29,9 @@ tests/e2e/.auth/
 .claude/audit-history/
 .claude/feedback-history/
 
+# Weekly staff-update routine — local screenshot storage (PDFs, captions, etc.)
+.staff-update-screenshots/
+
 # Local test/sample media (recordings, screenshots, zips used in dev sessions)
 data/
 _voice-samples/
