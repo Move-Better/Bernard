@@ -14,6 +14,14 @@ import { stripStoryDatePrefix } from '@/lib/storyTitle'
 // media picker). Mirrors the Storyboard / Review Inbox predicate.
 const HAS_MEDIA = (p) => Array.isArray(p?.media_urls) && p.media_urls.length > 0
 
+// First non-empty line of a Post body (a one-off Post often has no topic), used
+// as the chip label. Strips a leading markdown heading marker.
+function postFirstLine(content) {
+  if (typeof content !== 'string') return ''
+  const line = content.split('\n').map((l) => l.trim()).find(Boolean) || ''
+  return line.replace(/^#{1,6}\s+/, '')
+}
+
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 function isoDate(date) { return date.toISOString().slice(0, 10) }
@@ -44,8 +52,9 @@ export default function StoriesCalendarView({ stories, isLoading, hideRail = fal
   const [weekAnchor, setWeekAnchor] = useState(startOfWeek(today))
 
   // Flatten all scheduled pieces across stories, annotated with topic + story id
-  // + staff name (so chips can attribute the post to who it's from).
-  const scheduledPieces = useMemo(() => {
+  // + staff name (so chips can attribute the post to who it's from). `to` is the
+  // chip's link target — a story piece opens its Story detail.
+  const scheduledStoryPieces = useMemo(() => {
     if (!Array.isArray(stories)) return []
     return stories.flatMap((story) =>
       (story.pieces ?? [])
@@ -57,9 +66,35 @@ export default function StoriesCalendarView({ stories, isLoading, hideRail = fal
           topic: stripStoryDatePrefix(story.topic),
           storyId: story.id,
           staffName: p.staff_name || story.staff_name,
+          to: `/stories/${story.id}`,
         })),
     )
   }, [stories])
+
+  // One-off "Post" content (a brief_id, no interview_id) is dropped by
+  // buildStories(), so scheduled Posts never appear in the interview-grouped
+  // `stories` prop above and were invisible on the calendar. Fetch them
+  // interview-agnostically (same pattern as the approved-unscheduled rail) and
+  // merge them in. A Post has no Story, so its chip opens the /publish editor.
+  const { data: postItems = [] } = useContentItems({ origin: 'post' })
+  const scheduledPosts = useMemo(
+    () =>
+      postItems
+        .filter((p) => p.scheduled_at)
+        .map((p) => ({
+          ...p,
+          topic: stripStoryDatePrefix(p.topic) || postFirstLine(p.content) || 'Post',
+          storyId: null,
+          staffName: p.staff_name,
+          to: `/publish/${p.id}`,
+        })),
+    [postItems],
+  )
+
+  const scheduledPieces = useMemo(
+    () => [...scheduledStoryPieces, ...scheduledPosts],
+    [scheduledStoryPieces, scheduledPosts],
+  )
 
   // Approved but NOT yet scheduled — the producer's "still needs a go-live time"
   // list. Sourced from the SAME content query the Review Inbox uses, NOT the
@@ -288,7 +323,7 @@ function PlanRow({ item }) {
   const t = new Date(item.scheduled_at)
   return (
     <Link
-      to={`/stories/${item.storyId}`}
+      to={item.to || `/stories/${item.storyId}`}
       title={`${pm?.label || item.platform} · ${item.topic}${item.staffName ? ` · ${item.staffName}` : ''}`}
       className="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition-colors hover:border-primary"
     >
@@ -429,7 +464,7 @@ function EventChip({ item }) {
   const pm = PLATFORM_META[item.platform]
   return (
     <Link
-      to={`/stories/${item.storyId}`}
+      to={item.to || `/stories/${item.storyId}`}
       title={`${pm?.label || item.platform} · ${item.topic}${item.staffName ? ` · ${item.staffName}` : ''}`}
       className={`block text-3xs px-1.5 py-0.5 rounded truncate ${pm?.bg || 'bg-muted'} ${pm?.color || ''} hover:opacity-80 transition-opacity`}
     >
