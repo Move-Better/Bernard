@@ -29,7 +29,7 @@ function formatDate(iso) {
 }
 
 export default function BrandIdentitySettings() {
-  useDocumentTitle('Brand identity')
+  useDocumentTitle('Identity')
   const navigate = useNavigate()
   const workspace = useWorkspace()
   const { role, isLoading } = useUserRole()
@@ -61,7 +61,7 @@ export default function BrandIdentitySettings() {
         <PageHeader
           className="items-start mb-5"
           icon={Compass}
-          title="Brand identity"
+          title="Identity"
           subtitle={
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden="true" />

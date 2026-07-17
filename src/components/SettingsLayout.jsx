@@ -12,16 +12,16 @@ import { LoadingState } from '@/components/ui/LoadingState'
 // Children of "Bernard" are inlined here since the mobile rail has no
 // hierarchy.
 const MOBILE_NAV = [
+  { to: '/settings/brand-identity',          label: 'Identity',         icon: Compass },
+  { to: '/settings/workspace/voice',          label: 'Voice',            icon: Mic2 },
+  { to: '/settings/brand-kit',               label: 'Look',              icon: Palette },
   { to: '/settings/workspace',                label: 'General',          icon: Settings,   exact: true },
-  { to: '/settings/workspace/voice',          label: 'Your voice',       icon: Mic2 },
   { to: '/settings/workspace/interview',      label: 'Interview setup',  icon: Sliders },
   { to: '/settings/workspace/locations',      label: 'Locations',        icon: MapPin },
   { to: '/settings/workspace/channels',       label: 'Channels',  icon: Radio },
   { to: '/settings/campaigns',               label: 'Campaigns',         icon: Target },
   { to: '/settings/practice-brain',          label: 'Clinic knowledge',    icon: Brain },
   { to: '/settings/integrations',            label: 'Integrations',      icon: Puzzle },
-  { to: '/settings/brand-identity',          label: 'Brand identity',    icon: Compass },
-  { to: '/settings/brand-kit',               label: 'Brand kit',         icon: Palette },
   { to: '/settings/music',                   label: 'Music',             icon: Music },
   { to: '/settings/photo-templates',          label: 'Photo templates',   icon: LayoutGrid },
   { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
@@ -31,24 +31,23 @@ const MOBILE_NAV = [
 
 const GROUPS = [
   {
+    label: 'Brand',
+    items: [
+      { to: '/settings/brand-identity',      label: 'Identity',           icon: Compass },
+      { to: '/settings/workspace/voice',      label: 'Voice',              icon: Mic2 },
+      { to: '/settings/brand-kit',           label: 'Look',               icon: Palette },
+    ],
+  },
+  {
     label: 'Workspace',
     items: [
       { to: '/settings/workspace',           label: 'General',            icon: Settings,   exact: true },
-      {
-        label: 'Voice & tone',
-        icon: Mic2,
-        children: [
-          { to: '/settings/workspace/voice',      label: 'Your voice' },
-          { to: '/settings/workspace/interview',  label: 'Interview setup' },
-        ],
-      },
+      { to: '/settings/workspace/interview', label: 'Interview setup',    icon: Sliders },
       { to: '/settings/workspace/locations', label: 'Locations',          icon: MapPin },
       { to: '/settings/workspace/channels',  label: 'Channels',    icon: Radio },
       { to: '/settings/campaigns',           label: 'Campaigns',          icon: Target },
       { to: '/settings/practice-brain',      label: 'Clinic knowledge',     icon: Brain },
       { to: '/settings/integrations',        label: 'Integrations',       icon: Puzzle },
-      { to: '/settings/brand-identity',      label: 'Brand identity',     icon: Compass },
-      { to: '/settings/brand-kit',           label: 'Brand kit',          icon: Palette },
       { to: '/settings/music',               label: 'Music',              icon: Music },
       { to: '/settings/photo-templates',      label: 'Photo templates',    icon: LayoutGrid },
     ],
@@ -213,8 +212,8 @@ export default function SettingsLayout() {
             // themselves also guard, but we hide the nav entries to avoid
             // cluttering the sidebar for clinicians who click Settings by
             // accident).
-            const workspaceGroup = group.label === 'Workspace' || group.label === 'People'
-            if (workspaceGroup && !isAdmin) return null
+            const adminOnlyGroup = group.label === 'Brand' || group.label === 'Workspace' || group.label === 'People'
+            if (adminOnlyGroup && !isAdmin) return null
 
             // Inject the auto-publish nav item after Campaigns.
             let items = group.items

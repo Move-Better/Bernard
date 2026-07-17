@@ -6,6 +6,6 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 // asset endpoints). The same component renders the design preview at
 // /settings/brand-kit-preview with `mockup={true}`.
 export default function BrandKitSettings() {
-  useDocumentTitle('Brand Kit')
+  useDocumentTitle('Look')
   return <BrandKit variant="settings" />
 }
