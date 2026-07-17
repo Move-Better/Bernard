@@ -922,6 +922,7 @@
     "slug",
     "social",
     "social_avatar_initials",
+    "social_length_lean",
     "spoken_url",
     "status",
     "story_type_options",

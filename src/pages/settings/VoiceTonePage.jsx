@@ -33,6 +33,45 @@ function tryParseJson(text, fallback) {
   catch (e) { return { ok: false, error: e.message } }
 }
 
+// Content length-lean dial (workspaces.social_length_lean). Shifts how much
+// depth Bernard writes into social posts — scales the deep-dive pieces, leaves
+// hooks/CTAs short. See api/_lib/socialLengthTargets.js.
+const LENGTH_LEAN_OPTIONS = [
+  { value: 'punchy',   label: 'Punchy',   desc: 'Short and scannable — leans brief on every channel.' },
+  { value: 'balanced', label: 'Balanced', desc: 'A genuine mix — short hooks, medium everyday, the occasional deep-dive.' },
+  { value: 'indepth',  label: 'In-depth', desc: 'Leans into long-form on the deep pieces — depth as a signature. Hooks and CTAs still stay short.' },
+]
+
+function LengthLeanSelector({ value, onChange }) {
+  const current = value || 'balanced'
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+      {LENGTH_LEAN_OPTIONS.map((opt) => {
+        const active = current === opt.value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            aria-pressed={active}
+            className={`text-left rounded-lg border p-3 transition-colors ${
+              active ? 'border-primary/40 bg-primary/10' : 'border-border hover:bg-accent/30'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 transition-colors ${
+                active ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+              }`} />
+              <span className="text-sm font-medium">{opt.label}</span>
+            </div>
+            <p className="text-2xs text-muted-foreground mt-1.5 leading-relaxed">{opt.desc}</p>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function formFromWorkspace(ws) {
   return {
     clinic_context:       ws.clinic_context       ?? '',
@@ -44,6 +83,7 @@ function formFromWorkspace(ws) {
     tone_clinical:        ws.tone_modifiers?.clinical ?? '',
     tone_warm:            ws.tone_modifiers?.warm     ?? '',
     tone_smart:           ws.tone_modifiers?.smart    ?? '',
+    social_length_lean:   ws.social_length_lean       ?? 'balanced',
     patient_context_json: JSON.stringify(ws.patient_context ?? {}, null, 2),
   }
 }
@@ -62,6 +102,7 @@ function formToPatch(form) {
       warm:     form.tone_warm     ?? '',
       smart:    form.tone_smart    ?? '',
     },
+    social_length_lean: form.social_length_lean || 'balanced',
     ...(pc.ok ? { patient_context: pc.value } : {}),
   }
 }
@@ -212,6 +253,15 @@ export default function VoiceTonePage() {
             onChange={set('activity_context')}
             hint={`Sport, discipline, or lifestyle terms that belong in the ${clinicName} lexicon.`}
           />
+        </Section>
+
+        {/* Post length — global length-lean dial */}
+        <Section
+          title="Post length"
+          description={`How much depth ${interviewerName} writes into social posts. Hooks and calls-to-action stay short either way — this dials the everyday and deep-dive pieces.`}
+          className="lg:col-span-2"
+        >
+          <LengthLeanSelector value={form.social_length_lean} onChange={set('social_length_lean')} />
         </Section>
 
         {/* Patient types — span both columns */}
