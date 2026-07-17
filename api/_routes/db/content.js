@@ -115,8 +115,10 @@ export default async function handler(req, res) {
     const archived    = searchParams.get('archived')    // 'true' | 'only' | 'all' — default excludes archived
     const limit       = Math.min(parseInt(searchParams.get('limit') || '100', 10) || MAX_LIMIT, MAX_LIMIT)
     const view        = searchParams.get('view')        // 'card' | 'performers' = slim shapes
+    const origin      = searchParams.get('origin')      // 'post' = one-off Post/Brief content only
 
     // Validate allowlisted params before interpolating into the PostgREST query.
+    if (origin && origin !== 'post') return err(res, 'Invalid origin', 400)
     if (status) {
       const statuses = status.split(',')
       if (statuses.some((s) => !VALID_STATUSES.has(s.trim()))) return err(res, 'Invalid status', 400)
@@ -142,6 +144,10 @@ export default async function handler(req, res) {
     if (to)          qs += `&scheduled_at=lte.${encodeURIComponent(to)}`
     if (interviewId) qs += `&interview_id=eq.${encodeURIComponent(interviewId)}`
     if (staffId) qs += `&staff_id=eq.${encodeURIComponent(staffId)}`
+    // Posts tab: one-off content (a Post/Brief), which has a brief_id and no
+    // interview. This is the content buildStories() drops, so it needs its own
+    // interview-agnostic list.
+    if (origin === 'post') qs += `&brief_id=not.is.null`
     // Archive filter — archived items are hidden by default so the Hub stays
     // focused on live work. `archived=only` flips to the Archived view;
     // `archived=all` returns both (used by callers that need totals).

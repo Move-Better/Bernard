@@ -1,0 +1,291 @@
+<meta charset="UTF-8">
+<title>Posts tab — design review</title>
+<style>
+  :root {
+    --page:#eef1f4; --bg:#ffffff; --ink:#0b1220; --card:#ffffff;
+    --muted:#f1f3f6; --muted-2:#f7f8fa; --muted-ink:#4a5568; --border:#e2e8f0;
+    --primary:#0C7580; --primary-ink:#ffffff; --primary-soft:#e6f4f5;
+    --amber:#b45309; --amber-bg:#fef3c7; --amber-line:#f59e0b;
+    --sky:#0369a1; --sky-bg:#e0f2fe; --sky-line:#38bdf8;
+    --emerald:#0f7a52; --emerald-bg:#e9f9f1; --emerald-line:#10b981;
+    --danger:#b91c1c; --danger-bg:#fef2f2;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px rgba(15,23,42,.06);
+    --ff: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --page:#0b0e12; --bg:#0f1216; --ink:#e8edf2; --card:#161a20;
+      --muted:#1c2128; --muted-2:#12161b; --muted-ink:#9aa6b2; --border:#262c34;
+      --primary:#19aebc; --primary-ink:#04262a; --primary-soft:#0f2f34;
+      --amber:#fbbf24; --amber-bg:#3a2c0c; --amber-line:#d99a1a;
+      --sky:#7dd3fc; --sky-bg:#0c2a3a; --sky-line:#38bdf8;
+      --emerald:#5fe3b0; --emerald-bg:#0e3128; --emerald-line:#10b981;
+      --danger:#f87171; --danger-bg:#3a1616;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --page:#0b0e12; --bg:#0f1216; --ink:#e8edf2; --card:#161a20;
+    --muted:#1c2128; --muted-2:#12161b; --muted-ink:#9aa6b2; --border:#262c34;
+    --primary:#19aebc; --primary-ink:#04262a; --primary-soft:#0f2f34;
+    --amber:#fbbf24; --amber-bg:#3a2c0c; --amber-line:#d99a1a;
+    --sky:#7dd3fc; --sky-bg:#0c2a3a; --sky-line:#38bdf8;
+    --emerald:#5fe3b0; --emerald-bg:#0e3128; --emerald-line:#10b981;
+    --danger:#f87171; --danger-bg:#3a1616;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --page:#eef1f4; --bg:#ffffff; --ink:#0b1220; --card:#ffffff;
+    --muted:#f1f3f6; --muted-2:#f7f8fa; --muted-ink:#4a5568; --border:#e2e8f0;
+    --primary:#0C7580; --primary-ink:#ffffff; --primary-soft:#e6f4f5;
+    --amber:#b45309; --amber-bg:#fef3c7; --amber-line:#f59e0b;
+    --sky:#0369a1; --sky-bg:#e0f2fe; --sky-line:#38bdf8;
+    --emerald:#0f7a52; --emerald-bg:#e9f9f1; --emerald-line:#10b981;
+    --danger:#b91c1c; --danger-bg:#fef2f2;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{font-family:var(--ff); background:var(--page); color:var(--ink); min-height:100vh; padding:26px 20px 60px; line-height:1.5; -webkit-font-smoothing:antialiased}
+  .shell{max-width:1040px; margin:0 auto}
+
+  .phead{margin-bottom:16px}
+  .kicker{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--primary); margin:0 0 6px}
+  .ptitle{font-size:24px; font-weight:700; letter-spacing:-.01em; margin:0; text-wrap:balance}
+  .psub{font-size:13.5px; color:var(--muted-ink); margin:6px 0 0; max-width:66ch}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 20px}
+  .chip{display:inline-flex; align-items:center; gap:7px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:6px 12px 6px 10px; font-size:12.5px; font-weight:500; box-shadow:var(--shadow)}
+  .chip b{font-weight:700}
+  .dot{width:7px; height:7px; border-radius:50%; flex:none}
+  .dot.g{background:var(--primary)} .dot.a{background:var(--amber-line)} .dot.s{background:var(--sky-line)} .dot.e{background:var(--emerald-line)}
+
+  /* app card */
+  .screen{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); overflow:hidden}
+  .apphead{padding:16px 20px 0; display:flex; flex-direction:column; gap:12px}
+  .titlerow{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .h1{font-size:20px; font-weight:700; display:flex; align-items:center; gap:8px; margin:0}
+  .h1 svg{color:var(--primary)}
+  .h1 .n{font-size:13px; font-weight:500; color:var(--muted-ink)}
+  .newbtn{display:inline-flex; align-items:center; gap:7px; background:var(--primary); color:var(--primary-ink); border:0; font-family:inherit; font-weight:600; font-size:13px; padding:8px 13px; border-radius:9px; cursor:pointer}
+  .newbtn:hover{filter:brightness(1.06)}
+
+  /* top-level Stories | Posts tabs (the NEW element) */
+  .maintabs{display:flex; gap:2px; border-bottom:1px solid var(--border); margin:0 -20px; padding:0 20px}
+  .maintab{appearance:none; border:0; background:transparent; font-family:inherit; font-size:14px; font-weight:600; color:var(--muted-ink); padding:10px 4px; margin-right:20px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; display:flex; align-items:center; gap:7px}
+  .maintab[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--primary)}
+  .maintab .cnt{font-size:11px; font-weight:700; background:var(--muted); color:var(--muted-ink); border-radius:999px; padding:1px 7px}
+  .maintab[aria-selected="true"] .cnt{background:var(--primary-soft); color:var(--primary)}
+
+  .body{padding:16px 20px 22px; display:flex; flex-direction:column; gap:14px}
+
+  /* toolbar */
+  .toolbar{display:flex; align-items:center; gap:8px}
+  .search{position:relative; flex:1; max-width:320px}
+  .search input{width:100%; font-family:inherit; font-size:12.5px; background:var(--muted); border:1px solid var(--border); border-radius:9px; padding:7px 10px 7px 30px; color:var(--ink)}
+  .search svg{position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--muted-ink)}
+  .segfilter{display:inline-flex; background:var(--muted); border:1px solid var(--border); border-radius:999px; padding:3px; gap:2px; margin-left:auto}
+  .segfilter button{appearance:none; border:0; background:transparent; font-family:inherit; font-size:12px; font-weight:600; color:var(--muted-ink); padding:5px 12px; border-radius:999px; cursor:pointer}
+  .segfilter button[aria-pressed="true"]{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
+
+  /* table */
+  .tablewrap{border:1px solid var(--border); border-radius:12px; overflow:hidden}
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  thead tr{background:var(--muted); color:var(--muted-ink)}
+  th{text-align:left; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:8px 14px}
+  th.r{text-align:right}
+  .grouphead td{background:var(--muted-2); padding:7px 14px}
+  .glabel{display:inline-flex; align-items:center; gap:8px; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted-ink)}
+  .gpill{font-size:10px; font-weight:700; border-radius:999px; padding:1px 8px}
+  .gpill.draft{background:var(--amber-bg); color:var(--amber)}
+  .gpill.sched{background:var(--sky-bg); color:var(--sky)}
+  .gpill.pub{background:var(--emerald-bg); color:var(--emerald)}
+  tbody tr.row{border-top:1px solid var(--border); cursor:pointer; transition:background .12s}
+  tbody tr.row:hover{background:var(--primary-soft)}
+  td{padding:11px 14px; vertical-align:middle}
+  td.date{white-space:nowrap; font-family:var(--mono); font-size:11.5px; color:var(--muted-ink); font-variant-numeric:tabular-nums; border-left:2px solid transparent}
+  tr.draft td.date{border-left-color:var(--amber-line)}
+  tr.sched td.date{border-left-color:var(--sky-line)}
+  tr.pub td.date{border-left-color:var(--emerald-line)}
+  td.post{max-width:0; width:100%}
+  .postcell{display:flex; align-items:center; gap:9px; min-width:0}
+  .thumb{width:30px; height:30px; border-radius:6px; flex:none; display:grid; place-items:center; color:#fff; font-size:8px; font-weight:700; letter-spacing:.02em}
+  .thumb.ph{background:linear-gradient(135deg,#0C7580,#1aa3ac)}
+  .thumb.vid{background:linear-gradient(135deg,#334155,#0b1220)}
+  .thumb.txt{background:var(--muted); color:var(--muted-ink); border:1px solid var(--border)}
+  .ptext{font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .chans{display:flex; gap:4px; flex-wrap:nowrap}
+  .cchip{font-size:10px; font-weight:700; color:var(--muted-ink); background:var(--muted); border:1px solid var(--border); border-radius:5px; padding:2px 6px; white-space:nowrap}
+  .status{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px}
+  .status.draft{background:var(--amber-bg); color:var(--amber)}
+  .status.sched{background:var(--sky-bg); color:var(--sky)}
+  .status.pub{background:var(--emerald-bg); color:var(--emerald)}
+  td.when{white-space:nowrap; font-size:11.5px; color:var(--muted-ink); text-align:right; font-variant-numeric:tabular-nums}
+  .edit{opacity:0; font-size:11.5px; font-weight:700; color:var(--primary)}
+  tbody tr.row:hover .edit{opacity:1}
+
+  /* callouts */
+  .callout{position:relative; border:1.5px dashed var(--primary); border-radius:10px; padding:10px 12px; background:var(--primary-soft); display:flex; gap:9px; align-items:flex-start}
+  .callout.amber{border-color:var(--amber-line); background:var(--amber-bg)}
+  .tag{font-size:9.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; padding:2px 7px; border-radius:5px; color:#fff; flex:none}
+  .tag.new{background:var(--primary)} .tag.fix{background:var(--amber-line); color:#3a2600}
+  .callout .co{font-size:11.5px; color:var(--ink); margin:0} .callout .co b{font-weight:700}
+
+  .legend{margin-top:18px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; box-shadow:var(--shadow)}
+  .legend h3{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted-ink); margin:0 0 12px}
+  .lrow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--border); font-size:12.5px}
+  .lrow:first-of-type{border-top:0}
+  .lrow .b{flex:none; width:150px; font-weight:700; color:var(--ink)}
+  .lrow .t{color:var(--muted-ink)}
+  .lrow .t b{color:var(--primary)}
+  @media (max-width:620px){ .lrow{flex-direction:column; gap:2px} .lrow .b{width:auto} td.when,th.when{display:none} }
+
+  .hide{display:none !important}
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+
+<div class="wrap">
+  <div class="shell">
+
+    <div class="phead">
+      <p class="kicker">Bernard · design review · fix-forward</p>
+      <h1 class="ptitle">Where a one-off “Post” lives — the Posts tab</h1>
+      <p class="psub">The shipped Post composer creates posts with no interview, but nothing in the app lists them, so a saved draft is currently unreachable. This adds a <b>Posts</b> tab on Stories — a real home with the Draft → Scheduled → Published lifecycle. Each row opens the existing editor + publish flow.</p>
+    </div>
+
+    <div class="chips">
+      <span class="chip"><span class="dot g"></span><b>New tab</b>&nbsp;on Stories</span>
+      <span class="chip"><span class="dot a"></span><b>Drafts</b>&nbsp;you can finally reach</span>
+      <span class="chip"><span class="dot s"></span><b>Scheduled</b>&nbsp;visible in-app</span>
+      <span class="chip"><span class="dot e"></span><b>Published</b>&nbsp;history</span>
+    </div>
+
+    <div class="screen">
+      <div class="apphead">
+        <div class="titlerow">
+          <h2 class="h1">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8V6Z"/></svg>
+            Stories <span class="n">5 posts</span>
+          </h2>
+          <button class="newbtn">＋ New post</button>
+        </div>
+        <div class="maintabs" role="tablist">
+          <button class="maintab" role="tab" aria-selected="false" onclick="tab('stories')">Stories <span class="cnt">128</span></button>
+          <button class="maintab" role="tab" aria-selected="true" onclick="tab('posts')">Posts <span class="cnt">5</span></button>
+        </div>
+      </div>
+
+      <div class="body">
+
+        <div class="callout amber">
+          <span class="tag fix">Fixes</span>
+          <p class="co"><b>The orphaned-draft bug.</b> Today a Post saved as a draft can’t be found anywhere — <code>buildStories()</code> drops it because it has no interview. This tab lists it by workspace + status, so it’s reachable, editable, and publishable.</p>
+        </div>
+
+        <p style="font-size:12px; color:var(--muted-ink); margin:0">Each row is one post you wrote once — the chips show the channels it went to. One message, one row.</p>
+
+        <div class="toolbar">
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input placeholder="Search posts…">
+          </div>
+          <div class="segfilter" role="group">
+            <button aria-pressed="true">All</button>
+            <button aria-pressed="false">Drafts</button>
+            <button aria-pressed="false">Scheduled</button>
+            <button aria-pressed="false">Published</button>
+          </div>
+        </div>
+
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:96px">Date</th>
+                <th>Post</th>
+                <th style="width:150px">Channels</th>
+                <th style="width:104px">Status</th>
+                <th class="when" style="width:132px">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- DRAFTS -->
+              <tr class="grouphead"><td colspan="5"><span class="glabel"><span class="gpill draft">Drafts · 2</span> needs you to publish or schedule</span></td></tr>
+
+              <tr class="row draft">
+                <td class="date">11/26/26</td>
+                <td class="post"><div class="postcell"><span class="thumb txt">TXT</span><span class="ptext">Closed Thursday &amp; Friday for Thanksgiving — back to regular hours Monday.</span></div></td>
+                <td><div class="chans"><span class="cchip">IG</span><span class="cchip">FB</span><span class="cchip">GBP</span></div></td>
+                <td><span class="status draft">Draft</span></td>
+                <td class="when"><span class="edit">Edit →</span></td>
+              </tr>
+              <tr class="row draft">
+                <td class="date">11/24/26</td>
+                <td class="post"><div class="postcell"><span class="thumb ph">PHOTO</span><span class="ptext">Welcome Sarah, our new massage therapist! 🎉 Booking opens Monday.</span></div></td>
+                <td><div class="chans"><span class="cchip">IG</span><span class="cchip">FB</span></div></td>
+                <td><span class="status draft">Draft</span></td>
+                <td class="when"><span class="edit">Edit →</span></td>
+              </tr>
+
+              <!-- SCHEDULED -->
+              <tr class="grouphead"><td colspan="5"><span class="glabel"><span class="gpill sched">Scheduled · 1</span> queued to go out</span></td></tr>
+
+              <tr class="row sched">
+                <td class="date">11/25/26</td>
+                <td class="post"><div class="postcell"><span class="thumb ph">PHOTO</span><span class="ptext">Join us Saturday for a free posture &amp; movement workshop — 10am, all welcome.</span></div></td>
+                <td><div class="chans"><span class="cchip">FB</span><span class="cchip">GBP</span></div></td>
+                <td><span class="status sched">Scheduled</span></td>
+                <td class="when">Nov 25, 8:00 AM</td>
+              </tr>
+
+              <!-- PUBLISHED -->
+              <tr class="grouphead"><td colspan="5"><span class="glabel"><span class="gpill pub">Published · 2</span> live on channel</span></td></tr>
+
+              <tr class="row pub">
+                <td class="date">11/20/26</td>
+                <td class="post"><div class="postcell"><span class="thumb txt">TXT</span><span class="ptext">Quick reminder — we’re open normal hours all this week. See you soon!</span></div></td>
+                <td><div class="chans"><span class="cchip">GBP</span></div></td>
+                <td><span class="status pub">Published</span></td>
+                <td class="when">Nov 20, posted now</td>
+              </tr>
+              <tr class="row pub">
+                <td class="date">11/18/26</td>
+                <td class="post"><div class="postcell"><span class="thumb vid">VIDEO</span><span class="ptext">30-second clinic tour — come see the space before your first visit.</span></div></td>
+                <td><div class="chans"><span class="cchip">IG</span><span class="cchip">FB</span><span class="cchip">LI</span></div></td>
+                <td><span class="status pub">Published</span></td>
+                <td class="when">Nov 18, 9:02 AM</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <span class="tag new">Opens</span>
+          <p class="co"><b>Click any row → the existing editor + publish flow</b> (<code>/publish/:id</code>, already works by id). A text post opens the text editor, a photo/video opens the media editor — so “route media to the editor” from earlier is handled here, in one place, for every post.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="legend">
+      <h3>What this fixes</h3>
+      <div class="lrow"><div class="b">Save as draft</div><div class="t">Today: <b>dead end</b> — unreachable, un-editable → Now: lands in <b>Drafts</b>, one click to open &amp; publish</div></div>
+      <div class="lrow"><div class="b">Schedule</div><div class="t">Today: fires externally but <b>invisible</b> in Bernard → Now: shows in <b>Scheduled</b> with its go-live time</div></div>
+      <div class="lrow"><div class="b">Post now</div><div class="t">Today: publishes but leaves <b>no record</b> → Now: appears in <b>Published</b> history</div></div>
+      <div class="lrow"><div class="b">Edit media</div><div class="t">Opening a post routes to the <b>real editor</b> (text → UnifiedEditor, photo/video → media editor) — plus fix the FB/GBP-video misroute</div></div>
+      <div class="lrow"><div class="b">Not a rebuild</div><div class="t">Reuses <code>useContentItems</code> (interview-agnostic) + the existing <code>/publish/:id</code> spine. Never touches <code>buildStories()</code>.</div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function tab(which){
+    document.querySelectorAll('.maintab').forEach((b,i)=>{
+      const isPosts = b.textContent.trim().startsWith('Posts');
+      b.setAttribute('aria-selected', (which==='posts')===isPosts);
+    });
+  }
+</script>

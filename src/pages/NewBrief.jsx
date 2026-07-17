@@ -161,7 +161,7 @@ export default function NewBrief() {
 
       const items = resp?.contentItems || []
       if (effective === 'draft' || items.length === 0) {
-        navigate('/stories?source=brief')
+        navigate('/stories?tab=posts')
         return
       }
 
@@ -195,7 +195,7 @@ export default function NewBrief() {
           description: 'Anything that failed is saved as a draft in Stories.',
         })
       }
-      navigate('/stories?source=brief')
+      navigate('/stories?tab=posts')
     } catch (e_) {
       setError(e_?.message || 'Something went wrong — please try again.')
       setGenerating(false)
@@ -212,7 +212,7 @@ export default function NewBrief() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Post</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Write it once, send it anywhere — your words, or let Bernard adapt.
+            One post → the channels you pick. Your exact words, or let Bernard adapt each one.
           </p>
         </div>
       </div>
