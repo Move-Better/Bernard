@@ -72,8 +72,12 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
   const [uploadError, setUploadError] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [semanticActive, setSemanticActive] = useState(false)
+  const [selectHint, setSelectHint] = useState(false)
   const fileInputRef = useRef(null)
   const debounceRef  = useRef(null)
+  const hintTimeoutRef = useRef(null)
+
+  useEffect(() => () => clearTimeout(hintTimeoutRef.current), [])
 
   async function loadLibrary({ q = '', kindFilter = 'all', colId = '', pageNum = 0, append = false } = {}) {
     setLibraryLoading(true)
@@ -195,9 +199,17 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
     if (multi) {
       const items = [...selected.values()].map(assetToPickerItem)
       if (items.length > 0) onSelect(items)
+      else showSelectHint()
     } else {
       if (selected) onSelect(assetToPickerItem(selected))
+      else showSelectHint()
     }
+  }
+
+  function showSelectHint() {
+    setSelectHint(true)
+    clearTimeout(hintTimeoutRef.current)
+    hintTimeoutRef.current = setTimeout(() => setSelectHint(false), 2500)
   }
 
   async function handleUpload(e) {
@@ -464,17 +476,20 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
 
             {/* Footer */}
             <div className="px-5 py-3 border-t flex items-center justify-between shrink-0">
-              <p className="text-xs text-muted-foreground truncate max-w-[55%]">
-                {selectedCount === 0
-                  ? (multi ? 'Click to select files' : 'Pick a file from your library')
-                  : `${selectedCount} file${selectedCount !== 1 ? 's' : ''} selected`}
+              <p className={`text-xs truncate max-w-[55%] ${selectHint ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                {selectHint
+                  ? (multi ? 'Select at least one file first' : 'Select a file first')
+                  : selectedCount === 0
+                    ? (multi ? 'Click to select files' : 'Pick a file from your library')
+                    : `${selectedCount} file${selectedCount !== 1 ? 's' : ''} selected`}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
                 <Button
                   size="sm"
                   onClick={handleConfirm}
-                  disabled={selectedCount === 0}
+                  aria-disabled={selectedCount === 0}
+                  className={selectedCount === 0 ? 'opacity-50' : ''}
                 >
                   {multi
                     ? selectedCount > 0 ? `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}` : 'Add Files'
