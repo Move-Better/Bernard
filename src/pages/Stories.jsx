@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle, SlidersHorizontal, Search, ArrowDownUp } from 'lucide-react'
+import { Mic, Target, User, X, ChevronDown, Newspaper, AlertTriangle, SlidersHorizontal, Search, ArrowDownUp, Plus } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStories, useCampaigns, useStaff, useStaffSummaries, useLocations } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -9,6 +9,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { getPatientPrototypesUi } from '@/lib/prompts'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import StoriesTableView from '@/components/stories/StoriesTableView'
+import PostsTableView from '@/components/stories/PostsTableView'
+import { Button } from '@/components/ui/button'
 import CampaignProgressStrip from '@/components/stories/CampaignProgressStrip'
 import StoriesAtAGlance from '@/components/stories/StoriesAtAGlance'
 import PageHelp from '@/components/PageHelp'
@@ -112,6 +114,9 @@ export default function Stories() {
   // the two primitives that make the list usable once it grows past a screenful.
   const searchQuery    = searchParams.get('q')    || ''
   const sortAsc        = searchParams.get('sort') === 'oldest'
+  // Stories | Posts top-level tab. Posts is the home for one-off Post content
+  // (no interview) that the story views structurally can't render.
+  const tab            = searchParams.get('tab') || 'stories'
 
   // How many of the six advanced (popover) filters are applied — drives the
   // count badge on the Filters button. (Status tabs, Mine, and the failed-triage
@@ -217,6 +222,26 @@ export default function Stories() {
     }, { replace: true })
   }
 
+  // Posts tab — a self-contained surface (its own header + list). Rendered
+  // before the stories loading gate so it isn't blocked by the stories fetch.
+  if (tab === 'posts') {
+    return (
+      <div className="py-6 px-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Newspaper className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+            Stories
+          </h1>
+          <Button asChild size="sm">
+            <Link to="/new/brief"><Plus className="h-4 w-4 mr-1" aria-hidden="true" />New post</Link>
+          </Button>
+        </div>
+        <PageTabs tab="posts" onSelect={(t) => setParam('tab', t === 'stories' ? '' : t)} />
+        <PostsTableView />
+      </div>
+    )
+  }
+
   if (isLoading) return <PageSkeleton variant="list" />
 
   return (
@@ -243,6 +268,8 @@ export default function Stories() {
             <PageHelp pageKey="stories" variant="default" />
           </div>
         </div>
+
+        <PageTabs tab="stories" onSelect={(t) => setParam('tab', t === 'stories' ? '' : t)} />
 
         {/* Quick-filter pill row — All / Draft / Ready to Distribute / Published / Mine */}
         <div role="tablist" aria-label="Filter stories" className="flex items-center gap-2 overflow-x-auto flex-nowrap -mx-6 px-6 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -485,6 +512,32 @@ export default function Stories() {
           views above are rendering, so no extra fetch. Auto-hides when the
           workspace has no stories yet. */}
       {!isLoading ? <StoriesAtAGlance stories={stories} /> : null}
+    </div>
+  )
+}
+
+// Top-level Stories | Posts switch. Posts is the home for one-off Post content
+// (no interview), which the interview-grouped story views structurally can't
+// show. Module scope (react-hooks/static-components).
+function PageTabs({ tab, onSelect }) {
+  return (
+    <div className="flex items-center border-b border-border" role="tablist" aria-label="Stories or Posts">
+      {[['stories', 'Stories'], ['posts', 'Posts']].map(([key, label]) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={tab === key}
+          onClick={() => onSelect(key)}
+          className={`text-sm font-semibold px-1 pb-2 mr-6 -mb-px border-b-2 transition-colors ${
+            tab === key
+              ? 'text-foreground border-primary'
+              : 'text-muted-foreground border-transparent hover:text-foreground'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   )
 }

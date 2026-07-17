@@ -10,6 +10,9 @@ export function fetchContentItems(filters = {}) {
   if (filters.to)          params.set('to', filters.to)
   if (filters.limit)       params.set('limit', String(filters.limit))
   if (filters.interviewId) params.set('interviewId', filters.interviewId)
+  // 'post' → only one-off Post/Brief content (brief_id set, no interview). Powers
+  // the Posts tab — content that buildStories() drops because it has no interview.
+  if (filters.origin)   params.set('origin', String(filters.origin))
   // 'only' → archived rows only; 'all' → live + archived. Omitting hides
   // archived rows (the default the Hub wants).
   if (filters.archived) params.set('archived', String(filters.archived))
