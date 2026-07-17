@@ -100,6 +100,15 @@ export default function StoryboardPublish() {
   const fmt = postFormat(piece)
   const photoCount = Array.isArray(piece.media_urls) ? piece.media_urls.length : 0
 
+  // A one-off "Post" (a brief_id with no interview) written as plain text — no
+  // media attached — is an announcement, not a photo composite. The photo-only
+  // SlideEditor would open it on a blank slide canvas, so route it to the
+  // UnifiedEditor's social-card path instead (Words rail + live per-channel post
+  // preview + optional "add media"). Scoped to Posts so the regular Storyboard
+  // single-photo flow (which uses SlideEditor to attach the photo) is untouched.
+  const isPost = !!piece.brief_id && !piece.interview_id
+  const isTextPost = isVisual && isPost && photoCount === 0
+
   // Inline "next piece" advance — jump straight to the next draft still needing
   // media instead of bouncing back through the /publish queue (which redirects
   // to /week). PostHog showed up to 39 /week↔/publish round-trips in one session.
@@ -118,7 +127,7 @@ export default function StoryboardPublish() {
   // content region so the editor canvas dominates. Publish/schedule fold into
   // the editor's own top bar (Schedule button → modal). All page chrome is
   // intentionally dropped here.
-  if (isCarousel || isVisual || isStoryPhoto) {
+  if ((isCarousel || isVisual || isStoryPhoto) && !isTextPost) {
     const scheduleNode = (
       <div className="space-y-4">
         <ApprovalPanel piece={piece} mode="publish" />
