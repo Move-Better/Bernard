@@ -53,33 +53,76 @@ export default async function handler(req, res) {
   // This week's planned atoms (Strategist output for plan_week). Full detail so
   // the /week calendar can render cards + drill in to the per-piece review.
   const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,status,content_piece_id,interview_id,interview:interviews!interview_id(topic)'
-  const atomsRes = await sb(
-    `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
-  )
-  const atoms = atomsRes.ok ? await atomsRes.json() : []
-  const scheduled = atoms.filter((a) => a.scheduled_at)
+
+  // Three independent Supabase round-trips (atoms+drafted-items chain, the
+  // backlog query, and the reviewer's own staff+review-queue chain) used to
+  // run strictly sequentially — up to 4 awaits back to back. None of them
+  // depend on each other's results, so run them concurrently; this is the
+  // main contributor to /week and / (Home, which also hits this route)
+  // showing up as the app's slowest routes in PostHog web-vitals (P95 LCP
+  // 6-9s, 2026-07-16 UX report).
+  const clerkUserId = auth.userId || auth.user?.id || null
+
+  async function fetchAtomsAndDraftedItems() {
+    const atomsRes = await sb(
+      `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
+    )
+    const atoms = atomsRes.ok ? await atomsRes.json() : []
+    const scheduled = atoms.filter((a) => a.scheduled_at)
+
+    // For drafted atoms, batch-fetch the content_item status so /week can
+    // show approve/schedule actions without a per-card round-trip.
+    const draftedIds = atoms.filter((a) => a.content_piece_id).map((a) => a.content_piece_id)
+    let itemStatusMap = {}
+    if (draftedIds.length) {
+      const safeIds = draftedIds.filter((did) => UUID_RE.test(did))
+      if (safeIds.length) {
+        const quoted = safeIds.map((did) => `"${did}"`).join(',')
+        const ciRes = await sb(
+          `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id,voice_fidelity_score,voice_audit`,
+        )
+        if (ciRes.ok) {
+          const ciRows = await ciRes.json()
+          if (Array.isArray(ciRows)) { for (const ci of ciRows) itemStatusMap[ci.id] = ci }
+        }
+      }
+    }
+    return { scheduled, itemStatusMap }
+  }
+
+  async function fetchHeldAtoms() {
+    const heldRes = await sb(
+      `content_plan_atoms?workspace_id=eq.${ws.id}&held_at=not.is.null&select=${ATOM_SELECT}&order=held_at.asc`,
+    )
+    return heldRes.ok ? await heldRes.json() : []
+  }
+
+  // Clinician "yours to review" (2d): blog content_items in in_review for this user's
+  // staff row, only when blog_review_enabled is true on that row.
+  async function fetchYourReview() {
+    if (!clerkUserId) return []
+    const staffRes = await sb(
+      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
+    )
+    if (!staffRes.ok) return []
+    const staffRows = await staffRes.json()
+    const sf = staffRows[0]
+    if (!sf?.blog_review_enabled) return []
+    const reviewRes = await sb(
+      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at&order=created_at.desc&limit=10`,
+    )
+    return reviewRes.ok ? await reviewRes.json() : []
+  }
+
+  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview] = await Promise.all([
+    fetchAtomsAndDraftedItems(),
+    fetchHeldAtoms(),
+    fetchYourReview(),
+  ])
 
   const byPlatform = {}
   for (const a of scheduled) {
     byPlatform[a.platform] = (byPlatform[a.platform] || 0) + 1
-  }
-
-  // For drafted atoms, batch-fetch the content_item status so /week can
-  // show approve/schedule actions without a per-card round-trip.
-  const draftedIds = atoms.filter((a) => a.content_piece_id).map((a) => a.content_piece_id)
-  let itemStatusMap = {}
-  if (draftedIds.length) {
-    const safeIds = draftedIds.filter((id) => UUID_RE.test(id))
-    if (safeIds.length) {
-      const quoted = safeIds.map((id) => `"${id}"`).join(',')
-      const ciRes = await sb(
-        `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id,voice_fidelity_score,voice_audit`,
-      )
-      if (ciRes.ok) {
-        const ciRows = await ciRes.json()
-        if (Array.isArray(ciRows)) { for (const ci of ciRows) itemStatusMap[ci.id] = ci }
-      }
-    }
   }
 
   // First ~180 chars of the drafted copy, stripped of light markdown, so /week
@@ -133,35 +176,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // Banked backlog (held across all weeks) — full list for the backlog rail.
-  const heldRes = await sb(
-    `content_plan_atoms?workspace_id=eq.${ws.id}&held_at=not.is.null&select=${ATOM_SELECT}&order=held_at.asc`,
-  )
-  const heldAtoms = heldRes.ok ? await heldRes.json() : []
-
   // Active digest (the newsletter contribution line) from the cadence policy.
   const digests = Array.isArray(ws.cadence_policy?.digests) ? ws.cadence_policy.digests : []
   const digest = digests.find((d) => d.enabled) || digests[0] || null
-
-  // Clinician "yours to review" (2d): blog content_items in in_review for this user's
-  // staff row, only when blog_review_enabled is true on that row.
-  let yourReview = []
-  const clerkUserId = auth.userId || auth.user?.id || null
-  if (clerkUserId) {
-    const staffRes = await sb(
-      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
-    )
-    if (staffRes.ok) {
-      const staffRows = await staffRes.json()
-      const sf = staffRows[0]
-      if (sf?.blog_review_enabled) {
-        const reviewRes = await sb(
-          `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at&order=created_at.desc&limit=10`,
-        )
-        if (reviewRes.ok) yourReview = await reviewRes.json()
-      }
-    }
-  }
 
   const scheduledShaped = scheduled
     .map(shape)
