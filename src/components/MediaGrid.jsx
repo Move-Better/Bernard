@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Video, Image as ImageIcon, Play, Check, Download, Link2 } from 'lucide-react'
+import { Video, Image as ImageIcon, Play, Check, Download, Link2, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
@@ -47,6 +47,11 @@ function Thumb({ asset }) {
     return <div className="h-full bg-muted flex items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>
   }
   // video
+  // Async "Save to Library" export: the b-roll row is created before its render
+  // finishes (blob_url null), so show a rendering/failed state instead of a play
+  // button that would open an empty clip.
+  const rendering = asset.render_status === 'rendering'
+  const renderFailed = asset.render_status === 'failed'
   return (
     <div className="relative h-full w-full">
       {asset.thumbnail_url && !imgError ? (
@@ -57,11 +62,23 @@ function Thumb({ asset }) {
           <span className="text-3xs text-card/50 text-center leading-tight line-clamp-3">{asset.filename}</span>
         </div>
       )}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="h-8 w-8 rounded-full bg-black/55 flex items-center justify-center">
-          <Play className="h-4 w-4 text-white ml-0.5" />
+      {rendering ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 pointer-events-none">
+          <Loader2 className="h-5 w-5 text-white animate-spin" />
+          <span className="text-3xs text-white/90">Rendering…</span>
         </div>
-      </div>
+      ) : renderFailed ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 pointer-events-none px-1">
+          <AlertTriangle className="h-5 w-5 text-white" />
+          <span className="text-3xs text-white/90 text-center">Export failed</span>
+        </div>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="h-8 w-8 rounded-full bg-black/55 flex items-center justify-center">
+            <Play className="h-4 w-4 text-white ml-0.5" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

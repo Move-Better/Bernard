@@ -71,6 +71,24 @@ export function renderSegments(segmentIds) {
 }
 
 /**
+ * Async "Save to Library" clip export. Renders the edited clip on a fresh
+ * worker budget instead of inline, so a long/hi-res clip can't 504. Returns
+ * fast with 202 { assetId, status: 'rendering' } — the id of the destination
+ * b-roll media_assets row. Poll that asset (getMediaAsset) until its
+ * render_status flips 'rendering' → 'ready' | 'failed'.
+ * @param {Object} body  the editor renderBody (assetId + edit params) plus
+ *                       { captionText?, briefId? }
+ * @returns {Promise<{ assetId: string, status: string }>}
+ */
+export function exportClipToBroll(body) {
+  return apiFetch('/api/editorial/export-clip', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
  * Render the WHOLE source video as one keep-whole, landscape long-form story
  * package — the other explicit choice next to "Find clips". Returns 202 with
  * { packageId, status, channels }; the Moment Miner polls story_packages for
