@@ -251,6 +251,12 @@ export default async function handler(req, res) {
       if (!locChk.ok || !(await locChk.json()).length) return err(res, 'Location not found in workspace', 404)
     }
 
+    // Reject a malformed scheduledAt before it lands in content_items or reaches
+    // mondayOf() below (mondayOf throws RangeError on an Invalid Date, which
+    // would surface a 500 AFTER the row already saved). null/undefined = leave
+    // as-is or unschedule, both allowed.
+    if (patch.scheduledAt && !ISO_DATE_RE.test(patch.scheduledAt)) return err(res, 'Invalid scheduledAt', 400)
+
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
     // archive or `null` to restore.
     const allowed = {

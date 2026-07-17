@@ -145,11 +145,12 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   // pipeline silently errored. Initialized lazily (null until first pending
   // poll) so the cap starts when the pipeline is observed pending, not when
   // the drawer mounts — avoids expiring early on large files that take a
-  // while. AI tagging on a large video (ffmpeg proxy + Gemini vision) can run
+  // while. AI tagging on a large video (ffmpeg proxy + Gemini vision) and an
+  // async clip export (export-clip-worker, up to a ~300s budget) can each run
   // several minutes, well past the 60s cap that's right for photo/video
-  // optimize — give it its own longer ceiling.
+  // optimize — give each its own longer ceiling.
   const pollStartRef = useRef(null)
-  const POLL_CAP_MS = { tagging: 300_000, default: 60_000 }
+  const POLL_CAP_MS = { tagging: 300_000, rendering: 300_000, default: 60_000 }
 
   // Poll the row until the pipeline lands. The list view refetches on
   // upload-done, but the detail drawer doesn't see that signal — so without
@@ -163,7 +164,11 @@ export default function MediaDetail({ asset, onClose, onChange }) {
       const row = q.state.data
       if (!pipelinePending(row)) return false
       if (!pollStartRef.current) pollStartRef.current = Date.now()
-      const cap = row.status === 'tagging' ? POLL_CAP_MS.tagging : POLL_CAP_MS.default
+      const cap = row.status === 'tagging'
+        ? POLL_CAP_MS.tagging
+        : row.render_status === 'rendering'
+          ? POLL_CAP_MS.rendering
+          : POLL_CAP_MS.default
       if (Date.now() - pollStartRef.current > cap) return false
       return 2000
     },

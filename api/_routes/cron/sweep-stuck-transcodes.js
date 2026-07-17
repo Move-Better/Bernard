@@ -90,7 +90,7 @@ export default async function handler(req, res) {
 
     // Guard every write on transcode_status=eq.processing so a row the
     // webhook resolves between our scan and this write is never clobbered.
-    const guardedWhere = `id=eq.${row.id}&transcode_status=eq.processing`
+    const guardedWhere = `id=eq.${row.id}&workspace_id=eq.${row.workspace_id}&transcode_status=eq.processing`
 
     if (asset.status === 'ready') {
       const patch = buildReadyPatchFromMuxAsset(asset)

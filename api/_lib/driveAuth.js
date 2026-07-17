@@ -247,10 +247,10 @@ async function loadDriveCredentialRow(workspaceId) {
   return Array.isArray(rows) && rows[0] ? rows[0] : null
 }
 
-async function markCredentialDisabled(rowId, reason) {
+async function markCredentialDisabled(rowId, workspaceId, reason) {
   if (!rowId || !SUPABASE_URL || !SUPABASE_KEY) return
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${encodeURIComponent(rowId)}`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/workspace_credentials?id=eq.${encodeURIComponent(rowId)}&workspace_id=eq.${encodeURIComponent(workspaceId)}`, {
       method: 'PATCH',
       headers: {
         apikey: SUPABASE_KEY,
@@ -289,7 +289,7 @@ export async function accessTokenForWorkspace(workspaceId) {
     return access_token
   } catch (e) {
     if (e.code === 'invalid_grant') {
-      await markCredentialDisabled(row.id, e.message)
+      await markCredentialDisabled(row.id, workspaceId, e.message)
       throw new DriveAuthError('reconnect_required', 'Google Drive access was revoked — admin must reconnect')
     }
     throw e
